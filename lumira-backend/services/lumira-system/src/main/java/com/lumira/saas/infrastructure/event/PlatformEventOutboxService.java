@@ -3,6 +3,7 @@ package com.lumira.saas.infrastructure.event;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.web.TraceContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
@@ -32,6 +33,7 @@ public class PlatformEventOutboxService {
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_RETRY_COUNT = 8;
     private static final long SNAPSHOT_CACHE_TTL_MS = 15_000L;
+    private static final long CLAIM_LEASE_MINUTES = 5L;
     private static final String SYSTEM_SOURCE_TYPE = PlatformEventTypes.SOURCE_SYSTEM;
 
     private static final String SQL_LIST_DISPATCHABLE = """
@@ -40,7 +42,8 @@ public class PlatformEventOutboxService {
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
                    trace_id as traceId, request_id as requestId, created_by as createdBy,
-                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
+                   created_by_uuid as createdByUuid, created_at as createdAt, updated_by as updatedBy,
+                   updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted
             from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)
             where deleted = 0
               and source_type = ?
@@ -58,7 +61,8 @@ public class PlatformEventOutboxService {
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
                    trace_id as traceId, request_id as requestId, created_by as createdBy,
-                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
+                   created_by_uuid as createdByUuid, created_at as createdAt, updated_by as updatedBy,
+                   updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted
             from platform_event_outbox
             where id = ? and deleted = 0 and source_type = ?
             limit 1
@@ -66,29 +70,45 @@ public class PlatformEventOutboxService {
 
     private static final String SQL_CLAIM_FOR_DISPATCH = """
             update platform_event_outbox
-            set dispatch_status = ?, updated_at = ?, updated_by = ?
+            set dispatch_status = ?, claimed_by = ?, claim_token = ?, claim_expires_at = ?,
+                updated_at = ?, updated_by = ?, updated_by_uuid = ?
             where deleted = 0 and source_type = ? and id = ? and dispatch_status = ?
+              and event_type = ?
+              and event_key = ?
+              and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
             """;
 
     private static final String SQL_MARK_DELIVERED = """
             update platform_event_outbox
             set dispatch_status = ?, delivered_at = ?, next_retry_at = null, last_error = null,
-                claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-            where deleted = 0 and source_type = ? and id = ? and (? is null or claim_token = ?)
+                claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?, updated_by_uuid = ?
+            where deleted = 0 and source_type = ? and id = ? and dispatch_status = ? and claim_token = ?
+              and event_type = ?
+              and ((event_key is null and ? is null) or event_key = ?)
+              and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
+              and ((retry_count is null and ? is null) or retry_count = ?)
             """;
 
     private static final String SQL_MARK_FAILED = """
             update platform_event_outbox
             set dispatch_status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
-                claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-            where deleted = 0 and source_type = ? and id = ? and (? is null or claim_token = ?)
+                claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?, updated_by_uuid = ?
+            where deleted = 0 and source_type = ? and id = ? and dispatch_status = ? and claim_token = ?
+              and event_type = ?
+              and ((event_key is null and ? is null) or event_key = ?)
+              and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
+              and ((retry_count is null and ? is null) or retry_count = ?)
             """;
 
     private static final String SQL_RESET_FOR_REPLAY = """
             update platform_event_outbox
             set dispatch_status = ?, retry_count = 0, next_retry_at = null, last_error = null,
-                delivered_at = null, updated_at = ?, updated_by = ?
+                delivered_at = null, claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?, updated_by_uuid = ?
             where deleted = 0 and source_type = ? and id = ?
+              and event_type = ?
+              and event_key = ?
+              and dispatch_status = ?
+              and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
             """;
 
     private final ObjectMapper objectMapper;
@@ -144,25 +164,57 @@ public class PlatformEventOutboxService {
             Object payload
     ) {
         ensureSystemSource(sourceType);
+        Long normalizedUserId = normalizeUserId(userId);
         PlatformEventOutboxEntity entity = new PlatformEventOutboxEntity();
-        String userUuid = resolveUserUuid(userId);
-        entity.setUserId(userId);
+        String payloadUserUuid = extractPayloadUserUuid(payload);
+        String userUuid = resolveTrustedUserUuid(normalizedUserId, payloadUserUuid);
+        entity.setUserId(normalizedUserId);
         entity.setUserUuid(userUuid);
         entity.setSourceType(SYSTEM_SOURCE_TYPE);
-        entity.setEventType(eventType);
-        entity.setEventKey(eventKey);
+        entity.setEventType(normalizeEventType(eventType));
+        entity.setEventKey(normalizeEventKey(eventKey));
         entity.setPayloadJson(serialize(enrichPayload(payload, userUuid)));
         entity.setDispatchStatus(STATUS_RECORDED);
         entity.setRetryCount(0);
         entity.setTraceId(TraceContext.getTraceId());
         entity.setRequestId(TraceContext.getRequestId());
-        entity.setCreatedBy(userId == null ? 0L : userId);
-        entity.setUpdatedBy(userId == null ? 0L : userId);
+        entity.setCreatedBy(normalizedUserId);
+        entity.setCreatedByUuid(userUuid);
+        entity.setUpdatedBy(normalizedUserId);
+        entity.setUpdatedByUuid(userUuid);
         entity.setCreatedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         entity.setDeleted(0);
-        platformEventOutboxMapper.insert(entity);
+        int inserted = platformEventOutboxMapper.insert(entity);
+        if (inserted != 1) {
+            throw new IllegalStateException("Platform event outbox changed, please retry");
+        }
         return entity;
+    }
+
+    private Long normalizeUserId(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        if (userId <= 0) {
+            throw new IllegalArgumentException("userId must be positive when present");
+        }
+        return userId;
+    }
+
+    private Long trustedUserIdOrNull(Long userId) {
+        return userId == null || userId <= 0 ? null : userId;
+    }
+
+    private String trustedUserUuidOrNull(PlatformEventOutboxEntity event) {
+        if (event == null || trustedUserIdOrNull(event.getUpdatedBy()) == null) {
+            return null;
+        }
+        String userUuid = normalizeUserUuid(event.getUpdatedByUuid());
+        if (userUuid != null) {
+            return userUuid;
+        }
+        return normalizeUserUuid(event.getUserUuid());
     }
 
     public List<PlatformEventOutboxEntity> listDispatchable(int limit) {
@@ -221,7 +273,7 @@ public class PlatformEventOutboxService {
     }
 
     public PlatformEventOutboxEntity findById(Long id) {
-        if (id == null) {
+        if (id == null || id <= 0) {
             return null;
         }
 
@@ -282,30 +334,67 @@ public class PlatformEventOutboxService {
         if (event == null || event.getId() == null) {
             return false;
         }
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime claimExpiresAt = now.plusMinutes(CLAIM_LEASE_MINUTES);
 
         if (queryOperations != null) {
             int updated = queryOperations.update(
                     SQL_CLAIM_FOR_DISPATCH,
                     STATUS_DISPATCHING,
-                    LocalDateTime.now(),
-                    event.getUpdatedBy() == null ? 0L : event.getUpdatedBy(),
+                    workerId(),
+                    claimToken,
+                    claimExpiresAt,
+                    now,
+                    trustedUserIdOrNull(event.getUpdatedBy()),
+                    trustedUserUuidOrNull(event),
                     SYSTEM_SOURCE_TYPE,
                     event.getId(),
-                    event.getDispatchStatus()
+                    event.getDispatchStatus(),
+                    event.getEventType(),
+                    event.getEventKey(),
+                    event.getUserId(),
+                    event.getUserId(),
+                    normalizeUserUuid(event.getUserUuid())
             );
+            if (updated > 0) {
+                event.setDispatchStatus(STATUS_DISPATCHING);
+                event.setClaimedBy(workerId());
+                event.setClaimToken(claimToken);
+                event.setClaimExpiresAt(claimExpiresAt);
+            }
             return updated > 0;
         }
 
         PlatformEventOutboxEntity update = new PlatformEventOutboxEntity();
         update.setDispatchStatus(STATUS_DISPATCHING);
-        update.setUpdatedAt(LocalDateTime.now());
-        update.setUpdatedBy(event.getUpdatedBy() == null ? 0L : event.getUpdatedBy());
+        update.setClaimedBy(workerId());
+        update.setClaimToken(claimToken);
+        update.setClaimExpiresAt(claimExpiresAt);
+        update.setUpdatedAt(now);
+        update.setUpdatedBy(trustedUserIdOrNull(event.getUpdatedBy()));
+        update.setUpdatedByUuid(trustedUserUuidOrNull(event));
 
         int updated = platformEventOutboxMapper.update(update, new UpdateWrapper<PlatformEventOutboxEntity>()
                 .eq("id", event.getId())
                 .eq("deleted", 0)
                 .eq("source_type", SYSTEM_SOURCE_TYPE)
+                .eq("event_type", event.getEventType())
+                .eq("event_key", event.getEventKey())
+                .nested(wrapper -> {
+                    if (event.getUserId() == null) {
+                        wrapper.isNull("user_id").isNull("user_uuid");
+                    } else {
+                        wrapper.eq("user_id", event.getUserId()).eq("user_uuid", normalizeUserUuid(event.getUserUuid()));
+                    }
+                })
                 .eq("dispatch_status", event.getDispatchStatus()));
+        if (updated > 0) {
+            event.setDispatchStatus(STATUS_DISPATCHING);
+            event.setClaimedBy(workerId());
+            event.setClaimToken(claimToken);
+            event.setClaimExpiresAt(claimExpiresAt);
+        }
         return updated > 0;
     }
 
@@ -317,30 +406,49 @@ public class PlatformEventOutboxService {
         LocalDateTime now = LocalDateTime.now();
 
         if (queryOperations != null) {
-            queryOperations.update(
+            int updated = queryOperations.update(
                     SQL_MARK_DELIVERED,
                     STATUS_DELIVERED,
                     now,
                     now,
-                    event.getUpdatedBy() == null ? 0L : event.getUpdatedBy(),
+                    trustedUserIdOrNull(event.getUpdatedBy()),
+                    trustedUserUuidOrNull(event),
                     SYSTEM_SOURCE_TYPE,
                     event.getId(),
+                    STATUS_DISPATCHING,
                     event.getClaimToken(),
-                    event.getClaimToken()
+                    event.getEventType(),
+                    event.getEventKey(),
+                    event.getEventKey(),
+                    event.getUserId(),
+                    event.getUserId(),
+                    normalizeUserUuid(event.getUserUuid()),
+                    event.getRetryCount(),
+                    event.getRetryCount()
             );
+            requireOutboxWrite(updated, event, "markDelivered");
             return;
         }
 
-        platformEventOutboxMapper.update(null, new UpdateWrapper<PlatformEventOutboxEntity>()
+        UpdateWrapper<PlatformEventOutboxEntity> wrapper = new UpdateWrapper<PlatformEventOutboxEntity>()
                 .eq("id", event.getId())
                 .eq("deleted", 0)
                 .eq("source_type", SYSTEM_SOURCE_TYPE)
+                .eq("dispatch_status", STATUS_DISPATCHING)
+                .eq("claim_token", event.getClaimToken())
+                .eq("event_type", event.getEventType())
                 .set("dispatch_status", STATUS_DELIVERED)
                 .set("delivered_at", now)
                 .set("next_retry_at", null)
                 .set("last_error", null)
                 .set("updated_at", now)
-                .set("updated_by", event.getUpdatedBy() == null ? 0L : event.getUpdatedBy()));
+                .set("updated_by", trustedUserIdOrNull(event.getUpdatedBy()))
+                .set("updated_by_uuid", trustedUserUuidOrNull(event));
+        applyEventKeyPredicate(wrapper, event);
+        applyIdentityPredicate(wrapper, event);
+        applyRetryCountPredicate(wrapper, event.getRetryCount());
+        int updated = platformEventOutboxMapper.update(null, wrapper);
+        requireOutboxWrite(updated, event, "markDelivered");
     }
 
     public void markFailed(PlatformEventOutboxEntity event, RuntimeException exception) {
@@ -354,32 +462,51 @@ public class PlatformEventOutboxService {
         LocalDateTime now = LocalDateTime.now();
 
         if (queryOperations != null) {
-            queryOperations.update(
+            int updated = queryOperations.update(
                     SQL_MARK_FAILED,
                     nextStatus,
                     nextRetryCount,
                     STATUS_DEAD_LETTER.equals(nextStatus) ? null : now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)),
                     truncateError(exception == null ? "unknown error" : exception.getMessage()),
                     now,
-                    event.getUpdatedBy() == null ? 0L : event.getUpdatedBy(),
+                    trustedUserIdOrNull(event.getUpdatedBy()),
+                    trustedUserUuidOrNull(event),
                     SYSTEM_SOURCE_TYPE,
                     event.getId(),
+                    STATUS_DISPATCHING,
                     event.getClaimToken(),
-                    event.getClaimToken()
+                    event.getEventType(),
+                    event.getEventKey(),
+                    event.getEventKey(),
+                    event.getUserId(),
+                    event.getUserId(),
+                    normalizeUserUuid(event.getUserUuid()),
+                    event.getRetryCount(),
+                    event.getRetryCount()
             );
+            requireOutboxWrite(updated, event, "markFailed");
             return;
         }
 
-        platformEventOutboxMapper.update(null, new UpdateWrapper<PlatformEventOutboxEntity>()
+        UpdateWrapper<PlatformEventOutboxEntity> wrapper = new UpdateWrapper<PlatformEventOutboxEntity>()
                 .eq("id", event.getId())
                 .eq("deleted", 0)
                 .eq("source_type", SYSTEM_SOURCE_TYPE)
+                .eq("dispatch_status", STATUS_DISPATCHING)
+                .eq("claim_token", event.getClaimToken())
+                .eq("event_type", event.getEventType())
                 .set("dispatch_status", nextStatus)
                 .set("retry_count", nextRetryCount)
                 .set("next_retry_at", STATUS_DEAD_LETTER.equals(nextStatus) ? null : now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)))
                 .set("last_error", truncateError(exception == null ? "unknown error" : exception.getMessage()))
                 .set("updated_at", now)
-                .set("updated_by", event.getUpdatedBy() == null ? 0L : event.getUpdatedBy()));
+                .set("updated_by", trustedUserIdOrNull(event.getUpdatedBy()))
+                .set("updated_by_uuid", trustedUserUuidOrNull(event));
+        applyEventKeyPredicate(wrapper, event);
+        applyIdentityPredicate(wrapper, event);
+        applyRetryCountPredicate(wrapper, event.getRetryCount());
+        int updated = platformEventOutboxMapper.update(null, wrapper);
+        requireOutboxWrite(updated, event, "markFailed");
     }
 
     public int dispatchPending(PlatformEventDispatcher dispatcher, int limit) {
@@ -390,6 +517,7 @@ public class PlatformEventOutboxService {
         int delivered = 0;
         for (PlatformEventOutboxEntity event : claimForDispatchBatch(limit)) {
             try {
+                requireTrustedDispatchRow(event);
                 dispatcher.dispatch(event);
                 markDelivered(event);
                 delivered += 1;
@@ -455,7 +583,8 @@ public class PlatformEventOutboxService {
                                dispatch_status as dispatchStatus, retry_count as retryCount,
                                next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
                                trace_id as traceId, request_id as requestId, created_by as createdBy,
-                               created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted,
+                               created_by_uuid as createdByUuid, created_at as createdAt, updated_by as updatedBy,
+                               updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted,
                                claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
                         from platform_event_outbox
                         where deleted = 0
@@ -502,7 +631,9 @@ public class PlatformEventOutboxService {
             return false;
         }
 
-        resetForReplay(event);
+        if (!resetForReplay(event)) {
+            return false;
+        }
         return dispatchSingle(event, dispatcher);
     }
 
@@ -512,6 +643,7 @@ public class PlatformEventOutboxService {
         }
 
         try {
+            requireTrustedDispatchRow(event);
             dispatcher.dispatch(event);
             markDelivered(event);
             return true;
@@ -523,46 +655,148 @@ public class PlatformEventOutboxService {
         }
     }
 
-    private void resetForReplay(PlatformEventOutboxEntity event) {
+    private boolean resetForReplay(PlatformEventOutboxEntity event) {
         LocalDateTime now = LocalDateTime.now();
-        event.setDispatchStatus(STATUS_RECORDED);
-        event.setRetryCount(0);
-        event.setNextRetryAt(null);
-        event.setDeliveredAt(null);
-        event.setLastError(null);
-        event.setUpdatedAt(now);
-        event.setUpdatedBy(event.getUpdatedBy() == null ? 0L : event.getUpdatedBy());
+        String previousStatus = event.getDispatchStatus();
+        Long trustedUpdatedBy = trustedUserIdOrNull(event.getUpdatedBy());
+        String trustedUpdatedByUuid = trustedUserUuidOrNull(event);
 
         if (queryOperations != null) {
-            queryOperations.update(
+            int updated = queryOperations.update(
                     SQL_RESET_FOR_REPLAY,
                     STATUS_RECORDED,
                     now,
-                    event.getUpdatedBy() == null ? 0L : event.getUpdatedBy(),
+                    trustedUpdatedBy,
+                    trustedUpdatedByUuid,
                     SYSTEM_SOURCE_TYPE,
-                    event.getId()
+                    event.getId(),
+                    event.getEventType(),
+                    event.getEventKey(),
+                    previousStatus,
+                    event.getUserId(),
+                    event.getUserId(),
+                    normalizeUserUuid(event.getUserUuid())
             );
-            return;
+            if (updated <= 0) {
+                logClaimMismatchIfNeeded(updated, event, "resetForReplay");
+                return false;
+            }
+            applyReplayReset(event, now, trustedUpdatedBy, trustedUpdatedByUuid);
+            return true;
         }
 
-        platformEventOutboxMapper.update(null, new UpdateWrapper<PlatformEventOutboxEntity>()
+        UpdateWrapper<PlatformEventOutboxEntity> wrapper = new UpdateWrapper<PlatformEventOutboxEntity>()
                 .eq("id", event.getId())
                 .eq("deleted", 0)
                 .eq("source_type", SYSTEM_SOURCE_TYPE)
+                .eq("event_type", event.getEventType())
+                .eq("event_key", event.getEventKey())
+                .eq("dispatch_status", previousStatus)
+                .nested(boundary -> {
+                    if (event.getUserId() == null) {
+                        boundary.isNull("user_id").isNull("user_uuid");
+                    } else {
+                        boundary.eq("user_id", event.getUserId()).eq("user_uuid", normalizeUserUuid(event.getUserUuid()));
+                    }
+                })
                 .set("dispatch_status", STATUS_RECORDED)
                 .set("retry_count", 0)
                 .set("next_retry_at", null)
                 .set("delivered_at", null)
                 .set("last_error", null)
+                .set("claim_token", null)
+                .set("claim_expires_at", null)
                 .set("updated_at", now)
-                .set("updated_by", event.getUpdatedBy()));
+                .set("updated_by", trustedUpdatedBy)
+                .set("updated_by_uuid", trustedUpdatedByUuid);
+        int updated = platformEventOutboxMapper.update(null, wrapper);
+        if (updated <= 0) {
+            logClaimMismatchIfNeeded(updated, event, "resetForReplay");
+            return false;
+        }
+        applyReplayReset(event, now, trustedUpdatedBy, trustedUpdatedByUuid);
+        return true;
+    }
+
+    private void applyReplayReset(PlatformEventOutboxEntity event, LocalDateTime now, Long trustedUpdatedBy, String trustedUpdatedByUuid) {
+        event.setDispatchStatus(STATUS_RECORDED);
+        event.setRetryCount(0);
+        event.setNextRetryAt(null);
+        event.setDeliveredAt(null);
+        event.setLastError(null);
+        event.setClaimToken(null);
+        event.setClaimExpiresAt(null);
+        event.setUpdatedAt(now);
+        event.setUpdatedBy(trustedUpdatedBy);
+        event.setUpdatedByUuid(trustedUpdatedByUuid);
+    }
+
+    private void applyEventKeyPredicate(UpdateWrapper<PlatformEventOutboxEntity> wrapper, PlatformEventOutboxEntity event) {
+        if (event == null || event.getEventKey() == null) {
+            wrapper.isNull("event_key");
+            return;
+        }
+        wrapper.eq("event_key", event.getEventKey());
+    }
+
+    private void applyIdentityPredicate(UpdateWrapper<PlatformEventOutboxEntity> wrapper, PlatformEventOutboxEntity event) {
+        if (event == null || event.getUserId() == null) {
+            wrapper.isNull("user_id").isNull("user_uuid");
+            return;
+        }
+        wrapper.eq("user_id", event.getUserId()).eq("user_uuid", normalizeUserUuid(event.getUserUuid()));
+    }
+
+    private void applyRetryCountPredicate(UpdateWrapper<PlatformEventOutboxEntity> wrapper, Integer retryCount) {
+        if (retryCount == null) {
+            wrapper.isNull("retry_count");
+            return;
+        }
+        wrapper.eq("retry_count", retryCount);
+    }
+
+    private void logClaimMismatchIfNeeded(int updated, PlatformEventOutboxEntity event, String operation) {
+        if (updated > 0) {
+            return;
+        }
+        logger.warn("Platform event outbox claim mismatch operation={} id={} eventType={}",
+                operation, event.getId(), event.getEventType());
+    }
+
+    private void requireOutboxWrite(int updated, PlatformEventOutboxEntity event, String operation) {
+        if (updated > 0) {
+            return;
+        }
+        logClaimMismatchIfNeeded(updated, event, operation);
+        throw new IllegalStateException("Platform event outbox changed, please retry");
     }
 
     private String serialize(Object payload) {
         try {
-            return objectMapper.writeValueAsString(payload);
+            String json = objectMapper.writeValueAsString(payload);
+            PlatformEventTrustValidator.requireTrustedPayload(json);
+            return json;
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("平台事件 outbox payload 序列化失败", exception);
+        }
+    }
+
+    private String normalizeEventType(String eventType) {
+        return PlatformEventTrustValidator.requireTrustedEventType(eventType);
+    }
+
+    private String normalizeEventKey(String eventKey) {
+        return PlatformEventTrustValidator.requireTrustedEventKey(eventKey);
+    }
+
+    private void requireTrustedDispatchRow(PlatformEventOutboxEntity event) {
+        PlatformEventTrustValidator.requireTrustedSystemEvent(event);
+        if (!STATUS_DISPATCHING.equals(event.getDispatchStatus()) || event.getClaimToken() == null || event.getClaimToken().isBlank()) {
+            throw new IllegalArgumentException("platform event dispatch claim is required");
+        }
+        Integer retryCount = event.getRetryCount();
+        if (retryCount != null && (retryCount < 0 || retryCount > MAX_RETRY_COUNT)) {
+            throw new IllegalArgumentException("platform event retry count is invalid");
         }
     }
 
@@ -576,6 +810,60 @@ public class PlatformEventOutboxService {
         return payload;
     }
 
+    private String resolveTrustedUserUuid(Long userId, String payloadUserUuid) {
+        if (userId == null) {
+            return null;
+        }
+        if (payloadUserUuid == null) {
+            throw new IllegalArgumentException("platform event userUuid is required when userId is present");
+        }
+        String resolvedUserUuid = normalizeUserUuid(resolveActiveUserUuid(userId));
+        if (resolvedUserUuid == null) {
+            throw new IllegalArgumentException("platform event userUuid cannot be verified");
+        }
+        if (!resolvedUserUuid.equals(payloadUserUuid)) {
+            throw new IllegalArgumentException("platform event userUuid does not match userId");
+        }
+        return resolvedUserUuid;
+    }
+
+    private String extractPayloadUserUuid(Object payload) {
+        if (payload instanceof Map<?, ?> map) {
+            String topLevel = normalizeUserUuid(map.get("userUuid"));
+            if (topLevel != null) {
+                return topLevel;
+            }
+            Object attributes = map.get("attributes");
+            if (attributes instanceof Map<?, ?> attributesMap) {
+                return normalizeUserUuid(attributesMap.get("userUuid"));
+            }
+            return null;
+        }
+        if (payload instanceof String json && !json.isBlank()) {
+            try {
+                JsonNode root = objectMapper.readTree(json);
+                String topLevel = normalizeUserUuid(root.path("userUuid").asText(null));
+                if (topLevel != null) {
+                    return topLevel;
+                }
+                JsonNode attributes = root.path("attributes");
+                if (attributes.isObject()) {
+                    return normalizeUserUuid(attributes.path("userUuid").asText(null));
+                }
+            } catch (JsonProcessingException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeUserUuid(Object value) {
+        if (value instanceof String text && !text.isBlank()) {
+            return text.trim();
+        }
+        return null;
+    }
+
     private String resolveUserUuid(Long userId) {
         if (userId == null || queryOperations == null) {
             return null;
@@ -583,6 +871,21 @@ public class PlatformEventOutboxService {
         try {
             return queryOperations.queryForObject(
                     "select uuid from sys_user where id = ? and deleted = 0 limit 1",
+                    String.class,
+                    userId
+            );
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private String resolveActiveUserUuid(Long userId) {
+        if (userId == null || queryOperations == null) {
+            return null;
+        }
+        try {
+            return queryOperations.queryForObject(
+                    "select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1",
                     String.class,
                     userId
             );

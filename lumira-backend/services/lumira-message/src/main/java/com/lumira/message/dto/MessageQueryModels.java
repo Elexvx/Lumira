@@ -10,6 +10,7 @@ public final class MessageQueryModels {
 
     public static class NoticeArchiveQuery {
         private Long userId;
+        private String userUuid;
         private boolean manageArchive;
         private String keyword;
         private String messageType;
@@ -28,6 +29,8 @@ public final class MessageQueryModels {
 
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public boolean isManageArchive() { return manageArchive; }
         public void setManageArchive(boolean manageArchive) { this.manageArchive = manageArchive; }
         public String getKeyword() { return keyword; }
@@ -61,6 +64,9 @@ public final class MessageQueryModels {
     }
 
     public static class DeliveryLogQuery {
+        private Long userId;
+        private String userUuid;
+        private boolean manageDeliveryLogs;
         private String keyword;
         private String channel;
         private String targetScope;
@@ -71,6 +77,12 @@ public final class MessageQueryModels {
         private long offset;
         private long countLimit;
 
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
+        public boolean isManageDeliveryLogs() { return manageDeliveryLogs; }
+        public void setManageDeliveryLogs(boolean manageDeliveryLogs) { this.manageDeliveryLogs = manageDeliveryLogs; }
         public String getKeyword() { return keyword; }
         public void setKeyword(String keyword) { this.keyword = keyword; }
         public String getChannel() { return channel; }

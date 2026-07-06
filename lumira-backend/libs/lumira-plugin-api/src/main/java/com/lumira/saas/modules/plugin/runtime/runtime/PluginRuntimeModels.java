@@ -15,7 +15,11 @@ public final class PluginRuntimeModels {
             Map<String, String> headers,
             String body,
             Long userId,
+            String userUuid,
             String username,
+            String sessionId,
+            Integer sessionVersion,
+            String permissionsVersion,
             String requestId,
             String traceId
     ) {
@@ -29,6 +33,13 @@ public final class PluginRuntimeModels {
         public static PluginHttpResponse json(int status, Object body) {
             return new PluginHttpResponse(status, body, "application/json");
         }
+    }
+
+    public record PluginUserIdentity(
+            Long userId,
+            String userUuid,
+            String username
+    ) {
     }
 
     public record PluginDeclaredPermission(
@@ -101,15 +112,16 @@ public final class PluginRuntimeModels {
     public record PluginSecondFactorVerification(
             boolean verified,
             Long userId,
+            String userUuid,
             String username,
             String message
     ) {
-        public static PluginSecondFactorVerification success(Long userId, String username, String message) {
-            return new PluginSecondFactorVerification(true, userId, username, message);
+        public static PluginSecondFactorVerification success(Long userId, String userUuid, String username, String message) {
+            return new PluginSecondFactorVerification(true, userId, userUuid, username, message);
         }
 
         public static PluginSecondFactorVerification failure(String message) {
-            return new PluginSecondFactorVerification(false, null, null, message);
+            return new PluginSecondFactorVerification(false, null, null, null, message);
         }
     }
 }

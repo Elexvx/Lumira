@@ -4,6 +4,7 @@ import com.lumira.common.security.CurrentUser;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.lumira.common.security.InitialAdminPassword;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,7 +38,7 @@ public class InitialPasswordChangeGuard {
     }
 
     public boolean requiresPasswordChange(CurrentUser currentUser) {
-        if (currentUser == null) {
+        if (!isTrustedCurrentUser(currentUser)) {
             return false;
         }
         if (Boolean.FALSE.equals(currentUser.getRequiresPasswordChange())) {
@@ -59,7 +60,7 @@ public class InitialPasswordChangeGuard {
     }
 
     void invalidate(CurrentUser currentUser) {
-        if (currentUser != null) {
+        if (isTrustedCurrentUser(currentUser)) {
             initialPasswordCache.invalidate(InitialPasswordCacheKey.from(currentUser));
         }
     }
@@ -72,6 +73,10 @@ public class InitialPasswordChangeGuard {
         );
         return StringUtils.hasText(passwordHash)
                 && passwordEncoderProvider.getObject().matches(InitialAdminPassword.DEFAULT_PASSWORD, passwordHash);
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
     }
 
     private record InitialPasswordCacheKey(

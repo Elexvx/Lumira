@@ -9,6 +9,7 @@ import type { HTMLAttributes } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { createPasskeyCredential, isPasskeySupported, toPublicKeyCreationOptions, toRegistrationPayload } from '@/auth/passkey';
+import { mergeTrustedCurrentUser } from '@/auth/sessionState';
 import type { AppInitialState } from '@/app';
 import { useStandardFormProps } from '@/features/form/config';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -20,6 +21,7 @@ import type {
   LoginCapabilities,
   ProfileSummary,
   SecondFactorChallenge,
+  SecondFactorBindingChallenge,
   SecondFactorProviderStatus,
   SecondFactorVerification,
   PasskeyCredentialRecord,
@@ -30,8 +32,6 @@ interface ProfileBasicInfoPayload {
   avatarUrl?: string;
   nickname?: string;
   realName?: string;
-  mobile?: string;
-  email?: string;
   birthMonth?: string;
   gender?: string;
   region?: string;
@@ -72,6 +72,36 @@ const maskEmail = (email?: string | null) => {
     return `**@${domainPart}`;
   }
   return `${localPart.slice(0, 2)}***@${domainPart}`;
+};
+
+const resolvePreferredCurrentVerificationFactor = (
+  providers: SecondFactorProviderStatus[],
+  currentUser: CurrentUser | null | undefined,
+  loginCapabilities: LoginCapabilities | undefined,
+): SecondFactorProviderStatus | null => {
+  const totpProvider = providers.find((item) => item.factorCode === 'totp' && item.bound && item.systemEnabled !== false);
+  if (totpProvider) {
+    return totpProvider;
+  }
+  if (currentUser?.mobile && loginCapabilities?.smsLoginAvailable) {
+    return {
+      factorCode: 'sms',
+      factorName: 'SMS verification code',
+      bound: true,
+      enabled: true,
+      maskedContact: currentUser.mobile,
+    };
+  }
+  if (currentUser?.email && loginCapabilities?.emailLoginAvailable) {
+    return {
+      factorCode: 'email',
+      factorName: 'Email verification code',
+      bound: true,
+      enabled: true,
+      maskedContact: currentUser.email,
+    };
+  }
+  return null;
 };
 
 function normalizeCurrentUserText(user: CurrentUser): CurrentUser;
@@ -136,61 +166,221 @@ export const useProfileCenterPageAccess = () => {
     enabled: Boolean(currentUser),
   });
   const [passkeyBinding, setPasskeyBinding] = useState(false);
+  const [passkeyVerificationAction, setPasskeyVerificationAction] = useState<'bind' | 'rename' | 'delete' | null>(null);
+  const [passkeyVerificationTargetId, setPasskeyVerificationTargetId] = useState<number | null>(null);
+  const [passkeyVerificationTargetLabel, setPasskeyVerificationTargetLabel] = useState<string | null>(null);
+  const [passkeyVerificationChallenge, setPasskeyVerificationChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [passkeyVerificationChallengeLoading, setPasskeyVerificationChallengeLoading] = useState(false);
+  const [passkeyVerificationSubmitting, setPasskeyVerificationSubmitting] = useState(false);
+  const [passkeyVerificationAlert, setPasskeyVerificationAlert] = useState<string | null>(null);
+  const [passkeyVerificationForm] = Form.useForm<{ currentPassword?: string; verificationCode?: string }>();
+  const passkeyVerificationFormProps = useStandardFormProps({
+    form: passkeyVerificationForm,
+    initialValues: { currentPassword: '', verificationCode: '' },
+  });
   const [bindModalOpen, setBindModalOpen] = useState(false);
   const [bindingProvider, setBindingProvider] = useState<SecondFactorProviderStatus | null>(null);
-  const [bindingChallenge, setBindingChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [bindingChallenge, setBindingChallenge] = useState<SecondFactorBindingChallenge | null>(null);
+  const [bindingVerificationChallenge, setBindingVerificationChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [bindingVerificationChallengeLoading, setBindingVerificationChallengeLoading] = useState(false);
   const [bindingLoading, setBindingLoading] = useState(false);
   const [bindingSubmitting, setBindingSubmitting] = useState(false);
   const [bindingCompleted, setBindingCompleted] = useState(false);
   const [bindingAlert, setBindingAlert] = useState<{ type: 'info' | 'warning' | 'error'; message: string }>();
+  const [bindVerificationForm] = Form.useForm<{ currentPassword?: string; verificationCode?: string }>();
+  const bindVerificationFormProps = useStandardFormProps({
+    form: bindVerificationForm,
+    initialValues: { currentPassword: '', verificationCode: '' },
+  });
+  const bindingVerificationFactor = useMemo<SecondFactorProviderStatus | null>(() => {
+    const factor = resolvePreferredCurrentVerificationFactor(providersQuery.data || [], currentUser, loginCapabilities);
+    if (!factor) {
+      return null;
+    }
+    if (factor.factorCode === 'sms') {
+      return { ...factor, factorName: formatMessage({ id: 'page.profile.bind.currentFactor.sms', defaultMessage: 'SMS verification code' }) };
+    }
+    if (factor.factorCode === 'email') {
+      return { ...factor, factorName: formatMessage({ id: 'page.profile.bind.currentFactor.email', defaultMessage: 'Email verification code' }) };
+    }
+    return factor;
+  }, [currentUser, formatMessage, loginCapabilities, providersQuery.data]);
+  const [unbindProvider, setUnbindProvider] = useState<SecondFactorProviderStatus | null>(null);
+  const [unbindChallenge, setUnbindChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [unbindChallengeLoading, setUnbindChallengeLoading] = useState(false);
+  const [unbindSubmitting, setUnbindSubmitting] = useState(false);
+  const [unbindAlert, setUnbindAlert] = useState<string | null>(null);
+  const [unbindForm] = Form.useForm<{ verificationCode?: string }>();
+  const unbindFormProps = useStandardFormProps({
+    form: unbindForm,
+    initialValues: { verificationCode: '' },
+  });
   const resetBindState = useCallback(() => {
     setBindingProvider(null);
     setBindingChallenge(null);
+    setBindingVerificationChallenge(null);
+    setBindingVerificationChallengeLoading(false);
     setBindingLoading(false);
     setBindingSubmitting(false);
     setBindingCompleted(false);
     setBindingAlert(undefined);
-  }, []);
+    bindVerificationForm.resetFields();
+  }, [bindVerificationForm]);
   const closeBindModal = useCallback(() => {
-    if (bindingSubmitting) {
+    if (bindingSubmitting || bindingVerificationChallengeLoading || bindingLoading) {
       return;
     }
     setBindModalOpen(false);
     window.setTimeout(() => {
       resetBindState();
     }, 0);
-  }, [bindingSubmitting, resetBindState]);
-  const openBindModal = useCallback(async (provider: SecondFactorProviderStatus) => {
+  }, [bindingLoading, bindingSubmitting, bindingVerificationChallengeLoading, resetBindState]);
+  const resetUnbindState = useCallback(() => {
+    setUnbindProvider(null);
+    setUnbindChallenge(null);
+    setUnbindChallengeLoading(false);
+    setUnbindSubmitting(false);
+    setUnbindAlert(null);
+    unbindForm.resetFields();
+  }, [unbindForm]);
+  const closeUnbindModal = useCallback(() => {
+    if (unbindChallengeLoading || unbindSubmitting) {
+      return;
+    }
+    window.setTimeout(() => {
+      resetUnbindState();
+    }, 0);
+  }, [resetUnbindState, unbindChallengeLoading, unbindSubmitting]);
+  const openBindModal = useCallback((provider: SecondFactorProviderStatus) => {
+    if (provider.bound) {
+      message.warning(formatMessage({ id: 'page.profile.bind.rebindRequiresUnbind', defaultMessage: 'Please unbind the current authenticator before binding a new one.' }));
+      return;
+    }
     setBindingProvider(provider);
     setBindingChallenge(null);
-    setBindingLoading(true);
+    setBindingVerificationChallenge(null);
+    setBindingVerificationChallengeLoading(false);
+    setBindingLoading(false);
     setBindingSubmitting(false);
     setBindingCompleted(false);
     setBindingAlert(undefined);
+    bindVerificationForm.setFieldsValue({
+      currentPassword: undefined,
+      verificationCode: undefined,
+    });
     setBindModalOpen(true);
-    try {
-      const challenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${provider.factorCode}/bind`, {
-        method: 'POST',
-        autoRedirectOnUnauthorized: false,
-        silent: true,
-      });
-      setBindingChallenge(challenge);
-    } catch (error) {
-      setBindingAlert({
-        type: 'error',
-        message: error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.fetchFailed', defaultMessage: 'Failed to load binding info, please try again later' }),
-      });
-    } finally {
-      setBindingLoading(false);
+  }, [bindVerificationForm, formatMessage]);
+  const requestBindVerificationChallenge = useCallback(
+    async (provider: SecondFactorProviderStatus | null = bindingVerificationFactor) => {
+      if (!provider) {
+        return null;
+      }
+      setBindingVerificationChallengeLoading(true);
+      try {
+        const challenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${provider.factorCode}/challenge`, {
+          method: 'POST',
+          ...API_OPTS.SILENT_NO_REDIRECT,
+        });
+        setBindingVerificationChallenge(challenge);
+        bindVerificationForm.setFieldValue('verificationCode', undefined);
+        return challenge;
+      } catch (error) {
+        setBindingAlert({
+          type: 'error',
+          message: error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.currentChallengeFailed', defaultMessage: 'Failed to load verification details, please try again later' }),
+        });
+        return null;
+      } finally {
+        setBindingVerificationChallengeLoading(false);
+      }
+    },
+    [bindVerificationForm, bindingVerificationFactor, formatMessage],
+  );
+  useEffect(() => {
+    if (!bindModalOpen || !bindingVerificationFactor || bindingChallenge || bindingVerificationChallenge || bindingVerificationChallengeLoading) {
+      return;
     }
-  }, []);
+    void requestBindVerificationChallenge(bindingVerificationFactor);
+  }, [bindModalOpen, bindingChallenge, bindingVerificationChallenge, bindingVerificationChallengeLoading, bindingVerificationFactor, requestBindVerificationChallenge]);
+  const requestBindChallenge = useCallback(
+    async (provider: SecondFactorProviderStatus, verificationPayload: Record<string, string | undefined>) => {
+      setBindingLoading(true);
+      try {
+        const challenge = await request<SecondFactorBindingChallenge>(`/v1/auth/verification/providers/${provider.factorCode}/bind`, {
+          method: 'POST',
+          data: verificationPayload,
+          ...API_OPTS.SILENT_NO_REDIRECT,
+        });
+        setBindingChallenge(challenge);
+        setBindingVerificationChallenge(null);
+        bindVerificationForm.resetFields();
+        return true;
+      } catch (error) {
+        setBindingAlert({
+          type: 'error',
+          message: error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.fetchFailed', defaultMessage: 'Failed to load binding info, please try again later' }),
+        });
+        return false;
+      } finally {
+        setBindingLoading(false);
+      }
+    },
+    [bindVerificationForm, formatMessage],
+  );
   const retryBindChallenge = useCallback(async () => {
     if (!bindingProvider) {
       return;
     }
     setBindingChallenge(null);
-    await openBindModal(bindingProvider);
-  }, [bindingProvider, openBindModal]);
+    setBindingCompleted(false);
+    setBindingAlert(undefined);
+    if (bindingVerificationFactor) {
+      setBindingVerificationChallenge(null);
+      await requestBindVerificationChallenge(bindingVerificationFactor);
+      return;
+    }
+    bindVerificationForm.resetFields();
+  }, [bindVerificationForm, bindingProvider, bindingVerificationFactor, requestBindVerificationChallenge]);
+  const handleConfirmBindVerification = useCallback(
+    async (values: { currentPassword?: string; verificationCode?: string }) => {
+      if (!bindingProvider) {
+        return false;
+      }
+      const currentPassword = values.currentPassword?.trim();
+      const verificationCode = values.verificationCode?.trim();
+      setBindingAlert(undefined);
+      if (!bindingVerificationFactor) {
+        if (!currentPassword) {
+          setBindingAlert({
+            type: 'warning',
+            message: formatMessage({ id: 'page.profile.bind.enterCurrentPassword', defaultMessage: 'Please enter your current password first.' }),
+          });
+          return false;
+        }
+        return requestBindChallenge(bindingProvider, { currentPassword });
+      }
+      if (!verificationCode) {
+        setBindingAlert({
+          type: 'warning',
+          message: formatMessage({ id: 'page.profile.bind.enterCurrentCode', defaultMessage: 'Please enter the current verification code or a recovery code first.' }),
+        });
+        return false;
+      }
+      let currentChallenge = bindingVerificationChallenge;
+      if (!currentChallenge?.challengeId) {
+        currentChallenge = await requestBindVerificationChallenge(bindingVerificationFactor);
+        if (!currentChallenge?.challengeId) {
+          return false;
+        }
+      }
+      return requestBindChallenge(bindingProvider, {
+        currentFactorCode: bindingVerificationFactor.factorCode,
+        currentChallengeId: currentChallenge.challengeId,
+        currentVerificationCode: verificationCode,
+      });
+    },
+    [bindingProvider, bindingVerificationChallenge, bindingVerificationFactor, formatMessage, requestBindChallenge, requestBindVerificationChallenge],
+  );
   const handleVerifyBind = useCallback(
     async (values: { verificationCode?: string }) => {
       if (!bindingProvider || !bindingChallenge) {
@@ -230,6 +420,14 @@ export const useProfileCenterPageAccess = () => {
           return false;
         }
 
+        setBindingChallenge((current) =>
+          current
+            ? {
+                ...current,
+                recoveryCodes: result.recoveryCodes || [],
+              }
+            : current,
+        );
         setBindingCompleted(true);
         await providersQuery.refetch();
         return true;
@@ -248,33 +446,121 @@ export const useProfileCenterPageAccess = () => {
   const handleUnbind = useCallback(
     (provider: SecondFactorProviderStatus) => {
       void (async () => {
+        setUnbindProvider(provider);
+        setUnbindChallenge(null);
+        setUnbindAlert(null);
+        setUnbindChallengeLoading(true);
+        setUnbindSubmitting(false);
+        unbindForm.resetFields();
         try {
-          await request<boolean>(`/v1/auth/verification/providers/${provider.factorCode}/unbind`, {
+          const challenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${provider.factorCode}/challenge`, {
             method: 'POST',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(formatMessage({ id: 'page.profile.bind.unbound', defaultMessage: 'Unbound' }));
-          await providersQuery.refetch();
+          setUnbindChallenge(challenge);
         } catch (error) {
-          showErrorMessage(error, formatMessage({ id: 'page.profile.bind.unbindFailed', defaultMessage: 'Failed to unbind, please try again later' }));
+          setUnbindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.unbindChallengeFailed', defaultMessage: 'Failed to start verification, please try again later' }));
         }
+        setUnbindChallengeLoading(false);
       })();
     },
-    [providersQuery],
+    [unbindForm],
+  );
+  const retryUnbindChallenge = useCallback(async () => {
+    if (!unbindProvider) {
+      return;
+    }
+    setUnbindChallenge(null);
+    setUnbindAlert(null);
+    setUnbindChallengeLoading(true);
+    try {
+      const challenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${unbindProvider.factorCode}/challenge`, {
+        method: 'POST',
+        ...API_OPTS.NO_REDIRECT,
+      });
+      setUnbindChallenge(challenge);
+    } catch (error) {
+      setUnbindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.unbindChallengeFailed', defaultMessage: 'Failed to start verification, please try again later' }));
+    } finally {
+      setUnbindChallengeLoading(false);
+    }
+  }, [unbindProvider]);
+  const handleConfirmUnbind = useCallback(
+    async (values: { verificationCode?: string }) => {
+      if (!unbindProvider || !unbindChallenge?.challengeId) {
+        setUnbindAlert(formatMessage({ id: 'page.profile.bind.unbindExpired', defaultMessage: 'Verification information has expired, please start again.' }));
+        return false;
+      }
+      if (!values.verificationCode?.trim()) {
+        setUnbindAlert(formatMessage({ id: 'page.profile.bind.enterUnbindCode', defaultMessage: 'Please enter the verification code or a recovery code.' }));
+        return false;
+      }
+      setUnbindSubmitting(true);
+      setUnbindAlert(null);
+      try {
+        await request<boolean>(`/v1/auth/verification/providers/${unbindProvider.factorCode}/unbind`, {
+          method: 'POST',
+          data: {
+            factorCode: unbindProvider.factorCode,
+            challengeId: unbindChallenge.challengeId,
+            verificationCode: values.verificationCode.trim(),
+          },
+          ...API_OPTS.NO_REDIRECT,
+        });
+        message.success(formatMessage({ id: 'page.profile.bind.unbound', defaultMessage: 'Unbound' }));
+        closeUnbindModal();
+        await providersQuery.refetch();
+        return true;
+      } catch (error) {
+        setUnbindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.unbindFailed', defaultMessage: 'Failed to unbind, please try again later' }));
+        return false;
+      } finally {
+        setUnbindSubmitting(false);
+      }
+    },
+    [closeUnbindModal, providersQuery, unbindChallenge, unbindProvider],
   );
 
   type ContactBindType = 'mobile' | 'email' | null;
   const [contactBindType, setContactBindType] = useState<ContactBindType>(null);
   const [contactBindChallenge, setContactBindChallenge] = useState<SecondFactorChallenge | null>(null);
   const [contactBindChallengeTarget, setContactBindChallengeTarget] = useState<string | null>(null);
+  const [contactBindCurrentChallenge, setContactBindCurrentChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [contactBindCurrentChallengeLoading, setContactBindCurrentChallengeLoading] = useState(false);
   const [contactBindChallengeLoading, setContactBindChallengeLoading] = useState(false);
   const [contactBindSubmitting, setContactBindSubmitting] = useState(false);
   const [contactBindAlert, setContactBindAlert] = useState<string | null>(null);
-  const [contactBindForm] = Form.useForm<{ value?: string; verificationCode?: string }>();
+  const [contactBindForm] = Form.useForm<{ value?: string; verificationCode?: string; currentVerificationCode?: string; currentPassword?: string }>();
   const contactBindValue = Form.useWatch('value', contactBindForm);
+  const contactBindCurrentFactor = useMemo<SecondFactorProviderStatus | null>(() => {
+    const factor = resolvePreferredCurrentVerificationFactor(providersQuery.data || [], currentUser, loginCapabilities);
+    if (!factor) {
+      return null;
+    }
+    if (factor.factorCode === 'sms') {
+      return { ...factor, factorName: formatMessage({ id: 'page.profile.bind.currentFactor.sms', defaultMessage: 'SMS verification code' }) };
+    }
+    if (factor.factorCode === 'email') {
+      return { ...factor, factorName: formatMessage({ id: 'page.profile.bind.currentFactor.email', defaultMessage: 'Email verification code' }) };
+    }
+    return factor;
+  }, [currentUser, formatMessage, loginCapabilities, providersQuery.data]);
+  const passkeyVerificationFactor = useMemo<SecondFactorProviderStatus | null>(() => {
+    const factor = resolvePreferredCurrentVerificationFactor(providersQuery.data || [], currentUser, loginCapabilities);
+    if (!factor) {
+      return null;
+    }
+    if (factor.factorCode === 'sms') {
+      return { ...factor, factorName: formatMessage({ id: 'page.profile.passkey.currentFactor.sms', defaultMessage: 'SMS verification code' }) };
+    }
+    if (factor.factorCode === 'email') {
+      return { ...factor, factorName: formatMessage({ id: 'page.profile.passkey.currentFactor.email', defaultMessage: 'Email verification code' }) };
+    }
+    return factor;
+  }, [currentUser, formatMessage, loginCapabilities, providersQuery.data]);
   const contactBindFormProps = useStandardFormProps({
     form: contactBindForm,
-    initialValues: { value: '' },
+    initialValues: { value: '', verificationCode: '', currentVerificationCode: '', currentPassword: '' },
   });
   const contactBindVerificationRequired = useMemo(
     () =>
@@ -314,11 +600,14 @@ export const useProfileCenterPageAccess = () => {
       setContactBindType(type);
       setContactBindChallenge(null);
       setContactBindChallengeTarget(null);
+      setContactBindCurrentChallenge(null);
+      setContactBindCurrentChallengeLoading(false);
       setContactBindChallengeLoading(false);
       setContactBindSubmitting(false);
       setContactBindAlert(null);
       contactBindForm.setFieldsValue({
         value: type === 'mobile' ? currentUser?.mobile || '' : currentUser?.email || '',
+        currentVerificationCode: undefined,
         verificationCode: undefined,
       });
     },
@@ -335,21 +624,73 @@ export const useProfileCenterPageAccess = () => {
     ],
   );
   const closeContactBindModal = useCallback(() => {
-    if (contactBindSubmitting || contactBindChallengeLoading) {
+    if (contactBindSubmitting || contactBindChallengeLoading || contactBindCurrentChallengeLoading) {
       return;
     }
     setContactBindType(null);
     setContactBindChallenge(null);
     setContactBindChallengeTarget(null);
+    setContactBindCurrentChallenge(null);
+    setContactBindCurrentChallengeLoading(false);
     setContactBindAlert(null);
     setContactBindChallengeLoading(false);
     contactBindForm.resetFields();
-  }, [contactBindChallengeLoading, contactBindForm, contactBindSubmitting]);
+  }, [contactBindChallengeLoading, contactBindCurrentChallengeLoading, contactBindForm, contactBindSubmitting]);
+
+  const requestContactBindCurrentChallenge = useCallback(
+    async (provider: SecondFactorProviderStatus | null = contactBindCurrentFactor) => {
+      if (!provider) {
+        return null;
+      }
+      setContactBindCurrentChallengeLoading(true);
+      try {
+        const challenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${provider.factorCode}/challenge`, {
+          method: 'POST',
+          ...API_OPTS.SILENT_NO_REDIRECT,
+        });
+        setContactBindCurrentChallenge(challenge);
+        contactBindForm.setFieldValue('currentVerificationCode', undefined);
+        return challenge;
+      } catch (error) {
+        setContactBindAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.bind.currentChallengeFailed', defaultMessage: 'Failed to load current verification method, please try again later' }));
+        return null;
+      } finally {
+        setContactBindCurrentChallengeLoading(false);
+      }
+    },
+    [contactBindCurrentFactor, contactBindForm, formatMessage],
+  );
+  useEffect(() => {
+    if (!contactBindType || !contactBindCurrentFactor || contactBindCurrentChallenge || contactBindCurrentChallengeLoading) {
+      return;
+    }
+    void requestContactBindCurrentChallenge(contactBindCurrentFactor);
+  }, [contactBindCurrentChallenge, contactBindCurrentChallengeLoading, contactBindCurrentFactor, contactBindType, requestContactBindCurrentChallenge]);
 
   const requestContactBindChallenge = useCallback(
     async (nextValue: string) => {
       if (!contactBindType) {
         return false;
+      }
+      let currentChallenge = contactBindCurrentChallenge;
+      if (contactBindCurrentFactor) {
+        const currentVerificationCode = contactBindForm.getFieldValue('currentVerificationCode')?.trim();
+        if (!currentVerificationCode) {
+          setContactBindAlert(formatMessage({ id: 'page.profile.bind.enterCurrentCode', defaultMessage: 'Please enter the current verification code first.' }));
+          return false;
+        }
+        if (!currentChallenge?.challengeId) {
+          currentChallenge = await requestContactBindCurrentChallenge(contactBindCurrentFactor);
+          if (!currentChallenge?.challengeId) {
+            return false;
+          }
+        }
+      } else {
+        const currentPassword = contactBindForm.getFieldValue('currentPassword')?.trim();
+        if (!currentPassword) {
+          setContactBindAlert(formatMessage({ id: 'page.profile.bind.enterCurrentPassword', defaultMessage: 'Please enter your current password first.' }));
+          return false;
+        }
       }
 
       setContactBindChallengeLoading(true);
@@ -359,12 +700,17 @@ export const useProfileCenterPageAccess = () => {
           data: {
             contactType: contactBindType,
             value: nextValue,
+            currentPassword: contactBindCurrentFactor ? undefined : contactBindForm.getFieldValue('currentPassword')?.trim(),
+            currentFactorCode: contactBindCurrentFactor?.factorCode,
+            currentChallengeId: currentChallenge?.challengeId,
+            currentVerificationCode: contactBindCurrentFactor ? contactBindForm.getFieldValue('currentVerificationCode')?.trim() : undefined,
           },
           ...API_OPTS.SILENT_NO_REDIRECT,
         });
         setContactBindChallenge(challenge);
         setContactBindChallengeTarget(nextValue);
-        contactBindForm.setFieldsValue({ verificationCode: undefined });
+        setContactBindCurrentChallenge(null);
+        contactBindForm.setFieldsValue({ currentPassword: undefined, currentVerificationCode: undefined, verificationCode: undefined });
         message.success(formatMessage({ id: 'page.profile.bind.codeSent', defaultMessage: 'Verification code sent, please enter it to continue' }));
         return true;
       } catch (error) {
@@ -374,7 +720,7 @@ export const useProfileCenterPageAccess = () => {
         setContactBindChallengeLoading(false);
       }
     },
-    [contactBindForm, contactBindType],
+    [contactBindCurrentChallenge, contactBindCurrentFactor, contactBindForm, contactBindType, formatMessage, requestContactBindCurrentChallenge],
   );
 
   const prepareContactBindSubmission = useCallback(async () => {
@@ -460,7 +806,7 @@ export const useProfileCenterPageAccess = () => {
         prev
           ? {
               ...prev,
-              currentUser: updatedUser,
+              currentUser: mergeTrustedCurrentUser(prev.currentUser, updatedUser),
             }
           : prev,
       );
@@ -482,6 +828,65 @@ export const useProfileCenterPageAccess = () => {
       setContactBindSubmitting(false);
     }
   }, [contactBindChallenge, contactBindForm, contactBindType, prepareContactBindSubmission, profileForm, profileQuery, setInitialState]);
+
+  const resetPasskeyVerificationState = useCallback(() => {
+    setPasskeyVerificationAction(null);
+    setPasskeyVerificationTargetId(null);
+    setPasskeyVerificationTargetLabel(null);
+    setPasskeyVerificationChallenge(null);
+    setPasskeyVerificationChallengeLoading(false);
+    setPasskeyVerificationSubmitting(false);
+    setPasskeyVerificationAlert(null);
+    passkeyVerificationForm.resetFields();
+  }, [passkeyVerificationForm]);
+  const closePasskeyVerificationModal = useCallback(() => {
+    if (passkeyVerificationChallengeLoading || passkeyVerificationSubmitting || passkeyBinding) {
+      return;
+    }
+    resetPasskeyVerificationState();
+  }, [passkeyBinding, passkeyVerificationChallengeLoading, passkeyVerificationSubmitting, resetPasskeyVerificationState]);
+  const requestPasskeyVerificationChallenge = useCallback(
+    async (provider: SecondFactorProviderStatus | null = passkeyVerificationFactor) => {
+      if (!provider) {
+        return null;
+      }
+      setPasskeyVerificationChallengeLoading(true);
+      try {
+        const challenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${provider.factorCode}/challenge`, {
+          method: 'POST',
+          ...API_OPTS.SILENT_NO_REDIRECT,
+        });
+        setPasskeyVerificationChallenge(challenge);
+        passkeyVerificationForm.setFieldValue('verificationCode', undefined);
+        return challenge;
+      } catch (error) {
+        setPasskeyVerificationAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.passkey.challengeFailed', defaultMessage: 'Failed to load verification details, please try again later' }));
+        return null;
+      } finally {
+        setPasskeyVerificationChallengeLoading(false);
+      }
+    },
+    [formatMessage, passkeyVerificationFactor, passkeyVerificationForm],
+  );
+  useEffect(() => {
+    if (!passkeyVerificationAction || !passkeyVerificationFactor || passkeyVerificationChallenge || passkeyVerificationChallengeLoading) {
+      return;
+    }
+    void requestPasskeyVerificationChallenge(passkeyVerificationFactor);
+  }, [passkeyVerificationAction, passkeyVerificationChallenge, passkeyVerificationChallengeLoading, passkeyVerificationFactor, requestPasskeyVerificationChallenge]);
+  const openPasskeyVerificationModal = useCallback((action: 'bind' | 'rename' | 'delete', credentialId?: number, label?: string) => {
+    setPasskeyVerificationAction(action);
+    setPasskeyVerificationTargetId(typeof credentialId === 'number' ? credentialId : null);
+    setPasskeyVerificationTargetLabel(typeof label === 'string' ? label : null);
+    setPasskeyVerificationChallenge(null);
+    setPasskeyVerificationChallengeLoading(false);
+    setPasskeyVerificationSubmitting(false);
+    setPasskeyVerificationAlert(null);
+    passkeyVerificationForm.setFieldsValue({
+      currentPassword: undefined,
+      verificationCode: undefined,
+    });
+  }, [passkeyVerificationForm]);
 
   const visibleProfileFields = useMemo(
     () => new Set(summary?.profileFieldSettings?.filter((item) => item.visible).map((item) => item.fieldKey)),
@@ -546,8 +951,6 @@ export const useProfileCenterPageAccess = () => {
           avatarUrl: values.avatarUrl ?? currentUser?.avatarUrl ?? '',
           nickname: values.nickname ?? currentUser?.nickname ?? '',
           realName: values.realName ?? currentUser?.realName ?? '',
-          mobile: currentUser?.mobile || '',
-          email: currentUser?.email || '',
           birthMonth: values.birthMonth === undefined
             ? currentUser?.birthMonth || ''
             : values.birthMonth
@@ -569,7 +972,7 @@ export const useProfileCenterPageAccess = () => {
         prev
           ? {
               ...prev,
-              currentUser: updatedUser,
+              currentUser: mergeTrustedCurrentUser(prev.currentUser, updatedUser),
             }
           : prev,
       );
@@ -685,66 +1088,144 @@ export const useProfileCenterPageAccess = () => {
       message.warning(formatMessage({ id: 'page.profile.passkey.disabled', defaultMessage: '当前未开启通行密钥登录' }));
       return;
     }
-    if (passkeyBinding) {
+    if (passkeyBinding || passkeyVerificationSubmitting) {
       return;
     }
-    setPasskeyBinding(true);
-    try {
-      const options = await request<PasskeyOptions>('/v1/auth/passkeys/registration/options', {
-        method: 'POST',
-        ...API_OPTS.SILENT_NO_REDIRECT,
-      });
-      const credential = await createPasskeyCredential(toPublicKeyCreationOptions(options));
-      if (!credential) {
-        return;
-      }
-      await request<PasskeyCredentialRecord>('/v1/auth/passkeys/registration/complete', {
-        method: 'POST',
-        data: toRegistrationPayload(options.challengeId, credential as PublicKeyCredential),
-        autoRedirectOnUnauthorized: false,
-      });
-      message.success(formatMessage({ id: 'page.profile.passkey.bound', defaultMessage: '通行密钥已绑定' }));
-      await passkeyQuery.refetch();
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        message.info(formatMessage({ id: 'page.profile.passkey.cancelled', defaultMessage: '已取消通行密钥绑定' }));
-        return;
-      }
-      if (error instanceof DOMException && error.name === 'TimeoutError') {
-        message.warning(formatMessage({ id: 'page.profile.passkey.timeout', defaultMessage: '通行密钥绑定超时，请重新尝试' }));
-        return;
-      }
-      showErrorMessage(error, formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥绑定失败' }));
-    } finally {
-      setPasskeyBinding(false);
-    }
-  }, [passkeyBinding, passkeyLoginAvailable, passkeyQuery]);
+    openPasskeyVerificationModal('bind');
+  }, [formatMessage, openPasskeyVerificationModal, passkeyBinding, passkeyLoginAvailable, passkeyVerificationSubmitting]);
   const handleRenamePasskey = useCallback(
     async (id: number, currentLabel?: string) => {
+      if (passkeyVerificationSubmitting) {
+        return;
+      }
       const label = window.prompt(formatMessage({ id: 'page.profile.passkey.renamePrompt', defaultMessage: '请输入通行密钥名称' }), currentLabel || '通行密钥');
       if (!label?.trim()) {
         return;
       }
-      await request<PasskeyCredentialRecord>(`/v1/auth/passkeys/${id}`, {
-        method: 'PATCH',
-        data: { label: label.trim() },
-        ...API_OPTS.NO_REDIRECT,
-      });
-      message.success(formatMessage({ id: 'page.profile.passkey.renamed', defaultMessage: '通行密钥已重命名' }));
-      await passkeyQuery.refetch();
+      openPasskeyVerificationModal('rename', id, label.trim());
     },
-    [passkeyQuery],
+    [formatMessage, openPasskeyVerificationModal, passkeyVerificationSubmitting],
   );
   const handleDeletePasskey = useCallback(
     async (id: number) => {
-      await request<boolean>(`/v1/auth/passkeys/${id}`, {
-        method: 'DELETE',
-        ...API_OPTS.NO_REDIRECT,
-      });
-      message.success(formatMessage({ id: 'common.deleted', defaultMessage: '已删除' }));
-      await passkeyQuery.refetch();
+      if (passkeyVerificationSubmitting) {
+        return;
+      }
+      openPasskeyVerificationModal('delete', id);
     },
-    [passkeyQuery],
+    [openPasskeyVerificationModal, passkeyVerificationSubmitting],
+  );
+  const handleConfirmPasskeyVerification = useCallback(
+    async (values: { currentPassword?: string; verificationCode?: string }) => {
+      if (!passkeyVerificationAction) {
+        return false;
+      }
+      const currentPassword = values.currentPassword?.trim();
+      const verificationCode = values.verificationCode?.trim();
+      if (!passkeyVerificationFactor && !currentPassword) {
+        setPasskeyVerificationAlert(formatMessage({ id: 'page.profile.passkey.enterPassword', defaultMessage: 'Please enter your current password.' }));
+        return false;
+      }
+      if (passkeyVerificationFactor) {
+        if (!verificationCode) {
+          setPasskeyVerificationAlert(formatMessage({ id: 'page.profile.passkey.enterCode', defaultMessage: 'Please enter the current verification code or a recovery code.' }));
+          return false;
+        }
+        if (!passkeyVerificationChallenge?.challengeId) {
+          setPasskeyVerificationAlert(formatMessage({ id: 'page.profile.passkey.challengeExpired', defaultMessage: 'Verification details have expired, please reload them and try again.' }));
+          return false;
+        }
+      }
+      setPasskeyVerificationSubmitting(true);
+      setPasskeyVerificationAlert(null);
+      const verificationPayload = passkeyVerificationFactor
+        ? {
+            currentFactorCode: passkeyVerificationFactor.factorCode,
+            currentChallengeId: passkeyVerificationChallenge?.challengeId,
+            currentVerificationCode: verificationCode,
+          }
+        : {
+            currentPassword,
+          };
+      try {
+        if (passkeyVerificationAction === 'bind') {
+          setPasskeyBinding(true);
+          const options = await request<PasskeyOptions>('/v1/auth/passkeys/registration/options', {
+            method: 'POST',
+            data: verificationPayload,
+            ...API_OPTS.SILENT_NO_REDIRECT,
+          });
+          resetPasskeyVerificationState();
+          const credential = await createPasskeyCredential(toPublicKeyCreationOptions(options));
+          if (!credential) {
+            return false;
+          }
+          await request<PasskeyCredentialRecord>('/v1/auth/passkeys/registration/complete', {
+            method: 'POST',
+            data: toRegistrationPayload(options.challengeId, credential as PublicKeyCredential),
+            autoRedirectOnUnauthorized: false,
+          });
+          message.success(formatMessage({ id: 'page.profile.passkey.bound', defaultMessage: '通行密钥已绑定' }));
+          await passkeyQuery.refetch();
+          return true;
+        }
+        if (!passkeyVerificationTargetId) {
+          setPasskeyVerificationAlert(formatMessage({ id: 'page.profile.passkey.targetMissing', defaultMessage: 'The selected passkey no longer exists. Please retry.' }));
+          return false;
+        }
+        if (passkeyVerificationAction === 'rename') {
+          if (!passkeyVerificationTargetLabel) {
+            setPasskeyVerificationAlert(formatMessage({ id: 'page.profile.passkey.renameMissing', defaultMessage: 'The new passkey name is missing. Please retry.' }));
+            return false;
+          }
+          await request<PasskeyCredentialRecord>(`/v1/auth/passkeys/${passkeyVerificationTargetId}`, {
+            method: 'PATCH',
+            data: {
+              label: passkeyVerificationTargetLabel,
+              ...verificationPayload,
+            },
+            ...API_OPTS.NO_REDIRECT,
+          });
+          message.success(formatMessage({ id: 'page.profile.passkey.renamed', defaultMessage: '通行密钥已重命名' }));
+          resetPasskeyVerificationState();
+          await passkeyQuery.refetch();
+          return true;
+        }
+        await request<boolean>(`/v1/auth/passkeys/${passkeyVerificationTargetId}`, {
+          method: 'DELETE',
+          data: verificationPayload,
+          ...API_OPTS.NO_REDIRECT,
+        });
+        message.success(formatMessage({ id: 'common.deleted', defaultMessage: '已删除' }));
+        resetPasskeyVerificationState();
+        await passkeyQuery.refetch();
+        return true;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+          message.info(formatMessage({ id: 'page.profile.passkey.cancelled', defaultMessage: '已取消通行密钥绑定' }));
+          return false;
+        }
+        if (error instanceof DOMException && error.name === 'TimeoutError') {
+          message.warning(formatMessage({ id: 'page.profile.passkey.timeout', defaultMessage: '通行密钥绑定超时，请重新尝试' }));
+          return false;
+        }
+        setPasskeyVerificationAlert(error instanceof Error ? error.message : formatMessage({ id: 'page.profile.passkey.failed', defaultMessage: '通行密钥操作失败，请稍后重试' }));
+        return false;
+      } finally {
+        setPasskeyVerificationSubmitting(false);
+        setPasskeyBinding(false);
+      }
+    },
+    [
+      formatMessage,
+      passkeyQuery,
+      passkeyVerificationAction,
+      passkeyVerificationChallenge?.challengeId,
+      passkeyVerificationFactor,
+      passkeyVerificationTargetId,
+      passkeyVerificationTargetLabel,
+      resetPasskeyVerificationState,
+    ],
   );
   const profileSectionAccess = {
     profileBasicCardRef,
@@ -783,23 +1264,49 @@ export const useProfileCenterPageAccess = () => {
       passkeyAccess: {
         loginMethods: loginMethodItems,
         passkeyBinding,
+        passkeyVerificationOpen: passkeyVerificationAction !== null,
+        passkeyVerificationAction,
+        passkeyVerificationFactor,
+        passkeyVerificationChallenge,
+        passkeyVerificationChallengeLoading,
+        passkeyVerificationSubmitting,
+        passkeyVerificationAlert,
+        passkeyVerificationFormProps,
         passkeyEnabled: passkeyLoginAvailable,
         onBindPasskey: handleBindPasskey,
         onRenamePasskey: handleRenamePasskey,
         onDeletePasskey: handleDeletePasskey,
+        onClosePasskeyVerification: closePasskeyVerificationModal,
+        onRetryPasskeyVerificationChallenge: requestPasskeyVerificationChallenge,
+        onConfirmPasskeyVerification: handleConfirmPasskeyVerification,
       },
       securityAccess: {
         bindingLoading,
         bindingSubmitting,
         onBindProvider: openBindModal,
         onUnbindProvider: handleUnbind,
+        unbindProvider,
+        unbindChallenge,
+        unbindChallengeLoading,
+        unbindSubmitting,
+        unbindAlert,
+        unbindFormProps,
+        closeUnbindModal,
+        retryUnbindChallenge,
+        handleConfirmUnbind,
         bindModalOpen,
         bindingProvider,
         bindingChallenge,
+        bindingVerificationFactor,
+        bindingVerificationChallenge,
+        bindingVerificationChallengeLoading,
+        bindVerificationFormProps,
         bindingCompleted,
         bindingAlert,
         closeBindModal,
         retryBindChallenge,
+        onRetryBindVerificationChallenge: requestBindVerificationChallenge,
+        onConfirmBindVerification: handleConfirmBindVerification,
         handleVerifyBind,
       },
       contactBindAccess: {
@@ -833,6 +1340,9 @@ export const useProfileCenterPageAccess = () => {
             : formatMessage({ id: 'page.profile.contact.sendCode', defaultMessage: 'Send code' })
           : formatMessage({ id: 'page.profile.contact.save', defaultMessage: 'Save' }),
         contactBindAlert,
+        contactBindCurrentFactor,
+        contactBindCurrentChallenge,
+        contactBindCurrentChallengeLoading,
         contactBindVerificationRequired,
         contactBindChallenge,
         contactBindSubmitting,
@@ -840,6 +1350,7 @@ export const useProfileCenterPageAccess = () => {
         contactBindFormProps,
         openContactBindModal,
         closeContactBindModal,
+        retryContactBindCurrentChallenge: requestContactBindCurrentChallenge,
         handleContactBindConfirm,
       },
     },

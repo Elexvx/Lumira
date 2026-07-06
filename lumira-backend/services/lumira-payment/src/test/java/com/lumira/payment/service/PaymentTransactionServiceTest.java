@@ -1,0 +1,709 @@
+package com.lumira.payment.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
+import com.lumira.api.payment.PaymentOrderDTO;
+import com.lumira.api.payment.PaymentRefundDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.domain.event.DomainEventPublisher;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.lang.reflect.Method;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+class PaymentTransactionServiceTest {
+
+    @Test
+    void getOrderForUserShouldConstrainByCreator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow row = orderRow(1001L);
+        when(jdbcTemplate.queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"))).thenReturn(row);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentOrderDTO order = service.getOrderForUser(currentUser(), "ORD-1");
+
+        assertThat(order.orderNo()).isEqualTo("ORD-1");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        assertThat(sqlCaptor.getValue()).contains("created_by = ? and created_by_uuid = ?");
+    }
+
+    @Test
+    void getOrderForUserShouldRejectMissingOperator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getOrderForUser(null, "user-uuid-1001", "ORD-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void paymentTransactionServiceShouldNotExposeNumericOnlyUserOperations() {
+        assertThat(Arrays.stream(PaymentTransactionService.class.getMethods())
+                .filter(method -> method.getDeclaringClass().equals(PaymentTransactionService.class))
+                .map(Method::toString)
+                .filter(signature -> signature.contains("(java.lang.Long"))
+                .filter(signature -> signature.contains("PaymentCreateOrderRequestDTO")
+                        || signature.contains("PaymentCreateRefundRequestDTO")
+                        || signature.contains("getOrderForUser(java.lang.Long,java.lang.String)")
+                        || signature.contains("getRefundForUser(java.lang.Long,java.lang.String)"))
+                .toList())
+                .isEmpty();
+    }
+
+    @Test
+    void getOrderForUserShouldRejectMissingUserUuidBeforeLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getOrderForUser(1001L, null, "ORD-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void getOrderForUserShouldRejectUserUuidMismatchBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject(
+                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
+                eq(String.class),
+                eq(1001L)
+        )).thenReturn("user-uuid-1001");
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getOrderForUser(1001L, "other-uuid", "ORD-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verify(jdbcTemplate).queryForObject(
+                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
+                eq(String.class),
+                eq(1001L)
+        );
+    }
+
+    @Test
+    void getOrderForUserShouldRejectDisabledLookupUserBeforeOrderQuery() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject(
+                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
+                eq(String.class),
+                eq(1001L)
+        )).thenThrow(new EmptyResultDataAccessException(1));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getOrderForUser(1001L, "user-uuid-1001", "ORD-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verify(jdbcTemplate).queryForObject(
+                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
+                eq(String.class),
+                eq(1001L)
+        );
+        verify(jdbcTemplate, never()).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+    }
+
+    @Test
+    void createOrderShouldRejectUntrustedUserBeforeProviderLookup() {
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService service = service(mock(JdbcTemplate.class), managementAppService);
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(untrustedUser(), request))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(managementAppService);
+    }
+
+    @Test
+    void createOrderShouldRejectNullRequestBeforeProviderLookup() {
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService service = service(mock(JdbcTemplate.class), managementAppService);
+
+        assertThatThrownBy(() -> service.createOrder(currentUser(), null))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verifyNoInteractions(managementAppService);
+    }
+
+    @Test
+    void createOrderShouldRejectBlankProviderBeforeProviderLookup() {
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService service = service(mock(JdbcTemplate.class), managementAppService);
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                " ",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+
+        assertThatThrownBy(() -> service.createOrder(currentUser(), request))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verifyNoInteractions(managementAppService);
+    }
+
+    @Test
+    void createOrderShouldRejectDisabledTrustedOperatorBeforeProviderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "tester", "DISABLED"));
+        PaymentTransactionService service = service(jdbcTemplate, managementAppService, mock(PaymentOutboxService.class), mock(DomainEventPublisher.class), provider(systemInternalApi));
+
+        assertThatThrownBy(() -> service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(managementAppService);
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createOrderShouldScopeIdempotencyLookupToCreator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(providerSettings());
+        PaymentOrderRow existing = orderRow(1001L);
+        doReturn(existing).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001"));
+        PaymentTransactionService service = service(jdbcTemplate, managementAppService);
+
+        PaymentOrderDTO order = service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1"));
+
+        assertThat(order.orderNo()).isEqualTo("ORD-1");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001"));
+        assertThat(sqlCaptor.getValue()).contains("idempotency_key = ?").contains("created_by = ? and created_by_uuid = ?");
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
+    void createOrderShouldRejectOrderNoOwnedByAnotherUser() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(providerSettings());
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doReturn(orderRow(2002L)).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"));
+        PaymentTransactionService service = service(jdbcTemplate, managementAppService);
+
+        assertThatThrownBy(() -> service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
+    void createOrderShouldRejectWhenInsertMisses() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(providerSettings());
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("idem-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"));
+        doReturn(0).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        PaymentTransactionService service = service(jdbcTemplate, managementAppService, mock(PaymentOutboxService.class), domainEventPublisher);
+
+        assertThatThrownBy(() -> service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.BIZ_ERROR);
+
+        verifyNoInteractions(domainEventPublisher);
+    }
+
+    @Test
+    void createRefundShouldConstrainOrderByCreator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = orderRow(1001L);
+        order.setStatus("PAID");
+        PaymentRefundRow refund = refundRow(1001L);
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        doReturn(order).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .doReturn(refund)
+                .when(jdbcTemplate).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentRefundDTO result = service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        );
+
+        assertThat(result.refundNo()).isEqualTo("REF-1");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        assertThat(sqlCaptor.getValue()).contains("created_by = ? and created_by_uuid = ?");
+    }
+
+    @Test
+    void createRefundShouldConstrainOrderStatusUpdateByCreatorUuid() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = orderRow(1001L);
+        order.setStatus("PAID");
+        PaymentRefundRow refund = refundRow(1001L);
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        doReturn(order).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .doReturn(refund)
+                .when(jdbcTemplate).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        );
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, times(2)).update(sqlCaptor.capture(), any(Object[].class));
+        assertThat(sqlCaptor.getAllValues())
+                .anySatisfy(sql -> assertThat(sql)
+                        .contains("update payment_order")
+                        .contains("where order_no = ? and created_by = ? and created_by_uuid = ?")
+                        .contains("and status = ? and amount_minor = ? and currency = ? and provider_code = ?"));
+    }
+
+    @Test
+    void createRefundShouldRejectWhenOrderStateSnapshotChanged() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = orderRow(1001L);
+        order.setStatus("PAID");
+        PaymentRefundRow refund = refundRow(1001L);
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        doReturn(order).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .doReturn(refund)
+                .when(jdbcTemplate).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"));
+        doReturn(1)
+                .doReturn(0)
+                .when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.BIZ_ERROR);
+    }
+
+    @Test
+    void createRefundShouldRejectWhenInsertMissesBeforeOrderStateWrite() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = orderRow(1001L);
+        order.setStatus("PAID");
+        doReturn(order).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .when(jdbcTemplate).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"));
+        doReturn(0).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.BIZ_ERROR);
+
+        verify(jdbcTemplate, times(1)).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
+    void createRefundShouldRejectUntrustedUserBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(
+                untrustedUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createRefundShouldRejectNullRequestBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(currentUser(), "ORD-1", null))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createRefundShouldRejectBlankOrderNoBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(
+                currentUser(),
+                " ",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createRefundShouldRejectInvalidRequestBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 0L, "CNY", "duplicate", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void getRefundForUserShouldConstrainByCreator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentRefundRow refund = refundRow(1001L);
+        when(jdbcTemplate.queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"), eq(1001L), eq("user-uuid-1001"))).thenReturn(refund);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentRefundDTO result = service.getRefundForUser(currentUser(), "REF-1");
+
+        assertThat(result.refundNo()).isEqualTo("REF-1");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), anyRefundRowMapper(), eq("REF-1"), eq(1001L), eq("user-uuid-1001"));
+        assertThat(sqlCaptor.getValue()).contains("created_by = ? and created_by_uuid = ?");
+    }
+
+    @Test
+    void getRefundForUserShouldRejectMissingOperatorBeforeQuery() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getRefundForUser(0L, "user-uuid-0", "REF-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void getRefundForUserShouldRejectMissingUserUuidBeforeLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getRefundForUser(1001L, null, "REF-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void getRefundForUserShouldRejectDisabledLookupUserBeforeRefundQuery() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject(
+                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
+                eq(String.class),
+                eq(1001L)
+        )).thenThrow(new EmptyResultDataAccessException(1));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.getRefundForUser(1001L, "user-uuid-1001", "REF-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+
+        verify(jdbcTemplate).queryForObject(
+                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
+                eq(String.class),
+                eq(1001L)
+        );
+        verify(jdbcTemplate, never()).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"), eq(1001L), eq("user-uuid-1001"));
+    }
+
+    @Test
+    void createRefundShouldScopeIdempotencyLookupToCreator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = orderRow(1001L);
+        order.setStatus("PAID");
+        PaymentRefundRow refund = refundRow(1001L);
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        doReturn(order).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doReturn(refund).when(jdbcTemplate).queryForObject(any(String.class), anyRefundRowMapper(), eq("idem-ref-1"), eq(1001L), eq("user-uuid-1001"));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentRefundDTO result = service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), "idem-ref-1")
+        );
+
+        assertThat(result.refundNo()).isEqualTo("REF-1");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), anyRefundRowMapper(), eq("idem-ref-1"), eq(1001L), eq("user-uuid-1001"));
+        assertThat(sqlCaptor.getValue()).contains("idempotency_key = ?").contains("created_by = ? and created_by_uuid = ?");
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
+    void createRefundShouldIncludeTrustedUserUuidInOutboxPayload() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        PaymentOrderRow order = orderRow(1001L);
+        order.setStatus("PAID");
+        PaymentRefundRow refund = refundRow(1001L);
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        doReturn(order).when(jdbcTemplate).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
+        doThrow(new EmptyResultDataAccessException(1))
+                .doReturn(refund)
+                .when(jdbcTemplate).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"));
+        PaymentTransactionService service = service(jdbcTemplate, mock(PaymentManagementAppService.class), outboxService);
+
+        service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        );
+
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(outboxService).recordAfterCommit(
+                eq(1001L),
+                eq("payment"),
+                eq("payment.refund.created"),
+                eq("REF-1"),
+                payloadCaptor.capture()
+        );
+        assertThat(payloadCaptor.getValue())
+                .isInstanceOfSatisfying(Map.class, payload ->
+                        assertThat(payload).containsEntry("userUuid", "user-uuid-1001"));
+    }
+
+    private PaymentTransactionService service(JdbcTemplate jdbcTemplate) {
+        return service(jdbcTemplate, mock(PaymentManagementAppService.class));
+    }
+
+    private PaymentTransactionService service(JdbcTemplate jdbcTemplate, PaymentManagementAppService managementAppService) {
+        return service(jdbcTemplate, managementAppService, mock(PaymentOutboxService.class));
+    }
+
+    private PaymentTransactionService service(JdbcTemplate jdbcTemplate, PaymentManagementAppService managementAppService, PaymentOutboxService outboxService) {
+        return service(jdbcTemplate, managementAppService, outboxService, mock(DomainEventPublisher.class));
+    }
+
+    private PaymentTransactionService service(JdbcTemplate jdbcTemplate, PaymentManagementAppService managementAppService, PaymentOutboxService outboxService, DomainEventPublisher domainEventPublisher) {
+        return service(jdbcTemplate, managementAppService, outboxService, domainEventPublisher, null);
+    }
+
+    private PaymentTransactionService service(
+            JdbcTemplate jdbcTemplate,
+            PaymentManagementAppService managementAppService,
+            PaymentOutboxService outboxService,
+            DomainEventPublisher domainEventPublisher,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+    ) {
+        return new PaymentTransactionService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                managementAppService,
+                new PaymentProviderCatalog(),
+                outboxService,
+                domainEventPublisher,
+                systemInternalApiProvider
+        );
+    }
+
+    private CurrentUser currentUser() {
+        CurrentUser currentUser = new CurrentUser(1001L, "tester", null, "session-1", 1, true, Set.of("payment:refund:create"));
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
+    }
+
+    private CurrentUser untrustedUser() {
+        return new CurrentUser(1001L, "tester", null, "session-1", 1, true, Set.of("payment:refund:create"));
+    }
+
+    private PaymentCreateOrderRequestDTO orderRequest(String orderNo, String idempotencyKey) {
+        return new PaymentCreateOrderRequestDTO(
+                "stripe",
+                orderNo,
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                idempotencyKey
+        );
+    }
+
+    private com.lumira.api.payment.PaymentProviderSettingsDTO providerSettings() {
+        com.lumira.api.payment.PaymentProviderSettingsDTO settings = new com.lumira.api.payment.PaymentProviderSettingsDTO();
+        settings.setProviderCode("stripe");
+        settings.setEnabled(true);
+        settings.setCurrency("CNY");
+        return settings;
+    }
+
+    private PaymentOrderRow orderRow(Long createdBy) {
+        PaymentOrderRow row = new PaymentOrderRow();
+        row.setOrderNo("ORD-1");
+        row.setProviderCode("stripe");
+        row.setProviderOrderNo("po-1");
+        row.setSubject("subject");
+        row.setAmountMinor(100L);
+        row.setCurrency("CNY");
+        row.setStatus("PENDING");
+        row.setRequestJson("{}");
+        row.setCreatedBy(createdBy);
+        row.setCreatedAt(LocalDateTime.now());
+        row.setUpdatedAt(LocalDateTime.now());
+        row.setDeleted(0);
+        return row;
+    }
+
+    private PaymentRefundRow refundRow(Long createdBy) {
+        PaymentRefundRow row = new PaymentRefundRow();
+        row.setRefundNo("REF-1");
+        row.setOrderNo("ORD-1");
+        row.setProviderCode("stripe");
+        row.setProviderRefundNo("pr-1");
+        row.setAmountMinor(50L);
+        row.setCurrency("CNY");
+        row.setStatus("PENDING");
+        row.setRequestJson("{}");
+        row.setCreatedBy(createdBy);
+        row.setCreatedAt(LocalDateTime.now());
+        row.setUpdatedAt(LocalDateTime.now());
+        row.setDeleted(0);
+        return row;
+    }
+
+    private BeanPropertyRowMapper<PaymentOrderRow> anyOrderRowMapper() {
+        return any();
+    }
+
+    private BeanPropertyRowMapper<PaymentRefundRow> anyRefundRowMapper() {
+        return any();
+    }
+
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
+        if (systemInternalApi != null) {
+            when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
+                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
+        }
+        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(systemInternalApi);
+        return provider;
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
+        return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(Long userId) {
+        return new PermissionSnapshotDTO(
+                "perm-v" + userId,
+                List.of("payment:refund:create"),
+                List.of(31L),
+                41L,
+                List.of(41L),
+                List.of(41L, 42L),
+                List.of(),
+                "/payment/orders"
+        );
+    }
+}

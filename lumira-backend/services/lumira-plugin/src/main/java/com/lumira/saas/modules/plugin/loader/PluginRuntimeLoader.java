@@ -28,9 +28,15 @@ import java.util.ServiceLoader;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Service
 public class PluginRuntimeLoader {
+
+    private static final int MAX_SCHEDULED_TASKS = 16;
+    private static final int MAX_TASK_CODE_LENGTH = 64;
+    private static final long MAX_DELAY_SECONDS = 24 * 60 * 60;
+    private static final Pattern TASK_CODE_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9._:-]{0,63}$");
 
     private final ObjectMapper objectMapper;
     private final PluginProperties pluginProperties;
@@ -104,7 +110,7 @@ public class PluginRuntimeLoader {
         }
     }
 
-    private List<ScheduledExecutorService> registerTasks(
+    List<ScheduledExecutorService> registerTasks(
             PluginScheduledTaskProvider taskProvider,
             PluginRuntimeContext runtimeContext,
             PluginDTO.PluginPackageMetadata metadata
@@ -116,20 +122,56 @@ public class PluginRuntimeLoader {
         if (tasks == null || tasks.isEmpty()) {
             return List.of();
         }
+        validateScheduledTasks(tasks);
         List<ScheduledExecutorService> executors = new ArrayList<>(tasks.size());
         for (PluginScheduledTask task : tasks) {
+            String taskCode = task.taskCode().trim();
             ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(
-                    runnable -> new Thread(runnable, "plugin-" + metadata.getPluginCode() + "-" + task.taskCode())
+                    runnable -> new Thread(runnable, "plugin-" + metadata.getPluginCode() + "-" + taskCode)
             );
             executor.scheduleWithFixedDelay(
                     task.task(),
-                    Math.max(task.initialDelaySeconds(), 1),
-                    Math.max(task.fixedDelaySeconds(), 1),
+                    task.initialDelaySeconds(),
+                    task.fixedDelaySeconds(),
                     TimeUnit.SECONDS
             );
             executors.add(executor);
         }
         return executors;
+    }
+
+    private void validateScheduledTasks(List<PluginScheduledTask> tasks) {
+        if (tasks.size() > MAX_SCHEDULED_TASKS) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件定时任务数量超过限制");
+        }
+        for (PluginScheduledTask task : tasks) {
+            validateScheduledTask(task);
+        }
+    }
+
+    private void validateScheduledTask(PluginScheduledTask task) {
+        if (task == null) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件定时任务不能为空");
+        }
+        String taskCode = task.taskCode();
+        if (taskCode == null || taskCode.isBlank()) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件定时任务编码不能为空");
+        }
+        String normalizedTaskCode = taskCode.trim();
+        if (normalizedTaskCode.length() > MAX_TASK_CODE_LENGTH || !TASK_CODE_PATTERN.matcher(normalizedTaskCode).matches()) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件定时任务编码不可信");
+        }
+        if (task.task() == null) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件定时任务 Runnable 不能为空");
+        }
+        validateDelay(task.initialDelaySeconds(), "initialDelaySeconds");
+        validateDelay(task.fixedDelaySeconds(), "fixedDelaySeconds");
+    }
+
+    private void validateDelay(long delaySeconds, String fieldName) {
+        if (delaySeconds < 1 || delaySeconds > MAX_DELAY_SECONDS) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件定时任务 " + fieldName + " 不可信");
+        }
     }
 
     private List<PluginDeclaredPermission> mapPermissions(PluginDTO.PluginPackageMetadata metadata) {

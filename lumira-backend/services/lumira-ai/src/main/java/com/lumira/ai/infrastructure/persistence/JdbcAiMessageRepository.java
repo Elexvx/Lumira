@@ -14,7 +14,7 @@ public class JdbcAiMessageRepository extends JdbcAiRepositorySupport implements 
 
     @Override
     public void addMessage(Long conversationId, String role, String content, LocalDateTime now) {
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into ai_message (
                             conversation_id, role, content, is_deleted, create_time, update_time
@@ -26,5 +26,6 @@ public class JdbcAiMessageRepository extends JdbcAiRepositorySupport implements 
                 now,
                 now
         );
+        requireSingleWrite(inserted, "AI message changed, please retry");
     }
 }

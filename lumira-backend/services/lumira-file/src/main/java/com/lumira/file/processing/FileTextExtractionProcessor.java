@@ -41,10 +41,15 @@ public class FileTextExtractionProcessor {
     }
 
     public TextExtractionResult extractText(Long fileId, Long userId) {
+        throw new IllegalStateException("File text extraction owner UUID is required");
+    }
+
+    public TextExtractionResult extractText(Long fileId, Long userId, String userUuid) {
         FileLocation location = findFileLocation(fileId);
         if (location == null) {
             throw new IllegalStateException("File object is unavailable for text extraction: " + fileId);
         }
+        Long ownerId = requireFileOwner(location, userId, userUuid);
         if (!"LOCAL".equalsIgnoreCase(location.storageType())) {
             throw new IllegalStateException("Text extraction only supports LOCAL storage: " + fileId);
         }
@@ -65,7 +70,7 @@ public class FileTextExtractionProcessor {
             String storedContent = normalizedContent.length() > MAX_STORED_CHARS
                     ? normalizedContent.substring(0, MAX_STORED_CHARS)
                     : normalizedContent;
-            upsertArtifact(fileId, storedContent, userId);
+            upsertArtifact(fileId, storedContent, ownerId, userUuid);
             return new TextExtractionResult(source, storedContent.length(), normalizedContent.length() > storedContent.length());
         } catch (IOException | TikaException exception) {
             throw new IllegalStateException("Text extraction failed: " + source, exception);
@@ -92,12 +97,20 @@ public class FileTextExtractionProcessor {
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
                                fo.content_type as contentType, fo.file_extension as fileExtension,
+                               fo.uploaded_by as uploadedBy, u.uuid as uploadedByUserUuid,
                                coalesce(fs.root_path, '') as rootPath
                         from file_object fo
+                        join sys_user u
+                          on u.id = fo.uploaded_by
+                         and u.uuid = fo.uploaded_by_uuid
+                         and u.deleted = 0
+                         and u.status = 'ENABLED'
+                         and u.uuid is not null
+                         and u.uuid <> ''
                         left join file_storage_space fs
                           on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.id = ? and fo.deleted = 0
+                        where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -105,7 +118,9 @@ public class FileTextExtractionProcessor {
                         rs.getString("objectKey"),
                         rs.getString("rootPath"),
                         rs.getString("contentType"),
-                        rs.getString("fileExtension")
+                        rs.getString("fileExtension"),
+                        rs.getLong("uploadedBy"),
+                        rs.getString("uploadedByUserUuid")
                 ),
                 fileId
         );
@@ -168,29 +183,78 @@ public class FileTextExtractionProcessor {
         return uploadRoot.resolve(normalizedRootPath).normalize();
     }
 
-    private void upsertArtifact(Long fileId, String content, Long userId) {
-        jdbcTemplate.update(
+    private void upsertArtifact(Long fileId, String content, Long userId, String userUuid) {
+        Long ownerId = requireUserId(userId);
+        String ownerUuid = requireUserUuid(userUuid);
+        int updated = jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
                             file_id, task_type, artifact_type, content_text, content_length,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        )
+                        select ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
+                        from file_object fo
+                        join sys_user u
+                          on u.id = fo.uploaded_by
+                         and u.uuid = fo.uploaded_by_uuid
+                         and u.deleted = 0
+                         and u.status = 'ENABLED'
+                        where fo.id = ?
+                          and fo.uploaded_by = ?
+                          and fo.uploaded_by_uuid = ?
+                          and fo.deleted = 0
+                          and fo.status = 'ENABLED'
                         on duplicate key update
-                            task_type = values(task_type),
-                            content_text = values(content_text),
-                            content_length = values(content_length),
-                            deleted = 0,
-                            updated_at = current_timestamp,
-                            updated_by = values(updated_by)
+                            task_type = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(task_type) else task_type end,
+                            content_text = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_text) else content_text end,
+                            content_length = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_length) else content_length end,
+                            deleted = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then 0 else deleted end,
+                            updated_at = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then current_timestamp else updated_at end,
+                            updated_by = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(updated_by) else updated_by end,
+                            updated_by_uuid = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(updated_by_uuid) else updated_by_uuid end
                         """,
                 fileId,
                 FileProcessingTaskService.TASK_TEXT_EXTRACT,
                 ARTIFACT_TEXT_CONTENT,
                 content,
                 content == null ? 0 : content.length(),
-                userId == null ? 0L : userId,
-                userId == null ? 0L : userId
+                ownerId,
+                ownerUuid,
+                ownerId,
+                ownerUuid,
+                fileId,
+                ownerId,
+                ownerUuid
         );
+        if (updated <= 0) {
+            throw new IllegalStateException("File text extraction artifact state changed, please retry");
+        }
+    }
+
+    private Long requireUserId(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalStateException("File processing artifact owner is required");
+        }
+        return userId;
+    }
+
+    private String requireUserUuid(String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new IllegalStateException("File processing artifact owner UUID is required");
+        }
+        return userUuid.trim();
+    }
+
+    private Long requireFileOwner(FileLocation location, Long userId, String userUuid) {
+        Long ownerId = requireUserId(location.uploadedBy());
+        Long requestedOwnerId = requireUserId(userId);
+        if (!ownerId.equals(requestedOwnerId)
+                || !StringUtils.hasText(location.uploadedByUserUuid())
+                || !StringUtils.hasText(userUuid)
+                || !location.uploadedByUserUuid().trim().equals(userUuid.trim())) {
+            throw new IllegalStateException("File processing task owner does not match file owner");
+        }
+        return ownerId;
     }
 
     private String normalize(String value) {
@@ -214,7 +278,9 @@ public class FileTextExtractionProcessor {
             String objectKey,
             String rootPath,
             String contentType,
-            String fileExtension
+            String fileExtension,
+            Long uploadedBy,
+            String uploadedByUserUuid
     ) {
     }
 

@@ -112,6 +112,7 @@ public final class WorkflowVO {
         private String nodeName;
         private String status;
         private Long approverUserId;
+        private String approverUserUuid;
         private Long approverRoleId;
         private LocalDateTime createdAt;
         private LocalDateTime completedAt;
@@ -136,6 +137,8 @@ public final class WorkflowVO {
         public void setStatus(String status) { this.status = status; }
         public Long getApproverUserId() { return approverUserId; }
         public void setApproverUserId(Long approverUserId) { this.approverUserId = approverUserId; }
+        public String getApproverUserUuid() { return approverUserUuid; }
+        public void setApproverUserUuid(String approverUserUuid) { this.approverUserUuid = approverUserUuid; }
         public Long getApproverRoleId() { return approverRoleId; }
         public void setApproverRoleId(Long approverRoleId) { this.approverRoleId = approverRoleId; }
         public LocalDateTime getCreatedAt() { return createdAt; }

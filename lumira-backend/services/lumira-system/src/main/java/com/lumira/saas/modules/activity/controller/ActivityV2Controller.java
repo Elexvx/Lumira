@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.activity.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -19,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/aiadc/activities")
@@ -51,41 +56,50 @@ public class ActivityV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(VIEW);
+        CurrentUser currentUser = require(VIEW);
         return ApiResponse.success(
-                activityManagementAppService.listActivities(securityContextFacade.getCurrentUser(), keyword, status, locale, featured, pageNo, pageSize),
+                activityManagementAppService.listActivities(currentUser, keyword, status, locale, featured, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/{id}")
     public ApiResponse<ActivityVO.Activity> activity(@PathVariable("id") Long id) {
-        require(VIEW);
-        return ApiResponse.success(activityManagementAppService.getActivity(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(VIEW);
+        return ApiResponse.success(activityManagementAppService.getActivity(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping
     @RepeatSubmit
     public ApiResponse<ActivityVO.Activity> createActivity(@Valid @RequestBody ActivityDTO.ActivityUpsertRequest request) {
-        require(CREATE);
-        return ApiResponse.success(activityManagementAppService.createActivity(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CREATE);
+        return ApiResponse.success(activityManagementAppService.createActivity(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<ActivityVO.Activity> updateActivity(@PathVariable("id") Long id, @Valid @RequestBody ActivityDTO.ActivityUpsertRequest request) {
-        require(UPDATE);
-        return ApiResponse.success(activityManagementAppService.updateActivity(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(UPDATE);
+        return ApiResponse.success(activityManagementAppService.updateActivity(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteActivity(@PathVariable("id") Long id) {
-        require(DELETE);
-        return ApiResponse.success(activityManagementAppService.deleteActivity(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(DELETE);
+        return ApiResponse.success(activityManagementAppService.deleteActivity(currentUser, id), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
     }
 }

@@ -9,7 +9,15 @@ import java.util.List;
 public class SecurityProperties {
 
     private String jwtSecret = "saas_file_jwt_secret_for_dev_env_change_me_2026";
-    private List<String> permitPaths = new ArrayList<>();
+    private List<String> permitPaths = new ArrayList<>(List.of(
+            "/api/uploads/**",
+            "/api/version",
+            "/api/v1/version",
+            "/api/v1/*/version",
+            "/actuator/health",
+            "/actuator/info",
+            "/error"
+    ));
 
     public String getJwtSecret() {
         return jwtSecret;

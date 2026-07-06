@@ -29,8 +29,10 @@ public final class PluginEntities {
         private Integer supportsDataPurge;
         private String runtimeContributionsJson;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
         private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime updatedAt;
         private Integer deleted;
 
@@ -154,6 +156,14 @@ public final class PluginEntities {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
@@ -168,6 +178,14 @@ public final class PluginEntities {
 
         public void setUpdatedBy(Long updatedBy) {
             this.updatedBy = updatedBy;
+        }
+
+        public String getUpdatedByUuid() {
+            return updatedByUuid;
+        }
+
+        public void setUpdatedByUuid(String updatedByUuid) {
+            this.updatedByUuid = updatedByUuid;
         }
 
         public LocalDateTime getUpdatedAt() {
@@ -212,8 +230,10 @@ public final class PluginEntities {
         private String stagedPath;
         private LocalDateTime installedAt;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
         private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime updatedAt;
         private Integer deleted;
 
@@ -393,6 +413,14 @@ public final class PluginEntities {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
@@ -407,6 +435,14 @@ public final class PluginEntities {
 
         public void setUpdatedBy(Long updatedBy) {
             this.updatedBy = updatedBy;
+        }
+
+        public String getUpdatedByUuid() {
+            return updatedByUuid;
+        }
+
+        public void setUpdatedByUuid(String updatedByUuid) {
+            this.updatedByUuid = updatedByUuid;
         }
 
         public LocalDateTime getUpdatedAt() {
@@ -434,8 +470,10 @@ public final class PluginEntities {
         private String dependsOnPluginCode;
         private String minVersion;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
         private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime updatedAt;
         private Integer deleted;
 
@@ -479,6 +517,14 @@ public final class PluginEntities {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
@@ -493,6 +539,14 @@ public final class PluginEntities {
 
         public void setUpdatedBy(Long updatedBy) {
             this.updatedBy = updatedBy;
+        }
+
+        public String getUpdatedByUuid() {
+            return updatedByUuid;
+        }
+
+        public void setUpdatedByUuid(String updatedByUuid) {
+            this.updatedByUuid = updatedByUuid;
         }
 
         public LocalDateTime getUpdatedAt() {
@@ -526,6 +580,7 @@ public final class PluginEntities {
         private String traceId;
         private String failureStack;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
         private Integer deleted;
 
@@ -617,6 +672,14 @@ public final class PluginEntities {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
@@ -648,8 +711,10 @@ public final class PluginEntities {
         private String parentMenuCode;
         private Integer sortNo;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
         private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime updatedAt;
         private Integer deleted;
 
@@ -741,6 +806,14 @@ public final class PluginEntities {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
@@ -755,6 +828,14 @@ public final class PluginEntities {
 
         public void setUpdatedBy(Long updatedBy) {
             this.updatedBy = updatedBy;
+        }
+
+        public String getUpdatedByUuid() {
+            return updatedByUuid;
+        }
+
+        public void setUpdatedByUuid(String updatedByUuid) {
+            this.updatedByUuid = updatedByUuid;
         }
 
         public LocalDateTime getUpdatedAt() {
@@ -784,8 +865,10 @@ public final class PluginEntities {
         private String permissionName;
         private String permissionGroup;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
         private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime updatedAt;
         private Integer deleted;
 
@@ -845,6 +928,14 @@ public final class PluginEntities {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public LocalDateTime getCreatedAt() {
             return createdAt;
         }
@@ -859,6 +950,14 @@ public final class PluginEntities {
 
         public void setUpdatedBy(Long updatedBy) {
             this.updatedBy = updatedBy;
+        }
+
+        public String getUpdatedByUuid() {
+            return updatedByUuid;
+        }
+
+        public void setUpdatedByUuid(String updatedByUuid) {
+            this.updatedByUuid = updatedByUuid;
         }
 
         public LocalDateTime getUpdatedAt() {
@@ -890,6 +989,7 @@ public final class PluginEntities {
         private String executionStatus;
         private String detailMessage;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createdAt;
 
         public Long getId() {
@@ -962,6 +1062,14 @@ public final class PluginEntities {
 
         public void setCreatedBy(Long createdBy) {
             this.createdBy = createdBy;
+        }
+
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
         }
 
         public LocalDateTime getCreatedAt() {

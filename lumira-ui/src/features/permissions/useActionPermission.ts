@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useAccess } from '@umijs/max';
 import { isSettingsPermission, isSuperAdminUser } from '@/auth/adminAccess';
+import { isTrustedCurrentUser } from '@/auth/sessionState';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { TableActionItem } from '@/features/table/TableActionBar';
 
@@ -65,7 +66,8 @@ export const resolvePermissionAwareToolbarActions = <TValue,>(
 export const useActionPermission = () => {
   const access = useAccess();
   const { initialState } = useInitialStateModel();
-  const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
+  const trustedUser = isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser : undefined;
+  const isSettingsAdmin = isSuperAdminUser(trustedUser);
   const canAccess = useCallback(
     (permission: string) => (isSettingsAdmin && isSettingsPermission(permission)) || access.hasPermission(permission),
     [access, isSettingsAdmin],

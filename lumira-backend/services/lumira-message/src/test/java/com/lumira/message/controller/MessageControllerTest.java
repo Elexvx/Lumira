@@ -13,6 +13,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +61,43 @@ class MessageControllerTest {
                 .hasMessageContaining("缺少权限");
     }
 
+    @Test
+    void listMessages_shouldRejectUnauthenticatedUserEvenWhenPermissionIsPresent() {
+        CurrentUser currentUser = currentUser("message:message:view");
+        currentUser.setAuthenticated(false);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.listMessages(1L, 10L))
+                .isInstanceOf(BizException.class);
+        verify(messageAppService, never()).listMessages(currentUser, 1L, 10L);
+    }
+
+    @Test
+    void listMessages_shouldRejectBlankUsernameBeforeCallingApplicationService() {
+        CurrentUser currentUser = currentUser("message:message:view");
+        currentUser.setUsername(" ");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.listMessages(1L, 10L))
+                .isInstanceOf(BizException.class);
+        verify(messageAppService, never()).listMessages(currentUser, 1L, 10L);
+    }
+
+    @Test
+    void listMessages_shouldRejectMissingSessionIdBeforeCallingApplicationService() {
+        CurrentUser currentUser = currentUser("message:message:view");
+        currentUser.setSessionId(null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.listMessages(1L, 10L))
+                .isInstanceOf(BizException.class);
+        verify(messageAppService, never()).listMessages(currentUser, 1L, 10L);
+    }
+
     private CurrentUser currentUser(String permission) {
-        return new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of(permission));
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
     }
 }

@@ -45,13 +45,15 @@ public class AuthSessionStore {
     }
 
     public void save(AuthSession session, Duration ttl, boolean publishChange) {
+        AuthSessionTrustValidator.requireTrustedSession(session);
         Duration effectiveTtl = ttl == null || ttl.isZero() || ttl.isNegative() ? Duration.ofSeconds(1) : ttl;
         try {
             String payload = objectMapper.writeValueAsString(session);
+            AuthSessionTrustValidator.requireTrustedPayload(payload);
             redisTemplate.opsForValue().set(CacheKeyConstants.sessionKey(session.getSessionId()), payload, effectiveTtl);
             redisTemplate.opsForValue().set(CacheKeyConstants.sessionOwnerKey(session.getSessionId()), sessionOwnerValue(session), effectiveTtl);
-            redisTemplate.opsForValue().set(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()), "1", effectiveTtl);
-            redisTemplate.opsForZSet().add(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId(), score(session));
+            redisTemplate.opsForValue().set(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()), "1", effectiveTtl);
+            redisTemplate.opsForZSet().add(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId(), score(session));
             redisTemplate.opsForZSet().add(CacheKeyConstants.onlineSessionKey(), session.getSessionId(), score(session));
             saves.incrementAndGet();
         } catch (JsonProcessingException ex) {
@@ -60,52 +62,80 @@ public class AuthSessionStore {
     }
 
     public Optional<AuthSession> findBySessionId(String sessionId) {
-        String payload = redisTemplate.opsForValue().get(CacheKeyConstants.sessionKey(sessionId));
+        String normalizedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(sessionId);
+        if (normalizedSessionId == null) {
+            misses.incrementAndGet();
+            return Optional.empty();
+        }
+        String payload = redisTemplate.opsForValue().get(CacheKeyConstants.sessionKey(normalizedSessionId));
         if (!StringUtils.hasText(payload)) {
             misses.incrementAndGet();
             return Optional.empty();
         }
         try {
+            AuthSessionTrustValidator.requireTrustedPayload(payload);
+        } catch (IllegalArgumentException exception) {
+            corruptPayloads.incrementAndGet();
+            removeSessionReferences(normalizedSessionId);
+            return Optional.empty();
+        }
+        try {
             hits.incrementAndGet();
-            return Optional.of(objectMapper.readValue(payload, AuthSession.class));
+            AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+            AuthSessionTrustValidator.requireTrustedSession(session);
+            return Optional.of(session);
         } catch (Exception ex) {
             corruptPayloads.incrementAndGet();
             log.warn(
                     "Session payload is corrupted, removing stale session cache. sessionId={}, reason={}",
-                    sessionId,
+                    normalizedSessionId,
                     ex.getMessage()
             );
-            removeSessionReferences(sessionId);
+            removeSessionReferences(normalizedSessionId);
             return Optional.empty();
         }
     }
 
     public void remove(AuthSession session, boolean publishChange) {
+        try {
+            AuthSessionTrustValidator.requireTrustedSession(session);
+        } catch (IllegalArgumentException exception) {
+            return;
+        }
         redisTemplate.delete(CacheKeyConstants.sessionKey(session.getSessionId()));
         redisTemplate.delete(CacheKeyConstants.sessionOwnerKey(session.getSessionId()));
+        redisTemplate.delete(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()));
         redisTemplate.delete(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
+        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId());
         redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
         redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionKey(), session.getSessionId());
         removes.incrementAndGet();
     }
 
-    public void revokeUserSessions(Long userId, boolean publishChange) {
-        cleanupExpiredUserIndex(userId);
-        for (String sessionId : listActiveUserSessionIds(userId)) {
-            findBySessionId(sessionId).ifPresent(session -> remove(session, publishChange));
+    public void revokeUserSessions(Long userId, String userUuid, boolean publishChange) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
+            return;
+        }
+        cleanupExpiredUserIndex(userId, userUuid);
+        for (String sessionId : listActiveUserSessionIds(userId, userUuid)) {
+            findBySessionId(sessionId)
+                    .filter(session -> belongsToUser(session, userId, userUuid))
+                    .ifPresent(session -> remove(session, publishChange));
         }
     }
 
-    public List<String> listActiveUserSessionIds(Long userId) {
-        if (userId == null) {
+    public List<String> listActiveUserSessionIds(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
             return List.of();
         }
-        cleanupExpiredUserIndex(userId);
-        Set<String> values = redisTemplate.opsForZSet().reverseRange(CacheKeyConstants.onlineSessionUserKey(userId), 0, -1);
+        cleanupExpiredUserIndex(userId, userUuid);
+        Set<String> values = redisTemplate.opsForZSet().reverseRange(onlineSessionUserKey(userId, userUuid), 0, -1);
         if (CollectionUtils.isEmpty(values)) {
             return List.of();
         }
-        return new ArrayList<>(values);
+        return values.stream()
+                .filter(sessionId -> belongsToUser(sessionId, userId, userUuid))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
     public List<String> listActiveSessionIds(long start, long end) {
@@ -117,46 +147,57 @@ public class AuthSessionStore {
         return new ArrayList<>(values);
     }
 
-    public Optional<String> findLatestActiveUserSessionId(Long userId) {
-        if (userId == null) {
+    public Optional<String> findLatestActiveUserSessionId(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
             return Optional.empty();
         }
-        String key = CacheKeyConstants.onlineSessionUserKey(userId);
-        cleanupExpiredUserIndex(userId);
+        String key = onlineSessionUserKey(userId, userUuid);
+        cleanupExpiredUserIndex(userId, userUuid);
         while (true) {
             Set<String> values = redisTemplate.opsForZSet().reverseRange(key, 0, 0);
             if (CollectionUtils.isEmpty(values)) {
                 return Optional.empty();
             }
             String sessionId = values.iterator().next();
-            if (!StringUtils.hasText(sessionId)) {
+            String normalizedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(sessionId);
+            if (normalizedSessionId == null) {
                 if (sessionId != null) {
                     redisTemplate.opsForZSet().remove(key, sessionId);
                 }
                 continue;
             }
-            if (findBySessionId(sessionId).isPresent()) {
-                return Optional.of(sessionId);
+            if (findBySessionId(normalizedSessionId)
+                    .filter(session -> belongsToUser(session, userId, userUuid))
+                    .isPresent()) {
+                return Optional.of(normalizedSessionId);
             }
-            redisTemplate.opsForZSet().remove(key, sessionId);
+            redisTemplate.opsForZSet().remove(key, normalizedSessionId);
         }
     }
 
     private void cleanupExpiredUserIndex(Long userId) {
-        if (userId == null) {
+        cleanupExpiredUserIndex(userId, null);
+    }
+
+    private void cleanupExpiredUserIndex(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
             return;
         }
         redisTemplate.opsForZSet().removeRangeByScore(
-                CacheKeyConstants.onlineSessionUserKey(userId),
+                onlineSessionUserKey(userId, userUuid),
                 Double.NEGATIVE_INFINITY,
                 Instant.now().toEpochMilli()
         );
     }
 
     public void removeSessionReferences(String sessionId) {
-        redisTemplate.delete(CacheKeyConstants.sessionKey(sessionId));
-        String owner = redisTemplate.opsForValue().get(CacheKeyConstants.sessionOwnerKey(sessionId));
-        redisTemplate.delete(CacheKeyConstants.sessionOwnerKey(sessionId));
+        String normalizedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(sessionId);
+        if (normalizedSessionId == null) {
+            return;
+        }
+        redisTemplate.delete(CacheKeyConstants.sessionKey(normalizedSessionId));
+        String owner = redisTemplate.opsForValue().get(CacheKeyConstants.sessionOwnerKey(normalizedSessionId));
+        redisTemplate.delete(CacheKeyConstants.sessionOwnerKey(normalizedSessionId));
         if (!StringUtils.hasText(owner)) {
             return;
         }
@@ -164,9 +205,13 @@ public class AuthSessionStore {
         if (sessionOwner == null || sessionOwner.userId() == null) {
             return;
         }
-        redisTemplate.delete(CacheKeyConstants.userSessionKey(sessionOwner.userId(), sessionId));
-        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(sessionOwner.userId()), sessionId);
-        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionKey(), sessionId);
+        if (StringUtils.hasText(sessionOwner.userUuid())) {
+            redisTemplate.delete(CacheKeyConstants.userSessionKey(sessionOwner.userId(), sessionOwner.userUuid(), normalizedSessionId));
+            redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(sessionOwner.userId(), sessionOwner.userUuid()), normalizedSessionId);
+        }
+        redisTemplate.delete(CacheKeyConstants.userSessionKey(sessionOwner.userId(), normalizedSessionId));
+        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionUserKey(sessionOwner.userId()), normalizedSessionId);
+        redisTemplate.opsForZSet().remove(CacheKeyConstants.onlineSessionKey(), normalizedSessionId);
     }
 
     private double score(AuthSession session) {
@@ -175,7 +220,7 @@ public class AuthSessionStore {
 
     private String sessionOwnerValue(AuthSession session) {
         Long userId = session.getUserId();
-        return userId == null ? "" : String.valueOf(userId);
+        return userId == null ? "" : userId + "|" + session.getUserUuid();
     }
 
     private void cleanupExpiredSessionIndex() {
@@ -192,7 +237,28 @@ public class AuthSessionStore {
         }
         String[] parts = value.split("\\|", 2);
         Long userId = parseLong(parts.length > 0 ? parts[0] : null);
-        return new SessionOwner(userId);
+        String userUuid = parts.length > 1 && StringUtils.hasText(parts[1]) ? parts[1].trim() : null;
+        return new SessionOwner(userId, userUuid);
+    }
+
+    private String onlineSessionUserKey(Long userId, String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new IllegalArgumentException("Full user identity is required");
+        }
+        return CacheKeyConstants.onlineSessionUserKey(userId, userUuid.trim());
+    }
+
+    private boolean belongsToUser(String sessionId, Long userId, String userUuid) {
+        return findBySessionId(sessionId)
+                .filter(session -> belongsToUser(session, userId, userUuid))
+                .isPresent();
+    }
+
+    private boolean belongsToUser(AuthSession session, Long userId, String userUuid) {
+        if (session == null || userId == null || !userId.equals(session.getUserId())) {
+            return false;
+        }
+        return StringUtils.hasText(userUuid) && userUuid.trim().equals(session.getUserUuid());
     }
 
     private Long parseLong(String value) {
@@ -206,7 +272,7 @@ public class AuthSessionStore {
         }
     }
 
-    private record SessionOwner(Long userId) {
+    private record SessionOwner(Long userId, String userUuid) {
     }
 
     public long saves() {

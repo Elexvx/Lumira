@@ -30,6 +30,7 @@ public class JwtTokenService {
     }
 
     public String generateAccessToken(AuthSession session) {
+        AuthSessionTrustValidator.requireTrustedSession(session);
         Instant now = Instant.now();
         Instant expireAt = now.plusSeconds(getAccessTokenExpireSeconds());
         return Jwts.builder()
@@ -39,14 +40,18 @@ public class JwtTokenService {
                 .id(java.util.UUID.randomUUID().toString())
                 .claim(JwtTokenParser.CLAIM_SESSION_ID, session.getSessionId())
                 .claim(JwtTokenParser.CLAIM_USER_ID, session.getUserId())
+                .claim(JwtTokenParser.CLAIM_USER_UUID, session.getUserUuid())
                 .claim(JwtTokenParser.CLAIM_USERNAME, session.getUsername())
+                .claim(JwtTokenParser.CLAIM_SIMULATED_ROLE_ID, session.getSimulatedRoleId())
                 .claim(JwtTokenParser.CLAIM_SESSION_VERSION, session.getSessionVersion())
+                .claim(JwtTokenParser.CLAIM_PERMISSIONS_VERSION, session.getPermissionsVersion())
                 .claim(JwtTokenParser.CLAIM_TOKEN_TYPE, JwtTokenType.ACCESS.name())
                 .signWith(secretKey)
                 .compact();
     }
 
     public String generateRefreshToken(AuthSession session, String refreshTokenId) {
+        AuthSessionTrustValidator.requireTrustedSession(session);
         Instant now = Instant.now();
         Instant expireAt = now.plusSeconds(getRefreshTokenExpireSeconds());
         return Jwts.builder()
@@ -56,8 +61,11 @@ public class JwtTokenService {
                 .id(refreshTokenId)
                 .claim(JwtTokenParser.CLAIM_SESSION_ID, session.getSessionId())
                 .claim(JwtTokenParser.CLAIM_USER_ID, session.getUserId())
+                .claim(JwtTokenParser.CLAIM_USER_UUID, session.getUserUuid())
                 .claim(JwtTokenParser.CLAIM_USERNAME, session.getUsername())
+                .claim(JwtTokenParser.CLAIM_SIMULATED_ROLE_ID, session.getSimulatedRoleId())
                 .claim(JwtTokenParser.CLAIM_SESSION_VERSION, session.getSessionVersion())
+                .claim(JwtTokenParser.CLAIM_PERMISSIONS_VERSION, session.getPermissionsVersion())
                 .claim(JwtTokenParser.CLAIM_TOKEN_TYPE, JwtTokenType.REFRESH.name())
                 .signWith(secretKey)
                 .compact();

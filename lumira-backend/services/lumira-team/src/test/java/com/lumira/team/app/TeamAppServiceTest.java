@@ -1,5 +1,9 @@
 package com.lumira.team.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.team.dto.TeamDTO;
@@ -9,21 +13,116 @@ import com.lumira.team.repository.TeamMemberRepository;
 import com.lumira.team.repository.TeamRepository;
 import com.lumira.team.vo.TeamVO;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class TeamAppServiceTest {
+    @Test
+    void myTeamsShouldRejectUnauthenticatedUserBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures("MEMBER");
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(unauthenticatedUser(3001L)))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verifyNoInteractions(fixtures.teamMemberRepository);
+    }
+
+    @Test
+    void myTeamsShouldRejectUserWithoutUsernameBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures("MEMBER");
+        CurrentUser user = currentUser(3001L);
+        user.setUsername(" ");
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(user))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verifyNoInteractions(fixtures.teamMemberRepository);
+    }
+
+    @Test
+    void myTeamsShouldRejectMissingSessionVersionBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures("MEMBER");
+        CurrentUser user = currentUser(3001L);
+        user.setSessionVersion(null);
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(user))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verifyNoInteractions(fixtures.teamMemberRepository);
+    }
+
+    @Test
+    void myTeamsShouldRejectMissingUserUuidBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures("MEMBER");
+        CurrentUser user = currentUser(3001L);
+        user.setUserUuid(null);
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(user))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verifyNoInteractions(fixtures.teamMemberRepository);
+    }
+
+    @Test
+    void myTeamsShouldRejectMissingPermissionsVersionBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures("MEMBER");
+        CurrentUser user = currentUser(3001L);
+        user.setPermissionsVersion(" ");
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(user))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verifyNoInteractions(fixtures.teamMemberRepository);
+    }
+
+    @Test
+    void teamOperationsShouldRejectInvalidResourceIdsBeforePermissionOrRepositoryAccess() {
+        Fixtures fixtures = fixtures("MEMBER");
+
+        assertThatThrownBy(() -> fixtures.service.getTeam(currentUser(3001L), 0L))
+                .isInstanceOf(BizException.class);
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, -1L, new TeamDTO.MemberRoleRequest()))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
+        verify(fixtures.teamRepository, never()).findTeam(anyLong(), anyLong(), any());
+        verify(fixtures.teamMemberRepository, never()).findMemberById(anyLong(), anyLong());
+    }
+
+    @Test
+    void updateMemberRoleShouldRejectInvalidRequestBeforePermissionOrMemberLookup() {
+        Fixtures fixtures = fixtures("OWNER");
+
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, 2L, null))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
+        verify(fixtures.teamMemberRepository, never()).findMemberById(anyLong(), anyLong());
+    }
+
     @Test
     void createTeamShouldDelegatePersistenceToRepositories() {
         Fixtures fixtures = fixtures("OWNER");
@@ -36,10 +135,27 @@ class TeamAppServiceTest {
 
         assertThat(team.getId()).isEqualTo(2001L);
         verify(fixtures.teamRepository).nextTeamCode();
-        verify(fixtures.teamRepository).createTeam(any(), anyLong(), any());
-        verify(fixtures.teamMemberRepository).addOwner(2001L, 3001L);
+        verify(fixtures.teamRepository).createTeam(any(), anyLong(), any(), any());
+        verify(fixtures.teamMemberRepository).addOwner(2001L, 3001L, "user-uuid-3001");
         verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), any());
-        verify(fixtures.teamMemberRepository).refreshMemberCount(2001L);
+        verify(fixtures.teamMemberRepository).refreshMemberCount(eq(2001L), any(TeamVO.Team.class));
+    }
+
+    @Test
+    void createTeamShouldRejectTooManyInitialMembersBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures("OWNER");
+        TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
+        request.setTeamName("Core Team");
+        request.setInitialMembers(IntStream.range(0, 101)
+                .mapToObj(index -> draftMember("Member " + index))
+                .toList());
+
+        assertThatThrownBy(() -> fixtures.service.createTeam(currentUser(3001L), request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("Initial members");
+
+        verify(fixtures.teamRepository, never()).createTeam(any(), anyLong(), any(), any());
+        verify(fixtures.teamMemberRepository, never()).addOwner(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -57,7 +173,7 @@ class TeamAppServiceTest {
 
         assertThat(member.getId()).isEqualTo(9L);
         verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), any());
-        verify(fixtures.teamMemberRepository).refreshMemberCount(2001L);
+        verify(fixtures.teamMemberRepository).refreshMemberCount(eq(2001L), any(TeamVO.Team.class));
     }
 
     @Test
@@ -78,23 +194,77 @@ class TeamAppServiceTest {
     }
 
     @Test
+    void addDraftMemberShouldRejectUnboundedExtraValuesBeforePersistence() {
+        Fixtures fixtures = fixtures("MANAGER");
+        TeamDTO.MemberCreateRequest request = new TeamDTO.MemberCreateRequest();
+        request.setMemberName("External Member");
+        request.setExtraValues(IntStream.range(0, 21)
+                .boxed()
+                .collect(java.util.stream.Collectors.toMap(index -> "k" + index, index -> "v" + index)));
+
+        assertThatThrownBy(() -> fixtures.service.addMember(currentUser(3001L), 2001L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("Extra values");
+
+        verify(fixtures.teamMemberRepository, never()).addDraftMember(anyLong(), any());
+    }
+
+    @Test
     void myTeamsShouldUseMembershipRepositoryScope() {
         Fixtures fixtures = fixtures("MEMBER");
 
         List<TeamVO.Team> teams = fixtures.service.myTeams(currentUser(3001L));
 
         assertThat(teams).hasSize(1);
-        verify(fixtures.teamRepository).listMyTeams(3001L);
+        verify(fixtures.teamRepository).listMyTeams(3001L, "user-uuid-3001");
     }
 
     @Test
-    void adminTeamsShouldUseRepositoryWithoutRoleGate() {
+    void adminTeamsShouldRequireViewPermissionAtServiceLayer() {
         Fixtures fixtures = fixtures("MEMBER");
 
-        List<TeamVO.Team> teams = fixtures.service.listTeamsForAdmin(currentUser(3001L));
+        assertThatThrownBy(() -> fixtures.service.listTeamsForAdmin(currentUser(3001L)))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).listTeamsForAdmin(anyLong(), any());
+    }
+
+    @Test
+    void adminTeamsShouldUseRepositoryWhenPermissionIsPresent() {
+        Fixtures fixtures = fixtures("MEMBER");
+
+        List<TeamVO.Team> teams = fixtures.service.listTeamsForAdmin(currentUser(3001L, "team:view"));
 
         assertThat(teams).hasSize(1);
-        verify(fixtures.teamRepository).listTeamsForAdmin(3001L);
+        verify(fixtures.teamRepository).listTeamsForAdmin(3001L, "user-uuid-3001");
+    }
+
+    @Test
+    void adminTeamsShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeRepositoryAccess() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", snapshot(Set.of("team:update")));
+
+        assertThatThrownBy(() -> fixtures.service.listTeamsForAdmin(currentUser(3001L, "team:view")))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(fixtures.teamRepository, never()).listTeamsForAdmin(anyLong(), any());
+        verify(fixtures.systemInternalApi, times(3)).findUserIdentityById(3001L);
+        verify(fixtures.systemInternalApi, times(3)).permissionSnapshot(3001L, "user-uuid-3001");
+    }
+
+    @Test
+    void myTeamsShouldRejectWhenTrustedUserIsDisabledBeforeRepositoryAccess() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", null);
+        when(fixtures.systemInternalApi.findUserIdentityById(3001L))
+                .thenReturn(userSnapshot(3001L, "user3001", "DISABLED"));
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(currentUser(3001L)))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verify(fixtures.systemInternalApi, never()).permissionSnapshot(3001L, "user-uuid-3001");
+        verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
     }
 
     @Test
@@ -102,7 +272,7 @@ class TeamAppServiceTest {
         TeamDTO.TeamUpdateRequest request = updateRequest();
         Fixtures owner = fixtures("OWNER");
         assertThat(owner.service.updateTeam(currentUser(3001L), 2001L, request).getTeamName()).isEqualTo("Core Team");
-        verify(owner.teamRepository).updateTeamProfile(anyLong(), anyLong(), any());
+        verify(owner.teamRepository).updateTeamProfile(eq(2001L), any(TeamVO.Team.class), eq(3001L), eq("user-uuid-3001"), any());
 
         Fixtures member = fixtures("MEMBER");
         assertThatThrownBy(() -> member.service.updateTeam(currentUser(3001L), 2001L, request))
@@ -113,15 +283,45 @@ class TeamAppServiceTest {
     void adminUpdateBypassesTeamRole() {
         Fixtures fixtures = fixtures("MEMBER");
 
-        assertThat(fixtures.service.updateTeamForAdmin(currentUser(3001L), 2001L, updateRequest()).getTeamName()).isEqualTo("Core Team");
+        assertThatThrownBy(() -> fixtures.service.updateTeamForAdmin(currentUser(3001L), 2001L, updateRequest()))
+                .isInstanceOf(BizException.class);
+        verify(fixtures.teamRepository, never()).updateTeamProfile(anyLong(), any(), anyLong(), any(), any());
 
-        verify(fixtures.teamRepository).updateTeamProfile(anyLong(), anyLong(), any());
+        assertThat(fixtures.service.updateTeamForAdmin(currentUser(3001L, "team:update"), 2001L, updateRequest()).getTeamName()).isEqualTo("Core Team");
+
+        verify(fixtures.teamRepository).updateTeamProfile(anyLong(), any(TeamVO.Team.class), anyLong(), eq("user-uuid-3001"), any());
+    }
+
+    @Test
+    void adminDeleteShouldRequireDeletePermissionAtServiceLayer() {
+        Fixtures fixtures = fixtures("MEMBER");
+
+        assertThatThrownBy(() -> fixtures.service.deleteTeamForAdmin(currentUser(3001L), 2001L))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamRepository, never()).softDeleteTeam(anyLong(), any(), anyLong(), any());
+    }
+
+    @Test
+    void deleteTeamShouldPassTrustedDeletedTeamSnapshotToChildRepositories() {
+        Fixtures fixtures = fixtures("OWNER");
+        when(fixtures.teamRepository.softDeleteTeam(anyLong(), any(), anyLong(), any())).thenReturn(1);
+
+        assertThat(fixtures.service.deleteTeam(currentUser(3001L), 2001L)).isTrue();
+
+        ArgumentCaptor<TeamVO.Team> teamCaptor = ArgumentCaptor.forClass(TeamVO.Team.class);
+        verify(fixtures.teamMemberRepository).removeMembersByTeam(eq(2001L), teamCaptor.capture());
+        TeamVO.Team trustedTeam = teamCaptor.getValue();
+        assertThat(trustedTeam.getOwnerUserId()).isEqualTo(3001L);
+        assertThat(trustedTeam.getOwnerUserUuid()).isEqualTo("user-uuid-3001");
+        verify(fixtures.teamInviteRepository).disableInvitesByTeam(2001L, trustedTeam, 3001L, "user-uuid-3001");
+        verify(fixtures.teamJoinRequestRepository).closeRequestsByTeam(2001L, trustedTeam);
     }
 
     @Test
     void ownerCannotLeaveDirectly() {
         Fixtures fixtures = fixtures("OWNER");
-        when(fixtures.permissionService.activeMember(2001L, 3001L)).thenReturn(member(1L, 3001L, "OWNER"));
+        when(fixtures.permissionService.activeMember(2001L, 3001L, "user-uuid-3001")).thenReturn(member(1L, 3001L, "OWNER"));
 
         assertThatThrownBy(() -> fixtures.service.leaveTeam(currentUser(3001L), 2001L))
                 .isInstanceOf(BizException.class)
@@ -131,14 +331,44 @@ class TeamAppServiceTest {
     @Test
     void managerCanRemoveDraftMemberWithoutRegisteredUser() {
         Fixtures fixtures = fixtures("MANAGER");
-        when(fixtures.permissionService.activeMember(2001L, 3001L)).thenReturn(member(1L, 3001L, "MANAGER"));
+        when(fixtures.permissionService.activeMember(2001L, 3001L, "user-uuid-3001")).thenReturn(member(1L, 3001L, "MANAGER"));
         when(fixtures.permissionService.canRemoveMember("MANAGER", "MEMBER", false)).thenReturn(true);
-        when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, null, "MEMBER"));
+        TeamVO.Member target = member(9L, null, "MEMBER");
+        when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(target);
+        when(fixtures.teamMemberRepository.removeMember(2001L, target)).thenReturn(true);
 
         assertThat(fixtures.service.removeMember(currentUser(3001L), 2001L, 9L)).isTrue();
 
-        verify(fixtures.teamMemberRepository).removeMember(2001L, 9L);
-        verify(fixtures.teamMemberRepository).refreshMemberCount(2001L);
+        verify(fixtures.teamMemberRepository).removeMember(2001L, target);
+        verify(fixtures.teamMemberRepository).refreshMemberCount(eq(2001L), any(TeamVO.Team.class));
+    }
+
+    @Test
+    void adminCannotChangePeerAdminRoles() {
+        Fixtures fixtures = fixtures("ADMIN");
+        TeamDTO.MemberRoleRequest request = new TeamDTO.MemberRoleRequest();
+        request.setRole("MANAGER");
+        when(fixtures.teamMemberRepository.findMemberById(2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
+
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, 2L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("Only team owner");
+
+        verify(fixtures.teamMemberRepository, never()).updateMemberRole(anyLong(), any(), any());
+    }
+
+    @Test
+    void adminCannotPromoteMemberToAdmin() {
+        Fixtures fixtures = fixtures("ADMIN");
+        TeamDTO.MemberRoleRequest request = new TeamDTO.MemberRoleRequest();
+        request.setRole("ADMIN");
+        when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, 3009L, "MEMBER"));
+
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, 9L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("Only team owner");
+
+        verify(fixtures.teamMemberRepository, never()).updateMemberRole(anyLong(), any(), any());
     }
 
     @Test
@@ -151,22 +381,40 @@ class TeamAppServiceTest {
 
         fixtures.service.transferOwner(currentUser(3001L), 2001L, request);
 
-        verify(fixtures.teamMemberRepository).transferOwner(2001L, 3001L, "MEMBER", 2L);
-        verify(fixtures.teamRepository).transferOwner(2001L, 3002L, 3001L);
+        verify(fixtures.teamMemberRepository).transferOwner(2001L, 3001L, "user-uuid-3001", "MEMBER", 2L, 3002L, "user-uuid-3002");
+        verify(fixtures.teamRepository).transferOwner(2001L, 3001L, "user-uuid-3001", 3002L, "user-uuid-3002", 3001L, "user-uuid-3001");
     }
 
     private Fixtures fixtures(String role) {
+        return fixtures(role, null);
+    }
+
+    private Fixtures fixturesWithLiveSnapshot(String role, PermissionSnapshotDTO snapshot) {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(3001L))
+                .thenReturn(userSnapshot(3001L, "user3001", "ENABLED"));
+        when(systemInternalApi.permissionSnapshot(eq(3001L), eq("user-uuid-3001")))
+                .thenReturn(snapshot == null ? snapshot(Set.of()) : snapshot);
+        ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(systemInternalApi);
+        return fixtures(role, provider);
+    }
+
+    private Fixtures fixtures(String role, ObjectProvider<SystemInternalApi> systemInternalApiProvider) {
         TeamRepository teamRepository = mock(TeamRepository.class);
         TeamMemberRepository teamMemberRepository = mock(TeamMemberRepository.class);
         TeamInviteRepository teamInviteRepository = mock(TeamInviteRepository.class);
         TeamJoinRequestRepository teamJoinRequestRepository = mock(TeamJoinRequestRepository.class);
         TeamPermissionService permissionService = mockPermission(role);
         when(teamRepository.nextTeamCode()).thenReturn("T001");
-        when(teamRepository.createTeam(any(), anyLong(), any())).thenReturn(2001L);
-        when(teamRepository.listMyTeams(3001L)).thenReturn(List.of(team()));
-        when(teamRepository.listTeamsForAdmin(3001L)).thenReturn(List.of(team()));
-        when(teamRepository.findTeam(2001L, 3001L)).thenReturn(team());
-        when(teamRepository.updateTeamProfile(anyLong(), anyLong(), any())).thenReturn(1);
+        when(teamRepository.createTeam(any(), anyLong(), any(), any())).thenReturn(2001L);
+        when(teamRepository.listMyTeams(3001L, "user-uuid-3001")).thenReturn(List.of(team()));
+        when(teamRepository.listTeamsForAdmin(3001L, "user-uuid-3001")).thenReturn(List.of(team()));
+        when(teamRepository.findTeam(2001L, 3001L, "user-uuid-3001")).thenReturn(team());
+        when(teamRepository.findTeam(2001L, null, null)).thenReturn(team());
+        when(teamRepository.updateTeamProfile(anyLong(), any(), anyLong(), any(), any())).thenReturn(1);
+        when(teamRepository.transferOwner(anyLong(), anyLong(), any(), anyLong(), any(), anyLong(), any())).thenReturn(1);
+        when(teamMemberRepository.transferOwner(anyLong(), anyLong(), any(), any(), anyLong(), anyLong(), any())).thenReturn(true);
         when(teamRepository.loadEnabledDictValues(any())).thenReturn(Set.of());
         when(teamMemberRepository.findMemberById(2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
         TeamAppService service = new TeamAppService(
@@ -175,14 +423,23 @@ class TeamAppServiceTest {
                 teamInviteRepository,
                 teamJoinRequestRepository,
                 permissionService,
-                (userId, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
+                (userId, userUuid, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {},
+                systemInternalApiProvider
         );
-        return new Fixtures(service, teamRepository, teamMemberRepository, permissionService);
+        return new Fixtures(
+                service,
+                teamRepository,
+                teamMemberRepository,
+                teamInviteRepository,
+                teamJoinRequestRepository,
+                permissionService,
+                systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable()
+        );
     }
 
     private TeamPermissionService mockPermission(String role) {
         TeamPermissionService permission = mock(TeamPermissionService.class);
-        when(permission.activeRole(2001L, 3001L)).thenReturn(role);
+        when(permission.activeRole(2001L, 3001L, "user-uuid-3001")).thenReturn(role);
         when(permission.canUpdateTeam("OWNER")).thenReturn(true);
         when(permission.canUpdateTeam("ADMIN")).thenReturn(true);
         when(permission.canUpdateTeam("MANAGER")).thenReturn(true);
@@ -206,7 +463,24 @@ class TeamAppServiceTest {
     private static CurrentUser currentUser(Long userId) {
         CurrentUser user = new CurrentUser();
         user.setUserId(userId);
+        user.setUserUuid("user-uuid-" + userId);
         user.setUsername("user" + userId);
+        user.setSessionId("session-" + userId);
+        user.setSessionVersion(1);
+        user.setPermissionsVersion("permissions-1");
+        user.setAuthenticated(true);
+        return user;
+    }
+
+    private static CurrentUser currentUser(Long userId, String... permissions) {
+        CurrentUser user = currentUser(userId);
+        user.setPermissions(Set.of(permissions));
+        return user;
+    }
+
+    private static CurrentUser unauthenticatedUser(Long userId) {
+        CurrentUser user = currentUser(userId);
+        user.setAuthenticated(false);
         return user;
     }
 
@@ -219,6 +493,7 @@ class TeamAppServiceTest {
         team.setVisibility("PRIVATE");
         team.setJoinMode("INVITE_ONLY");
         team.setOwnerUserId(3001L);
+        team.setOwnerUserUuid("user-uuid-3001");
         team.setMemberCount(1);
         team.setStatus("ACTIVE");
         team.setMyRole("MEMBER");
@@ -230,15 +505,53 @@ class TeamAppServiceTest {
         member.setId(id);
         member.setTeamId(2001L);
         member.setUserId(userId);
+        member.setUserUuid("user-uuid-" + userId);
         member.setRole(role);
         member.setStatus("ACTIVE");
         return member;
+    }
+
+    private static PermissionSnapshotDTO snapshot(Set<String> permissions) {
+        return new PermissionSnapshotDTO(
+                "permissions-2",
+                permissions.stream().sorted().toList(),
+                List.of(7001L),
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                "/dashboard/home"
+        );
+    }
+
+    private static SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                "user-uuid-" + userId,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     private record Fixtures(
             TeamAppService service,
             TeamRepository teamRepository,
             TeamMemberRepository teamMemberRepository,
-            TeamPermissionService permissionService
+            TeamInviteRepository teamInviteRepository,
+            TeamJoinRequestRepository teamJoinRequestRepository,
+            TeamPermissionService permissionService,
+            SystemInternalApi systemInternalApi
     ) {}
 }

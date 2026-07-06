@@ -10,6 +10,8 @@ import com.lumira.api.auth.AuthBootstrapDTO;
 import com.lumira.auth.service.AuthAppService;
 import com.lumira.auth.service.AuthCookieService;
 import com.lumira.api.system.SecuritySettingsDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +20,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +55,7 @@ class AuthV2ControllerTest {
     void bootstrap_shouldDelegateToApplicationService() {
         CurrentUserDTO currentUser = new CurrentUserDTO(
                 42L,
+                "user-uuid-42",
                 "alice",
                 "Alice",
                 null,
@@ -63,6 +68,8 @@ class AuthV2ControllerTest {
                 null,
                 null,
                 "zh-CN",
+                null,
+                List.of(),
                 "session-1",
                 "perm-v1",
                 1,
@@ -121,6 +128,7 @@ class AuthV2ControllerTest {
     void currentUser_shouldDelegateToApplicationService() {
         CurrentUserDTO currentUser = new CurrentUserDTO(
                 42L,
+                "user-uuid-42",
                 "alice",
                 "Alice",
                 null,
@@ -133,6 +141,8 @@ class AuthV2ControllerTest {
                 null,
                 null,
                 "zh-CN",
+                null,
+                List.of(),
                 "session-1",
                 "perm-v1",
                 1,
@@ -186,10 +196,23 @@ class AuthV2ControllerTest {
     @Test
     void keepalive_shouldReturnTrueWithoutDatabaseRoundTrip() {
         HttpServletResponse httpResponse = mock(HttpServletResponse.class);
+        when(authAppService.keepalive()).thenReturn(true);
 
         var response = controller.keepalive(httpResponse);
 
         assertThat(response.getData()).isTrue();
+        verify(authAppService).keepalive();
         verify(authCookieService).writeCsrfToken(httpResponse);
+    }
+
+    @Test
+    void keepalive_shouldRejectUntrustedUserBeforeWritingCsrfCookie() {
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
+        when(authAppService.keepalive()).thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "User context is required"));
+
+        assertThatThrownBy(() -> controller.keepalive(httpResponse))
+                .isInstanceOf(BizException.class);
+
+        verify(authCookieService, never()).writeCsrfToken(httpResponse);
     }
 }

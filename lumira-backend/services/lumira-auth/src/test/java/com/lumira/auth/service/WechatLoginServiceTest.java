@@ -9,6 +9,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -89,5 +90,28 @@ class WechatLoginServiceTest {
         verify(systemInternalApi, times(2)).wechatLoginSettings();
         verify(systemInternalApi, times(2)).readModelVersion("platform", "public-bootstrap");
         verify(valueOperations, times(2)).set(anyString(), eq("1"), any(Duration.class));
+    }
+
+    @Test
+    void createAuthorizeUrlShouldRejectConfiguredButDisabledSettings() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(
+                new WechatLoginSettingsDTO(
+                        false,
+                        "appid-1",
+                        "secret-1",
+                        "https://example.com/callback",
+                        15,
+                        true,
+                        true
+                )
+        );
+
+        WechatLoginService service = new WechatLoginService(systemInternalApi, redisTemplate, new ObjectMapper());
+
+        assertThatThrownBy(service::createAuthorizeUrl)
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
     }
 }

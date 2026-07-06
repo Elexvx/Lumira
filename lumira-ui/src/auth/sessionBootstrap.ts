@@ -2,7 +2,7 @@ import { applyLocalePreference } from '@/i18n/locale';
 import type { CurrentUser, LoginResponse, MenuNode, PluginAvailability, RuntimeAppearanceSettings, SecuritySettings, SessionBootstrapPayload } from '@/types/api';
 import { tokenManager } from '@/auth/token';
 import { persistSessionActivity } from '@/auth/activity';
-import { persistCurrentUser, buildFallbackCurrentUser, persistSessionMeta } from '@/auth/sessionState';
+import { persistCurrentUser, buildFallbackCurrentUser } from '@/auth/sessionState';
 import { loadSecuritySettings } from '@/auth/sessionSecurity';
 import { clearAuthSession, tryRefreshToken, withBootstrapFlow } from '@/auth/sessionLifecycle';
 import { request } from '@/services/common/request';
@@ -19,11 +19,11 @@ export interface InitializeAfterLoginOptions {
   remember?: boolean;
 }
 
-const LOGIN_CURRENT_USER_TIMEOUT_MS = 2500;
-const RESTORE_CURRENT_USER_TIMEOUT_MS = 5000;
-const POST_LOGIN_SECURITY_TIMEOUT_MS = 2500;
-const RESTORE_SECURITY_TIMEOUT_MS = 5000;
-const AUTH_BOOTSTRAP_TIMEOUT_MS = 2500;
+const LOGIN_CURRENT_USER_TIMEOUT_MS = 5000;
+const RESTORE_CURRENT_USER_TIMEOUT_MS = 10000;
+const POST_LOGIN_SECURITY_TIMEOUT_MS = 5000;
+const RESTORE_SECURITY_TIMEOUT_MS = 10000;
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000;
 
 const createSecuritySettingsLoader = (options: Parameters<typeof loadSecuritySettings>[0]) => {
   let promise: Promise<SecuritySettings> | null = null;
@@ -41,6 +41,7 @@ const loadAuthBootstrap = async (): Promise<SessionBootstrapResult | null> => {
       method: 'GET',
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      silent: true,
       timeoutMs: AUTH_BOOTSTRAP_TIMEOUT_MS,
     });
     return {
@@ -63,12 +64,14 @@ async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise
       method: 'GET',
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      silent: true,
       timeoutMs: loginResponse ? LOGIN_CURRENT_USER_TIMEOUT_MS : RESTORE_CURRENT_USER_TIMEOUT_MS,
     }).catch(() =>
       request<CurrentUser>('/v1/auth/current-user', {
         method: 'GET',
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
+        silent: true,
         timeoutMs: loginResponse ? LOGIN_CURRENT_USER_TIMEOUT_MS : RESTORE_CURRENT_USER_TIMEOUT_MS,
       }),
     );
@@ -132,10 +135,6 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
 
       applyLocalePreference(refreshedCurrentUser.locale, false);
       const persistedCurrentUser = persistCurrentUser(refreshedCurrentUser);
-      persistSessionMeta({
-        sessionVersion: undefined,
-        permissionsVersion: undefined,
-      });
       return { currentUser: persistedCurrentUser, securitySettings };
     }
 

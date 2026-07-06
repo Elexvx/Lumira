@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
+
 @Service
 public class DefaultAuthorizationService implements AuthorizationService {
 
@@ -61,6 +63,9 @@ public class DefaultAuthorizationService implements AuthorizationService {
         CurrentUser currentUser = request.currentUser();
         if (currentUser == null) {
             return AuthorizationDecision.deny("CURRENT_USER_MISSING", "Current user is required");
+        }
+        if (!isTrustedCurrentUser(currentUser)) {
+            return AuthorizationDecision.deny("SUBJECT_UNAUTHENTICATED", "Subject authentication is required");
         }
         if (currentUser.getPermissions() == null || currentUser.getPermissions().isEmpty()) {
             return AuthorizationDecision.deny("SUBJECT_PERMISSION_MISSING", "Subject permissions are missing");
@@ -200,10 +205,16 @@ public class DefaultAuthorizationService implements AuthorizationService {
         }
         if ("self".equals(scope)) {
             Long ownerUserId = argumentLong(request.arguments(), "ownerUserId", "createdBy", "userId");
-            Long humanUserId = request.humanUserId() == null && request.currentUser() != null
-                    ? request.currentUser().getUserId()
+            String ownerUserUuid = argumentString(request.arguments(), "ownerUserUuid", "createdByUuid", "userUuid");
+            Long humanUserId = request.humanUserId() == null
+                    ? trustedUserIdOrNull(request.currentUser())
                     : request.humanUserId();
-            if (ownerUserId != null && humanUserId != null && !ownerUserId.equals(humanUserId)) {
+            String humanUserUuid = StringUtils.hasText(request.humanUserUuid())
+                    ? request.humanUserUuid().trim()
+                    : trustedUserUuidOrNull(request.currentUser());
+            if (ownerUserId == null || humanUserId == null || !ownerUserId.equals(humanUserId)
+                    || !StringUtils.hasText(ownerUserUuid)
+                    || !ownerUserUuid.trim().equals(humanUserUuid)) {
                 return deny("DELEGATION_SCOPE_SELF_DENIED", "Delegation scope is limited to self data", grant.matchedPolicies());
             }
         }
@@ -214,7 +225,9 @@ public class DefaultAuthorizationService implements AuthorizationService {
     private AuthorizationDecision evaluateDataScope(AuthorizationRequest request, CurrentUser currentUser) {
         String dataScope = normalizeArgument(request.arguments(), "dataScope");
         Long ownerUserId = argumentLong(request.arguments(), "ownerUserId", "createdBy");
-        if ("self".equals(dataScope) && ownerUserId != null && !ownerUserId.equals(currentUser.getUserId())) {
+        String ownerUserUuid = argumentString(request.arguments(), "ownerUserUuid", "createdByUuid");
+        if ("self".equals(dataScope) && (ownerUserId == null || !ownerUserId.equals(currentUser.getUserId())
+                || !StringUtils.hasText(ownerUserUuid) || !ownerUserUuid.trim().equals(currentUser.getUserUuid()))) {
             return deny("DATA_SCOPE_SELF_DENIED", "Resource is outside self data scope", List.of());
         }
         if ("none".equals(dataScope) || "deny".equals(dataScope)) {
@@ -240,6 +253,20 @@ public class DefaultAuthorizationService implements AuthorizationService {
         return AuthorizationDecision.allow("RISK_ACCEPTED", "Risk accepted");
     }
 
+    private Long trustedUserIdOrNull(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            return null;
+        }
+        return currentUser.getUserId();
+    }
+
+    private String trustedUserUuidOrNull(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            return null;
+        }
+        return currentUser.getUserUuid().trim();
+    }
+
     private boolean isWriteAction(AuthorizationRequest request) {
         String action = StringUtils.hasText(request.actionCode()) ? request.actionCode().toLowerCase(Locale.ROOT) : "";
         return !(action.startsWith("read") || action.startsWith("view") || action.startsWith("list") || action.startsWith("search"));
@@ -252,9 +279,18 @@ public class DefaultAuthorizationService implements AuthorizationService {
     }
 
     private AuthorizationDecision evaluateSystemJob(AuthorizationRequest request) {
-        if (!Boolean.TRUE.equals(argumentBoolean(request.arguments(), "systemPrincipal"))
-                && !Boolean.TRUE.equals(argumentBoolean(request.arguments(), "internalToken"))) {
+        if (!Boolean.TRUE.equals(argumentBoolean(request.arguments(), "systemPrincipal"))) {
             return AuthorizationDecision.deny("SYSTEM_PRINCIPAL_MISSING", "System principal is required");
+        }
+        if (request.currentUser() != null
+                || request.humanSubject() != null
+                || request.agentSubject() != null
+                || request.humanUserId() != null
+                || StringUtils.hasText(request.humanUserUuid())
+                || request.employeeId() != null
+                || StringUtils.hasText(request.permissionKey())
+                || StringUtils.hasText(request.toolCode())) {
+            return AuthorizationDecision.deny("SYSTEM_JOB_SUBJECT_CONFLICT", "System job request must not include human or agent subjects");
         }
         return new AuthorizationDecision(AuthorizationVerdict.ALLOW, "SYSTEM_JOB_ALLOW", "Permission granted",
                 true, false, false, "default-enterprise-pdp", List.of("SYSTEM_JOB_ALLOW"), "system");
@@ -330,6 +366,19 @@ public class DefaultAuthorizationService implements AuthorizationService {
         }
         Object value = arguments.get(key);
         return value instanceof Boolean bool ? bool : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private String argumentString(Map<String, Object> arguments, String... keys) {
+        if (arguments == null) {
+            return null;
+        }
+        for (String key : keys) {
+            Object value = arguments.get(key);
+            if (value != null && StringUtils.hasText(value.toString())) {
+                return value.toString().trim();
+            }
+        }
+        return null;
     }
 
     private Long argumentLong(Map<String, Object> arguments, String... keys) {

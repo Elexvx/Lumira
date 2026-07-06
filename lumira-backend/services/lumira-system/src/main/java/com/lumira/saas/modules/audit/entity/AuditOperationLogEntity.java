@@ -21,6 +21,7 @@ public class AuditOperationLogEntity {
     private String requestId;
     private String traceId;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Integer deleted;
 
@@ -48,6 +49,8 @@ public class AuditOperationLogEntity {
     public void setTraceId(String traceId) { this.traceId = traceId; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Integer getDeleted() { return deleted; }

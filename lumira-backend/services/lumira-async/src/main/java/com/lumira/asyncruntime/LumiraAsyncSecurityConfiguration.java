@@ -37,7 +37,6 @@ public class LumiraAsyncSecurityConfiguration {
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/info",
-                                "/actuator/prometheus",
                                 "/actuator/startup",
                                 "/api/version",
                                 "/api/v1/version",

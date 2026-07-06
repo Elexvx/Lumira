@@ -90,6 +90,60 @@ class PluginV2ControllerTest {
     }
 
     @Test
+    void currentAvailable_shouldUseSortedPermissionSnapshot() {
+        CurrentUser currentUser = currentUser("plugin:sms:view", "dashboard:view");
+        PluginVO.PluginAvailabilityVO plugin = new PluginVO.PluginAvailabilityVO();
+        plugin.setPluginCode("sms");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(pluginManagementAppService.currentAvailablePlugins(List.of("dashboard:view", "plugin:sms:view")))
+                .thenReturn(List.of(plugin));
+
+        var response = controller.currentAvailable();
+
+        assertThat(response.getData()).containsExactly(plugin);
+        verify(pluginManagementAppService).currentAvailablePlugins(List.of("dashboard:view", "plugin:sms:view"));
+    }
+
+    @Test
+    void currentAvailable_shouldUseEmptyPermissionSnapshotForUnauthenticatedUser() {
+        CurrentUser currentUser = currentUser("plugin:sms:view", "dashboard:view");
+        currentUser.setAuthenticated(false);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(pluginManagementAppService.currentAvailablePlugins(List.of())).thenReturn(List.of());
+
+        var response = controller.currentAvailable();
+
+        assertThat(response.getData()).isEmpty();
+        verify(pluginManagementAppService).currentAvailablePlugins(List.of());
+    }
+
+    @Test
+    void currentAvailable_shouldUseEmptyPermissionSnapshotForBlankUsername() {
+        CurrentUser currentUser = currentUser("plugin:sms:view", "dashboard:view");
+        currentUser.setUsername(" ");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(pluginManagementAppService.currentAvailablePlugins(List.of())).thenReturn(List.of());
+
+        var response = controller.currentAvailable();
+
+        assertThat(response.getData()).isEmpty();
+        verify(pluginManagementAppService).currentAvailablePlugins(List.of());
+    }
+
+    @Test
+    void currentAvailable_shouldUseEmptyPermissionSnapshotForMissingSessionId() {
+        CurrentUser currentUser = currentUser("plugin:sms:view", "dashboard:view");
+        currentUser.setSessionId(null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(pluginManagementAppService.currentAvailablePlugins(List.of())).thenReturn(List.of());
+
+        var response = controller.currentAvailable();
+
+        assertThat(response.getData()).isEmpty();
+        verify(pluginManagementAppService).currentAvailablePlugins(List.of());
+    }
+
+    @Test
     void currentMenus_shouldDelegateWithPermissionSnapshot() {
         CurrentUser currentUser = currentUser("plugin:sms:view");
         currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
@@ -101,6 +155,36 @@ class PluginV2ControllerTest {
 
         assertThat(response.getData()).isSameAs(menus);
         verify(pluginManagementAppService).currentMenus(List.of("plugin:sms:view"), "v11:data-scope-cache-v4");
+    }
+
+    @Test
+    void currentBootstrap_shouldDropPermissionVersionForUnauthenticatedUser() {
+        CurrentUser currentUser = currentUser("plugin:sms:view");
+        currentUser.setAuthenticated(false);
+        currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
+        Map<String, Object> bootstrap = Map.of("plugins", List.of());
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(pluginManagementAppService.currentBootstrap(List.of(), null)).thenReturn(bootstrap);
+
+        var response = controller.currentBootstrap();
+
+        assertThat(response.getData()).isSameAs(bootstrap);
+        verify(pluginManagementAppService).currentBootstrap(List.of(), null);
+    }
+
+    @Test
+    void currentBootstrap_shouldDropPermissionVersionForBlankUsername() {
+        CurrentUser currentUser = currentUser("plugin:sms:view");
+        currentUser.setUsername(" ");
+        currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
+        Map<String, Object> bootstrap = Map.of("plugins", List.of());
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(pluginManagementAppService.currentBootstrap(List.of(), null)).thenReturn(bootstrap);
+
+        var response = controller.currentBootstrap();
+
+        assertThat(response.getData()).isSameAs(bootstrap);
+        verify(pluginManagementAppService).currentBootstrap(List.of(), null);
     }
 
     @Test
@@ -136,6 +220,9 @@ class PluginV2ControllerTest {
     }
 
     private CurrentUser currentUser(String... permissions) {
-        return new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of(permissions));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of(permissions));
+        currentUser.setUserUuid("user-uuid-100");
+        currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
+        return currentUser;
     }
 }

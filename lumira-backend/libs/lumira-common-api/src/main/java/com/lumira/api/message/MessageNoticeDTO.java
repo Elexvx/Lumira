@@ -8,6 +8,7 @@ public class MessageNoticeDTO {
     private String messageType;
     private String targetScope;
     private Long targetUserId;
+    private String targetUserUuid;
     private String targetUserName;
     private Long targetRoleId;
     private String targetRoleName;
@@ -53,6 +54,14 @@ public class MessageNoticeDTO {
 
     public void setTargetUserId(Long targetUserId) {
         this.targetUserId = targetUserId;
+    }
+
+    public String getTargetUserUuid() {
+        return targetUserUuid;
+    }
+
+    public void setTargetUserUuid(String targetUserUuid) {
+        this.targetUserUuid = targetUserUuid;
     }
 
     public String getTargetUserName() {

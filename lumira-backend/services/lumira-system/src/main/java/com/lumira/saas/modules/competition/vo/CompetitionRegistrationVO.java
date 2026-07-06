@@ -13,6 +13,7 @@ public final class CompetitionRegistrationVO {
         private Long teamId;
         private Long projectId;
         private Long ownerUserId;
+        private String ownerUserUuid;
         private String status;
         private String feeMode;
         private Long entryFeeMinor;
@@ -39,6 +40,8 @@ public final class CompetitionRegistrationVO {
         public void setProjectId(Long projectId) { this.projectId = projectId; }
         public Long getOwnerUserId() { return ownerUserId; }
         public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+        public String getOwnerUserUuid() { return ownerUserUuid; }
+        public void setOwnerUserUuid(String ownerUserUuid) { this.ownerUserUuid = ownerUserUuid; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
         public String getFeeMode() { return feeMode; }
@@ -228,6 +231,7 @@ public final class CompetitionRegistrationVO {
         private Long stageId;
         private Integer formVersion;
         private Long submitterUserId;
+        private String submitterUserUuid;
         private String status;
         private LocalDateTime submittedAt;
         private LocalDateTime lockedAt;
@@ -245,6 +249,8 @@ public final class CompetitionRegistrationVO {
         public void setFormVersion(Integer formVersion) { this.formVersion = formVersion; }
         public Long getSubmitterUserId() { return submitterUserId; }
         public void setSubmitterUserId(Long submitterUserId) { this.submitterUserId = submitterUserId; }
+        public String getSubmitterUserUuid() { return submitterUserUuid; }
+        public void setSubmitterUserUuid(String submitterUserUuid) { this.submitterUserUuid = submitterUserUuid; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
         public LocalDateTime getSubmittedAt() { return submittedAt; }

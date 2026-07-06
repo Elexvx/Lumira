@@ -8,10 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
+import java.util.Queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,7 +55,154 @@ class PlatformEventOutboxServiceTest {
         PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
 
         assertThrows(IllegalArgumentException.class, () ->
-                service.record("MESSAGE", "NOTICE_CREATED", 2001L, "event-key", "{}"));
+                service.record("MESSAGE", "NOTICE_CREATED", 2001L, "event-key", trustedPayload()));
+    }
+
+    @Test
+    void recordShouldRejectInvalidUserIdBeforeInsert() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(PlatformEventTypes.SOURCE_SYSTEM, "NOTICE_CREATED", 0L, "event-key", "{}"));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+    }
+
+    @Test
+    void recordShouldRejectInvalidEventTypeBeforeInsert() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(PlatformEventTypes.SOURCE_SYSTEM, "notice.created", 2001L, "event-key", trustedPayload()));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+    }
+
+    @Test
+    void recordShouldRejectInvalidEventKeyBeforeInsert() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(PlatformEventTypes.SOURCE_SYSTEM, "NOTICE_CREATED", 2001L, "../event-key", trustedPayload()));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+    }
+
+    @Test
+    void recordShouldRejectOversizedPayloadBeforeInsert() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(
+                        PlatformEventTypes.SOURCE_SYSTEM,
+                        "NOTICE_CREATED",
+                        2001L,
+                        "event-key",
+                        Map.of("userUuid", "user-uuid-2001", "data", "x".repeat(70_000))
+                ));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+    }
+
+    @Test
+    void recordShouldRejectMissingUserUuidWhenUserIdPresent() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(PlatformEventTypes.SOURCE_SYSTEM, "NOTICE_CREATED", 2001L, "event-key", Map.of("noticeId", 9001L)));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+    }
+
+    @Test
+    void recordShouldRejectMissingUserUuidEvenWhenDatabaseCanResolveUser() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.userUuid = "user-uuid-2001";
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, queryOperations);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(
+                        PlatformEventTypes.SOURCE_SYSTEM,
+                        "NOTICE_CREATED",
+                        2001L,
+                        "event-key",
+                        Map.of("noticeId", 9001L)
+                ));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+        assertThat(queryOperations.queries).isEmpty();
+    }
+
+    @Test
+    void recordShouldRejectPayloadUserUuidMismatchWhenDatabaseCanResolveUser() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.userUuid = "user-uuid-2001";
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, queryOperations);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(
+                        PlatformEventTypes.SOURCE_SYSTEM,
+                        "NOTICE_CREATED",
+                        2001L,
+                        "event-key",
+                        Map.of("userUuid", "user-uuid-other")
+                ));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+    }
+
+    @Test
+    void recordShouldRejectDisabledUserEvenWhenPayloadUserUuidMatches() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, queryOperations);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(
+                        PlatformEventTypes.SOURCE_SYSTEM,
+                        "NOTICE_CREATED",
+                        2001L,
+                        "event-key",
+                        trustedPayload()
+                ));
+
+        verify(mapper, org.mockito.Mockito.never()).insert(any(PlatformEventOutboxEntity.class));
+        assertThat(queryOperations.queries)
+                .anyMatch(query -> query.sql.toLowerCase(Locale.ROOT).contains("status = 'enabled'"));
+    }
+
+    @Test
+    void recordShouldNotInventAuditUserForAnonymousSystemEvent() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        when(mapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        service.record(PlatformEventTypes.SOURCE_SYSTEM, "SYSTEM_HEALTH", null, "health:1", "{}");
+
+        ArgumentCaptor<PlatformEventOutboxEntity> captor = ArgumentCaptor.forClass(PlatformEventOutboxEntity.class);
+        verify(mapper).insert(captor.capture());
+        assertThat(captor.getValue().getUserId()).isNull();
+        assertThat(captor.getValue().getCreatedBy()).isNull();
+        assertThat(captor.getValue().getUpdatedBy()).isNull();
+    }
+
+    @Test
+    void recordShouldRejectWhenInsertMisses() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.userUuid = "user-uuid-2001";
+        when(mapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(0);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, queryOperations);
+
+        assertThrows(IllegalStateException.class, () ->
+                service.record(PlatformEventTypes.SOURCE_SYSTEM, "NOTICE_CREATED", 2001L, "event-key", trustedPayload()));
     }
 
     @Test
@@ -95,7 +244,70 @@ class PlatformEventOutboxServiceTest {
         verify(mapper, times(2)).update(any(), wrapperCaptor.capture());
         Map<String, Object> failureParams = wrapperCaptor.getAllValues().get(1).getParamNameValuePairs();
         assertThat(new ArrayList<>(failureParams.values()))
-                .contains(PlatformEventOutboxService.STATUS_DEAD_LETTER, 8, "broker unavailable", event.getUpdatedBy(), null);
+                .contains(PlatformEventOutboxService.STATUS_DEAD_LETTER, 8, "broker unavailable", event.getUpdatedBy());
+    }
+
+    @Test
+    void dispatchPendingShouldRejectUntrustedClaimedRowBeforeDispatcher() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PlatformEventOutboxEntity event = buildEvent();
+        event.setEventType("notice.created");
+        queryOperations.listRows = List.of(event);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+        AtomicInteger dispatchCount = new AtomicInteger();
+
+        int delivered = service.dispatchPending(ignored -> dispatchCount.incrementAndGet(), 10);
+
+        assertThat(delivered).isZero();
+        assertThat(dispatchCount).hasValue(0);
+        assertThat(queryOperations.updates)
+                .anyMatch(record -> record.sql.toLowerCase(Locale.ROOT).contains("set dispatch_status = ?, retry_count = ?"));
+    }
+
+    @Test
+    void dispatchPendingShouldRejectHumanRowMissingUserUuidBeforeDispatcher() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PlatformEventOutboxEntity event = buildEvent();
+        event.setUserUuid(null);
+        queryOperations.listRows = List.of(event);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+        AtomicInteger dispatchCount = new AtomicInteger();
+
+        int delivered = service.dispatchPending(ignored -> dispatchCount.incrementAndGet(), 10);
+
+        assertThat(delivered).isZero();
+        assertThat(dispatchCount).hasValue(0);
+        assertThat(queryOperations.updates)
+                .anyMatch(record -> record.sql.toLowerCase(Locale.ROOT).contains("set dispatch_status = ?, retry_count = ?"));
+    }
+
+    @Test
+    void dispatchPendingShouldRejectPayloadUserUuidMismatchBeforeDispatcher() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PlatformEventOutboxEntity event = buildEvent();
+        event.setPayloadJson("{\"userUuid\":\"user-uuid-other\"}");
+        queryOperations.listRows = List.of(event);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+        AtomicInteger dispatchCount = new AtomicInteger();
+
+        int delivered = service.dispatchPending(ignored -> dispatchCount.incrementAndGet(), 10);
+
+        assertThat(delivered).isZero();
+        assertThat(dispatchCount).hasValue(0);
+        assertThat(queryOperations.updates)
+                .anyMatch(record -> record.sql.toLowerCase(Locale.ROOT).contains("set dispatch_status = ?, retry_count = ?"));
     }
 
     @Test
@@ -151,7 +363,42 @@ class PlatformEventOutboxServiceTest {
                 .contains("claim_token = ?");
         assertThat(queryOperations.updates.get(1).sql.toLowerCase(Locale.ROOT))
                 .contains("where deleted = 0 and source_type = ? and id = ?")
-                .contains("claim_token");
+                .contains("claim_token")
+                .contains("event_type = ?")
+                .contains("event_key")
+                .contains("user_id = ? and user_uuid = ?")
+                .contains("retry_count");
+        assertThat(List.of(queryOperations.updates.get(1).args))
+                .contains("NOTICE_CREATED", "NOTICE_CREATED:message.notice:9001", 2001L, "user-uuid-2001", 0);
+    }
+
+    @Test
+    void dispatchFailureShouldBindTrustedSnapshotWhenDirectSqlEnabled() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.listRows = List.of(buildEvent());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+
+        int delivered = service.dispatchPending(event -> {
+            throw new IllegalStateException("broker unavailable");
+        }, 100);
+
+        assertThat(delivered).isZero();
+        assertThat(queryOperations.updates).hasSize(2);
+        String failureSql = queryOperations.updates.get(1).sql.toLowerCase(Locale.ROOT);
+        assertThat(failureSql)
+                .contains("set dispatch_status = ?, retry_count = ?")
+                .contains("where deleted = 0 and source_type = ? and id = ?")
+                .contains("claim_token")
+                .contains("event_type = ?")
+                .contains("event_key")
+                .contains("user_id = ? and user_uuid = ?")
+                .contains("retry_count");
+        assertThat(List.of(queryOperations.updates.get(1).args))
+                .contains("NOTICE_CREATED", "NOTICE_CREATED:message.notice:9001", 2001L, "user-uuid-2001", 0);
     }
 
     @Test
@@ -178,18 +425,99 @@ class PlatformEventOutboxServiceTest {
         assertThat(queryOperations.updates)
                 .anyMatch(record -> record.sql.toLowerCase(Locale.ROOT).contains("set dispatch_status = ?, retry_count = 0"));
         assertThat(queryOperations.updates)
-                .anyMatch(record -> record.sql.toLowerCase(Locale.ROOT)
-                        .contains("where deleted = 0 and source_type = ? and id = ?"));
+                .anyMatch(record -> {
+                    String sql = record.sql.toLowerCase(Locale.ROOT);
+                    return sql.contains("where deleted = 0 and source_type = ? and id = ?")
+                            && sql.contains("event_type = ?")
+                            && sql.contains("event_key = ?")
+                            && sql.contains("user_id = ? and user_uuid = ?");
+                });
+        assertThat(queryOperations.updates)
+                .anySatisfy(record -> assertThat(List.of(record.args))
+                        .contains("NOTICE_CREATED", "NOTICE_CREATED:message.notice:9001", 2001L, "user-uuid-2001"));
+    }
+
+    @Test
+    void replayByIdShouldNormalizeUserUuidWhenDirectSqlEnabled() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PlatformEventOutboxEntity event = buildEvent();
+        event.setUserUuid("  user-uuid-2001  ");
+        queryOperations.byIdRow = event;
+        queryOperations.listRows = List.of(event);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+
+        boolean replayed = service.replayById(10001L, ignored -> {
+        });
+
+        assertThat(replayed).isTrue();
+        assertThat(queryOperations.updates)
+                .anySatisfy(record -> assertThat(List.of(record.args)).contains("user-uuid-2001"));
+    }
+
+    @Test
+    void dispatchPendingShouldRejectDeliveredWhenClaimSnapshotWriteMissesInDirectSqlMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.listRows = List.of(buildEvent());
+        queryOperations.updateResults.add(1);
+        queryOperations.updateResults.add(0);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+
+        int delivered = service.dispatchPending(event -> {
+        }, 100);
+
+        assertThat(delivered).isZero();
+        assertThat(queryOperations.updates).hasSize(3);
+        assertThat(queryOperations.updates.get(2).sql.toLowerCase(Locale.ROOT))
+                .contains("set dispatch_status = ?, retry_count = ?");
+    }
+
+    @Test
+    void replayByIdShouldNotDispatchWhenResetBoundaryMissesInDirectSqlMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.byIdRow = buildEvent();
+        queryOperations.updateResult = 0;
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(),
+                mock(PlatformEventOutboxMapper.class),
+                queryOperations
+        );
+        AtomicInteger dispatchCount = new AtomicInteger();
+
+        boolean replayed = service.replayById(10001L, event -> dispatchCount.incrementAndGet());
+
+        assertThat(replayed).isFalse();
+        assertThat(dispatchCount).hasValue(0);
+    }
+
+    @Test
+    void replayByIdShouldRejectInvalidIdBeforeMapperAccess() {
+        PlatformEventOutboxMapper mapper = mock(PlatformEventOutboxMapper.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
+
+        boolean replayed = service.replayById(0L, event -> {
+        });
+
+        assertThat(replayed).isFalse();
+        verify(mapper, org.mockito.Mockito.never()).selectOne(any());
     }
 
     private PlatformEventOutboxEntity buildEvent() {
         PlatformEventOutboxEntity event = new PlatformEventOutboxEntity();
         event.setId(10001L);
         event.setUserId(2001L);
+        event.setUserUuid("user-uuid-2001");
         event.setSourceType(PlatformEventTypes.SOURCE_SYSTEM);
         event.setEventType("NOTICE_CREATED");
         event.setEventKey("NOTICE_CREATED:message.notice:9001");
-        event.setPayloadJson("{}");
+        event.setPayloadJson("{\"userUuid\":\"user-uuid-2001\"}");
         event.setDispatchStatus(PlatformEventOutboxService.STATUS_RECORDED);
         event.setRetryCount(0);
         event.setUpdatedBy(2001L);
@@ -197,11 +525,18 @@ class PlatformEventOutboxServiceTest {
         return event;
     }
 
+    private Map<String, Object> trustedPayload() {
+        return Map.of("userUuid", "user-uuid-2001");
+    }
+
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private final List<RecordedSql> queries = new ArrayList<>();
         private final List<RecordedSql> updates = new ArrayList<>();
         private List<PlatformEventOutboxEntity> listRows = new ArrayList<>();
         private PlatformEventOutboxEntity byIdRow;
+        private String userUuid;
+        private int updateResult = 1;
+        private final Queue<Integer> updateResults = new ArrayDeque<>();
 
         private RecordingQueryOperations() {
             super();
@@ -212,6 +547,10 @@ class PlatformEventOutboxServiceTest {
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             queries.add(new RecordedSql(sql, args));
             if (sql.toLowerCase(Locale.ROOT).contains("claim_token = ?")) {
+                for (PlatformEventOutboxEntity event : listRows) {
+                    event.setDispatchStatus(PlatformEventOutboxService.STATUS_DISPATCHING);
+                    event.setClaimToken(String.valueOf(args[1]));
+                }
                 return (List<T>) listRows;
             }
             if (sql.toLowerCase(Locale.ROOT).contains("where id = ? and deleted = 0 and source_type = ?")) {
@@ -232,10 +571,20 @@ class PlatformEventOutboxServiceTest {
             return rows.get(0);
         }
 
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            queries.add(new RecordedSql(sql, args));
+            if (String.class.equals(requiredType)) {
+                return (T) userUuid;
+            }
+            return null;
+        }
+
         @Override
         public int update(String sql, Object... args) {
             updates.add(new RecordedSql(sql, args));
-            return 1;
+            return updateResults.isEmpty() ? updateResult : updateResults.remove();
         }
     }
 

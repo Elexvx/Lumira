@@ -90,6 +90,23 @@ final class TotpService {
         return recoveryCodes.stream().anyMatch(code -> code.equalsIgnoreCase(input.trim()));
     }
 
+    List<String> consumeRecoveryCode(List<String> recoveryCodes, String input) {
+        if (recoveryCodes == null || recoveryCodes.isEmpty() || input == null) {
+            return null;
+        }
+        String normalizedInput = input.trim();
+        List<String> remaining = new ArrayList<>(Math.max(recoveryCodes.size() - 1, 0));
+        boolean matched = false;
+        for (String recoveryCode : recoveryCodes) {
+            if (!matched && recoveryCode != null && recoveryCode.equalsIgnoreCase(normalizedInput)) {
+                matched = true;
+                continue;
+            }
+            remaining.add(recoveryCode);
+        }
+        return matched ? List.copyOf(remaining) : null;
+    }
+
     String sha256(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

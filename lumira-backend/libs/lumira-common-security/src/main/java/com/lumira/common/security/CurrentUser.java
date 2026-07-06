@@ -11,6 +11,7 @@ public class CurrentUser {
     private String username;
     private Long simulatedRoleId;
     private String sessionId;
+    private String loginType;
     private Integer sessionVersion;
     private String permissionsVersion;
     private Boolean requiresPasswordChange;
@@ -116,6 +117,14 @@ public class CurrentUser {
 
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
+    }
+
+    public String getLoginType() {
+        return loginType;
+    }
+
+    public void setLoginType(String loginType) {
+        this.loginType = loginType;
     }
 
     public Integer getSessionVersion() {

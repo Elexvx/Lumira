@@ -3,6 +3,14 @@ package com.lumira.saas.modules.platform.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lumira.saas.common.annotation.RepeatSubmit;
+import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.SecurityContextFacade;
+import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
+import com.lumira.saas.modules.platform.app.PlatformBootstrapService;
+import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
+import com.lumira.saas.modules.system.app.SystemManagementAppService;
+import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
+import com.lumira.saas.modules.system.vo.SystemVO;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Set;
@@ -14,6 +22,12 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class PlatformV2ControllerTest {
 
@@ -49,7 +63,6 @@ class PlatformV2ControllerTest {
                         "auditSummary:/audit/summary",
                         "loginLogs:/audit/login-logs",
                         "operationLogs:/audit/operation-logs",
-                        "aiCallLogs:/audit/ai-call-logs",
                         "verificationLogs:/audit/verification-logs",
                         "dashboardSummary:/monitoring/dashboard/summary",
                         "onlineUsers:/monitoring/online-users",
@@ -100,6 +113,28 @@ class PlatformV2ControllerTest {
                         .isNotNull();
             }
         }
+    }
+
+    @Test
+    void agreementSettingsShouldUsePublicAgreementPath() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SystemVO.AgreementSettingsVO agreementSettings = new SystemVO.AgreementSettingsVO();
+        when(systemManagementAppService.getPublicAgreementSettings()).thenReturn(agreementSettings);
+        PlatformV2Controller controller = new PlatformV2Controller(
+                systemManagementAppService,
+                mock(SystemVerificationAppService.class),
+                mock(OnlineSessionManagementAppService.class),
+                mock(PlatformBootstrapService.class),
+                mock(OwnerRuntimeMetrics.class),
+                mock(SecurityContextFacade.class),
+                new PermissionGuard()
+        );
+
+        var response = controller.agreementSettings();
+
+        assertThat(response.getData()).isSameAs(agreementSettings);
+        verify(systemManagementAppService).getPublicAgreementSettings();
+        verify(systemManagementAppService, never()).getAgreementSettings(any());
     }
 
     private Set<String> methodsWith(Class<? extends java.lang.annotation.Annotation> annotationClass) {

@@ -18,35 +18,35 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://saas.elexvx.com/api/:path*"
+      "destination": "https://bm.aiadc.org.cn/api/:path*"
     },
     {
       "source": "/ws/:path*",
-      "destination": "https://saas.elexvx.com/ws/:path*"
+      "destination": "https://bm.aiadc.org.cn/ws/:path*"
     },
     {
       "source": "/api-doc/:path*",
-      "destination": "https://saas.elexvx.com/api-doc/:path*"
+      "destination": "https://bm.aiadc.org.cn/api-doc/:path*"
     },
     {
       "source": "/api-docs",
-      "destination": "https://saas.elexvx.com/api-docs"
+      "destination": "https://bm.aiadc.org.cn/api-docs"
     },
     {
       "source": "/swagger-ui.html",
-      "destination": "https://saas.elexvx.com/swagger-ui.html"
+      "destination": "https://bm.aiadc.org.cn/swagger-ui.html"
     },
     {
       "source": "/swagger-ui/:path*",
-      "destination": "https://saas.elexvx.com/swagger-ui/:path*"
+      "destination": "https://bm.aiadc.org.cn/swagger-ui/:path*"
     },
     {
       "source": "/webjars/:path*",
-      "destination": "https://saas.elexvx.com/webjars/:path*"
+      "destination": "https://bm.aiadc.org.cn/webjars/:path*"
     },
     {
       "source": "/api/uploads/:path*",
-      "destination": "https://saas.elexvx.com/api/uploads/:path*"
+      "destination": "https://bm.aiadc.org.cn/api/uploads/:path*"
     },
     {
       "source": "/:path*",

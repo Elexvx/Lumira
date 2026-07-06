@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.expert.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -19,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/experts")
@@ -50,41 +55,50 @@ public class ExpertV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(VIEW);
+        CurrentUser currentUser = require(VIEW);
         return ApiResponse.success(
-                expertManagementAppService.listExperts(securityContextFacade.getCurrentUser(), keyword, status, approvalStatus, pageNo, pageSize),
+                expertManagementAppService.listExperts(currentUser, keyword, status, approvalStatus, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/{id}")
     public ApiResponse<ExpertVO.Expert> expert(@PathVariable("id") Long id) {
-        require(VIEW);
-        return ApiResponse.success(expertManagementAppService.getExpert(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(VIEW);
+        return ApiResponse.success(expertManagementAppService.getExpert(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping
     @RepeatSubmit
     public ApiResponse<ExpertVO.Expert> createExpert(@Valid @RequestBody ExpertDTO.ExpertUpsertRequest request) {
-        require(CREATE);
-        return ApiResponse.success(expertManagementAppService.createExpert(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CREATE);
+        return ApiResponse.success(expertManagementAppService.createExpert(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<ExpertVO.Expert> updateExpert(@PathVariable("id") Long id, @Valid @RequestBody ExpertDTO.ExpertUpsertRequest request) {
-        require(UPDATE);
-        return ApiResponse.success(expertManagementAppService.updateExpert(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(UPDATE);
+        return ApiResponse.success(expertManagementAppService.updateExpert(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteExpert(@PathVariable("id") Long id) {
-        require(DELETE);
-        return ApiResponse.success(expertManagementAppService.deleteExpert(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(DELETE);
+        return ApiResponse.success(expertManagementAppService.deleteExpert(currentUser, id), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
     }
 }

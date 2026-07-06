@@ -6,12 +6,12 @@
         insert into sys_plugin_definition (
             plugin_code, plugin_name, plugin_type, description, author, plugin_api_version,
             builtin_flag, status, sort_no, schema_mode, supports_hot_disable, supports_data_purge,
-            runtime_contributions_json, created_by, updated_by, deleted
+            runtime_contributions_json, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.pluginName}, #{entity.pluginType}, #{entity.description},
             #{entity.author}, #{entity.pluginApiVersion}, 0, 'ENABLED', 0, #{entity.schemaMode},
             #{entity.supportsHotDisable}, #{entity.supportsDataPurge}, #{entity.runtimeContributionsJson},
-            #{entity.createdBy}, #{entity.updatedBy}, 0
+            #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
         on duplicate key update
             plugin_name = values(plugin_name),
@@ -25,6 +25,7 @@
             runtime_contributions_json = values(runtime_contributions_json),
             status = values(status),
             updated_by = values(updated_by),
+            updated_by_uuid = values(updated_by_uuid),
             updated_at = current_timestamp,
             deleted = 0
     </insert>
@@ -33,12 +34,12 @@
         insert into sys_plugin_version (
             plugin_code, version, package_path, checksum, signature_path, min_platform_version,
             install_status, load_status, health_status, lifecycle_status, schema_status, is_active, rollbackable,
-            metadata_json, validation_report_json, staged_path, created_by, updated_by, deleted
+            metadata_json, validation_report_json, staged_path, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.version}, #{entity.packagePath}, #{entity.checksum},
             #{entity.signaturePath}, #{entity.minPlatformVersion}, 'VERIFIED', 'UNLOADED', 'UNKNOWN', 'INSTALLED', 'PENDING',
             0, 0, #{entity.metadataJson}, #{entity.validationReportJson}, #{entity.stagedPath},
-            #{entity.createdBy}, #{entity.updatedBy}, 0
+            #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
         on duplicate key update
             package_path = values(package_path),
@@ -54,6 +55,7 @@
             validation_report_json = values(validation_report_json),
             staged_path = values(staged_path),
             updated_by = values(updated_by),
+            updated_by_uuid = values(updated_by_uuid),
             updated_at = current_timestamp,
             deleted = 0
     </insert>
@@ -150,11 +152,14 @@
             lifecycle_status = 'INSTALLED',
             schema_status = 'READY',
             rollbackable = #{rollbackable},
+            updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             installed_at = current_timestamp,
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and version = #{version}
           and deleted = 0
+          and install_status in ('VERIFIED', 'INSTALLED', 'LOADED')
     </update>
 
     <update id="updateVersionStatus">
@@ -164,16 +169,35 @@
             health_status = #{healthStatus},
             lifecycle_status = #{lifecycleStatus},
             schema_status = #{schemaStatus},
+            updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and version = #{version}
           and deleted = 0
+          <if test="lifecycleStatus == 'ENABLED'">
+          and install_status in ('INSTALLED', 'LOADED')
+          and load_status = 'LOADED'
+          and schema_status = 'READY'
+          </if>
+          <if test="lifecycleStatus == 'DISABLED'">
+          and lifecycle_status = 'ENABLED'
+          and is_active = 1
+          </if>
+          and exists (
+              select 1
+              from sys_plugin_definition d
+              where d.plugin_code = sys_plugin_version.plugin_code
+                and d.deleted = 0
+          )
     </update>
 
     <update id="deactivateOtherVersions">
         update sys_plugin_version
         set is_active = 0,
             rollbackable = case when version &lt;&gt; #{version} then 1 else rollbackable end,
+            updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
@@ -183,10 +207,21 @@
         update sys_plugin_version
         set is_active = 1,
             rollbackable = 1,
+            updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and version = #{version}
           and deleted = 0
+          and install_status in ('INSTALLED', 'LOADED')
+          and load_status = 'LOADED'
+          and schema_status = 'READY'
+          and exists (
+              select 1
+              from sys_plugin_definition d
+              where d.plugin_code = sys_plugin_version.plugin_code
+                and d.deleted = 0
+          )
     </update>
 
     <delete id="deleteDependencies">
@@ -195,10 +230,10 @@
 
     <insert id="insertDependency">
         insert into sys_plugin_dependency (
-            plugin_code, depends_on_plugin_code, min_version, created_by, updated_by, deleted
+            plugin_code, depends_on_plugin_code, min_version, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.dependsOnPluginCode}, #{entity.minVersion},
-            #{entity.createdBy}, #{entity.updatedBy}, 0
+            #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
     </insert>
 
@@ -211,10 +246,10 @@
     <insert id="insertPermissionRelation">
         insert into sys_plugin_permission_rel (
             plugin_code, plugin_version, permission_key, permission_name, permission_group,
-            created_by, updated_by, deleted
+            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.permissionKey},
-            #{entity.permissionName}, #{entity.permissionGroup}, #{entity.createdBy}, #{entity.updatedBy}, 0
+            #{entity.permissionName}, #{entity.permissionGroup}, #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
     </insert>
 
@@ -227,11 +262,11 @@
     <insert id="insertMenuRelation">
         insert into sys_plugin_menu_rel (
             plugin_code, plugin_version, menu_code, menu_name, route_path, icon,
-            permission_key, parent_menu_code, sort_no, created_by, updated_by, deleted
+            permission_key, parent_menu_code, sort_no, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.menuCode}, #{entity.menuName},
             #{entity.routePath}, #{entity.icon}, #{entity.permissionKey}, #{entity.parentMenuCode},
-            #{entity.sortNo}, #{entity.createdBy}, #{entity.updatedBy}, 0
+            #{entity.sortNo}, #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
     </insert>
 
@@ -257,6 +292,7 @@
         update sys_plugin_definition
         set status = #{status},
             updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
@@ -272,6 +308,7 @@
             is_active = 0,
             deleted = 1,
             updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
@@ -281,6 +318,7 @@
         update sys_plugin_menu_rel
         set deleted = 1,
             updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
@@ -290,6 +328,7 @@
         update sys_plugin_permission_rel
         set deleted = 1,
             updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
@@ -299,6 +338,7 @@
         update sys_plugin_dependency
         set deleted = 1,
             updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
@@ -309,9 +349,11 @@
         set status = 'DISABLED',
             deleted = 1,
             updated_by = #{operatorId},
+            updated_by_uuid = #{operatorUuid},
             updated_at = current_timestamp
         where plugin_code = #{pluginCode}
           and deleted = 0
+          and builtin_flag = 0
     </update>
 
     <delete id="deleteRuntimeLogsByPlugin">delete from sys_plugin_runtime_log where plugin_code = #{pluginCode}</delete>
@@ -319,7 +361,7 @@
     <delete id="deleteMenuRelationsByPlugin">delete from sys_plugin_menu_rel where plugin_code = #{pluginCode}</delete>
     <delete id="deletePermissionRelationsByPlugin">delete from sys_plugin_permission_rel where plugin_code = #{pluginCode}</delete>
     <delete id="deleteDependenciesByPlugin">delete from sys_plugin_dependency where plugin_code = #{pluginCode}</delete>
-    <delete id="deleteDefinitionByPlugin">delete from sys_plugin_definition where plugin_code = #{pluginCode}</delete>
+    <delete id="deleteDefinitionByPlugin">delete from sys_plugin_definition where plugin_code = #{pluginCode} and builtin_flag = 0</delete>
     <delete id="deleteSchemaHistoryByPlugin">delete from sys_plugin_schema_history where plugin_code = #{pluginCode}</delete>
 
     <select id="findEnabledVersion" resultType="com.lumira.saas.modules.plugin.entity.PluginEntities$PluginVersionEntity">
@@ -371,21 +413,21 @@
 
     <insert id="insertSchemaHistory">
         insert into sys_plugin_schema_history (
-            plugin_code, plugin_version, step_name, direction, script_path, execution_status, detail_message, created_by, created_at
+            plugin_code, plugin_version, step_name, direction, script_path, execution_status, detail_message, created_by, created_by_uuid, created_at
         ) values (
             #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.stepName}, #{entity.direction},
-            #{entity.scriptPath}, #{entity.executionStatus}, #{entity.detailMessage}, #{entity.createdBy}, current_timestamp
+            #{entity.scriptPath}, #{entity.executionStatus}, #{entity.detailMessage}, #{entity.createdBy}, #{entity.createdByUuid}, current_timestamp
         )
     </insert>
 
     <insert id="insertRuntimeLog">
         insert into sys_plugin_runtime_log (
             plugin_code, plugin_version, operation_type, lifecycle_status,
-            result_status, detail_message, request_id, trace_id, failure_stack, created_by, deleted
+            result_status, detail_message, request_id, trace_id, failure_stack, created_by, created_by_uuid, deleted
         ) values (
             #{entity.pluginCode}, #{entity.pluginVersion}, #{entity.operationType},
             #{entity.lifecycleStatus}, #{entity.resultStatus}, #{entity.detailMessage}, #{entity.requestId},
-            #{entity.traceId}, #{entity.failureStack}, #{entity.createdBy}, 0
+            #{entity.traceId}, #{entity.failureStack}, #{entity.createdBy}, #{entity.createdByUuid}, 0
         )
     </insert>
 

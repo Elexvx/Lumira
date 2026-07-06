@@ -23,6 +23,38 @@ class PaymentDomainModelsTest {
     }
 
     @Test
+    void paymentOrderCreatedEventShouldNotInventUserId() {
+        PaymentOrderAggregate order = new PaymentOrderAggregate("pay-100", BigDecimal.TEN, "PENDING");
+
+        order.recordCreated("mockpay", "CNY");
+
+        assertThat(order.domainEvents()).hasSize(1);
+        assertThat(order.domainEvents().getFirst().attributes()).doesNotContainKey("userId");
+    }
+
+    @Test
+    void paymentOrderCreatedEventShouldCarryTrustedUserUuidWhenPresent() {
+        PaymentOrderAggregate order = new PaymentOrderAggregate("pay-100", BigDecimal.TEN, "PENDING");
+
+        order.recordCreated("mockpay", "CNY", 1001L, " user-uuid-1001 ");
+
+        assertThat(order.domainEvents()).hasSize(1);
+        assertThat(order.domainEvents().getFirst().attributes())
+                .containsEntry("userId", 1001L)
+                .containsEntry("userUuid", "user-uuid-1001");
+    }
+
+    @Test
+    void paymentOrderCreatedEventShouldRejectUserIdWithoutUserUuid() {
+        PaymentOrderAggregate order = new PaymentOrderAggregate("pay-100", BigDecimal.TEN, "PENDING");
+
+        assertThatThrownBy(() -> order.recordCreated("mockpay", "CNY", 1001L, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("trusted payment actor identity");
+        assertThat(order.domainEvents()).isEmpty();
+    }
+
+    @Test
     void paymentOrderRejectsNonPositiveAmount() {
         assertThatThrownBy(() -> new PaymentOrderAggregate("pay-100", BigDecimal.ZERO, "PENDING"))
                 .isInstanceOf(IllegalArgumentException.class)

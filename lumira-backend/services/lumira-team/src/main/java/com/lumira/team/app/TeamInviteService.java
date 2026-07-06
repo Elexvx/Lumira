@@ -27,6 +27,11 @@ public class TeamInviteService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Set<String> ROLES_ON_JOIN = Set.of("ADMIN", "MANAGER", "MEMBER");
     private static final char[] INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
+    private static final int MAX_INVITE_CODE_LENGTH = 64;
+    private static final int MAX_INVITE_TOKEN_LENGTH = 256;
+    private static final int MAX_INVITE_TYPE_LENGTH = 32;
+    private static final int MAX_MESSAGE_LENGTH = 1000;
+    private static final int MAX_INVITE_USES = 10000;
 
     private final TeamAppService teamAppService;
     private final TeamPermissionService permissionService;
@@ -51,24 +56,33 @@ public class TeamInviteService {
     @Transactional
     public TeamVO.Invite createInvite(CurrentUser currentUser, Long teamId, TeamDTO.InviteCreateRequest request) {
         Long userId = teamAppService.requireUserId(currentUser);
-        String actorRole = permissionService.activeRole(teamId, userId);
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        if (request == null) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite request is required");
+        }
+        String inviteCode = allocateInviteCode(request.getInviteCode());
+        String inviteType = normalizeText(request.getInviteType(), "LINK", MAX_INVITE_TYPE_LENGTH, "Invite type is too long");
+        String roleOnJoin = teamAppService.normalizeEnum(request.getRoleOnJoin(), "MEMBER", ROLES_ON_JOIN, "Invalid role on join");
+        Integer maxUses = normalizeMaxUses(request.getMaxUses());
+        String actorRole = permissionService.activeRole(teamId, userId, userUuid);
         if (!permissionService.canInvite(actorRole)) {
             throw TeamAppService.biz(ErrorCode.FORBIDDEN, "Invite creation requires owner or admin");
         }
-        TeamVO.Team team = requireActiveTeam(teamId, userId);
+        TeamVO.Team team = requireActiveTeam(teamId, userId, userUuid);
         String rawToken = generateRawToken();
         String hash = sha256(rawToken);
-        String inviteCode = allocateInviteCode(request.getInviteCode());
         Long inviteId = teamInviteRepository.createInvite(
                 teamId,
                 inviteCode,
                 hash,
-                normalizeText(request.getInviteType(), "LINK"),
-                teamAppService.normalizeEnum(request.getRoleOnJoin(), "MEMBER", ROLES_ON_JOIN, "Invalid role on join"),
+                inviteType,
+                roleOnJoin,
                 request.getExpiresAt(),
-                normalizeMaxUses(request.getMaxUses()),
+                maxUses,
                 Boolean.TRUE.equals(request.getNeedApproval()),
-                userId
+                userId,
+                userUuid
         );
         TeamVO.Invite invite = requireInvite(teamId, inviteId);
         invite.setRawToken(rawToken);
@@ -79,15 +93,20 @@ public class TeamInviteService {
 
     public List<TeamVO.Invite> listInvites(CurrentUser currentUser, Long teamId) {
         Long userId = teamAppService.requireUserId(currentUser);
-        permissionService.requireTeamAdmin(teamId, userId);
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        permissionService.requireTeamAdmin(teamId, userId, userUuid);
         return teamInviteRepository.listInvites(teamId);
     }
 
     @Transactional
     public boolean disableInvite(CurrentUser currentUser, Long teamId, Long inviteId) {
         Long userId = teamAppService.requireUserId(currentUser);
-        permissionService.requireTeamAdmin(teamId, userId);
-        if (!teamInviteRepository.disableInvite(teamId, inviteId)) {
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        teamAppService.requirePositiveId(inviteId, "Invite id is required");
+        permissionService.requireTeamAdmin(teamId, userId, userUuid);
+        if (!teamInviteRepository.disableInvite(teamId, inviteId, userId, userUuid)) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Invite not found");
         }
         return true;
@@ -117,7 +136,11 @@ public class TeamInviteService {
     @Transactional
     public TeamVO.JoinResult joinByCode(CurrentUser currentUser, String inviteCode) {
         teamAppService.requireUserId(currentUser);
-        TeamVO.Invite invite = teamInviteRepository.findByCode(normalizeInviteCode(inviteCode));
+        String normalizedCode = normalizeInviteCode(inviteCode);
+        if (normalizedCode == null) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite code is required");
+        }
+        TeamVO.Invite invite = teamInviteRepository.findByCode(normalizedCode);
         if (invite == null) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Invite not found");
         }
@@ -128,33 +151,43 @@ public class TeamInviteService {
     @Transactional
     public TeamVO.JoinResult createJoinRequest(CurrentUser currentUser, Long teamId, TeamDTO.JoinRequestCreateRequest request) {
         Long userId = teamAppService.requireUserId(currentUser);
-        TeamVO.Team team = requireActiveTeam(teamId, userId);
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        String applyMessage = normalizeMessage(request == null ? null : request.getApplyMessage(), "Apply message is too long");
+        TeamVO.Team team = requireActiveTeam(teamId, userId, userUuid);
         if ("PRIVATE".equals(team.getVisibility()) && !"APPLY".equals(team.getJoinMode()) && !"OPEN".equals(team.getJoinMode())) {
             throw TeamAppService.biz(ErrorCode.FORBIDDEN, "This team does not accept join requests");
         }
-        if (permissionService.activeMember(teamId, userId) != null) {
+        if (permissionService.activeMember(teamId, userId, userUuid) != null) {
             return joinedResult(team);
         }
-        return pendingResult(createPendingRequest(teamId, userId, null, request == null ? null : request.getApplyMessage()), team);
+        return pendingResult(createPendingRequest(teamId, userId, userUuid, null, applyMessage), team);
     }
 
     public List<TeamVO.JoinRequest> listJoinRequests(CurrentUser currentUser, Long teamId) {
         Long userId = teamAppService.requireUserId(currentUser);
-        permissionService.requireTeamAdmin(teamId, userId);
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        permissionService.requireTeamAdmin(teamId, userId, userUuid);
         return teamJoinRequestRepository.listByTeam(teamId);
     }
 
     @Transactional
     public TeamVO.JoinRequest approveJoinRequest(CurrentUser currentUser, Long teamId, Long requestId, TeamDTO.JoinReviewRequest request) {
         Long userId = teamAppService.requireUserId(currentUser);
-        permissionService.requireTeamAdmin(teamId, userId);
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        teamAppService.requirePositiveId(requestId, "Join request id is required");
+        String reviewMessage = normalizeMessage(request == null ? null : request.getReviewMessage(), "Review message is too long");
+        permissionService.requireTeamAdmin(teamId, userId, userUuid);
         TeamVO.JoinRequest joinRequest = requireJoinRequest(teamId, requestId);
         if (!"PENDING".equals(joinRequest.getStatus())) {
             throw TeamAppService.biz(ErrorCode.BIZ_ERROR, "Join request already reviewed");
         }
-        teamAppService.ensureDirectMember(teamId, joinRequest.getUserId(), userId, "MEMBER");
-        String reviewMessage = request == null ? null : teamAppService.trimToNull(request.getReviewMessage());
-        if (!teamJoinRequestRepository.approve(teamId, requestId, userId, reviewMessage)) {
+        teamAppService.requirePositiveId(joinRequest.getUserId(), "Join request user id is required");
+        teamAppService.requireText(joinRequest.getUserUuid(), "Join request user uuid is required");
+        teamAppService.ensureDirectMember(teamId, joinRequest.getUserId(), joinRequest.getUserUuid(), userId, userUuid, "MEMBER");
+        if (!teamJoinRequestRepository.approve(teamId, requestId, joinRequest.getUserId(), joinRequest.getUserUuid(), userId, userUuid, reviewMessage)) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Pending join request not found");
         }
         return requireJoinRequest(teamId, requestId);
@@ -163,9 +196,18 @@ public class TeamInviteService {
     @Transactional
     public TeamVO.JoinRequest rejectJoinRequest(CurrentUser currentUser, Long teamId, Long requestId, TeamDTO.JoinReviewRequest request) {
         Long userId = teamAppService.requireUserId(currentUser);
-        permissionService.requireTeamAdmin(teamId, userId);
-        String reviewMessage = request == null ? null : teamAppService.trimToNull(request.getReviewMessage());
-        if (!teamJoinRequestRepository.reject(teamId, requestId, userId, reviewMessage)) {
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        teamAppService.requirePositiveId(requestId, "Join request id is required");
+        String reviewMessage = normalizeMessage(request == null ? null : request.getReviewMessage(), "Review message is too long");
+        permissionService.requireTeamAdmin(teamId, userId, userUuid);
+        TeamVO.JoinRequest joinRequest = requireJoinRequest(teamId, requestId);
+        if (!"PENDING".equals(joinRequest.getStatus())) {
+            throw TeamAppService.biz(ErrorCode.BIZ_ERROR, "Join request already reviewed");
+        }
+        teamAppService.requirePositiveId(joinRequest.getUserId(), "Join request user id is required");
+        teamAppService.requireText(joinRequest.getUserUuid(), "Join request user uuid is required");
+        if (!teamJoinRequestRepository.reject(teamId, requestId, joinRequest.getUserId(), joinRequest.getUserUuid(), userId, userUuid, reviewMessage)) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Pending join request not found");
         }
         return requireJoinRequest(teamId, requestId);
@@ -173,29 +215,30 @@ public class TeamInviteService {
 
     private TeamVO.JoinResult joinWithInvite(CurrentUser currentUser, TeamVO.Invite invite) {
         Long userId = teamAppService.requireUserId(currentUser);
-        TeamVO.Team team = requireActiveTeam(invite.getTeamId(), userId);
-        if (permissionService.activeMember(invite.getTeamId(), userId) != null) {
+        String userUuid = teamAppService.requireUserUuid(currentUser);
+        TeamVO.Team team = requireActiveTeam(invite.getTeamId(), userId, userUuid);
+        if (permissionService.activeMember(invite.getTeamId(), userId, userUuid) != null) {
             return joinedResult(team);
         }
         if (Boolean.TRUE.equals(invite.getNeedApproval()) || "APPLY".equals(team.getJoinMode())) {
-            TeamVO.JoinRequest pendingRequest = teamJoinRequestRepository.findPending(invite.getTeamId(), userId);
+            TeamVO.JoinRequest pendingRequest = teamJoinRequestRepository.findPending(invite.getTeamId(), userId, userUuid);
             if (pendingRequest == null) {
-                consumeInvite(invite);
-                pendingRequest = createPendingRequest(invite.getTeamId(), userId, invite.getId(), null);
+                consumeInvite(invite, userId, userUuid);
+                pendingRequest = createPendingRequest(invite.getTeamId(), userId, userUuid, invite.getId(), null);
             }
             return pendingResult(pendingRequest, team);
         }
-        consumeInvite(invite);
-        teamAppService.ensureDirectMember(invite.getTeamId(), userId, null, invite.getRoleOnJoin());
-        return joinedResult(requireActiveTeam(invite.getTeamId(), userId));
+        consumeInvite(invite, userId, userUuid);
+        teamAppService.ensureDirectMember(invite.getTeamId(), userId, userUuid, null, null, invite.getRoleOnJoin());
+        return joinedResult(requireActiveTeam(invite.getTeamId(), userId, userUuid));
     }
 
-    private TeamVO.JoinRequest createPendingRequest(Long teamId, Long userId, Long inviteId, String applyMessage) {
+    private TeamVO.JoinRequest createPendingRequest(Long teamId, Long userId, String userUuid, Long inviteId, String applyMessage) {
         try {
-            Long id = teamJoinRequestRepository.createPending(teamId, userId, inviteId, teamAppService.trimToNull(applyMessage));
+            Long id = teamJoinRequestRepository.createPending(teamId, userId, userUuid, inviteId, teamAppService.trimToNull(applyMessage));
             return requireJoinRequest(teamId, id);
         } catch (DuplicateKeyException exception) {
-            TeamVO.JoinRequest existing = teamJoinRequestRepository.findPending(teamId, userId);
+            TeamVO.JoinRequest existing = teamJoinRequestRepository.findPending(teamId, userId, userUuid);
             if (existing != null) {
                 return existing;
             }
@@ -203,8 +246,8 @@ public class TeamInviteService {
         }
     }
 
-    private void consumeInvite(TeamVO.Invite invite) {
-        if (!teamInviteRepository.consumeInviteQuota(invite)) {
+    private void consumeInvite(TeamVO.Invite invite, Long userId, String userUuid) {
+        if (!teamInviteRepository.consumeInviteQuota(invite, userId, userUuid)) {
             throw TeamAppService.biz(ErrorCode.BIZ_ERROR, "Invite is no longer usable");
         }
     }
@@ -226,10 +269,16 @@ public class TeamInviteService {
         if (!StringUtils.hasText(rawToken)) {
             throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite token is required");
         }
-        return teamInviteRepository.findByTokenHash(sha256(rawToken));
+        String token = rawToken.trim();
+        if (token.length() > MAX_INVITE_TOKEN_LENGTH) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite token is too long");
+        }
+        return teamInviteRepository.findByTokenHash(sha256(token));
     }
 
     private TeamVO.Invite requireInvite(Long teamId, Long inviteId) {
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        teamAppService.requirePositiveId(inviteId, "Invite id is required");
         TeamVO.Invite invite = teamInviteRepository.findById(teamId, inviteId);
         if (invite == null) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Invite not found");
@@ -238,6 +287,8 @@ public class TeamInviteService {
     }
 
     private TeamVO.JoinRequest requireJoinRequest(Long teamId, Long requestId) {
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        teamAppService.requirePositiveId(requestId, "Join request id is required");
         TeamVO.JoinRequest request = teamJoinRequestRepository.findById(teamId, requestId);
         if (request == null) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Join request not found");
@@ -246,7 +297,12 @@ public class TeamInviteService {
     }
 
     private TeamVO.Team requireActiveTeam(Long teamId, Long currentUserId) {
-        TeamVO.Team team = teamAppService.queryTeam(teamId, currentUserId);
+        return requireActiveTeam(teamId, currentUserId, null);
+    }
+
+    private TeamVO.Team requireActiveTeam(Long teamId, Long currentUserId, String currentUserUuid) {
+        teamAppService.requirePositiveId(teamId, "Team id is required");
+        TeamVO.Team team = teamAppService.queryTeam(teamId, currentUserId, currentUserUuid);
         if (team == null || !"ACTIVE".equals(team.getStatus())) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Team not found");
         }
@@ -288,6 +344,9 @@ public class TeamInviteService {
             return null;
         }
         String code = value.trim().toUpperCase(Locale.ROOT);
+        if (code.length() > MAX_INVITE_CODE_LENGTH) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite code is too long");
+        }
         if (code.length() < 8) {
             throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite code must be at least 8 characters");
         }
@@ -320,19 +379,36 @@ public class TeamInviteService {
         if (value == null) {
             return null;
         }
-        if (value <= 0) {
-            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Max uses must be positive");
+        if (value <= 0 || value > MAX_INVITE_USES) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Max uses is invalid");
         }
         return value;
     }
 
-    private String normalizeText(String value, String defaultValue) {
-        return StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
+    private String normalizeText(String value, String defaultValue, int maxLength, String message) {
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
+        if (normalized != null && normalized.length() > maxLength) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, message);
+        }
+        return normalized;
+    }
+
+    private String normalizeMessage(String value, String message) {
+        String normalized = teamAppService.trimToNull(value);
+        if (normalized != null && normalized.length() > MAX_MESSAGE_LENGTH) {
+            throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, message);
+        }
+        return normalized;
     }
 
     private void audit(CurrentUser currentUser, String module, String action, String type, String message) {
         if (auditPort != null) {
-            auditPort.log(currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
+            auditPort.log(teamAppService.requireUserId(currentUser), teamAppService.requireUserUuid(currentUser), trustedUsername(currentUser), module, action, type, "SUCCESS", message);
         }
+    }
+
+    private String trustedUsername(CurrentUser currentUser) {
+        teamAppService.requireUserId(currentUser);
+        return currentUser.getUsername();
     }
 }

@@ -1,6 +1,6 @@
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Form, Input, Modal } from 'antd';
-import { type CSSProperties } from 'react';
+import { Alert, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
+import { useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -8,12 +8,23 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { LoginFormFields, WechatLoginPanel, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
+import { request } from '@/services/common/request';
 import './Login.css';
 
 const INITIAL_PASSWORD = '123456';
 type ForcedPasswordChangeFormValues = {
   newPassword: string;
   confirmPassword: string;
+};
+
+type PasswordResetStep = 0 | 1 | 2;
+type PasswordResetFormValues = {
+  account?: string;
+  contactType?: 'sms' | 'email';
+  contact?: string;
+  verificationCode?: string;
+  newPassword?: string;
+  confirmPassword?: string;
 };
 
 type LoginPageMainSectionProps = {
@@ -51,6 +62,7 @@ type LoginPageMainSectionProps = {
   handleFinishFailed: NonNullable<FormProps<LoginFormValues>['onFinishFailed']>;
   setCaptchaProof: (value: string) => void;
   resetCaptchaProof: () => void;
+  openPasswordReset: () => void;
   isMobile: boolean;
 };
 
@@ -89,6 +101,7 @@ const LoginPageMainSection = ({
   handleFinishFailed,
   setCaptchaProof,
   resetCaptchaProof,
+  openPasswordReset,
   isMobile,
 }: LoginPageMainSectionProps) => (
   <div className="saas-login-page" style={loginPageStyle}>
@@ -147,6 +160,7 @@ const LoginPageMainSection = ({
             onSliderCaptchaVerified={setCaptchaProof}
             onSliderCaptchaReset={resetCaptchaProof}
             onOpenAgreementPreview={openAgreementPreview}
+            onForgotPassword={openPasswordReset}
           />
           {((isMobile ? activeLoginMode : 'password') === 'passkey' || (isMobile ? activeLoginMode : 'password') === 'wechat') && !pendingSecondFactorLogin ? null : (
             <Button
@@ -156,7 +170,7 @@ const LoginPageMainSection = ({
               loading={submitting}
               data-testid="login-submit-button"
               className="saas-login-page__submit-button"
-              htmlType="button"
+              htmlType="submit"
               onClick={() => {
                 const formValues = loginForm.getFieldsValue(true);
                 const accountInput = document.querySelector<HTMLInputElement>('[data-testid="login-account-input"]');
@@ -167,7 +181,6 @@ const LoginPageMainSection = ({
                   passwordPassword: formValues.passwordPassword || passwordInput?.value,
                 };
                 loginForm.setFieldsValue(nextValues);
-                void loginForm.validateFields().then(() => handleSubmit(nextValues));
               }}
             >
               {submitButtonText}
@@ -184,9 +197,208 @@ const LoginPageMainSection = ({
   </div>
 );
 
+const PasswordResetModal = ({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) => {
+  const [form] = Form.useForm<PasswordResetFormValues>();
+  const [step, setStep] = useState<PasswordResetStep>(0);
+  const [challengeId, setChallengeId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const resetState = () => {
+    setStep(0);
+    setChallengeId('');
+    setSubmitting(false);
+    form.resetFields();
+  };
+
+  const handleCancel = () => {
+    resetState();
+    onClose();
+  };
+
+  const handleNext = async () => {
+    if (step === 0) {
+      await form.validateFields(['account']);
+      setStep(1);
+      return;
+    }
+
+    if (step === 1) {
+      const values = await form.validateFields(['account', 'contactType', 'contact']);
+      setSubmitting(true);
+      try {
+        const challenge = await request<LoginCodeChallenge>('/v1/auth/password-reset/challenge', {
+          method: 'POST',
+          skipAuth: true,
+          autoRedirectOnUnauthorized: false,
+          data: {
+            account: values.account,
+            contactType: values.contactType,
+            contact: values.contact,
+          },
+        });
+        setChallengeId(challenge.challengeId);
+        setStep(2);
+        message.success(formatMessage({ id: 'page.login.passwordReset.codeSent', defaultMessage: '验证码已发送' }));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    const values = await form.validateFields(['verificationCode', 'newPassword', 'confirmPassword']);
+    setSubmitting(true);
+    try {
+      await request<boolean>('/v1/auth/password-reset/complete', {
+        method: 'POST',
+        skipAuth: true,
+        autoRedirectOnUnauthorized: false,
+        data: {
+          challengeId,
+          verificationCode: values.verificationCode,
+          newPassword: values.newPassword,
+        },
+      });
+      message.success(formatMessage({ id: 'page.login.passwordReset.success', defaultMessage: '密码已重置，请使用新密码登录' }));
+      handleCancel();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const contactType = Form.useWatch('contactType', form);
+
+  return (
+    <Modal
+      open={open}
+      title={formatMessage({ id: 'page.login.passwordReset.title', defaultMessage: '重置密码' })}
+      onCancel={handleCancel}
+      destroyOnClose
+      footer={[
+        step > 0 ? (
+          <Button key="back" onClick={() => setStep((current) => Math.max(0, current - 1) as PasswordResetStep)} disabled={submitting}>
+            {formatMessage({ id: 'page.login.passwordReset.back', defaultMessage: '上一步' })}
+          </Button>
+        ) : null,
+        <Button key="next" type="primary" loading={submitting} onClick={() => void handleNext()}>
+          {step === 2
+            ? formatMessage({ id: 'page.login.passwordReset.submit', defaultMessage: '确认重置' })
+            : formatMessage({ id: 'page.login.passwordReset.next', defaultMessage: '下一步' })}
+        </Button>,
+      ]}
+    >
+      <Steps
+        size="small"
+        current={step}
+        className="saas-login-page__reset-steps"
+        items={[
+          { title: formatMessage({ id: 'page.login.passwordReset.stepAccount', defaultMessage: '账号' }) },
+          { title: formatMessage({ id: 'page.login.passwordReset.stepContact', defaultMessage: '验证' }) },
+          { title: formatMessage({ id: 'page.login.passwordReset.stepPassword', defaultMessage: '新密码' }) },
+        ]}
+      />
+      <Form<PasswordResetFormValues>
+        form={form}
+        layout="vertical"
+        preserve
+        initialValues={{ contactType: 'email' }}
+        className="saas-login-page__reset-form"
+      >
+        {step === 0 ? (
+          <Form.Item
+            name="account"
+            label={formatMessage({ id: 'page.login.passwordReset.account', defaultMessage: '账号' })}
+            rules={[
+              { required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterAccount', defaultMessage: '请输入账号、手机号或邮箱' }) },
+              { max: 128, message: formatMessage({ id: 'page.login.error.accountLength', defaultMessage: '账号长度不能超过 128 个字符' }) },
+            ]}
+          >
+            <Input autoComplete="username" maxLength={128} />
+          </Form.Item>
+        ) : null}
+        {step === 1 ? (
+          <>
+            <Form.Item
+              name="contactType"
+              label={formatMessage({ id: 'page.login.passwordReset.contactType', defaultMessage: '验证方式' })}
+              rules={[{ required: true }]}
+            >
+              <Select
+                options={[
+                  { label: formatMessage({ id: 'page.login.passwordReset.email', defaultMessage: '绑定邮箱' }), value: 'email' },
+                  { label: formatMessage({ id: 'page.login.passwordReset.sms', defaultMessage: '绑定手机号' }), value: 'sms' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name="contact"
+              label={contactType === 'sms'
+                ? formatMessage({ id: 'page.login.passwordReset.mobile', defaultMessage: '绑定手机号' })
+                : formatMessage({ id: 'page.login.passwordReset.emailAddress', defaultMessage: '绑定邮箱' })}
+              rules={[
+                { required: true, message: formatMessage({ id: 'page.login.passwordReset.contactRequired', defaultMessage: '请输入账号绑定的邮箱或手机号' }) },
+                ...(contactType === 'sms'
+                  ? [{ pattern: /^1[3-9]\d{9}$/, message: formatMessage({ id: 'page.login.error.invalidMobile', defaultMessage: '请输入有效手机号' }) }]
+                  : [{ type: 'email' as const, message: formatMessage({ id: 'page.login.error.invalidEmail', defaultMessage: '请输入有效邮箱地址' }) }]),
+              ]}
+            >
+              <Input autoComplete={contactType === 'sms' ? 'tel' : 'email'} maxLength={128} />
+            </Form.Item>
+          </>
+        ) : null}
+        {step === 2 ? (
+          <>
+            <Form.Item
+              name="verificationCode"
+              label={formatMessage({ id: 'page.login.passwordReset.code', defaultMessage: '验证码' })}
+              rules={[{ required: true, message: formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: '请输入验证码' }) }]}
+            >
+              <Input autoComplete="one-time-code" inputMode="numeric" maxLength={12} />
+            </Form.Item>
+            <Form.Item
+              name="newPassword"
+              label={formatMessage({ id: 'page.login.passwordReset.newPassword', defaultMessage: '新密码' })}
+              rules={[
+                { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.newPasswordRequired', defaultMessage: '请输入新密码' }) },
+                { min: 6, message: formatMessage({ id: 'page.login.error.passwordLength', defaultMessage: '密码长度不能少于 6 位' }) },
+              ]}
+            >
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+            <Form.Item
+              name="confirmPassword"
+              label={formatMessage({ id: 'page.login.passwordReset.confirmPassword', defaultMessage: '确认新密码' })}
+              dependencies={['newPassword']}
+              rules={[
+                { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.confirmPasswordRequired', defaultMessage: '请再次输入新密码' }) },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPassword') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error(formatMessage({ id: 'page.login.initialPasswordChange.passwordMismatch', defaultMessage: '两次输入的新密码不一致' })));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
+          </>
+        ) : null}
+      </Form>
+    </Modal>
+  );
+};
+
 const Login = () => {
   const loginFlow = useLoginFlow();
   const responsive = useResponsive();
+  const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const loginSubTitle =
     loginFlow.activeLoginMode === 'password'
@@ -238,6 +450,7 @@ const Login = () => {
         handleFinishFailed={loginFlow.actions.handleFinishFailed}
         setCaptchaProof={loginFlow.actions.setCaptchaProof}
         resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
+        openPasswordReset={() => setPasswordResetOpen(true)}
         isMobile={responsive.isMobile}
         loginPageStyle={loginFlow.loginPageStyle}
         brandingWebsiteName={loginFlow.brandingWebsiteName}
@@ -245,6 +458,7 @@ const Login = () => {
         loginSubTitle={loginSubTitle}
         submitButtonText={submitButtonText}
       />
+      <PasswordResetModal open={passwordResetOpen} onClose={() => setPasswordResetOpen(false)} />
       <Modal
         className="saas-login-page__agreement-modal"
         open={loginFlow.dialogState.agreementPreviewOpen}

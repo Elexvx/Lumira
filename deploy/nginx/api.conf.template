@@ -1,0 +1,393 @@
+limit_req_zone $binary_remote_addr zone=api_per_ip:10m rate=30r/s;
+limit_conn_zone $binary_remote_addr zone=api_conn_per_ip:10m;
+
+server {
+    listen 80;
+    server_name _;
+
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $gateway_upstream ${GATEWAY_UPSTREAM};
+    set $system_upstream ${SYSTEM_SERVICE_UPSTREAM};
+    set $auth_upstream ${AUTH_SERVICE_UPSTREAM};
+    set $file_upstream ${FILE_SERVICE_UPSTREAM};
+    set $message_upstream ${MESSAGE_SERVICE_UPSTREAM};
+    set $plugin_upstream ${PLUGIN_SERVICE_UPSTREAM};
+    set $payment_upstream ${PAYMENT_SERVICE_UPSTREAM};
+    set $localization_upstream ${LOCALIZATION_SERVICE_UPSTREAM};
+    set $team_upstream ${TEAM_SERVICE_UPSTREAM};
+    set $ai_upstream ${AI_SERVICE_UPSTREAM};
+
+    client_max_body_size 200m;
+    limit_req_status 429;
+    limit_conn_status 429;
+    limit_conn api_conn_per_ip 80;
+
+    location = /health {
+        return 200 "ok\n";
+        add_header Content-Type text/plain;
+    }
+
+    location = /api/health {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$system_upstream/api/health;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/(ai|tasks|approvals|evaluations)(/|$) {
+        limit_req zone=api_per_ip burst=40 nodelay;
+        proxy_pass http://$system_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v1/(dashboard|profile|audit)(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$system_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /api/p/ {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$plugin_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /ws/message {
+        proxy_pass http://$message_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /internal/auth {
+        proxy_pass http://$auth_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /internal/files {
+        proxy_pass http://$file_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /internal/payment {
+        proxy_pass http://$payment_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /internal/team {
+        proxy_pass http://$team_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /file/internal/jobs {
+        proxy_pass http://$file_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /message/internal/jobs {
+        proxy_pass http://$message_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /payment/internal/jobs {
+        proxy_pass http://$payment_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /plugin/internal/jobs {
+        proxy_pass http://$plugin_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v(1|2)/auth(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$auth_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v(1|2)/files(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$file_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v(1|2)/message(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$message_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v(1|2)/plugins(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$plugin_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v(1|2)/payment(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$payment_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v(1|2)/localization(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$localization_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v2/ai(/|$) {
+        limit_req zone=api_per_ip burst=40 nodelay;
+        proxy_pass http://$ai_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v2/(teams|team-invites)(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$team_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ ^/api/v2/admin/teams(/|$) {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$team_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        limit_req zone=api_per_ip burst=80 nodelay;
+        proxy_pass http://$gateway_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /ws/ {
+        proxy_pass http://$gateway_upstream$request_uri;
+        proxy_http_version 1.1;
+        proxy_connect_timeout 3s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        return 404;
+    }
+}

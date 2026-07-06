@@ -2,6 +2,8 @@ package com.lumira.saas.infrastructure.security.service;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
@@ -62,22 +64,34 @@ public class SecuritySettingsService {
     private final SysConfigMapper sysConfigMapper;
     private final SecurityProperties securityProperties;
     private final ReadModelVersionService readModelVersionService;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private volatile CachedSecuritySettings cachedSettings;
     private volatile CachedReadModelVersion cachedReadModelVersion;
+    private final ThreadLocal<CurrentUser> currentUpdateOperator = new ThreadLocal<>();
 
     public SecuritySettingsService(SysConfigMapper sysConfigMapper, SecurityProperties securityProperties) {
-        this(sysConfigMapper, securityProperties, null);
+        this(sysConfigMapper, securityProperties, null, null);
     }
 
     @Autowired
     public SecuritySettingsService(
             SysConfigMapper sysConfigMapper,
             SecurityProperties securityProperties,
-            ReadModelVersionService readModelVersionService
+            ReadModelVersionService readModelVersionService,
+            SessionAuthenticationService sessionAuthenticationService
     ) {
         this.sysConfigMapper = sysConfigMapper;
         this.securityProperties = securityProperties;
         this.readModelVersionService = readModelVersionService;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+    }
+
+    public SecuritySettingsService(
+            SysConfigMapper sysConfigMapper,
+            SecurityProperties securityProperties,
+            ReadModelVersionService readModelVersionService
+    ) {
+        this(sysConfigMapper, securityProperties, readModelVersionService, null);
     }
 
     public long getIdleTimeoutSeconds() {
@@ -192,7 +206,10 @@ public class SecuritySettingsService {
         );
     }
 
-    public SecuritySettingsSnapshot updateSettings(SecuritySettingsSnapshot request) {
+    public SecuritySettingsSnapshot updateSettings(SecuritySettingsSnapshot request, CurrentUser operator) {
+        CurrentUser trustedOperator = requireTrustedOperator(operator);
+        currentUpdateOperator.set(trustedOperator);
+        try {
         validatePositive(request.getIdleTimeoutSeconds(), "空闲超时时间");
         validatePositive(request.getAccessTokenExpireSeconds(), "access token 过期时间");
         validatePositive(request.getRefreshTokenExpireSeconds(), "refresh token 刷新时限");
@@ -310,6 +327,9 @@ public class SecuritySettingsService {
             );
         }
         return loadSettings();
+        } finally {
+            currentUpdateOperator.remove();
+        }
     }
 
     private Map<String, String> loadConfigValues(List<String> keys) {
@@ -427,15 +447,72 @@ public class SecuritySettingsService {
     }
 
     private void upsertConfig(String configKey, String configName, String configValue, String remark) {
+        CurrentUser operator = requireTrustedOperator(currentUpdateOperator.get());
+        Long operatorId = operator.getUserId();
+        String operatorUuid = operator.getUserUuid();
         SysConfigEntity entity = new SysConfigEntity();
         entity.setConfigKey(configKey);
         entity.setConfigName(configName);
         entity.setConfigValue(configValue);
         entity.setIsSystem(1);
         entity.setRemark(remark);
-        entity.setCreatedBy(0L);
-        entity.setUpdatedBy(0L);
+        entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(operatorUuid);
+        entity.setUpdatedBy(operatorId);
+        entity.setUpdatedByUuid(operatorUuid);
         sysConfigMapper.upsertPlatformConfig(entity);
+    }
+
+    private CurrentUser requireTrustedOperator(CurrentUser operator) {
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedOperator = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            operator == null ? null : operator.getSessionId(),
+                            operator == null ? null : operator.getUserId(),
+                            operator == null ? null : operator.getUserUuid(),
+                            operator == null ? null : operator.getSimulatedRoleId(),
+                            operator == null ? null : operator.getSessionVersion(),
+                            operator == null ? null : operator.getPermissionsVersion()
+                    )
+            );
+            if (operator != null) {
+                copyTrustedCurrentUser(operator, refreshedOperator);
+                return operator;
+            }
+            return refreshedOperator;
+        }
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator identity is required");
+        }
+        return operator;
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedOperator = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(refreshedOperator)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator identity is required");
+        }
+        return refreshedOperator;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions());
+        target.setRoleIds(source.getRoleIds());
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds());
+        target.setDescendantDeptIds(source.getDescendantDeptIds());
+        target.setDataScopes(source.getDataScopes());
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
     }
 
     private String normalizeCaptchaType(String value) {

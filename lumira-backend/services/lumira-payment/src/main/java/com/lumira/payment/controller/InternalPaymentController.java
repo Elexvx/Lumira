@@ -3,67 +3,54 @@ package com.lumira.payment.controller;
 import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
-import com.lumira.api.payment.PaymentProviderSettingsDTO;
-import com.lumira.api.payment.PaymentProviderTestResultDTO;
-import com.lumira.payment.service.PaymentManagementAppService;
-import com.lumira.payment.service.PaymentTransactionService;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.payment.service.PaymentInternalApiService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/internal/payment")
-public class InternalPaymentController implements PaymentInternalApi {
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false", matchIfMissing = true)
+public class InternalPaymentController {
 
-    private final PaymentManagementAppService paymentManagementAppService;
-    private final PaymentTransactionService paymentTransactionService;
+    private final PaymentInternalApiService paymentInternalApiService;
 
-    public InternalPaymentController(
-            PaymentManagementAppService paymentManagementAppService,
-            PaymentTransactionService paymentTransactionService
-    ) {
-        this.paymentManagementAppService = paymentManagementAppService;
-        this.paymentTransactionService = paymentTransactionService;
-    }
-
-    @GetMapping("/providers")
-    public List<PaymentProviderSettingsDTO> listPaymentProviderSettings() {
-        return paymentManagementAppService.listProviderSettings();
-    }
-
-    @GetMapping("/providers/{providerCode}")
-    public PaymentProviderSettingsDTO paymentProviderSettings(@PathVariable String providerCode) {
-        return paymentManagementAppService.paymentProviderSettings(providerCode);
-    }
-
-    @PutMapping("/providers/{providerCode}")
-    public PaymentProviderSettingsDTO updatePaymentProviderSettings(
-            @RequestParam("operatorId") Long operatorId,
-            @PathVariable String providerCode,
-            @RequestBody PaymentProviderSettingsDTO request
-    ) {
-        return paymentManagementAppService.updatePaymentProviderSettings(operatorId, providerCode, request);
-    }
-
-    @GetMapping("/providers/{providerCode}/test")
-    public PaymentProviderTestResultDTO testPaymentProvider(@RequestParam("operatorId") Long operatorId, @PathVariable String providerCode) {
-        return paymentManagementAppService.testPaymentProvider(operatorId, providerCode);
+    public InternalPaymentController(PaymentInternalApiService paymentInternalApiService) {
+        this.paymentInternalApiService = paymentInternalApiService;
     }
 
     @PostMapping("/orders")
-    public PaymentOrderDTO createOrder(@RequestParam("operatorId") Long operatorId, @RequestBody PaymentCreateOrderRequestDTO request) {
-        return paymentTransactionService.createOrder(operatorId, request);
+    public PaymentOrderDTO createOrder(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @RequestBody PaymentCreateOrderRequestDTO request
+    ) {
+        requireInternalServicePrincipal();
+        return paymentInternalApiService.createOrder(operatorId, operatorUuid, request);
     }
 
     @GetMapping("/orders/{orderNo}")
-    public PaymentOrderDTO getOrder(@PathVariable String orderNo) {
-        return paymentTransactionService.getOrder(orderNo);
+    public PaymentOrderDTO getOrder(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @PathVariable String orderNo
+    ) {
+        requireInternalServicePrincipal();
+        return paymentInternalApiService.getOrder(operatorId, operatorUuid, orderNo);
+    }
+
+    private void requireInternalServicePrincipal() {
+        if (!AuthenticationTrustSupport.isInternalServiceAuthentication(SecurityContextHolder.getContext().getAuthentication())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Internal service token is required");
+        }
     }
 }

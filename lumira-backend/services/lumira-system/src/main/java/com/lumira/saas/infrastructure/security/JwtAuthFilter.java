@@ -3,6 +3,7 @@ package com.lumira.saas.infrastructure.security;
 import com.lumira.saas.common.constant.HeaderConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.common.web.TraceContext;
@@ -30,6 +31,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.regex.Pattern;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -37,6 +39,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     public static final String AUTH_BIZ_EXCEPTION_ATTR = "auth.bizException";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final int MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
+    private static final Pattern SAFE_BEARER_TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9._~+/=-]+$");
 
     private final SessionAuthenticationService sessionAuthenticationService;
     private final AuthSessionStore authSessionStore;
@@ -85,10 +89,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (SecurityContextHolder.getContext().getAuthentication() != null
-                && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
+        var existingAuthentication = SecurityContextHolder.getContext().getAuthentication();
+        if (AuthenticationTrustSupport.canReuse(existingAuthentication)) {
             filterChain.doFilter(request, response);
             return;
+        }
+        if (existingAuthentication != null) {
+            SecurityContextHolder.clearContext();
         }
 
         String authorization = request.getHeader(HeaderConstants.AUTHORIZATION);
@@ -100,6 +107,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authorization.substring(BEARER_PREFIX.length()).trim();
         if (!StringUtils.hasText(token)) {
             filterChain.doFilter(request, response);
+            return;
+        }
+        if (!isTrustedBearerToken(token)) {
+            SecurityContextHolder.clearContext();
+            BizException bizException = new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage(),
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
+            writeUnauthorizedResponse(request, response, bizException);
             return;
         }
 
@@ -144,6 +161,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private boolean isTrustedBearerToken(String token) {
+        return token.length() <= MAX_BEARER_TOKEN_LENGTH
+                && SAFE_BEARER_TOKEN_PATTERN.matcher(token).matches();
+    }
+
     private boolean isPasswordChangeAllowedRequest(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
@@ -175,6 +197,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         || "/api/auth/refresh-token".equals(path)))
                 || path.startsWith("/api/health")
                 || path.startsWith("/api/version")
+                || "/api/v2/runtime/version".equals(path)
                 || path.startsWith("/actuator/");
     }
 

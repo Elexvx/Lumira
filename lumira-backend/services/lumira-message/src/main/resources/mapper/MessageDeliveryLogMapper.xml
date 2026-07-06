@@ -6,6 +6,10 @@
 
     <sql id="deliveryFilters">
         l.deleted = 0
+        <if test="query.manageDeliveryLogs == false">
+            and l.created_by = #{query.userId}
+            and l.created_by_uuid = #{query.userUuid}
+        </if>
         <if test="query.keyword != null and query.keyword != ''">
             and (
                 l.title like concat('%', #{query.keyword}, '%')
@@ -51,6 +55,7 @@
                l.channel,
                l.target_scope as targetScope,
                l.target_user_id as targetUserId,
+               l.target_user_uuid as targetUserUuid,
                l.target_user_name as targetUserName,
                l.target_email as targetEmail,
                l.title,
@@ -59,6 +64,9 @@
                l.error_message as errorMessage,
                l.sent_at as sentAt,
                l.created_by as createdBy,
+               l.created_by_uuid as createdByUuid,
+               l.updated_by as updatedBy,
+               l.updated_by_uuid as updatedByUuid,
                l.created_at as createdAt
         from msg_delivery_log l
         where <include refid="deliveryFilters"/>

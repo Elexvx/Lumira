@@ -695,6 +695,8 @@ public Long getConversationId() {
         private Long id;
         private Long conversationId;
         private Long employeeId;
+        private Long ownerUserId;
+        private String ownerUserUuid;
         private String skillCode;
         private String toolName;
         private String permissionMode;
@@ -729,6 +731,22 @@ public Long getConversationId() {
 
         public void setEmployeeId(Long employeeId) {
             this.employeeId = employeeId;
+        }
+
+        public Long getOwnerUserId() {
+            return ownerUserId;
+        }
+
+        public void setOwnerUserId(Long ownerUserId) {
+            this.ownerUserId = ownerUserId;
+        }
+
+        public String getOwnerUserUuid() {
+            return ownerUserUuid;
+        }
+
+        public void setOwnerUserUuid(String ownerUserUuid) {
+            this.ownerUserUuid = ownerUserUuid;
         }
 
         public String getSkillCode() {

@@ -2,6 +2,9 @@ package com.lumira.file;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.common.vo.PageResponse;
@@ -26,10 +29,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -41,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -79,6 +85,9 @@ class FileManagementAppServiceTest {
     @Mock
     private MultipartFile multipartFile;
 
+    @Mock
+    private SystemInternalApi systemInternalApi;
+
     @TempDir
     Path tempDir;
 
@@ -97,8 +106,17 @@ class FileManagementAppServiceTest {
                 fileProcessingTaskRequestService,
                 fieldCryptoService,
                 storageMetrics,
-                new SafeUrlValidator()
+                new SafeUrlValidator(),
+                null,
+                provider(systemInternalApi)
         );
+        org.mockito.Mockito.lenient().when(systemInternalApi.findUserIdentityById(11L)).thenReturn(userSnapshot(11L, "alice", "ENABLED"));
+        org.mockito.Mockito.lenient().when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("*"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
     }
 
     @Test
@@ -114,6 +132,8 @@ class FileManagementAppServiceTest {
         );
 
         CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
+        currentUser.setUserUuid("user-uuid-11");
+        currentUser.setPermissionsVersion("permissions-1");
         PageResponse<?> response = service.listFiles(currentUser, null, null, null, null, null, null, 1, 100, null, null);
 
         assertThat(response).isInstanceOf(FileVO.FileObjectPageResponse.class);
@@ -123,6 +143,68 @@ class FileManagementAppServiceTest {
         assertThat(response.getRecords()).hasSize(0);
         assertThat(((FileVO.FileObjectPageResponse) response).getHasMore()).isTrue();
         assertThat(((FileVO.FileObjectPageResponse) response).getTotalCapped()).isTrue();
+    }
+
+    @Test
+    void listFiles_shouldRejectUnauthenticatedUserBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.listFiles(unauthenticatedUser(), null, null, null, null, null, null, 1, 10, null, null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void listFiles_shouldRejectBlankUsernameBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.listFiles(blankUsernameUser(), null, null, null, null, null, null, 1, 10, null, null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void listFiles_shouldRejectMissingSessionVersionBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.listFiles(missingSessionVersionUser(), null, null, null, null, null, null, 1, 10, null, null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void listFiles_shouldRejectDisabledTrustedOperatorBeforeMapperAccess() {
+        when(systemInternalApi.findUserIdentityById(11L)).thenReturn(userSnapshot(11L, "alice", "DISABLED"));
+
+        assertThatThrownBy(() -> service.listFiles(currentUser(), null, null, null, null, null, null, 1, 10, null, null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void uploadDocument_shouldRejectInternalServicePrincipalBeforeStorageWrite() {
+        CurrentUser internalService = new CurrentUser(0L, "internal-service", null, "internal", 0, false, Set.of());
+
+        assertThatThrownBy(() -> service.uploadDocument(internalService, multipartFile, "docs", null, null, "local"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(documentUploadService, fileObjectMapper, fileProcessingTaskRequestService);
+    }
+
+    @Test
+    void uploadFile_publicScopeShouldRequirePublishPermissionBeforeStorageWrite() {
+        CurrentUser uploader = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("system:file:upload"));
+        uploader.setUserUuid("user-uuid-11");
+        uploader.setPermissionsVersion("permissions-1");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("system:file:upload"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.uploadFile(uploader, multipartFile, "docs", null, null, "local", "PUBLIC"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(documentUploadService, imageUploadService, fileObjectMapper, fileProcessingTaskRequestService);
     }
 
     @Test
@@ -166,6 +248,62 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void listFiles_downloadCenterScopeShouldRequireDownloadCenterPermission() {
+        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("system:file:view"));
+        currentUser.setUserUuid("user-uuid-11");
+        currentUser.setPermissionsVersion("permissions-1");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("system:file:view"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.listFiles(currentUser, null, null, null, null, null, "download-center", 1, 10, null, null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void searchFilesForInternalToolShouldRejectOversizedLimitBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.searchFilesForInternalTool(currentUser(), null, null, null, false, 101))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void searchFilesForInternalToolShouldRejectNonPositiveLimitBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.searchFilesForInternalTool(currentUser(), null, null, null, false, 0))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void getFile_shouldRejectInvalidFileIdBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.getFile(currentUser(), 0L, false, false))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
+    void readFileContent_shouldRejectOversizedFileBeforeReadingBytes() throws Exception {
+        Path uploadRoot = tempDir.resolve("uploads");
+        Path target = uploadRoot.resolve("large.txt");
+        Files.createDirectories(uploadRoot);
+        Files.write(target, new byte[(10 * 1024 * 1024) + 1]);
+        when(uploadProperties.getStorageRoot()).thenReturn(uploadRoot.toString());
+        when(fileObjectMapper.selectOne(ArgumentMatchers.<QueryWrapper<FileObjectEntity>>any()))
+                .thenReturn(fileObjectEntity(99L, "large.txt", "large.txt"));
+
+        assertThatThrownBy(() -> service.readFileContent(currentUser(), 99L, false, false))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+    }
+
+    @Test
     void listStorageSpaces_shouldReportCappedTotalForLargePageWindow() {
         AtomicInteger countInvocation = new AtomicInteger();
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
@@ -181,6 +319,28 @@ class FileManagementAppServiceTest {
         assertThat(typed.getHasMore()).isTrue();
         assertThat(typed.getTotalCapped()).isTrue();
         assertThat(typed.getRecords()).hasSize(2);
+    }
+
+    @Test
+    void listFiles_mineScopeShouldFilterByUploaderUuid() {
+        when(fileObjectMapper.selectList(ArgumentMatchers.<QueryWrapper<FileObjectEntity>>any()))
+                .thenReturn(fileObjectEntities(1), List.of());
+
+        service.listFiles(currentUser(), null, null, null, null, null, "mine", 1, 10, null, null);
+
+        ArgumentCaptor<QueryWrapper<FileObjectEntity>> captor = ArgumentCaptor.forClass(QueryWrapper.class);
+        verify(fileObjectMapper, times(2)).selectList(captor.capture());
+        assertThat(captor.getAllValues().getFirst().getSqlSegment())
+                .contains("uploaded_by")
+                .contains("uploaded_by_uuid");
+    }
+
+    @Test
+    void listStorageSpaces_shouldRejectBlankUsernameBeforeMapperAccess() {
+        assertThatThrownBy(() -> service.listStorageSpaces(blankUsernameUser(), 1, 2))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileStorageSpaceMapper);
     }
 
     @Test
@@ -304,6 +464,7 @@ class FileManagementAppServiceTest {
         ArgumentCaptor<FileObjectEntity> captor = ArgumentCaptor.forClass(FileObjectEntity.class);
         verify(fileObjectMapper).insert(captor.capture());
         assertThat(captor.getValue().getBucket()).isEqualTo("local");
+        assertThat(captor.getValue().getUploadedByUuid()).isEqualTo("user-uuid-11");
     }
 
     @Test
@@ -317,6 +478,36 @@ class FileManagementAppServiceTest {
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
         verify(fileObjectMapper).selectOne(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any());
+    }
+
+    @Test
+    void storageSpaceWritesShouldBindOriginalProviderKeyStatusAndDefaultFlag() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/file/app/FileManagementAppService.java"));
+
+        assertThat(source).contains(
+                ".eq(FileStorageSpaceEntity::getStorageKey, existing.storageKey())",
+                ".eq(FileStorageSpaceEntity::getProvider, existing.provider())",
+                ".eq(FileStorageSpaceEntity::getStatus, existing.status())",
+                ".eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(existing.defaultStorage()) ? 1 : 0)"
+        );
+    }
+
+    @Test
+    void deleteFile_shouldBindPersonalOwnerUuidInFinalSoftDelete() throws Exception {
+        Path uploadRoot = tempDir.resolve("uploads");
+        Files.createDirectories(uploadRoot);
+        Files.writeString(uploadRoot.resolve("obj-1"), "hello");
+        when(uploadProperties.getStorageRoot()).thenReturn(uploadRoot.toString());
+        FileObjectEntity file = fileObjectEntity(1L, "file.txt", "obj-1");
+        when(fileObjectMapper.selectOne(ArgumentMatchers.<QueryWrapper<FileObjectEntity>>any())).thenReturn(file);
+
+        service.deleteFile(currentUser(), 1L, false, false);
+
+        ArgumentCaptor<UpdateWrapper<FileObjectEntity>> wrapperCaptor = ArgumentCaptor.forClass(UpdateWrapper.class);
+        verify(fileObjectMapper).update(ArgumentMatchers.isNull(), wrapperCaptor.capture());
+        assertThat(wrapperCaptor.getValue().getSqlSet()).contains("updated_by_uuid");
+        assertThat(wrapperCaptor.getValue().getSqlSegment())
+                .contains("id", "deleted", "uploaded_by", "uploaded_by_uuid");
     }
 
     @Test
@@ -358,7 +549,22 @@ class FileManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
+        currentUser.setUserUuid("user-uuid-11");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
+    }
+
+    private CurrentUser unauthenticatedUser() {
+        return new CurrentUser(11L, "alice", null, "sid", 1, false, Set.of("*"));
+    }
+
+    private CurrentUser blankUsernameUser() {
+        return new CurrentUser(11L, " ", null, "sid", 1, true, Set.of("*"));
+    }
+
+    private CurrentUser missingSessionVersionUser() {
+        return new CurrentUser(11L, "alice", null, "sid", null, true, Set.of("*"));
     }
 
     private List<FileObjectEntity> fileObjectEntities(int size) {
@@ -367,6 +573,7 @@ class FileManagementAppServiceTest {
                     FileObjectEntity entity = new FileObjectEntity();
                     entity.setId((long) index + 1L);
                     entity.setUploadedBy(11L);
+                    entity.setUploadedByUuid("user-uuid-11");
                     entity.setOriginalFilename("file-" + index);
                     entity.setObjectKey("obj-" + index);
                     entity.setStorageType("object");
@@ -384,6 +591,27 @@ class FileManagementAppServiceTest {
                     return entity;
                 })
                 .toList();
+    }
+
+    private FileObjectEntity fileObjectEntity(Long id, String originalFilename, String objectKey) {
+        FileObjectEntity entity = new FileObjectEntity();
+        entity.setId(id);
+        entity.setUploadedBy(11L);
+        entity.setUploadedByUuid("user-uuid-11");
+        entity.setOriginalFilename(originalFilename);
+        entity.setObjectKey(objectKey);
+        entity.setStorageType("LOCAL");
+        entity.setBucket("local");
+        entity.setFileExtension("txt");
+        entity.setContentType("text/plain");
+        entity.setFileSize(100L);
+        entity.setPublicUrl("/api/uploads/" + objectKey);
+        entity.setPreviewMode("TEXT");
+        entity.setPreviewableFlag(1);
+        entity.setStatus("ENABLED");
+        entity.setCreatedAt(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now());
+        return entity;
     }
 
     private List<FileStorageSpaceEntity> storageSpaceEntities(int size) {
@@ -409,5 +637,33 @@ class FileManagementAppServiceTest {
                     return entity;
                 })
                 .toList();
+    }
+
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi internalApi) {
+        ObjectProvider<SystemInternalApi> provider = org.mockito.Mockito.mock(ObjectProvider.class);
+        org.mockito.Mockito.lenient().when(provider.getIfAvailable()).thenReturn(internalApi);
+        return provider;
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
+        return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(
+            List<String> permissions,
+            List<Long> roleIds,
+            List<Long> deptIds,
+            List<Long> descendantDeptIds
+    ) {
+        return new PermissionSnapshotDTO(
+                "perm-v11",
+                permissions,
+                roleIds,
+                21L,
+                deptIds,
+                descendantDeptIds,
+                List.of(),
+                "/files"
+        );
     }
 }

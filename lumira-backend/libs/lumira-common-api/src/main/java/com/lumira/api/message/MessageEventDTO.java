@@ -11,6 +11,7 @@ public class MessageEventDTO {
     private String eventType;
     private String eventKey;
     private Long userId;
+    private String userUuid;
     private Long version;
     private String traceId;
     private String requestId;
@@ -58,6 +59,14 @@ public class MessageEventDTO {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
     }
 
     public Long getVersion() {

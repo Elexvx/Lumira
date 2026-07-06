@@ -64,6 +64,62 @@ class UploadResourceSecurityInterceptorTest {
     }
 
     @Test
+    void rejectsEncodedPathTraversalBeforeDatabaseLookup() throws Exception {
+        FileObjectMapper mapper = mock(FileObjectMapper.class);
+        FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
+        UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(request("/api/uploads/%2e%2e/private.txt"), response, new Object());
+
+        assertFalse(allowed);
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
+        org.mockito.Mockito.verifyNoInteractions(mapper, storageSpaceMapper);
+    }
+
+    @Test
+    void rejectsEncodedBackslashTraversalBeforeDatabaseLookup() throws Exception {
+        FileObjectMapper mapper = mock(FileObjectMapper.class);
+        FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
+        UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(request("/api/uploads/2026%5cprivate.txt"), response, new Object());
+
+        assertFalse(allowed);
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
+        org.mockito.Mockito.verifyNoInteractions(mapper, storageSpaceMapper);
+    }
+
+    @Test
+    void rejectsDoubleEncodedTraversalBeforeDatabaseLookup() throws Exception {
+        FileObjectMapper mapper = mock(FileObjectMapper.class);
+        FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
+        UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(request("/api/uploads/%252e%252e/private.txt"), response, new Object());
+
+        assertFalse(allowed);
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
+        org.mockito.Mockito.verifyNoInteractions(mapper, storageSpaceMapper);
+    }
+
+    @Test
+    void rejectsDoubleEncodedBackslashTraversalBeforeDatabaseLookup() throws Exception {
+        FileObjectMapper mapper = mock(FileObjectMapper.class);
+        FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
+        UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(request("/api/uploads/2026%255cprivate.txt"), response, new Object());
+
+        assertFalse(allowed);
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
+        org.mockito.Mockito.verifyNoInteractions(mapper, storageSpaceMapper);
+    }
+
+    @Test
     void rejectsPublicFileWhenStorageSpaceDisallowsAnonymousAccess() throws Exception {
         FileObjectMapper mapper = mock(FileObjectMapper.class);
         FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);

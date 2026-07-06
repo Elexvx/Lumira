@@ -35,10 +35,11 @@
     <insert id="upsertPlatformConfig">
         insert into sys_config (
             config_key, config_name, config_value, config_scope, is_system, remark,
-            created_by, updated_by, deleted
+            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         ) values (
             #{entity.configKey}, #{entity.configName}, #{entity.configValue},
-            'PLATFORM', #{entity.isSystem}, #{entity.remark}, #{entity.createdBy}, #{entity.updatedBy}, 0
+            'PLATFORM', #{entity.isSystem}, #{entity.remark},
+            #{entity.createdBy}, #{entity.createdByUuid}, #{entity.updatedBy}, #{entity.updatedByUuid}, 0
         )
         on duplicate key update
             config_name = values(config_name),
@@ -47,6 +48,7 @@
             is_system = values(is_system),
             remark = values(remark),
             updated_by = values(updated_by),
+            updated_by_uuid = values(updated_by_uuid),
             updated_at = current_timestamp,
             deleted = 0
     </insert>

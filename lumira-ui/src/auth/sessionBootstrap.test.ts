@@ -298,5 +298,7 @@ describe('sessionBootstrap', () => {
     expect(mocks.tryRefreshToken).toHaveBeenCalledTimes(1);
     expect(mocks.loadSecuritySettings).toHaveBeenCalledTimes(1);
     expect(mocks.request).toHaveBeenCalledTimes(4);
+    expect(mocks.persistCurrentUser).toHaveBeenCalledWith(secondCurrentUserResponse);
+    expect(mocks.persistSessionMeta).not.toHaveBeenCalled();
   });
 });

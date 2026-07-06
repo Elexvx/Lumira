@@ -4,6 +4,7 @@ import com.lumira.domain.event.StandardDomainEvent;
 import com.lumira.domain.model.AggregateRoot;
 import com.lumira.domain.model.EntityId;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class PaymentDomainModels {
@@ -24,17 +25,29 @@ public final class PaymentDomainModels {
             this.status = status == null ? "CREATED" : status;
         }
 
-        public void recordCreated(String providerCode, String currency, Long userId) {
+        public void recordCreated(String providerCode, String currency) {
+            recordCreated(providerCode, currency, null, null);
+        }
+
+        public void recordCreated(String providerCode, String currency, Long userId, String userUuid) {
+            if (userId != null && (userId <= 0 || userUuid == null || userUuid.isBlank())) {
+                throw new IllegalArgumentException("trusted payment actor identity is required");
+            }
+            Map<String, Object> attributes = new LinkedHashMap<>();
+            attributes.put("amount", amount);
+            attributes.put("providerCode", providerCode == null ? "" : providerCode);
+            attributes.put("currency", currency == null ? "" : currency);
+            if (userId != null) {
+                attributes.put("userId", userId);
+            }
+            if (userUuid != null && !userUuid.isBlank()) {
+                attributes.put("userUuid", userUuid.trim());
+            }
             registerEvent(StandardDomainEvent.of(
                     "PAYMENT_ORDER_CREATED",
                     "payment.order",
                     id().value(),
-                    Map.of(
-                            "amount", amount,
-                            "providerCode", providerCode == null ? "" : providerCode,
-                            "currency", currency == null ? "" : currency,
-                            "userId", userId == null ? 0L : userId
-                    )
+                    attributes
             ));
         }
 

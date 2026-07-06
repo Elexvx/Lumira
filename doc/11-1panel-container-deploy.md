@@ -58,7 +58,14 @@ cp deploy/.env.example deploy/.env
 - `DB_PASSWORD`
 - `JWT_SECRET`
 - `PLUGIN_SIGNATURE_SECRET`
-- `SAAS_JOB_INTERNAL_TOKEN`
+- `SAAS_INTERNAL_SYSTEM_TOKEN`
+- `SAAS_INTERNAL_AUTH_TOKEN`
+- `SAAS_INTERNAL_AUTH_SYSTEM_TOKEN`
+- `SAAS_INTERNAL_FILE_TOKEN`
+- `SAAS_INTERNAL_MESSAGE_TOKEN`
+- `SAAS_INTERNAL_PAYMENT_TOKEN`
+- `SAAS_INTERNAL_PLUGIN_TOKEN`
+- `SAAS_INTERNAL_JOB_TOKEN`
 
 `DB_PASSWORD` 会同时作为容器内 MySQL root 用户密码和后端数据库连接密码，避免维护两套数据库密码。
 
@@ -74,8 +81,8 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml pull
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d
 ```
 
-如果需要启用 Nacos profile，再替换 `NACOS_AUTH_TOKEN`、`NACOS_AUTH_IDENTITY_KEY`、`NACOS_AUTH_IDENTITY_VALUE`。
-如果需要启用定时任务 profile，再替换 `XXL_JOB_ADMIN_ACCESS_TOKEN`、`XXL_JOB_ACCESS_TOKEN`、`XXL_JOB_LOGIN_PASSWORD`。
+当前生产拓扑不提供 bundled Nacos profile，请保持 `NACOS_CONFIG_ENABLED=false` 和 `NACOS_DISCOVERY_ENABLED=false`。
+如果需要启用 XXL-Job 调度能力，再替换 `XXL_JOB_ADMIN_ACCESS_TOKEN`、`XXL_JOB_ACCESS_TOKEN`、`XXL_JOB_LOGIN_PASSWORD`。
 
 ## 访问入口
 
@@ -96,15 +103,16 @@ CORS_ALLOWED_ORIGIN_PATTERNS=https://你的前端.vercel.app,https://你的前�
 如果以后想让 1Panel 同时托管前端，可以启用可选 profile：
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile lumira-ui up -d --build lumira-ui
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile local-lumira-ui up -d --build lumira-ui
 ```
 
-如果以后需要启用 Nacos 或 XXL-Job：
+如果以后需要单独拉起或重启 XXL-Job 执行器：
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile nacos up -d
-docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile jobs up -d --build
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build lumira-job-executor
 ```
+
+- XXL-Job 执行器日志：`lumira-job-executor` 是常规 service，不存在独立 `jobs` profile
 
 ## 持久化数据
 
@@ -112,11 +120,10 @@ Compose 已使用 Docker volume 保存：
 
 - MySQL 数据：`mysql_data`
 - Redis 数据：`redis_data`
-- Nacos 数据和日志：`nacos_data`、`nacos_logs`，仅启用 `nacos` profile 时使用
+- Nacos 数据和日志：当前拓扑不提供 bundled `nacos` profile，不要为 `nacos_*` volume 预留存储
 - 上传文件：`upload_data`
 - 插件文件：`plugin_data`、`plugin_staging`
-- XXL-Job 执行器日志：`xxl_job_executor_logs`，仅启用 `jobs` profile 时使用
-
+- XXL-Job 执行器日志：`lumira-job-executor` 是常规 service，不存在独立 `jobs` profile
 不要把本地的 `services/lumira-system/storage` 直接打包进生产镜像；该目录已经被 `.dockerignore` 排除。
 
 ## 生产注意事项
@@ -124,7 +131,7 @@ Compose 已使用 Docker volume 保存：
 - `.env` 不要提交到 Git。
 - 不要使用 `deploy/.env.example` 里的示例值作为生产密钥。
 - `JWT_SECRET` 和 `PLUGIN_SIGNATURE_SECRET` 建议使用 32 字符以上随机字符串。
-- 对公网只建议开放 80/443；MySQL、Redis、Nacos、XXL-Job 默认只在 Docker 内部网络中使用，不对宿主机暴露端口。
+- 对公网只建议开放 80/443；MySQL、Redis 和 XXL-Job 默认只在 Docker 内部网络中使用，不对宿主机暴露端口。
 - 首次启动会构建多个 Java 镜像，耗时较长，建议服务器至少 4C8G。
 
 ## 常用命令

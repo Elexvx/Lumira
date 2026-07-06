@@ -38,7 +38,7 @@
 
 ### 3.3 当前运行方式
 
-当前默认运行方式不是将所有模块独立部署，而是通过 `lumira-server` 聚合：
+当前默认运行方式不是将所有模块独立部署，而是以 `lumira-server` 作为同步请求聚合入口，并配套 `lumira-async`、`lumira-job-executor` 两个后台运行时：
 
 - 对外主入口统一
 - 内部代码边界保留
@@ -66,7 +66,7 @@
 
 1. `services/lumira-admin` 是正式 Spring Boot 启动入口。
 2. 聚合模式下，对外主 API 入口统一。
-3. `api-proxy` 统一暴露 `/api/**`、`/ws/**` 等对外路径时，上游应指向聚合服务。
+3. `api-proxy` 统一暴露 `/api/**`、`/ws/**` 等对外路径时，上游应指向 `lumira-server` 这一同步请求入口。
 4. 当前默认不以 Nacos 服务发现作为本地开发前提，相关配置仅为后续拆分预留。
 5. 敏感配置只能通过环境变量或密钥系统注入，不能硬编码进仓库。
 
@@ -76,9 +76,10 @@
 
 1. 启动 MySQL、Redis、XXL-JOB Admin 等基础依赖
 2. 启动 `services/lumira-admin`
-3. 启动 `api-proxy`
-4. 启动前端
-5. 按需启动 Prometheus、Grafana、Loki、Tempo 等观测组件
+3. 启动 `lumira-async` 和 `lumira-job-executor`
+4. 启动 `api-proxy`
+5. 启动前端
+6. 按需启动 Prometheus、Grafana、Loki、Tempo 等观测组件
 
 ### 3.7 后续拆分原则
 

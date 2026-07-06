@@ -1,9 +1,18 @@
 package com.lumira.saas.modules.iam.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.modules.architecture.application.OwnerReadModelMetricsService;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -14,7 +23,7 @@ class IamReadinessV2ControllerTest {
         OwnerReadModelMetricsService metricsService = Mockito.mock(OwnerReadModelMetricsService.class);
         when(metricsService.iamPermissionSnapshotLatestVersion()).thenReturn(7L);
 
-        var controller = new IamReadinessV2Controller(metricsService);
+        var controller = new IamReadinessV2Controller(metricsService, securityContext(Set.of("system:monitor:service:view")), new PermissionGuard());
         var response = controller.readiness();
 
         assertThat(response.getHttpStatus()).isEqualTo(200);
@@ -84,5 +93,27 @@ class IamReadinessV2ControllerTest {
                     assertThat(metric.name()).isEqualTo("iam.permission_snapshot.current_version");
                     assertThat(metric.value()).isEqualTo(7.0);
                 });
+    }
+
+    @Test
+    void metricsShouldRequireMonitorPermissionBeforeReadingMetricValues() {
+        OwnerReadModelMetricsService metricsService = Mockito.mock(OwnerReadModelMetricsService.class);
+        var controller = new IamReadinessV2Controller(metricsService, securityContext(Set.of("system:config:view")), new PermissionGuard());
+
+        assertThatThrownBy(controller::metrics)
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(metricsService, never()).iamPermissionSnapshotLatestVersion();
+        verify(metricsService, never()).iamPermissionSnapshotP95Millis();
+    }
+
+    private SecurityContextFacade securityContext(Set<String> permissions) {
+        SecurityContextFacade securityContextFacade = Mockito.mock(SecurityContextFacade.class);
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, permissions);
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("permissions-1");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        return securityContextFacade;
     }
 }

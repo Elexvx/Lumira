@@ -357,6 +357,8 @@
 
 .saas-login-page__wechat-official {
   width: 214px;
+  height: 260px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -366,6 +368,14 @@
 }
 
 .saas-login-page__wechat-official iframe {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 300px !important;
+  min-width: 300px !important;
+  height: 400px !important;
+  transform: translateX(-50%);
+  transform-origin: top center;
   border: 0;
   background: #fff;
 }
@@ -663,6 +673,18 @@
 
 .saas-login-page__agreement-modal .ant-modal-body > div {
   min-height: 240px;
+}
+
+.saas-login-page__reset-steps {
+  margin-bottom: 24px;
+}
+
+.saas-login-page__reset-form {
+  min-height: 174px;
+}
+
+.saas-login-page__reset-form .ant-form-item:last-child {
+  margin-bottom: 0;
 }
 
 .saas-login-page__agreement-modal .wmde-markdown {

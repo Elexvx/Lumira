@@ -10,7 +10,14 @@ public class SecurityProperties {
 
     private String jwtSecret;
     private String issuer = "lumira";
-    private List<String> permitPaths = new ArrayList<>();
+    private List<String> permitPaths = new ArrayList<>(List.of(
+            "/api/version",
+            "/api/v1/version",
+            "/api/v1/*/version",
+            "/actuator/health",
+            "/actuator/info",
+            "/error"
+    ));
 
     public String getJwtSecret() {
         return jwtSecret;

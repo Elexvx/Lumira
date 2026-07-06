@@ -87,7 +87,7 @@ public class PermissionSnapshotService {
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
     private final Cache<String, PermissionSnapshot> localPermissionSnapshotCache;
     private final Cache<String, PermissionSnapshot> localRolePermissionSnapshotCache;
-    private final Cache<Long, Boolean> protectedAdminUserCache;
+    private final Cache<String, Boolean> protectedAdminUserCache;
     private final Cache<String, CompletableFuture<PermissionSnapshot>> permissionSnapshotLoadInFlight;
     private final Cache<String, CompletableFuture<PermissionSnapshot>> rolePermissionSnapshotLoadInFlight;
     private final Cache<String, String> permissionSnapshotVersionCache;
@@ -146,15 +146,19 @@ public class PermissionSnapshotService {
                 .build();
     }
 
-    public PermissionSnapshot loadSnapshot(Long userId) {
+    public PermissionSnapshot loadSnapshot(Long userId, String userUuid) {
         long started = System.nanoTime();
         boolean cacheHit = false;
         try {
             if (userId == null) {
                 return PermissionSnapshot.empty();
             }
+            String normalizedUserUuid = normalizeUserUuid(userUuid);
+            if (!StringUtils.hasText(normalizedUserUuid)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user uuid is required");
+            }
             String version = getOrCreateVersion();
-            String cacheKey = CacheKeyConstants.userKey(String.valueOf(userId), "permission_snapshot:" + version);
+            String cacheKey = permissionSnapshotCacheKey(userId, normalizedUserUuid, version);
             PermissionSnapshot localSnapshot = getLocalPermissionSnapshot(localPermissionSnapshotCache, cacheKey);
             if (localSnapshot != null) {
                 cacheHit = true;
@@ -173,11 +177,11 @@ public class PermissionSnapshotService {
             }
 
             return loadPermissionSnapshotWithSingleFlight(cacheKey, () -> {
-                CompletableFuture<Set<Long>> roleIdsFuture = asyncRoleIds(userId);
-                CompletableFuture<DepartmentSnapshot> departmentsFuture = asyncDepartments(userId);
+                CompletableFuture<Set<Long>> roleIdsFuture = asyncRoleIds(userId, normalizedUserUuid);
+                CompletableFuture<DepartmentSnapshot> departmentsFuture = asyncDepartments(userId, normalizedUserUuid);
 
                 Set<Long> roleIds = roleIdsFuture.join();
-                CompletableFuture<Set<String>> permissionsFuture = asyncPermissions(userId, roleIds);
+                CompletableFuture<Set<String>> permissionsFuture = asyncPermissions(userId, normalizedUserUuid, roleIds);
                 CompletableFuture<List<DataPermissionRule>> dataScopesFuture = asyncDataScopes(roleIds);
                 CompletableFuture<String> defaultHomePathFuture = asyncDefaultHomePath(roleIds);
 
@@ -203,6 +207,40 @@ public class PermissionSnapshotService {
         } finally {
             recordPermissionSnapshotMetric(cacheHit, started);
         }
+    }
+
+    public boolean isTrustedActiveUser(Long userId, String userUuid) {
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            return false;
+        }
+        try {
+            Long count = jdbcTemplate.queryForObject(
+                    """
+                            select count(1)
+                            from sys_user
+                            where id = ?
+                              and uuid = ?
+                              and deleted = 0
+                              and status = 'ENABLED'
+                            """,
+                    Long.class,
+                    userId,
+                    userUuid.trim()
+            );
+            return count != null && count > 0;
+        } catch (RuntimeException exception) {
+            log.warn("Failed to validate active trusted user userId={}", userId, exception);
+            return false;
+        }
+    }
+
+    private String normalizeUserUuid(String userUuid) {
+        return StringUtils.hasText(userUuid) ? userUuid.trim() : null;
+    }
+
+    private String permissionSnapshotCacheKey(Long userId, String userUuid, String version) {
+        String identityKey = userUuid == null ? String.valueOf(userId) : userId + ":" + userUuid;
+        return CacheKeyConstants.userKey(identityKey, "permission_snapshot:" + version);
     }
 
     public PermissionSnapshot loadRoleSnapshot(Long roleId) {
@@ -315,16 +353,16 @@ public class PermissionSnapshotService {
         }
     }
 
-    private CompletableFuture<Set<String>> asyncPermissions(Long userId, Set<Long> roleIds) {
-        return CompletableFuture.supplyAsync(() -> queryPermissionsByRoleIds(userId, roleIds), BLOCKING_IO_EXECUTOR);
+    private CompletableFuture<Set<String>> asyncPermissions(Long userId, String userUuid, Set<Long> roleIds) {
+        return CompletableFuture.supplyAsync(() -> queryPermissionsByRoleIds(userId, userUuid, roleIds), BLOCKING_IO_EXECUTOR);
     }
 
-    private CompletableFuture<DepartmentSnapshot> asyncDepartments(Long userId) {
-        return CompletableFuture.supplyAsync(() -> queryDepartments(userId), BLOCKING_IO_EXECUTOR);
+    private CompletableFuture<DepartmentSnapshot> asyncDepartments(Long userId, String userUuid) {
+        return CompletableFuture.supplyAsync(() -> queryDepartments(userId, userUuid), BLOCKING_IO_EXECUTOR);
     }
 
-    private CompletableFuture<Set<Long>> asyncRoleIds(Long userId) {
-        return CompletableFuture.supplyAsync(() -> queryRoleIds(userId), BLOCKING_IO_EXECUTOR);
+    private CompletableFuture<Set<Long>> asyncRoleIds(Long userId, String userUuid) {
+        return CompletableFuture.supplyAsync(() -> queryRoleIds(userId, userUuid), BLOCKING_IO_EXECUTOR);
     }
 
     private CompletableFuture<String> asyncDefaultHomePath(Set<Long> roleIds) {
@@ -476,8 +514,8 @@ public class PermissionSnapshotService {
         }
     }
 
-    private Set<String> queryPermissionsByRoleIds(Long userId, Set<Long> roleIds) {
-        boolean protectedAdminAccount = isProtectedAdminAccount(userId);
+    private Set<String> queryPermissionsByRoleIds(Long userId, String userUuid, Set<Long> roleIds) {
+        boolean protectedAdminAccount = isProtectedAdminAccount(userId, userUuid);
         if (roleIds == null || roleIds.isEmpty()) {
             return protectedAdminAccount ? Set.of("*") : Set.of();
         }
@@ -508,27 +546,34 @@ public class PermissionSnapshotService {
         return filterRoleAssignablePermissionKeys(permissions);
     }
 
-    private boolean isProtectedAdminAccount(Long userId) {
-        if (PROTECTED_ADMIN_ID.equals(userId)) {
-            return true;
-        }
-        Boolean cached = protectedAdminUserCache.getIfPresent(userId);
+    private boolean isProtectedAdminAccount(Long userId, String userUuid) {
+        String cacheKey = userUuid == null ? String.valueOf(userId) : userId + ":" + userUuid;
+        Boolean cached = protectedAdminUserCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
         try {
+            List<Object> params = new ArrayList<>();
+            params.add(userId);
+            String uuidCondition = "";
+            if (StringUtils.hasText(userUuid)) {
+                uuidCondition = " and uuid = ?";
+                params.add(userUuid.trim());
+            }
             String username = jdbcTemplate.queryForObject(
-                    """
+                    ("""
                             select username
                             from sys_user
                             where id = ?
                               and deleted = 0
-                            """,
+                            """ + uuidCondition),
                     String.class,
-                    userId
+                    params.toArray()
             );
-            boolean isProtectedAdmin = StringUtils.hasText(username) && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(username.trim());
-            protectedAdminUserCache.put(userId, isProtectedAdmin);
+            boolean isProtectedAdmin = PROTECTED_ADMIN_ID.equals(userId)
+                    && StringUtils.hasText(username)
+                    && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(username.trim());
+            protectedAdminUserCache.put(cacheKey, isProtectedAdmin);
             return isProtectedAdmin;
         } catch (Throwable throwable) {
             log.warn("Failed to resolve protected admin account userId={}", userId, throwable);
@@ -557,20 +602,30 @@ public class PermissionSnapshotService {
         );
     }
 
-    private Set<Long> queryRoleIds(Long userId) {
+    private Set<Long> queryRoleIds(Long userId, String userUuid) {
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordIamPermissionSnapshotRoleIdsQuery();
+        }
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
         }
         return new LinkedHashSet<>(jdbcTemplate.query(
                 """
                         select distinct ur.role_id
                         from sys_user_role ur
+                        join sys_user u
+                          on u.id = ur.user_id
+                         and u.uuid = ur.user_uuid
+                         and u.deleted = 0
+                         and u.status = 'ENABLED'
                         where ur.user_id = ?
+                          and ur.user_uuid = ?
                           and ur.deleted = 0
                         order by ur.role_id
                         """,
                 (rs, rowNum) -> rs.getLong("role_id"),
-                userId
+                userId,
+                userUuid.trim()
         ));
     }
 
@@ -605,25 +660,35 @@ public class PermissionSnapshotService {
         }
     }
 
-    private DepartmentSnapshot queryDepartments(Long userId) {
+    private DepartmentSnapshot queryDepartments(Long userId, String userUuid) {
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordIamPermissionSnapshotDepartmentsQuery();
         }
         try {
+            if (!StringUtils.hasText(userUuid)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
             List<UserDepartmentRow> rows = jdbcTemplate.query(
                     """
                             select ud.dept_id, ud.primary_flag
                             from sys_user_department ud
+                            join sys_user u
+                              on u.id = ud.user_id
+                             and u.uuid = ud.user_uuid
+                             and u.deleted = 0
+                             and u.status = 'ENABLED'
                             join sys_department d
                               on d.id = ud.dept_id
                              and d.deleted = 0
                              and d.status = 'ENABLED'
                             where ud.user_id = ?
+                              and ud.user_uuid = ?
                               and ud.deleted = 0
                             order by ud.primary_flag desc, ud.dept_id asc
                             """,
                     (rs, rowNum) -> new UserDepartmentRow(rs.getLong("dept_id"), rs.getInt("primary_flag") == 1),
-                    userId
+                    userId,
+                    userUuid.trim()
             );
             if (rows.isEmpty()) {
                 return DepartmentSnapshot.empty();

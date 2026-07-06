@@ -39,6 +39,26 @@ class PluginPersistenceMapperHotPathSqlTest {
         assertThat(migrationSql).contains("idx_sys_plugin_permission_rel_code_version_deleted");
     }
 
+    @Test
+    void pluginActivationWritesShouldRevalidateCurrentVersionState() throws Exception {
+        String xml = mapperXml();
+
+        assertStatementContains(xml, "markInstalled", "and install_status in ('VERIFIED', 'INSTALLED', 'LOADED')");
+        assertStatementContains(xml, "activateVersion", "and install_status in ('INSTALLED', 'LOADED')");
+        assertStatementContains(xml, "activateVersion", "and load_status = 'LOADED'");
+        assertStatementContains(xml, "activateVersion", "and schema_status = 'READY'");
+        assertStatementContains(xml, "activateVersion", "from sys_plugin_definition d");
+        assertStatementContains(xml, "activateVersion", "and d.deleted = 0");
+        assertStatementContains(xml, "updateVersionStatus", "and install_status in ('INSTALLED', 'LOADED')");
+        assertStatementContains(xml, "updateVersionStatus", "and load_status = 'LOADED'");
+        assertStatementContains(xml, "updateVersionStatus", "and schema_status = 'READY'");
+        assertStatementContains(xml, "updateVersionStatus", "and lifecycle_status = 'ENABLED'");
+        assertStatementContains(xml, "updateVersionStatus", "and is_active = 1");
+        assertStatementContains(xml, "updateVersionStatus", "from sys_plugin_definition d");
+        assertStatementContains(xml, "markDefinitionDeletedByPlugin", "and builtin_flag = 0");
+        assertStatementContains(xml, "deleteDefinitionByPlugin", "and builtin_flag = 0");
+    }
+
     private static String mapperXml() throws Exception {
         try (InputStream input = PluginPersistenceMapperHotPathSqlTest.class
                 .getResourceAsStream("/mapper/PluginPersistenceMapper.xml")) {

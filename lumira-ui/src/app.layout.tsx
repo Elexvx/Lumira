@@ -1,9 +1,9 @@
-import type { RunTimeLayoutConfig } from '@umijs/max';
+﻿import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { ProSettings } from '@ant-design/pro-components';
 import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { ArrowLeftOutlined, MoreOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
-import { Button, FloatButton, Popover, Tooltip, Typography } from 'antd';
+import { Alert, Button, FloatButton, Form, Input, Modal, Popover, Radio, Space, Tooltip, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { useQuery } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -12,6 +12,7 @@ import buildAccess from '@/access';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { isLoggedIn } from '@/auth/sessionLifecycle';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
+import { isTrustedCurrentUser, mergeTrustedCurrentUser } from '@/auth/sessionState';
 import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
@@ -23,7 +24,7 @@ import { TopActions } from '@/layouts/components/TopActions';
 import NoPermission from '@/pages/exception/NoPermission';
 import { applyBrandingRuntime, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
-import type { BrandingSettings, FloatingWindowSettings, MenuNode, SecuritySettings } from '@/types/api';
+import type { BrandingSettings, CurrentUser, FloatingWindowSettings, MenuNode, SecondFactorChallenge, SecondFactorProviderStatus, SecuritySettings } from '@/types/api';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
@@ -31,7 +32,7 @@ import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettings
 import { backendRouteMeta, realPageRouteMetaMap, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
 import { useResponsive } from '@/hooks/useResponsive';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
@@ -48,6 +49,7 @@ const resolveIsMobileViewport = () =>
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/data-management', '/certificates', '/experts', '/user-center'];
 const DASHBOARD_GROUP_PATH = '/dashboard';
 const DASHBOARD_HOME_PATH = '/dashboard/home';
+const LEGACY_COMPETITION_ROOT_MENU_CODE = 'competition.root';
 const USER_CENTER_GROUP_PATH = '/user-center';
 const PERSONAL_CENTER_GROUP_PATH = '/user-center/personal-center';
 const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/personal-center/files'];
@@ -83,6 +85,14 @@ const TOKEN_REFRESH_SKEW_MS = 60_000;
 const KEEPALIVE_ENDPOINTS = {
   v2: '/v2/auth/session/keepalive',
   v1: '/v1/auth/session/keepalive',
+};
+const WECHAT_CONTACT_BIND_REQUIRED_KEY = 'lumira_wechat_contact_bind_required';
+
+type WechatContactBindFormValues = {
+  contactType: 'mobile' | 'email';
+  value?: string;
+  currentVerificationCode?: string;
+  verificationCode?: string;
 };
 
 const useSessionActivityTimers = ({ securitySettings }: { securitySettings: SecuritySettings }) => {
@@ -358,6 +368,8 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const securitySettings = normalizeSecuritySettings(initialState?.securitySettings || getStoredSecuritySettings() || DEFAULT_SECURITY_SETTINGS);
   const controller = useSessionActivityController({ securitySettings });
+  const trustedCurrentUser = isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser : undefined;
+  const trustedSessionId = trustedCurrentUser?.sessionId;
 
   useEffect(() => {
     if (!tokenManager.hasToken()) {
@@ -447,7 +459,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     };
     // Rebuild activity bindings when auth/session context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controller, securitySettings.idleTimeoutSeconds, initialState?.currentUser?.sessionId]);
+  }, [controller, securitySettings.idleTimeoutSeconds, trustedSessionId]);
 
   useEffect(() => {
     if (!tokenManager.hasToken()) {
@@ -567,6 +579,312 @@ const GlobalFloatActions = () => {
   );
 
   return typeof document === 'undefined' ? floatButtonGroup : createPortal(floatButtonGroup, document.body);
+};
+
+const WechatContactBindGuard = () => {
+  const { initialState, setInitialState } = useInitialStateModel();
+  const [form] = Form.useForm<WechatContactBindFormValues>();
+  const contactType = Form.useWatch('contactType', form) || 'mobile';
+  const contactValue = Form.useWatch('value', form)?.trim() || '';
+  const [challenge, setChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [challengeTarget, setChallengeTarget] = useState('');
+  const [sending, setSending] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const currentUser = initialState?.currentUser;
+  const loginCapabilities = initialState?.loginCapabilities;
+  const mobileAvailable = Boolean(loginCapabilities?.smsLoginAvailable);
+  const emailAvailable = Boolean(loginCapabilities?.emailLoginAvailable);
+  const shouldOpen = useMemo(() => {
+    if (typeof window === 'undefined' || !isLoggedIn() || !currentUser) {
+      return false;
+    }
+    return (
+      window.sessionStorage.getItem(WECHAT_CONTACT_BIND_REQUIRED_KEY) === '1' &&
+      !currentUser.mobile &&
+      !currentUser.email &&
+      (mobileAvailable || emailAvailable)
+    );
+  }, [currentUser, emailAvailable, mobileAvailable]);
+  const verificationProvidersQuery = useQuery({
+    queryKey: ['wechat-contact-bind-verification-providers', currentUser?.userId],
+    enabled: shouldOpen,
+    queryFn: () =>
+      request<SecondFactorProviderStatus[]>('/v1/auth/verification/providers', {
+        autoRedirectOnUnauthorized: false,
+      }),
+  });
+  const currentVerificationProvider = useMemo(
+    () => (verificationProvidersQuery.data || []).find((item) => item.factorCode === 'totp' && item.bound && item.systemEnabled !== false) || null,
+    [verificationProvidersQuery.data],
+  );
+  const [currentVerificationChallenge, setCurrentVerificationChallenge] = useState<SecondFactorChallenge | null>(null);
+  const [currentVerificationLoading, setCurrentVerificationLoading] = useState(false);
+  const canUseSelectedType = contactType === 'mobile' ? mobileAvailable : emailAvailable;
+  const codeMatchesValue = Boolean(challenge?.challengeId && challengeTarget === contactValue);
+
+  useEffect(() => {
+    if (!shouldOpen) {
+      return;
+    }
+    form.setFieldsValue({
+      contactType: mobileAvailable ? 'mobile' : 'email',
+      value: '',
+      currentVerificationCode: undefined,
+      verificationCode: undefined,
+    });
+    setChallenge(null);
+    setChallengeTarget('');
+    setCurrentVerificationChallenge(null);
+    setAlertMessage(null);
+  }, [form, mobileAvailable, shouldOpen]);
+
+  useEffect(() => {
+    setChallenge(null);
+    setChallengeTarget('');
+    setAlertMessage(null);
+    form.setFieldsValue({ value: '', currentVerificationCode: undefined, verificationCode: undefined });
+  }, [contactType, form]);
+
+  const requestCurrentVerificationChallenge = useCallback(async () => {
+    if (!currentVerificationProvider) {
+      return null;
+    }
+    setCurrentVerificationLoading(true);
+    try {
+      const nextChallenge = await request<SecondFactorChallenge>(`/v1/auth/verification/providers/${currentVerificationProvider.factorCode}/challenge`, {
+        method: 'POST',
+        ...API_OPTS.SILENT_NO_REDIRECT,
+      });
+      setCurrentVerificationChallenge(nextChallenge);
+      form.setFieldValue('currentVerificationCode', undefined);
+      return nextChallenge;
+    } catch (error) {
+      setAlertMessage(error instanceof Error ? error.message : 'Failed to load the current verification method. Please try again later.');
+      return null;
+    } finally {
+      setCurrentVerificationLoading(false);
+    }
+  }, [currentVerificationProvider, form]);
+
+  useEffect(() => {
+    if (!shouldOpen || !currentVerificationProvider) {
+      return;
+    }
+    void requestCurrentVerificationChallenge();
+  }, [currentVerificationProvider, requestCurrentVerificationChallenge, shouldOpen]);
+
+  useEffect(() => {
+    if (currentUser?.mobile || currentUser?.email) {
+      window.sessionStorage.removeItem(WECHAT_CONTACT_BIND_REQUIRED_KEY);
+    }
+  }, [currentUser?.email, currentUser?.mobile]);
+
+  const requestCode = useCallback(async () => {
+    try {
+      const values = await form.validateFields(['contactType', 'value']);
+      const nextType = values.contactType || 'mobile';
+      const nextValue = values.value?.trim();
+      if (!nextValue) {
+        return false;
+      }
+      let nextCurrentVerificationChallenge = currentVerificationChallenge;
+      if (currentVerificationProvider) {
+        const currentVerificationCode = form.getFieldValue('currentVerificationCode')?.trim();
+        if (!currentVerificationCode) {
+          setAlertMessage('Please enter the current verification code or a recovery code first.');
+          return false;
+        }
+        if (!nextCurrentVerificationChallenge?.challengeId) {
+          nextCurrentVerificationChallenge = await requestCurrentVerificationChallenge();
+          if (!nextCurrentVerificationChallenge?.challengeId) {
+            return false;
+          }
+        }
+      }
+      setSending(true);
+      setAlertMessage(null);
+      const nextChallenge = await request<SecondFactorChallenge>('/v1/profile/contact-bind/challenge', {
+        method: 'POST',
+        data: {
+          contactType: nextType,
+          value: nextValue,
+          currentFactorCode: currentVerificationProvider?.factorCode,
+          currentChallengeId: nextCurrentVerificationChallenge?.challengeId,
+          currentVerificationCode: currentVerificationProvider ? form.getFieldValue('currentVerificationCode')?.trim() : undefined,
+        },
+        ...API_OPTS.SILENT_NO_REDIRECT,
+      });
+      setChallenge(nextChallenge);
+      setChallengeTarget(nextValue);
+      setCurrentVerificationChallenge(null);
+      form.setFieldsValue({ currentVerificationCode: undefined, verificationCode: undefined });
+      message.success('Verification code sent. Enter it to finish binding.');
+      return true;
+    } catch (error) {
+      setAlertMessage(error instanceof Error ? error.message : 'Failed to send the verification code. Please try again later.');
+      return false;
+    } finally {
+      setSending(false);
+    }
+  }, [currentVerificationChallenge, currentVerificationProvider, form, requestCurrentVerificationChallenge]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!canUseSelectedType) {
+      setAlertMessage(contactType === 'mobile' ? '短信验证码未启用，无法绑定手机号' : '邮箱验证码未启用，无法绑定邮箱');
+      return;
+    }
+
+    const values = await form.validateFields().catch(() => null);
+    if (!values?.value?.trim()) {
+      return;
+    }
+
+    const nextValue = values.value.trim();
+    if (!challenge?.challengeId || challengeTarget !== nextValue) {
+      await requestCode();
+      return;
+    }
+
+    if (!values.verificationCode?.trim()) {
+      setAlertMessage('请输入收到的验证码');
+      return;
+    }
+
+    setSubmitting(true);
+    setAlertMessage(null);
+    try {
+      const updatedUser = await request<CurrentUser>('/v1/profile/contact-bind', {
+        method: 'PUT',
+        data: {
+          contactType: values.contactType,
+          value: nextValue,
+          challengeId: challenge.challengeId,
+          verificationCode: values.verificationCode.trim(),
+        },
+        ...API_OPTS.NO_REDIRECT,
+      });
+      setInitialState((prev: AppInitialState | undefined) =>
+        prev
+          ? {
+              ...prev,
+              currentUser: mergeTrustedCurrentUser(prev.currentUser, updatedUser),
+            }
+          : prev,
+      );
+      window.sessionStorage.removeItem(WECHAT_CONTACT_BIND_REQUIRED_KEY);
+      message.success(values.contactType === 'mobile' ? '手机号已绑定' : '邮箱已绑定');
+    } catch (error) {
+      setAlertMessage(error instanceof Error ? error.message : '绑定失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [canUseSelectedType, challenge, challengeTarget, contactType, form, requestCode, setInitialState]);
+
+  if (!shouldOpen) {
+    return null;
+  }
+
+  return (
+    <Modal
+      open
+      title="绑定手机号或邮箱"
+      closable={false}
+      maskClosable={false}
+      keyboard={false}
+      okText={codeMatchesValue ? '确认绑定' : '发送验证码'}
+      cancelButtonProps={{ style: { display: 'none' } }}
+      confirmLoading={sending || submitting || currentVerificationLoading}
+      onOk={() => void handleSubmit()}
+      destroyOnHidden
+    >
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Alert
+          showIcon
+          type="warning"
+          message="微信登录后需要先绑定手机号或邮箱"
+          description="绑定后可用于验证码登录、找回账号和接收安全通知。"
+        />
+        {currentVerificationProvider ? (
+          <Alert
+            showIcon
+            type="info"
+            message="请先确认当前身份"
+            description={
+              currentVerificationChallenge?.promptMessage
+              || '请先输入当前验证方式中的验证码或恢复码，确认成功后系统才会向新的联系方式发送验证码。'
+            }
+          />
+        ) : null}
+        {alertMessage ? <Alert showIcon type="error" message={alertMessage} /> : null}
+        <Form<WechatContactBindFormValues>
+          form={form}
+          layout="vertical"
+          initialValues={{ contactType: mobileAvailable ? 'mobile' : 'email' }}
+        >
+          <Form.Item name="contactType" label="绑定方式" rules={[{ required: true, message: '请选择绑定方式' }]}>
+            <Radio.Group>
+              <Radio.Button value="mobile" disabled={!mobileAvailable}>手机号</Radio.Button>
+              <Radio.Button value="email" disabled={!emailAvailable}>邮箱</Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item
+            name="value"
+            label={contactType === 'mobile' ? '手机号' : '邮箱'}
+            rules={[
+              { required: true, message: contactType === 'mobile' ? '请输入手机号' : '请输入邮箱' },
+              ...(contactType === 'mobile'
+                ? [{ pattern: /^1[3-9]\d{9}$/, message: '请输入有效手机号' }]
+                : [{ type: 'email' as const, message: '请输入有效邮箱地址' }]),
+            ]}
+          >
+            <Input
+              placeholder={contactType === 'mobile' ? '请输入手机号' : '请输入邮箱地址'}
+              autoComplete={contactType === 'mobile' ? 'tel' : 'email'}
+              inputMode={contactType === 'mobile' ? 'tel' : 'email'}
+            />
+          </Form.Item>
+          {currentVerificationProvider ? (
+            <>
+              <Form.Item label="当前验证方式">
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Typography.Text>
+                    {currentVerificationChallenge?.factorName || currentVerificationProvider.factorName || currentVerificationProvider.factorCode}
+                    {currentVerificationChallenge?.maskedContact || currentVerificationProvider.maskedContact
+                      ? ` · ${currentVerificationChallenge?.maskedContact || currentVerificationProvider.maskedContact}`
+                      : ''}
+                  </Typography.Text>
+                  {!currentVerificationChallenge && !currentVerificationLoading ? (
+                    <Button onClick={() => void requestCurrentVerificationChallenge()}>重新获取当前验证信息</Button>
+                  ) : null}
+                </Space>
+              </Form.Item>
+              <Form.Item
+                name="currentVerificationCode"
+                label="当前验证码"
+                rules={[{ required: true, message: '请输入当前验证码或恢复码' }]}
+              >
+                <Input autoComplete="one-time-code" placeholder="请输入当前验证码或恢复码" disabled={currentVerificationLoading} />
+              </Form.Item>
+            </>
+          ) : null}
+          {challenge?.challengeId && challengeTarget === contactValue ? (
+            <Form.Item
+              name="verificationCode"
+              label="验证码"
+              rules={[
+                { required: true, message: '请输入验证码' },
+                { pattern: /^\d{6}$/, message: '验证码必须为 6 位数字' },
+              ]}
+              extra={challenge.promptMessage || (challenge.maskedContact ? `验证码已发送至 ${challenge.maskedContact}` : undefined)}
+            >
+              <Input maxLength={6} autoComplete="one-time-code" inputMode="numeric" placeholder="请输入 6 位验证码" />
+            </Form.Item>
+          ) : null}
+        </Form>
+      </Space>
+    </Modal>
+  );
 };
 
 const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialState | undefined }) => () => {
@@ -695,6 +1013,18 @@ const collectMenuNodePaths = (items: MenuNode[] | undefined, paths = new Set<str
 
   return paths;
 };
+
+const removeLegacyCompetitionRootMenus = (items: MenuNode[] | undefined): MenuNode[] =>
+  (items || []).flatMap((item) => {
+    const children = removeLegacyCompetitionRootMenus(item.children);
+    if (item.menuCode === LEGACY_COMPETITION_ROOT_MENU_CODE) {
+      return children;
+    }
+    return {
+      ...item,
+      children: children.length ? children : undefined,
+    };
+  });
 
 const resolveSelectedMenuPath = (pathname: string, menuTree: MenuNode[] | undefined) => {
   const normalizedPathname = resolveCanonicalRoutePath(pathname);
@@ -1126,6 +1456,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const currentPathname = history.location.pathname;
   const siderMenuMode = resolveSiderMenuMode(currentPathname, initialState);
+  const mainMenuTree = removeLegacyCompetitionRootMenus(initialState?.menuTree);
   const access = buildAccess({ currentUser: initialState?.currentUser, availablePlugins: initialState?.availablePlugins });
   const selectedMenuPath =
     siderMenuMode === 'settings'
@@ -1135,7 +1466,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
           (accessKey) => Boolean((access as Record<string, unknown>)[accessKey]),
           initialState?.availablePlugins,
         )
-      : resolveSelectedMenuPath(currentPathname, initialState?.menuTree);
+      : resolveSelectedMenuPath(currentPathname, mainMenuTree);
   const isMobile = resolveIsMobileViewport();
   const LAYOUT_HEADER_HEIGHT = resolveResponsiveValue(APP_SPACING.layout.headerHeight, isMobile);
   const LAYOUT_SIDER_WIDTH = resolveResponsiveValue(APP_SPACING.layout.siderWidth, isMobile);
@@ -1161,7 +1492,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       if (pathname.startsWith('/settings')) {
         return [];
       }
-      const menuBreadcrumb = buildBreadcrumbItems(initialState?.menuTree, pathname);
+      const menuBreadcrumb = buildBreadcrumbItems(mainMenuTree, pathname);
       return menuBreadcrumb.length
         ? menuBreadcrumb
         : (routers as RuntimeMenuDataItem[]).map((item) => {
@@ -1193,6 +1524,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         <ThemeRuntimeBridge />
         {dom}
         <GlobalSensitiveWordGuard />
+        <WechatContactBindGuard />
         <GlobalFloatActions />
       </SessionActivityGuard>
     ),
@@ -1229,7 +1561,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         );
       }
 
-      const backendMenus: MenuNode[] = initialState?.menuTree || [];
+      const backendMenus = mainMenuTree;
       const translatedLocalMenus = translateVisibleLocalMenuDataForLayout(initialState, menuData as RuntimeMenuDataItem[]);
       if (!backendMenus.length) {
         return [];
@@ -1248,3 +1580,4 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     onPageChange: createLayoutOnPageChange({ initialState }),
   };
 };
+

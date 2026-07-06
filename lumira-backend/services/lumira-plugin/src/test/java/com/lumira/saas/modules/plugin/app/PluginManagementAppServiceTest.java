@@ -7,6 +7,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
@@ -16,6 +18,7 @@ import com.lumira.saas.modules.plugin.loader.PluginArtifactLoader;
 import com.lumira.saas.modules.plugin.loader.PluginRuntimeLoader;
 import com.lumira.saas.modules.plugin.registry.PluginRegistry;
 import com.lumira.saas.modules.plugin.registry.PluginRuntimeDescriptor;
+import com.lumira.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.lumira.saas.modules.plugin.service.PluginMigrationService;
 import com.lumira.saas.modules.plugin.service.PluginPersistenceService;
 import com.lumira.saas.modules.plugin.service.PluginSemver;
@@ -46,13 +49,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -89,6 +95,8 @@ class PluginManagementAppServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "alice", "ENABLED"));
+        lenient().when(systemInternalApi.permissionSnapshot(100L, "user-uuid-100")).thenReturn(permissionSnapshot("permissions-1"));
         pluginManagementAppService = new PluginManagementAppService(
                 pluginArtifactLoader,
                 pluginPersistenceService,
@@ -101,6 +109,16 @@ class PluginManagementAppServiceTest {
                 new ObjectMapper(),
                 domainEventPublisher
         );
+    }
+
+    @Test
+    void upload_shouldRejectUntrustedOperatorBeforeStagingPackage() {
+        CurrentUser untrusted = new CurrentUser(100L, "alice", 1001L, null, 3, true, Set.of("plugin:management:upload"));
+
+        assertThatThrownBy(() -> pluginManagementAppService.upload(null, untrusted))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(pluginArtifactLoader);
     }
 
     @Test
@@ -120,7 +138,7 @@ class PluginManagementAppServiceTest {
         );
         when(pluginRegistry.find("sms", "1.0.0")).thenReturn(Optional.of(descriptor));
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
-        doNothing().when(pluginPersistenceService).enablePlugin("sms", "1.0.0", "{\"level\":\"basic\"}", 100L);
+        doNothing().when(pluginPersistenceService).enablePlugin("sms", "1.0.0", "{\"level\":\"basic\"}", 100L, "user-uuid-100");
         doNothing().when(pluginPersistenceService).registerPluginPermissions("sms", "1.0.0");
 
         PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
@@ -130,10 +148,106 @@ class PluginManagementAppServiceTest {
 
         pluginManagementAppService.enable(request, currentUser());
 
-        verify(pluginPersistenceService).enablePlugin("sms", "1.0.0", "{\"level\":\"basic\"}", 100L);
+        verify(pluginPersistenceService).enablePlugin("sms", "1.0.0", "{\"level\":\"basic\"}", 100L, "user-uuid-100");
         verify(pluginPersistenceService).registerPluginPermissions("sms", "1.0.0");
         verify(pluginPersistenceService).bumpBootstrapVersion("plugin.enabled");
-        verify(pluginMigrationService).executeUpMigrations("sms", "1.0.0", null, 100L);
+        verify(pluginMigrationService).executeUpMigrations("sms", "1.0.0", null, 100L, "user-uuid-100");
+    }
+
+    @Test
+    void enable_shouldCheckEmailWithUserProfileOnly() {
+        PluginSecondFactorProvider secondFactorProvider = org.mockito.Mockito.mock(PluginSecondFactorProvider.class);
+        when(secondFactorProvider.requiresEmail()).thenReturn(true);
+        PluginRuntimeDescriptor descriptor = new PluginRuntimeDescriptor(
+                "email-mfa",
+                "1.0.0",
+                null,
+                null,
+                null,
+                null,
+                null,
+                secondFactorProvider,
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        when(pluginRegistry.find("email-mfa", "1.0.0")).thenReturn(Optional.of(descriptor));
+        when(systemInternalApi.userHasEmail(100L, "user-uuid-100")).thenReturn(true);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
+        doNothing().when(pluginPersistenceService).enablePlugin("email-mfa", "1.0.0", null, 100L, "user-uuid-100");
+        doNothing().when(pluginPersistenceService).registerPluginPermissions("email-mfa", "1.0.0");
+
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("email-mfa");
+        request.setVersion("1.0.0");
+
+        pluginManagementAppService.enable(request, currentUser());
+
+        verify(systemInternalApi).userHasEmail(100L, "user-uuid-100");
+        verify(systemInternalApi, never()).findUserById(100L);
+    }
+
+    @Test
+    void enable_shouldRejectUserProfileWhenUserUuidDoesNotMatchOperator() {
+        PluginSecondFactorProvider secondFactorProvider = org.mockito.Mockito.mock(PluginSecondFactorProvider.class);
+        when(secondFactorProvider.requiresEmail()).thenReturn(true);
+        PluginRuntimeDescriptor descriptor = new PluginRuntimeDescriptor(
+                "email-mfa",
+                "1.0.0",
+                null,
+                null,
+                null,
+                null,
+                null,
+                secondFactorProvider,
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        when(pluginRegistry.find("email-mfa", "1.0.0")).thenReturn(Optional.of(descriptor));
+        when(systemInternalApi.userHasEmail(100L, "user-uuid-100")).thenReturn(false);
+
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("email-mfa");
+        request.setVersion("1.0.0");
+
+        assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.BIZ_ERROR);
+
+        verify(pluginPersistenceService, never()).enablePlugin(any(), any(), any(), any(), any());
+        verify(pluginMigrationService, never()).executeUpMigrations(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void enable_shouldRejectMissingSessionVersionBeforePersistence() {
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("sms");
+        request.setVersion("1.0.0");
+        request.setConfigJson("{}");
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionVersion(null);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(pluginPersistenceService, pluginRegistry, transactionManager);
+    }
+
+    @Test
+    void enable_shouldRejectDisabledTrustedOperatorBeforePersistence() {
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "alice", "DISABLED"));
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("sms");
+        request.setVersion("1.0.0");
+        request.setConfigJson("{}");
+
+        assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(pluginPersistenceService, pluginRegistry, transactionManager);
     }
 
     @Test
@@ -153,9 +267,9 @@ class PluginManagementAppServiceTest {
 
         pluginManagementAppService.disable(request, currentUser());
 
-        verify(pluginPersistenceService).disablePlugin("sms", 100L);
+        verify(pluginPersistenceService).disablePlugin("sms", 100L, "user-uuid-100");
         verify(pluginPersistenceService).bumpBootstrapVersion("plugin.disabled");
-        verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L);
+        verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L, "user-uuid-100");
         verify(systemInternalApi).invalidatePermissionSnapshot();
         verify(domainEventPublisher).publishAll(any());
     }
@@ -178,7 +292,7 @@ class PluginManagementAppServiceTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> pluginManagementAppService.disable(request, currentUser()))
                 .hasMessageContaining("does not support data purge");
 
-        verify(pluginPersistenceService, never()).disablePlugin(any(), any());
+        verify(pluginPersistenceService, never()).disablePlugin(any(), any(), any());
     }
 
     @Test
@@ -228,6 +342,7 @@ class PluginManagementAppServiceTest {
         builtinMenu.setMenuCode("system.dashboard");
         builtinMenu.setName("Dashboard");
         builtinMenu.setPath("/dashboard");
+        builtinMenu.setPermissionKey("dashboard:view");
         builtinMenu.setSortNo(1);
         builtinMenu.setChildren(List.of());
 
@@ -236,7 +351,7 @@ class PluginManagementAppServiceTest {
         when(pluginPersistenceService.findVersion("sms", "1.0.0")).thenReturn(Optional.of(versionEntity));
         when(pluginPersistenceService.listMenuRelations("sms", "1.0.0")).thenReturn(List.of(menuRelation));
 
-        List<Map<String, Object>> menus = pluginManagementAppService.currentMenus(List.of("plugin:sms:view"));
+        List<Map<String, Object>> menus = pluginManagementAppService.currentMenus(List.of("dashboard:view", "plugin:sms:view"));
 
         assertThat(menus).extracting(menu -> (String) menu.get("menuCode"))
                 .contains("system.dashboard", "plugin.sms");
@@ -291,6 +406,145 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void currentBootstrap_shouldFilterAvailablePluginMenusByPermissionSnapshot() throws Exception {
+        String availablePluginCode = "sms";
+        PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);
+        PluginVersionEntity versionEntity = createValidVersionEntity(availablePluginCode, tempDir);
+        PluginMenuRelEntity menuRelation = createMenuRelation(availablePluginCode, "1.0.0", "plugin.sms");
+
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L);
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of(availablePlugin));
+        when(pluginPersistenceService.pluginStatus(availablePluginCode)).thenReturn(Optional.empty());
+        when(pluginPersistenceService.findVersion(availablePluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
+        when(pluginPersistenceService.listMenuRelations(availablePluginCode, "1.0.0")).thenReturn(List.of(menuRelation));
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of());
+
+        Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(List.of(), "anonymous");
+
+        assertThat(collectMenuCodes((List<Map<String, Object>>) bootstrap.get("menuTree")))
+                .doesNotContain("plugin.sms");
+        List<PluginVO.PluginAvailabilityVO> availablePlugins = (List<PluginVO.PluginAvailabilityVO>) bootstrap.get("availablePlugins");
+        assertThat(availablePlugins).hasSize(1);
+        assertThat(availablePlugins.get(0).getMenus()).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void currentBootstrap_shouldHidePermissionlessPagesWithoutRolePermissions() throws Exception {
+        MenuNodeDTO settingsRoot = new MenuNodeDTO();
+        settingsRoot.setMenuCode("settings.root");
+        settingsRoot.setName("Settings");
+        settingsRoot.setPath("/settings");
+        settingsRoot.setComponent("@/layouts/SettingsLayout");
+        settingsRoot.setPermissionKey("system:view");
+        settingsRoot.setSortNo(1);
+
+        MenuNodeDTO unsafeManagementPage = new MenuNodeDTO();
+        unsafeManagementPage.setMenuCode("settings.unsafe");
+        unsafeManagementPage.setName("Unsafe settings page");
+        unsafeManagementPage.setPath("/settings/unsafe");
+        unsafeManagementPage.setComponent("@/pages/settings/Unsafe");
+        unsafeManagementPage.setSortNo(1);
+        unsafeManagementPage.setChildren(List.of());
+
+        MenuNodeDTO permissionlessRegistrationPage = new MenuNodeDTO();
+        permissionlessRegistrationPage.setMenuCode("competition.registration");
+        permissionlessRegistrationPage.setName("Competition registration");
+        permissionlessRegistrationPage.setPath("/competitions/register");
+        permissionlessRegistrationPage.setComponent("@/pages/competition");
+        permissionlessRegistrationPage.setSortNo(2);
+        permissionlessRegistrationPage.setChildren(List.of());
+
+        settingsRoot.setChildren(List.of(unsafeManagementPage));
+
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L);
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of());
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(settingsRoot, permissionlessRegistrationPage));
+
+        Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(List.of(), "wechat-common-user");
+
+        assertThat(collectMenuCodes((List<Map<String, Object>>) bootstrap.get("menuTree")))
+                .doesNotContain("settings.root", "settings.unsafe", "competition.registration");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void currentBootstrap_shouldReturnRoleScopedPagesAfterPermissionAdjustment() throws Exception {
+        MenuNodeDTO settingsRoot = new MenuNodeDTO();
+        settingsRoot.setMenuCode("settings.root");
+        settingsRoot.setName("Settings");
+        settingsRoot.setPath("/settings");
+        settingsRoot.setComponent("@/layouts/SettingsLayout");
+        settingsRoot.setPermissionKey("system:view");
+        settingsRoot.setSortNo(1);
+
+        MenuNodeDTO menuManagementPage = new MenuNodeDTO();
+        menuManagementPage.setMenuCode("settings.menus");
+        menuManagementPage.setName("Menus");
+        menuManagementPage.setPath("/settings/menus");
+        menuManagementPage.setComponent("@/pages/settings/menus");
+        menuManagementPage.setPermissionKey("system:menu:view");
+        menuManagementPage.setSortNo(1);
+        menuManagementPage.setChildren(List.of());
+
+        MenuNodeDTO dictionaryPage = new MenuNodeDTO();
+        dictionaryPage.setMenuCode("settings.dicts");
+        dictionaryPage.setName("Dicts");
+        dictionaryPage.setPath("/settings/dicts");
+        dictionaryPage.setComponent("@/pages/settings/dicts");
+        dictionaryPage.setPermissionKey("system:dict:view");
+        dictionaryPage.setSortNo(2);
+        dictionaryPage.setChildren(List.of());
+
+        settingsRoot.setChildren(List.of(menuManagementPage, dictionaryPage));
+
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L, 10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L, 20L);
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of());
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(settingsRoot));
+
+        Map<String, Object> beforeAdjustment = pluginManagementAppService.currentBootstrap(
+                List.of("system:menu:view"),
+                "role-menu-v1"
+        );
+        Map<String, Object> afterAdjustment = pluginManagementAppService.currentBootstrap(
+                List.of("system:dict:view"),
+                "role-dict-v2"
+        );
+
+        assertThat(collectMenuCodes((List<Map<String, Object>>) beforeAdjustment.get("menuTree")))
+                .contains("settings.root", "settings.menus")
+                .doesNotContain("settings.dicts");
+        assertThat(collectMenuCodes((List<Map<String, Object>>) afterAdjustment.get("menuTree")))
+                .contains("settings.root", "settings.dicts")
+                .doesNotContain("settings.menus");
+    }
+
+    @Test
+    void currentAvailablePlugins_shouldFilterMenusByPermissionSnapshot() throws Exception {
+        String availablePluginCode = "sms";
+        PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);
+        PluginVersionEntity versionEntity = createValidVersionEntity(availablePluginCode, tempDir);
+        PluginMenuRelEntity menuRelation = createMenuRelation(availablePluginCode, "1.0.0", "plugin.sms");
+
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of(availablePlugin));
+        when(pluginPersistenceService.pluginStatus(availablePluginCode)).thenReturn(Optional.empty());
+        when(pluginPersistenceService.findVersion(availablePluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
+        when(pluginPersistenceService.listMenuRelations(availablePluginCode, "1.0.0")).thenReturn(List.of(menuRelation));
+
+        List<PluginVO.PluginAvailabilityVO> hidden = pluginManagementAppService.currentAvailablePlugins(List.of());
+        List<PluginVO.PluginAvailabilityVO> visible = pluginManagementAppService.currentAvailablePlugins(List.of("plugin:sms:view"));
+
+        assertThat(hidden).hasSize(1);
+        assertThat(hidden.get(0).getMenus()).isEmpty();
+        assertThat(visible).hasSize(1);
+        assertThat(visible.get(0).getMenus()).extracting(menu -> menu.get("menuCode")).containsExactly("plugin.sms");
+    }
+
+    @Test
     void currentBootstrap_shouldReuseSuppliedReadModelVersionsWithoutVersionRoundTrips() throws Exception {
         String availablePluginCode = "sms";
         PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);
@@ -306,6 +560,7 @@ class PluginManagementAppServiceTest {
         builtinMenu.setMenuCode("system.dashboard");
         builtinMenu.setName("Dashboard");
         builtinMenu.setPath("/dashboard");
+        builtinMenu.setPermissionKey("dashboard:view");
         builtinMenu.setSortNo(1);
         builtinMenu.setChildren(List.of());
         when(systemInternalApi.builtinMenus()).thenReturn(List.of(builtinMenu));
@@ -595,7 +850,27 @@ class PluginManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(100L, "alice", 1001L, "session-1", 3, true, Set.of("plugin:management:enable"));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", 1001L, "session-1", 3, true, Set.of("plugin:management:enable"));
+        currentUser.setUserUuid("user-uuid-100");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
+        return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(String version) {
+        return new PermissionSnapshotDTO(
+                version,
+                List.of("plugin:management:enable"),
+                List.of(31L),
+                41L,
+                List.of(41L),
+                List.of(41L, 42L),
+                List.of(),
+                "/plugins"
+        );
     }
 
     private PluginVO.PluginAvailabilityVO createValidPluginAvailability(String pluginCode, Path baseDir) throws Exception {

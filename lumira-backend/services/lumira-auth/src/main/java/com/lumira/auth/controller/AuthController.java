@@ -1,6 +1,7 @@
 package com.lumira.auth.controller;
 
 import com.lumira.api.auth.*;
+import com.lumira.api.system.PasskeyCredentialDTO;
 import com.lumira.auth.service.AuthCookieService;
 import com.lumira.auth.service.AuthAppService;
 import com.lumira.auth.service.PasskeyAuthService;
@@ -54,6 +55,18 @@ public class AuthController {
         return loginSuccess(authAppService.completeLoginCodeLogin(request, httpServletRequest), httpServletResponse);
     }
 
+    @PostMapping("/password-reset/challenge")
+    @RepeatSubmit
+    public ApiResponse<LoginCodeChallengeDTO> passwordResetChallenge(@Valid @RequestBody PasswordResetChallengeRequest request, HttpServletRequest httpServletRequest) {
+        return ApiResponse.success(authAppService.passwordResetChallenge(request, httpServletRequest), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/password-reset/complete")
+    @RepeatSubmit
+    public ApiResponse<Boolean> completePasswordReset(@Valid @RequestBody PasswordResetCompleteRequest request, HttpServletRequest httpServletRequest) {
+        return ApiResponse.success(authAppService.completePasswordReset(request, httpServletRequest), TraceContext.getRequestId());
+    }
+
     @GetMapping("/wechat/authorize-url")
     public ApiResponse<WechatAuthorizeUrlDTO> wechatAuthorizeUrl() {
         return ApiResponse.success(authAppService.wechatAuthorizeUrl(), TraceContext.getRequestId());
@@ -87,31 +100,34 @@ public class AuthController {
 
     @PostMapping("/passkeys/registration/options")
     @RepeatSubmit
-    public ApiResponse<PasskeyOptionsDTO> passkeyRegistrationOptions() {
-        return ApiResponse.success(passkeyAuthService.registrationOptions(), TraceContext.getRequestId());
+    public ApiResponse<PasskeyOptionsDTO> passkeyRegistrationOptions(@RequestBody(required = false) @Valid PasskeyOperationVerificationRequest request) {
+        return ApiResponse.success(passkeyAuthService.registrationOptions(request), TraceContext.getRequestId());
     }
 
     @PostMapping("/passkeys/registration/complete")
     @RepeatSubmit
-    public ApiResponse<com.lumira.api.system.PasskeyCredentialDTO> passkeyRegistrationComplete(@Valid @RequestBody PasskeyRegistrationCompleteRequest request, HttpServletRequest httpServletRequest) {
+    public ApiResponse<PasskeyCredentialDTO> passkeyRegistrationComplete(@Valid @RequestBody PasskeyRegistrationCompleteRequest request, HttpServletRequest httpServletRequest) {
         return ApiResponse.success(passkeyAuthService.completeRegistration(request, httpServletRequest), TraceContext.getRequestId());
     }
 
     @GetMapping("/passkeys")
-    public ApiResponse<java.util.List<com.lumira.api.system.PasskeyCredentialDTO>> passkeyCredentials() {
+    public ApiResponse<java.util.List<PasskeyCredentialDTO>> passkeyCredentials() {
         return ApiResponse.success(passkeyAuthService.listCredentials(), TraceContext.getRequestId());
     }
 
     @PatchMapping("/passkeys/{id}")
     @RepeatSubmit
-    public ApiResponse<com.lumira.api.system.PasskeyCredentialDTO> renamePasskeyCredential(@PathVariable Long id, @Valid @RequestBody PasskeyCredentialLabelRequest request) {
+    public ApiResponse<PasskeyCredentialDTO> renamePasskeyCredential(@PathVariable Long id, @Valid @RequestBody PasskeyCredentialRenameRequest request) {
         return ApiResponse.success(passkeyAuthService.renameCredential(id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/passkeys/{id}")
     @RepeatSubmit
-    public ApiResponse<Boolean> deletePasskeyCredential(@PathVariable Long id) {
-        return ApiResponse.success(passkeyAuthService.deleteCredential(id), TraceContext.getRequestId());
+    public ApiResponse<Boolean> deletePasskeyCredential(
+            @PathVariable Long id,
+            @RequestBody(required = false) @Valid PasskeyOperationVerificationRequest request
+    ) {
+        return ApiResponse.success(passkeyAuthService.deleteCredential(id, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/second-factor/complete")
@@ -134,6 +150,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh-token")
+    @RepeatSubmit
     public ApiResponse<RefreshTokenResponseDTO> refreshToken(@RequestBody(required = false) RefreshTokenRequest request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
         authCookieService.validateCsrfIfCookieAuth(httpServletRequest);
         String refreshToken = request != null && request.refreshToken() != null ? request.refreshToken() : authCookieService.readRefreshToken(httpServletRequest);
@@ -148,10 +165,31 @@ public class AuthController {
         return ApiResponse.success(authAppService.currentUser(), TraceContext.getRequestId());
     }
 
+    @PutMapping("/simulated-role")
+    @RepeatSubmit
+    public ApiResponse<SimulatedRoleSwitchResponseDTO> switchSimulatedRole(
+            @RequestBody(required = false) SimulatedRoleSwitchRequest request,
+            HttpServletResponse httpServletResponse
+    ) {
+        SimulatedRoleSwitchResponseDTO response = authAppService.switchSimulatedRole(request);
+        authCookieService.writeRefreshToken(httpServletResponse, response.refreshToken());
+        return ApiResponse.success(
+                new SimulatedRoleSwitchResponseDTO(
+                        response.currentUser(),
+                        response.accessToken(),
+                        null,
+                        response.tokenType(),
+                        response.expiresIn()
+                ),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping("/session/keepalive")
     public ApiResponse<Boolean> keepalive(HttpServletResponse httpServletResponse) {
+        boolean alive = authAppService.keepalive();
         authCookieService.writeCsrfToken(httpServletResponse);
-        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+        return ApiResponse.success(alive, TraceContext.getRequestId());
     }
 
     @GetMapping("/verification/providers")
@@ -166,14 +204,20 @@ public class AuthController {
 
     @PostMapping("/verification/providers/{factorCode}/bind")
     @RepeatSubmit
-    public ApiResponse<com.lumira.api.system.VerificationChallengeDTO> verificationBind(@PathVariable String factorCode) {
-        return ApiResponse.success(authAppService.verificationBind(factorCode), TraceContext.getRequestId());
+    public ApiResponse<com.lumira.api.system.VerificationBindingChallengeDTO> verificationBind(
+            @PathVariable String factorCode,
+            @RequestBody(required = false) @Valid VerificationBindRequest request
+    ) {
+        return ApiResponse.success(authAppService.verificationBind(factorCode, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/verification/providers/{factorCode}/unbind")
     @RepeatSubmit
-    public ApiResponse<Boolean> verificationUnbind(@PathVariable String factorCode) {
-        return ApiResponse.success(authAppService.verificationUnbind(factorCode), TraceContext.getRequestId());
+    public ApiResponse<Boolean> verificationUnbind(
+            @PathVariable String factorCode,
+            @Valid @RequestBody SecondFactorCompleteRequest request
+    ) {
+        return ApiResponse.success(authAppService.verificationUnbind(factorCode, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/verification/providers/{factorCode}/challenge")

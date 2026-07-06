@@ -13,12 +13,17 @@ public final class AuthDomainModels {
 
     public static final class AuthSessionAggregate extends AggregateRoot<String> {
         private final Long userId;
+        private final String userUuid;
         private Instant lastActiveAt;
         private boolean revoked;
 
-        public AuthSessionAggregate(String sessionId, Long userId, Instant lastActiveAt) {
+        public AuthSessionAggregate(String sessionId, Long userId, String userUuid, Instant lastActiveAt) {
             super(EntityId.of(sessionId));
+            if (userId == null || userId <= 0 || userUuid == null || userUuid.isBlank()) {
+                throw new IllegalArgumentException("trusted session user identity is required");
+            }
             this.userId = userId;
+            this.userUuid = userUuid.trim();
             this.lastActiveAt = lastActiveAt == null ? Instant.now() : lastActiveAt;
         }
 
@@ -31,7 +36,7 @@ public final class AuthDomainModels {
                     "AUTH_SESSION_REFRESHED",
                     "auth.session",
                     id().value(),
-                    Map.of("userId", userId, "lastActiveAt", lastActiveAt.toString())
+                    actorAttributes(Map.of("lastActiveAt", lastActiveAt.toString()))
             ));
         }
 
@@ -44,8 +49,15 @@ public final class AuthDomainModels {
                     "AUTH_SESSION_REVOKED",
                     "auth.session",
                     id().value(),
-                    Map.of("userId", userId, "reason", reason == null ? "unspecified" : reason)
+                    actorAttributes(Map.of("reason", reason == null ? "unspecified" : reason))
             ));
+        }
+
+        private Map<String, Object> actorAttributes(Map<String, Object> attributes) {
+            java.util.LinkedHashMap<String, Object> result = new java.util.LinkedHashMap<>(attributes);
+            result.put("userId", userId);
+            result.put("userUuid", userUuid);
+            return result;
         }
     }
 

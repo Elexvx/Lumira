@@ -29,6 +29,7 @@ import com.lumira.file.processing.FileThumbnailProcessor;
 import com.lumira.file.processing.InlineFileSecurityScanEngine;
 import com.lumira.file.processing.TesseractFileOcrEngine;
 import com.lumira.file.security.SafeUrlValidator;
+import com.lumira.file.service.FileInternalApiService;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
@@ -74,6 +75,7 @@ import org.springframework.context.annotation.Import;
         FileSecurityScanProcessor.class,
         FileTextExtractionProcessor.class,
         FileThumbnailProcessor.class,
+        FileInternalApiService.class,
         InlineFileSecurityScanEngine.class,
         TesseractFileOcrEngine.class,
         SafeUrlValidator.class,

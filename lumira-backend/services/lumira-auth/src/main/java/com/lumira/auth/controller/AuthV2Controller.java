@@ -80,7 +80,8 @@ public class AuthV2Controller {
 
     @PostMapping("/session/keepalive")
     public ApiResponse<Boolean> keepalive(HttpServletResponse httpServletResponse) {
+        boolean alive = authAppService.keepalive();
         authCookieService.writeCsrfToken(httpServletResponse);
-        return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
+        return ApiResponse.success(alive, TraceContext.getRequestId());
     }
 }

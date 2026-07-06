@@ -8,7 +8,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
-import { createLoginSessionBroadcastListener, resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
+import { createLoginSessionBroadcastListener, resolveAuthorizedLoginRedirectTarget, resolveLoginPageRuntimeRedirectTarget } from '@/auth/loginRedirect';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
@@ -118,6 +118,15 @@ type CodeLoginMode = 'sms' | 'email';
 
 const POST_LOGIN_MENU_TIMEOUT_MS = 2500;
 const POST_LOGIN_OPTIONAL_TIMEOUT_MS = 1200;
+const WECHAT_CONTACT_BIND_REQUIRED_KEY = 'lumira_wechat_contact_bind_required';
+
+const markWechatContactBindRequired = () => {
+  window.sessionStorage.setItem(WECHAT_CONTACT_BIND_REQUIRED_KEY, '1');
+};
+
+const clearWechatContactBindRequired = () => {
+  window.sessionStorage.removeItem(WECHAT_CONTACT_BIND_REQUIRED_KEY);
+};
 
 type PluginBootstrapResponse = {
   menuTree?: MenuNode[];
@@ -910,9 +919,6 @@ export const useLoginFlowAuthInteractions = ({
           [mode === 'sms' ? 'smsVerificationCode' : 'emailVerificationCode']: undefined,
         } as Partial<LoginFormValues>);
         message.success(formatMessage({ id: 'page.login.success.codeSent', defaultMessage: 'Verification code sent' }));
-        if (challenge.debugCode) {
-          message.info(formatMessage({ id: 'page.login.code.debug', defaultMessage: 'Debug code: {code}' }, { code: challenge.debugCode }));
-        }
       } catch (error) {
         message.error(error instanceof Error && error.message ? error.message : formatMessage({ id: 'page.login.error.codeSendFailed', defaultMessage: 'Failed to send the verification code, please try again later' }));
       } finally {
@@ -1067,6 +1073,7 @@ export const useLoginFlowAuthInteractions = ({
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
       });
+      clearWechatContactBindRequired();
       await completeSuccessfulLogin(loginResponse, Boolean(flowState.loginForm.getFieldValue('remember')));
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
@@ -1162,6 +1169,9 @@ export const useLoginFlowAuthInteractions = ({
         return false;
       }
 
+      if (!flowState.pendingSecondFactorLogin) {
+        clearWechatContactBindRequired();
+      }
       await completeSuccessfulLogin(loginResponse, Boolean(values.remember));
       return true;
     },
@@ -1238,6 +1248,11 @@ export const useLoginFlowAuthInteractions = ({
           return false;
         }
 
+        if (submitLoginMode === 'wechat') {
+          await handleWechatLogin();
+          return false;
+        }
+
         if (!validateLoginSubmit(values, submitLoginMode)) {
           return false;
         }
@@ -1267,6 +1282,7 @@ export const useLoginFlowAuthInteractions = ({
     [
       handleCodeLogin,
       handlePasskeyLogin,
+      handleWechatLogin,
       handlePasswordLogin,
       bootstrapFlow.activeLoginMode,
       flowState,
@@ -1323,7 +1339,6 @@ export const useLoginFlowRuntime = ({
   locationPathname,
   setInitialState,
 }: UseLoginFlowRuntimeParams) => {
-  const redirectTarget = resolveLoginRedirectTarget(locationSearch);
   const wechatCallbackHandledRef = useRef(false);
   const passwordChangeRestoreHandledRef = useRef(false);
   const suppressLoginBroadcastRedirectRef = useRef(false);
@@ -1332,6 +1347,12 @@ export const useLoginFlowRuntime = ({
     const searchParams = new URLSearchParams(locationSearch || '');
     return searchParams.get('forcePasswordChange') === '1';
   }, [locationSearch]);
+  const redirectTarget = resolveLoginPageRuntimeRedirectTarget({
+    pathname: locationPathname,
+    search: locationSearch,
+    isAuthenticated: isLoggedIn(),
+    forcePasswordChangeRequested,
+  });
 
   const {
     postLoginPack,
@@ -1548,6 +1569,7 @@ export const useLoginFlowRuntime = ({
       skipAuth: true,
     })
       .then(async (loginResponse) => {
+        markWechatContactBindRequired();
         if (loginResponse.requiresSecondFactor) {
           flowState.setPendingSecondFactorLogin(loginResponse);
           message.info(

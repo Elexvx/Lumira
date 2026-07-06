@@ -24,7 +24,31 @@ public class AuthSecurityProperties {
     private long permissionSnapshotVersionCacheMaxEntries = 100_000;
     private long authBootstrapCacheTtlSeconds = 300;
     private long loginCapabilitiesCacheTtlSeconds = 300;
-    private List<String> permitPaths = new ArrayList<>();
+    private List<String> permitPaths = new ArrayList<>(List.of(
+            "/api/v1/auth/login",
+            "/api/v1/auth/login/code/challenge",
+            "/api/v1/auth/login/code/complete",
+            "/api/v1/auth/password-reset/challenge",
+            "/api/v1/auth/password-reset/complete",
+            "/api/v1/auth/wechat/authorize-url",
+            "/api/v1/auth/wechat/callback",
+            "/api/v1/auth/wechat/login",
+            "/api/v1/auth/passkeys/authentication/options",
+            "/api/v1/auth/passkeys/authentication/complete",
+            "/api/v1/auth/second-factor/complete",
+            "/api/v1/auth/refresh-token",
+            "/api/v1/auth/login-encryption-key",
+            "/api/v2/auth/login",
+            "/api/v2/auth/wechat/callback",
+            "/api/v2/auth/refresh-token",
+            "/api/v2/auth/login-encryption-key",
+            "/api/version",
+            "/api/v1/version",
+            "/api/v1/*/version",
+            "/actuator/health",
+            "/actuator/info",
+            "/error"
+    ));
 
     public String getJwtSecret() {
         return jwtSecret;

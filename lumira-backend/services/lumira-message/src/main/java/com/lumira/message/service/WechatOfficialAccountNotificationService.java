@@ -18,7 +18,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -29,13 +28,6 @@ public class WechatOfficialAccountNotificationService {
     private static final String APP_SECRET_KEY = "notification.wechat-official.app-secret";
     private static final String TEMPLATE_ID_KEY = "notification.wechat-official.template-id";
     private static final String DETAIL_URL_KEY = "notification.wechat-official.detail-url";
-    private static final List<String> CONFIG_KEYS = List.of(
-            ENABLED_KEY,
-            APP_ID_KEY,
-            APP_SECRET_KEY,
-            TEMPLATE_ID_KEY,
-            DETAIL_URL_KEY
-    );
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token";
     private static final String TEMPLATE_SEND_URL = "https://api.weixin.qq.com/cgi-bin/message/template/send";
 
@@ -130,7 +122,7 @@ public class WechatOfficialAccountNotificationService {
     }
 
     private Map<String, String> loadValues() {
-        Map<String, String> rawValues = systemInternalApi.platformConfigValues(CONFIG_KEYS);
+        Map<String, String> rawValues = systemInternalApi.wechatOfficialRuntimeConfigValues();
         Map<String, String> values = new LinkedHashMap<>();
         if (rawValues != null) {
             rawValues.forEach((key, value) -> values.put(key, value == null ? null : value.trim()));

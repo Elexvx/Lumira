@@ -1,9 +1,16 @@
 package com.lumira.file.controller;
 
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.file.StorageSpaceDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.constant.HeaderConstants;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.vo.PageResponse;
@@ -12,12 +19,16 @@ import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.file.app.FileManagementAppService;
 import com.lumira.file.dto.FileStorageSpaceRequest;
 import jakarta.validation.constraints.Positive;
+import java.util.List;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,19 +45,32 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/v1/files")
 public class FileController {
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final FileManagementAppService fileManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final SystemInternalApi systemInternalApi;
 
     public FileController(
             FileManagementAppService fileManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
+        this(fileManagementAppService, securityContextFacade, permissionGuard, null);
+    }
+
+    @Autowired
+    public FileController(
+            FileManagementAppService fileManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi
+    ) {
         this.fileManagementAppService = fileManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.systemInternalApi = systemInternalApi;
     }
 
     @GetMapping
@@ -64,10 +88,11 @@ public class FileController {
     ) {
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        CurrentUser currentUser = currentUser();
         require(resolveReadPermission(scope));
         return ApiResponse.success(
                 fileManagementAppService.listFiles(
-                        securityContextFacade.getCurrentUser(),
+                        currentUser,
                         keyword,
                         category,
                         fileExtension,
@@ -89,20 +114,20 @@ public class FileController {
             @RequestParam(name = "pageSize", defaultValue = "50") long pageSize
     ) {
         require("system:file:manage");
-        return ApiResponse.success(fileManagementAppService.listStorageSpaces(securityContextFacade.getCurrentUser(), pageNo, pageSize), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.listStorageSpaces(currentUser(), pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/storage-spaces/{storageKey}")
     public ApiResponse<StorageSpaceDTO> storageSpace(@PathVariable("storageKey") String storageKey) {
         require("system:file:manage");
-        return ApiResponse.success(fileManagementAppService.getStorageSpace(securityContextFacade.getCurrentUser(), storageKey), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.getStorageSpace(currentUser(), storageKey), TraceContext.getRequestId());
     }
 
     @PostMapping("/storage-spaces")
     @RepeatSubmit
     public ApiResponse<StorageSpaceDTO> createStorageSpace(@RequestBody FileStorageSpaceRequest request) {
         require("system:file:manage");
-        return ApiResponse.success(fileManagementAppService.createStorageSpace(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.createStorageSpace(currentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/storage-spaces/{id}")
@@ -112,14 +137,14 @@ public class FileController {
             @RequestBody FileStorageSpaceRequest request
     ) {
         require("system:file:manage");
-        return ApiResponse.success(fileManagementAppService.updateStorageSpace(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.updateStorageSpace(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/storage-spaces/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteStorageSpace(@PathVariable("id") @Positive Long id) {
         require("system:file:manage:delete");
-        fileManagementAppService.deleteStorageSpace(securityContextFacade.getCurrentUser(), id);
+        fileManagementAppService.deleteStorageSpace(currentUser(), id);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -127,7 +152,7 @@ public class FileController {
     @RepeatSubmit
     public ApiResponse<FileStorageSpaceRequest.TestResult> testStorageSpace(@PathVariable("id") @Positive Long id) {
         require("system:file:manage");
-        return ApiResponse.success(fileManagementAppService.testStorageSpace(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.testStorageSpace(currentUser(), id), TraceContext.getRequestId());
     }
 
     @GetMapping("/{id}")
@@ -137,8 +162,9 @@ public class FileController {
     ) {
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        CurrentUser currentUser = currentUser();
         require(resolveReadPermission(scope));
-        return ApiResponse.success(fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.getFile(currentUser, id, sharedScope, downloadCenterScope), TraceContext.getRequestId());
     }
 
     @GetMapping("/{id}/download")
@@ -148,9 +174,10 @@ public class FileController {
     ) {
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        CurrentUser currentUser = currentUser();
         require(resolveReadPermission(scope));
-        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        FileObjectDTO file = fileManagementAppService.getFile(currentUser, id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(currentUser, id, sharedScope, downloadCenterScope);
         String contentType = file.mimeType();
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (contentType != null && !contentType.isBlank()) {
@@ -178,9 +205,10 @@ public class FileController {
     ) {
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        CurrentUser currentUser = currentUser();
         require(resolveReadPermission(scope));
-        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        FileObjectDTO file = fileManagementAppService.getPreviewableFile(currentUser, id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(currentUser, id, sharedScope, downloadCenterScope);
         String contentType = file.mimeType();
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (contentType != null && !contentType.isBlank()) {
@@ -211,9 +239,9 @@ public class FileController {
             @RequestParam(name = "bucket", required = false) String bucket,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        require(FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) ? "download:center:create" : "system:file:upload");
+        require(resolveUploadPermission(scope));
         return ApiResponse.success(
-                fileManagementAppService.uploadFile(securityContextFacade.getCurrentUser(), file, category, tags, remark, bucket, scope),
+                fileManagementAppService.uploadFile(currentUser(), file, category, tags, remark, bucket, scope),
                 TraceContext.getRequestId()
         );
     }
@@ -227,12 +255,64 @@ public class FileController {
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(downloadCenterScope ? "download:center:delete" : FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope) ? "system:file:manage:delete" : "system:file:delete");
-        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        fileManagementAppService.deleteFile(currentUser(), id, sharedScope, downloadCenterScope);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
     private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+        permissionGuard.requirePermission(currentUser(), permissionKey);
+    }
+
+    private CurrentUser currentUser() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return refreshTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.status())
+                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
+                userId,
+                userSnapshot.userUuid().trim()
+        );
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(userSnapshot.userId());
+        currentUser.setUserUuid(userSnapshot.userUuid().trim());
+        currentUser.setUsername(userSnapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(
+                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
+        );
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        return currentUser;
     }
 
     private String resolveReadPermission(String scope) {
@@ -243,6 +323,16 @@ public class FileController {
             return "system:file:manage";
         }
         return "system:file:view";
+    }
+
+    private String resolveUploadPermission(String scope) {
+        if (FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope)) {
+            return "download:center:create";
+        }
+        if ("PUBLIC".equalsIgnoreCase(scope)) {
+            return "system:file:publish";
+        }
+        return "system:file:upload";
     }
 
     private boolean isSharedScope(String scope) {

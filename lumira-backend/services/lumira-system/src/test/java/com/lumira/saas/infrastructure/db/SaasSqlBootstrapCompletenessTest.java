@@ -65,6 +65,11 @@ class SaasSqlBootstrapCompletenessTest {
                 .contains("VALUES (1001, 'admin'")
                 .contains("VALUES (1001, 1001, 0, 0, 0)")
                 .contains("SELECT 1001, p.`permission_key`, 0, 0, 0 FROM `sys_permission` p WHERE p.`deleted` = 0");
+        assertThat(normalizedSql)
+                .contains("INSERT INTO `sys_user_role` (`user_id`, `user_uuid`, `role_id`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`)")
+                .contains("VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 1001, 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0)")
+                .contains("VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 1002, 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0)")
+                .contains("`updated_by_uuid` = VALUES(`updated_by_uuid`)");
         assertThat(extractValuesBlock(sql, "sys_role_permission"))
                 .as("admin bootstrap should enumerate concrete permission keys instead of wildcard role permissions")
                 .doesNotContain("'*'");

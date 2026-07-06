@@ -11,9 +11,11 @@ public class IamUserEventEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String eventType;
     private String eventSource;
     private Long operatorId;
+    private String operatorUuid;
     private String ip;
     private String userAgent;
     private String detailJson;

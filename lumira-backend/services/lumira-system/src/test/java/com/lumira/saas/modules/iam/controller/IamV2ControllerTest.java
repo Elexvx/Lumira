@@ -115,6 +115,10 @@ class IamV2ControllerTest {
         CurrentUser user = new CurrentUser();
         user.setUserId(3001L);
         user.setUsername("admin");
+        user.setSessionId("session-3001");
+        user.setSessionVersion(1);
+        user.setUserUuid("user-uuid-3001");
+        user.setPermissionsVersion("permissions-1");
         user.setAuthenticated(true);
         SystemDTO.RolePermissionRequest request = new SystemDTO.RolePermissionRequest();
         request.setPermissionKeys(List.of("system:user:view"));

@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: team-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+server:
+  port: ${SERVER_PORT:8080}
+
+lumira:
+  monolith: ${LUMIRA_MONOLITH:false}
+  runtime:
+    control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:true}
+
+spring.cloud.nacos.discovery.enabled: false
+spring.cloud.nacos.config.enabled: false
+spring.cloud.sentinel.enabled: false
+
+saas:
+  security:
+    jwt-secret: ${JWT_SECRET:}
+    field-secret: ${FIELD_SECRET:}
+  web:
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}

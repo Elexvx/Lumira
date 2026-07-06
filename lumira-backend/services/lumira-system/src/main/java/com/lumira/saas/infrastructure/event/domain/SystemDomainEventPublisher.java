@@ -25,11 +25,20 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
         platformEventPublisher.publishAfterCommit(
                 resolveSourceType(event),
                 event.eventType(),
-                null,
+                resolveUserId(event.attributes()),
                 event.aggregateType(),
                 parseLong(event.aggregateId()),
                 attributes(event)
         );
+    }
+
+    private Long resolveUserId(Map<String, Object> attributes) {
+        Object value = attributes == null ? null : attributes.get("userId");
+        if (value instanceof Number number) {
+            long userId = number.longValue();
+            return userId > 0 ? userId : null;
+        }
+        return null;
     }
 
     private String resolveSourceType(DomainEvent event) {
@@ -47,7 +56,7 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
     }
 
     private Map<String, Object> attributes(DomainEvent event) {
-        Map<String, Object> attributes = new LinkedHashMap<>(event.attributes());
+        Map<String, Object> attributes = new LinkedHashMap<>(event.attributes() == null ? Map.of() : event.attributes());
         attributes.put("eventId", event.eventId().toString());
         attributes.put("eventKey", event.eventKey());
         attributes.put("schemaVersion", event.schemaVersion());

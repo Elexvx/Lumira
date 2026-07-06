@@ -23,8 +23,10 @@ public final class LocalizationEntities {
         public Integer isDefault;
         public String status;
         public Long createdBy;
+        public String createdByUuid;
         public LocalDateTime createdAt;
         public Long updatedBy;
+        public String updatedByUuid;
         public LocalDateTime updatedAt;
         public Integer deleted;
     }
@@ -40,8 +42,10 @@ public final class LocalizationEntities {
         public Integer sortNo;
         public String status;
         public Long createdBy;
+        public String createdByUuid;
         public LocalDateTime createdAt;
         public Long updatedBy;
+        public String updatedByUuid;
         public LocalDateTime updatedAt;
         public Integer deleted;
     }
@@ -58,8 +62,10 @@ public final class LocalizationEntities {
         public String sourceRef;
         public String status;
         public Long createdBy;
+        public String createdByUuid;
         public LocalDateTime createdAt;
         public Long updatedBy;
+        public String updatedByUuid;
         public LocalDateTime updatedAt;
         public Integer deleted;
     }
@@ -77,8 +83,10 @@ public final class LocalizationEntities {
         public Long translatedBy;
         public LocalDateTime translatedAt;
         public Long createdBy;
+        public String createdByUuid;
         public LocalDateTime createdAt;
         public Long updatedBy;
+        public String updatedByUuid;
         public LocalDateTime updatedAt;
         public Integer deleted;
     }
@@ -93,8 +101,10 @@ public final class LocalizationEntities {
         public Integer sourceLine;
         public String sourceText;
         public Long createdBy;
+        public String createdByUuid;
         public LocalDateTime createdAt;
         public Long updatedBy;
+        public String updatedByUuid;
         public LocalDateTime updatedAt;
         public Integer deleted;
     }
@@ -110,10 +120,13 @@ public final class LocalizationEntities {
         public String note;
         public Integer activeFlag;
         public Long publishedBy;
+        public String publishedByUuid;
         public LocalDateTime publishedAt;
         public Long createdBy;
+        public String createdByUuid;
         public LocalDateTime createdAt;
         public Long updatedBy;
+        public String updatedByUuid;
         public LocalDateTime updatedAt;
         public Integer deleted;
     }

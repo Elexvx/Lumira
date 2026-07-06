@@ -12,6 +12,7 @@ public class PlatformEventOutboxEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String sourceType;
     private String eventType;
     private String eventKey;
@@ -26,8 +27,10 @@ public class PlatformEventOutboxEntity {
     private String claimToken;
     private LocalDateTime claimExpiresAt;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
 
@@ -35,6 +38,8 @@ public class PlatformEventOutboxEntity {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getSourceType() { return sourceType; }
     public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public String getEventType() { return eventType; }
@@ -63,10 +68,14 @@ public class PlatformEventOutboxEntity {
     public void setClaimExpiresAt(LocalDateTime claimExpiresAt) { this.claimExpiresAt = claimExpiresAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getDeleted() { return deleted; }

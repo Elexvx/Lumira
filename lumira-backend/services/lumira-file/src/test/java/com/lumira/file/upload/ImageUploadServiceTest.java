@@ -111,6 +111,21 @@ class ImageUploadServiceTest {
         assertTrue(storedImage.publicUrl().startsWith("/api/uploads/"));
     }
 
+    @Test
+    void rejectsEscapingStorageSubPath() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
+        ImageUploadService service = service(properties);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "avatar.png",
+                "image/png",
+                generatePngBytes()
+        );
+
+        assertThrows(BizException.class, () -> service.upload(file, "../outside"));
+    }
+
     private byte[] generatePngBytes() throws Exception {
         BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream output = new ByteArrayOutputStream();

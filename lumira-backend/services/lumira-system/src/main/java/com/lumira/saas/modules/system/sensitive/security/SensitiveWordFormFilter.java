@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.sensitive.security;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -60,7 +62,7 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         CurrentUser currentUser = securityContextFacade.getCurrentUserOrNull();
-        if (currentUser != null && currentUser.isAuthenticated() && pluginStateService.isEnabled(currentUser)) {
+        if (isTrustedCurrentUser(currentUser) && pluginStateService.isEnabled(currentUser)) {
             Map<String, Object> payload = new LinkedHashMap<>();
             request.getParameterMap().forEach((key, value) -> {
                 if (value == null) {
@@ -78,6 +80,10 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
     }
 
     private void writeError(HttpServletResponse response, HttpServletRequest request, SensitiveWordVO.CheckResult result) throws IOException {

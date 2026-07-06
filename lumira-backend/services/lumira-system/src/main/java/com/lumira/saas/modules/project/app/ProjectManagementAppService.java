@@ -1,17 +1,25 @@
 package com.lumira.saas.modules.project.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.project.dto.ProjectDTO;
 import com.lumira.saas.modules.project.vo.ProjectVO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,11 +32,56 @@ public class ProjectManagementAppService {
     private static final Set<String> STATUSES = Set.of("draft", "published");
     private static final Set<String> RATINGS = Set.of("all", "excellent", "popular", "new");
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final String VIEW = "aiadc:project:view";
+    private static final String CREATE = "aiadc:project:create";
+    private static final String UPDATE = "aiadc:project:update";
+    private static final String DELETE = "aiadc:project:delete";
+    private static final String REGISTRATION_VIEW = "aiadc:registration:view";
+    private static final String REGISTRATION_CREATE = "aiadc:registration:create";
+    private static final String STATUS_ENABLED = "ENABLED";
+    private static final int MAX_CODE_LENGTH = 64;
+    private static final int MAX_TITLE_LENGTH = 128;
+    private static final int MAX_CATEGORY_LENGTH = 64;
+    private static final int MAX_LONG_TEXT_LENGTH = 1000;
+    private static final int MAX_URL_LENGTH = 512;
+    private static final int MAX_OWNER_LENGTH = 128;
+    private static final int MAX_LABEL_LENGTH = 64;
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
+
+    @Autowired
+    public ProjectManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService);
+    }
+
+    public ProjectManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+    }
+
+    public ProjectManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(jdbcTemplate, permissionSnapshotService, null);
+    }
 
     public ProjectManagementAppService(MyBatisQueryOperations jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this(jdbcTemplate, null);
     }
 
     public PageResponse<ProjectVO.Project> listProjects(
@@ -43,7 +96,7 @@ public class ProjectManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        requireAuthenticated(currentUser);
+        requireAnyPermission(currentUser, VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
@@ -101,7 +154,8 @@ public class ProjectManagementAppService {
     }
 
     public ProjectVO.Project getProject(CurrentUser currentUser, Long id) {
-        requireAuthenticated(currentUser);
+        requireAnyPermission(currentUser, VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
+        requirePositiveId(id, "Project id is required");
         ProjectVO.Project project = findProject(id);
         if (project == null) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
@@ -111,15 +165,17 @@ public class ProjectManagementAppService {
 
     @Transactional
     public ProjectVO.Project createProject(CurrentUser currentUser, ProjectDTO.ProjectUpsertRequest request) {
-        Long userId = requireUserId(currentUser);
+        Long userId = requireAnyPermission(currentUser, CREATE, REGISTRATION_CREATE);
+        String userUuid = requireUserUuid(currentUser);
+        requireRequest(request);
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into aiadc_project (
                             code, locale, title, category, description, image_url,
                             owner_name, rating, sort, status, tags, cta_label, cta_href,
-                            featured, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            featured, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
                 normalized.getCode(),
                 normalized.getLocale(),
@@ -136,22 +192,33 @@ public class ProjectManagementAppService {
                 normalized.getCtaHref(),
                 Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
                 userId,
-                userId
+                userUuid,
+                userId,
+                userUuid
         );
+        requireProjectWrite(inserted);
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return getProject(currentUser, id);
     }
 
     @Transactional
     public ProjectVO.Project updateProject(CurrentUser currentUser, Long id, ProjectDTO.ProjectUpsertRequest request) {
+        Long userId = requireAnyPermission(currentUser, UPDATE);
+        String userUuid = requireUserUuid(currentUser);
+        requirePositiveId(id, "Project id is required");
+        requireRequest(request);
+        ProjectVO.Project existing = findProject(id);
+        if (existing == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Project not found");
+        }
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
         int updated = jdbcTemplate.update(
                 """
                         update aiadc_project
                         set code = ?, locale = ?, title = ?, category = ?, description = ?, image_url = ?,
                             owner_name = ?, rating = ?, sort = ?, status = ?, tags = ?, cta_label = ?,
-                            cta_href = ?, featured = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                            cta_href = ?, featured = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and code = ? and locale = ? and status = ? and deleted = 0
                         """,
                 normalized.getCode(),
                 normalized.getLocale(),
@@ -167,9 +234,13 @@ public class ProjectManagementAppService {
                 normalized.getCtaLabel(),
                 normalized.getCtaHref(),
                 Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
-                requireUserId(currentUser),
+                userId,
+                userUuid,
                 LocalDateTime.now(),
-                id
+                id,
+                existing.getCode(),
+                existing.getLocale(),
+                existing.getStatus()
         );
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
@@ -179,11 +250,26 @@ public class ProjectManagementAppService {
 
     @Transactional
     public boolean deleteProject(CurrentUser currentUser, Long id) {
+        Long userId = requireAnyPermission(currentUser, DELETE);
+        String userUuid = requireUserUuid(currentUser);
+        requirePositiveId(id, "Project id is required");
+        ProjectVO.Project existing = findProject(id);
+        if (existing == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Project not found");
+        }
         int updated = jdbcTemplate.update(
-                "update aiadc_project set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                requireUserId(currentUser),
+                """
+                        update aiadc_project
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and code = ? and locale = ? and status = ? and deleted = 0
+                        """,
+                userId,
+                userUuid,
                 LocalDateTime.now(),
-                id
+                id,
+                existing.getCode(),
+                existing.getLocale(),
+                existing.getStatus()
         );
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
@@ -192,6 +278,7 @@ public class ProjectManagementAppService {
     }
 
     private ProjectVO.Project findProject(Long id) {
+        requirePositiveId(id, "Project id is required");
         List<ProjectVO.Project> records = jdbcTemplate.query(
                 projectSelect() + " from aiadc_project where id = ? and deleted = 0 limit 1",
                 new BeanPropertyRowMapper<>(ProjectVO.Project.class),
@@ -200,36 +287,161 @@ public class ProjectManagementAppService {
         return records.isEmpty() ? null : records.get(0);
     }
 
+    private void requireProjectWrite(int updated) {
+        if (updated <= 0) {
+            throw biz(ErrorCode.BIZ_ERROR, "Project changed, please retry");
+        }
+    }
+
     private ProjectDTO.ProjectUpsertRequest normalizeRequest(ProjectDTO.ProjectUpsertRequest request) {
         ProjectDTO.ProjectUpsertRequest normalized = new ProjectDTO.ProjectUpsertRequest();
-        normalized.setCode(trimRequired(request.getCode(), "Project code is required"));
+        normalized.setCode(trimRequired(request.getCode(), "Project code is required", MAX_CODE_LENGTH, "Project code is too long"));
         normalized.setLocale(normalizeEnum(request.getLocale(), "zh", LOCALES, "Invalid project locale"));
-        normalized.setTitle(trimRequired(request.getTitle(), "Project title is required"));
-        normalized.setCategory(trimRequired(request.getCategory(), "Project category is required"));
-        normalized.setDescription(trimToNull(request.getDescription()));
-        normalized.setImageUrl(trimToNull(request.getImageUrl()));
-        normalized.setOwnerName(trimToNull(request.getOwnerName()));
+        normalized.setTitle(trimRequired(request.getTitle(), "Project title is required", MAX_TITLE_LENGTH, "Project title is too long"));
+        normalized.setCategory(trimRequired(request.getCategory(), "Project category is required", MAX_CATEGORY_LENGTH, "Project category is too long"));
+        normalized.setDescription(trimOptional(request.getDescription(), MAX_LONG_TEXT_LENGTH, "Project description is too long"));
+        normalized.setImageUrl(normalizeUrl(request.getImageUrl(), "Project image URL"));
+        normalized.setOwnerName(trimOptional(request.getOwnerName(), MAX_OWNER_LENGTH, "Project owner name is too long"));
         normalized.setRating(normalizeEnum(request.getRating(), "popular", RATINGS, "Invalid project rating"));
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
         normalized.setStatus(normalizeEnum(request.getStatus(), "draft", STATUSES, "Invalid project status"));
-        normalized.setTags(trimToNull(request.getTags()));
-        normalized.setCtaLabel(trimToNull(request.getCtaLabel()));
-        normalized.setCtaHref(trimToNull(request.getCtaHref()));
+        normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Project tags are too long"));
+        normalized.setCtaLabel(trimOptional(request.getCtaLabel(), MAX_LABEL_LENGTH, "Project CTA label is too long"));
+        normalized.setCtaHref(normalizeUrl(request.getCtaHref(), "Project CTA URL"));
         normalized.setFeatured(Boolean.TRUE.equals(request.getFeatured()));
         return normalized;
     }
 
-    private void requireAuthenticated(CurrentUser currentUser) {
-        if (currentUser == null) {
+    private Long requireAnyPermission(CurrentUser currentUser, String... permissionKeys) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        Long actorUserId = currentUser.getUserId();
+        Set<String> permissions = currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+        if (permissions.isEmpty()) {
+            throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + String.join(",", permissionKeys));
+        }
+        if (permissions.contains("*")) {
+            return actorUserId;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (permissions.contains(permissionKey)) {
+                return actorUserId;
+            }
+        }
+        throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + String.join(",", permissionKeys));
+    }
+
+    private String requireUserUuid(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getUserUuid().trim();
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshed = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    ),
+                    "Login required"
+            );
+            copyTrustedCurrentUser(currentUser, refreshed);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid()) || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(
+            SessionAuthenticationService.AuthenticatedAccess authenticatedAccess,
+            String message
+    ) {
+        if (authenticatedAccess == null || !AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedAccess.currentUser())) {
+            throw biz(ErrorCode.UNAUTHORIZED, message);
+        }
+        return authenticatedAccess.currentUser();
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions());
+        target.setRoleIds(source.getRoleIds());
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds());
+        target.setDescendantDeptIds(source.getDescendantDeptIds());
+        target.setDataScopes(source.getDataScopes());
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
+    private void requireRequest(ProjectDTO.ProjectUpsertRequest request) {
+        if (request == null) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Project request is required");
         }
     }
 
-    private Long requireUserId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getUserId() == null || currentUser.getUserId() <= 0) {
-            throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+    private void requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, message);
         }
-        return currentUser.getUserId();
     }
 
     private String normalizeEnum(String value, String defaultValue, Set<String> allowed, String message) {
@@ -246,6 +458,42 @@ public class ProjectManagementAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, message);
         }
         return trimmed;
+    }
+
+    private String trimRequired(String value, String requiredMessage, int maxLength, String tooLongMessage) {
+        String trimmed = trimRequired(value, requiredMessage);
+        if (trimmed.length() > maxLength) {
+            throw biz(ErrorCode.VALIDATION_ERROR, tooLongMessage);
+        }
+        return trimmed;
+    }
+
+    private String trimOptional(String value, int maxLength, String tooLongMessage) {
+        String trimmed = trimToNull(value);
+        if (trimmed != null && trimmed.length() > maxLength) {
+            throw biz(ErrorCode.VALIDATION_ERROR, tooLongMessage);
+        }
+        return trimmed;
+    }
+
+    private String normalizeUrl(String value, String fieldName) {
+        String trimmed = trimOptional(value, MAX_URL_LENGTH, fieldName + " is too long");
+        if (trimmed == null) {
+            return null;
+        }
+        if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.contains("\\")) {
+            return trimmed;
+        }
+        try {
+            URI uri = new URI(trimmed);
+            String scheme = uri.getScheme();
+            if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+                return trimmed;
+            }
+        } catch (URISyntaxException exception) {
+            throw biz(ErrorCode.VALIDATION_ERROR, fieldName + " is invalid");
+        }
+        throw biz(ErrorCode.VALIDATION_ERROR, fieldName + " is invalid");
     }
 
     private String trimToNull(String value) {

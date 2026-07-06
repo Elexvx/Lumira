@@ -57,7 +57,14 @@ public class MessageSessionHandshakeInterceptor implements HandshakeInterceptor 
         if (ticket != null && !ticket.isBlank()) {
             MessageWebSocketTicketService.TicketPayload payload = ticketService.consume(ticket);
             if (payload != null) {
-                return sessionAuthenticationService.authenticateSessionTicket(payload.sessionId(), payload.userId(), payload.sessionVersion());
+                return sessionAuthenticationService.authenticateSessionTicket(
+                        payload.sessionId(),
+                        payload.userId(),
+                        payload.userUuid(),
+                        payload.simulatedRoleId(),
+                        payload.sessionVersion(),
+                        payload.permissionsVersion()
+                );
             }
         }
         throw new BizException(ErrorCode.UNAUTHORIZED, "缺少WebSocket认证凭证");

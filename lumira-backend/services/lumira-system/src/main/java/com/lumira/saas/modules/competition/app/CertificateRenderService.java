@@ -17,8 +17,8 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -64,19 +64,39 @@ public class CertificateRenderService {
             return;
         }
         try {
-            BufferedImage background;
-            if (backgroundUrl.startsWith("http://") || backgroundUrl.startsWith("https://")) {
-                background = ImageIO.read(URI.create(backgroundUrl).toURL());
-            } else {
-                String local = backgroundUrl.startsWith("/") ? backgroundUrl.substring(1) : backgroundUrl;
-                background = ImageIO.read(Path.of(local).toFile());
+            Path localBackground = resolveTrustedLocalBackgroundPath(backgroundUrl);
+            if (localBackground == null) {
+                return;
             }
+            BufferedImage background = ImageIO.read(localBackground.toFile());
             if (background != null) {
                 graphics.drawImage(background, 0, 0, width, height, null);
             }
         } catch (Exception ignored) {
             graphics.setColor(new Color(248, 250, 252));
             graphics.fillRect(0, 0, width, height);
+        }
+    }
+
+    static Path resolveTrustedLocalBackgroundPath(String backgroundUrl) {
+        if (!StringUtils.hasText(backgroundUrl)) {
+            return null;
+        }
+        String normalizedValue = backgroundUrl.trim().replace('\\', '/');
+        if (normalizedValue.contains("://") || normalizedValue.startsWith("//")) {
+            return null;
+        }
+        if (normalizedValue.startsWith("/")) {
+            normalizedValue = normalizedValue.substring(1);
+        }
+        try {
+            Path path = Path.of(normalizedValue).normalize();
+            if (path.isAbsolute() || path.startsWith("..")) {
+                return null;
+            }
+            return path.startsWith("storage") || path.startsWith("uploads") ? path : null;
+        } catch (InvalidPathException exception) {
+            return null;
         }
     }
 

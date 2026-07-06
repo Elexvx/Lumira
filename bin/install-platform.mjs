@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { arch, cpus, platform, release, totalmem } from 'node:os';
 import path from 'node:path';
@@ -18,6 +18,8 @@ const repoRoot = resolveRepoRoot(import.meta.url);
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
 const envPath = path.join(repoRoot, 'deploy', '.env');
 const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
+const edgeTlsDir = path.join(repoRoot, 'deploy', 'data', 'tls');
+const edgeTlsFiles = ['fullchain.pem', 'privkey.pem'];
 
 const rawArgs = process.argv.slice(2);
 const argMap = parseArgs(rawArgs);
@@ -82,12 +84,27 @@ function generatedSecrets() {
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
-    SAAS_JOB_INTERNAL_TOKEN: randomSecret('job-token'),
+    SAAS_INTERNAL_SYSTEM_TOKEN: randomSecret('system-token'),
+    SAAS_INTERNAL_AUTH_TOKEN: randomSecret('auth-token'),
+    SAAS_INTERNAL_AUTH_SYSTEM_TOKEN: randomSecret('auth-system-token'),
+    SAAS_INTERNAL_FILE_TOKEN: randomSecret('file-token'),
+    SAAS_INTERNAL_MESSAGE_TOKEN: randomSecret('message-token'),
+    SAAS_INTERNAL_PAYMENT_TOKEN: randomSecret('payment-token'),
+    SAAS_INTERNAL_PLUGIN_TOKEN: randomSecret('plugin-token'),
+    SAAS_INTERNAL_TEAM_TOKEN: randomSecret('team-token'),
+    SAAS_INTERNAL_JOB_TOKEN: randomSecret('job-token'),
     XXL_JOB_ADMIN_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
     GRAFANA_ADMIN_PASSWORD: randomSecret('grafana'),
   };
+}
+
+function assertNoUnsupportedNacosRequest() {
+  if (!argMap.has('nacos')) {
+    return;
+  }
+  throw new Error('The current install topology does not provide a bundled Nacos container. Remove --nacos and keep Nacos config/discovery disabled.');
 }
 
 function detectCapacity() {
@@ -106,6 +123,16 @@ function detectCapacity() {
 }
 
 function diskFreeGb(targetPath) {
+  try {
+    const stats = statfsSync(targetPath);
+    const availableBytes = Number(stats.bavail) * Number(stats.bsize);
+    if (Number.isFinite(availableBytes) && availableBytes > 0) {
+      return availableBytes / 1024 / 1024 / 1024;
+    }
+  } catch {
+    // Fall back to df when statfs is unavailable or unsupported.
+  }
+
   const result = output('df', ['-Pk', targetPath], { check: false });
   if (!result) {
     return 0;
@@ -179,7 +206,10 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
   const nodeMajor = parseMajorVersion(process.versions.node);
   addEnvironmentCheck(checks, nodeMajor >= environmentMinimums.nodeMajor ? 'pass' : 'fail', 'Node.js', process.version, { minimumMajor: environmentMinimums.nodeMajor });
 
-  for (const command of ['curl', 'tar', 'gzip', 'sh']) {
+  const requiredCommands = capacity.platform === 'win32'
+    ? ['curl']
+    : ['curl', 'tar', 'gzip', 'sh'];
+  for (const command of requiredCommands) {
     addEnvironmentCheck(checks, commandExists(command) ? 'pass' : 'fail', `Command ${command}`, commandExists(command) ? 'available' : 'missing');
   }
 
@@ -192,7 +222,15 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
     'JWT_SECRET',
     'FIELD_SECRET',
     'PLUGIN_SIGNATURE_SECRET',
-    'SAAS_JOB_INTERNAL_TOKEN',
+    'SAAS_INTERNAL_SYSTEM_TOKEN',
+    'SAAS_INTERNAL_AUTH_TOKEN',
+    'SAAS_INTERNAL_AUTH_SYSTEM_TOKEN',
+    'SAAS_INTERNAL_FILE_TOKEN',
+    'SAAS_INTERNAL_MESSAGE_TOKEN',
+    'SAAS_INTERNAL_PAYMENT_TOKEN',
+    'SAAS_INTERNAL_PLUGIN_TOKEN',
+    'SAAS_INTERNAL_TEAM_TOKEN',
+    'SAAS_INTERNAL_JOB_TOKEN',
     'XXL_JOB_ADMIN_ACCESS_TOKEN',
     'XXL_JOB_LOGIN_PASSWORD',
     'CORS_ALLOWED_ORIGIN_PATTERNS',
@@ -215,6 +253,16 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
   if (envSource.API_DOMAIN) {
     addEnvironmentCheck(checks, envSource.API_DOMAIN.includes('.') ? 'pass' : 'warn', 'API domain', envSource.API_DOMAIN);
   }
+
+  const nacosEnabled = envSource.NACOS_CONFIG_ENABLED === 'true' || envSource.NACOS_DISCOVERY_ENABLED === 'true';
+  addEnvironmentCheck(
+    checks,
+    nacosEnabled ? 'fail' : 'pass',
+    'Nacos topology',
+    nacosEnabled
+      ? 'current compose/install topology does not provide a bundled Nacos runtime; disable NACOS_CONFIG_ENABLED and NACOS_DISCOVERY_ENABLED'
+      : 'disabled'
+  );
 
   const dockerExists = commandExists('docker');
   addEnvironmentCheck(checks, dockerExists ? 'pass' : installMode ? 'warn' : 'fail', 'Docker CLI', dockerExists ? 'available' : 'missing');
@@ -341,11 +389,6 @@ async function collectInstallOptions(existingEnv, capacity) {
     const apiDomain = await ask(rl, '后端 API 域名', apiDomainDefault);
     const frontendOrigin = normalizeOrigin(await ask(rl, '前端访问域名或 Origin', frontendOriginDefault));
     const useLocalMysql = await askBoolean(rl, '是否启动内置 MySQL（已有 1Panel/MySQL 时选否）', argMap.has('local-mysql'));
-    const useNacos = await askBoolean(
-      rl,
-      '是否启动内置 Nacos（默认配置不需要）',
-      argMap.has('nacos') || existingEnv.NACOS_CONFIG_ENABLED === 'true' || existingEnv.NACOS_DISCOVERY_ENABLED === 'true'
-    );
     const useFrontendContainer = await askBoolean(rl, '是否启动内置前端容器（Vercel 托管时选否）', argMap.has('lumira-ui'));
     const useObservability = await askBoolean(
       rl,
@@ -358,7 +401,7 @@ async function collectInstallOptions(existingEnv, capacity) {
       apiDomain,
       frontendOrigin,
       useLocalMysql,
-      useNacos,
+      useNacos: false,
       useFrontendContainer,
       useObservability,
       profileName: defaultCapacityProfiles[profileName] ? profileName : capacity.profileName,
@@ -409,8 +452,8 @@ function ensureEnvFile(options, profile) {
     SPRING_THREADS_VIRTUAL_ENABLED: tunable('SPRING_THREADS_VIRTUAL_ENABLED', 'true'),
     SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: tunable('SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE', profile.hikariMaxPoolSize),
     SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: tunable('SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE', '1'),
-    NACOS_CONFIG_ENABLED: yesNo(options.useNacos && existingEnv.NACOS_CONFIG_ENABLED === 'true'),
-    NACOS_DISCOVERY_ENABLED: yesNo(options.useNacos && existingEnv.NACOS_DISCOVERY_ENABLED === 'true'),
+    NACOS_CONFIG_ENABLED: 'false',
+    NACOS_DISCOVERY_ENABLED: 'false',
     ...profile.serviceLimits,
     ...profile.gatewayQps,
     SAAS_TRAFFIC_AUTH_LOGIN_QPS: existingEnv.SAAS_TRAFFIC_AUTH_LOGIN_QPS || '20',
@@ -452,6 +495,21 @@ function defaultGeneratedValues() {
     values.add(value);
   }
   return values;
+}
+
+function assertEdgeTlsFiles(options) {
+  if (options.useLocalMysql) {
+    return;
+  }
+
+  const missingFiles = edgeTlsFiles
+    .map((fileName) => path.join(edgeTlsDir, fileName))
+    .filter((filePath) => !existsSync(filePath));
+  if (missingFiles.length === 0) {
+    return;
+  }
+
+  throw new Error(`edge-proxy requires TLS files before startup: ${missingFiles.join(', ')}`);
 }
 
 function ensureDocker() {
@@ -500,8 +558,8 @@ async function checkEnvironment(profileName) {
 
 function composeProfiles(options) {
   return [
+    ...(!options.useLocalMysql ? ['--profile', 'edge'] : []),
     ...(options.useLocalMysql ? ['--profile', 'local-mysql'] : []),
-    ...(options.useNacos ? ['--profile', 'nacos'] : []),
     ...(options.useObservability ? ['--profile', 'observability'] : []),
     ...(options.useFrontendContainer ? ['--profile', 'local-lumira-ui'] : []),
   ];
@@ -519,6 +577,37 @@ function composeUp(options, label, services, upOptions = []) {
   run('docker', composeArgs(options, 'up', '-d', ...upOptions, ...services));
 }
 
+async function waitForComposeServicesRunning(options, expectedServices, label, timeoutMs = 240_000, intervalMs = 3_000) {
+  const uniqueServices = Array.from(new Set(expectedServices.filter(Boolean)));
+  if (uniqueServices.length === 0) {
+    return;
+  }
+
+  const startedAt = Date.now();
+  let lastMissing = uniqueServices;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    const stdout = output('docker', composeArgs(options, 'ps', '--services', '--status', 'running', ...uniqueServices), { check: false });
+    const running = new Set(
+      String(stdout || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+    );
+    const missing = uniqueServices.filter((serviceName) => !running.has(serviceName));
+    if (missing.length === 0) {
+      log(`${label} are running: ${uniqueServices.join(', ')}`);
+      return;
+    }
+
+    lastMissing = missing;
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(`${label} did not reach running state: ${lastMissing.join(', ')}`);
+}
+
 function installContainers(options) {
   run('docker', composeArgs(options, 'config'), { stdio: 'ignore' });
   run('docker', composeArgs(options, 'pull', '--ignore-buildable'), { check: false });
@@ -533,20 +622,38 @@ function installContainers(options) {
   composeUp(options, 'infrastructure', [
     ...(options.useLocalMysql ? ['mysql'] : []),
     'redis',
-    ...(options.useNacos ? ['nacos'] : []),
   ]);
   composeUp(options, 'job admin', ['xxl-job-admin']);
   composeUp(options, 'monolith backend', ['lumira-server']);
+  composeUp(options, 'owner async runtime', ['lumira-async']);
+  composeUp(options, 'job executor', ['lumira-job-executor']);
   composeUp(options, 'API proxy', ['api-proxy']);
+  composeUp(options, 'edge proxy', !options.useLocalMysql ? ['edge-proxy'] : []);
   composeUp(options, 'lumira-ui container', options.useFrontendContainer ? ['lumira-ui'] : []);
   composeUp(options, 'observability', options.useObservability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []);
 }
 
-function runVerification(options, profile) {
+async function runVerification(options, profile) {
   if (noStart) {
     return;
   }
-  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || `https://${options.apiDomain}`;
+  await waitForComposeServicesRunning(
+    options,
+    [
+      'redis',
+      'xxl-job-admin',
+      'lumira-server',
+      'lumira-async',
+      'lumira-job-executor',
+      'api-proxy',
+      ...(!options.useLocalMysql ? ['edge-proxy'] : []),
+      ...(options.useLocalMysql ? ['mysql'] : []),
+      ...(options.useObservability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []),
+      ...(options.useFrontendContainer ? ['lumira-ui'] : []),
+    ],
+    'installed platform services'
+  );
+  const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || (options.useLocalMysql ? 'http://127.0.0.1:8000' : `https://${options.apiDomain}`);
   const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8080';
   run('node', ['bin\/check-deployment.mjs'], {
     env: {
@@ -569,6 +676,7 @@ function runVerification(options, profile) {
 }
 
 async function main() {
+  assertNoUnsupportedNacosRequest();
   const capacity = detectCapacity();
   if (!(checkOnly && jsonOutput)) {
     log(`Server: ${capacity.cpuCount} CPU, ${capacity.memoryGb.toFixed(1)} GiB RAM, ${capacity.diskGb.toFixed(1)} GiB free, ${capacity.platform}/${capacity.arch}`);
@@ -593,9 +701,10 @@ async function main() {
   log(`Using capacity profile: ${profile.label}`);
   ensureEnvFile(options, profile);
   await checkEnvironment(options.profileName);
+  assertEdgeTlsFiles(options);
   ensureDocker();
   installContainers(options);
-  runVerification(options, profile);
+  await runVerification(options, profile);
   log('Installation finished.');
 }
 

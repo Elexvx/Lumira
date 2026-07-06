@@ -40,6 +40,7 @@ public class WechatLoginService {
     private static final String SCOPE = "snsapi_login";
     private static final String AUTHORIZE_URL = "https://open.weixin.qq.com/connect/qrconnect";
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
+    private static final String USER_INFO_URL = "https://api.weixin.qq.com/sns/userinfo";
     private final SystemInternalApi systemInternalApi;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -75,7 +76,8 @@ public class WechatLoginService {
         WechatLoginSettingsDTO settings = requireAvailableSettings();
         String state = UUID.randomUUID().toString().replace("-", "");
         redisTemplate.opsForValue().set(CacheKeyConstants.wechatLoginStateKey(state), "1", stateTtl(settings));
-        String redirectUri = URLEncoder.encode(settings.redirectUri().trim(), StandardCharsets.UTF_8);
+        String rawRedirectUri = settings.redirectUri().trim();
+        String redirectUri = URLEncoder.encode(rawRedirectUri, StandardCharsets.UTF_8);
         String authorizeUrl = AUTHORIZE_URL
                 + "?appid=" + encode(settings.appId())
                 + "&redirect_uri=" + redirectUri
@@ -83,7 +85,7 @@ public class WechatLoginService {
                 + "&scope=" + SCOPE
                 + "&state=" + state
                 + "#wechat_redirect";
-        return new WechatAuthorizeUrlDTO(authorizeUrl, state);
+        return new WechatAuthorizeUrlDTO(authorizeUrl, state, settings.appId().trim(), SCOPE, rawRedirectUri, redirectUri);
     }
 
     public WechatOAuthUser exchangeCode(String code, String state) {
@@ -107,7 +109,42 @@ public class WechatLoginService {
         if (!StringUtils.hasText(response.openid())) {
             throw new BizException(ErrorCode.LOGIN_FAILED, "微信授权失败，未返回 openid", "微信授权失败，请重新扫码登录");
         }
-        return new WechatOAuthUser(response.openid(), response.unionid(), response.scope());
+        if (!StringUtils.hasText(response.access_token())) {
+            throw new BizException(ErrorCode.LOGIN_FAILED, "微信授权失败，未返回 access_token", "微信授权失败，请重新扫码登录");
+        }
+        WechatUserInfoResponse userInfo = requestWechatUserInfo(response);
+        String unionid = StringUtils.hasText(userInfo.unionid()) ? userInfo.unionid() : response.unionid();
+        return new WechatOAuthUser(
+                response.openid(),
+                unionid,
+                response.scope(),
+                userInfo.nickname(),
+                userInfo.headimgurl(),
+                userInfo.country(),
+                userInfo.province(),
+                userInfo.city(),
+                userInfo.sex()
+        );
+    }
+
+    private WechatUserInfoResponse requestWechatUserInfo(WechatAccessTokenResponse tokenResponse) {
+        URI uri = UriComponentsBuilder.fromUriString(USER_INFO_URL)
+                .queryParam("access_token", tokenResponse.access_token())
+                .queryParam("openid", tokenResponse.openid())
+                .queryParam("lang", "zh_CN")
+                .build()
+                .toUri();
+        WechatUserInfoResponse response = requestWechat(uri, WechatUserInfoResponse.class);
+        if (response.errcode() != null && response.errcode() != 0) {
+            throw new BizException(ErrorCode.LOGIN_FAILED, "微信用户资料获取失败: " + response.errmsg(), "微信授权失败，请重新扫码登录");
+        }
+        if (!StringUtils.hasText(response.openid())) {
+            throw new BizException(ErrorCode.LOGIN_FAILED, "微信用户资料获取失败，未返回 openid", "微信授权失败，请重新扫码登录");
+        }
+        if (!tokenResponse.openid().equals(response.openid())) {
+            throw new BizException(ErrorCode.LOGIN_FAILED, "微信用户资料 openid 不匹配", "微信授权失败，请重新扫码登录");
+        }
+        return response;
     }
 
     private <T> T requestWechat(URI uri, Class<T> responseType) {
@@ -171,6 +208,7 @@ public class WechatLoginService {
         try {
             WechatLoginSettingsDTO settings = systemInternalApi.wechatLoginSettings();
             if (settings != null
+                    && settings.enabled()
                     && settings.configured()
                     && StringUtils.hasText(settings.appId())
                     && StringUtils.hasText(settings.appSecret())
@@ -178,13 +216,13 @@ public class WechatLoginService {
                 return settings;
             }
             WechatLoginSettingsDTO cached = cachedSettings == null ? null : cachedSettings.settings();
-            if (cached != null && StringUtils.hasText(cached.appId()) && StringUtils.hasText(cached.appSecret()) && StringUtils.hasText(cached.redirectUri())) {
+            if (cached != null && cached.enabled() && StringUtils.hasText(cached.appId()) && StringUtils.hasText(cached.appSecret()) && StringUtils.hasText(cached.redirectUri())) {
                 log.warn("Failed to refresh Wechat login settings from system-service, using cached snapshot");
                 return cached;
             }
         } catch (Exception ex) {
             WechatLoginSettingsDTO cached = cachedSettings == null ? null : cachedSettings.settings();
-            if (cached != null && StringUtils.hasText(cached.appId()) && StringUtils.hasText(cached.appSecret()) && StringUtils.hasText(cached.redirectUri())) {
+            if (cached != null && cached.enabled() && StringUtils.hasText(cached.appId()) && StringUtils.hasText(cached.appSecret()) && StringUtils.hasText(cached.redirectUri())) {
                 log.warn("Failed to load Wechat login settings from system-service, using cached snapshot", ex);
                 return cached;
             }
@@ -226,7 +264,20 @@ public class WechatLoginService {
         return Duration.ofMinutes(Math.max(1, settings.stateExpireMinutes()));
     }
 
-    public record WechatOAuthUser(String openid, String unionid, String scope) {
+    public record WechatOAuthUser(
+            String openid,
+            String unionid,
+            String scope,
+            String nickname,
+            String avatarUrl,
+            String country,
+            String province,
+            String city,
+            Integer sex
+    ) {
+        public WechatOAuthUser(String openid, String unionid, String scope) {
+            this(openid, unionid, scope, null, null, null, null, null, null);
+        }
     }
 
     private record CachedWechatLoginSettings(
@@ -243,6 +294,21 @@ public class WechatLoginService {
             String refresh_token,
             String openid,
             String scope,
+            String unionid,
+            Integer errcode,
+            String errmsg
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record WechatUserInfoResponse(
+            String openid,
+            String nickname,
+            Integer sex,
+            String province,
+            String city,
+            String country,
+            String headimgurl,
             String unionid,
             Integer errcode,
             String errmsg

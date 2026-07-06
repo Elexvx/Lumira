@@ -4,15 +4,6 @@ import java.time.LocalDateTime;
 
 public record PasskeyCredentialDTO(
         Long id,
-        Long userId,
-        String username,
-        String userHandle,
-        String credentialId,
-        String publicKeyCose,
-        Long signCount,
-        String transports,
-        Boolean backupEligible,
-        Boolean backupState,
         String label,
         LocalDateTime createdAt,
         LocalDateTime lastUsedAt

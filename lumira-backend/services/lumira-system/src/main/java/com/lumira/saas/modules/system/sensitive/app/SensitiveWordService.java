@@ -1,12 +1,17 @@
 package com.lumira.saas.modules.system.sensitive.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.sensitive.dto.SensitiveWordDTO;
 import com.lumira.saas.modules.system.sensitive.vo.SensitiveWordVO;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -46,6 +51,12 @@ public class SensitiveWordService {
     private static final int MAX_PAYLOAD_NODES = 5000;
     private static final int MAX_PAYLOAD_TEXT_CHARS = 200_000;
     private static final int IMPORT_BATCH_SIZE = 500;
+    private static final int MAX_IMPORT_FRAGMENTS = 5000;
+    private static final long MAX_IMPORT_FILE_BYTES = 1L * 1024L * 1024L;
+    private static final String STATUS_ENABLED = "ENABLED";
+    private static final String PERMISSION_VIEW = "plugin:sensitive-words:view";
+    private static final String PERMISSION_MANAGE = "plugin:sensitive-words:manage";
+    private static final String PERMISSION_IMPORT = "plugin:sensitive-words:import";
     private static final String ACTION_BLOCK = "BLOCK";
     private static final String ACTION_LOG_ONLY = "LOG_ONLY";
     private static final Pattern IMPORT_SPLITTER = Pattern.compile("[\\r\\n,;；、]+");
@@ -57,6 +68,9 @@ public class SensitiveWordService {
     private final SensitiveWordPluginStateService pluginStateService;
     private final SensitiveWordDictionaryCache dictionaryCache;
     private final SensitiveWordMetrics metrics;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final Map<Class<?>, java.lang.reflect.Field[]> reflectiveFieldCache = new ConcurrentHashMap<>();
 
     @Autowired
@@ -67,17 +81,66 @@ public class SensitiveWordService {
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics
     ) {
+        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, null);
+    }
+
+    public SensitiveWordService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiKnowledgeTextExtractor textExtractor,
+            SensitiveWordPluginStateService pluginStateService,
+            SensitiveWordDictionaryCache dictionaryCache,
+            SensitiveWordMetrics metrics,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, permissionSnapshotService, null, null);
+    }
+
+    @Autowired
+    public SensitiveWordService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiKnowledgeTextExtractor textExtractor,
+            SensitiveWordPluginStateService pluginStateService,
+            SensitiveWordDictionaryCache dictionaryCache,
+            SensitiveWordMetrics metrics,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.textExtractor = textExtractor;
         this.pluginStateService = pluginStateService;
         this.dictionaryCache = dictionaryCache;
         this.metrics = metrics;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+    }
+
+    public SensitiveWordService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiKnowledgeTextExtractor textExtractor,
+            SensitiveWordPluginStateService pluginStateService,
+            SensitiveWordDictionaryCache dictionaryCache,
+            SensitiveWordMetrics metrics,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, permissionSnapshotService, null, sessionAuthenticationService);
     }
 
     public SensitiveWordService(
             MyBatisQueryOperations jdbcTemplate,
             AiKnowledgeTextExtractor textExtractor,
             SensitiveWordPluginStateService pluginStateService
+    ) {
+        this(jdbcTemplate, textExtractor, pluginStateService, null);
+    }
+
+    public SensitiveWordService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiKnowledgeTextExtractor textExtractor,
+            SensitiveWordPluginStateService pluginStateService,
+            PermissionSnapshotService permissionSnapshotService
     ) {
         this(
                 jdbcTemplate,
@@ -88,11 +151,15 @@ public class SensitiveWordService {
                         new SensitiveWordDictionaryVersionService(),
                         new SensitiveWordMetrics(new SimpleMeterRegistry())
                 ),
-                new SensitiveWordMetrics(new SimpleMeterRegistry())
+                new SensitiveWordMetrics(new SimpleMeterRegistry()),
+                permissionSnapshotService,
+                null,
+                null
         );
     }
 
     public PageResponse<SensitiveWordVO.WordRecord> listWords(CurrentUser currentUser, String keyword, Boolean enabled, long pageNo, long pageSize) {
+        requirePermission(currentUser, PERMISSION_VIEW);
         pluginStateService.ensureEnabled(currentUser);
         StringBuilder baseSql = new StringBuilder("""
                 from sys_sensitive_word
@@ -120,10 +187,9 @@ public class SensitiveWordService {
     }
 
     public SensitiveWordVO.WordRecord getWord(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, PERMISSION_VIEW);
+        requirePositiveId(id);
         pluginStateService.ensureEnabled(currentUser);
-        if (id == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Sensitive word id is required");
-        }
         SensitiveWordVO.WordRecord record = jdbcTemplate.queryForObject("""
                 select id, word, normalized_word as normalizedWord,
                        category, severity, action, enabled, created_by as createdBy, created_at as createdAt,
@@ -139,70 +205,98 @@ public class SensitiveWordService {
     }
 
     public SensitiveWordVO.WordRecord createWord(CurrentUser currentUser, SensitiveWordDTO.UpsertRequest request) {
+        Long operatorId = requirePermission(currentUser, PERMISSION_MANAGE);
+        String operatorUuid = requireUserUuid(currentUser);
         pluginStateService.ensureEnabled(currentUser);
         NormalizedWord normalized = validateAndNormalize(request);
         ensureUniqueWord(normalized.normalizedWord(), null);
-        jdbcTemplate.update("""
+        int inserted = jdbcTemplate.update("""
                 insert into sys_sensitive_word (
                     word, normalized_word, category, severity, action, enabled,
-                    created_by, created_at, updated_by, updated_at, deleted
-                ) values (?, ?, ?, ?, ?, ?, ?, now(), ?, now(), 0)
+                    created_by, created_by_uuid, created_at, updated_by, updated_by_uuid, updated_at, deleted
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, ?, now(), 0)
                 """,
                 normalized.word(), normalized.normalizedWord(), normalized.category(), normalized.severity(),
-                normalized.action(), normalized.enabled() ? 1 : 0, currentUser.getUserId(), currentUser.getUserId());
+                normalized.action(), normalized.enabled() ? 1 : 0, operatorId, operatorUuid, operatorId, operatorUuid);
+        if (inserted != 1) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Sensitive word changed, please retry");
+        }
         dictionaryCache.invalidate();
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return getWord(currentUser, id);
     }
 
     public SensitiveWordVO.WordRecord updateWord(CurrentUser currentUser, Long id, SensitiveWordDTO.UpsertRequest request) {
+        Long operatorId = requirePermission(currentUser, PERMISSION_MANAGE);
+        String operatorUuid = requireUserUuid(currentUser);
+        requirePositiveId(id);
         pluginStateService.ensureEnabled(currentUser);
-        getWord(currentUser, id);
+        SensitiveWordVO.WordRecord currentRecord = getWord(currentUser, id);
         NormalizedWord normalized = validateAndNormalize(request);
         ensureUniqueWord(normalized.normalizedWord(), id);
-        jdbcTemplate.update("""
+        int updated = jdbcTemplate.update("""
                 update sys_sensitive_word
                    set word = ?, normalized_word = ?, category = ?, severity = ?, action = ?, enabled = ?,
-                       updated_by = ?, updated_at = now()
-                 where id = ? and deleted = 0
+                       updated_by = ?, updated_by_uuid = ?, updated_at = now()
+                 where id = ? and normalized_word = ? and deleted = 0
                 """,
                 normalized.word(), normalized.normalizedWord(), normalized.category(), normalized.severity(),
-                normalized.action(), normalized.enabled() ? 1 : 0, currentUser.getUserId(), id);
+                normalized.action(), normalized.enabled() ? 1 : 0, operatorId, operatorUuid, id, currentRecord.getNormalizedWord());
+        if (updated == 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Sensitive word changed, please retry");
+        }
         dictionaryCache.invalidate();
         return getWord(currentUser, id);
     }
 
     public boolean updateStatus(CurrentUser currentUser, Long id, Boolean enabled) {
+        Long operatorId = requirePermission(currentUser, PERMISSION_MANAGE);
+        String operatorUuid = requireUserUuid(currentUser);
+        requirePositiveId(id);
         pluginStateService.ensureEnabled(currentUser);
         if (!Boolean.TRUE.equals(enabled)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Sensitive words are enabled once added");
         }
-        getWord(currentUser, id);
-        jdbcTemplate.update("""
+        SensitiveWordVO.WordRecord currentRecord = getWord(currentUser, id);
+        int updated = jdbcTemplate.update("""
                 update sys_sensitive_word
-                   set enabled = ?, updated_by = ?, updated_at = now()
-                 where id = ? and deleted = 0
-                """, enabled ? 1 : 0, currentUser.getUserId(), id);
+                   set enabled = ?, updated_by = ?, updated_by_uuid = ?, updated_at = now()
+                 where id = ? and normalized_word = ? and deleted = 0
+                """, enabled ? 1 : 0, operatorId, operatorUuid, id, currentRecord.getNormalizedWord());
+        if (updated == 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Sensitive word changed, please retry");
+        }
         dictionaryCache.invalidate();
         return true;
     }
 
     public boolean deleteWord(CurrentUser currentUser, Long id) {
+        Long operatorId = requirePermission(currentUser, PERMISSION_MANAGE);
+        String operatorUuid = requireUserUuid(currentUser);
+        requirePositiveId(id);
         pluginStateService.ensureEnabled(currentUser);
-        getWord(currentUser, id);
-        jdbcTemplate.update("""
+        SensitiveWordVO.WordRecord currentRecord = getWord(currentUser, id);
+        int updated = jdbcTemplate.update("""
                 update sys_sensitive_word
-                   set deleted = 1, updated_by = ?, updated_at = now()
-                 where id = ? and deleted = 0
-                """, currentUser.getUserId(), id);
+                   set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = now()
+                 where id = ? and normalized_word = ? and deleted = 0
+                """, operatorId, operatorUuid, id, currentRecord.getNormalizedWord());
+        if (updated == 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Sensitive word changed, please retry");
+        }
         dictionaryCache.invalidate();
         return true;
     }
 
     @Transactional
     public SensitiveWordVO.ImportResult importWords(CurrentUser currentUser, MultipartFile file) {
+        Long operatorId = requirePermission(currentUser, PERMISSION_IMPORT);
+        String operatorUuid = requireUserUuid(currentUser);
         pluginStateService.ensureEnabled(currentUser);
         String[] fragments = IMPORT_SPLITTER.split(extractImportText(file));
+        if (fragments.length > MAX_IMPORT_FRAGMENTS) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Too many sensitive words to import");
+        }
         SensitiveWordVO.ImportResult result = new SensitiveWordVO.ImportResult();
         result.setTotal(fragments.length);
         Map<String, String> normalizedToWord = new LinkedHashMap<>();
@@ -223,7 +317,7 @@ public class SensitiveWordService {
                 .filter(entry -> !existing.contains(entry.getKey()))
                 .toList();
         for (List<Map.Entry<String, String>> batch : partition(toInsert, IMPORT_BATCH_SIZE)) {
-            batchInsertImportedWords(currentUser.getUserId(), batch);
+            batchInsertImportedWords(operatorId, operatorUuid, batch);
             result.setImported(result.getImported() + batch.size());
         }
         if (!toInsert.isEmpty()) {
@@ -233,11 +327,13 @@ public class SensitiveWordService {
     }
 
     public SensitiveWordVO.CheckResult checkText(CurrentUser currentUser, String text, String fieldPath) {
+        requirePermission(currentUser, PERMISSION_VIEW);
         pluginStateService.ensureEnabled(currentUser);
         return buildCheckResult(text, fieldPath, dictionaryCache.getMatcher());
     }
 
     public SensitiveWordVO.CheckResult checkPayload(CurrentUser currentUser, Object payload) {
+        requirePermission(currentUser, PERMISSION_VIEW);
         if (!pluginStateService.isEnabled(currentUser)) {
             return new SensitiveWordVO.CheckResult(false, List.of());
         }
@@ -264,6 +360,120 @@ public class SensitiveWordService {
                 .limit(5)
                 .reduce((left, right) -> left + ", " + right)
                 .orElse("Content contains sensitive words. Please revise and submit again.");
+    }
+
+    private Long requirePermission(CurrentUser currentUser, String permissionKey) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        Set<String> permissions = currentUser.getPermissions();
+        if (permissions == null || permissions.isEmpty() || (!permissions.contains("*") && !permissions.contains(permissionKey))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
+        }
+        return currentUser.getUserId();
+    }
+
+    private String requireUserUuid(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getUserUuid().trim();
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        if (authenticatedAccess == null || !AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedAccess.currentUser())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return authenticatedAccess.currentUser();
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
+    private void requirePositiveId(Long id) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Sensitive word id is required");
+        }
     }
 
     private SensitiveWordVO.CheckResult buildCheckResult(String text, String fieldPath, SensitiveWordMatcher matcher) {
@@ -357,22 +567,22 @@ public class SensitiveWordService {
         return existing;
     }
 
-    private void batchInsertImportedWords(Long userId, List<Map.Entry<String, String>> batch) {
+    private void batchInsertImportedWords(Long userId, String userUuid, List<Map.Entry<String, String>> batch) {
         if (batch == null || batch.isEmpty()) {
             return;
         }
         StringBuilder sql = new StringBuilder("""
                 insert into sys_sensitive_word (
                     word, normalized_word, category, severity, action, enabled,
-                    created_by, created_at, updated_by, updated_at, deleted
+                    created_by, created_by_uuid, created_at, updated_by, updated_by_uuid, updated_at, deleted
                 ) values
                 """);
-        List<Object> args = new ArrayList<>(batch.size() * 7);
+        List<Object> args = new ArrayList<>(batch.size() * 9);
         for (int i = 0; i < batch.size(); i += 1) {
             if (i > 0) {
                 sql.append(", ");
             }
-            sql.append("(?, ?, ?, ?, ?, 1, ?, now(), ?, now(), 0)");
+            sql.append("(?, ?, ?, ?, ?, 1, ?, ?, now(), ?, ?, now(), 0)");
             Map.Entry<String, String> entry = batch.get(i);
             args.add(entry.getValue());
             args.add(entry.getKey());
@@ -380,12 +590,23 @@ public class SensitiveWordService {
             args.add("MEDIUM");
             args.add(ACTION_BLOCK);
             args.add(userId);
+            args.add(userUuid);
             args.add(userId);
+            args.add(userUuid);
         }
-        jdbcTemplate.update(sql.toString(), args.toArray());
+        int inserted = jdbcTemplate.update(sql.toString(), args.toArray());
+        if (inserted != batch.size()) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Sensitive word import changed, please retry");
+        }
     }
 
     private String extractImportText(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Sensitive word import file is required");
+        }
+        if (file.getSize() > MAX_IMPORT_FILE_BYTES) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Sensitive word import file is too large");
+        }
         String filename = file == null ? "" : file.getOriginalFilename();
         String extension = filename == null || !filename.contains(".")
                 ? ""

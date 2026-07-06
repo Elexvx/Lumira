@@ -1,11 +1,15 @@
 package com.lumira.saas.modules.system.role.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
@@ -41,6 +45,7 @@ public class SystemRoleManagementAppService {
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final int BULK_INSERT_BATCH_SIZE = 200;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
@@ -73,6 +78,8 @@ public class SystemRoleManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
     private final DomainEventPublisher domainEventPublisher;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
 
     @Autowired
     public SystemRoleManagementAppService(
@@ -90,13 +97,34 @@ public class SystemRoleManagementAppService {
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
+        this(
+                jdbcTemplate,
+                permissionSnapshotService,
+                operationAuditService,
+                domainEventPublisher,
+                null,
+                null
+        );
+    }
+
+    public SystemRoleManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.operationAuditService = operationAuditService;
         this.domainEventPublisher = domainEventPublisher;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
     }
 
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
+        requirePermission(currentUser, "system:role:view");
         String baseSql = """
                 from sys_role r
                 where r.deleted = 0
@@ -140,6 +168,8 @@ public class SystemRoleManagementAppService {
     }
 
     public SystemVO.RoleDetailVO getRole(CurrentUser currentUser, Long roleId) {
+        requirePermission(currentUser, "system:role:view");
+        requirePositiveId(roleId, "Role id is required");
         SystemVO.RoleVO role = queryOne(
                 """
                         select r.id, r.role_code as roleCode, r.role_name as roleName,
@@ -166,6 +196,7 @@ public class SystemRoleManagementAppService {
     }
 
     public SystemVO.DefaultRegistrationRoleVO getDefaultRegistrationRole(CurrentUser currentUser) {
+        requirePermission(currentUser, "system:role:view");
         String roleCode = resolveDefaultRegistrationRoleCode();
         SystemVO.RoleVO role = queryOne(
                 """
@@ -201,6 +232,8 @@ public class SystemRoleManagementAppService {
 
     @Transactional
     public SystemVO.DefaultRegistrationRoleVO updateDefaultRegistrationRole(CurrentUser currentUser, Long roleId) {
+        requirePermission(currentUser, "system:role:update");
+        requirePositiveId(roleId, "Role id is required");
         SystemVO.RoleVO role = queryOne(
                 """
                         select r.id, r.role_code as roleCode, r.role_name as roleName,
@@ -214,50 +247,64 @@ public class SystemRoleManagementAppService {
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
         }
+        requireSafeDefaultRegistrationRole(role);
         upsertConfigValue(
                 DEFAULT_REGISTRATION_ROLE_CODE_KEY,
                 "默认注册角色",
                 role.getRoleCode(),
                 "用户通过注册或验证码自动注册后默认绑定的角色编码",
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                currentUser.getUserUuid()
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
         return toDefaultRegistrationRole(role);
     }
 
     @Transactional
     public SystemVO.RoleDetailVO createRole(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
-        Long roleId = upsertRole(null, request, currentUser.getUserId());
-        replaceRolePermissionsWithDomainEvent(roleId, Set.of(), request.getPermissionKeys(), currentUser.getUserId());
-        replaceRoleDataScopes(roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), true);
+        requirePermission(currentUser, "system:role:create");
+        validateRoleRequest(currentUser, request);
+        Long roleId = upsertRole(null, request, currentUser.getUserId(), currentUser.getUserUuid());
+        replaceRolePermissionsWithDomainEvent(roleId, null, Set.of(), request.getPermissionKeys(), currentUser.getUserId(), currentUser.getUserUuid());
+        replaceRoleDataScopes(roleId, null, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), true);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
         return getRole(currentUser, roleId);
     }
 
     @Transactional
     public SystemVO.RoleDetailVO updateRole(CurrentUser currentUser, Long roleId, SystemDTO.RoleUpsertRequest request) {
-        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId));
-        upsertRole(roleId, request, currentUser.getUserId());
-        replaceRolePermissionsWithDomainEvent(roleId, existingPermissions, request.getPermissionKeys(), currentUser.getUserId());
-        replaceRoleDataScopes(roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), false);
+        requirePermission(currentUser, "system:role:update");
+        requirePositiveId(roleId, "Role id is required");
+        validateRoleRequest(currentUser, request);
+        SystemVO.RoleDetailVO existingRole = queryRoleDetail(roleId);
+        Set<String> existingPermissions = new LinkedHashSet<>(existingRole.getPermissionKeys());
+        upsertRole(roleId, existingRole, request, currentUser.getUserId(), currentUser.getUserUuid());
+        replaceRolePermissionsWithDomainEvent(roleId, existingRole, existingPermissions, request.getPermissionKeys(), currentUser.getUserId(), currentUser.getUserUuid());
+        replaceRoleDataScopes(roleId, existingRole, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
         return getRole(currentUser, roleId);
     }
 
     @Transactional
     public boolean updateRolePermissions(CurrentUser currentUser, Long roleId, List<String> permissionKeys) {
-        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId));
-        replaceRolePermissionsWithDomainEvent(roleId, existingPermissions, permissionKeys, currentUser.getUserId());
+        requirePermission(currentUser, "system:role:grant");
+        requirePositiveId(roleId, "Role id is required");
+        validatePermissionKeys(permissionKeys);
+        SystemVO.RoleDetailVO existingRole = queryRoleDetail(roleId);
+        Set<String> existingPermissions = new LinkedHashSet<>(existingRole.getPermissionKeys());
+        replaceRolePermissionsWithDomainEvent(roleId, existingRole, existingPermissions, permissionKeys, currentUser.getUserId(), currentUser.getUserUuid());
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
         return true;
     }
 
     @Transactional
     public boolean deleteRole(CurrentUser currentUser, Long roleId) {
-        SystemVO.RoleDetailVO role = getRole(currentUser, roleId);
+        requirePermission(currentUser, "system:role:delete");
+        requirePositiveId(roleId, "Role id is required");
+        SystemVO.RoleDetailVO role = queryRoleDetail(roleId);
         if (Boolean.TRUE.equals(role.getDefaultRegistrationRole())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "默认注册角色不允许删除");
         }
@@ -266,19 +313,287 @@ public class SystemRoleManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "角色已被用户占用，请先移除用户角色关系");
         }
         RoleAggregate roleAggregate = new RoleAggregate(roleId, new LinkedHashSet<>(role.getPermissionKeys()));
-        roleAggregate.replacePermissions(Set.of());
+        roleAggregate.replacePermissions(Set.of(), currentUser.getUserId(), currentUser.getUserUuid());
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
-        jdbcTemplate.update("delete from sys_role_permission where role_id = ?", roleId);
-        jdbcTemplate.update("delete from sys_role_data_scope where role_id = ?", roleId);
-        jdbcTemplate.update(
-                "update sys_role set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+        int deleted = jdbcTemplate.update(
+                """
+                        update sys_role
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ?
+                          and role_code = ?
+                          and role_type = ?
+                          and deleted = 0
+                        """,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                roleId
+                roleId,
+                role.getRoleCode(),
+                role.getRoleType()
+        );
+        requireRoleWrite(deleted, "Role changed, please retry");
+        jdbcTemplate.update(
+                """
+                        update sys_role_permission
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where role_id = ?
+                          and deleted = 0
+                          and exists (
+                              select 1 from sys_role r
+                              where r.id = sys_role_permission.role_id
+                                and r.deleted = 1
+                                and r.updated_by = ?
+                                and r.updated_by_uuid = ?
+                          )
+                        """,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                LocalDateTime.now(),
+                roleId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid()
+        );
+        jdbcTemplate.update(
+                """
+                        update sys_role_data_scope
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where role_id = ?
+                          and deleted = 0
+                          and exists (
+                              select 1 from sys_role r
+                              where r.id = sys_role_data_scope.role_id
+                                and r.deleted = 1
+                                and r.updated_by = ?
+                                and r.updated_by_uuid = ?
+                          )
+                        """,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                LocalDateTime.now(),
+                roleId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid()
         );
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
         return true;
+    }
+
+    private SystemVO.RoleDetailVO queryRoleDetail(Long roleId) {
+        SystemVO.RoleVO role = queryOne(
+                """
+                        select r.id, r.role_code as roleCode, r.role_name as roleName,
+                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
+                        from sys_role r
+                        where r.id = ? and r.deleted = 0
+                        """,
+                SystemVO.RoleVO.class,
+                roleId
+        );
+        if (role == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Role not found");
+        }
+        SystemVO.RoleDetailVO detail = new SystemVO.RoleDetailVO();
+        copyRole(detail, role);
+        detail.setPermissionCount(countRolePermissions(roleId));
+        detail.setUserCount(countRoleUsers(roleId));
+        detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode()));
+        detail.setPermissionKeys(listRolePermissionKeys(roleId));
+        detail.setDataScopes(listRoleDataScopes(roleId));
+        return detail;
+    }
+
+    private void requirePermission(CurrentUser currentUser, String permissionKey) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is required");
+        }
+        Set<String> permissions = currentUser.getPermissions();
+        if (permissions == null || (!permissions.contains("*") && !permissions.contains(permissionKey))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Permission denied");
+        }
+    }
+
+    private void requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message);
+        }
+    }
+
+    private void validateRoleRequest(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Role request is required");
+        }
+        if (!StringUtils.hasText(request.getRoleCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Role code is required");
+        }
+        if (!StringUtils.hasText(request.getRoleName())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Role name is required");
+        }
+        validatePermissionKeys(request.getPermissionKeys());
+        validateRoleDataScopes(currentUser, request.getDataScopes());
+    }
+
+    private void validatePermissionKeys(List<String> permissionKeys) {
+        if (CollectionUtils.isEmpty(permissionKeys)) {
+            return;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (!StringUtils.hasText(permissionKey)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Permission key is required");
+            }
+        }
+    }
+
+    private void validateRoleDataScopes(CurrentUser currentUser, List<RoleDataScopeRequest> dataScopes) {
+        if (CollectionUtils.isEmpty(dataScopes)) {
+            return;
+        }
+        for (RoleDataScopeRequest dataScope : dataScopes) {
+            if (dataScope == null) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Data scope is required");
+            }
+            if (dataScope.getCustomDeptIds() != null
+                    && dataScope.getCustomDeptIds().stream().anyMatch(id -> id == null || id <= 0)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Custom department id must be positive");
+            }
+            if (dataScope.getCustomUserIds() != null
+                    && dataScope.getCustomUserIds().stream().anyMatch(id -> id == null || id <= 0)) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Custom user id must be positive");
+            }
+            String scopeType = dataScope.getScopeType();
+            if (StringUtils.hasText(scopeType)
+                    && "ALL".equalsIgnoreCase(scopeType.trim())
+                    && !currentUser.getPermissions().contains("*")) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Full data scope requires super user");
+            }
+        }
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            currentUser.setUserId(userSnapshot.userId());
+            currentUser.setUserUuid(userSnapshot.userUuid().trim());
+            currentUser.setUsername(userSnapshot.username());
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        if (authenticatedAccess == null || !AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedAccess.currentUser())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is required");
+        }
+        return authenticatedAccess.currentUser();
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
+    private void requireSafeDefaultRegistrationRole(SystemVO.RoleVO role) {
+        String roleCode = role.getRoleCode() == null ? "" : role.getRoleCode().trim();
+        String roleType = role.getRoleType() == null ? "" : role.getRoleType().trim().toUpperCase(Locale.ROOT);
+        if ("ADMIN".equalsIgnoreCase(roleCode) || "SYSTEM".equals(roleType) || "ADMIN".equals(roleType)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Default registration role cannot be privileged");
+        }
+        for (String permissionKey : listRawRolePermissionKeys(role.getId())) {
+            if (!isSafeDefaultRegistrationPermission(permissionKey)) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Default registration role cannot include management permissions");
+            }
+        }
+    }
+
+    private boolean isSafeDefaultRegistrationPermission(String permissionKey) {
+        if (!StringUtils.hasText(permissionKey)) {
+            return false;
+        }
+        String normalized = permissionKey.trim();
+        if ("*".equals(normalized)) {
+            return false;
+        }
+        return normalized.startsWith("dashboard:")
+                || normalized.startsWith("profile:")
+                || normalized.startsWith("aiadc:registration:");
+    }
+
+    private List<String> listRawRolePermissionKeys(Long roleId) {
+        return jdbcTemplate.queryForList(
+                """
+                        select permission_key
+                        from sys_role_permission
+                        where role_id = ? and deleted = 0
+                        order by permission_key asc
+                        """,
+                String.class,
+                roleId
+        );
     }
 
     private String resolveDefaultRegistrationRoleCode() {
@@ -298,36 +613,47 @@ public class SystemRoleManagementAppService {
         return result;
     }
 
-    private Long upsertRole(Long roleId, SystemDTO.RoleUpsertRequest request, Long operatorId) {
+    private Long upsertRole(Long roleId, SystemDTO.RoleUpsertRequest request, Long operatorId, String operatorUuid) {
+        return upsertRole(roleId, null, request, operatorId, operatorUuid);
+    }
+
+    private Long upsertRole(Long roleId, SystemVO.RoleDetailVO existingRole, SystemDTO.RoleUpsertRequest request, Long operatorId, String operatorUuid) {
         if (roleId == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
-                            insert into sys_role (role_code, role_name, role_type, default_home_path, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_role (role_code, role_name, role_type, default_home_path, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+                            values (?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     request.getRoleCode(),
                     request.getRoleName(),
                     request.getRoleType(),
                     normalizeDefaultHomePath(request.getDefaultHomePath()),
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requireRoleWrite(inserted, "Role changed, please retry");
             return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_role
-                        set role_code = ?, role_name = ?, role_type = ?, default_home_path = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                        set role_code = ?, role_name = ?, role_type = ?, default_home_path = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and role_code = ? and role_type = ? and deleted = 0
                         """,
                 request.getRoleCode(),
                 request.getRoleName(),
                 request.getRoleType(),
                 normalizeDefaultHomePath(request.getDefaultHomePath()),
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                roleId
+                roleId,
+                existingRole == null ? null : existingRole.getRoleCode(),
+                existingRole == null ? null : existingRole.getRoleType()
         );
+        requireRoleWrite(updated, "Role changed, please retry");
         return roleId;
     }
 
@@ -344,21 +670,40 @@ public class SystemRoleManagementAppService {
 
     private void replaceRolePermissionsWithDomainEvent(
             Long roleId,
+            SystemVO.RoleDetailVO existingRole,
             Set<String> existingPermissionKeys,
             List<String> permissionKeys,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
         LinkedHashSet<String> effectivePermissionKeys = filterRoleAssignablePermissionKeys(permissionKeys);
         RoleAggregate roleAggregate = new RoleAggregate(roleId, existingPermissionKeys);
-        roleAggregate.replacePermissions(effectivePermissionKeys);
+        roleAggregate.replacePermissions(effectivePermissionKeys, operatorId, operatorUuid);
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
-        replaceRolePermissions(roleId, effectivePermissionKeys, operatorId);
+        replaceRolePermissions(roleId, existingRole, effectivePermissionKeys, operatorId, operatorUuid);
     }
 
-    private void replaceRolePermissions(Long roleId, Set<String> permissionKeys, Long operatorId) {
+    private void replaceRolePermissions(Long roleId, SystemVO.RoleDetailVO existingRole, Set<String> permissionKeys, Long operatorId, String operatorUuid) {
         jdbcTemplate.update(
-                "delete from sys_role_permission where role_id = ?",
-                roleId
+                """
+                        update sys_role_permission
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where role_id = ?
+                          and deleted = 0
+                          and exists (
+                              select 1 from sys_role r
+                              where r.id = sys_role_permission.role_id
+                                and r.role_code = ?
+                                and r.role_type = ?
+                                and r.deleted = 0
+                          )
+                        """,
+                operatorId,
+                operatorUuid,
+                LocalDateTime.now(),
+                roleId,
+                existingRole == null ? null : existingRole.getRoleCode(),
+                existingRole == null ? null : existingRole.getRoleType()
         );
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
@@ -367,32 +712,73 @@ public class SystemRoleManagementAppService {
         for (int start = 0; start < orderedPermissionKeys.size(); start += BULK_INSERT_BATCH_SIZE) {
             insertRolePermissionsBatch(
                     roleId,
+                    existingRole,
                     orderedPermissionKeys.subList(start, Math.min(orderedPermissionKeys.size(), start + BULK_INSERT_BATCH_SIZE)),
-                    operatorId
+                    operatorId,
+                    operatorUuid
             );
         }
     }
 
-    private void insertRolePermissionsBatch(Long roleId, List<String> permissionKeys, Long operatorId) {
+    private void insertRolePermissionsBatch(Long roleId, SystemVO.RoleDetailVO existingRole, List<String> permissionKeys, Long operatorId, String operatorUuid) {
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
         }
         StringBuilder sql = new StringBuilder("""
-                insert into sys_role_permission (role_id, permission_key, created_by, updated_by, deleted)
-                values
+                insert into sys_role_permission (role_id, permission_key, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
                 """);
-        List<Object> params = new ArrayList<>(permissionKeys.size() * 4);
-        for (int index = 0; index < permissionKeys.size(); index += 1) {
-            if (index > 0) {
-                sql.append(", ");
+        List<Object> params = new ArrayList<>(permissionKeys.size() * 8);
+        if (existingRole == null) {
+            sql.append("values ");
+            for (int index = 0; index < permissionKeys.size(); index += 1) {
+                if (index > 0) {
+                    sql.append(", ");
+                }
+                sql.append("(?, ?, ?, ?, ?, ?, 0)");
+                params.add(roleId);
+                params.add(permissionKeys.get(index));
+                params.add(operatorId);
+                params.add(operatorUuid);
+                params.add(operatorId);
+                params.add(operatorUuid);
             }
-            sql.append("(?, ?, ?, ?, 0)");
-            params.add(roleId);
-            params.add(permissionKeys.get(index));
-            params.add(operatorId);
-            params.add(operatorId);
+        } else {
+            for (int index = 0; index < permissionKeys.size(); index += 1) {
+                if (index > 0) {
+                    sql.append(" union all ");
+                }
+                sql.append("""
+                        select r.id, ?, ?, ?, ?, ?, 0
+                        from sys_role r
+                        where r.id = ?
+                          and r.role_code = ?
+                          and r.role_type = ?
+                          and r.deleted = 0
+                        """);
+                params.add(permissionKeys.get(index));
+                params.add(operatorId);
+                params.add(operatorUuid);
+                params.add(operatorId);
+                params.add(operatorUuid);
+                params.add(roleId);
+                params.add(existingRole.getRoleCode());
+                params.add(existingRole.getRoleType());
+            }
         }
-        jdbcTemplate.update(sql.toString(), params.toArray());
+        int inserted = jdbcTemplate.update(sql.toString(), params.toArray());
+        requireExactRoleWrite(inserted, permissionKeys.size(), "Role changed, please retry");
+    }
+
+    private void requireRoleWrite(int updated, String message) {
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, message);
+        }
+    }
+
+    private void requireExactRoleWrite(int updated, int expected, String message) {
+        if (updated != expected) {
+            throw new BizException(ErrorCode.NOT_FOUND, message);
+        }
     }
 
     private List<String> listRolePermissionKeys(Long roleId) {
@@ -463,15 +849,51 @@ public class SystemRoleManagementAppService {
 
     private void replaceRoleDataScopes(
             Long roleId,
+            SystemVO.RoleDetailVO existingRole,
             List<RoleDataScopeRequest> dataScopes,
             String roleCode,
             Long operatorId,
+            String operatorUuid,
             boolean createMode
     ) {
         if (dataScopes == null && !createMode) {
             return;
         }
-        jdbcTemplate.update("delete from sys_role_data_scope where role_id = ?", roleId);
+        if (existingRole == null) {
+            jdbcTemplate.update(
+                    """
+                            update sys_role_data_scope
+                            set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where role_id = ? and deleted = 0
+                            """,
+                    operatorId,
+                    operatorUuid,
+                    LocalDateTime.now(),
+                    roleId
+            );
+        } else {
+            jdbcTemplate.update(
+                    """
+                            update sys_role_data_scope
+                            set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where role_id = ?
+                              and deleted = 0
+                              and exists (
+                                  select 1 from sys_role r
+                                  where r.id = sys_role_data_scope.role_id
+                                    and r.role_code = ?
+                                    and r.role_type = ?
+                                    and r.deleted = 0
+                              )
+                            """,
+                    operatorId,
+                    operatorUuid,
+                    LocalDateTime.now(),
+                    roleId,
+                    existingRole.getRoleCode(),
+                    existingRole.getRoleType()
+            );
+        }
         List<RoleDataScopeRequest> effectiveScopes = CollectionUtils.isEmpty(dataScopes)
                 ? List.of(defaultDataScope(roleCode))
                 : dataScopes;
@@ -494,27 +916,28 @@ public class SystemRoleManagementAppService {
             insertRoleDataScopesBatch(
                     roleId,
                     normalizedScopes.subList(start, Math.min(normalizedScopes.size(), start + BULK_INSERT_BATCH_SIZE)),
-                    operatorId
+                    operatorId,
+                    operatorUuid
             );
         }
     }
 
-    private void insertRoleDataScopesBatch(Long roleId, List<NormalizedRoleDataScope> scopes, Long operatorId) {
+    private void insertRoleDataScopesBatch(Long roleId, List<NormalizedRoleDataScope> scopes, Long operatorId, String operatorUuid) {
         if (CollectionUtils.isEmpty(scopes)) {
             return;
         }
         StringBuilder sql = new StringBuilder("""
                 insert into sys_role_data_scope (
                     role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
-                    created_by, updated_by, deleted
+                    created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
                 ) values
                 """);
-        List<Object> params = new ArrayList<>(scopes.size() * 7);
+        List<Object> params = new ArrayList<>(scopes.size() * 9);
         for (int index = 0; index < scopes.size(); index += 1) {
             if (index > 0) {
                 sql.append(", ");
             }
-            sql.append("(?, ?, ?, ?, ?, ?, ?, 0)");
+            sql.append("(?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
             NormalizedRoleDataScope scope = scopes.get(index);
             params.add(roleId);
             params.add(scope.resourceCode());
@@ -522,9 +945,12 @@ public class SystemRoleManagementAppService {
             params.add(scope.customDeptIds());
             params.add(scope.customUserIds());
             params.add(operatorId);
+            params.add(operatorUuid);
             params.add(operatorId);
+            params.add(operatorUuid);
         }
-        jdbcTemplate.update(sql.toString(), params.toArray());
+        int inserted = jdbcTemplate.update(sql.toString(), params.toArray());
+        requireExactRoleWrite(inserted, scopes.size(), "Role data scope changed, please retry");
     }
 
     private RoleDataScopeRequest defaultDataScope(String roleCode) {
@@ -599,8 +1025,15 @@ public class SystemRoleManagementAppService {
         Long count = jdbcTemplate.queryForObject(
                 """
                         select count(1)
-                        from sys_user_role
-                        where role_id = ? and deleted = 0
+                        from sys_user_role ur
+                        join sys_user u
+                          on u.id = ur.user_id
+                         and u.uuid = ur.user_uuid
+                         and u.deleted = 0
+                        where ur.role_id = ?
+                          and ur.user_uuid is not null
+                          and trim(ur.user_uuid) <> ''
+                          and ur.deleted = 0
                         """,
                 Long.class,
                 roleId
@@ -644,10 +1077,17 @@ public class SystemRoleManagementAppService {
         params.addAll(distinctRoleIds);
         return jdbcTemplate.query(
                 """
-                        select role_id as roleId, count(1) as total
-                        from sys_user_role
-                        where role_id in (%s) and deleted = 0
-                        group by role_id
+                        select ur.role_id as roleId, count(1) as total
+                        from sys_user_role ur
+                        join sys_user u
+                          on u.id = ur.user_id
+                         and u.uuid = ur.user_uuid
+                         and u.deleted = 0
+                        where ur.role_id in (%s)
+                          and ur.user_uuid is not null
+                          and trim(ur.user_uuid) <> ''
+                          and ur.deleted = 0
+                        group by ur.role_id
                         """.formatted(placeholders),
                 rs -> {
                     Map<Long, Integer> result = new LinkedHashMap<>();
@@ -687,40 +1127,53 @@ public class SystemRoleManagementAppService {
             String configName,
             String configValue,
             String remark,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
         Long existingId = queryConfigId(configKey);
         if (existingId == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into sys_config (
                                 config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
                             """,
                     configKey,
                     configName,
                     configValue,
                     remark,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requireRoleWrite(inserted, "Role config changed, please retry");
             return;
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_config
                         set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_at = ?, deleted = 0
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ?
+                          and config_key = ?
+                          and config_scope = 'PLATFORM'
+                          and is_system = 0
+                          and deleted = 0
                         """,
                 configName,
                 configValue,
                 remark,
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                existingId
+                existingId,
+                configKey
         );
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Role config changed, please retry");
+        }
     }
 
     private Long queryConfigId(String configKey) {
@@ -730,6 +1183,9 @@ public class SystemRoleManagementAppService {
                             select id
                             from sys_config
                             where config_key = ?
+                              and config_scope = 'PLATFORM'
+                              and is_system = 0
+                              and deleted = 0
                             order by id desc
                             limit 1
                             """,

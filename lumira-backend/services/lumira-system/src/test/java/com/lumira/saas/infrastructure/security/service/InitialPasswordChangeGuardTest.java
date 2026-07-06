@@ -86,12 +86,40 @@ class InitialPasswordChangeGuardTest {
         assertEquals(0, passwordEncoder.matchesCount);
     }
 
+    @Test
+    void shouldSkipUntrustedAdminLikeUser() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations("initial-hash");
+        RecordingPasswordEncoder passwordEncoder = new RecordingPasswordEncoder(true);
+        InitialPasswordChangeGuard guard = new InitialPasswordChangeGuard(queryOperations, passwordEncoderProvider(passwordEncoder));
+        CurrentUser currentUser = buildAdminUser("session-1", 1);
+        currentUser.setAuthenticated(false);
+
+        assertFalse(guard.requiresPasswordChange(currentUser));
+
+        assertEquals(0, queryOperations.queryCount);
+        assertEquals(0, passwordEncoder.matchesCount);
+    }
+
+    @Test
+    void shouldSkipAdminUserWithMissingSessionVersion() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations("initial-hash");
+        RecordingPasswordEncoder passwordEncoder = new RecordingPasswordEncoder(true);
+        InitialPasswordChangeGuard guard = new InitialPasswordChangeGuard(queryOperations, passwordEncoderProvider(passwordEncoder));
+        CurrentUser currentUser = buildAdminUser("session-1", null);
+
+        assertFalse(guard.requiresPasswordChange(currentUser));
+
+        assertEquals(0, queryOperations.queryCount);
+        assertEquals(0, passwordEncoder.matchesCount);
+    }
+
     private static CurrentUser buildAdminUser(String sessionId, Integer sessionVersion) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(2001L);
         currentUser.setUsername("admin");
         currentUser.setSessionId(sessionId);
         currentUser.setSessionVersion(sessionVersion);
+        currentUser.setAuthenticated(true);
         return currentUser;
     }
 

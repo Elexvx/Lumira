@@ -1,10 +1,16 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,11 +21,14 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.net.InetAddress;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -28,12 +37,14 @@ public class PaymentManagementAppService {
     private static final String SECRET_PLACEHOLDER = "********";
     private static final Duration TEST_TIMEOUT = Duration.ofSeconds(2);
     private static final Duration PROVIDER_LIST_CACHE_TTL = Duration.ofSeconds(30);
+    private static final Set<String> BLOCKED_PUBLIC_URL_HOSTS = Set.of("localhost", "metadata.google.internal");
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final PaymentConfigCryptoService cryptoService;
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
+    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private volatile CachedProviderList providerListCache;
 
     public PaymentManagementAppService(
@@ -43,11 +54,23 @@ public class PaymentManagementAppService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService
     ) {
+        this(jdbcTemplate, objectMapper, cryptoService, providerCatalog, outboxService, null);
+    }
+
+    public PaymentManagementAppService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            PaymentConfigCryptoService cryptoService,
+            PaymentProviderCatalog providerCatalog,
+            PaymentOutboxService outboxService,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.cryptoService = cryptoService;
         this.providerCatalog = providerCatalog;
         this.outboxService = outboxService;
+        this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
     public List<PaymentProviderSettingsDTO> listProviderSettings() {
@@ -73,7 +96,11 @@ public class PaymentManagementAppService {
     }
 
     @Transactional
-    public PaymentProviderSettingsDTO updatePaymentProviderSettings(Long operatorId, String providerCode, PaymentProviderSettingsDTO request) {
+    public PaymentProviderSettingsDTO updatePaymentProviderSettings(CurrentUser currentUser, String providerCode, PaymentProviderSettingsDTO request) {
+        return updatePaymentProviderSettings(trustedActor(currentUser), providerCode, request);
+    }
+
+    private PaymentProviderSettingsDTO updatePaymentProviderSettings(Actor actor, String providerCode, PaymentProviderSettingsDTO request) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
         PaymentProviderSettingsDTO current = loadProviderSettings(providerCode);
         PaymentProviderSettingsDTO merged = mergeSettings(definition, current, request);
@@ -81,6 +108,7 @@ public class PaymentManagementAppService {
         merged.setProviderName(definition.providerName());
         merged.setEnvironment(resolveText(merged.getEnvironment(), definition.defaultEnvironment()));
         merged.setCurrency(resolveText(merged.getCurrency(), definition.defaultCurrency()));
+        validateProviderUrls(merged);
         merged.setConfigured(isConfigured(definition, merged));
         merged.setConfiguredFields(resolveConfiguredFields(definition, merged));
         if (!merged.isConfigured()) {
@@ -88,26 +116,30 @@ public class PaymentManagementAppService {
         }
 
         LocalDateTime eventVersion = LocalDateTime.now();
-        upsertProviderConfig(operatorId, definition, merged, current);
+        upsertProviderConfig(actor, definition, merged, current);
         providerListCache = null;
         outboxService.recordAfterCommit(
-                operatorId,
+                outboxUserId(actor),
                 "payment",
                 "payment.provider.updated",
                 providerCode + ":" + UUID.randomUUID(),
-                Map.of(
+                actorPayload(actor, Map.of(
                         "providerCode", providerCode,
                         "enabled", merged.isEnabled(),
                         "configured", merged.isConfigured(),
                         "environment", merged.getEnvironment(),
                         "eventVersion", eventVersion
-                )
+                ))
         );
         return loadProviderSettings(providerCode);
     }
 
     @Transactional
-    public PaymentProviderTestResultDTO testPaymentProvider(Long operatorId, String providerCode) {
+    public PaymentProviderTestResultDTO testPaymentProvider(CurrentUser currentUser, String providerCode) {
+        return testPaymentProvider(trustedActor(currentUser), providerCode);
+    }
+
+    private PaymentProviderTestResultDTO testPaymentProvider(Actor actor, String providerCode) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
         PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode);
         LocalDateTime checkedAt = LocalDateTime.now();
@@ -128,19 +160,68 @@ public class PaymentManagementAppService {
             }
         }
 
-        updateProviderTestResult(operatorId, providerCode, success, message, checkedAt);
+        updateProviderTestResult(actor, providerCode, success, message, checkedAt, settings.isPersisted());
         outboxService.recordAfterCommit(
-                operatorId,
+                outboxUserId(actor),
                 "payment",
                 "payment.provider.tested",
                 providerCode + ":" + checkedAt,
-                Map.of(
+                actorPayload(actor, Map.of(
                         "providerCode", providerCode,
                         "success", success,
                         "message", message
-                )
+                ))
         );
         return new PaymentProviderTestResultDTO(providerCode, definition.providerName(), success, message, checkedAt);
+    }
+
+    private Actor trustedActor(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
+        }
+        if (systemInternalApiProvider == null) {
+            return new Actor(currentUser.getUserId(), currentUser.getUserUuid().trim());
+        }
+        Long userId = currentUser.getUserId();
+        String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
+        }
+        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
+        if (systemInternalApi == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
+        }
+        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(userId);
+        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
+        }
+        if (!StringUtils.hasText(snapshot.userUuid()) || !snapshot.userUuid().trim().equals(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator identity mismatch");
+        }
+        if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim());
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
+        }
+        return new Actor(snapshot.userId(), snapshot.userUuid().trim());
+    }
+
+    private Map<String, Object> actorPayload(Actor actor, Map<String, Object> payload) {
+        if (!StringUtils.hasText(actor.userUuid())) {
+            return payload;
+        }
+        Map<String, Object> enriched = new java.util.LinkedHashMap<>(payload);
+        enriched.put("userUuid", actor.userUuid());
+        return enriched;
+    }
+
+    private Long outboxUserId(Actor actor) {
+        return actor != null && StringUtils.hasText(actor.userUuid()) ? actor.userId() : null;
+    }
+
+    private record Actor(Long userId, String userUuid) {
     }
 
     public PaymentProviderSettingsDTO getRequiredProviderSettings(String providerCode) {
@@ -179,11 +260,13 @@ public class PaymentManagementAppService {
     }
 
     private void upsertProviderConfig(
-            Long operatorId,
+            Actor actor,
             PaymentProviderCatalog.PaymentProviderDefinition definition,
             PaymentProviderSettingsDTO merged,
             PaymentProviderSettingsDTO current
     ) {
+        Long operatorId = actor.userId();
+        String operatorUuid = actor.userUuid();
         String encryptedJson = cryptoService.encryptJson(buildStoredPayload(merged));
         PaymentProviderConfigRow row = new PaymentProviderConfigRow();
         row.setProviderCode(definition.providerCode());
@@ -196,18 +279,20 @@ public class PaymentManagementAppService {
         row.setLastTestSuccess(current.getLastTestSuccess() == null ? null : (current.getLastTestSuccess() ? 1 : 0));
         row.setLastTestMessage(current.getLastTestMessage());
         row.setUpdatedBy(operatorId);
+        row.setUpdatedByUuid(operatorUuid);
         row.setCreatedBy(operatorId);
+        row.setCreatedByUuid(operatorUuid);
         row.setDeleted(0);
 
         Long existingId = queryProviderRowId(definition.providerCode());
         if (existingId == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into payment_provider_config (
                                 provider_code, provider_name, enabled, environment, encrypted_config_json,
                                 configured, last_tested_at, last_test_success, last_test_message,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     row.getProviderCode(),
                     row.getProviderName(),
@@ -219,18 +304,22 @@ public class PaymentManagementAppService {
                     row.getLastTestSuccess(),
                     row.getLastTestMessage(),
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requirePaymentConfigWrite(inserted, "Payment provider config changed, please retry");
             return;
         }
 
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update payment_provider_config
                         set provider_name = ?, enabled = ?, environment = ?, encrypted_config_json = ?, configured = ?,
                             last_tested_at = ?, last_test_success = ?, last_test_message = ?, updated_by = ?,
+                            updated_by_uuid = ?,
                             updated_at = ?, deleted = 0
-                        where id = ? and deleted = 0
+                        where id = ? and provider_code = ? and deleted = 0
                         """,
                 row.getProviderName(),
                 row.getEnabled(),
@@ -241,9 +330,12 @@ public class PaymentManagementAppService {
                 row.getLastTestSuccess(),
                 row.getLastTestMessage(),
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                existingId
+                existingId,
+                definition.providerCode()
         );
+        requirePaymentConfigWrite(updated, "Payment provider config changed, please retry");
     }
 
     private PaymentProviderSettingsDTO mergeSettings(
@@ -356,11 +448,7 @@ public class PaymentManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Missing required payment fields: " + String.join(", ", missing));
         }
         if (StringUtils.hasText(settings.getApiBaseUrl())) {
-            try {
-                java.net.URI.create(settings.getApiBaseUrl().trim());
-            } catch (Exception ex) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid payment API base URL");
-            }
+            validatePublicHttpUrl(settings.getApiBaseUrl(), "API base URL");
         }
     }
 
@@ -374,7 +462,7 @@ public class PaymentManagementAppService {
                     .connectTimeout(TEST_TIMEOUT)
                     .build();
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(settings.getApiBaseUrl().trim()))
+                    .uri(validatePublicHttpUrl(settings.getApiBaseUrl(), "API base URL"))
                     .timeout(TEST_TIMEOUT)
                     .GET()
                     .build();
@@ -390,24 +478,39 @@ public class PaymentManagementAppService {
         }
     }
 
-    private void updateProviderTestResult(Long operatorId, String providerCode, boolean success, String message, LocalDateTime checkedAt) {
+    private void updateProviderTestResult(
+            Actor actor,
+            String providerCode,
+            boolean success,
+            String message,
+            LocalDateTime checkedAt,
+            boolean expectPersistedConfig
+    ) {
+        Long operatorId = actor.userId();
+        String operatorUuid = actor.userUuid();
         Long existingId = queryProviderRowId(providerCode);
         if (existingId == null) {
+            if (expectPersistedConfig) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "Payment provider config changed, please retry");
+            }
             return;
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update payment_provider_config
-                        set last_tested_at = ?, last_test_success = ?, last_test_message = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                        set last_tested_at = ?, last_test_success = ?, last_test_message = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and provider_code = ? and deleted = 0
                         """,
                 checkedAt,
                 success ? 1 : 0,
                 message,
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                existingId
+                existingId,
+                providerCode
         );
+        requirePaymentConfigWrite(updated, "Payment provider config changed, please retry");
     }
 
     private PaymentProviderConfigRow queryProviderRow(String providerCode) {
@@ -417,8 +520,9 @@ public class PaymentManagementAppService {
                             select id, provider_code as providerCode, provider_name as providerName,
                                    enabled, environment, encrypted_config_json as encryptedConfigJson, configured,
                                    last_tested_at as lastTestedAt, last_test_success as lastTestSuccess,
-                                   last_test_message as lastTestMessage, created_by as createdBy, created_at as createdAt,
-                                   updated_by as updatedBy, updated_at as updatedAt, deleted
+                                   last_test_message as lastTestMessage,
+                                   created_by as createdBy, created_by_uuid as createdByUuid, created_at as createdAt,
+                                   updated_by as updatedBy, updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted
                             from payment_provider_config
                             where provider_code = ? and deleted = 0
                             order by id desc
@@ -447,6 +551,12 @@ public class PaymentManagementAppService {
             );
         } catch (EmptyResultDataAccessException ignored) {
             return null;
+        }
+    }
+
+    private void requirePaymentConfigWrite(int updated, String message) {
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, message);
         }
     }
 
@@ -511,10 +621,111 @@ public class PaymentManagementAppService {
         return new ArrayList<>(configured);
     }
 
+    private void validateProviderUrls(PaymentProviderSettingsDTO settings) {
+        validateOptionalPublicHttpUrl(settings.getApiBaseUrl(), "API base URL");
+        validateOptionalPublicHttpUrl(settings.getNotifyUrl(), "Notify URL");
+        validateOptionalPublicHttpUrl(settings.getReturnUrl(), "Return URL");
+        validateOptionalPublicHttpUrl(settings.getRefundNotifyUrl(), "Refund notify URL");
+        validateOptionalPublicHttpUrl(settings.getSuccessUrl(), "Success URL");
+        validateOptionalPublicHttpUrl(settings.getCancelUrl(), "Cancel URL");
+    }
+
+    private void validateOptionalPublicHttpUrl(String value, String name) {
+        if (!StringUtils.hasText(value)) {
+            return;
+        }
+        validatePublicHttpUrl(value, name);
+    }
+
+    private URI validatePublicHttpUrl(String value, String name) {
+        URI uri;
+        try {
+            uri = URI.create(value.trim());
+        } catch (Exception exception) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid payment " + name);
+        }
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        if (!StringUtils.hasText(scheme)
+                || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                || !StringUtils.hasText(host)
+                || StringUtils.hasText(uri.getUserInfo())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid payment " + name);
+        }
+        String normalizedHost = host.trim().toLowerCase(Locale.ROOT);
+        if (BLOCKED_PUBLIC_URL_HOSTS.contains(trimTrailingDot(normalizedHost)) || normalizedHost.endsWith(".localhost")) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Payment " + name + " must not target local hosts");
+        }
+        rejectUnsafeHost(normalizedHost, name);
+        return uri;
+    }
+
+    private void rejectUnsafeHost(String host, String name) {
+        byte[] ipv4Address = parseIpv4Literal(host);
+        if (ipv4Address != null) {
+            rejectPrivateAddress(ipv4Address, name);
+            return;
+        }
+        try {
+            for (InetAddress address : InetAddress.getAllByName(host)) {
+                rejectPrivateAddress(address.getAddress(), name);
+            }
+        } catch (BizException exception) {
+            throw exception;
+        } catch (Exception ignored) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid payment " + name);
+        }
+    }
+
+    private byte[] parseIpv4Literal(String host) {
+        String[] parts = host.split("\\.", -1);
+        if (parts.length != 4) {
+            return null;
+        }
+        byte[] address = new byte[4];
+        for (int index = 0; index < parts.length; index++) {
+            String part = parts[index];
+            if (part.isBlank() || part.length() > 3 || !part.chars().allMatch(Character::isDigit)) {
+                return null;
+            }
+            int value = Integer.parseInt(part);
+            if (value > 255) {
+                return null;
+            }
+            address[index] = (byte) value;
+        }
+        return address;
+    }
+
+    private void rejectPrivateAddress(byte[] rawAddress, String name) {
+        try {
+            InetAddress address = InetAddress.getByAddress(rawAddress);
+            if (address.isAnyLocalAddress()
+                    || address.isLoopbackAddress()
+                    || address.isLinkLocalAddress()
+                    || address.isSiteLocalAddress()
+                    || address.isMulticastAddress()) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Payment " + name + " must not target private networks");
+            }
+        } catch (BizException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid payment " + name);
+        }
+    }
+
     private void addIfText(LinkedHashSet<String> values, String fieldName, String fieldValue) {
         if (StringUtils.hasText(fieldValue)) {
             values.add(fieldName);
         }
+    }
+
+    private String trimTrailingDot(String value) {
+        String result = value;
+        while (result.endsWith(".")) {
+            result = result.substring(0, result.length() - 1);
+        }
+        return result;
     }
 
     private String resolveText(String candidate, String fallback) {

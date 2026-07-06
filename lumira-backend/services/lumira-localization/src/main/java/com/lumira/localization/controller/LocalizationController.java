@@ -1,6 +1,13 @@
 package com.lumira.localization.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.SecurityContextFacade;
@@ -10,6 +17,8 @@ import com.lumira.localization.dto.LocalizationDTO;
 import com.lumira.localization.vo.LocalizationVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,23 +30,37 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/localization")
 public class LocalizationController {
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final LocalizationManagementAppService localizationManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final SystemInternalApi systemInternalApi;
 
     public LocalizationController(
             LocalizationManagementAppService localizationManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
+        this(localizationManagementAppService, securityContextFacade, permissionGuard, null);
+    }
+
+    @Autowired
+    public LocalizationController(
+            LocalizationManagementAppService localizationManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi
+    ) {
         this.localizationManagementAppService = localizationManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.systemInternalApi = systemInternalApi;
     }
 
     @GetMapping("/languages")
@@ -50,7 +73,7 @@ public class LocalizationController {
     @RepeatSubmit
     public ApiResponse<LocalizationVO.LanguageVO> createLanguage(@Valid @RequestBody LocalizationDTO.LanguageUpsertRequest request) {
         require("localization:create");
-        return ApiResponse.success(localizationManagementAppService.saveLanguage(null, request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.saveLanguage(currentUser(), null, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/languages/{id}")
@@ -60,14 +83,14 @@ public class LocalizationController {
             @Valid @RequestBody LocalizationDTO.LanguageUpsertRequest request
     ) {
         require("localization:update");
-        return ApiResponse.success(localizationManagementAppService.saveLanguage(id, request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.saveLanguage(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/languages/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteLanguage(@PathVariable("id") @Positive Long id) {
         require("localization:delete");
-        localizationManagementAppService.deleteLanguage(id);
+        localizationManagementAppService.deleteLanguage(currentUser(), id);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -81,7 +104,7 @@ public class LocalizationController {
     @RepeatSubmit
     public ApiResponse<LocalizationVO.NamespaceVO> createNamespace(@Valid @RequestBody LocalizationDTO.NamespaceUpsertRequest request) {
         require("localization:create");
-        return ApiResponse.success(localizationManagementAppService.saveNamespace(null, request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.saveNamespace(currentUser(), null, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/namespaces/{id}")
@@ -91,14 +114,14 @@ public class LocalizationController {
             @Valid @RequestBody LocalizationDTO.NamespaceUpsertRequest request
     ) {
         require("localization:update");
-        return ApiResponse.success(localizationManagementAppService.saveNamespace(id, request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.saveNamespace(currentUser(), id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/namespaces/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteNamespace(@PathVariable("id") @Positive Long id) {
         require("localization:delete");
-        localizationManagementAppService.deleteNamespace(id);
+        localizationManagementAppService.deleteNamespace(currentUser(), id);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -125,7 +148,7 @@ public class LocalizationController {
     @RepeatSubmit
     public ApiResponse<LocalizationVO.EntryVO> createEntry(@Valid @RequestBody LocalizationDTO.EntryUpsertRequest request) {
         require("localization:create");
-        return ApiResponse.success(localizationManagementAppService.saveEntry(request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.saveEntry(currentUser(), request), TraceContext.getRequestId());
     }
 
     @PutMapping("/entries/{id}")
@@ -136,14 +159,14 @@ public class LocalizationController {
     ) {
         require("localization:update");
         request.setId(id);
-        return ApiResponse.success(localizationManagementAppService.saveEntry(request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.saveEntry(currentUser(), request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/entries/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteEntry(@PathVariable("id") @Positive Long id) {
         require("localization:delete");
-        localizationManagementAppService.deleteEntry(id);
+        localizationManagementAppService.deleteEntry(currentUser(), id);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -151,7 +174,7 @@ public class LocalizationController {
     @RepeatSubmit
     public ApiResponse<LocalizationVO.SyncResultVO> sync(@Valid @RequestBody LocalizationDTO.SyncRequest request) {
         require("localization:sync");
-        return ApiResponse.success(localizationManagementAppService.sync(request), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.sync(currentUser(), request), TraceContext.getRequestId());
     }
 
     @GetMapping("/releases")
@@ -164,14 +187,14 @@ public class LocalizationController {
     @RepeatSubmit
     public ApiResponse<LocalizationVO.ReleaseVO> publish(@Valid @RequestBody LocalizationDTO.PublishRequest request) {
         require("localization:publish");
-        return ApiResponse.success(localizationManagementAppService.publish(request, securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.publish(request, currentUser()), TraceContext.getRequestId());
     }
 
     @PostMapping("/rollback")
     @RepeatSubmit
     public ApiResponse<LocalizationVO.ReleaseVO> rollback(@Valid @RequestBody LocalizationDTO.RollbackRequest request) {
         require("localization:rollback");
-        return ApiResponse.success(localizationManagementAppService.rollback(request, securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        return ApiResponse.success(localizationManagementAppService.rollback(request, currentUser()), TraceContext.getRequestId());
     }
 
     @GetMapping("/runtime/{localeCode}")
@@ -180,6 +203,58 @@ public class LocalizationController {
     }
 
     private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+        permissionGuard.requirePermission(currentUser(), permissionKey);
+    }
+
+    private CurrentUser currentUser() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return refreshTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.status())
+                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
+                userId,
+                userSnapshot.userUuid().trim()
+        );
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(userSnapshot.userId());
+        currentUser.setUserUuid(userSnapshot.userUuid().trim());
+        currentUser.setUsername(userSnapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(
+                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
+        );
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        return currentUser;
     }
 }

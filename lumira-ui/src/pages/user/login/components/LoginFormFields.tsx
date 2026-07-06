@@ -656,6 +656,7 @@ interface LoginFormFieldsProps {
   onSliderCaptchaVerified: (captchaProof: string) => void;
   onSliderCaptchaReset: () => void;
   onOpenAgreementPreview: (previewKind: 'user' | 'privacy') => void;
+  onForgotPassword: () => void;
 }
 
 const PasswordLoginCredentialsFields = () => {
@@ -837,6 +838,7 @@ export const LoginFormFields = ({
   onSliderCaptchaVerified,
   onSliderCaptchaReset,
   onOpenAgreementPreview,
+  onForgotPassword,
 }: LoginFormFieldsProps) => {
   const codeLoginMode: CodeLoginMode = activeLoginMode === 'sms' ? 'sms' : 'email';
   const showUserAgreement = Boolean(agreementSettings.userAgreementMarkdown.trim());
@@ -922,13 +924,16 @@ export const LoginFormFields = ({
             <Form.Item noStyle name="remember" valuePropName="checked">
               <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>
             </Form.Item>
-            <Button type="link" className="saas-login-page__forgot-link">
+            <Button type="link" className="saas-login-page__forgot-link" onClick={onForgotPassword}>
               {formatMessage({ id: 'page.login.forgotPassword', defaultMessage: '忘记密码' })}
             </Button>
           </div>
           <div className="saas-login-page__agreement">
             <span className="saas-login-page__agreement-text">
-              {formatMessage({ id: 'page.login.autoRegisterNoticePrefix', defaultMessage: '未注册手机号验证后自动登录，注册即代表同意' })}
+              {formatMessage({
+                id: codeLoginMode === 'sms' ? 'page.login.autoRegisterNoticePrefix' : 'page.login.agreement.accept',
+                defaultMessage: codeLoginMode === 'sms' ? '未注册手机号验证后自动登录，注册即代表同意' : '我已阅读并同意',
+              })}
               <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
                 {showUserAgreement
                   ? formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })

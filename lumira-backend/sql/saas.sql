@@ -9,6 +9,7 @@ CREATE TABLE `ai_conversation` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `employee_id` bigint unsigned NOT NULL,
   `owner_user_id` bigint unsigned NOT NULL,
+  `owner_user_uuid` varchar(64) NOT NULL DEFAULT '',
   `conversation_code` varchar(64) NOT NULL,
   `title` varchar(255) NOT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
@@ -19,7 +20,7 @@ CREATE TABLE `ai_conversation` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_ai_conversation_code` (`conversation_code`),
-  KEY `idx_ai_conversation_owner` (`owner_user_id`,`is_pinned`,`latest_message_at`,`is_deleted`),
+  KEY `idx_ai_conversation_owner` (`owner_user_id`,`owner_user_uuid`,`is_pinned`,`latest_message_at`,`is_deleted`),
   KEY `idx_ai_conversation_employee` (`employee_id`,`latest_message_at`,`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -77,19 +78,23 @@ CREATE TABLE `ai_knowledge_base` (
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL',
   `owner_user_id` bigint unsigned NOT NULL DEFAULT '0',
+  `owner_user_uuid` varchar(64) NOT NULL DEFAULT '',
   `document_count` bigint NOT NULL DEFAULT '0',
   `chunk_count` bigint NOT NULL DEFAULT '0',
   `created_by` bigint unsigned NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `updated_by` bigint unsigned NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_ai_knowledge_base_code` (`kb_code`),
-  UNIQUE KEY `uk_ai_knowledge_base_owner_name` (`owner_user_id`,`name`,`is_deleted`),
+  UNIQUE KEY `uk_ai_knowledge_base_owner_name` (`owner_user_id`,`owner_user_uuid`,`name`,`is_deleted`),
   KEY `idx_ai_knowledge_base_status` (`status`,`is_deleted`),
-  KEY `idx_ai_knowledge_base_owner` (`owner_user_id`,`status`,`is_deleted`),
-  KEY `idx_ai_knowledge_base_access` (`owner_user_id`,`visibility_scope`,`status`,`is_deleted`)
+  KEY `idx_ai_knowledge_base_owner` (`owner_user_id`,`owner_user_uuid`,`status`,`is_deleted`),
+  KEY `idx_ai_knowledge_base_access` (`owner_user_id`,`owner_user_uuid`,`visibility_scope`,`status`,`is_deleted`),
+  KEY `idx_ai_knowledge_base_creator_uuid` (`created_by`,`created_by_uuid`,`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ai_knowledge_base_acl` (
@@ -99,14 +104,17 @@ CREATE TABLE `ai_knowledge_base_acl` (
   `subject_id` bigint unsigned NOT NULL,
   `permission` varchar(32) NOT NULL,
   `created_by` bigint unsigned NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `updated_by` bigint unsigned NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_ai_knowledge_acl_subject` (`knowledge_base_id`,`subject_type`,`subject_id`,`permission`,`is_deleted`),
   KEY `idx_ai_knowledge_acl_subject` (`subject_type`,`subject_id`,`permission`,`is_deleted`),
-  KEY `idx_ai_knowledge_acl_base` (`knowledge_base_id`,`is_deleted`)
+  KEY `idx_ai_knowledge_acl_base` (`knowledge_base_id`,`is_deleted`),
+  KEY `idx_ai_knowledge_acl_creator_uuid` (`created_by`,`created_by_uuid`,`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ai_knowledge_chunk` (
@@ -161,8 +169,12 @@ CREATE TABLE `ai_knowledge_document` (
   `index_retry_count` int NOT NULL DEFAULT '0',
   `index_next_retry_at` datetime DEFAULT NULL,
   `index_last_error` varchar(512) DEFAULT NULL,
+  `index_claim_token` varchar(64) DEFAULT NULL,
+  `index_claim_expires_at` datetime DEFAULT NULL,
   `created_by` bigint unsigned NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `updated_by` bigint unsigned NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -170,7 +182,9 @@ CREATE TABLE `ai_knowledge_document` (
   KEY `idx_ai_knowledge_document_base` (`knowledge_base_id`,`is_deleted`),
   KEY `idx_ai_knowledge_document_file` (`file_id`),
   KEY `idx_ai_knowledge_document_index_retry` (`status`,`is_deleted`,`index_next_retry_at`,`update_time`,`id`),
-  KEY `idx_ai_knowledge_document_status` (`knowledge_base_id`,`status`,`is_deleted`)
+  KEY `idx_ai_knowledge_document_index_claim` (`index_claim_token`),
+  KEY `idx_ai_knowledge_document_status` (`knowledge_base_id`,`status`,`is_deleted`),
+  KEY `idx_ai_knowledge_document_creator_uuid` (`created_by`,`created_by_uuid`,`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ai_llm_model` (
@@ -241,6 +255,8 @@ CREATE TABLE `ai_tool_audit_log` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `conversation_id` bigint unsigned DEFAULT NULL,
   `employee_id` bigint unsigned DEFAULT NULL,
+  `owner_user_id` bigint unsigned NOT NULL DEFAULT '0',
+  `owner_user_uuid` varchar(64) NOT NULL DEFAULT '',
   `skill_code` varchar(128) NOT NULL,
   `tool_name` varchar(128) DEFAULT NULL,
   `permission_mode` varchar(32) DEFAULT NULL,
@@ -250,6 +266,7 @@ CREATE TABLE `ai_tool_audit_log` (
   `supervisor_message` varchar(1024) DEFAULT NULL,
   `policy_match` varchar(1024) DEFAULT NULL,
   `confirmed_by` bigint unsigned DEFAULT NULL,
+  `confirmed_by_uuid` varchar(64) DEFAULT NULL,
   `confirmed_at` datetime DEFAULT NULL,
   `result_status` varchar(32) NOT NULL,
   `detail_message` varchar(1024) DEFAULT NULL,
@@ -260,6 +277,7 @@ CREATE TABLE `ai_tool_audit_log` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_ai_tool_audit_created` (`create_time`),
+  KEY `idx_ai_tool_audit_owner` (`owner_user_id`,`owner_user_uuid`,`conversation_id`,`employee_id`,`create_time`),
   KEY `idx_ai_tool_audit_employee` (`employee_id`,`create_time`),
   KEY `idx_ai_tool_audit_skill` (`skill_code`,`result_status`,`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -269,6 +287,7 @@ CREATE TABLE `ai_tool_call_plan` (
   `conversation_id` bigint unsigned DEFAULT NULL,
   `employee_id` bigint unsigned DEFAULT NULL,
   `owner_user_id` bigint unsigned NOT NULL,
+  `owner_user_uuid` varchar(64) NOT NULL DEFAULT '',
   `tool_code` varchar(128) NOT NULL,
   `tool_name` varchar(128) DEFAULT NULL,
   `action_type` varchar(64) DEFAULT NULL,
@@ -289,12 +308,13 @@ CREATE TABLE `ai_tool_call_plan` (
   `status` varchar(32) NOT NULL DEFAULT 'PENDING',
   `expires_at` datetime NOT NULL,
   `confirmed_by` bigint unsigned DEFAULT NULL,
+  `confirmed_by_uuid` varchar(64) DEFAULT NULL,
   `confirmed_at` datetime DEFAULT NULL,
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_ai_tool_plan_owner` (`owner_user_id`,`status`,`expires_at`),
+  KEY `idx_ai_tool_plan_owner` (`owner_user_id`,`owner_user_uuid`,`status`,`expires_at`),
   KEY `idx_ai_tool_plan_conversation` (`conversation_id`,`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -351,12 +371,14 @@ CREATE TABLE `audit_operation_log` (
   `request_id` varchar(128) DEFAULT NULL,
   `trace_id` varchar(128) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_audit_operation_created` (`created_at`),
   KEY `idx_audit_operation_user_created` (`user_id`,`created_at`),
   KEY `idx_audit_operation_user_uuid_created` (`user_uuid`,`created_at`),
+  KEY `idx_audit_operation_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_audit_operation_module_created` (`module_name`,`created_at`),
   KEY `idx_audit_operation_result_created` (`result_status`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -382,6 +404,7 @@ CREATE TABLE `file_object` (
   `bucket` varchar(128) DEFAULT NULL,
   `object_key` varchar(255) NOT NULL,
   `uploaded_by` bigint DEFAULT NULL,
+  `uploaded_by_uuid` char(36) DEFAULT NULL,
   `uploaded_by_name` varchar(128) DEFAULT NULL,
   `department_id` bigint DEFAULT NULL,
   `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL',
@@ -398,12 +421,16 @@ CREATE TABLE `file_object` (
   `remark` varchar(512) DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_file_object_key` (`object_key`),
+  KEY `idx_file_object_uploader` (`uploaded_by`,`uploaded_by_uuid`,`deleted`),
+  KEY `idx_file_object_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_file_object_department` (`department_id`,`deleted`),
   KEY `idx_file_object_visibility` (`visibility_scope`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -416,14 +443,17 @@ CREATE TABLE `file_processing_artifact` (
   `artifact_path` varchar(512) DEFAULT NULL,
   `content_text` mediumtext,
   `content_length` int NOT NULL DEFAULT '0',
-  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_file_processing_artifact` (`file_id`,`artifact_type`),
   KEY `idx_file_processing_artifact_file` (`file_id`,`deleted`),
+  KEY `idx_file_processing_artifact_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_file_processing_artifact_type` (`artifact_type`,`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -441,9 +471,11 @@ CREATE TABLE `file_processing_task` (
   `claimed_at` datetime DEFAULT NULL,
   `completed_at` datetime DEFAULT NULL,
   `last_error` varchar(1024) DEFAULT NULL,
-  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -452,6 +484,7 @@ CREATE TABLE `file_processing_task` (
   KEY `idx_file_processing_task_file` (`file_id`,`deleted`),
   KEY `idx_file_processing_task_queue` (`deleted`,`status`,`next_retry_at`,`priority`,`created_at`,`id`),
   KEY `idx_file_processing_task_created` (`deleted`,`status`,`created_at`,`id`),
+  KEY `idx_file_processing_task_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_file_processing_batch_claim` (`deleted`,`status`,`next_retry_at`,`priority`,`created_at`,`id`),
   KEY `idx_file_processing_claim_token` (`claim_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -475,12 +508,15 @@ CREATE TABLE `file_storage_space` (
   `anonymous_access_allowed` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_file_storage_space_key` (`storage_key`),
+  KEY `idx_file_storage_space_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_file_storage_space_default` (`default_flag`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -507,6 +543,7 @@ CREATE TABLE `iam_user` (
 CREATE TABLE `iam_user_credential` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `credential_type` varchar(32) NOT NULL,
   `credential_secret` varchar(512) NOT NULL,
   `algorithm` varchar(64) NOT NULL DEFAULT 'BCRYPT',
@@ -518,13 +555,14 @@ CREATE TABLE `iam_user_credential` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iam_credential_user_type` (`user_id`,`credential_type`,`version`),
+  UNIQUE KEY `uk_iam_credential_user_type` (`user_id`,`user_uuid`,`credential_type`,`version`),
   KEY `idx_iam_credential_type_status` (`credential_type`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `iam_user_device` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `device_id` varchar(128) NOT NULL,
   `device_name` varchar(128) DEFAULT NULL,
   `device_type` varchar(32) DEFAULT NULL,
@@ -537,22 +575,24 @@ CREATE TABLE `iam_user_device` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iam_device_user_device` (`user_id`,`device_id`),
-  KEY `idx_iam_device_user_active` (`user_id`,`last_active_at`,`deleted`)
+  UNIQUE KEY `uk_iam_device_user_device` (`user_id`,`user_uuid`,`device_id`),
+  KEY `idx_iam_device_user_active` (`user_id`,`user_uuid`,`last_active_at`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `iam_user_event` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `event_type` varchar(64) NOT NULL,
   `event_source` varchar(64) NOT NULL,
   `operator_id` bigint DEFAULT NULL,
+  `operator_uuid` char(36) DEFAULT NULL,
   `ip` varchar(64) DEFAULT NULL,
   `user_agent` varchar(512) DEFAULT NULL,
   `detail_json` json DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_iam_event_user_created` (`user_id`,`created_at`),
+  KEY `idx_iam_event_user_created` (`user_id`,`user_uuid`,`created_at`),
   KEY `idx_iam_event_type_created` (`event_type`,`created_at`),
   KEY `idx_iam_event_ip_created` (`ip`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -560,6 +600,7 @@ CREATE TABLE `iam_user_event` (
 CREATE TABLE `iam_user_identity` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `identity_type` varchar(32) NOT NULL,
   `identifier` varchar(255) NOT NULL,
   `identifier_normalized` varchar(255) NOT NULL,
@@ -573,13 +614,14 @@ CREATE TABLE `iam_user_identity` (
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_identity` (`identity_type`,`identifier_normalized`),
-  KEY `idx_iam_identity_user` (`user_id`,`identity_type`,`deleted`),
+  KEY `idx_iam_identity_user` (`user_id`,`user_uuid`,`identity_type`,`deleted`),
   KEY `idx_iam_identity_last_used` (`last_used_at`,`id`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `iam_user_profile` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `nickname` varchar(128) DEFAULT NULL,
   `real_name` varchar(128) DEFAULT NULL,
   `gender` varchar(32) DEFAULT NULL,
@@ -593,13 +635,14 @@ CREATE TABLE `iam_user_profile` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iam_profile_user` (`user_id`),
+  UNIQUE KEY `uk_iam_profile_user` (`user_id`,`user_uuid`),
   KEY `idx_iam_profile_real_name` (`real_name`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `iam_user_security_setting` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `mfa_enabled` tinyint NOT NULL DEFAULT '0',
   `password_login_enabled` tinyint NOT NULL DEFAULT '1',
   `sms_login_enabled` tinyint NOT NULL DEFAULT '1',
@@ -610,7 +653,7 @@ CREATE TABLE `iam_user_security_setting` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iam_security_user` (`user_id`)
+  UNIQUE KEY `uk_iam_security_user` (`user_id`,`user_uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `msg_delivery_log` (
@@ -619,6 +662,7 @@ CREATE TABLE `msg_delivery_log` (
   `channel` varchar(32) NOT NULL,
   `target_scope` varchar(32) NOT NULL,
   `target_user_id` bigint DEFAULT NULL,
+  `target_user_uuid` varchar(64) DEFAULT NULL,
   `target_user_name` varchar(64) DEFAULT NULL,
   `target_email` varchar(128) DEFAULT NULL,
   `title` varchar(128) NOT NULL,
@@ -627,13 +671,17 @@ CREATE TABLE `msg_delivery_log` (
   `error_message` varchar(1024) DEFAULT NULL,
   `sent_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` varchar(64) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` varchar(64) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_msg_delivery_log_channel_created` (`channel`,`created_at`),
   KEY `idx_msg_delivery_log_status_created` (`send_status`,`created_at`),
+  KEY `idx_msg_delivery_log_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
+  KEY `idx_msg_delivery_log_target_user_uuid` (`target_user_id`,`target_user_uuid`,`created_at`),
   KEY `idx_msg_delivery_log_notice` (`notice_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -642,6 +690,7 @@ CREATE TABLE `msg_notice` (
   `notice_type` varchar(32) NOT NULL,
   `target_scope` varchar(32) NOT NULL,
   `target_user_id` bigint DEFAULT NULL,
+  `target_user_uuid` varchar(64) DEFAULT NULL,
   `target_role_id` bigint DEFAULT NULL,
   `title` varchar(128) NOT NULL,
   `content` text NOT NULL,
@@ -649,13 +698,16 @@ CREATE TABLE `msg_notice` (
   `publish_status` varchar(32) NOT NULL DEFAULT 'PUBLISHED',
   `published_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` varchar(64) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` varchar(64) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_msg_notice_type_status_created` (`notice_type`,`publish_status`,`created_at`),
   KEY `idx_msg_notice_target_created` (`target_user_id`,`created_at`),
+  KEY `idx_msg_notice_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_msg_notice_target_role_created` (`target_role_id`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -663,20 +715,25 @@ CREATE TABLE `msg_notice_read` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `notice_id` bigint NOT NULL,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) NOT NULL,
   `read_at` datetime NOT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_msg_notice_read` (`notice_id`,`user_id`),
-  KEY `idx_msg_notice_read_user_created` (`user_id`,`read_at`)
+  UNIQUE KEY `uk_msg_notice_read` (`notice_id`,`user_id`,`user_uuid`),
+  KEY `idx_msg_notice_read_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
+  KEY `idx_msg_notice_read_user_created` (`user_id`,`user_uuid`,`read_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `payment_event_outbox` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `source_type` varchar(64) NOT NULL,
   `event_type` varchar(128) NOT NULL,
   `event_key` varchar(128) NOT NULL,
@@ -689,12 +746,15 @@ CREATE TABLE `payment_event_outbox` (
   `claim_token` varchar(128) DEFAULT NULL,
   `claim_expires_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_payment_outbox_event` (`source_type`,`event_type`,`event_key`),
+  KEY `idx_payment_outbox_user_uuid` (`user_uuid`,`created_at`),
   KEY `idx_payment_outbox_status` (`status`,`next_retry_at`),
   KEY `idx_payment_outbox_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -720,15 +780,18 @@ CREATE TABLE `payment_order` (
   `expires_at` datetime DEFAULT NULL,
   `paid_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_payment_order_order_no` (`order_no`),
   UNIQUE KEY `uk_payment_order_idempotency_key` (`idempotency_key`),
   KEY `idx_payment_order_status` (`status`),
-  KEY `idx_payment_order_provider` (`provider_code`,`provider_order_no`)
+  KEY `idx_payment_order_provider` (`provider_code`,`provider_order_no`),
+  KEY `idx_payment_order_owner_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `payment_provider_config` (
@@ -743,8 +806,10 @@ CREATE TABLE `payment_provider_config` (
   `last_test_success` tinyint(1) DEFAULT NULL,
   `last_test_message` varchar(512) DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -770,15 +835,18 @@ CREATE TABLE `payment_refund` (
   `failure_message` varchar(512) DEFAULT NULL,
   `refunded_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_payment_refund_refund_no` (`refund_no`),
   UNIQUE KEY `uk_payment_refund_idempotency_key` (`idempotency_key`),
   KEY `idx_payment_refund_status` (`status`),
-  KEY `idx_payment_refund_order_no` (`order_no`)
+  KEY `idx_payment_refund_order_no` (`order_no`),
+  KEY `idx_payment_refund_owner_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `payment_webhook_event` (
@@ -798,8 +866,10 @@ CREATE TABLE `payment_webhook_event` (
   `retry_count` int NOT NULL DEFAULT '0',
   `next_retry_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -827,8 +897,10 @@ CREATE TABLE `platform_event_outbox` (
   `trace_id` varchar(128) DEFAULT NULL,
   `request_id` varchar(128) DEFAULT NULL,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -838,7 +910,8 @@ CREATE TABLE `platform_event_outbox` (
   KEY `idx_platform_event_outbox_user_uuid` (`user_uuid`,`created_at`),
   KEY `idx_platform_event_outbox_owner_queue` (`source_type`,`created_at`,`id`,`dispatch_status`,`next_retry_at`,`deleted`),
   KEY `idx_platform_event_outbox_batch_claim` (`source_type`,`deleted`,`dispatch_status`,`next_retry_at`,`created_at`,`id`),
-  KEY `idx_platform_event_outbox_claim_token` (`claim_token`)
+  KEY `idx_platform_event_outbox_claim_token` (`claim_token`),
+  KEY `idx_platform_event_outbox_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `platform_update_task` (
@@ -854,12 +927,14 @@ CREATE TABLE `platform_update_task` (
   `log_summary` text,
   `error_message` text,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_by_name` varchar(128) DEFAULT NULL,
   `started_at` datetime DEFAULT NULL,
   `finished_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  KEY `idx_platform_update_task_creator_uuid` (`created_by_uuid`,`created_at`),
   KEY `idx_platform_update_task_created_at` (`created_at`),
   KEY `idx_platform_update_task_status` (`status`),
   KEY `idx_platform_update_task_updater_task_id` (`updater_task_id`)
@@ -868,6 +943,7 @@ CREATE TABLE `platform_update_task` (
 CREATE TABLE `plugin_event_outbox` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `event_type` varchar(128) NOT NULL,
   `event_key` varchar(191) NOT NULL,
   `payload_json` json NOT NULL,
@@ -879,12 +955,16 @@ CREATE TABLE `plugin_event_outbox` (
   `claim_token` varchar(128) DEFAULT NULL,
   `claim_expires_at` datetime DEFAULT NULL,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_plugin_event_outbox_event` (`event_type`,`event_key`),
+  KEY `idx_plugin_event_outbox_user_uuid` (`user_uuid`,`created_at`),
+  KEY `idx_plugin_event_outbox_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_plugin_event_outbox_status` (`status`,`next_retry_at`),
   KEY `idx_plugin_event_outbox_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -898,12 +978,15 @@ CREATE TABLE `sys_config` (
   `is_system` tinyint NOT NULL DEFAULT '0',
   `remark` varchar(512) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_config_key` (`config_key`)
+  UNIQUE KEY `uk_sys_config_key` (`config_key`),
+  KEY `idx_sys_config_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_department` (
@@ -914,13 +997,16 @@ CREATE TABLE `sys_department` (
   `sort_no` int NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_department_code` (`dept_code`),
-  KEY `idx_sys_department_parent` (`parent_id`,`deleted`)
+  KEY `idx_sys_department_parent` (`parent_id`,`deleted`),
+  KEY `idx_sys_department_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_dict_item` (
@@ -930,14 +1016,17 @@ CREATE TABLE `sys_dict_item` (
   `item_label` varchar(128) NOT NULL,
   `sort_no` int NOT NULL DEFAULT '0',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `remark` varchar(512) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_dict_item_value` (`dict_type_id`,`item_value`)
+  UNIQUE KEY `uk_sys_dict_item_value` (`dict_type_id`,`item_value`),
+  KEY `idx_sys_dict_item_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_dict_type` (
@@ -945,15 +1034,18 @@ CREATE TABLE `sys_dict_type` (
   `dict_code` varchar(64) NOT NULL,
   `dict_name` varchar(128) NOT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `is_system` tinyint NOT NULL DEFAULT '0',
   `remark` varchar(512) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_dict_type_code` (`dict_code`)
+  UNIQUE KEY `uk_sys_dict_type_code` (`dict_code`),
+  KEY `idx_sys_dict_type_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_export_task` (
@@ -967,11 +1059,13 @@ CREATE TABLE `sys_export_task` (
   `file_name` varchar(255) DEFAULT NULL,
   `error_message` varchar(1000) DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `started_at` datetime DEFAULT NULL,
   `finished_at` datetime DEFAULT NULL,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
+  KEY `idx_sys_export_task_creator_uuid` (`created_by_uuid`,`created_at`),
   KEY `idx_sys_export_task_creator` (`created_by`,`created_at`),
   KEY `idx_sys_export_task_status` (`status`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -986,14 +1080,17 @@ CREATE TABLE `sys_localization_entry` (
   `source_ref` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_localization_entry_namespace_key` (`namespace_id`,`message_key`),
   KEY `idx_sys_localization_entry_status` (`status`,`updated_at`),
-  KEY `idx_sys_localization_entry_source` (`source_type`,`source_ref`)
+  KEY `idx_sys_localization_entry_source` (`source_type`,`source_ref`),
+  KEY `idx_sys_localization_entry_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sys_localization_language` (
@@ -1006,13 +1103,16 @@ CREATE TABLE `sys_localization_language` (
   `is_default` tinyint(1) NOT NULL DEFAULT '0',
   `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_localization_language_locale` (`locale_code`),
-  KEY `idx_sys_localization_language_status` (`status`,`sort_no`)
+  KEY `idx_sys_localization_language_status` (`status`,`sort_no`),
+  KEY `idx_sys_localization_language_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sys_localization_namespace` (
@@ -1024,13 +1124,16 @@ CREATE TABLE `sys_localization_namespace` (
   `sort_no` int NOT NULL DEFAULT '0',
   `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_localization_namespace_code` (`namespace_code`),
-  KEY `idx_sys_localization_namespace_status` (`status`,`sort_no`)
+  KEY `idx_sys_localization_namespace_status` (`status`,`sort_no`),
+  KEY `idx_sys_localization_namespace_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sys_localization_release` (
@@ -1042,15 +1145,19 @@ CREATE TABLE `sys_localization_release` (
   `note` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `active_flag` tinyint(1) NOT NULL DEFAULT '1',
   `published_by` bigint DEFAULT NULL,
+  `published_by_uuid` char(36) DEFAULT NULL,
   `published_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_localization_release_locale_version` (`locale_code`,`release_version`),
-  KEY `idx_sys_localization_release_locale_active` (`locale_code`,`active_flag`,`release_version`)
+  KEY `idx_sys_localization_release_locale_active` (`locale_code`,`active_flag`,`release_version`),
+  KEY `idx_sys_localization_release_publisher_uuid` (`published_by`,`published_by_uuid`,`published_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sys_localization_translation` (
@@ -1064,13 +1171,16 @@ CREATE TABLE `sys_localization_translation` (
   `translated_by` bigint DEFAULT NULL,
   `translated_at` datetime DEFAULT NULL,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_localization_translation_entry_locale` (`entry_id`,`locale_code`),
-  KEY `idx_sys_localization_translation_locale_status` (`locale_code`,`translation_status`)
+  KEY `idx_sys_localization_translation_locale_status` (`locale_code`,`translation_status`),
+  KEY `idx_sys_localization_translation_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sys_localization_usage_ref` (
@@ -1081,13 +1191,16 @@ CREATE TABLE `sys_localization_usage_ref` (
   `source_line` int DEFAULT NULL,
   `source_text` text COLLATE utf8mb4_unicode_ci,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_localization_usage_ref` (`entry_id`,`source_type`,`source_ref`,`source_line`),
-  KEY `idx_sys_localization_usage_ref_entry` (`entry_id`)
+  KEY `idx_sys_localization_usage_ref_entry` (`entry_id`),
+  KEY `idx_sys_localization_usage_ref_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `sys_menu` (
@@ -1099,8 +1212,10 @@ CREATE TABLE `sys_menu` (
   `path` varchar(255) DEFAULT NULL,
   `component` varchar(255) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   `icon` varchar(64) DEFAULT NULL,
@@ -1109,7 +1224,8 @@ CREATE TABLE `sys_menu` (
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_menu_code` (`menu_code`),
-  KEY `idx_sys_menu_status` (`status`,`sort_no`)
+  KEY `idx_sys_menu_status` (`status`,`sort_no`),
+  KEY `idx_sys_menu_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_permission` (
@@ -1120,12 +1236,15 @@ CREATE TABLE `sys_permission` (
   `source_type` varchar(32) NOT NULL DEFAULT 'CORE',
   `plugin_code` varchar(64) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_permission_key` (`permission_key`)
+  UNIQUE KEY `uk_sys_permission_key` (`permission_key`),
+  KEY `idx_sys_permission_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_plugin_definition` (
@@ -1144,8 +1263,10 @@ CREATE TABLE `sys_plugin_definition` (
   `supports_data_purge` tinyint NOT NULL DEFAULT '0',
   `runtime_contributions_json` json DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1158,8 +1279,10 @@ CREATE TABLE `sys_plugin_dependency` (
   `depends_on_plugin_code` varchar(64) NOT NULL,
   `min_version` varchar(32) NOT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1178,8 +1301,10 @@ CREATE TABLE `sys_plugin_menu_rel` (
   `parent_menu_code` varchar(64) DEFAULT NULL,
   `sort_no` int NOT NULL DEFAULT '0',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1194,8 +1319,10 @@ CREATE TABLE `sys_plugin_permission_rel` (
   `permission_name` varchar(128) NOT NULL,
   `permission_group` varchar(64) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1214,6 +1341,7 @@ CREATE TABLE `sys_plugin_runtime_log` (
   `trace_id` varchar(64) DEFAULT NULL,
   `failure_stack` text,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1230,6 +1358,7 @@ CREATE TABLE `sys_plugin_schema_history` (
   `execution_status` varchar(32) NOT NULL,
   `detail_message` varchar(1024) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_sys_plugin_schema_history_plugin_created` (`plugin_code`,`plugin_version`,`created_at`)
@@ -1258,8 +1387,10 @@ CREATE TABLE `sys_plugin_version` (
   `staged_path` varchar(512) DEFAULT NULL,
   `installed_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1273,12 +1404,15 @@ CREATE TABLE `sys_role` (
   `role_type` varchar(32) NOT NULL DEFAULT 'CUSTOM',
   `default_home_path` varchar(255) NOT NULL DEFAULT '/dashboard/home',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_role_code` (`role_code`)
+  UNIQUE KEY `uk_sys_role_code` (`role_code`),
+  KEY `idx_sys_role_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_role_data_scope` (
@@ -1289,8 +1423,10 @@ CREATE TABLE `sys_role_data_scope` (
   `custom_dept_ids` varchar(1024) DEFAULT NULL,
   `custom_user_ids` varchar(1024) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1303,8 +1439,10 @@ CREATE TABLE `sys_role_permission` (
   `role_id` bigint NOT NULL,
   `permission_key` varchar(128) NOT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1320,13 +1458,16 @@ CREATE TABLE `sys_sensitive_word` (
   `action` varchar(32) NOT NULL DEFAULT 'BLOCK',
   `enabled` tinyint NOT NULL DEFAULT '1',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_sensitive_word_normalized` (`normalized_word`,`deleted`),
-  KEY `idx_sys_sensitive_word_enabled` (`enabled`,`deleted`)
+  KEY `idx_sys_sensitive_word_enabled` (`enabled`,`deleted`),
+  KEY `idx_sys_sensitive_word_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_work_order_feedback` (
@@ -1336,18 +1477,21 @@ CREATE TABLE `sys_work_order_feedback` (
   `priority` varchar(32) NOT NULL DEFAULT 'NORMAL',
   `status` varchar(32) NOT NULL DEFAULT 'OPEN',
   `submitter_id` bigint NOT NULL,
+  `submitter_uuid` char(36) DEFAULT NULL,
   `submitter_name` varchar(128) DEFAULT NULL,
   `admin_reply` varchar(4000) DEFAULT NULL,
   `handled_by` bigint DEFAULT NULL,
   `handled_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_sys_work_order_status_updated` (`status`,`deleted`,`updated_at`),
-  KEY `idx_sys_work_order_submitter_updated` (`submitter_id`,`deleted`,`updated_at`)
+  KEY `idx_sys_work_order_submitter_updated` (`submitter_id`,`submitter_uuid`,`deleted`,`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_user` (
@@ -1367,34 +1511,41 @@ CREATE TABLE `sys_user` (
   `email` varchar(128) DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_user_uuid` (`uuid`),
   UNIQUE KEY `uk_sys_user_username` (`username`),
-  KEY `idx_sys_user_mobile` (`mobile`)
+  KEY `idx_sys_user_mobile` (`mobile`),
+  KEY `idx_sys_user_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_user_department` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `dept_id` bigint NOT NULL,
   `primary_flag` tinyint NOT NULL DEFAULT '0',
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_user_department_rel` (`user_id`,`dept_id`),
+  UNIQUE KEY `uk_sys_user_department_rel` (`user_id`,`user_uuid`,`dept_id`),
   KEY `idx_sys_user_department_dept` (`dept_id`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_user_passkey_credential` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `user_handle` varchar(128) NOT NULL,
   `credential_id` varchar(512) NOT NULL,
   `public_key_cose` text NOT NULL,
@@ -1405,49 +1556,58 @@ CREATE TABLE `sys_user_passkey_credential` (
   `label` varchar(128) NOT NULL DEFAULT '通行密钥',
   `last_used_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_passkey_credential_id` (`credential_id`),
-  KEY `idx_passkey_user` (`user_id`,`deleted`),
+  KEY `idx_passkey_user` (`user_id`,`user_uuid`,`deleted`),
   KEY `idx_passkey_user_handle` (`user_handle`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_user_role` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `role_id` bigint NOT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_user_role_rel` (`user_id`,`role_id`)
+  UNIQUE KEY `uk_sys_user_role_rel` (`user_id`,`user_uuid`,`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_user_wechat_binding` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `openid` varchar(128) NOT NULL,
   `unionid` varchar(128) DEFAULT NULL,
   `scope` varchar(255) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_sys_user_wechat_openid` (`openid`),
   UNIQUE KEY `uk_sys_user_wechat_unionid` (`unionid`),
-  KEY `idx_sys_user_wechat_user` (`user_id`)
+  KEY `idx_sys_user_wechat_user` (`user_id`,`user_uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_verification_binding` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `factor_code` varchar(32) NOT NULL,
   `factor_name` varchar(64) NOT NULL,
   `enabled` tinyint NOT NULL DEFAULT '0',
@@ -1458,18 +1618,21 @@ CREATE TABLE `sys_verification_binding` (
   `recovery_codes_json` json DEFAULT NULL,
   `verified_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_verification_binding` (`user_id`,`factor_code`)
+  UNIQUE KEY `uk_sys_verification_binding` (`user_id`,`user_uuid`,`factor_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_verification_challenge` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `challenge_id` varchar(64) NOT NULL,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `factor_code` varchar(32) NOT NULL,
   `challenge_type` varchar(16) NOT NULL,
   `expires_at` datetime NOT NULL,
@@ -1481,12 +1644,15 @@ CREATE TABLE `sys_verification_challenge` (
   `masked_contact` varchar(255) DEFAULT NULL,
   `debug_code` varchar(32) DEFAULT NULL,
   `created_by` bigint DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_sys_verification_challenge` (`challenge_id`)
+  UNIQUE KEY `uk_sys_verification_challenge` (`challenge_id`),
+  KEY `idx_sys_verification_challenge_user_uuid` (`user_id`,`user_uuid`,`factor_code`,`challenge_type`,`deleted`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_department_closure` (
@@ -1537,16 +1703,20 @@ CREATE TABLE `team` (
   `visibility` varchar(32) NOT NULL DEFAULT 'PRIVATE',
   `join_mode` varchar(32) NOT NULL DEFAULT 'INVITE_ONLY',
   `owner_user_id` bigint NOT NULL,
+  `owner_user_uuid` char(36) DEFAULT NULL,
   `member_count` int NOT NULL DEFAULT '1',
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_team_code` (`team_code`,`deleted`),
-  KEY `idx_team_owner` (`owner_user_id`,`deleted`),
+  KEY `idx_team_owner` (`owner_user_id`,`owner_user_uuid`,`deleted`),
+  KEY `idx_team_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_team_status` (`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1571,14 +1741,17 @@ CREATE TABLE `aiadc_activity` (
   `location` varchar(255) NOT NULL,
   `featured` tinyint NOT NULL DEFAULT '0',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_aiadc_activity_code` (`code`,`locale`,`deleted`),
   KEY `idx_aiadc_activity_status` (`status`,`deleted`,`sort`),
-  KEY `idx_aiadc_activity_featured` (`featured`,`deleted`,`sort`)
+  KEY `idx_aiadc_activity_featured` (`featured`,`deleted`,`sort`),
+  KEY `idx_aiadc_activity_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `aiadc_competition` (
@@ -1615,8 +1788,10 @@ CREATE TABLE `aiadc_competition` (
   `featured` tinyint NOT NULL DEFAULT '0',
   `sort` int NOT NULL DEFAULT '100',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1626,6 +1801,7 @@ CREATE TABLE `aiadc_competition` (
   KEY `idx_aiadc_competition_uuid_deleted` (`uuid`,`deleted`),
   KEY `idx_aiadc_competition_category` (`category`,`deleted`,`sort`),
   KEY `idx_aiadc_competition_status` (`status`,`deleted`,`sort`),
+  KEY `idx_aiadc_competition_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_aiadc_competition_featured` (`featured`,`deleted`,`sort`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1636,6 +1812,7 @@ CREATE TABLE `competition_registration` (
   `team_id` bigint NOT NULL,
   `project_id` bigint NOT NULL,
   `owner_user_id` bigint NOT NULL,
+  `owner_user_uuid` char(36) DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'PENDING_PAYMENT',
   `fee_mode` varchar(16) NOT NULL DEFAULT 'TEAM',
   `entry_fee_minor` bigint NOT NULL DEFAULT '0',
@@ -1648,14 +1825,18 @@ CREATE TABLE `competition_registration` (
   `project_snapshot_json` longtext,
   `member_snapshot_json` longtext,
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_competition_registration_no` (`registration_no`,`deleted`),
   UNIQUE KEY `uk_competition_registration_participant` (`participant_no`,`deleted`),
   KEY `idx_competition_registration_owner` (`owner_user_id`,`deleted`,`created_at`),
+  KEY `idx_competition_registration_owner_uuid` (`owner_user_uuid`,`deleted`,`created_at`),
+  KEY `idx_competition_registration_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_registration_competition` (`competition_id`,`status`,`deleted`),
   KEY `idx_competition_registration_payment` (`payment_order_no`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1673,13 +1854,18 @@ CREATE TABLE `competition_payment_order_task` (
   `claim_token` varchar(64) DEFAULT NULL,
   `claim_expires_at` datetime DEFAULT NULL,
   `process_message` varchar(1024) DEFAULT NULL,
+  `owner_user_uuid` char(36) DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_competition_payment_order_task_registration` (`registration_id`,`deleted`),
+  KEY `idx_competition_payment_order_task_owner_uuid` (`owner_user_uuid`,`created_at`),
+  KEY `idx_competition_payment_order_task_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_payment_order_task_queue` (`deleted`,`status`,`next_retry_at`,`created_at`,`id`),
   KEY `idx_competition_payment_order_task_claim` (`claim_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1694,13 +1880,16 @@ CREATE TABLE `certificate_template` (
   `latest_version` int NOT NULL DEFAULT '1',
   `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_certificate_template_code` (`template_code`,`deleted`),
-  KEY `idx_certificate_template_status` (`status`,`deleted`,`updated_at`)
+  KEY `idx_certificate_template_status` (`status`,`deleted`,`updated_at`),
+  KEY `idx_certificate_template_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `certificate_template_version` (
@@ -1719,13 +1908,16 @@ CREATE TABLE `certificate_template_version` (
   `preview_file_id` bigint DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_certificate_template_version` (`template_id`,`version`,`deleted`),
-  KEY `idx_certificate_template_version_status` (`template_id`,`status`,`deleted`)
+  KEY `idx_certificate_template_version_status` (`template_id`,`status`,`deleted`),
+  KEY `idx_certificate_template_version_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `certificate_batch` (
@@ -1744,14 +1936,17 @@ CREATE TABLE `certificate_batch` (
   `status` varchar(32) NOT NULL DEFAULT 'PENDING',
   `error_message` varchar(1000) DEFAULT NULL,
   `created_by` bigint NOT NULL,
+  `created_by_uuid` varchar(64) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` varchar(64) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_certificate_batch_no` (`batch_no`,`deleted`),
   KEY `idx_certificate_batch_template` (`template_id`,`template_version_id`,`deleted`),
-  KEY `idx_certificate_batch_status` (`status`,`deleted`,`created_at`)
+  KEY `idx_certificate_batch_status` (`status`,`deleted`,`created_at`),
+  KEY `idx_certificate_batch_owner` (`created_by`,`created_by_uuid`,`deleted`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `certificate_record` (
@@ -1784,8 +1979,10 @@ CREATE TABLE `certificate_record` (
   `revoked_reason` varchar(500) DEFAULT NULL,
   `revoked_at` datetime DEFAULT NULL,
   `created_by` bigint NOT NULL,
+  `created_by_uuid` varchar(64) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` varchar(64) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -1794,7 +1991,8 @@ CREATE TABLE `certificate_record` (
   KEY `idx_certificate_record_batch` (`batch_id`,`deleted`),
   KEY `idx_certificate_record_template` (`template_id`,`template_version_id`,`deleted`),
   KEY `idx_certificate_record_status` (`status`,`deleted`,`created_at`),
-  KEY `idx_certificate_record_recipient` (`recipient_name`,`deleted`)
+  KEY `idx_certificate_record_recipient` (`recipient_name`,`deleted`),
+  KEY `idx_certificate_record_owner` (`created_by`,`created_by_uuid`,`deleted`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `certificate_verify_log` (
@@ -1827,13 +2025,16 @@ CREATE TABLE `competition_stage` (
   `promotion_rule_value` decimal(10,2) DEFAULT NULL,
   `promotion_tie_policy` varchar(32) DEFAULT NULL,
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_competition_stage_code` (`competition_id`,`stage_code`,`deleted`),
-  KEY `idx_competition_stage_competition` (`competition_id`,`deleted`,`sort`)
+  KEY `idx_competition_stage_competition` (`competition_id`,`deleted`,`sort`),
+  KEY `idx_competition_stage_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `competition_stage_form` (
@@ -1845,13 +2046,16 @@ CREATE TABLE `competition_stage_form` (
   `version` int NOT NULL DEFAULT '1',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_competition_stage_form` (`stage_id`,`version`,`deleted`),
-  KEY `idx_competition_stage_form_competition` (`competition_id`,`stage_id`,`deleted`)
+  KEY `idx_competition_stage_form_competition` (`competition_id`,`stage_id`,`deleted`),
+  KEY `idx_competition_stage_form_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `competition_config_set` (
@@ -1864,10 +2068,12 @@ CREATE TABLE `competition_config_set` (
   `created_by` bigint NOT NULL DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_competition_config_set_version` (`competition_uuid`,`version`,`deleted`),
+  KEY `idx_competition_config_set_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_config_set_status` (`competition_uuid`,`status`,`deleted`,`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1884,13 +2090,16 @@ CREATE TABLE `competition_config_item` (
   `required_flag` tinyint NOT NULL DEFAULT '0',
   `enabled` tinyint NOT NULL DEFAULT '1',
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_competition_config_item_key` (`config_set_id`,`item_type`,`item_key`,`deleted`),
   KEY `idx_competition_config_item_lookup` (`competition_uuid`,`item_type`,`enabled`,`deleted`,`sort_order`),
+  KEY `idx_competition_config_item_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_config_item_set` (`config_set_id`,`deleted`,`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1903,10 +2112,12 @@ CREATE TABLE `competition_config_audit` (
   `module` varchar(64) NOT NULL,
   `detail_message` varchar(1000) DEFAULT NULL,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_competition_config_audit_competition` (`competition_uuid`,`created_at`,`id`),
+  KEY `idx_competition_config_audit_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_config_audit_operator` (`operator_user_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -1918,10 +2129,12 @@ CREATE TABLE `competition_submission_snapshot` (
   `config_version` int NOT NULL DEFAULT '1',
   `snapshot_json` longtext NOT NULL,
   `created_by` bigint NOT NULL DEFAULT '0',
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  KEY `idx_competition_submission_snapshot_lookup` (`competition_uuid`,`config_version`,`user_uuid`,`created_at`)
+  KEY `idx_competition_submission_snapshot_lookup` (`competition_uuid`,`config_version`,`user_uuid`,`created_at`),
+  KEY `idx_competition_submission_snapshot_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `registration_material_submission` (
@@ -1931,17 +2144,22 @@ CREATE TABLE `registration_material_submission` (
   `stage_id` bigint NOT NULL,
   `form_version` int NOT NULL DEFAULT '1',
   `submitter_user_id` bigint NOT NULL,
+  `submitter_user_uuid` char(36) DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'SUBMITTED',
   `submitted_at` datetime DEFAULT NULL,
   `locked_at` datetime DEFAULT NULL,
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_registration_material_submission` (`registration_id`,`stage_id`,`deleted`),
-  KEY `idx_registration_material_submission_competition` (`competition_id`,`stage_id`,`deleted`)
+  KEY `idx_registration_material_submission_competition` (`competition_id`,`stage_id`,`deleted`),
+  KEY `idx_registration_material_submission_submitter` (`submitter_user_id`,`submitter_user_uuid`,`deleted`),
+  KEY `idx_registration_material_submission_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `registration_material_value` (
@@ -1971,6 +2189,7 @@ CREATE TABLE `aiadc_expert` (
   `mobile` varchar(32) DEFAULT NULL,
   `id_card_number` varchar(32) DEFAULT NULL,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `account_status` varchar(32) DEFAULT NULL,
   `initial_password_reset_required` tinyint NOT NULL DEFAULT '0',
   `email` varchar(128) DEFAULT NULL,
@@ -1980,14 +2199,18 @@ CREATE TABLE `aiadc_expert` (
   `status` varchar(32) NOT NULL DEFAULT 'active',
   `sort` int NOT NULL DEFAULT '100',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_aiadc_expert_code` (`code`,`deleted`),
+  KEY `idx_aiadc_expert_user` (`user_id`,`user_uuid`,`deleted`),
   KEY `idx_aiadc_expert_status` (`status`,`deleted`,`sort`),
-  KEY `idx_aiadc_expert_name` (`name`,`deleted`)
+  KEY `idx_aiadc_expert_name` (`name`,`deleted`),
+  KEY `idx_aiadc_expert_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `aiadc_project` (
@@ -2007,21 +2230,25 @@ CREATE TABLE `aiadc_project` (
   `cta_href` varchar(512) DEFAULT NULL,
   `featured` tinyint NOT NULL DEFAULT '0',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_aiadc_project_code` (`code`,`locale`,`deleted`),
   KEY `idx_aiadc_project_category` (`category`,`deleted`,`sort`),
   KEY `idx_aiadc_project_status` (`status`,`deleted`,`sort`),
-  KEY `idx_aiadc_project_featured` (`featured`,`deleted`,`sort`)
+  KEY `idx_aiadc_project_featured` (`featured`,`deleted`,`sort`),
+  KEY `idx_aiadc_project_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `team_member` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `team_id` bigint NOT NULL,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `role` varchar(32) NOT NULL DEFAULT 'MEMBER',
   `member_alias` varchar(128) DEFAULT NULL,
   `member_name` varchar(128) DEFAULT NULL,
@@ -2032,13 +2259,15 @@ CREATE TABLE `team_member` (
   `member_source` varchar(32) NOT NULL DEFAULT 'REGISTERED',
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
   `invited_by` bigint DEFAULT NULL,
+  `invited_by_uuid` char(36) DEFAULT NULL,
   `joined_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_team_member` (`team_id`,`user_id`,`deleted`),
-  KEY `idx_team_member_user` (`user_id`,`status`,`deleted`),
+  UNIQUE KEY `uk_team_member` (`team_id`,`user_id`,`user_uuid`,`deleted`),
+  KEY `idx_team_member_user` (`user_id`,`user_uuid`,`status`,`deleted`),
+  KEY `idx_team_member_inviter` (`invited_by`,`invited_by_uuid`,`deleted`),
   KEY `idx_team_member_team` (`team_id`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -2055,13 +2284,16 @@ CREATE TABLE `team_invite` (
   `need_approval` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
   `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_team_invite_token` (`invite_token_hash`,`deleted`),
   UNIQUE KEY `uk_team_invite_code` (`invite_code`,`deleted`),
+  KEY `idx_team_invite_creator` (`created_by`,`created_by_uuid`,`deleted`),
   KEY `idx_team_invite_team` (`team_id`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -2069,19 +2301,21 @@ CREATE TABLE `team_join_request` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `team_id` bigint NOT NULL,
   `user_id` bigint NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `invite_id` bigint DEFAULT NULL,
   `apply_message` varchar(1000) DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'PENDING',
   `reviewed_by` bigint DEFAULT NULL,
+  `reviewed_by_uuid` char(36) DEFAULT NULL,
   `reviewed_at` datetime DEFAULT NULL,
   `review_message` varchar(1000) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_team_join_pending` (`team_id`,`user_id`,`status`,`deleted`),
+  UNIQUE KEY `uk_team_join_pending` (`team_id`,`user_id`,`user_uuid`,`status`,`deleted`),
   KEY `idx_team_join_team` (`team_id`,`status`,`deleted`),
-  KEY `idx_team_join_user` (`user_id`,`status`,`deleted`)
+  KEY `idx_team_join_user` (`user_id`,`user_uuid`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ai_message_attachment` (
@@ -2114,12 +2348,14 @@ CREATE TABLE `ai_conversation_share` (
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
   `expires_at` datetime DEFAULT NULL,
   `created_by` bigint unsigned NOT NULL DEFAULT '0',
+  `created_by_uuid` varchar(64) NOT NULL DEFAULT '',
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_ai_conversation_share_token` (`share_token`),
   KEY `idx_ai_conversation_share_conversation` (`conversation_id`,`is_deleted`),
+  KEY `idx_ai_conversation_share_creator` (`created_by`,`created_by_uuid`,`is_deleted`),
   KEY `idx_ai_conversation_share_status` (`status`,`expires_at`,`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -2257,18 +2493,48 @@ CREATE TABLE ai_tool_execution_audit (
 -- Consolidated indexes from archived Flyway migrations.
 ALTER TABLE `sys_config`
     ADD INDEX `idx_sys_config_scope_key_deleted` (`config_scope`, `config_key`, `deleted`);
+
+ALTER TABLE `sys_config`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_config_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `audit_login_log`
     ADD INDEX `idx_audit_login_user_result_recent` (`user_id`, `login_result`, `created_at`, `id`);
 ALTER TABLE `audit_operation_log`
     ADD INDEX `idx_audit_operation_user_recent` (`username`, `created_at`, `id`);
+ALTER TABLE `audit_operation_log`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_audit_operation_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `msg_notice`
     ADD INDEX `idx_msg_notice_visible_recent` (`publish_status`, `deleted`, `id`);
 ALTER TABLE `msg_notice`
-    ADD INDEX `idx_msg_notice_visible_target_user_recent` (`publish_status`, `deleted`, `target_user_id`, `id`);
+    ADD COLUMN `target_user_uuid` varchar(64) DEFAULT NULL,
+    ADD INDEX `idx_msg_notice_visible_target_user_uuid_recent` (`publish_status`, `deleted`, `target_user_id`, `target_user_uuid`, `id`);
+ALTER TABLE `msg_notice`
+    ADD COLUMN `created_by_uuid` varchar(64) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` varchar(64) DEFAULT NULL,
+    ADD INDEX `idx_msg_notice_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `msg_delivery_log`
+    ADD COLUMN `target_user_uuid` varchar(64) DEFAULT NULL,
+    ADD COLUMN `created_by_uuid` varchar(64) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` varchar(64) DEFAULT NULL,
+    ADD INDEX `idx_msg_delivery_log_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`),
+    ADD INDEX `idx_msg_delivery_log_target_user_uuid` (`target_user_id`, `target_user_uuid`, `created_at`);
+ALTER TABLE `msg_notice_read`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_msg_notice_read_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `aiadc_expert`
+    ADD COLUMN `user_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_aiadc_expert_user` (`user_id`, `user_uuid`, `deleted`);
+ALTER TABLE `sys_work_order_feedback`
+    ADD COLUMN `submitter_uuid` char(36) DEFAULT NULL,
+    DROP INDEX `idx_sys_work_order_submitter_updated`,
+    ADD INDEX `idx_sys_work_order_submitter_updated` (`submitter_id`, `submitter_uuid`, `deleted`, `updated_at`);
 ALTER TABLE `msg_notice`
     ADD INDEX `idx_msg_notice_visible_target_role_recent` (`publish_status`, `deleted`, `target_role_id`, `id`);
 ALTER TABLE `sys_user_role`
-    ADD INDEX `idx_sys_user_role_user_deleted` (`user_id`, `deleted`, `role_id`);
+    ADD INDEX `idx_sys_user_role_user_deleted` (`user_id`, `user_uuid`, `deleted`, `role_id`);
 ALTER TABLE `sys_role_permission`
     ADD INDEX `idx_sys_role_permission_role_deleted_perm` (`role_id`, `deleted`, `permission_key`);
 ALTER TABLE `sys_localization_entry`
@@ -2277,6 +2543,44 @@ ALTER TABLE `sys_localization_translation`
     ADD INDEX `idx_sys_localization_translation_locale_deleted_entry` (`locale_code`, `deleted`, `entry_id`);
 ALTER TABLE `sys_localization_namespace`
     ADD INDEX `idx_sys_localization_namespace_deleted_sort` (`deleted`, `sort_no`, `id`);
+ALTER TABLE `sys_localization_language`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_localization_language_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_localization_namespace`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_localization_namespace_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_localization_entry`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_localization_entry_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_localization_translation`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_localization_translation_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_localization_usage_ref`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_localization_usage_ref_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_localization_release`
+    ADD COLUMN `published_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_localization_release_publisher_uuid` (`published_by`, `published_by_uuid`, `published_at`);
+ALTER TABLE `payment_event_outbox`
+    ADD COLUMN `user_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_payment_outbox_user_uuid` (`user_uuid`, `created_at`);
+ALTER TABLE `payment_event_outbox`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `payment_order`
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `payment_refund`
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `payment_webhook_event`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
 ALTER TABLE `payment_event_outbox`
     ADD INDEX `idx_payment_outbox_deleted_status_retry_created` (`deleted`, `status`, `next_retry_at`, `created_at`, `id`);
 ALTER TABLE `payment_event_outbox`
@@ -2287,10 +2591,150 @@ ALTER TABLE `payment_webhook_event`
     ADD INDEX `idx_payment_webhook_event_provider_event_deleted_id` (`provider_code`, `event_id`, `deleted`, `id`);
 ALTER TABLE `payment_provider_config`
     ADD INDEX `idx_payment_provider_config_provider_deleted_id` (`provider_code`, `deleted`, `id`);
+ALTER TABLE `payment_provider_config`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_payment_provider_config_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `payment_event_outbox`
     ADD INDEX `idx_payment_outbox_owner_queue` (`deleted`, `source_type`, `status`, `next_retry_at`, `created_at`, `id`);
 ALTER TABLE `payment_event_outbox`
     ADD INDEX `idx_payment_outbox_claim_token` (`claim_token`);
+ALTER TABLE `ai_knowledge_base`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_ai_knowledge_base_creator_uuid` (`created_by`, `created_by_uuid`, `create_time`);
+ALTER TABLE `ai_knowledge_base_acl`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_ai_knowledge_acl_creator_uuid` (`created_by`, `created_by_uuid`, `create_time`);
+ALTER TABLE `ai_knowledge_document`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_ai_knowledge_document_creator_uuid` (`created_by`, `created_by_uuid`, `create_time`);
+ALTER TABLE `ai_knowledge_document`
+    ADD COLUMN `index_claim_token` varchar(64) DEFAULT NULL,
+    ADD COLUMN `index_claim_expires_at` datetime DEFAULT NULL,
+    ADD INDEX `idx_ai_knowledge_document_index_claim` (`index_claim_token`);
+ALTER TABLE `certificate_batch`
+    ADD COLUMN `updated_by_uuid` varchar(64) DEFAULT NULL;
+ALTER TABLE `certificate_record`
+    ADD COLUMN `updated_by_uuid` varchar(64) DEFAULT NULL;
+ALTER TABLE `competition_registration`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_registration_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `team`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_team_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `aiadc_competition`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_aiadc_competition_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `aiadc_activity`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_aiadc_activity_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `aiadc_expert`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_aiadc_expert_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `competition_stage`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_stage_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `competition_stage_form`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_stage_form_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `certificate_template`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_certificate_template_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `certificate_template_version`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_certificate_template_version_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `competition_payment_order_task`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_payment_order_task_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `registration_material_submission`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_registration_material_submission_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `team_invite`
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_sensitive_word`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_sensitive_word_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_department`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_department_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_role`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_role_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_role_permission`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_role_data_scope`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_dict_type`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_dict_type_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_dict_item`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_dict_item_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_menu`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_menu_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_permission`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_permission_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_user`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_user_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_user_role`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_user_department`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_user_passkey_credential`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_user_wechat_binding`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_verification_binding`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_verification_challenge`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `sys_work_order_feedback`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL;
+ALTER TABLE `aiadc_project`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_aiadc_project_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `competition_config_set`
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_config_set_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `competition_config_item`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_config_item_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `sys_plugin_definition`
     ADD INDEX `idx_sys_plugin_definition_deleted_status_sort_code` (`deleted`, `status`, `sort_no`, `plugin_code`);
 ALTER TABLE `sys_plugin_version`
@@ -2303,18 +2747,84 @@ ALTER TABLE `sys_plugin_menu_rel`
     ADD INDEX `idx_sys_plugin_menu_rel_code_version_deleted_sort` (`plugin_code`, `plugin_version`, `deleted`, `sort_no`, `id`);
 ALTER TABLE `sys_plugin_permission_rel`
     ADD INDEX `idx_sys_plugin_permission_rel_code_version_deleted` (`plugin_code`, `plugin_version`, `deleted`, `id`);
+ALTER TABLE `sys_plugin_definition`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_definition_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_version`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_version_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_dependency`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_dependency_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_menu_rel`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_menu_rel_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_permission_rel`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_permission_rel_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_runtime_log`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_runtime_log_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_schema_history`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_sys_plugin_schema_history_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `plugin_event_outbox`
+    ADD COLUMN `user_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_plugin_event_outbox_user_uuid` (`user_uuid`, `created_at`);
+ALTER TABLE `platform_event_outbox`
+    MODIFY COLUMN `created_by` bigint DEFAULT NULL,
+    MODIFY COLUMN `updated_by` bigint DEFAULT NULL,
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_platform_event_outbox_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `plugin_event_outbox`
+    MODIFY COLUMN `created_by` bigint DEFAULT NULL,
+    MODIFY COLUMN `updated_by` bigint DEFAULT NULL,
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_plugin_event_outbox_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `plugin_event_outbox`
     ADD INDEX `idx_plugin_event_outbox_deleted_status_retry_created` (`deleted`, `status`, `next_retry_at`, `created_at`, `id`);
 ALTER TABLE `plugin_event_outbox`
     ADD INDEX `idx_plugin_event_outbox_claim_token` (`claim_token`);
 ALTER TABLE `msg_notice_read`
-    ADD INDEX `idx_msg_notice_read_notice_user_deleted` (`notice_id`, `user_id`, `deleted`);
+    ADD INDEX `idx_msg_notice_read_notice_user_deleted` (`notice_id`, `user_id`, `user_uuid`, `deleted`);
+ALTER TABLE `file_object`
+    ADD COLUMN `uploaded_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_file_object_uploader` (`uploaded_by`, `uploaded_by_uuid`, `deleted`);
 ALTER TABLE `file_object`
     ADD INDEX `idx_file_object_deleted_bucket` (`deleted`, `bucket`);
 ALTER TABLE `file_object`
     ADD INDEX `idx_file_object_deleted_created_id` (`deleted`, `created_at`, `id`);
+ALTER TABLE `file_processing_task`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_file_processing_task_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `file_object`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_file_object_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `file_processing_artifact`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_file_processing_artifact_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `file_storage_space`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_file_storage_space_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `file_storage_space`
     ADD INDEX `idx_file_storage_space_deleted_default_id` (`deleted`, `default_flag`, `id`);
+ALTER TABLE `competition_config_audit`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_config_audit_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `competition_submission_snapshot`
+    ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD INDEX `idx_competition_submission_snapshot_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 CREATE INDEX `idx_sensitive_word_enabled`
     ON `sys_sensitive_word` (`enabled`, `deleted`, `normalized_word`);
 
@@ -2926,10 +3436,12 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
-INSERT INTO `sys_user_role` (`user_id`, `role_id`, `created_by`, `updated_by`, `deleted`)
-VALUES (1001, 1001, 0, 0, 0)
+INSERT INTO `sys_user_role` (`user_id`, `user_uuid`, `role_id`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`)
+VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 1001, 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0)
 ON DUPLICATE KEY UPDATE
+    `user_uuid` = VALUES(`user_uuid`),
     `updated_by` = VALUES(`updated_by`),
+    `updated_by_uuid` = VALUES(`updated_by_uuid`),
     `deleted` = 0;
 
 INSERT INTO `sys_config` (
@@ -3069,27 +3581,30 @@ ON DUPLICATE KEY UPDATE
     `source` = VALUES(`source`),
     `deleted` = 0;
 
-INSERT INTO `iam_user_identity` (`user_id`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
-VALUES (1001, 'USERNAME', 'admin', 'admin', 1, 1, 'ENABLED', 0)
+INSERT INTO `iam_user_identity` (`user_id`, `user_uuid`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
+VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'USERNAME', 'admin', 'admin', 1, 1, 'ENABLED', 0)
 ON DUPLICATE KEY UPDATE
     `user_id` = VALUES(`user_id`),
+    `user_uuid` = VALUES(`user_uuid`),
     `identifier` = VALUES(`identifier`),
     `verified` = VALUES(`verified`),
     `primary_identity` = VALUES(`primary_identity`),
     `status` = VALUES(`status`),
     `deleted` = 0;
 
-INSERT INTO `iam_user_credential` (`user_id`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
-VALUES (1001, 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
+INSERT INTO `iam_user_credential` (`user_id`, `user_uuid`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
+VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
 ON DUPLICATE KEY UPDATE
+    `user_uuid` = VALUES(`user_uuid`),
     `credential_secret` = VALUES(`credential_secret`),
     `algorithm` = VALUES(`algorithm`),
     `status` = VALUES(`status`),
     `deleted` = 0;
 
-INSERT INTO `iam_user_profile` (`user_id`, `nickname`, `real_name`, `locale`, `deleted`)
-VALUES (1001, 'Administrator', 'Administrator', 'zh-CN', 0)
+INSERT INTO `iam_user_profile` (`user_id`, `user_uuid`, `nickname`, `real_name`, `locale`, `deleted`)
+VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'Administrator', 'Administrator', 'zh-CN', 0)
 ON DUPLICATE KEY UPDATE
+    `user_uuid` = VALUES(`user_uuid`),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `locale` = VALUES(`locale`),
@@ -3123,10 +3638,12 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
-INSERT INTO `sys_user_role` (`user_id`, `role_id`, `created_by`, `updated_by`, `deleted`)
-VALUES (1002, 1002, 0, 0, 0)
+INSERT INTO `sys_user_role` (`user_id`, `user_uuid`, `role_id`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`)
+VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 1002, 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0)
 ON DUPLICATE KEY UPDATE
+    `user_uuid` = VALUES(`user_uuid`),
     `updated_by` = VALUES(`updated_by`),
+    `updated_by_uuid` = VALUES(`updated_by_uuid`),
     `deleted` = 0;
 
 INSERT INTO `iam_user` (`id`, `user_no`, `display_name`, `status`, `user_type`, `source`, `deleted`)
@@ -3138,27 +3655,30 @@ ON DUPLICATE KEY UPDATE
     `source` = VALUES(`source`),
     `deleted` = 0;
 
-INSERT INTO `iam_user_identity` (`user_id`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
-VALUES (1002, 'USERNAME', 'user', 'user', 1, 1, 'ENABLED', 0)
+INSERT INTO `iam_user_identity` (`user_id`, `user_uuid`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
+VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'USERNAME', 'user', 'user', 1, 1, 'ENABLED', 0)
 ON DUPLICATE KEY UPDATE
     `user_id` = VALUES(`user_id`),
+    `user_uuid` = VALUES(`user_uuid`),
     `identifier` = VALUES(`identifier`),
     `verified` = VALUES(`verified`),
     `primary_identity` = VALUES(`primary_identity`),
     `status` = VALUES(`status`),
     `deleted` = 0;
 
-INSERT INTO `iam_user_credential` (`user_id`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
-VALUES (1002, 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
+INSERT INTO `iam_user_credential` (`user_id`, `user_uuid`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
+VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
 ON DUPLICATE KEY UPDATE
+    `user_uuid` = VALUES(`user_uuid`),
     `credential_secret` = VALUES(`credential_secret`),
     `algorithm` = VALUES(`algorithm`),
     `status` = VALUES(`status`),
     `deleted` = 0;
 
-INSERT INTO `iam_user_profile` (`user_id`, `nickname`, `real_name`, `locale`, `deleted`)
-VALUES (1002, 'Common User', 'Common User', 'zh-CN', 0)
+INSERT INTO `iam_user_profile` (`user_id`, `user_uuid`, `nickname`, `real_name`, `locale`, `deleted`)
+VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'Common User', 'Common User', 'zh-CN', 0)
 ON DUPLICATE KEY UPDATE
+    `user_uuid` = VALUES(`user_uuid`),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `locale` = VALUES(`locale`),
@@ -3355,6 +3875,25 @@ ON DUPLICATE KEY UPDATE
     `permission_group` = VALUES(`permission_group`),
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
+
+-- Final super administrator permission sync.
+-- Keep ADMIN mapped to every active permission after all core and built-in plugin seeds.
+INSERT INTO `sys_role_permission` (`role_id`, `permission_key`, `created_by`, `updated_by`, `deleted`)
+SELECT 1001, p.`permission_key`, 0, 0, 0
+FROM `sys_permission` p
+WHERE p.`deleted` = 0
+ON DUPLICATE KEY UPDATE
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `ddd_read_model_version` (
+    `context_name`, `scope`, `version`, `last_event_key`, `rebuilt_at`
+)
+VALUES ('IAM', 'permission-snapshot', 2, 'admin-permission-final-sync', NOW())
+ON DUPLICATE KEY UPDATE
+    `version` = `version` + 1,
+    `last_event_key` = VALUES(`last_event_key`),
+    `rebuilt_at` = VALUES(`rebuilt_at`);
 
 -- XXL-JOB scheduler tables. Keep this schema aligned with xuxueli/xxl-job-admin:3.4.0.
 CREATE TABLE `xxl_job_group` (

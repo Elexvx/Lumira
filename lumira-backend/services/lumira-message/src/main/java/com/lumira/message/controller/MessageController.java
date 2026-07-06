@@ -3,9 +3,11 @@ package com.lumira.message.controller;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
-import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.message.app.MessageAppService;
 import com.lumira.message.dto.MessageDTO;
 import com.lumira.message.service.MessageWebSocketRegistry;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/message")
@@ -112,13 +116,15 @@ public class MessageController {
 
     private void requireAny(String... permissionKeys) {
         var currentUser = securityContextFacade.getCurrentUser();
-        if (currentUser != null && currentUser.getPermissions() != null) {
+        if (AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)
+                && currentUser.getPermissions() != null) {
+            Set<String> permissions = currentUser.getPermissions();
             for (String permissionKey : permissionKeys) {
-                if (currentUser.getPermissions().contains(permissionKey)) {
+                if (permissions.contains(permissionKey)) {
                     return;
                 }
             }
-            if (currentUser.getPermissions().contains("*")) {
+            if (permissions.contains("*")) {
                 return;
             }
         }

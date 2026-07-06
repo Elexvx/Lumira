@@ -223,7 +223,11 @@ class TeamControllerTest {
     private CurrentUser currentUser() {
         CurrentUser user = new CurrentUser();
         user.setUserId(3001L);
+        user.setUserUuid("user-uuid-3001");
         user.setUsername("admin");
+        user.setSessionId("session-3001");
+        user.setSessionVersion(1);
+        user.setPermissionsVersion("permissions-1");
         user.setAuthenticated(true);
         return user;
     }

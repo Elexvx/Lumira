@@ -76,9 +76,20 @@ class SecurityPermitPathsTest {
         String mainConfig = readMainConfig();
         String testConfig = readConfig("src/test/resources/application.yml");
 
-        for (String path : new String[]{"/api/v2/*/readiness", "/api/v2/*/health", "/api/v2/*/metrics"}) {
+        for (String path : new String[]{"/api/v2/*/readiness", "/api/v2/*/health"}) {
             Assertions.assertTrue(mainConfig.contains("- " + path), mainConfig);
             Assertions.assertTrue(testConfig.contains("- " + path), testConfig);
+        }
+    }
+
+    @Test
+    void metricsEndpointsShouldNotBePublicInMainAndTestConfig() throws IOException {
+        String mainConfig = readMainConfig();
+        String testConfig = readConfig("src/test/resources/application.yml");
+
+        for (String path : new String[]{"/actuator/prometheus", "/api/v2/*/metrics"}) {
+            Assertions.assertFalse(mainConfig.contains("- " + path), mainConfig);
+            Assertions.assertFalse(testConfig.contains("- " + path), testConfig);
         }
     }
 

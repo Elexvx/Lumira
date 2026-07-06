@@ -154,6 +154,7 @@ public final class PlatformUpdateVO {
         private String logSummary;
         private String errorMessage;
         private Long createdBy;
+        private String createdByUuid;
         private String createdByName;
         private LocalDateTime startedAt;
         private LocalDateTime finishedAt;
@@ -184,6 +185,8 @@ public final class PlatformUpdateVO {
         public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
         public Long getCreatedBy() { return createdBy; }
         public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public String getCreatedByUuid() { return createdByUuid; }
+        public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
         public String getCreatedByName() { return createdByName; }
         public void setCreatedByName(String createdByName) { this.createdByName = createdByName; }
         public LocalDateTime getStartedAt() { return startedAt; }

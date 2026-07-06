@@ -45,7 +45,6 @@ export default {
   'page.login.code.countdown': 'Resend in {seconds}s',
   'page.login.code.cooldown': 'Please wait {seconds}s before sending again',
   'page.login.code.to': 'Code will be sent to {contact}',
-  'page.login.code.debug': 'Debug code: {code}',
   'page.login.code.secondFactor': 'Please enter the code to complete second-factor verification',
   'page.login.secondFactor.prompt': '{name} needs second-factor verification',
   'page.login.submit.login': 'Login',

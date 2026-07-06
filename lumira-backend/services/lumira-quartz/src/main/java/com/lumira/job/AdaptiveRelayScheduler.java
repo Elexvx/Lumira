@@ -3,6 +3,7 @@ package com.lumira.job;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ public class AdaptiveRelayScheduler implements SmartLifecycle {
     private volatile boolean running;
     private volatile long idleDelayMs;
 
+    @Autowired
     public AdaptiveRelayScheduler(BackendJobClient backendJobClient, JobExecutorProperties properties) {
         this(
                 backendJobClient,

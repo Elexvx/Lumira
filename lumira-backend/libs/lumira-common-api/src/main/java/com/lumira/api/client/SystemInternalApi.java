@@ -1,172 +1,287 @@
 package com.lumira.api.client;
 
+import com.lumira.api.auth.LoginCodeChallengeDTO;
+import com.lumira.api.auth.LoginCodeCompleteRequest;
 import com.lumira.api.auth.LoginResponseDTO;
+import com.lumira.api.auth.PasswordResetChallengeRequest;
+import com.lumira.api.auth.PasswordResetCompleteRequest;
+import com.lumira.api.auth.SecondFactorCompleteRequest;
+import com.lumira.api.auth.VerificationBindRequest;
 import com.lumira.api.system.CaptchaValidationRequestDTO;
+import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
+import com.lumira.api.system.PasskeyCredentialAssertionDTO;
+import com.lumira.api.system.PasskeyCredentialDescriptorDTO;
 import com.lumira.api.system.PasskeyCredentialDTO;
 import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PasskeySettingsDTO;
+import com.lumira.api.system.PasswordLoginVerificationDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
-import com.lumira.api.system.SystemUserContactSnapshotDTO;
+import com.lumira.api.system.SystemUserEmailRecipientDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.SystemUserWechatRecipientDTO;
+import com.lumira.api.system.VerificationBindingChallengeDTO;
 import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.api.system.VerificationVerificationDTO;
 import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
-
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
 
+@HttpExchange(accept = MediaType.APPLICATION_JSON_VALUE)
 public interface SystemInternalApi {
 
-    
-    SystemUserSnapshotDTO findLoginUser( String account);
+    @PostExchange("/internal/system/users/login/verify")
+    PasswordLoginVerificationDTO verifyPasswordLogin(
+            @RequestParam("account") String account,
+            @RequestParam("password") String password
+    );
 
-    
-    SystemUserSnapshotDTO findUserById( Long id);
+    @GetExchange("/internal/system/users/{id}/identity")
+    SystemUserSnapshotDTO findUserIdentityById(@PathVariable("id") Long id);
 
+    @GetExchange("/internal/system/users/{id}/profile")
+    SystemUserSnapshotDTO findUserProfileById(@PathVariable("id") Long id);
 
-    List<SystemUserSnapshotDTO> usersByIds(List<Long> userIds);
+    @GetExchange("/internal/system/users/{id}/email-available")
+    Boolean userHasEmail(
+            @PathVariable("id") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
 
+    @GetExchange("/internal/system/users/{id}/requires-password-change")
+    Boolean requiresInitialPasswordChange(
+            @PathVariable("id") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
 
-    List<SystemRoleSnapshotDTO> rolesByIds(List<Long> roleIds);
+    @GetExchange("/internal/system/users/{id}")
+    SystemUserSnapshotDTO findUserById(@PathVariable("id") Long id);
 
+    @GetExchange("/internal/system/users/{id}/target-uuid")
+    String findTargetUserUuidById(@PathVariable("id") Long id);
 
-    List<SystemUserContactSnapshotDTO> userContactsByIds(List<Long> userIds);
+    @GetExchange("/internal/system/users/identities-by-ids")
+    List<SystemUserSnapshotDTO> userIdentitiesByIds(@RequestParam("ids") List<Long> userIds);
 
+    @GetExchange("/internal/system/users/{id}/role-options")
+    List<CurrentUserRoleOptionDTO> userRoleOptions(
+            @PathVariable("id") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
 
-    List<SystemUserContactSnapshotDTO> userContactsByRole(Long roleId);
+    @GetExchange("/internal/system/roles/names-by-ids")
+    List<SystemRoleSnapshotDTO> roleNamesByIds(@RequestParam("ids") List<Long> roleIds);
 
+    @GetExchange("/internal/system/users/email-recipients")
+    List<SystemUserEmailRecipientDTO> userEmailRecipientsByIds(@RequestParam("ids") List<Long> userIds);
 
-    List<SystemUserContactSnapshotDTO> platformUserContacts();
+    @GetExchange("/internal/system/users/wechat-recipients")
+    List<SystemUserWechatRecipientDTO> userWechatRecipientsByIds(@RequestParam("ids") List<Long> userIds);
 
+    @GetExchange("/internal/system/roles/{roleId}/email-recipients")
+    List<SystemUserEmailRecipientDTO> userEmailRecipientsByRole(@PathVariable("roleId") Long roleId);
 
-    List<Long> userIdsByRole(Long roleId);
+    @GetExchange("/internal/system/roles/{roleId}/wechat-recipients")
+    List<SystemUserWechatRecipientDTO> userWechatRecipientsByRole(@PathVariable("roleId") Long roleId);
 
-    
-    SystemUserSnapshotDTO resolveWechatLoginUser( WechatLoginUserRequestDTO request);
+    @GetExchange("/internal/system/platform/email-recipients")
+    List<SystemUserEmailRecipientDTO> platformUserEmailRecipients();
 
-    
-    PermissionSnapshotDTO permissionSnapshot(Long userId);
+    @GetExchange("/internal/system/platform/wechat-recipients")
+    List<SystemUserWechatRecipientDTO> platformUserWechatRecipients();
 
-    
+    @GetExchange("/internal/system/roles/{roleId}/identities")
+    List<SystemUserSnapshotDTO> roleUserIdentities(@PathVariable("roleId") Long roleId);
+
+    @PostExchange("/internal/system/users/wechat-login")
+    SystemUserSnapshotDTO resolveWechatLoginUser(@RequestBody WechatLoginUserRequestDTO request);
+
+    @GetExchange("/internal/system/permissions/snapshot")
+    PermissionSnapshotDTO permissionSnapshot(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
+
+    @GetExchange("/internal/system/permissions/role-snapshot")
+    PermissionSnapshotDTO permissionRoleSnapshot(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
+
+    @GetExchange("/internal/system/permissions/simulated-role-snapshot")
+    PermissionSnapshotDTO simulatedRolePermissionSnapshot(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @RequestParam("roleId") Long roleId
+    );
+
+    @PostExchange("/internal/system/permissions/invalidate")
     Boolean invalidatePermissionSnapshot();
 
+    @PostExchange("/internal/system/permissions/plugin")
+    Boolean registerPluginPermissions(@RequestBody PluginPermissionRegistrationRequestDTO request);
 
-    Boolean registerPluginPermissions( PluginPermissionRegistrationRequestDTO request);
+    @PostExchange("/internal/system/read-model-version/bump")
+    Boolean bumpReadModelVersion(
+            @RequestParam("contextName") String contextName,
+            @RequestParam("scope") String scope,
+            @RequestParam("eventKey") String eventKey
+    );
 
+    @GetExchange("/internal/system/read-model-version")
+    Long readModelVersion(
+            @RequestParam("contextName") String contextName,
+            @RequestParam("scope") String scope
+    );
 
-    Boolean bumpReadModelVersion(String contextName, String scope, String eventKey);
+    @PostExchange("/internal/system/captcha/validate")
+    Boolean validateCaptcha(@RequestBody CaptchaValidationRequestDTO request);
 
+    @PostExchange("/internal/system/audit/login")
+    Boolean recordLoginAudit(@RequestBody LoginAuditRecordRequestDTO request);
 
-    Long readModelVersion(String contextName, String scope);
+    @PostExchange("/internal/system/audit/operation")
+    Boolean recordOperationAudit(@RequestBody OperationAuditRecordRequestDTO request);
 
-    
-    Boolean validateCaptcha( CaptchaValidationRequestDTO request);
-
-    
-    Boolean recordLoginAudit( LoginAuditRecordRequestDTO request);
-
-
-    Boolean recordOperationAudit( OperationAuditRecordRequestDTO request);
-
-    
+    @GetExchange("/internal/system/verification/login-capabilities")
     LoginCapabilitiesDTO loginCapabilities();
 
-    
+    @GetExchange("/internal/system/security/settings")
     SecuritySettingsDTO securitySettings();
 
+    @GetExchange("/internal/system/config/runtime/smtp")
+    Map<String, String> smtpRuntimeConfigValues();
 
-    Map<String, String> platformConfigValues(List<String> keys);
+    @GetExchange("/internal/system/config/runtime/wechat-official")
+    Map<String, String> wechatOfficialRuntimeConfigValues();
 
-    
+    @GetExchange("/internal/system/verification/wechat-settings")
     WechatLoginSettingsDTO wechatLoginSettings();
 
-    
+    @GetExchange("/internal/system/verification/passkey-settings")
     PasskeySettingsDTO passkeySettings();
 
-    
-    PasskeyCredentialDTO passkeyCredentialByCredentialId( String credentialId);
+    @GetExchange("/internal/system/passkeys/assertion")
+    PasskeyCredentialAssertionDTO passkeyCredentialAssertion(@RequestParam("credentialId") String credentialId);
 
-    
-    List<PasskeyCredentialDTO> passkeyCredentials(Long userId);
+    @GetExchange("/internal/system/passkeys/descriptors")
+    List<PasskeyCredentialDescriptorDTO> passkeyCredentialDescriptors(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
 
-    
-    PasskeyCredentialDTO savePasskeyCredential( PasskeyCredentialSaveRequestDTO request);
+    @GetExchange("/internal/system/passkeys")
+    List<PasskeyCredentialDTO> passkeyCredentials(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
 
-    
-    Boolean updatePasskeyCredentialUsage( PasskeyCredentialUsageRequestDTO request);
+    @PostExchange("/internal/system/passkeys")
+    PasskeyCredentialDTO savePasskeyCredential(@RequestBody PasskeyCredentialSaveRequestDTO request);
 
-    
+    @PostExchange("/internal/system/passkeys/usage")
+    Boolean updatePasskeyCredentialUsage(@RequestBody PasskeyCredentialUsageRequestDTO request);
+
+    @PostExchange("/internal/system/passkeys/{id}/label")
     PasskeyCredentialDTO renamePasskeyCredential(
-              Long id,
-              Long userId,
-              String label
+            @PathVariable("id") Long id,
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @RequestParam("label") String label
     );
 
-    
-    Boolean deletePasskeyCredential(Long id, Long userId);
-
-    
-    List<VerificationProviderDTO> listVerificationProviders(Long userId);
-
-    
-    List<com.lumira.api.auth.LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(
-             Long userId
+    @PostExchange("/internal/system/passkeys/{id}/delete")
+    Boolean deletePasskeyCredential(
+            @PathVariable("id") Long id,
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
     );
 
-    
+    @GetExchange("/internal/system/verification/providers")
+    List<VerificationProviderDTO> listVerificationProviders(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
+
+    @GetExchange("/internal/system/verification/login-options")
+    List<LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
+
+    @GetExchange("/internal/system/verification/providers/{factorCode}")
     VerificationProviderDTO verificationProvider(
-             Long userId,
-             String factorCode
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @PathVariable("factorCode") String factorCode
     );
 
-    
-    VerificationChallengeDTO bindVerificationProvider(
-             Long userId,
-             String factorCode
+    @PostExchange("/internal/system/verification/providers/{factorCode}/bind")
+    VerificationBindingChallengeDTO bindVerificationProvider(
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @PathVariable("factorCode") String factorCode,
+            @RequestBody VerificationBindRequest request
     );
 
-    
+    @PostExchange("/internal/system/verification/providers/{factorCode}/unbind")
     Boolean unbindVerificationProvider(
-             Long userId,
-             String factorCode
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @PathVariable("factorCode") String factorCode,
+            @RequestBody SecondFactorCompleteRequest request
     );
 
-    
+    @PostExchange("/internal/system/verification/providers/{factorCode}/challenge")
     VerificationChallengeDTO verificationChallenge(
-             Long userId,
-             String factorCode
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @PathVariable("factorCode") String factorCode
     );
 
-    
+    @PostExchange("/internal/system/verification/providers/{factorCode}/verify")
     VerificationVerificationDTO verificationVerify(
-             Long userId,
-             String factorCode,
-             String challengeId,
-             String verificationCode
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @PathVariable("factorCode") String factorCode,
+            @RequestParam("challengeId") String challengeId,
+            @RequestParam("verificationCode") String verificationCode
     );
 
-    
-    com.lumira.api.auth.LoginCodeChallengeDTO loginCodeChallenge(
-             String account,
-             String loginType
+    @PostExchange("/internal/system/verification/login-code/challenge")
+    LoginCodeChallengeDTO loginCodeChallenge(
+            @RequestParam("account") String account,
+            @RequestParam("loginType") String loginType
     );
 
-    
-    VerificationVerificationDTO completeLoginCodeLogin( com.lumira.api.auth.LoginCodeCompleteRequest request);
+    @PostExchange("/internal/system/verification/login-code/complete")
+    VerificationVerificationDTO completeLoginCodeLogin(@RequestBody LoginCodeCompleteRequest request);
 
-    
-    VerificationVerificationDTO completeSecondFactorLogin( com.lumira.api.auth.SecondFactorCompleteRequest request);
+    @PostExchange("/internal/system/verification/password-reset/challenge")
+    LoginCodeChallengeDTO passwordResetChallenge(@RequestBody PasswordResetChallengeRequest request);
 
-    
-    java.util.List<MenuNodeDTO> builtinMenus();
+    @PostExchange("/internal/system/verification/password-reset/complete")
+    Boolean completePasswordReset(@RequestBody PasswordResetCompleteRequest request);
+
+    @PostExchange("/internal/system/verification/second-factor/complete")
+    VerificationVerificationDTO completeSecondFactorLogin(@RequestBody SecondFactorCompleteRequest request);
+
+    @GetExchange("/internal/system/menus/builtin")
+    List<MenuNodeDTO> builtinMenus();
 }

@@ -8,7 +8,6 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -23,17 +22,6 @@ public class SmtpNotificationMailService {
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
-    private static final List<String> SMTP_CONFIG_KEYS = List.of(
-            SMTP_HOST_KEY,
-            SMTP_PORT_KEY,
-            SMTP_USERNAME_KEY,
-            SMTP_PASSWORD_KEY,
-            SMTP_FROM_KEY,
-            SMTP_AUTH_ENABLED_KEY,
-            SMTP_STARTTLS_ENABLED_KEY,
-            SMTP_SSL_ENABLED_KEY
-    );
-
     private final SystemInternalApi systemInternalApi;
 
     public SmtpNotificationMailService(SystemInternalApi systemInternalApi) {
@@ -69,7 +57,7 @@ public class SmtpNotificationMailService {
     }
 
     private Map<String, String> loadValues() {
-        Map<String, String> values = systemInternalApi.platformConfigValues(SMTP_CONFIG_KEYS);
+        Map<String, String> values = systemInternalApi.smtpRuntimeConfigValues();
         return values == null ? Map.of() : values;
     }
 

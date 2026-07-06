@@ -7,7 +7,7 @@ import type { RequestOptions } from './requestInternalsTypes';
 import { ApiRequestError } from './requestInternalsTypes';
 
 const shouldSuppressLoginPageForbiddenFeedback = (error: ApiRequestError, authSnapshot: AuthRequestSnapshot) => {
-  if (error.code !== ErrorCode.FORBIDDEN || !authSnapshot.hasAuthToken) {
+  if (error.code !== ErrorCode.FORBIDDEN) {
     return false;
   }
 

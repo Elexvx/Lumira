@@ -9,6 +9,7 @@
         n.notice_type as messageType,
         n.target_scope as targetScope,
         n.target_user_id as targetUserId,
+        n.target_user_uuid as targetUserUuid,
         n.target_role_id as targetRoleId,
         null as targetUserName,
         null as targetRoleName,
@@ -18,7 +19,9 @@
         n.publish_status as publishStatus,
         n.published_at as publishedAt,
         n.created_by as createdBy,
+        n.created_by_uuid as createdByUuid,
         n.updated_by as updatedBy,
+        n.updated_by_uuid as updatedByUuid,
         n.created_at as createdAt,
         n.updated_at as updatedAt,
         case when r.id is null then 0 else 1 end as readFlag,
@@ -29,12 +32,21 @@
         left join msg_notice_read r
           on r.notice_id = n.id
          and r.user_id = #{userId}
+         and r.user_uuid = #{userUuid}
+         and r.deleted = 0
+    </sql>
+
+    <sql id="archiveNoticeJoins">
+        left join msg_notice_read r
+          on r.notice_id = n.id
+         and r.user_id = #{query.userId}
+         and r.user_uuid = #{query.userUuid}
          and r.deleted = 0
     </sql>
 
 	    <sql id="visiblePredicate">
 	        (n.target_scope = 'PLATFORM'
-	         or (n.target_scope = 'USER' and n.target_user_id = #{userId})
+	         or (n.target_scope = 'USER' and n.target_user_id = #{userId} and n.target_user_uuid = #{userUuid})
 	         <if test="roleIds != null and roleIds.size() > 0">
 	             or (n.target_scope = 'ROLE' and n.target_role_id in
 	                 <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
@@ -47,7 +59,7 @@
 
 	    <sql id="archiveVisiblePredicate">
 	        (n.target_scope = 'PLATFORM'
-	         or (n.target_scope = 'USER' and n.target_user_id = #{query.userId})
+	         or (n.target_scope = 'USER' and n.target_user_id = #{query.userId} and n.target_user_uuid = #{query.userUuid})
 	         <if test="query.roleIds != null and query.roleIds.size() > 0">
 	             or (n.target_scope = 'ROLE' and n.target_role_id in
 	                 <foreach collection="query.roleIds" item="roleId" open="(" separator="," close=")">
@@ -62,7 +74,7 @@
         n.deleted = 0
 	        <if test="!query.manageArchive">
 	            and (
-	                n.created_by = #{query.userId}
+	                (n.created_by = #{query.userId} and n.created_by_uuid = #{query.userUuid})
 	                or <include refid="archiveVisiblePredicate"/>
 	            )
 	        </if>
@@ -113,6 +125,7 @@
                     from msg_notice_read r
                     where r.notice_id = n.id
                       and r.user_id = #{userId}
+                      and r.user_uuid = #{userUuid}
                       and r.deleted = 0
               )
             limit #{limit}
@@ -121,13 +134,16 @@
 
     <insert id="markAllRead">
         insert into msg_notice_read (
-            notice_id, user_id, read_at, created_by, updated_by, deleted
+            notice_id, user_id, user_uuid, read_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
         )
         select n.id,
                #{userId},
+               #{userUuid},
                #{readAt},
                #{userId},
+               #{userUuid},
                #{userId},
+               #{userUuid},
                0
         from msg_notice n force index (idx_msg_notice_visible_recent)
         where n.deleted = 0
@@ -138,6 +154,7 @@
                 from msg_notice_read r
                 where r.notice_id = n.id
                   and r.user_id = #{userId}
+                  and r.user_uuid = #{userUuid}
                   and r.deleted = 0
           )
     </insert>
@@ -158,7 +175,7 @@
         select <include refid="noticeColumns"/>
         from msg_notice n
         force index (idx_msg_notice_visible_recent)
-        <include refid="noticeJoins"/>
+        <include refid="archiveNoticeJoins"/>
         where <include refid="archiveFilters"/>
         <choose>
             <when test="query.sortField == 'publishedAt'">order by n.published_at ${query.sortOrder}, n.id desc</when>
@@ -194,9 +211,22 @@
     </select>
 
     <insert id="upsertRead">
-        insert into msg_notice_read (notice_id, user_id, read_at, created_by, updated_by, deleted)
-        values (#{noticeId}, #{userId}, #{readAt}, #{userId}, #{userId}, 0)
-        on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
+        insert into msg_notice_read (notice_id, user_id, user_uuid, read_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+        select n.id,
+               #{userId},
+               #{userUuid},
+               #{readAt},
+               #{userId},
+               #{userUuid},
+               #{userId},
+               #{userUuid},
+               0
+        from msg_notice n force index (idx_msg_notice_visible_recent)
+        where n.id = #{noticeId}
+          and n.deleted = 0
+          and n.publish_status = 'PUBLISHED'
+          and <include refid="visiblePredicate"/>
+        on duplicate key update read_at = values(read_at), updated_at = values(updated_at), updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid), deleted = 0
     </insert>
 
 </mapper>

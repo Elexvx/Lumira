@@ -1,4 +1,13 @@
 package com.lumira.api.system;
 
-public record VerificationVerificationDTO(Boolean verified, String message, Long userId, String factorCode) {
+import java.util.List;
+
+public record VerificationVerificationDTO(
+        Boolean verified,
+        String message,
+        Long userId,
+        String userUuid,
+        String factorCode,
+        List<String> recoveryCodes
+) {
 }

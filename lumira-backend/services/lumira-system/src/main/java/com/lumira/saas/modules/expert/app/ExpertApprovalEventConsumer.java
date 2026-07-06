@@ -6,8 +6,10 @@ import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.event.PlatformEventConsumer;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxEntity;
+import com.lumira.saas.infrastructure.event.PlatformEventTypes;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.modules.account.app.AccountActivationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
@@ -26,20 +28,25 @@ import java.util.Map;
 @ConditionalOnLumiraControlPlaneEnabled
 public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int WORKFLOW_OPERATOR_SESSION_VERSION = 1;
+    private static final String REQUIRED_PERMISSION_CREATE_USER = "system:user:create";
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final PermissionSnapshotService permissionSnapshotService;
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final AccountActivationService accountActivationService;
 
     public ExpertApprovalEventConsumer(
             MyBatisQueryOperations jdbcTemplate,
             ObjectMapper objectMapper,
+            PermissionSnapshotService permissionSnapshotService,
             SystemUserManagementAppService systemUserManagementAppService,
             AccountActivationService accountActivationService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.permissionSnapshotService = permissionSnapshotService;
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.accountActivationService = accountActivationService;
     }
@@ -52,11 +59,16 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
     @Override
     @Transactional
     public void consume(PlatformEventOutboxEntity event) {
+        requireTrustedExpertApprovedEvent(event);
         Long expertId = aggregateId(event);
         if (expertId == null) {
             throw new IllegalStateException("EXPERT_APPROVED event missing aggregateId");
         }
-        ExpertAccountRow expert = loadExpert(expertId);
+        requireEventKeyMatchesExpert(event, expertId);
+        Long workflowInstanceId = requirePayloadWorkflowInstanceId(event);
+        String businessUuid = requirePayloadBusinessUuid(event);
+        CurrentUser operator = buildOperator(event);
+        ExpertAccountRow expert = loadExpert(expertId, workflowInstanceId, businessUuid);
         if (expert == null) {
             throw new IllegalStateException("Expert not found: " + expertId);
         }
@@ -64,8 +76,8 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             throw new IllegalStateException("Expert email is required before account activation");
         }
         Long userId = expert.userId();
+        String userUuid = expert.userUuid();
         String username = expert.username();
-        CurrentUser operator = buildOperator(event);
         if (userId == null) {
             username = nextUsername(expert.code(), expertId);
             SystemDTO.UserUpsertRequest userRequest = new SystemDTO.UserUpsertRequest();
@@ -80,39 +92,140 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             userRequest.setRoleIds(expertRoleId == null ? List.of() : List.of(expertRoleId));
             SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUser(operator, userRequest);
             userId = createdUser.getId();
-            jdbcTemplate.update(
+            userUuid = requireCreatedUserUuid(createdUser);
+            int linked = jdbcTemplate.update(
                     """
                             update aiadc_expert
-                            set user_id = ?, account_status = 'PENDING_ACTIVATION', initial_password_reset_required = 1,
-                                updated_by = ?, updated_at = ?
-                            where id = ? and deleted = 0
+                            set user_id = ?, user_uuid = ?, account_status = 'PENDING_ACTIVATION', initial_password_reset_required = 1,
+                                updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where id = ?
+                              and code = ?
+                              and approval_instance_id = ?
+                              and approval_status = 'APPROVED'
+                              and user_id is null
+                              and (user_uuid is null or user_uuid = '')
+                              and deleted = 0
                             """,
                     userId,
+                    userUuid,
                     operator.getUserId(),
+                    operator.getUserUuid(),
                     LocalDateTime.now(),
-                    expertId
+                    expertId,
+                    businessUuid,
+                    workflowInstanceId
             );
+            if (linked != 1) {
+                throw new IllegalStateException("Expert account binding changed before activation");
+            }
+        } else {
+            requireExistingExpertUser(userId, userUuid, username);
         }
-        String token = accountActivationService.createActivationToken(userId, expertId, operator.getUserId());
+        String token = accountActivationService.createActivationToken(userId, expertId, operator.getUserId(), operator.getUserUuid());
         accountActivationService.sendActivationEmail(expert.email(), username, token);
     }
 
+    private void requireTrustedExpertApprovedEvent(PlatformEventOutboxEntity event) {
+        if (event == null || event.getId() == null || event.getId() <= 0) {
+            throw new IllegalStateException("EXPERT_APPROVED event id is required");
+        }
+        if (!PlatformEventTypes.SOURCE_SYSTEM.equals(event.getSourceType())) {
+            throw new IllegalStateException("EXPERT_APPROVED event sourceType must be SYSTEM");
+        }
+        if (!WorkflowAppService.EVENT_EXPERT_APPROVED.equals(event.getEventType())) {
+            throw new IllegalStateException("EXPERT_APPROVED event type mismatch");
+        }
+        if (event.getPayloadJson() != null && event.getPayloadJson().length() > 64 * 1024) {
+            throw new IllegalStateException("EXPERT_APPROVED event payload is too large");
+        }
+    }
+
     private CurrentUser buildOperator(PlatformEventOutboxEntity event) {
+        if (event == null || event.getUserId() == null || event.getUserId() <= 0) {
+            throw new IllegalStateException("EXPERT_APPROVED event missing trusted operator");
+        }
+        String eventUserUuid = requireEventUserUuid(event);
+        String expectedUserUuid = requirePayloadUserUuid(event);
+        if (!eventUserUuid.equals(expectedUserUuid)) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator uuid mismatch");
+        }
+        OperatorRow operatorRow = loadTrustedOperator(event.getUserId());
+        if (!expectedUserUuid.equals(operatorRow.userUuid())) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator uuid mismatch");
+        }
+        PermissionSnapshotService.PermissionSnapshot permissionSnapshot =
+                permissionSnapshotService.loadSnapshot(operatorRow.userId(), operatorRow.userUuid());
+        if (!permissionSnapshot.getPermissions().contains(REQUIRED_PERMISSION_CREATE_USER)) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator lacks required permission");
+        }
         CurrentUser operator = new CurrentUser();
-        operator.setUserId(event.getUserId() == null ? 0L : event.getUserId());
-        operator.setUserUuid(event.getUserUuid());
-        operator.setUsername("workflow");
+        operator.setUserId(operatorRow.userId());
+        operator.setUserUuid(operatorRow.userUuid());
+        operator.setUsername(operatorRow.username());
+        operator.setSessionId(workflowOperatorSessionId(event));
+        operator.setSessionVersion(WORKFLOW_OPERATOR_SESSION_VERSION);
+        operator.setPermissionsVersion(permissionSnapshot.getVersion());
         operator.setAuthenticated(true);
+        operator.setPermissions(permissionSnapshot.getPermissions());
+        operator.setRoleIds(permissionSnapshot.getRoleIds());
+        operator.setPrimaryDeptId(permissionSnapshot.getPrimaryDeptId());
+        operator.setDeptIds(permissionSnapshot.getDeptIds());
+        operator.setDescendantDeptIds(permissionSnapshot.getDescendantDeptIds());
+        operator.setDataScopes(permissionSnapshot.getDataScopes());
+        operator.setDefaultHomePath(permissionSnapshot.getDefaultHomePath());
         return operator;
     }
 
-    private ExpertAccountRow loadExpert(Long expertId) {
+    private OperatorRow loadTrustedOperator(Long userId) {
+        List<OperatorRow> rows = jdbcTemplate.query(
+                """
+                        select id, uuid, username, status
+                        from sys_user
+                        where id = ? and deleted = 0
+                        limit 1
+                        """,
+                (rs, rowNum) -> new OperatorRow(
+                        rs.getLong("id"),
+                        rs.getString("uuid"),
+                        rs.getString("username"),
+                        rs.getString("status")
+                ),
+                userId
+        );
+        if (rows.isEmpty()) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator does not exist");
+        }
+        OperatorRow operator = rows.get(0);
+        if (!StringUtils.hasText(operator.username())) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator username is required");
+        }
+        if (!StringUtils.hasText(operator.userUuid())) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator uuid is required");
+        }
+        if (!StringUtils.hasText(operator.status()) || !"ENABLED".equalsIgnoreCase(operator.status().trim())) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator is disabled");
+        }
+        return new OperatorRow(operator.userId(), operator.userUuid().trim(), operator.username().trim(), operator.status());
+    }
+
+    private String workflowOperatorSessionId(PlatformEventOutboxEntity event) {
+        return "internal-workflow-event-" + event.getId();
+    }
+    private ExpertAccountRow loadExpert(Long expertId, Long workflowInstanceId, String businessUuid) {
         List<ExpertAccountRow> rows = jdbcTemplate.query(
                 """
-                        select e.id, e.code, e.name, e.mobile, e.email, e.user_id as userId, u.username
+                        select e.id, e.code, e.name, e.mobile, e.email, e.approval_instance_id as approvalInstanceId,
+                               e.user_id as userId, e.user_uuid as userUuid, u.username
                         from aiadc_expert e
-                        left join sys_user u on u.id = e.user_id and u.deleted = 0
-                        where e.id = ? and e.deleted = 0
+                        left join sys_user u
+                          on u.id = e.user_id
+                         and u.uuid = e.user_uuid
+                         and u.deleted = 0
+                        where e.id = ?
+                          and e.code = ?
+                          and e.approval_instance_id = ?
+                          and e.approval_status = 'APPROVED'
+                          and e.deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> new ExpertAccountRow(
@@ -121,12 +234,49 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
                         rs.getString("name"),
                         rs.getString("mobile"),
                         rs.getString("email"),
+                        rs.getObject("approvalInstanceId", Long.class),
                         rs.getObject("userId", Long.class),
+                        rs.getString("userUuid"),
                         rs.getString("username")
                 ),
-                expertId
+                expertId,
+                businessUuid,
+                workflowInstanceId
         );
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private void requireEventKeyMatchesExpert(PlatformEventOutboxEntity event, Long expertId) {
+        if (event == null || expertId == null || !StringUtils.hasText(event.getEventKey())) {
+            throw new IllegalStateException("EXPERT_APPROVED event key is required");
+        }
+        String expected = WorkflowAppService.EVENT_EXPERT_APPROVED + ":expert:" + expertId;
+        if (!expected.equals(event.getEventKey().trim())) {
+            throw new IllegalStateException("EXPERT_APPROVED event key mismatch");
+        }
+    }
+
+    private String requireEventUserUuid(PlatformEventOutboxEntity event) {
+        if (event == null || !StringUtils.hasText(event.getUserUuid())) {
+            throw new IllegalStateException("EXPERT_APPROVED event missing operator uuid");
+        }
+        return event.getUserUuid().trim();
+    }
+
+    private String requireCreatedUserUuid(SystemVO.UserDetailVO createdUser) {
+        if (createdUser == null || createdUser.getId() == null || !StringUtils.hasText(createdUser.getUserUuid())) {
+            throw new IllegalStateException("Created expert account missing user uuid");
+        }
+        return createdUser.getUserUuid().trim();
+    }
+
+    private void requireExistingExpertUser(Long userId, String userUuid, String username) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
+            throw new IllegalStateException("Expert account binding missing user uuid");
+        }
+        if (!StringUtils.hasText(username)) {
+            throw new IllegalStateException("Expert account binding user does not exist");
+        }
     }
 
     private Long findRoleId(String roleCode) {
@@ -163,13 +313,13 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
 
     private Long aggregateId(PlatformEventOutboxEntity event) {
         try {
-            Map<String, Object> payload = objectMapper.readValue(event.getPayloadJson(), new TypeReference<>() {});
+            Map<String, Object> payload = payload(event);
             Object aggregateId = payload.get("aggregateId");
             if (aggregateId instanceof Number number) {
-                return number.longValue();
+                return positiveAggregateId(number.longValue());
             }
             if (aggregateId != null) {
-                return Long.parseLong(String.valueOf(aggregateId));
+                return positiveAggregateId(Long.parseLong(String.valueOf(aggregateId)));
             }
         } catch (Exception ignored) {
             // Fall back to event key parsing.
@@ -182,11 +332,84 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             return null;
         }
         try {
-            return Long.parseLong(parts[parts.length - 1].trim().toLowerCase(Locale.ROOT));
+            return positiveAggregateId(Long.parseLong(parts[parts.length - 1].trim().toLowerCase(Locale.ROOT)));
         } catch (Exception exception) {
             return null;
         }
     }
 
-    private record ExpertAccountRow(Long id, String code, String name, String mobile, String email, Long userId, String username) {}
+    private String requirePayloadUserUuid(PlatformEventOutboxEntity event) {
+        Map<String, Object> payload = payload(event);
+        Object value = payload.get("userUuid");
+        if (value instanceof String text && StringUtils.hasText(text)) {
+            return text.trim();
+        }
+        Object attributes = payload.get("attributes");
+        if (attributes instanceof Map<?, ?> map) {
+            Object nested = map.get("userUuid");
+            if (nested instanceof String text && StringUtils.hasText(text)) {
+                return text.trim();
+            }
+        }
+        throw new IllegalStateException("EXPERT_APPROVED event missing operator uuid");
+    }
+
+    private Long requirePayloadWorkflowInstanceId(PlatformEventOutboxEntity event) {
+        Map<String, Object> payload = payload(event);
+        Object value = payload.get("workflowInstanceId");
+        Long workflowInstanceId = coercePositiveLong(value);
+        if (workflowInstanceId != null) {
+            return workflowInstanceId;
+        }
+        throw new IllegalStateException("EXPERT_APPROVED event missing workflow instance id");
+    }
+
+    private String requirePayloadBusinessUuid(PlatformEventOutboxEntity event) {
+        Map<String, Object> payload = payload(event);
+        Object value = payload.get("businessUuid");
+        if (value instanceof String text && StringUtils.hasText(text)) {
+            return text.trim();
+        }
+        Object attributes = payload.get("attributes");
+        if (attributes instanceof Map<?, ?> map) {
+            Object nested = map.get("businessUuid");
+            if (nested instanceof String text && StringUtils.hasText(text)) {
+                return text.trim();
+            }
+        }
+        throw new IllegalStateException("EXPERT_APPROVED event missing business uuid");
+    }
+
+    private Map<String, Object> payload(PlatformEventOutboxEntity event) {
+        try {
+            if (event == null || !StringUtils.hasText(event.getPayloadJson())) {
+                return Map.of();
+            }
+            return objectMapper.readValue(event.getPayloadJson(), new TypeReference<>() {});
+        } catch (Exception exception) {
+            throw new IllegalStateException("EXPERT_APPROVED event payload is invalid", exception);
+        }
+    }
+
+    private Long positiveAggregateId(Long aggregateId) {
+        return aggregateId == null || aggregateId <= 0 ? null : aggregateId;
+    }
+
+    private Long coercePositiveLong(Object value) {
+        try {
+            if (value instanceof Number number) {
+                return positiveAggregateId(number.longValue());
+            }
+            if (value != null) {
+                return positiveAggregateId(Long.parseLong(String.valueOf(value)));
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+        return null;
+    }
+
+    private record OperatorRow(Long userId, String userUuid, String username, String status) {}
+
+    private record ExpertAccountRow(Long id, String code, String name, String mobile, String email, Long approvalInstanceId, Long userId, String userUuid, String username) {}
 }

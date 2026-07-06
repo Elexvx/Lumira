@@ -55,6 +55,7 @@ public class JobReadinessV2Controller {
                         "job.xxl-executor.config",
                         "job.lumira-backend-targets.config",
                         "job.internal-token.configured",
+                        "job.scoped-internal-tokens.configured",
                         "job.owner-handler.registration"
                 ),
                 List.of(
@@ -62,18 +63,19 @@ public class JobReadinessV2Controller {
                         "job.handler.failure_rate",
                         "job.lumira-backend_target.configured_count",
                         "job.internal_token.configured",
+                        "job.scoped_internal_tokens.configured",
                         "job.owner_handler.declared_count"
                 ),
                 List.of(
                         "XXL-JOB admin/executor registry",
                         "lumira-backend owner internal job APIs",
-                        "internal job token",
+                        "owner-scoped internal tokens",
                         "network reachability to owner services"
                 ),
                 List.of(
                         "disable selected XXL-JOB handler in admin before owner rollback",
                         "route BackendJobClient target URL back to monolith owner endpoints",
-                        "rotate internal token through config if cross-service auth fails",
+                        "rotate owner-scoped internal tokens through config if cross-service auth fails",
                         "owner services keep replay/relay idempotent so repeated job calls remain safe"
                 ),
                 List.of(
@@ -88,12 +90,13 @@ public class JobReadinessV2Controller {
         return ApiResponse.success(new OwnerObservabilityDTO(
                 "Job",
                 "job-executor",
-                internalTokenConfigured() && configuredTargetCount() > 0 ? "UP" : "DEGRADED",
+                internalJobTokenConfigured() && scopedInternalTokensConfigured() && configuredTargetCount() > 0 ? "UP" : "DEGRADED",
                 OffsetDateTime.now(),
                 List.of(
                         healthCheck("job.xxl-executor.config", "CONFIGURED", "XXL-JOB executor beans own scheduling only; business semantics remain in owner services."),
                         healthCheck("job.lumira-backend-targets.config", configuredTargetCount() > 0 ? "CONFIGURED" : "MISSING", "BackendJobClient has at least one owner target URL configured."),
-                        healthCheck("job.internal-token.configured", internalTokenConfigured() ? "CONFIGURED" : "MISSING", "Internal job token is present for owner internal API calls."),
+                        healthCheck("job.internal-token.configured", internalJobTokenConfigured() ? "CONFIGURED" : "MISSING", "Scoped job token is present for owner internal job API calls."),
+                        healthCheck("job.scoped-internal-tokens.configured", scopedInternalTokensConfigured() ? "CONFIGURED" : "MISSING", "Owner-scoped internal tokens are present so job calls do not fall back to a shared token."),
                         healthCheck("job.owner-handler.registration", "CONFIGURED", "Relay and processing handlers call owner APIs without reading owner tables.")
                 ),
                 jobMetrics()
@@ -117,7 +120,8 @@ public class JobReadinessV2Controller {
                 metric("job.handler.invocation.p95", "timer", "milliseconds", "XXL-JOB handler invocation p95 tagged by handler/result."),
                 metric("job.handler.failure_rate", "gauge", "ratio", "XXL-JOB handler failure rate tagged by handler."),
                 metric("job.lumira-backend_target.configured_count", "gauge", "targets", "Configured BackendJobClient target URLs.", configuredTargetCount()),
-                metric("job.internal_token.configured", "gauge", "boolean", "1 when internal job token is configured.", internalTokenConfigured() ? 1L : 0L),
+                metric("job.internal_token.configured", "gauge", "boolean", "1 when the scoped job token is configured.", internalJobTokenConfigured() ? 1L : 0L),
+                metric("job.scoped_internal_tokens.configured", "gauge", "boolean", "1 when all owner-scoped internal tokens are configured.", scopedInternalTokensConfigured() ? 1L : 0L),
                 metric("job.owner_handler.declared_count", "gauge", "handlers", "Declared owner relay/processing/heartbeat handlers.", 9L)
         );
     }
@@ -142,8 +146,19 @@ public class JobReadinessV2Controller {
         return count;
     }
 
-    private boolean internalTokenConfigured() {
-        return StringUtils.hasText(properties.getInternalToken());
+    private boolean internalJobTokenConfigured() {
+        JobExecutorProperties.Internal internal = properties.getInternal();
+        return internal != null && StringUtils.hasText(internal.getJobToken());
+    }
+
+    private boolean scopedInternalTokensConfigured() {
+        JobExecutorProperties.Internal internal = properties.getInternal();
+        return internal != null
+                && StringUtils.hasText(internal.getFileToken())
+                && StringUtils.hasText(internal.getMessageToken())
+                && StringUtils.hasText(internal.getPaymentToken())
+                && StringUtils.hasText(internal.getPluginToken())
+                && StringUtils.hasText(internal.getJobToken());
     }
 
     private OwnerObservabilityDTO.HealthCheckDTO healthCheck(String name, String status, String description) {

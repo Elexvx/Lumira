@@ -1,9 +1,14 @@
 package com.lumira.saas.modules.ai.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.common.vo.PageResponse;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.infrastructure.AiSecretCryptoService;
 import com.lumira.saas.modules.ai.vo.AiVO;
@@ -11,6 +16,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -25,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -40,6 +47,9 @@ public class AiManagementAppService {
     private static final long GOVERNANCE_OVERVIEW_CACHE_TTL_MS = 15_000L;
     private static final int GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES = 2048;
     private static final String GOVERNANCE_OVERVIEW_CACHE_KEY = "global";
+    private static final String PERMISSION_AI_VIEW = "ai:view";
+    private static final String PERMISSION_AI_MANAGE = "ai:manage";
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private static final String DEFAULT_SYSTEM_PROMPT_TEMPLATE = """
@@ -57,22 +67,32 @@ public class AiManagementAppService {
     private final AiSecretCryptoService aiSecretCryptoService;
     private final AiEmployeeRuntimeService aiEmployeeRuntimeService;
     private final AiChatModelFactory aiChatModelFactory;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
     private final Cache<String, AiVO.GovernanceOverviewVO> governanceOverviewCache;
     private final Cache<String, CompletableFuture<AiVO.GovernanceOverviewVO>> governanceOverviewLoadInFlight;
 
+    @Autowired
     public AiManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
             OperationAuditService operationAuditService,
             AiSecretCryptoService aiSecretCryptoService,
             AiEmployeeRuntimeService aiEmployeeRuntimeService,
-            AiChatModelFactory aiChatModelFactory
+            AiChatModelFactory aiChatModelFactory,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
         this.aiSecretCryptoService = aiSecretCryptoService;
         this.aiEmployeeRuntimeService = aiEmployeeRuntimeService;
         this.aiChatModelFactory = aiChatModelFactory;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
         this.governanceOverviewCache = CacheBuilder.newBuilder()
                 .maximumSize(GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES)
@@ -84,8 +104,41 @@ public class AiManagementAppService {
                 .build();
     }
 
+    AiManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            AiSecretCryptoService aiSecretCryptoService,
+            AiEmployeeRuntimeService aiEmployeeRuntimeService,
+            AiChatModelFactory aiChatModelFactory
+    ) {
+        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, null, null, null);
+    }
+
+    AiManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            AiSecretCryptoService aiSecretCryptoService,
+            AiEmployeeRuntimeService aiEmployeeRuntimeService,
+            AiChatModelFactory aiChatModelFactory,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, permissionSnapshotService, null, null);
+    }
+
+    AiManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            AiSecretCryptoService aiSecretCryptoService,
+            AiEmployeeRuntimeService aiEmployeeRuntimeService,
+            AiChatModelFactory aiChatModelFactory,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, permissionSnapshotService, null, sessionAuthenticationService);
+    }
+
     public PageResponse<AiVO.EmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         return pageQuery(
                 """
                         select e.id, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
@@ -108,7 +161,7 @@ public class AiManagementAppService {
     }
 
     public AiVO.GovernanceOverviewVO governanceOverview(CurrentUser currentUser) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         AiVO.GovernanceOverviewVO cached = governanceOverviewCache.getIfPresent(GOVERNANCE_OVERVIEW_CACHE_KEY);
         if (cached != null) {
             return copyGovernanceOverview(cached);
@@ -190,7 +243,7 @@ public class AiManagementAppService {
     }
 
     public AiVO.EmployeeDetailVO getEmployee(CurrentUser currentUser, Long id) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         AiVO.EmployeeDetailVO employee = queryEmployeeDetail(id);
         employee.setDefaultSystemPromptTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE);
         return employee;
@@ -198,12 +251,12 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.EmployeeDetailVO createEmployee(CurrentUser currentUser, AiDTO.EmployeeUpsertRequest request) {
-        requireLogin(currentUser);
+        requireManagePermission(currentUser);
         validateEmployeeUsernameAvailable(request.getUsername().trim(), null);
         validateDefaultLlmService(request.getDefaultLlmServiceId());
         LocalDateTime now = LocalDateTime.now();
         String systemPrompt = cleanNullable(request.getSystemPrompt());
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into ai_employee (
                             username, nickname, position, avatar_key, description, greeting,
@@ -222,24 +275,25 @@ public class AiManagementAppService {
                 now,
                 now
         );
+        requireAiWrite(inserted, "AI employee changed, please retry");
         Long employeeId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-create", "CREATE", "SUCCESS", "创建数字员工: " + request.getUsername());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-create", "CREATE", "SUCCESS", "创建数字员工: " + request.getUsername());
         return getEmployee(currentUser, employeeId);
     }
 
     @Transactional
     public AiVO.EmployeeDetailVO updateEmployee(CurrentUser currentUser, Long id, AiDTO.EmployeeUpsertRequest request) {
-        requireLogin(currentUser);
-        requireEmployee(id);
+        requireManagePermission(currentUser);
+        AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id);
         validateEmployeeUsernameAvailable(request.getUsername().trim(), id);
         validateDefaultLlmService(request.getDefaultLlmServiceId());
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update ai_employee
                         set username = ?, nickname = ?, position = ?, avatar_key = ?, description = ?, greeting = ?,
                             system_prompt = ?, default_llm_service_id = ?, sort_order = ?, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ? and username = ? and enabled = ? and is_deleted = 0
                         """,
                 request.getUsername().trim(),
                 request.getNickname().trim(),
@@ -251,57 +305,72 @@ public class AiManagementAppService {
                 request.getDefaultLlmServiceId(),
                 request.getSortOrder() == null ? 0 : request.getSortOrder(),
                 LocalDateTime.now(),
-                id
+                id,
+                existing.getUsername(),
+                Boolean.TRUE.equals(existing.getEnabled()) ? 1 : 0
         );
+        requireAiWrite(updated, "AI employee changed, please retry");
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-update", "UPDATE", "SUCCESS", "更新数字员工: " + request.getUsername());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-update", "UPDATE", "SUCCESS", "更新数字员工: " + request.getUsername());
         return getEmployee(currentUser, id);
     }
 
     @Transactional
     public boolean deleteEmployee(CurrentUser currentUser, Long id) {
-        requireLogin(currentUser);
-        requireEmployee(id);
+        requireManagePermission(currentUser);
+        AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id);
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int employeeDeleted = jdbcTemplate.update(
                 """
                         update ai_employee
                         set is_deleted = 1, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ? and username = ? and enabled = ? and is_deleted = 0
                         """,
                 now,
-                id
+                id,
+                existing.getUsername(),
+                Boolean.TRUE.equals(existing.getEnabled()) ? 1 : 0
         );
+        requireAiWrite(employeeDeleted, "AI employee changed, please retry");
         jdbcTemplate.update(
                 """
                         update ai_employee_skill
                         set is_deleted = 1, update_time = ?
-                        where employee_id = ? and is_deleted = 0
+                        where employee_id in (
+                            select id
+                            from ai_employee
+                            where id = ? and username = ? and is_deleted = 1
+                        )
+                          and is_deleted = 0
                         """,
                 now,
-                id
+                id,
+                existing.getUsername()
         );
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-delete", "DELETE", "SUCCESS", "删除数字员工: " + id);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-delete", "DELETE", "SUCCESS", "删除数字员工: " + id);
         return true;
     }
 
     @Transactional
     public boolean updateEmployeeEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        requireLogin(currentUser);
-        requireEmployee(id);
-        jdbcTemplate.update(
+        requireManagePermission(currentUser);
+        AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id);
+        int updated = jdbcTemplate.update(
                 """
                         update ai_employee
                         set enabled = ?, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ? and username = ? and enabled = ? and is_deleted = 0
                         """,
                 enabled ? 1 : 0,
                 LocalDateTime.now(),
-                id
+                id,
+                existing.getUsername(),
+                Boolean.TRUE.equals(existing.getEnabled()) ? 1 : 0
         );
+        requireAiWrite(updated, "AI employee changed, please retry");
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-enabled", "UPDATE", "SUCCESS", "更新数字员工状态: " + id + " -> " + enabled);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-enabled", "UPDATE", "SUCCESS", "更新数字员工状态: " + id + " -> " + enabled);
         return true;
     }
 
@@ -312,23 +381,23 @@ public class AiManagementAppService {
     }
 
     public List<AiVO.EmployeeCapabilityVO> getEmployeeCapabilities(CurrentUser currentUser, Long employeeId) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         requireEmployee(employeeId);
         return listEmployeeCapabilities(employeeId);
     }
 
     @Transactional
     public boolean updateEmployeeCapabilities(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeCapabilitiesUpdateRequest request) {
-        requireLogin(currentUser);
-        requireEmployee(employeeId);
-        replaceEmployeeCapabilities(employeeId, request == null ? List.of() : request.getCapabilities());
+        requireManagePermission(currentUser);
+        AiVO.EmployeeDetailVO existing = queryEmployeeDetail(employeeId);
+        replaceEmployeeCapabilities(existing, request == null ? List.of() : request.getCapabilities());
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
         return true;
     }
 
     public PageResponse<AiVO.LlmServiceVO> listLlmServices(CurrentUser currentUser, long pageNo, long pageSize) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         return pageQuery(
                 """
                         select id, provider, code, title, base_url as baseUrl,
@@ -350,17 +419,17 @@ public class AiManagementAppService {
     }
 
     public AiVO.LlmServiceVO getLlmService(CurrentUser currentUser, Long id) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord record = requireLlmService(id);
         return toLlmServiceVO(record);
     }
 
     @Transactional
     public AiVO.LlmServiceVO createLlmService(CurrentUser currentUser, AiDTO.LlmServiceUpsertRequest request) {
-        requireLogin(currentUser);
+        requireManagePermission(currentUser);
         validateLlmServiceCodeAvailable(request.getCode().trim(), null);
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into ai_llm_service (
                             provider, code, title, base_url, api_key_encrypted, default_model, enabled,
@@ -380,26 +449,27 @@ public class AiManagementAppService {
                 now,
                 now
         );
+        requireAiWrite(inserted, "AI LLM service changed, please retry");
         Long serviceId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-create", "CREATE", "SUCCESS", "创建 LLM 服务: " + request.getCode());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-create", "CREATE", "SUCCESS", "创建 LLM 服务: " + request.getCode());
         return getLlmService(currentUser, serviceId);
     }
 
     @Transactional
     public AiVO.LlmServiceVO updateLlmService(CurrentUser currentUser, Long id, AiDTO.LlmServiceUpsertRequest request) {
-        requireLogin(currentUser);
+        requireManagePermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord existing = requireLlmService(id);
         validateLlmServiceCodeAvailable(request.getCode().trim(), id);
         String encryptedApiKey = StringUtils.hasText(request.getApiKey())
                 ? aiSecretCryptoService.encrypt(request.getApiKey().trim())
                 : existing.getApiKeyEncrypted();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update ai_llm_service
                         set provider = ?, code = ?, title = ?, base_url = ?, api_key_encrypted = ?, default_model = ?,
                             enabled = ?, timeout_ms = ?, temperature = ?, max_tokens = ?, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ? and code = ? and provider = ? and enabled = ? and is_deleted = 0
                         """,
                 request.getProvider().trim(),
                 request.getCode().trim(),
@@ -412,16 +482,20 @@ public class AiManagementAppService {
                 request.getTemperature(),
                 request.getMaxTokens(),
                 LocalDateTime.now(),
-                id
+                id,
+                existing.getCode(),
+                existing.getProvider(),
+                Boolean.TRUE.equals(existing.getEnabled()) ? 1 : 0
         );
+        requireAiWrite(updated, "AI LLM service changed, please retry");
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-update", "UPDATE", "SUCCESS", "更新 LLM 服务: " + request.getCode());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-update", "UPDATE", "SUCCESS", "更新 LLM 服务: " + request.getCode());
         return getLlmService(currentUser, id);
     }
 
     @Transactional
     public boolean deleteLlmService(CurrentUser currentUser, Long id) {
-        requireLogin(currentUser);
+        requireManagePermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord service = requireLlmService(id);
         Integer refCount = jdbcTemplate.queryForObject(
                 """
@@ -436,41 +510,49 @@ public class AiManagementAppService {
         if (refCount != null && refCount > 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务已被数字员工引用，无法删除");
         }
-        jdbcTemplate.update(
+        int deleted = jdbcTemplate.update(
                 """
                         update ai_llm_service
                         set is_deleted = 1, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ? and code = ? and provider = ? and enabled = ? and is_deleted = 0
                         """,
                 LocalDateTime.now(),
-                id
+                id,
+                service.getCode(),
+                service.getProvider(),
+                Boolean.TRUE.equals(service.getEnabled()) ? 1 : 0
         );
+        requireAiWrite(deleted, "AI LLM service changed, please retry");
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-delete", "DELETE", "SUCCESS", "删除 LLM 服务: " + service.getCode());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-delete", "DELETE", "SUCCESS", "删除 LLM 服务: " + service.getCode());
         return true;
     }
 
     @Transactional
     public boolean updateLlmServiceEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        requireLogin(currentUser);
+        requireManagePermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord service = requireLlmService(id);
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update ai_llm_service
                         set enabled = ?, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ? and code = ? and provider = ? and enabled = ? and is_deleted = 0
                         """,
                 enabled ? 1 : 0,
                 LocalDateTime.now(),
-                id
+                id,
+                service.getCode(),
+                service.getProvider(),
+                Boolean.TRUE.equals(service.getEnabled()) ? 1 : 0
         );
+        requireAiWrite(updated, "AI LLM service changed, please retry");
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-enabled", "UPDATE", "SUCCESS", "更新 LLM 服务状态: " + service.getCode() + " -> " + enabled);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-enabled", "UPDATE", "SUCCESS", "更新 LLM 服务状态: " + service.getCode() + " -> " + enabled);
         return true;
     }
 
     public AiVO.LlmServiceTestResultVO testLlmService(CurrentUser currentUser, AiDTO.LlmServiceTestRequest request) {
-        requireLogin(currentUser);
+        requireManagePermission(currentUser);
         AiLlmServiceConfig config = buildTestConfig(request);
         AiDTO.ChatRequest chatRequest = new AiDTO.ChatRequest();
         chatRequest.setMessage("请只回复 OK，用于验证当前 LLM 服务配置是否可用。");
@@ -483,7 +565,7 @@ public class AiManagementAppService {
         try {
             AiVO.ChatResponseVO response = aiChatModelFactory.create(config).chat(chatRequest, testEmployee, List.of());
             long latencyMs = elapsedMillis(startedAt);
-            operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "测试 LLM 服务: " + safeAuditLabel(config));
+            operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "测试 LLM 服务: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(true);
             result.setMessage("测试通过");
@@ -495,7 +577,7 @@ public class AiManagementAppService {
         } catch (RuntimeException exception) {
             long latencyMs = elapsedMillis(startedAt);
             String errorMessage = resolveFailureMessage(exception);
-            operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
+            operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(false);
             result.setMessage(errorMessage);
@@ -522,12 +604,12 @@ public class AiManagementAppService {
     }
 
     public AiVO.EmployeeVO getAssistantEmployee(CurrentUser currentUser) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         return aiAssistantEmployeeResolver.getOrCreateAssistantEmployee();
     }
 
     public PageResponse<AiVO.ConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         if (employeeId != null) {
             requireEmployee(employeeId);
         }
@@ -554,6 +636,7 @@ public class AiManagementAppService {
                           on e.id = c.employee_id
                          and e.is_deleted = 0
                         where c.owner_user_id = ?
+                          and c.owner_user_uuid = ?
                           and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
@@ -562,19 +645,20 @@ public class AiManagementAppService {
                         select count(1)
                         from ai_conversation c
                         where c.owner_user_id = ?
+                          and c.owner_user_uuid = ?
                           and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         """,
                 AiVO.ConversationVO.class,
                 pageNo,
                 pageSize,
-                Arrays.asList(currentUser.getUserId(), employeeId, employeeId)
+                Arrays.asList(currentUser.getUserId(), currentUser.getUserUuid(), employeeId, employeeId)
         );
     }
 
     public List<AiVO.MessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
-        requireLogin(currentUser);
-        requireConversation(currentUser.getUserId(), conversationId);
+        requireViewPermission(currentUser);
+        requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         CompletableFuture<List<AiVO.MessageVO>> messagesFuture = CompletableFuture.supplyAsync(() -> jdbcTemplate.query(
                 """
                         select id, conversation_id as conversationId, role, content, create_time as createTime
@@ -600,25 +684,34 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean updateConversation(CurrentUser currentUser, Long conversationId, AiDTO.ConversationUpdateRequest request) {
-        requireLogin(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
+        requireViewPermission(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         String title = request == null ? null : request.getTitle();
         Boolean pinned = request == null ? null : request.getPinned();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update ai_conversation
                         set title = coalesce(?, title),
                             is_pinned = coalesce(?, is_pinned),
                             update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ?
+                          and owner_user_id = ?
+                          and owner_user_uuid = ?
+                          and conversation_code = ?
+                          and status = ?
+                          and is_deleted = 0
                         """,
                 StringUtils.hasText(title) ? title.trim() : null,
                 pinned == null ? null : (pinned ? 1 : 0),
                 LocalDateTime.now(),
-                conversationId
+                conversationId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                conversation.getConversationCode(),
+                conversation.getStatus()
         );
-        operationAuditService.log(currentUser.getUserId(),
-                currentUser.getUsername(),
+        requireAiWrite(updated, "AI conversation changed, please retry");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(),
                 "ai",
                 "conversation-update",
                 "UPDATE",
@@ -630,49 +723,97 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean deleteConversation(CurrentUser currentUser, Long conversationId) {
-        requireLogin(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
+        requireViewPermission(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int conversationDeleted = jdbcTemplate.update(
                 """
                         update ai_conversation
                         set is_deleted = 1, update_time = ?
-                        where id = ? and is_deleted = 0
+                        where id = ?
+                          and owner_user_id = ?
+                          and owner_user_uuid = ?
+                          and conversation_code = ?
+                          and status = ?
+                          and is_deleted = 0
                         """,
                 now,
-                conversationId
+                conversationId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                conversation.getConversationCode(),
+                conversation.getStatus()
         );
+        requireAiWrite(conversationDeleted, "AI conversation changed, please retry");
         jdbcTemplate.update(
                 """
                         update ai_message
                         set is_deleted = 1, update_time = ?
-                        where conversation_id = ? and is_deleted = 0
+                        where conversation_id in (
+                            select id
+                            from ai_conversation
+                            where id = ?
+                              and owner_user_id = ?
+                              and owner_user_uuid = ?
+                              and conversation_code = ?
+                              and status = ?
+                        )
+                          and is_deleted = 0
                         """,
                 now,
-                conversationId
+                conversationId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                conversation.getConversationCode(),
+                conversation.getStatus()
         );
         jdbcTemplate.update(
                 """
                         update ai_message_attachment
                         set is_deleted = 1, update_time = ?
-                        where conversation_id = ? and is_deleted = 0
+                        where conversation_id in (
+                            select id
+                            from ai_conversation
+                            where id = ?
+                              and owner_user_id = ?
+                              and owner_user_uuid = ?
+                              and conversation_code = ?
+                              and status = ?
+                        )
+                          and is_deleted = 0
                         """,
                 now,
-                conversationId
+                conversationId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                conversation.getConversationCode(),
+                conversation.getStatus()
         );
         if (conversationShareTableExists()) {
             jdbcTemplate.update(
                     """
                             update ai_conversation_share
                             set is_deleted = 1, update_time = ?
-                            where conversation_id = ? and is_deleted = 0
+                            where conversation_id in (
+                                select id
+                                from ai_conversation
+                                where id = ?
+                                  and owner_user_id = ?
+                                  and owner_user_uuid = ?
+                                  and conversation_code = ?
+                                  and status = ?
+                            )
+                              and is_deleted = 0
                             """,
                     now,
-                    conversationId
+                    conversationId,
+                    currentUser.getUserId(),
+                    currentUser.getUserUuid(),
+                    conversation.getConversationCode(),
+                    conversation.getStatus()
             );
         }
-        operationAuditService.log(currentUser.getUserId(),
-                currentUser.getUsername(),
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(),
                 "ai",
                 "conversation-delete",
                 "DELETE",
@@ -696,33 +837,46 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.ConversationShareVO createConversationShare(CurrentUser currentUser, Long conversationId) {
-        requireLogin(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
+        requireViewPermission(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusDays(30);
         String shareToken = "share_" + UUID.randomUUID().toString().replace("-", "");
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into ai_conversation_share (
-                            conversation_id, share_token, title, status, expires_at, created_by, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, 'ACTIVE', ?, ?, 0, ?, ?)
+                            conversation_id, share_token, title, status, expires_at, created_by, created_by_uuid, is_deleted, create_time, update_time
+                        )
+                        select c.id, ?, ?, 'ACTIVE', ?, ?, ?, 0, ?, ?
+                        from ai_conversation c
+                        where c.id = ?
+                          and c.owner_user_id = ?
+                          and c.owner_user_uuid = ?
+                          and c.conversation_code = ?
+                          and c.status = ?
+                          and c.is_deleted = 0
                         """,
-                conversationId,
                 shareToken,
                 StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : conversation.getPreview(),
                 expiresAt,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 now,
-                now
+                now,
+                conversationId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                conversation.getConversationCode(),
+                conversation.getStatus()
         );
+        requireAiWrite(inserted, "AI conversation changed, please retry");
         AiVO.ConversationShareVO share = new AiVO.ConversationShareVO();
         share.setShareToken(shareToken);
         share.setConversationId(conversationId);
         share.setShareTitle(StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : conversation.getPreview());
         share.setExpiresAt(expiresAt);
         share.setCreateTime(now);
-        operationAuditService.log(currentUser.getUserId(),
-                currentUser.getUsername(),
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(),
                 "ai",
                 "conversation-share",
                 "CREATE",
@@ -733,9 +887,9 @@ public class AiManagementAppService {
     }
 
     public AiVO.ConversationShareDetailVO getConversationShare(CurrentUser currentUser, String shareToken) {
-        requireLogin(currentUser);
+        requireViewPermission(currentUser);
         AiVO.ConversationShareVO share = requireConversationShare(shareToken);
-        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), share.getConversationId());
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), share.getConversationId());
         AiVO.ConversationShareDetailVO detail = new AiVO.ConversationShareDetailVO();
         detail.setShare(share);
         detail.setConversation(conversation);
@@ -744,8 +898,8 @@ public class AiManagementAppService {
     }
 
     public AiVO.ConversationExportVO exportConversation(CurrentUser currentUser, Long conversationId, String format) {
-        requireLogin(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
+        requireViewPermission(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         List<AiVO.MessageVO> messages = listConversationMessages(currentUser, conversationId);
         String normalizedFormat = normalizeExportFormat(format);
         String content = buildConversationExportContent(conversation, messages, normalizedFormat);
@@ -791,16 +945,23 @@ public class AiManagementAppService {
         );
     }
 
-    private void replaceEmployeeCapabilities(Long employeeId, List<AiDTO.EmployeeCapabilityItem> items) {
+    private void replaceEmployeeCapabilities(AiVO.EmployeeDetailVO employee, List<AiDTO.EmployeeCapabilityItem> items) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         update ai_employee_skill
                         set is_deleted = 1, update_time = ?
-                        where employee_id = ? and is_deleted = 0
+                        where employee_id in (
+                            select id
+                            from ai_employee
+                            where id = ? and username = ? and enabled = ? and is_deleted = 0
+                        )
+                          and is_deleted = 0
                         """,
                 now,
-                employeeId
+                employee.getId(),
+                employee.getUsername(),
+                Boolean.TRUE.equals(employee.getEnabled()) ? 1 : 0
         );
         if (items == null || items.isEmpty()) {
             return;
@@ -815,22 +976,23 @@ public class AiManagementAppService {
             if (readOnly == null) {
                 throw new BizException(ErrorCode.NOT_FOUND, "能力不存在: " + capabilityCode);
             }
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into ai_employee_skill (
                                 employee_id, skill_code, permission_mode, is_deleted, create_time, update_time
                             ) values (?, ?, ?, 0, ?, ?)
                             on duplicate key update
-                                permission_mode = values(permission_mode),
-                                is_deleted = 0,
-                                update_time = values(update_time)
+                                permission_mode = case when employee_id = values(employee_id) and skill_code = values(skill_code) then values(permission_mode) else permission_mode end,
+                                is_deleted = case when employee_id = values(employee_id) and skill_code = values(skill_code) then 0 else is_deleted end,
+                                update_time = case when employee_id = values(employee_id) and skill_code = values(skill_code) then values(update_time) else update_time end
                             """,
-                    employeeId,
+                    employee.getId(),
                     capabilityCode,
                     normalizeCapabilityMode(item.getPermissionMode(), readOnly),
                     now,
                     now
             );
+            requireAiWrite(inserted, "AI employee capability changed, please retry");
         }
     }
 
@@ -980,12 +1142,13 @@ public class AiManagementAppService {
         }
     }
 
-    private AiVO.ConversationVO requireConversation(Long ownerUserId, Long conversationId) {
+    private AiVO.ConversationVO requireConversation(Long ownerUserId, String ownerUserUuid, Long conversationId) {
         AiVO.ConversationVO conversation = jdbcTemplate.query(
                 """
                         select c.id,
                                c.employee_id as employeeId,
                                c.owner_user_id as ownerUserId,
+                               c.owner_user_uuid as ownerUserUuid,
                                coalesce(e.nickname, e.username) as employeeName,
                                c.conversation_code as conversationCode,
                                c.title,
@@ -1007,12 +1170,14 @@ public class AiManagementAppService {
                           on e.id = c.employee_id
                          and e.is_deleted = 0
                         where c.owner_user_id = ?
+                          and c.owner_user_uuid = ?
                           and c.id = ?
                           and c.is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ConversationVO.class),
                 ownerUserId,
+                ownerUserUuid,
                 conversationId
         ).stream().findFirst().orElse(null);
         if (conversation == null) {
@@ -1215,9 +1380,123 @@ public class AiManagementAppService {
         }
     }
     private void requireLogin(CurrentUser currentUser) {
-        if (currentUser == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
+    }
+
+    private void requireViewPermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_VIEW);
+    }
+
+    private void requireManagePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_MANAGE);
+    }
+
+    private void requireAiWrite(int updated, String message) {
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, message);
+        }
+    }
+
+    private void requirePermission(CurrentUser currentUser, String permissionKey) {
+        CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
+        requireLogin(runtimeUser);
+        if (runtimeUser.getPermissions() == null
+                || (!runtimeUser.getPermissions().contains("*") && !runtimeUser.getPermissions().contains(permissionKey))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Permission denied");
+        }
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return currentUser;
+        }
+        if (permissionSnapshotService == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            String currentUserUuid = userSnapshot == null || !StringUtils.hasText(userSnapshot.userUuid())
+                    ? null
+                    : userSnapshot.userUuid().trim();
+            if (userSnapshot == null
+                    || userSnapshot.userId() == null
+                    || !userId.equals(userSnapshot.userId())
+                    || !StringUtils.hasText(currentUserUuid)
+                    || !normalizedUserUuid.equals(currentUserUuid)
+                    || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(currentUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+            normalizedUserUuid = currentUserUuid;
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+        return currentUser;
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Trusted user identity is required");
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
     }
 
     private Long count(String sql, Object... args) {

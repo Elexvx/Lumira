@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.platform.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -30,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/platform")
@@ -75,10 +80,10 @@ public class PlatformV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("system:config:view");
+        CurrentUser currentUser = require("system:config:view");
         return recordPlatformConfigRead(() ->
                 ApiResponse.success(
-                        systemManagementAppService.listConfigs(securityContextFacade.getCurrentUser(), configKey, configName, pageNo, pageSize),
+                        systemManagementAppService.listConfigs(currentUser, configKey, configName, pageNo, pageSize),
                         TraceContext.getRequestId()
                 )
         );
@@ -86,24 +91,24 @@ public class PlatformV2Controller {
 
     @GetMapping("/configs/{id}")
     public ApiResponse<SystemVO.ConfigVO> config(@PathVariable("id") Long id) {
-        require("system:config:view");
+        CurrentUser currentUser = require("system:config:view");
         return recordPlatformConfigRead(() ->
-                ApiResponse.success(systemManagementAppService.getConfig(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId())
+                ApiResponse.success(systemManagementAppService.getConfig(currentUser, id), TraceContext.getRequestId())
         );
     }
 
     @PostMapping("/configs")
     @RepeatSubmit
     public ApiResponse<SystemVO.ConfigVO> createConfig(@Valid @RequestBody SystemDTO.ConfigUpsertRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.createConfig(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.createConfig(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/configs/{id}")
     @RepeatSubmit
     public ApiResponse<SystemVO.ConfigVO> updateConfig(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.ConfigUpsertRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.updateConfig(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateConfig(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/dict-types")
@@ -114,51 +119,51 @@ public class PlatformV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("system:dict:view");
+        CurrentUser currentUser = require("system:dict:view");
         return ApiResponse.success(
-                systemManagementAppService.listDictTypes(securityContextFacade.getCurrentUser(), dictCode, dictName, status, pageNo, pageSize),
+                systemManagementAppService.listDictTypes(currentUser, dictCode, dictName, status, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/dict-types/{id}")
     public ApiResponse<SystemVO.DictTypeVO> dictType(@PathVariable("id") Long id) {
-        require("system:dict:view");
-        return ApiResponse.success(systemManagementAppService.getDictType(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:view");
+        return ApiResponse.success(systemManagementAppService.getDictType(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/dict-types")
     @RepeatSubmit
     public ApiResponse<SystemVO.DictTypeVO> createDictType(@Valid @RequestBody SystemDTO.DictTypeUpsertRequest request) {
-        require("system:dict:create");
-        return ApiResponse.success(systemManagementAppService.createDictType(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:create");
+        return ApiResponse.success(systemManagementAppService.createDictType(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/dict-types/{id}")
     @RepeatSubmit
     public ApiResponse<SystemVO.DictTypeVO> updateDictType(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.DictTypeUpsertRequest request) {
-        require("system:dict:update");
-        return ApiResponse.success(systemManagementAppService.updateDictType(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:update");
+        return ApiResponse.success(systemManagementAppService.updateDictType(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/dict-types/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteDictType(@PathVariable("id") Long id) {
-        require("system:dict:delete");
-        return ApiResponse.success(systemManagementAppService.deleteDictType(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:delete");
+        return ApiResponse.success(systemManagementAppService.deleteDictType(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/dict-types/{id}/items")
     public ApiResponse<List<SystemVO.DictItemVO>> dictItems(@PathVariable("id") Long id) {
-        require("system:dict:view");
-        return ApiResponse.success(systemManagementAppService.listDictItems(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:view");
+        return ApiResponse.success(systemManagementAppService.listDictItems(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/dict-types/{id}/items")
     @RepeatSubmit
     public ApiResponse<SystemVO.DictItemVO> createDictItem(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.DictItemUpsertRequest request) {
-        require("system:dict:create");
-        return ApiResponse.success(systemManagementAppService.createDictItem(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:create");
+        return ApiResponse.success(systemManagementAppService.createDictItem(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/dict-types/{dictTypeId}/items/{itemId}")
@@ -168,8 +173,8 @@ public class PlatformV2Controller {
             @PathVariable("itemId") Long itemId,
             @Valid @RequestBody SystemDTO.DictItemUpsertRequest request
     ) {
-        require("system:dict:update");
-        return ApiResponse.success(systemManagementAppService.updateDictItem(securityContextFacade.getCurrentUser(), dictTypeId, itemId, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:update");
+        return ApiResponse.success(systemManagementAppService.updateDictItem(currentUser, dictTypeId, itemId, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/dict-types/{dictTypeId}/items/{itemId}")
@@ -178,15 +183,15 @@ public class PlatformV2Controller {
             @PathVariable("dictTypeId") Long dictTypeId,
             @PathVariable("itemId") Long itemId
     ) {
-        require("system:dict:delete");
-        return ApiResponse.success(systemManagementAppService.deleteDictItem(securityContextFacade.getCurrentUser(), dictTypeId, itemId), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:dict:delete");
+        return ApiResponse.success(systemManagementAppService.deleteDictItem(currentUser, dictTypeId, itemId), TraceContext.getRequestId());
     }
 
     @GetMapping("/runtime-appearance-settings")
     public ApiResponse<SystemVO.RuntimeAppearanceSettingsVO> runtimeAppearanceSettings() {
         return recordPlatformConfigRead(() ->
                 ApiResponse.success(
-                        systemManagementAppService.getRuntimeAppearanceSettings(securityContextFacade.getCurrentUser()),
+                        systemManagementAppService.getPublicRuntimeAppearanceSettings(),
                         TraceContext.getRequestId()
                 )
         );
@@ -196,7 +201,7 @@ public class PlatformV2Controller {
     public ApiResponse<SystemVO.BrandingSettingsVO> brandingSettings() {
         return recordPlatformConfigRead(() ->
                 ApiResponse.success(
-                        systemManagementAppService.getBrandingSettings(securityContextFacade.getCurrentUser()),
+                        systemManagementAppService.getPublicBrandingSettings(),
                         TraceContext.getRequestId()
                 )
         );
@@ -205,113 +210,114 @@ public class PlatformV2Controller {
     @PutMapping("/branding-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.BrandingSettingsVO> updateBrandingSettings(@RequestBody SystemDTO.BrandingSettingsRequest request) {
-        require("system:config:update");
+        CurrentUser currentUser = require("system:config:update");
         return ApiResponse.success(
-                systemManagementAppService.updateBrandingSettings(securityContextFacade.getCurrentUser(), request),
+                systemManagementAppService.updateBrandingSettings(currentUser, request),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/agreement-settings")
     public ApiResponse<SystemVO.AgreementSettingsVO> agreementSettings() {
-        return ApiResponse.success(systemManagementAppService.getAgreementSettings(), TraceContext.getRequestId());
+        return ApiResponse.success(systemManagementAppService.getPublicAgreementSettings(), TraceContext.getRequestId());
     }
 
     @PutMapping("/agreement-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.AgreementSettingsVO> updateAgreementSettings(@RequestBody SystemDTO.AgreementSettingsRequest request) {
-        require("system:config:update");
+        CurrentUser currentUser = require("system:config:update");
         return ApiResponse.success(
-                systemManagementAppService.updateAgreementSettings(securityContextFacade.getCurrentUser(), request),
+                systemManagementAppService.updateAgreementSettings(currentUser, request),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/watermark-settings")
     public ApiResponse<SystemVO.WatermarkSettingsVO> watermarkSettings() {
-        require("system:config:view");
-        return ApiResponse.success(systemManagementAppService.getWatermarkSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:view");
+        return ApiResponse.success(systemManagementAppService.getWatermarkSettings(currentUser), TraceContext.getRequestId());
     }
 
     @PutMapping("/watermark-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.WatermarkSettingsVO> updateWatermarkSettings(@RequestBody SystemDTO.WatermarkSettingsRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.updateWatermarkSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateWatermarkSettings(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/floating-window-settings")
     public ApiResponse<SystemVO.FloatingWindowSettingsVO> floatingWindowSettings() {
-        return ApiResponse.success(systemManagementAppService.getFloatingWindowSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        return ApiResponse.success(systemManagementAppService.getPublicFloatingWindowSettings(), TraceContext.getRequestId());
     }
 
     @PutMapping("/floating-window-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.FloatingWindowSettingsVO> updateFloatingWindowSettings(@RequestBody SystemDTO.FloatingWindowSettingsRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.updateFloatingWindowSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateFloatingWindowSettings(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/security-settings")
     public ApiResponse<SystemVO.SecuritySettingsVO> securitySettings() {
-        return ApiResponse.success(systemManagementAppService.getSecuritySettings(), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:view");
+        return ApiResponse.success(systemManagementAppService.getSecuritySettings(currentUser), TraceContext.getRequestId());
     }
 
     @PutMapping("/security-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.SecuritySettingsVO> updateSecuritySettings(@Valid @RequestBody SystemDTO.SecuritySettingsRequest request) {
-        require("system:config:update");
+        CurrentUser currentUser = require("system:config:update");
         return ApiResponse.success(
-                systemManagementAppService.updateSecuritySettings(securityContextFacade.getCurrentUser(), request),
+                systemManagementAppService.updateSecuritySettings(currentUser, request),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/smtp-settings")
     public ApiResponse<SystemVO.SmtpSettingsVO> smtpSettings() {
-        require("system:config:view");
-        return ApiResponse.success(systemManagementAppService.getSmtpSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:view");
+        return ApiResponse.success(systemManagementAppService.getSmtpSettings(currentUser), TraceContext.getRequestId());
     }
 
     @PutMapping("/smtp-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.SmtpSettingsVO> updateSmtpSettings(@Valid @RequestBody SystemDTO.SmtpSettingsRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.updateSmtpSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateSmtpSettings(currentUser, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/smtp-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.SmtpSettingsVO> resetSmtpSettings() {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.resetSmtpSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.resetSmtpSettings(currentUser), TraceContext.getRequestId());
     }
 
     @PostMapping("/smtp-settings/test")
     @RepeatSubmit
     public ApiResponse<SystemVO.SmtpTestVO> testSmtpSettings(@Valid @RequestBody SystemDTO.SmtpTestRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.testSmtpSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.testSmtpSettings(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/notification/wechat-official-settings")
     public ApiResponse<SystemVO.WechatOfficialAccountSettingsVO> wechatOfficialAccountSettings() {
-        require("system:config:view");
-        return ApiResponse.success(systemManagementAppService.getWechatOfficialAccountSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:view");
+        return ApiResponse.success(systemManagementAppService.getWechatOfficialAccountSettings(currentUser), TraceContext.getRequestId());
     }
 
     @PutMapping("/notification/wechat-official-settings")
     @RepeatSubmit
     public ApiResponse<SystemVO.WechatOfficialAccountSettingsVO> updateWechatOfficialAccountSettings(@Valid @RequestBody SystemDTO.WechatOfficialAccountSettingsRequest request) {
-        require("system:config:update");
-        return ApiResponse.success(systemManagementAppService.updateWechatOfficialAccountSettings(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:config:update");
+        return ApiResponse.success(systemManagementAppService.updateWechatOfficialAccountSettings(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/audit/summary")
     public ApiResponse<Map<String, Integer>> auditSummary() {
-        require("audit:view");
-        PageResponse<SystemVO.AuditLogVO> login = systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), null, 1, 1);
-        PageResponse<SystemVO.AuditLogVO> operation = systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), null, 1, 1);
+        CurrentUser currentUser = require("audit:view");
+        PageResponse<SystemVO.AuditLogVO> login = systemManagementAppService.listLoginLogs(currentUser, null, 1, 1);
+        PageResponse<SystemVO.AuditLogVO> operation = systemManagementAppService.listOperationLogs(currentUser, null, 1, 1);
         return ApiResponse.success(
                 Map.of(
                         "loginCount", (int) login.getTotal(),
@@ -330,9 +336,9 @@ public class PlatformV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("audit:login:view");
+        CurrentUser currentUser = require("audit:login:view");
         return ApiResponse.success(
-                systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), username, loginType, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listLoginLogs(currentUser, username, loginType, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
@@ -345,9 +351,9 @@ public class PlatformV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("audit:operation:view");
+        CurrentUser currentUser = require("audit:operation:view");
         return ApiResponse.success(
-                systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), username, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listOperationLogs(currentUser, username, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
@@ -362,17 +368,18 @@ public class PlatformV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("audit:operation:view");
+        CurrentUser currentUser = require("audit:operation:view");
         return ApiResponse.success(
-                systemManagementAppService.listVerificationLogs(securityContextFacade.getCurrentUser(), channel, scene, resultStatus, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listVerificationLogs(currentUser, channel, scene, resultStatus, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/monitoring/dashboard/summary")
     public ApiResponse<SystemVO.DashboardSummaryVO> dashboardSummary() {
+        CurrentUser currentUser = requireTrustedCurrentUser();
         return ApiResponse.success(
-                systemManagementAppService.dashboardSummary(securityContextFacade.getCurrentUser()),
+                systemManagementAppService.dashboardSummary(currentUser),
                 TraceContext.getRequestId()
         );
     }
@@ -382,25 +389,25 @@ public class PlatformV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("system:online-user:view");
+        CurrentUser currentUser = require("system:online-user:view");
         return ApiResponse.success(
-                onlineSessionManagementAppService.listOnlineSessions(securityContextFacade.getCurrentUser(), pageNo, pageSize),
+                onlineSessionManagementAppService.listOnlineSessions(currentUser, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping(value = "/monitoring/online-users/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter onlineUserEvents() {
-        require("system:online-user:view");
-        return onlineSessionManagementAppService.stream(securityContextFacade.getCurrentUser());
+        CurrentUser currentUser = require("system:online-user:view");
+        return onlineSessionManagementAppService.stream(currentUser);
     }
 
     @DeleteMapping("/monitoring/online-users/{sessionId}")
     @RepeatSubmit
     public ApiResponse<Boolean> kickOnlineUser(@PathVariable("sessionId") String sessionId) {
-        require("system:online-user:kick");
+        CurrentUser currentUser = require("system:online-user:kick");
         return ApiResponse.success(
-                onlineSessionManagementAppService.kickSession(securityContextFacade.getCurrentUser(), sessionId),
+                onlineSessionManagementAppService.kickSession(currentUser, sessionId),
                 TraceContext.getRequestId()
         );
     }
@@ -408,15 +415,29 @@ public class PlatformV2Controller {
     @PatchMapping("/monitoring/online-users/{userId}/ban")
     @RepeatSubmit
     public ApiResponse<Boolean> banOnlineUser(@PathVariable("userId") Long userId) {
-        require("system:online-user:ban");
+        CurrentUser currentUser = require("system:online-user:ban");
         return ApiResponse.success(
-                onlineSessionManagementAppService.banUser(securityContextFacade.getCurrentUser(), userId),
+                onlineSessionManagementAppService.banUser(currentUser, userId),
                 TraceContext.getRequestId()
         );
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedCurrentUser() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        return requireTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedCurrentUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        return currentUser;
     }
 
     private <T> T recordPlatformConfigRead(Supplier<T> supplier) {

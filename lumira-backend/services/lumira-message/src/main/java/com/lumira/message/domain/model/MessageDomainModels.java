@@ -20,12 +20,18 @@ public final class MessageDomainModels {
             this.status = status == null ? "PUBLISHED" : status;
         }
 
-        public void markRead(Long userId) {
+        public void markRead(Long userId, String userUuid) {
+            if (userId == null || userId <= 0 || userUuid == null || userUuid.isBlank()) {
+                throw new IllegalArgumentException("Trusted user identity is required when marking a notice as read");
+            }
+            java.util.LinkedHashMap<String, Object> attributes = new java.util.LinkedHashMap<>();
+            attributes.put("userId", userId);
+            attributes.put("userUuid", userUuid.trim());
             registerEvent(StandardDomainEvent.of(
                     "MESSAGE_NOTICE_READ",
                     "message.notice",
                     String.valueOf(id().value()),
-                    Map.of("userId", userId)
+                    attributes
             ));
         }
 

@@ -7,6 +7,8 @@ import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
 import { performLogout } from '@/auth/sessionLifecycle';
+import { persistCurrentUser } from '@/auth/sessionState';
+import { tokenManager } from '@/auth/token';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeLocale } from '@/i18n/locale';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -21,7 +23,7 @@ import {
 } from '@/navigation/settingsNavigationRuntime';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
-import type { CurrentUser, SecuritySettings } from '@/types/api';
+import type { CurrentUser, SecuritySettings, SimulatedRoleSwitchResponse } from '@/types/api';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
 import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
@@ -278,13 +280,19 @@ export const TopActions = () => {
 
     setSwitchingRole(true);
     try {
-      const updatedUser = await request<CurrentUser>('/v1/auth/simulated-role', {
+      const response = await request<SimulatedRoleSwitchResponse>('/v1/auth/simulated-role', {
         method: 'PUT',
         data: { roleId: nextRoleId },
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
       });
+      tokenManager.setTokens({
+        accessToken: response.accessToken,
+        tokenType: response.tokenType,
+        expiresIn: response.expiresIn,
+      });
+      const updatedUser = persistCurrentUser(response.currentUser);
       setInitialState((prev) =>
         prev
           ? {

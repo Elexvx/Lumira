@@ -29,7 +29,7 @@ class AiNativeToolRuntimeVisibilityTest {
     void regularUserOnlySeesRbacAllowedReadOnlyLowTools() {
         DefaultAiNativeToolRuntimeService service = service(request -> AuthorizationDecision.deny("UNUSED", "unused"));
 
-        List<String> visible = service.listTools(new CurrentUser(100L, "reader", 1001L, "s1", 1, true, Set.of()))
+        List<String> visible = service.listTools(trusted(new CurrentUser(100L, "reader", 1001L, "s1", 1, true, Set.of())))
                 .stream()
                 .map(AiVO.ToolVO::getToolCode)
                 .toList();
@@ -80,6 +80,26 @@ class AiNativeToolRuntimeVisibilityTest {
                 .hasMessageContaining("execute denied");
     }
 
+    @Test
+    void executeReadOnlyToolUsesViewAuthorizationAction() {
+        DefaultAiNativeToolRuntimeService service = service(request -> {
+            if ("system.permission.snapshot".equals(request.toolCode())) {
+                assertThat(request.actionCode()).isEqualTo("view");
+                return AuthorizationDecision.allow("VIEW_GRANT", "view");
+            }
+            return AuthorizationDecision.deny("DENY", "deny");
+        });
+        AiDTO.ToolExecuteRequest executeRequest = new AiDTO.ToolExecuteRequest();
+        executeRequest.setEmployeeId(300L);
+        executeRequest.setToolCode("system.permission.snapshot");
+        executeRequest.setArguments(Map.of());
+        executeRequest.setConfirmed(true);
+
+        AiVO.ToolExecuteResultVO result = service.execute(currentUser(), executeRequest);
+
+        assertThat(result.getResultStatus()).isEqualTo("SUCCESS");
+    }
+
     private DefaultAiNativeToolRuntimeService service(Function<AuthorizationRequest, AuthorizationDecision> evaluator) {
         return new DefaultAiNativeToolRuntimeService(
                 new StubQueryOperations(),
@@ -89,6 +109,7 @@ class AiNativeToolRuntimeVisibilityTest {
                 new ObjectMapper(),
                 mock(AiPlatformQueryFacade.class),
                 mock(AiIamQueryFacade.class),
+                null,
                 null,
                 mock(FileInternalApi.class),
                 true
@@ -113,7 +134,7 @@ class AiNativeToolRuntimeVisibilityTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(
+        CurrentUser currentUser = new CurrentUser(
                 100L,
                 "admin",
                 1001L,
@@ -122,6 +143,13 @@ class AiNativeToolRuntimeVisibilityTest {
                 true,
                 Set.of("*")
         );
+        return trusted(currentUser);
+    }
+
+    private CurrentUser trusted(CurrentUser currentUser) {
+        currentUser.setUserUuid("user-uuid-" + currentUser.getUserId());
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
     }
 
     private static class StubQueryOperations extends MyBatisQueryOperations {

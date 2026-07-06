@@ -231,10 +231,13 @@ describe('getAppInitialState', () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
+        userUuid: 'user-ordinary',
         username: 'ordinary',
         nickname: 'Ordinary User',
-        permissions: ['dashboard:view'],
+        permissions: ['dashboard:view', 'aiadc:registration:view'],
         sessionId: 'session-ordinary',
+        sessionVersion: 1,
+        permissionsVersion: 'permissions-ordinary',
       },
       securitySettings: {},
       runtimeAppearanceSettings: {
@@ -253,7 +256,7 @@ describe('getAppInitialState', () => {
       { menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' },
       expect.objectContaining({
         menuCode: 'registration.root',
-        children: [expect.objectContaining({ menuCode: 'activity.registration' })],
+        children: expect.arrayContaining([expect.objectContaining({ menuCode: 'activity.registration' })]),
       }),
     ]);
     expect(initialState.availablePlugins).toEqual([
@@ -270,10 +273,13 @@ describe('getAppInitialState', () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
+        userUuid: 'user-registrar',
         username: 'registrar',
         nickname: 'Registrar',
         permissions: ['aiadc:registration:view'],
         sessionId: 'session-registrar',
+        sessionVersion: 1,
+        permissionsVersion: 'permissions-registrar',
       },
       securitySettings: {},
     });
@@ -299,10 +305,13 @@ describe('getAppInitialState', () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
+        userUuid: 'user-expert',
         username: 'expert',
         nickname: 'Expert',
         permissions: ['expert:view'],
         sessionId: 'session-expert',
+        sessionVersion: 1,
+        permissionsVersion: 'permissions-expert',
       },
       securitySettings: {},
       menuTree: [
@@ -328,10 +337,42 @@ describe('getAppInitialState', () => {
     expect(expertReviewRoot).toMatchObject({
       name: '专家与评审',
       path: '/expert-review',
-      component: 'redirect:/competitions/expert-apply',
+      component: 'redirect:/expert-review/reviews',
     });
     expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual(['expert.application']);
     expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'expert.application'))).toBe(false);
+  });
+
+  it('places workflow review tasks under the expert review group', async () => {
+    mocks.restoreSession.mockResolvedValue({
+      currentUser: {
+        userId: 10,
+        userUuid: 'user-reviewer',
+        username: 'reviewer',
+        nickname: 'Reviewer',
+        permissions: ['workflow:approve'],
+        sessionId: 'session-reviewer',
+        sessionVersion: 1,
+        permissionsVersion: 'permissions-reviewer',
+      },
+      securitySettings: {},
+      menuTree: [],
+    });
+
+    const { getAppInitialState } = await import('@/app.bootstrap');
+    const initialState = await getAppInitialState();
+
+    const expertReviewRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'expert.review.root');
+    expect(expertReviewRoot).toMatchObject({
+      path: '/expert-review',
+      component: 'redirect:/expert-review/reviews',
+    });
+    expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual(['expert.review.tasks']);
+    expect(expertReviewRoot?.children?.[0]).toMatchObject({
+      name: '评审列表',
+      path: '/expert-review/reviews',
+      component: '@/pages/workflow/WorkflowTasksPage',
+    });
   });
 
   it('falls back to authenticated v1 platform settings when v2 runtime appearance endpoint is unavailable', async () => {

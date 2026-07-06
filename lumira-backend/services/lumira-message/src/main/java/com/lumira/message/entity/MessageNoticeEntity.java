@@ -14,6 +14,7 @@ public class MessageNoticeEntity {
     private String noticeType;
     private String targetScope;
     private Long targetUserId;
+    private String targetUserUuid;
     private Long targetRoleId;
     private String title;
     private String content;
@@ -21,8 +22,10 @@ public class MessageNoticeEntity {
     private String publishStatus;
     private LocalDateTime publishedAt;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
 
@@ -34,6 +37,8 @@ public class MessageNoticeEntity {
     public void setTargetScope(String targetScope) { this.targetScope = targetScope; }
     public Long getTargetUserId() { return targetUserId; }
     public void setTargetUserId(Long targetUserId) { this.targetUserId = targetUserId; }
+    public String getTargetUserUuid() { return targetUserUuid; }
+    public void setTargetUserUuid(String targetUserUuid) { this.targetUserUuid = targetUserUuid; }
     public Long getTargetRoleId() { return targetRoleId; }
     public void setTargetRoleId(Long targetRoleId) { this.targetRoleId = targetRoleId; }
     public String getTitle() { return title; }
@@ -48,10 +53,14 @@ public class MessageNoticeEntity {
     public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getDeleted() { return deleted; }

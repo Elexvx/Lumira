@@ -12,6 +12,7 @@ public final class MessageVO {
         private String messageType;
         private String targetScope;
         private Long targetUserId;
+        private String targetUserUuid;
         private String targetUserName;
         private Long targetRoleId;
         private String targetRoleName;
@@ -21,7 +22,9 @@ public final class MessageVO {
         private String publishStatus;
         private LocalDateTime publishedAt;
         private Long createdBy;
+        private String createdByUuid;
         private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private Boolean readFlag;
@@ -57,6 +60,14 @@ public final class MessageVO {
 
         public void setTargetUserId(Long targetUserId) {
             this.targetUserId = targetUserId;
+        }
+
+        public String getTargetUserUuid() {
+            return targetUserUuid;
+        }
+
+        public void setTargetUserUuid(String targetUserUuid) {
+            this.targetUserUuid = targetUserUuid;
         }
 
         public String getTargetUserName() {
@@ -131,12 +142,28 @@ public final class MessageVO {
             this.createdBy = createdBy;
         }
 
+        public String getCreatedByUuid() {
+            return createdByUuid;
+        }
+
+        public void setCreatedByUuid(String createdByUuid) {
+            this.createdByUuid = createdByUuid;
+        }
+
         public Long getUpdatedBy() {
             return updatedBy;
         }
 
         public void setUpdatedBy(Long updatedBy) {
             this.updatedBy = updatedBy;
+        }
+
+        public String getUpdatedByUuid() {
+            return updatedByUuid;
+        }
+
+        public void setUpdatedByUuid(String updatedByUuid) {
+            this.updatedByUuid = updatedByUuid;
         }
 
         public LocalDateTime getCreatedAt() {
@@ -310,6 +337,7 @@ public final class MessageVO {
         private String channel;
         private String targetScope;
         private Long targetUserId;
+        private String targetUserUuid;
         private String targetUserName;
         private String targetEmail;
         private String title;
@@ -318,6 +346,9 @@ public final class MessageVO {
         private String errorMessage;
         private LocalDateTime sentAt;
         private Long createdBy;
+        private String createdByUuid;
+        private Long updatedBy;
+        private String updatedByUuid;
         private LocalDateTime createdAt;
 
         public Long getId() { return id; }
@@ -330,6 +361,8 @@ public final class MessageVO {
         public void setTargetScope(String targetScope) { this.targetScope = targetScope; }
         public Long getTargetUserId() { return targetUserId; }
         public void setTargetUserId(Long targetUserId) { this.targetUserId = targetUserId; }
+        public String getTargetUserUuid() { return targetUserUuid; }
+        public void setTargetUserUuid(String targetUserUuid) { this.targetUserUuid = targetUserUuid; }
         public String getTargetUserName() { return targetUserName; }
         public void setTargetUserName(String targetUserName) { this.targetUserName = targetUserName; }
         public String getTargetEmail() { return targetEmail; }
@@ -346,6 +379,12 @@ public final class MessageVO {
         public void setSentAt(LocalDateTime sentAt) { this.sentAt = sentAt; }
         public Long getCreatedBy() { return createdBy; }
         public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public String getCreatedByUuid() { return createdByUuid; }
+        public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
+        public Long getUpdatedBy() { return updatedBy; }
+        public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+        public String getUpdatedByUuid() { return updatedByUuid; }
+        public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     }

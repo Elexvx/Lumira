@@ -54,9 +54,12 @@ class MessageSessionHandshakeInterceptorTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         Map<String, Object> attributes = new HashMap<>();
         CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setSimulatedRoleId(9L);
+        currentUser.setPermissionsVersion("permissions-1");
         CurrentUserDTO snapshot = snapshot();
-        when(ticketService.consume("ticket-1")).thenReturn(new MessageWebSocketTicketService.TicketPayload("session-1", 1001L, 3));
-        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, 3))
+        when(ticketService.consume("ticket-1")).thenReturn(new MessageWebSocketTicketService.TicketPayload("session-1", 1001L, "user-uuid-1001", 9L, 3, "v1"));
+        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", 9L, 3, "v1"))
                 .thenReturn(new MessageSessionAuthenticationService.AuthenticatedAccess(currentUser, snapshot));
 
         boolean accepted = interceptor.beforeHandshake(new ServletServerHttpRequest(request), new ServletServerHttpResponse(response), mock(WebSocketHandler.class), attributes);
@@ -69,6 +72,7 @@ class MessageSessionHandshakeInterceptorTest {
     private CurrentUserDTO snapshot() {
         return new CurrentUserDTO(
                 1001L,
+                "user-uuid-1001",
                 "alice",
                 "Alice",
                 "Alice",
@@ -81,6 +85,8 @@ class MessageSessionHandshakeInterceptorTest {
                 null,
                 null,
                 "zh-CN",
+                null,
+                List.of(),
                 "session-1",
                 "v1",
                 3,

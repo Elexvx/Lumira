@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.user.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
@@ -9,7 +11,9 @@ import com.lumira.common.security.data.DataPermissionRule;
 import com.lumira.common.security.data.DataPermissionResolver;
 import com.lumira.common.security.data.DataScopeType;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserAccount;
 import com.lumira.saas.modules.iam.service.IamUserService;
@@ -20,6 +24,7 @@ import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -49,6 +54,7 @@ public class SystemUserManagementAppService {
 
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
@@ -58,6 +64,8 @@ public class SystemUserManagementAppService {
     private final UserDomainService userDomainService;
     private final IamUserService iamUserService;
     private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final OperationAuditService operationAuditService;
     private final PasswordEncoder passwordEncoder;
@@ -73,10 +81,39 @@ public class SystemUserManagementAppService {
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService
     ) {
+        this(
+                jdbcTemplate,
+                userDomainService,
+                iamUserService,
+                permissionSnapshotService,
+                null,
+                null,
+                onlineSessionManagementAppService,
+                operationAuditService,
+                passwordEncoder,
+                passwordPolicyService
+        );
+    }
+
+    @Autowired
+    public SystemUserManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            IamUserService iamUserService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            OperationAuditService operationAuditService,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userDomainService = userDomainService;
         this.iamUserService = iamUserService;
         this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.operationAuditService = operationAuditService;
         this.passwordEncoder = passwordEncoder;
@@ -250,24 +287,25 @@ public class SystemUserManagementAppService {
         }
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
-        CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId), BLOCKING_IO_EXECUTOR);
+        String userUuid = user.getUserUuid();
+        CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId, userUuid), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId, userUuid), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId, userUuid), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId, userUuid), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<UserDetailVO.UserIdentityVO>> identitiesFuture = CompletableFuture.supplyAsync(
-                () -> iamUserService.listIdentities(userId).stream()
+                () -> iamUserService.listIdentities(userId, userUuid).stream()
                         .map(identity -> toUserIdentityVO(identity, canViewSensitive))
                         .toList(),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<List<UserDetailVO.UserDeviceVO>> devicesFuture = CompletableFuture.supplyAsync(
-                () -> iamUserService.listRecentDevices(userId, 10).stream()
+                () -> iamUserService.listRecentDevices(userId, userUuid, 10).stream()
                         .map(device -> toUserDeviceVO(device, canViewSensitive))
                         .toList(),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<UserDetailVO.UserSecuritySettingVO> securitySettingFuture = CompletableFuture.supplyAsync(
-                () -> iamUserService.findSecuritySetting(userId)
+                () -> iamUserService.findSecuritySetting(userId, userUuid)
                         .map(this::toUserSecuritySettingVO)
                         .orElse(null),
                 BLOCKING_IO_EXECUTOR
@@ -287,133 +325,177 @@ public class SystemUserManagementAppService {
     @Transactional
     public SystemVO.UserDetailVO createUser(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
         assertAuthenticated(currentUser);
-        Long userId = insertOrUpdateUser(null, request, currentUser.getUserId());
-        replaceUserRoles(userId, request.getRoleIds(), currentUser.getUserId());
-        replaceUserDepartments(userId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), true);
+        requirePermission(currentUser, "system:user:create");
+        validateUserUpsertRequest(request);
+        validateRoleAssignment(currentUser, request.getRoleIds());
+        Long userId = insertOrUpdateUser(null, null, request, currentUser.getUserId(), currentUser.getUserUuid());
+        String userUuid = requireUserUuid(userId);
+        replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
+        replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), true);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "鍒涘缓鐢ㄦ埛: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
     public SystemVO.UserDetailVO updateUser(CurrentUser currentUser, Long userId, SystemDTO.UserUpsertRequest request) {
         assertAuthenticated(currentUser);
+        validateUserUpsertRequest(request);
+        requirePermission(currentUser, "system:user:update");
+        validateRoleAssignment(currentUser, request.getRoleIds());
         requireAccessibleUserRecord(currentUser, userId);
-        insertOrUpdateUser(userId, request, currentUser.getUserId());
-        replaceUserRoles(userId, request.getRoleIds(), currentUser.getUserId());
-        replaceUserDepartments(userId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
+        String userUuid = requireUserUuid(userId);
+        insertOrUpdateUser(userId, userUuid, request, currentUser.getUserId(), currentUser.getUserUuid());
+        replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
+        replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "鏇存柊鐢ㄦ埛: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
         assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:user:update");
         requireAccessibleUserRecord(currentUser, userId);
         String normalizedStatus = normalizeUserStatus(status);
         if (isProtectedAdminAccount(userId, null) && "DISABLED".equals(normalizedStatus)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
+            throw new BizException(ErrorCode.FORBIDDEN, "Default admin account cannot be disabled");
         }
-        jdbcTemplate.update(
-                "update sys_user set status = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+        String userUuid = requireUserUuid(userId);
+        int updated = jdbcTemplate.update(
+                "update sys_user set status = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
                 normalizedStatus,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                userId
+                userId,
+                userUuid
         );
-        iamUserService.changeUserStatus(userId, normalizedStatus);
-        if ("DISABLED".equals(normalizedStatus)) {
-            onlineSessionManagementAppService.revokeUserSessions(userId);
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "User changed, please retry");
         }
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
+        iamUserService.changeUserStatus(userId, userUuid, normalizedStatus);
+        if ("DISABLED".equals(normalizedStatus)) {
+            onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
+        }
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "鏇存柊鐢ㄦ埛鐘舵€? " + userId + " -> " + normalizedStatus);
         return true;
     }
 
     @Transactional
     public boolean deleteUser(CurrentUser currentUser, Long userId) {
         assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:user:delete");
         if (currentUser.getUserId().equals(userId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不能删除当前登录用户");
+            throw new BizException(ErrorCode.FORBIDDEN, "涓嶈兘鍒犻櫎褰撳墠鐧诲綍鐢ㄦ埛");
         }
         if (isProtectedAdminAccount(userId, null)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被删除");
+            throw new BizException(ErrorCode.FORBIDDEN, "Default admin account cannot be deleted");
         }
         requireAccessibleUserRecord(currentUser, userId);
         SystemVO.UserVO user = queryUser(userId);
+        String userUuid = user.getUserUuid();
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "鐢ㄦ埛韬唤 UUID 缂哄け");
+        }
+        userUuid = userUuid.trim();
         LocalDateTime now = LocalDateTime.now();
 
-        jdbcTemplate.update(
-                "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_user_department set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_user_passkey_credential set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_verification_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                userId
-        );
-        jdbcTemplate.update(
-                "update sys_verification_challenge set consumed_flag = 1, deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                userId
-        );
-
-        jdbcTemplate.update(
+        int deleted = jdbcTemplate.update(
                 """
                         update sys_user
                         set username = concat(left(username, 32), '#deleted#', id),
                             status = 'DISABLED',
                             deleted = 1,
                             updated_by = ?,
+                            updated_by_uuid = ?,
                             updated_at = ?
-                        where id = ? and deleted = 0
+                        where id = ? and uuid = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 now,
-                userId
+                userId,
+                userUuid
+        );
+        if (deleted <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "User changed, please retry");
+        }
+        jdbcTemplate.update(
+                "update sys_user_role set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ? where user_id = ? and user_uuid = ? and deleted = 0",
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                now,
+                userId,
+                userUuid
         );
         jdbcTemplate.update(
-                "update sys_user_wechat_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
+                "update sys_user_department set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ? where user_id = ? and user_uuid = ? and deleted = 0",
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 now,
-                userId
+                userId,
+                userUuid
         );
-        iamUserService.softDeleteUser(userId);
+        jdbcTemplate.update(
+                "update sys_user_passkey_credential set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ? where user_id = ? and user_uuid = ? and deleted = 0",
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                now,
+                userId,
+                userUuid
+        );
+        jdbcTemplate.update(
+                "update sys_verification_binding set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ? where user_id = ? and user_uuid = ? and deleted = 0",
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                now,
+                userId,
+                userUuid
+        );
+        jdbcTemplate.update(
+                "update sys_verification_challenge set consumed_flag = 1, deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ? where user_id = ? and user_uuid = ? and deleted = 0",
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                now,
+                userId,
+                userUuid
+        );
+        jdbcTemplate.update(
+                "update sys_user_wechat_binding set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ? where user_id = ? and user_uuid = ? and deleted = 0",
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                now,
+                userId,
+                userUuid
+        );
+        iamUserService.softDeleteUser(userId, userUuid);
 
-        onlineSessionManagementAppService.revokeUserSessions(userId);
+        onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "鍒犻櫎鐢ㄦ埛: " + user.getUsername());
         return true;
     }
 
     public List<SystemVO.RoleVO> listUserRoles(CurrentUser currentUser, Long userId) {
+        assertAuthenticated(currentUser);
+        requireAccessibleUserRecord(currentUser, userId);
+        String userUuid = requireUserUuid(userId);
         return jdbcTemplate.query(
                 """
                         select r.id, r.role_code as roleCode, r.role_name as roleName,
                                r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_user_role ur
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         order by r.id desc
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.RoleVO.class),
-                userId
+                userId,
+                userUuid
         );
     }
 
@@ -434,33 +516,33 @@ public class SystemUserManagementAppService {
                 userId
         );
         if (user == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "User does not exist");
         }
         return user;
     }
 
-    private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId) {
+    private Long insertOrUpdateUser(Long userId, String userUuid, SystemDTO.UserUpsertRequest request, Long operatorId, String operatorUuid) {
         String username = normalizeUsername(request.getUsername());
         request.setUsername(username);
         String normalizedStatus = normalizeUserStatus(request.getStatus());
         if (userId != null && isProtectedAdminAccount(userId, username) && "DISABLED".equals(normalizedStatus)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
+            throw new BizException(ErrorCode.FORBIDDEN, "Default admin account cannot be disabled");
         }
         ensureUsernameAvailable(username, userId);
         if (userId == null) {
             if (!StringUtils.hasText(request.getPassword())) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "初始密码不能为空");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "鍒濆瀵嗙爜涓嶈兘涓虹┖");
             }
             String password = request.getPassword();
             passwordPolicyService.validatePassword(password);
             try {
-                jdbcTemplate.update(
+                int inserted = jdbcTemplate.update(
                         """
                                 insert into sys_user (
                                     uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
                                     available_time, id_card_number, status,
-                                    created_by, updated_by, deleted
-                                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                                    created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                                 """,
                         UserUidGenerator.nextNumericUid(),
                         request.getUsername(),
@@ -477,26 +559,29 @@ public class SystemUserManagementAppService {
                         normalizeNullableText(request.getIdCardNumber()),
                         normalizedStatus,
                         operatorId,
-                        operatorId
+                        operatorUuid,
+                        operatorId,
+                        operatorUuid
                 );
+                requireRelationshipWrite(inserted, "User changed, please retry");
             } catch (DuplicateKeyException exception) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Username already exists");
             }
             Long createdUserId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
             userDomainService.findById(createdUserId).ifPresent(user -> {
                 iamUserService.createUserWithIdentity(user, username, "ADMIN_CREATE");
-                iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
+                iamUserService.recordUserRegistered(user.getId(), user.getUuid(), "ADMIN_CREATE", null, null);
             });
             return createdUserId;
         }
         try {
-            jdbcTemplate.update(
+            int updated = jdbcTemplate.update(
                     """
                             update sys_user
                             set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?,
                                 birth_month = ?, gender = ?, region = ?, available_time = ?, id_card_number = ?, status = ?,
-                                updated_by = ?, updated_at = ?
-                            where id = ? and deleted = 0
+                                updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where id = ? and uuid = ? and deleted = 0
                             """,
                     request.getUsername(),
                     normalizeNullableText(request.getMobile()),
@@ -511,23 +596,29 @@ public class SystemUserManagementAppService {
                     normalizeNullableText(request.getIdCardNumber()),
                     normalizedStatus,
                     operatorId,
+                    operatorUuid,
                     LocalDateTime.now(),
-                    userId
+                    userId,
+                    userUuid
             );
+            requireRelationshipWrite(updated, "User changed, please retry");
         } catch (DuplicateKeyException exception) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Username already exists");
         }
         if (StringUtils.hasText(request.getPassword())) {
             passwordPolicyService.validatePassword(request.getPassword());
             String encodedPassword = passwordEncoder.encode(request.getPassword());
-            jdbcTemplate.update(
-                    "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+            int passwordUpdated = jdbcTemplate.update(
+                    "update sys_user set password_hash = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
                     encodedPassword,
                     operatorId,
+                    operatorUuid,
                     LocalDateTime.now(),
-                    userId
+                    userId,
+                    userUuid
             );
-            iamUserService.upsertPasswordCredential(userId, encodedPassword);
+            requireRelationshipWrite(passwordUpdated, "User changed, please retry");
+            iamUserService.upsertPasswordCredential(userId, userUuid, encodedPassword);
         }
         userDomainService.findById(userId).ifPresent(iamUserService::updateProfile);
         return userId;
@@ -536,10 +627,10 @@ public class SystemUserManagementAppService {
     private String normalizeUsername(String username) {
         String normalized = username == null ? "" : username.trim();
         if (!StringUtils.hasText(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Username must not be blank");
         }
         if (!USERNAME_PATTERN.matcher(normalized).matches()) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名只能包含英文字母、数字、下划线和连字符");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛鍚嶅彧鑳藉寘鍚嫳鏂囧瓧姣嶃€佹暟瀛椼€佷笅鍒掔嚎鍜岃繛瀛楃");
         }
         return normalized;
     }
@@ -553,7 +644,7 @@ public class SystemUserManagementAppService {
                 username
         );
         if (existingUserId != null && !existingUserId.equals(currentUserId)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Username already exists");
         }
         Long existingIdentityUserId = queryNullableLong(
                 """
@@ -567,63 +658,104 @@ public class SystemUserManagementAppService {
                 iamUserService.normalizeIdentifier(IamUserService.IDENTITY_USERNAME, username)
         );
         if (existingIdentityUserId != null && !existingIdentityUserId.equals(currentUserId)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户名已存在，请更换后重试", "用户名已存在，请更换后重试");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Username already exists");
         }
     }
 
-    private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId) {
-        jdbcTemplate.update(
-                "delete from sys_user_role where user_id = ?",
-                userId
-        );
+    private void replaceUserRoles(Long userId, String userUuid, List<Long> roleIds, Long operatorId, String operatorUuid) {
         if (CollectionUtils.isEmpty(roleIds)) {
+            jdbcTemplate.update(
+                    """
+                            update sys_user_role
+                            set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where user_id = ? and user_uuid = ? and deleted = 0
+                            """,
+                    operatorId,
+                    operatorUuid,
+                    LocalDateTime.now(),
+                    userId,
+                    userUuid
+            );
             return;
         }
         if (roleIds.stream().anyMatch(roleId -> roleId == null || roleId <= 0)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户角色ID必须为正整数");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛瑙掕壊ID蹇呴』涓烘鏁存暟");
         }
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
         Long existingRoleCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
+                "select count(1) from sys_role where deleted = 0 and status = 'ENABLED' and id in (" + placeholders(distinctRoleIds.size()) + ")",
                 Long.class,
                 distinctRoleIds.toArray()
         );
         if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist or is disabled");
         }
+        jdbcTemplate.update(
+                """
+                        update sys_user_role
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where user_id = ? and user_uuid = ? and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                LocalDateTime.now(),
+                userId,
+                userUuid
+        );
         for (Long roleId : distinctRoleIds) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
-                            insert into sys_user_role (user_id, role_id, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, 0)
+                            insert into sys_user_role (user_id, user_uuid, role_id, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+                            select ?, ?, r.id, ?, ?, ?, ?, 0
+                            from sys_role r
+                            where r.id = ? and r.status = 'ENABLED' and r.deleted = 0
+                            on duplicate key update
+                                deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then 0 else deleted end,
+                                updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then values(updated_by) else updated_by end,
+                                updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then values(updated_by_uuid) else updated_by_uuid end,
+                                updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then current_timestamp else updated_at end
                             """,
                     userId,
-                    roleId,
+                    userUuid,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid,
+                    roleId
             );
+            requireRelationshipWrite(inserted, "Role changed, please retry");
         }
     }
 
     private void replaceUserDepartments(
             Long userId,
+            String userUuid,
             List<Long> deptIds,
             Long primaryDeptId,
             Long operatorId,
+            String operatorUuid,
             boolean createMode
     ) {
         if (deptIds == null && !createMode) {
             return;
         }
         jdbcTemplate.update(
-                "delete from sys_user_department where user_id = ?",
-                userId
+                """
+                        update sys_user_department
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where user_id = ? and user_uuid = ? and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                LocalDateTime.now(),
+                userId,
+                userUuid
         );
         if (CollectionUtils.isEmpty(deptIds)) {
             return;
         }
         if (deptIds.stream().anyMatch(deptId -> deptId == null || deptId <= 0)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户部门ID必须为正整数");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛閮ㄩ棬ID蹇呴』涓烘鏁存暟");
         }
         List<Long> distinctDeptIds = new ArrayList<>(new LinkedHashSet<>(deptIds));
         Long existingDeptCount = jdbcTemplate.queryForObject(
@@ -632,23 +764,41 @@ public class SystemUserManagementAppService {
                 distinctDeptIds.toArray()
         );
         if (existingDeptCount == null || existingDeptCount != distinctDeptIds.size()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "部门不存在或已停用");
+            throw new BizException(ErrorCode.NOT_FOUND, "Department does not exist or is disabled");
         }
         Long effectivePrimaryDeptId = primaryDeptId != null && distinctDeptIds.contains(primaryDeptId)
                 ? primaryDeptId
                 : distinctDeptIds.get(0);
         for (Long deptId : distinctDeptIds) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
-                            insert into sys_user_department (user_id, dept_id, primary_flag, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, 0)
+                            insert into sys_user_department (user_id, user_uuid, dept_id, primary_flag, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+                            select ?, ?, d.id, ?, ?, ?, ?, ?, 0
+                            from sys_department d
+                            where d.id = ? and d.status = 'ENABLED' and d.deleted = 0
+                            on duplicate key update
+                                primary_flag = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then values(primary_flag) else primary_flag end,
+                                deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then 0 else deleted end,
+                                updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then values(updated_by) else updated_by end,
+                                updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then values(updated_by_uuid) else updated_by_uuid end,
+                                updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then current_timestamp else updated_at end
                             """,
                     userId,
-                    deptId,
+                    userUuid,
                     deptId.equals(effectivePrimaryDeptId) ? 1 : 0,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid,
+                    deptId
             );
+            requireRelationshipWrite(inserted, "Department changed, please retry");
+        }
+    }
+
+    private void requireRelationshipWrite(int updated, String message) {
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, message);
         }
     }
 
@@ -692,32 +842,53 @@ public class SystemUserManagementAppService {
         ).stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
     }
 
+    private String requireUserUuid(Long userId) {
+        String userUuid;
+        try {
+            userUuid = jdbcTemplate.queryForObject(
+                    "select uuid from sys_user where id = ? and deleted = 0 limit 1",
+                    String.class,
+                    userId
+            );
+        } catch (EmptyResultDataAccessException exception) {
+            userUuid = null;
+        }
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "鐢ㄦ埛韬唤 UUID 缂哄け");
+        }
+        return userUuid.trim();
+    }
+
     private void decorateIamUserDetail(SystemVO.UserDetailVO detail, Long userId, boolean canViewSensitive) {
-        detail.setIdentities(iamUserService.listIdentities(userId).stream()
+        String userUuid = requireUserUuid(userId);
+        detail.setIdentities(iamUserService.listIdentities(userId, userUuid).stream()
                 .map(identity -> toUserIdentityVO(identity, canViewSensitive))
                 .toList());
-        detail.setRecentDevices(iamUserService.listRecentDevices(userId, 10).stream()
+        detail.setRecentDevices(iamUserService.listRecentDevices(userId, userUuid, 10).stream()
                 .map(device -> toUserDeviceVO(device, canViewSensitive))
                 .toList());
-        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId)
+        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId, userUuid)
                 .map(this::toUserSecuritySettingVO)
                 .orElse(null));
     }
 
-    private List<Long> listUserRoleIds(Long userId) {
+    private List<Long> listUserRoleIds(Long userId, String userUuid) {
         return jdbcTemplate.queryForList(
                 """
                         select ur.role_id
                         from sys_user_role ur
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         order by ur.role_id asc
                         """,
                 Long.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
-    private List<Long> listUserDeptIds(Long userId) {
+    private List<Long> listUserDeptIds(Long userId, String userUuid) {
         return jdbcTemplate.queryForList(
                 """
                         select ud.dept_id
@@ -726,29 +897,34 @@ public class SystemUserManagementAppService {
                           on d.id = ud.dept_id
                          and d.deleted = 0
                         where ud.user_id = ?
+                          and ud.user_uuid = ?
                           and ud.deleted = 0
                         order by ud.primary_flag desc, ud.dept_id asc
                         """,
                 Long.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
-    private List<String> listUserRoleNames(Long userId) {
+    private List<String> listUserRoleNames(Long userId, String userUuid) {
         return jdbcTemplate.queryForList(
                 """
                         select r.role_name
                         from sys_user_role ur
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         order by r.id asc
                         """,
                 String.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
-    private List<String> listUserDeptNames(Long userId) {
+    private List<String> listUserDeptNames(Long userId, String userUuid) {
         return jdbcTemplate.queryForList(
                 """
                         select d.dept_name
@@ -757,11 +933,13 @@ public class SystemUserManagementAppService {
                           on d.id = ud.dept_id
                          and d.deleted = 0
                         where ud.user_id = ?
+                          and ud.user_uuid = ?
                           and ud.deleted = 0
                         order by ud.primary_flag desc, d.sort_no asc, d.id asc
                         """,
                 String.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
@@ -773,8 +951,15 @@ public class SystemUserManagementAppService {
                 """
                         select ur.user_id as userId, r.role_name as roleName
                         from sys_user_role ur
+                        join sys_user u
+                          on u.id = ur.user_id
+                         and u.uuid = ur.user_uuid
+                         and u.deleted = 0
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id in (%s) and ur.deleted = 0
+                        where ur.user_id in (%s)
+                          and ur.user_uuid is not null
+                          and trim(ur.user_uuid) <> ''
+                          and ur.deleted = 0
                         order by ur.user_id asc, r.id asc
                         """.formatted(placeholders),
                 rs -> {
@@ -797,10 +982,16 @@ public class SystemUserManagementAppService {
                 """
                         select ud.user_id as userId, d.dept_name as deptName
                         from sys_user_department ud
+                        join sys_user u
+                          on u.id = ud.user_id
+                         and u.uuid = ud.user_uuid
+                         and u.deleted = 0
                         join sys_department d
                           on d.id = ud.dept_id
                          and d.deleted = 0
                         where ud.user_id in (%s)
+                          and ud.user_uuid is not null
+                          and trim(ud.user_uuid) <> ''
                           and ud.deleted = 0
                         order by ud.user_id asc, ud.primary_flag desc, d.sort_no asc, d.id asc
                         """.formatted(placeholders),
@@ -957,11 +1148,11 @@ public class SystemUserManagementAppService {
 
     private String normalizeUserStatus(String status) {
         if (!StringUtils.hasText(status)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户状态不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User status must not be blank");
         }
         String normalized = status.trim().toUpperCase(Locale.ROOT);
         if (!Set.of("ENABLED", "DISABLED").contains(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户状态只能是 ENABLED 或 DISABLED");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛鐘舵€佸彧鑳芥槸 ENABLED 鎴?DISABLED");
         }
         return normalized;
     }
@@ -983,7 +1174,7 @@ public class SystemUserManagementAppService {
             }
             return LocalDateTime.parse(normalized.replace(" ", "T"));
         } catch (RuntimeException exception) {
-            throw new BizException(ErrorCode.UNPROCESSABLE_ENTITY, "时间参数格式不正确，请使用 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss");
+            throw new BizException(ErrorCode.UNPROCESSABLE_ENTITY, "鏃堕棿鍙傛暟鏍煎紡涓嶆纭紝璇蜂娇鐢?yyyy-MM-dd 鎴?yyyy-MM-dd HH:mm:ss");
         }
     }
 
@@ -1069,14 +1260,155 @@ public class SystemUserManagementAppService {
     }
 
     private void assertAuthenticated(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            currentUser.setUserId(userSnapshot.userId());
+            currentUser.setUserUuid(userSnapshot.userUuid().trim());
+            currentUser.setUsername(userSnapshot.username());
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            return;
+        }
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
+    private void validateUserUpsertRequest(SystemDTO.UserUpsertRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User request is required");
+        }
+    }
+
+    private void requirePermission(CurrentUser currentUser, String permission) {
+        Set<String> permissions = currentUser.getPermissions();
+        if (permissions == null || (!permissions.contains("*") && !permissions.contains(permission))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Permission denied");
+        }
+    }
+
+    private void validateRoleAssignment(CurrentUser currentUser, List<Long> roleIds) {
+        if (CollectionUtils.isEmpty(roleIds)) {
+            return;
+        }
+        if (roleIds.stream().anyMatch(roleId -> roleId == null || roleId <= 0)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Role id must be positive");
+        }
+        List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
+        Long existingRoleCount = jdbcTemplate.queryForObject(
+                "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
+                Long.class,
+                distinctRoleIds.toArray()
+        );
+        if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Role not found");
+        }
+        if (currentUser.getPermissions() != null && currentUser.getPermissions().contains("*")) {
+            return;
+        }
+        Long privilegedPermissionCount = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from sys_role_permission rp
+                        join sys_permission p on p.id = rp.permission_id and p.deleted = 0
+                        where rp.deleted = 0
+                          and rp.role_id in (%s)
+                          and p.perm_code = '*'
+                        """.formatted(placeholders(distinctRoleIds.size())),
+                Long.class,
+                distinctRoleIds.toArray()
+        );
+        if (privilegedPermissionCount != null && privilegedPermissionCount > 0) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Privileged role assignment denied");
         }
     }
 
     private void requireAccessibleUserRecord(CurrentUser currentUser, Long userId) {
         if (!canAccessUserRecord(currentUser, userId)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "User does not exist");
         }
     }
 
@@ -1161,7 +1493,13 @@ public class SystemUserManagementAppService {
             return permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId());
         }
         if (!org.springframework.util.StringUtils.hasText(currentUser.getPermissionsVersion())) {
-            return permissionSnapshotService.loadSnapshot(currentUser.getUserId());
+            if (!org.springframework.util.StringUtils.hasText(currentUser.getUserUuid())) {
+                return PermissionSnapshotService.PermissionSnapshot.empty();
+            }
+            return permissionSnapshotService.loadSnapshot(currentUser.getUserId(), currentUser.getUserUuid());
+        }
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return PermissionSnapshotService.PermissionSnapshot.empty();
         }
         return new PermissionSnapshotService.PermissionSnapshot(
                 currentUser.getPermissionsVersion(),

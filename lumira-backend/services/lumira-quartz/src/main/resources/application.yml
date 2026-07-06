@@ -48,10 +48,7 @@ saas:
     file-service-base-url: ${SAAS_JOB_FILE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
     payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
     plugin-service-base-url: ${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
-    internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
     internal:
-      system-token: ${SAAS_INTERNAL_SYSTEM_TOKEN:}
-      auth-token: ${SAAS_INTERNAL_AUTH_TOKEN:}
       file-token: ${SAAS_INTERNAL_FILE_TOKEN:}
       message-token: ${SAAS_INTERNAL_MESSAGE_TOKEN:}
       payment-token: ${SAAS_INTERNAL_PAYMENT_TOKEN:}

@@ -32,16 +32,17 @@ public class JdbcTeamInviteRepository implements TeamInviteRepository {
             LocalDateTime expiresAt,
             Integer maxUses,
             boolean needApproval,
-            Long createdBy
+            Long createdBy,
+            String createdByUuid
     ) {
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into team_invite (
                             team_id, invite_code, invite_token_hash, invite_type,
                             role_on_join, expires_at, max_uses, used_count, need_approval,
-                            status, created_by, created_at, updated_at, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, 0, ?, 'ACTIVE', ?, ?, ?, 0)
+                            status, created_by, created_by_uuid, created_at, updated_by, updated_by_uuid, updated_at, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0, ?, 'ACTIVE', ?, ?, ?, ?, ?, ?, 0)
                         """,
                 teamId,
                 inviteCode,
@@ -52,9 +53,13 @@ public class JdbcTeamInviteRepository implements TeamInviteRepository {
                 maxUses,
                 needApproval ? 1 : 0,
                 createdBy,
+                createdByUuid,
                 now,
+                createdBy,
+                createdByUuid,
                 now
         );
+        requireSingleWrite(inserted, "Team invite changed, please retry");
         return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
     }
 
@@ -116,42 +121,118 @@ public class JdbcTeamInviteRepository implements TeamInviteRepository {
     }
 
     @Override
-    public boolean consumeInviteQuota(TeamVO.Invite invite) {
+    public boolean consumeInviteQuota(TeamVO.Invite invite, Long updatedBy, String updatedByUuid) {
+        if (invite == null || invite.getId() == null || invite.getId() <= 0 || invite.getTeamId() == null || invite.getTeamId() <= 0) {
+            throw new IllegalArgumentException("Invite id and team id are required");
+        }
         int updated = jdbcTemplate.update(
                 """
                         update team_invite
-                        set used_count = used_count + 1, updated_at = ?
+                        set used_count = used_count + 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ?
+                          and team_id = ?
+                          and invite_code = ?
+                          and invite_type = ?
+                          and role_on_join = ?
+                          and need_approval = ?
                           and status = 'ACTIVE'
                           and deleted = 0
                           and (expires_at is null or expires_at > ?)
                           and (max_uses is null or used_count < max_uses)
                 """,
+                updatedBy,
+                requireUserUuid(updatedByUuid),
                 LocalDateTime.now(),
                 invite.getId(),
+                invite.getTeamId(),
+                invite.getInviteCode(),
+                invite.getInviteType(),
+                invite.getRoleOnJoin(),
+                Boolean.TRUE.equals(invite.getNeedApproval()) ? 1 : 0,
                 LocalDateTime.now()
         );
         return updated > 0;
     }
 
     @Override
-    public boolean disableInvite(Long teamId, Long inviteId) {
+    public boolean disableInvite(Long teamId, Long inviteId, Long updatedBy, String updatedByUuid) {
+        TeamVO.Invite existing = findById(teamId, inviteId);
+        if (existing == null) {
+            return false;
+        }
         int updated = jdbcTemplate.update(
-                "update team_invite set status = 'DISABLED', updated_at = ? where team_id = ? and id = ? and deleted = 0",
+                """
+                        update team_invite
+                        set status = 'DISABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where team_id = ?
+                          and id = ?
+                          and invite_code = ?
+                          and invite_type = ?
+                          and role_on_join = ?
+                          and status = ?
+                          and deleted = 0
+                        """,
+                updatedBy,
+                requireUserUuid(updatedByUuid),
                 LocalDateTime.now(),
                 teamId,
-                inviteId
+                inviteId,
+                existing.getInviteCode(),
+                existing.getInviteType(),
+                existing.getRoleOnJoin(),
+                existing.getStatus()
         );
         return updated > 0;
     }
 
     @Override
-    public void disableInvitesByTeam(Long teamId) {
+    public void disableInvitesByTeam(Long teamId, TeamVO.Team expectedTeam, Long updatedBy, String updatedByUuid) {
+        requireExpectedTeam(expectedTeam);
         jdbcTemplate.update(
-                "update team_invite set deleted = 1, status = 'DISABLED', updated_at = ? where team_id = ? and deleted = 0",
+                """
+                        update team_invite
+                        set deleted = 1, status = 'DISABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where team_id = ?
+                          and deleted = 0
+                          and exists (
+                              select 1
+                              from team t
+                              where t.id = team_invite.team_id
+                                and t.owner_user_id = ?
+                                and t.owner_user_uuid = ?
+                                and t.status = 'DELETED'
+                                and t.deleted = 1
+                          )
+                        """,
+                updatedBy,
+                requireUserUuid(updatedByUuid),
                 LocalDateTime.now(),
-                teamId
+                teamId,
+                expectedTeam.getOwnerUserId(),
+                requireUserUuid(expectedTeam.getOwnerUserUuid())
         );
+    }
+
+    private void requireExpectedTeam(TeamVO.Team team) {
+        if (team == null || team.getId() == null || team.getId() <= 0) {
+            throw new IllegalArgumentException("Team id is required");
+        }
+        if (team.getOwnerUserId() == null || team.getOwnerUserId() <= 0 || team.getOwnerUserUuid() == null || team.getOwnerUserUuid().isBlank()) {
+            throw new IllegalArgumentException("Team owner identity is required");
+        }
+    }
+
+    private String requireUserUuid(String userUuid) {
+        if (userUuid == null || userUuid.isBlank()) {
+            throw new IllegalArgumentException("User uuid is required");
+        }
+        return userUuid.trim();
+    }
+
+    private void requireSingleWrite(int updated, String message) {
+        if (updated != 1) {
+            throw new IllegalStateException(message);
+        }
     }
 
     private String inviteSelect(String tail) {

@@ -16,6 +16,7 @@ import { AUTHORIZATION_HEADER, getApiPrefix } from '@/constants/http';
 import { captureAuthRequestSnapshot, buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 import { performLogout } from '@/auth/sessionLifecycle';
+import { isTrustedCurrentUser } from '@/auth/sessionState';
 import { request } from '@/services/common/request';
 import { readEventStream } from '@/services/common/requestInternalsStream';
 import type { OnlineSessionEventRecord, OnlineSessionRecord, PagedResult } from '@/types/api';
@@ -341,7 +342,7 @@ const OnlineUsersPage = () => {
   const { initialState } = useInitialStateModel();
   const actionPermission = useActionPermission();
   const buildActions = actionPermission.buildTableActions;
-  const currentUser = initialState?.currentUser;
+  const currentUser = isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser : undefined;
   const responsive = useResponsive();
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<OnlineSessionRecord | null>(null);

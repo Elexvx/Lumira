@@ -11,7 +11,7 @@ class JobReadinessV2ControllerTest {
         JobExecutorProperties properties = new JobExecutorProperties();
         properties.setBackendBaseUrl("http://lumira-backend");
         properties.setMessageServiceBaseUrl("http://message");
-        properties.setInternalToken("token");
+        configureScopedTokens(properties);
         JobReadinessV2Controller controller = new JobReadinessV2Controller(properties);
 
         var response = controller.readiness();
@@ -35,7 +35,7 @@ class JobReadinessV2ControllerTest {
         assertThat(health.status()).isEqualTo("UP");
         assertThat(health.healthChecks())
                 .extracting(check -> check.name())
-                .contains("job.lumira-backend-targets.config", "job.internal-token.configured");
+                .contains("job.lumira-backend-targets.config", "job.internal-token.configured", "job.scoped-internal-tokens.configured");
 
         var metrics = controller.metrics().getData();
         assertThat(metrics.status()).isEqualTo("METRICS_DECLARED");
@@ -48,15 +48,24 @@ class JobReadinessV2ControllerTest {
             assertThat(metric.value()).isEqualTo(1.0);
         });
         assertThat(metrics.metrics()).anySatisfy(metric -> {
+            assertThat(metric.name()).isEqualTo("job.scoped_internal_tokens.configured");
+            assertThat(metric.value()).isEqualTo(1.0);
+        });
+        assertThat(metrics.metrics()).anySatisfy(metric -> {
             assertThat(metric.name()).isEqualTo("job.owner_handler.declared_count");
             assertThat(metric.value()).isEqualTo(9.0);
         });
     }
 
     @Test
-    void health_shouldDegradeWhenInternalTokenIsMissing() {
+    void health_shouldDegradeWhenScopedJobTokenIsMissing() {
         JobExecutorProperties properties = new JobExecutorProperties();
         properties.setBackendBaseUrl("http://lumira-backend");
+        JobExecutorProperties.Internal internal = properties.getInternal();
+        internal.setFileToken("file-token");
+        internal.setMessageToken("message-token");
+        internal.setPaymentToken("payment-token");
+        internal.setPluginToken("plugin-token");
         JobReadinessV2Controller controller = new JobReadinessV2Controller(properties);
 
         var health = controller.health().getData();
@@ -66,5 +75,35 @@ class JobReadinessV2ControllerTest {
             assertThat(check.name()).isEqualTo("job.internal-token.configured");
             assertThat(check.status()).isEqualTo("MISSING");
         });
+    }
+
+    @Test
+    void health_shouldDegradeWhenScopedInternalTokensAreMissing() {
+        JobExecutorProperties properties = new JobExecutorProperties();
+        properties.setBackendBaseUrl("http://lumira-backend");
+        JobExecutorProperties.Internal internal = properties.getInternal();
+        internal.setJobToken("job-token");
+        JobReadinessV2Controller controller = new JobReadinessV2Controller(properties);
+
+        var health = controller.health().getData();
+
+        assertThat(health.status()).isEqualTo("DEGRADED");
+        assertThat(health.healthChecks()).anySatisfy(check -> {
+            assertThat(check.name()).isEqualTo("job.scoped-internal-tokens.configured");
+            assertThat(check.status()).isEqualTo("MISSING");
+        });
+        assertThat(controller.metrics().getData().metrics()).anySatisfy(metric -> {
+            assertThat(metric.name()).isEqualTo("job.scoped_internal_tokens.configured");
+            assertThat(metric.value()).isEqualTo(0.0);
+        });
+    }
+
+    private void configureScopedTokens(JobExecutorProperties properties) {
+        JobExecutorProperties.Internal internal = properties.getInternal();
+        internal.setFileToken("file-token");
+        internal.setMessageToken("message-token");
+        internal.setPaymentToken("payment-token");
+        internal.setPluginToken("plugin-token");
+        internal.setJobToken("job-token");
     }
 }

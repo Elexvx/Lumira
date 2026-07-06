@@ -23,6 +23,28 @@ class FileDomainModelsTest {
     }
 
     @Test
+    void fileObjectAggregateShouldCarryTrustedActorWhenPresent() {
+        FileObjectAggregate file = new FileObjectAggregate(100L, 4096L);
+
+        file.recordUploaded("application/pdf", 2001L, " user-uuid-2001 ");
+
+        assertThat(file.domainEvents()).hasSize(1);
+        assertThat(file.domainEvents().getFirst().attributes())
+                .containsEntry("userId", 2001L)
+                .containsEntry("userUuid", "user-uuid-2001");
+    }
+
+    @Test
+    void fileObjectAggregateShouldRejectActorUserIdWithoutUserUuid() {
+        FileObjectAggregate file = new FileObjectAggregate(100L, 4096L);
+
+        assertThatThrownBy(() -> file.recordUploaded("application/pdf", 2001L, null))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(file.domainEvents()).isEmpty();
+    }
+
+    @Test
     void storageSpaceRejectsUploadsBeyondQuota() {
         StorageSpace space = new StorageSpace(1L, 100L, 80L);
 

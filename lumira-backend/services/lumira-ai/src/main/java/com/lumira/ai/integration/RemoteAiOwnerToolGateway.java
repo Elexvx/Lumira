@@ -3,9 +3,19 @@ package com.lumira.ai.integration;
 import com.lumira.ai.config.AiOwnerIntegrationProperties;
 import com.lumira.ai.vo.AiToolVO;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AiConfigAccessPolicy;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.InternalServiceTokenPolicy;
+import com.lumira.common.web.TrustedServiceBaseUrlValidator;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -13,9 +23,11 @@ import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
@@ -24,26 +36,42 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
 
     private final AiOwnerIntegrationProperties properties;
     private final RestClient.Builder restClientBuilder;
+    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
 
     public RemoteAiOwnerToolGateway(AiOwnerIntegrationProperties properties, RestClient.Builder restClientBuilder) {
+        this(properties, restClientBuilder, null);
+    }
+
+    @Autowired
+    public RemoteAiOwnerToolGateway(
+            AiOwnerIntegrationProperties properties,
+            RestClient.Builder restClientBuilder,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+    ) {
         this.properties = properties;
         this.restClientBuilder = restClientBuilder;
+        this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
     @Override
     public ToolExecution execute(CurrentUser currentUser, AiToolVO tool, Map<String, Object> arguments) {
+        CurrentUser trustedUser = requireTrustedUser(currentUser);
+        if (tool == null || !StringUtils.hasText(tool.toolCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code is required");
+        }
+        Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
         return switch (tool.toolCode()) {
-            case "system.permission.snapshot" -> permissionSnapshot(currentUser);
-            case "system.config.read" -> platformConfig(currentUser, arguments);
-            case "system.menu.list" -> builtinMenus();
-            case "file.object.search" -> searchFiles(currentUser, arguments);
-            case "system.user.search", "audit.ai_call.search" -> degraded(tool, "该工具仍处于只读远端契约补齐阶段", arguments);
+            case "system.permission.snapshot" -> permissionSnapshot(trustedUser);
+            case "system.config.read" -> platformConfig(trustedUser, safeArguments);
+            case "system.menu.list" -> builtinMenus(trustedUser);
+            case "file.object.search" -> searchFiles(trustedUser, safeArguments);
+            case "system.user.search", "audit.ai_call.search" -> degraded(tool, "remote owner read contract is not configured", safeArguments);
             case "system.user.create", "system.user.update" -> new ToolExecution(Map.of(
                     "dryRun", true,
-                    "message", "独立 AI 服务已接管确认链路；真实 IAM 写入必须通过 IAM owner API。",
-                    "arguments", arguments
+                    "message", "Standalone AI service requires IAM owner API for real writes.",
+                    "arguments", safeArguments
             ), false, false);
-            default -> degraded(tool, "未声明的 AI owner 工具", arguments);
+            default -> degraded(tool, "undeclared AI owner tool", safeArguments);
         };
     }
 
@@ -78,35 +106,44 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
     }
 
     private ToolExecution permissionSnapshot(CurrentUser currentUser) {
+        Long userId = trustedUserId(currentUser);
+        String userUuid = trustedUserUuid(currentUser);
         if (!properties.getIam().configured()) {
             return localPermissionSnapshot(currentUser, "iam-owner-not-configured");
         }
         try {
-            PermissionSnapshotDTO snapshot = client(properties.getIam())
+            String path = "/internal/system/permissions/snapshot";
+            PermissionSnapshotDTO snapshot = client(properties.getIam(), path)
                     .get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/internal/system/permissions/snapshot")
-                            .queryParam("userId", currentUser.getUserId())
+                            .path(path)
+                            .queryParam("userId", userId)
+                            .queryParam("userUuid", userUuid)
                             .build())
                     .retrieve()
                     .body(PermissionSnapshotDTO.class);
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("userId", currentUser.getUserId());
+            data.put("userId", userId);
+            data.put("userUuid", userUuid);
             data.put("version", snapshot == null ? null : snapshot.version());
             data.put("permissions", snapshot == null ? List.of() : snapshot.permissions());
             data.put("roleIds", snapshot == null ? List.of() : snapshot.roleIds());
             data.put("defaultHomePath", snapshot == null ? null : snapshot.defaultHomePath());
             return new ToolExecution(data, true, false);
         } catch (RuntimeException exception) {
-            return localPermissionSnapshot(currentUser, "iam-owner-call-failed");
+            return degraded("system.permission.snapshot", "iam-owner-call-failed", Map.of(
+                    "userId", userId,
+                    "userUuid", userUuid
+            ));
         }
     }
 
     private ToolExecution localPermissionSnapshot(CurrentUser currentUser, String reason) {
         return new ToolExecution(Map.of(
-                "userId", currentUser.getUserId(),
-                "username", currentUser.getUsername(),
-                "permissions", currentUser.getPermissions(),
+                "userId", trustedUserId(currentUser),
+                "userUuid", trustedUserUuid(currentUser),
+                "username", trustedUsername(currentUser),
+                "permissions", currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions(),
                 "degradedReason", reason
         ), false, true);
     }
@@ -120,10 +157,11 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
             return new ToolExecution(Map.of("values", Map.of(), "limitedBy", "empty-config-key-list"), false, false);
         }
         try {
-            Map<?, ?> values = client(properties.getPlatform())
+            String path = "/internal/system/config/ai-platform-values";
+            Map<?, ?> values = client(properties.getPlatform(), path)
                     .get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/internal/system/config/platform-values")
+                            .path(path)
                             .queryParam("keys", keys.toArray())
                             .build())
                     .retrieve()
@@ -134,38 +172,94 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
         }
     }
 
-    private ToolExecution builtinMenus() {
+    private ToolExecution builtinMenus(CurrentUser currentUser) {
         if (!properties.getPlatform().configured()) {
             return degraded("platform", "platform-owner-not-configured", Map.of());
         }
         try {
-            MenuNodeDTO[] menus = client(properties.getPlatform())
+            String path = "/internal/system/menus/ai-visible";
+            MenuNodeDTO[] menus = client(properties.getPlatform(), path)
                     .get()
-                    .uri("/internal/system/menus/builtin")
+                    .uri(uriBuilder -> uriBuilder
+                            .path(path)
+                            .queryParam("userId", trustedUserId(currentUser))
+                            .queryParam("userUuid", trustedUserUuid(currentUser))
+                            .build())
                     .retrieve()
                     .body(MenuNodeDTO[].class);
-            return new ToolExecution(Map.of("menus", menus == null ? List.of() : Arrays.asList(menus)), true, false);
+            List<MenuNodeDTO> visibleMenus = filterVisibleMenus(menus == null ? List.of() : Arrays.asList(menus), trustedPermissions(currentUser));
+            return new ToolExecution(Map.of("menus", visibleMenus), true, false);
         } catch (RuntimeException exception) {
             return degraded("platform", "platform-owner-call-failed", Map.of());
         }
     }
 
+    private List<MenuNodeDTO> filterVisibleMenus(List<MenuNodeDTO> menus, Set<String> permissions) {
+        if (menus == null || menus.isEmpty()) {
+            return List.of();
+        }
+        List<MenuNodeDTO> visibleMenus = new ArrayList<>();
+        for (MenuNodeDTO menu : menus) {
+            MenuNodeDTO visibleMenu = filterVisibleMenu(menu, permissions);
+            if (visibleMenu != null) {
+                visibleMenus.add(visibleMenu);
+            }
+        }
+        return visibleMenus;
+    }
+
+    private MenuNodeDTO filterVisibleMenu(MenuNodeDTO menu, Set<String> permissions) {
+        if (menu == null) {
+            return null;
+        }
+        List<MenuNodeDTO> visibleChildren = filterVisibleMenus(menu.getChildren(), permissions);
+        if (!isMenuAllowed(menu, permissions) && visibleChildren.isEmpty()) {
+            return null;
+        }
+        MenuNodeDTO visibleMenu = new MenuNodeDTO();
+        visibleMenu.setId(menu.getId());
+        visibleMenu.setParentId(menu.getParentId());
+        visibleMenu.setMenuCode(menu.getMenuCode());
+        visibleMenu.setName(menu.getName());
+        visibleMenu.setPath(menu.getPath());
+        visibleMenu.setComponent(menu.getComponent());
+        visibleMenu.setIcon(menu.getIcon());
+        visibleMenu.setPermissionKey(menu.getPermissionKey());
+        visibleMenu.setPluginCode(menu.getPluginCode());
+        visibleMenu.setSortNo(menu.getSortNo());
+        visibleMenu.setChildren(visibleChildren);
+        return visibleMenu;
+    }
+
+    private boolean isMenuAllowed(MenuNodeDTO menu, Set<String> permissions) {
+        if (menu == null || !StringUtils.hasText(menu.getPermissionKey())) {
+            return true;
+        }
+        return permissions.contains("*") || permissions.contains(menu.getPermissionKey().trim());
+    }
+
     private ToolExecution searchFiles(CurrentUser currentUser, Map<String, Object> arguments) {
+        Long userId = trustedUserId(currentUser);
+        String userUuid = trustedUserUuid(currentUser);
+        String username = trustedUsername(currentUser);
         if (!properties.getFile().configured()) {
             return degraded("file", "file-owner-not-configured", arguments);
         }
+        int limit = intArg(arguments, "limit", 20, 1, 50);
         try {
-            FileObjectDTO[] files = client(properties.getFile())
+            String path = "/internal/files/search";
+            FileObjectDTO[] files = client(properties.getFile(), path)
                     .get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/internal/files/search")
-                            .queryParam("userId", currentUser.getUserId())
-                            .queryParam("username", currentUser.getUsername())
+                            .path(path)
+                            .queryParam("userId", userId)
+                            .queryParam("userUuid", userUuid)
+                            .queryParam("username", username)
                             .queryParam("keyword", stringArg(arguments, "keyword"))
                             .queryParam("contentType", stringArg(arguments, "contentType"))
                             .queryParam("status", stringArg(arguments, "status"))
-                            .queryParam("sharedScope", booleanArg(arguments, "sharedScope", true))
-                            .queryParam("limit", intArg(arguments, "limit", 20, 1, 50))
+                            .queryParam("sharedScope", false)
+                            .queryParam("limit", limit)
                             .build())
                     .retrieve()
                     .body(FileObjectDTO[].class);
@@ -175,14 +269,91 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
         }
     }
 
-    private RestClient client(AiOwnerIntegrationProperties.OwnerEndpoint endpoint) {
+    private RestClient client(AiOwnerIntegrationProperties.OwnerEndpoint endpoint, String path) {
         RestClient.Builder builder = restClientBuilder.clone()
-                .baseUrl(endpoint.getBaseUrl());
-        if (StringUtils.hasText(properties.getInternalToken())) {
-            builder.defaultHeader(INTERNAL_TOKEN_HEADER, properties.getInternalToken());
+                .baseUrl(TrustedServiceBaseUrlValidator.requireHttpBaseUrl(
+                        endpoint.getBaseUrl(),
+                        "lumira.ai.owner-integrations endpoint baseUrl"
+                ));
+        String token = scopedTokenForOwnerPath(path);
+        if (!StringUtils.hasText(token)) {
+            throw new IllegalStateException("Scoped internal token is not configured for " + path);
         }
+        builder.defaultHeader(INTERNAL_TOKEN_HEADER, token);
         builder.defaultHeader(HttpHeaders.ACCEPT, "application/json");
         return builder.build();
+    }
+
+    String scopedTokenForOwnerPath(String path) {
+        return InternalServiceTokenPolicy.tokenForPath(
+                path,
+                properties.getSystemToken(),
+                null,
+                properties.getAuthSystemToken(),
+                properties.getFileToken(),
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user context is required");
+        }
+        if (systemInternalApiProvider == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user context is required");
+        }
+        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
+        if (systemInternalApi == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userSnapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user does not exist");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid()) || !userSnapshot.userUuid().trim().equals(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity mismatch");
+        }
+        if (!StringUtils.hasText(userSnapshot.status()) || !"ENABLED".equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, userUuid);
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserUuid(userUuid);
+        if (StringUtils.hasText(userSnapshot.username())) {
+            currentUser.setUsername(userSnapshot.username().trim());
+        }
+        if (permissionSnapshot.permissions() != null) {
+            currentUser.setPermissions(new HashSet<>(permissionSnapshot.permissions()));
+        }
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        return currentUser;
+    }
+
+    private Long trustedUserId(CurrentUser currentUser) {
+        return requireTrustedUser(currentUser).getUserId();
+    }
+
+    private String trustedUserUuid(CurrentUser currentUser) {
+        return requireTrustedUser(currentUser).getUserUuid();
+    }
+
+    private String trustedUsername(CurrentUser currentUser) {
+        return requireTrustedUser(currentUser).getUsername();
+    }
+
+    private Set<String> trustedPermissions(CurrentUser currentUser) {
+        CurrentUser trustedUser = requireTrustedUser(currentUser);
+        return trustedUser.getPermissions() == null ? Set.of() : new HashSet<>(trustedUser.getPermissions());
     }
 
     private ToolExecution degraded(AiToolVO tool, String reason, Map<String, Object> arguments) {
@@ -202,25 +373,36 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
     private List<String> configKeys(Map<String, Object> arguments) {
         Object keys = arguments.get("keys");
         if (keys instanceof List<?> list) {
-            return list.stream()
-                    .map(String::valueOf)
-                    .filter(StringUtils::hasText)
-                    .distinct()
-                    .limit(50)
-                    .toList();
+            if (list.size() > 50) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "Too many config keys");
+            }
+            List<String> normalizedKeys = new ArrayList<>();
+            for (Object value : list) {
+                if (value == null || !StringUtils.hasText(String.valueOf(value))) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "Config key cannot be blank");
+                }
+                String normalized = String.valueOf(value).trim();
+                if (isAiConfigKeyAllowed(normalized) && !normalizedKeys.contains(normalized)) {
+                    normalizedKeys.add(normalized);
+                }
+            }
+            return normalizedKeys;
         }
         String key = stringArg(arguments, "key");
-        return StringUtils.hasText(key) ? List.of(key) : List.of();
+        if (!StringUtils.hasText(key)) {
+            return List.of();
+        }
+        String normalizedKey = key.trim();
+        return isAiConfigKeyAllowed(normalizedKey) ? List.of(normalizedKey) : List.of();
+    }
+
+    private boolean isAiConfigKeyAllowed(String value) {
+        return AiConfigAccessPolicy.isAiManageableConfigKey(value);
     }
 
     private String stringArg(Map<String, Object> arguments, String key) {
         Object value = arguments.get(key);
         return value == null ? null : String.valueOf(value);
-    }
-
-    private boolean booleanArg(Map<String, Object> arguments, String key, boolean defaultValue) {
-        Object value = arguments.get(key);
-        return value == null ? defaultValue : Boolean.parseBoolean(String.valueOf(value));
     }
 
     private int intArg(Map<String, Object> arguments, String key, int defaultValue, int min, int max) {
@@ -229,9 +411,13 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
             return defaultValue;
         }
         try {
-            return Math.min(Math.max(Integer.parseInt(String.valueOf(value)), min), max);
+            int parsed = Integer.parseInt(String.valueOf(value));
+            if (parsed < min || parsed > max) {
+                throw new BizException(ErrorCode.BAD_REQUEST, key + " must be between " + min + " and " + max);
+            }
+            return parsed;
         } catch (NumberFormatException exception) {
-            return defaultValue;
+            throw new BizException(ErrorCode.BAD_REQUEST, key + " must be a number");
         }
     }
 }

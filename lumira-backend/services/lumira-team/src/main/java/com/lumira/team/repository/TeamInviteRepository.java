@@ -17,7 +17,8 @@ public interface TeamInviteRepository {
             LocalDateTime expiresAt,
             Integer maxUses,
             boolean needApproval,
-            Long createdBy
+            Long createdBy,
+            String createdByUuid
     );
 
     TeamVO.Invite findById(Long teamId, Long inviteId);
@@ -28,9 +29,9 @@ public interface TeamInviteRepository {
 
     List<TeamVO.Invite> listInvites(Long teamId);
 
-    boolean consumeInviteQuota(TeamVO.Invite invite);
+    boolean consumeInviteQuota(TeamVO.Invite invite, Long updatedBy, String updatedByUuid);
 
-    boolean disableInvite(Long teamId, Long inviteId);
+    boolean disableInvite(Long teamId, Long inviteId, Long updatedBy, String updatedByUuid);
 
-    void disableInvitesByTeam(Long teamId);
+    void disableInvitesByTeam(Long teamId, TeamVO.Team expectedTeam, Long updatedBy, String updatedByUuid);
 }

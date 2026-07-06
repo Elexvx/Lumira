@@ -4,6 +4,7 @@ import com.lumira.domain.event.StandardDomainEvent;
 import com.lumira.domain.model.AggregateRoot;
 import com.lumira.domain.model.EntityId;
 import com.lumira.domain.model.VersionedReadModel;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +45,10 @@ public final class IamDomainModels {
         }
 
         public void replacePermissions(Set<String> newPermissionCodes) {
+            replacePermissions(newPermissionCodes, null, null);
+        }
+
+        public void replacePermissions(Set<String> newPermissionCodes, Long userId, String userUuid) {
             Set<String> normalized = new LinkedHashSet<>(newPermissionCodes == null ? Set.of() : newPermissionCodes);
             if (permissionCodes.equals(normalized)) {
                 return;
@@ -54,8 +59,20 @@ public final class IamDomainModels {
                     "IAM_ROLE_PERMISSIONS_CHANGED",
                     "iam.role",
                     String.valueOf(id().value()),
-                    Map.of("permissionCount", permissionCodes.size())
+                    actorAttributes(Map.of("permissionCount", permissionCodes.size()), userId, userUuid)
             ));
+        }
+
+        private Map<String, Object> actorAttributes(Map<String, Object> baseAttributes, Long userId, String userUuid) {
+            Map<String, Object> attributes = new LinkedHashMap<>(baseAttributes);
+            if (userId != null) {
+                if (userId <= 0 || userUuid == null || userUuid.isBlank()) {
+                    throw new IllegalArgumentException("trusted actor identity is required");
+                }
+                attributes.put("userId", userId);
+                attributes.put("userUuid", userUuid.trim());
+            }
+            return attributes;
         }
     }
 

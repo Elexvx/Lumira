@@ -28,6 +28,7 @@ export interface AuthUser {
   permissionsVersion?: string;
   sessionVersion?: number;
   permissions?: string[];
+  roleIds?: number[];
 }
 
 export interface SecondFactorLoginOption {
@@ -67,12 +68,6 @@ export interface PasskeyOptions {
 
 export interface PasskeyCredentialRecord {
   id: number;
-  userId: number;
-  username?: string;
-  credentialId: string;
-  transports?: string;
-  backupEligible?: boolean;
-  backupState?: boolean;
   label?: string;
   createdAt?: string;
   lastUsedAt?: string | null;
@@ -96,7 +91,6 @@ export interface LoginCodeChallenge {
   promptMessage?: string | null;
   expiresInSeconds?: number | null;
   cooldownSeconds?: number | null;
-  debugCode?: string | null;
 }
 
 export interface LoginEncryptionKey {
@@ -116,6 +110,10 @@ export interface SessionBootstrapPayload {
 export interface WechatAuthorizeUrl {
   authorizeUrl: string;
   state: string;
+  appId?: string;
+  scope?: string;
+  redirectUri?: string;
+  encodedRedirectUri?: string;
 }
 
 export type CaptchaType = 'IMAGE' | 'SLIDER';
@@ -336,6 +334,14 @@ export interface RefreshTokenResponse {
   expiresIn: number;
   sessionVersion?: number;
   permissionsVersion?: string;
+}
+
+export interface SimulatedRoleSwitchResponse {
+  currentUser: CurrentUser;
+  accessToken: string;
+  refreshToken?: string | null;
+  tokenType: string;
+  expiresIn: number;
 }
 
 export interface CurrentUser {
@@ -1123,10 +1129,12 @@ export interface SecondFactorChallenge {
   challengeId: string;
   maskedContact?: string | null;
   promptMessage?: string | null;
+}
+
+export interface SecondFactorBindingChallenge extends SecondFactorChallenge {
   setupUri?: string | null;
   setupSecret?: string | null;
   recoveryCodes?: string[];
-  debugCode?: string | null;
 }
 
 export interface SecondFactorVerification {
@@ -1134,6 +1142,7 @@ export interface SecondFactorVerification {
   userId?: number | null;
   username?: string | null;
   message?: string | null;
+  recoveryCodes?: string[];
 }
 
 export interface SmtpSettings {

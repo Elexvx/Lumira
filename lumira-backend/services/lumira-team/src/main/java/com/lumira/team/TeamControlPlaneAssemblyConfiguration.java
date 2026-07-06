@@ -6,6 +6,7 @@ import com.lumira.team.app.TeamAppService;
 import com.lumira.team.app.TeamInternalApiService;
 import com.lumira.team.app.TeamInviteService;
 import com.lumira.team.app.TeamPermissionService;
+import com.lumira.team.controller.InternalTeamController;
 import com.lumira.team.controller.TeamV2Controller;
 import com.lumira.team.infrastructure.persistence.JdbcTeamInviteRepository;
 import com.lumira.team.infrastructure.persistence.JdbcTeamJoinRequestRepository;
@@ -34,6 +35,7 @@ import org.springframework.context.annotation.Import;
         TeamInternalApiService.class,
         TeamInviteService.class,
         TeamPermissionService.class,
+        InternalTeamController.class,
         TeamV2Controller.class,
         JdbcTeamInviteRepository.class,
         JdbcTeamJoinRequestRepository.class,

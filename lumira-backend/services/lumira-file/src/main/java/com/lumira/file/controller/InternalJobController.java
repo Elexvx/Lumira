@@ -22,16 +22,16 @@ public class InternalJobController {
 
     private final FileOutboxRelay fileOutboxRelay;
     private final FileProcessingTaskService fileProcessingTaskService;
-    private final String internalToken;
+    private final String fileInternalToken;
 
     public InternalJobController(
             FileOutboxRelay fileOutboxRelay,
             FileProcessingTaskService fileProcessingTaskService,
-            @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken
+            @Value("${saas.internal.file-token:${SAAS_INTERNAL_FILE_TOKEN:}}") String fileInternalToken
     ) {
         this.fileOutboxRelay = fileOutboxRelay;
         this.fileProcessingTaskService = fileProcessingTaskService;
-        this.internalToken = internalToken;
+        this.fileInternalToken = fileInternalToken;
     }
 
     @PostMapping("/outbox/relay")
@@ -46,6 +46,7 @@ public class InternalJobController {
             @RequestHeader(name = "X-Job-Token", required = false) String token
     ) {
         ensureAuthorized(token);
+        requirePositiveId(id);
         return ApiResponse.success(fileOutboxRelay.replay(id), null);
     }
 
@@ -55,15 +56,29 @@ public class InternalJobController {
             @RequestHeader(name = "X-Job-Token", required = false) String token
     ) {
         ensureAuthorized(token);
+        requireProcessingLimit(limit);
         return ApiResponse.success(fileProcessingTaskService.processPendingTasks(limit), null);
     }
 
     private void ensureAuthorized(String token) {
-        if (!InternalJobTokenValidator.isConfigured(internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内部任务令牌未配置");
+        String requiredToken = fileInternalToken;
+        if (!InternalJobTokenValidator.isConfigured(requiredToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Internal job token is not configured");
         }
-        if (!InternalJobTokenValidator.isAuthorized(token, internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权访问内部任务接口");
+        if (!InternalJobTokenValidator.isAuthorized(token, requiredToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Unauthorized internal job access");
+        }
+    }
+
+    private void requirePositiveId(Long id) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Valid outbox event id is required");
+        }
+    }
+
+    private void requireProcessingLimit(int limit) {
+        if (limit < 1 || limit > FileProcessingTaskService.MAX_CLAIM_LIMIT) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Invalid file processing task limit");
         }
     }
 }

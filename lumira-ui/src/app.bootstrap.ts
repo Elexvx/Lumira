@@ -102,7 +102,7 @@ const EXPERT_REVIEW_MENU_ROOT: MenuNode = {
   menuCode: 'expert.review.root',
   name: '\u4e13\u5bb6\u4e0e\u8bc4\u5ba1',
   path: '/expert-review',
-  component: 'redirect:/competitions/expert-apply',
+  component: 'redirect:/expert-review/reviews',
   icon: 'SolutionOutlined',
   sortNo: 6,
   children: [],
@@ -112,6 +112,17 @@ const COMPETITION_APPLICATION_MENUS: BootstrapMenuNode[] = [
 ];
 
 const EXPERT_REVIEW_APPLICATION_MENUS: BootstrapMenuNode[] = [
+  {
+    id: -1078,
+    parentId: -1068,
+    menuCode: 'expert.review.tasks',
+    name: '\u8bc4\u5ba1\u5217\u8868',
+    path: '/expert-review/reviews',
+    component: '@/pages/workflow/WorkflowTasksPage',
+    icon: 'AuditOutlined',
+    sortNo: 1,
+    access: 'canVisitWorkflowTasks',
+  },
   {
     id: -1077,
     parentId: -1068,

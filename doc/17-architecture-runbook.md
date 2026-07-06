@@ -17,15 +17,15 @@
 node bin/start-platform.mjs
 ```
 
-脚本会检查端口、复用已有 MySQL/Redis，再启动聚合后端 `lumira-server`、API 代理和前端。
+脚本会检查端口、复用已有 MySQL/Redis，再启动本地运行拓扑里的 `lumira-server`、`lumira-async`、`lumira-job-executor` 和 `api-proxy`。
 
 常用参数：
 
 ```bash
-node bin/start-platform.mjs --skip-infra
-node bin/start-platform.mjs --skip-services
-node bin/start-platform.mjs --skip-lumira-ui
+node bin/start-platform.mjs --no-build
 ```
+
+`start-platform` 现在委托给 `bin/deploy-container.mjs`，会启动本地运行拓扑里的 `lumira-server`、`lumira-async`、`lumira-job-executor` 和 `api-proxy`。旧的 `--skip-infra`、`--skip-services`、`--skip-lumira-ui` 参数已经废弃并会直接报错。
 
 关闭本地环境：
 
@@ -35,10 +35,12 @@ node bin/stop-platform.mjs
 
 ### 1.3 本地访问
 
-- 前端：`http://localhost:8000`
+- 本地 API 代理：`http://localhost:8000`
 - API 代理：`http://localhost:8000/api`
 - 后端：`http://localhost:8080`
 - API 健康检查：`http://localhost:8000/api/health`
+
+如需本地前端界面，请单独启动 `lumira-ui` 开发服务器，或显式启用前端预览容器；`start-platform` 默认不会启动 `lumira-ui`。
 
 ## 2. 测试环境
 
@@ -63,7 +65,14 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs -f 
 - `JWT_SECRET`
 - `FIELD_SECRET`
 - `PLUGIN_SIGNATURE_SECRET`
-- `SAAS_JOB_INTERNAL_TOKEN`
+- `SAAS_INTERNAL_SYSTEM_TOKEN`
+- `SAAS_INTERNAL_AUTH_TOKEN`
+- `SAAS_INTERNAL_AUTH_SYSTEM_TOKEN`
+- `SAAS_INTERNAL_FILE_TOKEN`
+- `SAAS_INTERNAL_MESSAGE_TOKEN`
+- `SAAS_INTERNAL_PAYMENT_TOKEN`
+- `SAAS_INTERNAL_PLUGIN_TOKEN`
+- `SAAS_INTERNAL_JOB_TOKEN`
 - `CORS_ALLOWED_ORIGIN_PATTERNS`
 
 ## 3. 生产环境
@@ -77,7 +86,7 @@ Vercel lumira-ui
   -> lumira-server
   -> system/auth/file/message/plugin/localization/payment/job modules
   -> MySQL / Redis / XXL-Job
-  -> Nacos（仅为未来拆分预留，默认不启用）
+  -> lumira-async / lumira-job-executor（后台异步与调度运行时）
 ```
 
 最简单部署：
@@ -152,7 +161,7 @@ git diff --check
 3. 检查 `system-service` 用户状态和安全设置读取。
 4. 检查 Redis 会话和 token 配置。
 
-当前生产与本地默认运行在聚合入口 `lumira-server` 内，因此排障时优先检查聚合服务日志，再定位具体模块代码归属。
+当前生产与本地默认由 `lumira-server` 承载同步入口，并由 `lumira-async`、`lumira-job-executor` 承载后台任务；排障时先区分是请求链路问题还是异步/调度问题，再分别检查对应运行时日志。
 
 ### 5.3 权限或菜单异常
 

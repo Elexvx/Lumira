@@ -21,7 +21,10 @@ public class OnlineSessionEventPublisher {
 
     public void publish(OnlineSessionEvent event) {
         try {
-            stringRedisTemplate.convertAndSend(CacheKeyConstants.onlineSessionEventsChannel(), objectMapper.writeValueAsString(event));
+            OnlineSessionEventTrustValidator.requireTrustedEvent(event);
+            String payload = objectMapper.writeValueAsString(event);
+            OnlineSessionEventTrustValidator.requireTrustedSerializedEvent(payload);
+            stringRedisTemplate.convertAndSend(CacheKeyConstants.onlineSessionEventsChannel(), payload);
         } catch (JsonProcessingException exception) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "在线会话事件序列化失败");
         }

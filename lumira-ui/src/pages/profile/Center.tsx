@@ -1,6 +1,6 @@
-import { formatMessage } from '@umijs/max';
+﻿import { formatMessage } from '@umijs/max';
 import { getLocale } from '@umijs/max';
-import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Input, List, Modal, Popconfirm, Progress, QRCode, Result, Row, Select, Space, Tag, Timeline, Tooltip, Typography, Upload, theme } from 'antd';
+import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Input, List, Modal, Progress, QRCode, Result, Row, Select, Space, Tag, Timeline, Tooltip, Typography, Upload, theme } from 'antd';
 import type { DescriptionsProps, FormProps, UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { StepsForm } from '@ant-design/pro-components';
@@ -13,7 +13,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
 import { PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profile/center/hooks/useProfileCenterPageAccess';
-import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileFieldSetting, ProfileSummary, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
+import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileFieldSetting, ProfileSummary, SecondFactorBindingChallenge, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { normalizeLocale } from '@/i18n/locale';
@@ -89,7 +89,7 @@ const BindSecondFactorTotpPreviewStep = ({
   isMobile,
 }: {
   bindingProvider: SecondFactorProviderStatus | null;
-  bindingChallenge: SecondFactorChallenge | null;
+  bindingChallenge: SecondFactorBindingChallenge | null;
   bindingLoading: boolean;
   singleColumnDescriptionsProps: DescriptionsProps;
   onRetry: () => void;
@@ -101,9 +101,7 @@ const BindSecondFactorTotpPreviewStep = ({
       type="info"
       message={t('扫码绑定', 'Scan to bind')}
       description={
-        bindingProvider?.bound
-          ? t('当前已绑定，重新绑定会生成新的密钥并覆盖旧绑定，请确认后继续。', 'This is already bound. Rebinding will generate a new secret and overwrite the existing binding. Please confirm to continue.')
-          : t('请使用支持 TOTP 的认证器扫描二维码。也可以手动输入密钥完成绑定。', 'Use a TOTP authenticator to scan the QR code. You can also enter the secret manually to complete binding.')
+        t('请使用支持 TOTP 的认证器扫描二维码。也可以手动输入密钥完成绑定。', 'Use a TOTP authenticator to scan the QR code. You can also enter the secret manually to complete binding.')
       }
     />
     {bindingLoading ? (
@@ -167,6 +165,102 @@ const BindSecondFactorTotpVerifyStep = ({ isMobile }: { isMobile: boolean }) => 
   </Space>
 );
 
+const BindSecondFactorVerificationGate = ({
+  provider,
+  verificationProvider,
+  verificationChallenge,
+  verificationLoading,
+  bindingLoading,
+  bindingSubmitting,
+  bindingAlert,
+  formProps,
+  onRetry,
+  onSubmit,
+  onCancel,
+  isMobile,
+}: {
+  provider: SecondFactorProviderStatus | null;
+  verificationProvider: SecondFactorProviderStatus | null;
+  verificationChallenge: SecondFactorChallenge | null;
+  verificationLoading: boolean;
+  bindingLoading: boolean;
+  bindingSubmitting: boolean;
+  bindingAlert?: { type: 'info' | 'warning' | 'error'; message: string };
+  formProps: FormProps<{ currentPassword?: string; verificationCode?: string }>;
+  onRetry: () => void;
+  onSubmit: (values: { currentPassword?: string; verificationCode?: string }) => Promise<boolean>;
+  onCancel: () => void;
+  isMobile: boolean;
+}) => (
+  <Form {...formProps} layout="vertical" onFinish={onSubmit}>
+    <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+      {bindingAlert ? <Alert showIcon type={bindingAlert.type} message={bindingAlert.message} /> : null}
+      <Alert
+        showIcon
+        type="warning"
+        message={t('请先确认当前身份', 'Verify your identity first')}
+        description={
+          verificationProvider
+            ? t('请先输入当前验证码或恢复码，通过后才会展示新的 2FA 绑定二维码。', 'Enter the current verification code or recovery code first. The new 2FA binding QR code appears only after verification succeeds.')
+            : t('当前账号没有可用的二次验证方式，请先输入当前密码，通过后才会展示新的 2FA 绑定二维码。', 'This account has no active second-factor method. Enter your current password first. The new 2FA binding QR code appears only after verification succeeds.')
+        }
+      />
+      {verificationProvider ? (
+        <>
+          <Descriptions column={1} size="small">
+            <Descriptions.Item label={t('验证方式', 'Verification method')}>
+              {verificationChallenge?.factorName || verificationProvider.factorName || verificationProvider.factorCode}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('绑定标识', 'Binding identifier')}>
+              {verificationChallenge?.maskedContact || verificationProvider.maskedContact || '-'}
+            </Descriptions.Item>
+          </Descriptions>
+          <Typography.Text type="secondary">
+            {verificationChallenge?.promptMessage || t('请输入当前验证码或恢复码完成身份确认。', 'Enter the current verification code or a recovery code to verify your identity.')}
+          </Typography.Text>
+          {!verificationChallenge && !verificationLoading ? (
+            <Button onClick={onRetry}>{t('重新获取验证信息', 'Reload verification details')}</Button>
+          ) : null}
+          <Form.Item
+            name="verificationCode"
+            rules={[{ required: true, message: t('请输入当前验证码或恢复码', 'Please enter the current verification code or a recovery code') }]}
+          >
+            <Input
+              autoComplete="one-time-code"
+              placeholder={t('请输入当前验证码或恢复码', 'Enter the current verification code or a recovery code')}
+              disabled={verificationLoading || bindingLoading}
+            />
+          </Form.Item>
+        </>
+      ) : (
+        <Form.Item
+          name="currentPassword"
+          rules={[{ required: true, message: t('请输入当前密码', 'Please enter your current password') }]}
+        >
+          <Input.Password
+            autoComplete="current-password"
+            placeholder={t('请输入当前密码', 'Enter your current password')}
+            disabled={bindingLoading}
+          />
+        </Form.Item>
+      )}
+      <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
+        <Button onClick={onCancel} disabled={bindingSubmitting || verificationLoading || bindingLoading}>
+          {t('取消', 'Cancel')}
+        </Button>
+        <Button
+          type="primary"
+          htmlType="submit"
+          loading={bindingSubmitting || verificationLoading || bindingLoading}
+          disabled={!provider}
+        >
+          {t('继续绑定', 'Continue')}
+        </Button>
+      </Space>
+    </Space>
+  </Form>
+);
+
 const BindSecondFactorTotpSteps = ({
   bindingProvider,
   bindingChallenge,
@@ -180,7 +274,7 @@ const BindSecondFactorTotpSteps = ({
   isMobile,
 }: {
   bindingProvider: SecondFactorProviderStatus | null;
-  bindingChallenge: SecondFactorChallenge | null;
+  bindingChallenge: SecondFactorBindingChallenge | null;
   bindingLoading: boolean;
   bindingSubmitting: boolean;
   bindingAlert?: { type: 'info' | 'warning' | 'error'; message: string };
@@ -226,6 +320,202 @@ const BindSecondFactorTotpSteps = ({
   </StepsForm>
 );
 
+const UnbindSecondFactorModal = ({
+  open,
+  provider,
+  challenge,
+  challengeLoading,
+  submitting,
+  alertMessage,
+  formProps,
+  onCancel,
+  onRetry,
+  onSubmit,
+  isMobile,
+}: {
+  open: boolean;
+  provider: SecondFactorProviderStatus | null;
+  challenge: SecondFactorChallenge | null;
+  challengeLoading: boolean;
+  submitting: boolean;
+  alertMessage?: string | null;
+  formProps: FormProps<{ verificationCode?: string }>;
+  onCancel: () => void;
+  onRetry: () => void;
+  onSubmit: (values: { verificationCode?: string }) => Promise<boolean>;
+  isMobile: boolean;
+}) => (
+  <Modal
+    title={provider ? `${provider.factorName || provider.factorCode} · ${t('解绑确认', 'Unbind confirmation')}` : t('解绑确认', 'Unbind confirmation')}
+    open={open}
+    onCancel={onCancel}
+    onOk={() => formProps.form?.submit?.()}
+    okText={t('确认解绑', 'Confirm unbind')}
+    cancelText={t('取消', 'Cancel')}
+    confirmLoading={challengeLoading || submitting}
+    okButtonProps={{ disabled: challengeLoading || !challenge }}
+    cancelButtonProps={{ disabled: challengeLoading || submitting }}
+    destroyOnHidden
+    maskClosable={!(challengeLoading || submitting)}
+    width={resolveResponsiveValue(PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT, isMobile)}
+  >
+    <Form {...formProps} layout="vertical" onFinish={onSubmit}>
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+        {alertMessage ? <Alert showIcon type="error" message={alertMessage} /> : null}
+        <Alert
+          showIcon
+          type="warning"
+          message={t('请先完成身份确认', 'Verify before unbinding')}
+          description={t('请输入认证器中的当前验证码，或使用恢复码，确认后才会解除该二次验证方式。', 'Enter the current authenticator code, or use a recovery code. The second-factor method will be removed only after verification succeeds.')}
+        />
+        {challengeLoading ? (
+          <Card className="saas-profile-page__card" loading />
+        ) : challenge ? (
+          <>
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label={t('验证方式', 'Verification method')}>{challenge.factorName || provider?.factorName || provider?.factorCode || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('绑定标识', 'Binding identifier')}>{challenge.maskedContact || provider?.maskedContact || '-'}</Descriptions.Item>
+            </Descriptions>
+            <Typography.Text type="secondary">
+              {challenge.promptMessage || t('请输入验证码完成身份确认。', 'Enter the verification code to confirm your identity.')}
+            </Typography.Text>
+          </>
+        ) : (
+          <Empty
+            description={
+              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)}>
+                <span>{t('验证信息尚未加载，请重试', 'Verification details are not loaded yet. Please try again.')}</span>
+                <Button type="primary" onClick={onRetry} disabled={!provider}>
+                  {t('重新获取验证信息', 'Reload verification details')}
+                </Button>
+              </Space>
+            }
+          />
+        )}
+        <Form.Item
+          name="verificationCode"
+          rules={[{ required: true, message: t('请输入验证码或恢复码', 'Please enter the verification code or a recovery code') }]}
+        >
+          <Input
+            size="large"
+            autoComplete="one-time-code"
+            placeholder={t('请输入验证码或恢复码', 'Enter the verification code or a recovery code')}
+            disabled={challengeLoading || !challenge}
+          />
+        </Form.Item>
+      </Space>
+    </Form>
+  </Modal>
+);
+
+const PasskeyVerificationModal = ({
+  open,
+  action,
+  verificationProvider,
+  verificationChallenge,
+  challengeLoading,
+  submitting,
+  alertMessage,
+  formProps,
+  onCancel,
+  onRetry,
+  onSubmit,
+  isMobile,
+}: {
+  open: boolean;
+  action: 'bind' | 'rename' | 'delete' | null;
+  verificationProvider: SecondFactorProviderStatus | null;
+  verificationChallenge: SecondFactorChallenge | null;
+  challengeLoading: boolean;
+  submitting: boolean;
+  alertMessage: string | null;
+  formProps: FormProps<{ currentPassword?: string; verificationCode?: string }>;
+  onCancel: () => void;
+  onRetry: () => void;
+  onSubmit: (values: { currentPassword?: string; verificationCode?: string }) => Promise<boolean>;
+  isMobile: boolean;
+}) => (
+  <Modal
+    title={
+      action === 'delete'
+        ? t('删除通行密钥', 'Delete passkey')
+        : action === 'rename'
+          ? t('重命名通行密钥', 'Rename passkey')
+          : t('新增通行密钥', 'Add passkey')
+    }
+    open={open}
+    onCancel={onCancel}
+    onOk={() => formProps.form?.submit?.()}
+    okText={
+      action === 'delete'
+        ? t('确认删除', 'Confirm delete')
+        : action === 'rename'
+          ? t('确认重命名', 'Confirm rename')
+          : t('继续绑定', 'Continue')
+    }
+    cancelText={t('取消', 'Cancel')}
+    confirmLoading={challengeLoading || submitting}
+    cancelButtonProps={{ disabled: challengeLoading || submitting }}
+    destroyOnHidden
+    maskClosable={!(challengeLoading || submitting)}
+    width={resolveResponsiveValue(PROFILE_2FA_BINDING_MODAL_WIDTH_BY_BREAKPOINT, isMobile)}
+  >
+    <Form {...formProps} layout="vertical" onFinish={onSubmit}>
+      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
+        {alertMessage ? <Alert showIcon type="error" message={alertMessage} /> : null}
+        <Alert
+          showIcon
+          type="warning"
+          message={t('请先确认当前身份', 'Verify your identity first')}
+          description={
+            verificationProvider
+              ? t('请先输入当前验证码或恢复码，验证通过后才允许修改通行密钥。', 'Enter the current verification code or recovery code first. Passkey changes continue only after verification succeeds.')
+              : t('当前账号没有可用的二次验证方式，请输入当前密码后继续。', 'This account has no active second-factor method. Enter the current password to continue.')
+          }
+        />
+        {verificationProvider ? (
+          <>
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label={t('验证方式', 'Verification method')}>
+                {verificationChallenge?.factorName || verificationProvider.factorName || verificationProvider.factorCode}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('绑定标识', 'Binding identifier')}>
+                {verificationChallenge?.maskedContact || verificationProvider.maskedContact || '-'}
+              </Descriptions.Item>
+            </Descriptions>
+            <Typography.Text type="secondary">
+              {verificationChallenge?.promptMessage || t('请输入当前验证码或恢复码完成身份确认。', 'Enter the current verification code or a recovery code to verify your identity.')}
+            </Typography.Text>
+            {!verificationChallenge && !challengeLoading ? (
+              <Button onClick={onRetry}>{t('重新获取验证信息', 'Reload verification details')}</Button>
+            ) : null}
+            <Form.Item
+              name="verificationCode"
+              rules={[{ required: true, message: t('请输入当前验证码或恢复码', 'Please enter the current verification code or a recovery code') }]}
+            >
+              <Input
+                autoComplete="one-time-code"
+                placeholder={t('请输入当前验证码或恢复码', 'Enter the current verification code or a recovery code')}
+                disabled={challengeLoading}
+              />
+            </Form.Item>
+          </>
+        ) : (
+          <Form.Item
+            name="currentPassword"
+            rules={[{ required: true, message: t('请输入当前密码', 'Please enter your current password') }]}
+          >
+            <Input.Password
+              autoComplete="current-password"
+              placeholder={t('请输入当前密码', 'Enter your current password')}
+            />
+          </Form.Item>
+        )}
+      </Space>
+    </Form>
+  </Modal>
+);
+
 const ContactBindModal = ({
   open,
   title,
@@ -236,6 +526,9 @@ const ContactBindModal = ({
   inputMode,
   submitting,
   alertMessage,
+  currentVerificationProvider,
+  currentVerificationChallenge,
+  currentVerificationLoading,
   verificationRequired,
   verificationChallenge,
   okText,
@@ -243,6 +536,7 @@ const ContactBindModal = ({
   formProps,
   onCancel,
   onConfirm,
+  onRetryCurrentVerification,
   isMobile,
 }: {
   open: boolean;
@@ -254,6 +548,9 @@ const ContactBindModal = ({
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   submitting: boolean;
   alertMessage: string | null;
+  currentVerificationProvider: SecondFactorProviderStatus | null;
+  currentVerificationChallenge: SecondFactorChallenge | null;
+  currentVerificationLoading: boolean;
   verificationRequired: boolean;
   verificationChallenge: SecondFactorChallenge | null;
   okText: string;
@@ -261,13 +558,14 @@ const ContactBindModal = ({
   formProps: FormProps;
   onCancel: () => void;
   onConfirm: () => void;
+  onRetryCurrentVerification: () => void;
   isMobile: boolean;
 }) => {
   useEffect(() => {
     if (!open) {
       return;
     }
-    formProps.form?.setFieldsValue({ value: initialValue || '', verificationCode: undefined });
+    formProps.form?.setFieldsValue({ value: initialValue || '', currentPassword: undefined, currentVerificationCode: undefined, verificationCode: undefined });
   }, [formProps.form, initialValue, open]);
 
   return (
@@ -284,6 +582,19 @@ const ContactBindModal = ({
     >
     <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
         <Alert showIcon type="info" message={title} description={description} />
+        <Alert
+          showIcon
+          type="warning"
+          message={t('请先确认当前身份', 'Verify your current identity first')}
+          description={
+            currentVerificationProvider
+              ? currentVerificationChallenge
+                ? currentVerificationChallenge.promptMessage ||
+                  t('请先输入当前已绑定验证方式中的验证码，确认成功后系统才会向新的联系方式发送验证码。', 'Enter the code from your current verification method first. Only then will the system send a code to the new contact method.')
+                : t('当前验证信息尚未加载，请先刷新后继续。', 'Current verification details are not loaded yet. Please reload them before continuing.')
+              : t('当前账号没有可用的已绑定验证方式，请先输入当前密码，确认后系统才会向新的联系方式发送验证码。', 'This account has no active bound verification method. Enter the current password first. Only then will the system send a code to the new contact method.')
+          }
+        />
         {verificationRequired ? (
           <Alert
             showIcon
@@ -312,6 +623,50 @@ const ContactBindModal = ({
           >
             <Input placeholder={placeholder} autoComplete={autoComplete} inputMode={inputMode} />
           </Form.Item>
+          {currentVerificationProvider ? (
+            <>
+              <Form.Item
+                label={t('当前验证方式', 'Current verification method')}
+                style={{ marginBottom: 0 }}
+              >
+                <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} style={{ width: '100%' }}>
+                  <Typography.Text>
+                    {currentVerificationChallenge?.factorName || currentVerificationProvider.factorName || currentVerificationProvider.factorCode}
+                    {currentVerificationChallenge?.maskedContact || currentVerificationProvider.maskedContact
+                      ? ` · ${currentVerificationChallenge?.maskedContact || currentVerificationProvider.maskedContact}`
+                      : ''}
+                  </Typography.Text>
+                  {!currentVerificationChallenge && !currentVerificationLoading ? (
+                    <Button onClick={onRetryCurrentVerification}>
+                      {t('重新获取当前验证信息', 'Reload current verification details')}
+                    </Button>
+                  ) : null}
+                </Space>
+              </Form.Item>
+              <Form.Item
+                name="currentVerificationCode"
+                label={t('当前验证码', 'Current verification code')}
+                rules={[{ required: true, message: t('请输入当前验证码或恢复码', 'Please enter the current verification code or a recovery code') }]}
+              >
+                <Input
+                  placeholder={t('请输入当前验证码或恢复码', 'Enter the current verification code or a recovery code')}
+                  autoComplete="one-time-code"
+                  disabled={currentVerificationLoading}
+                />
+              </Form.Item>
+            </>
+          ) : (
+            <Form.Item
+              name="currentPassword"
+              label={t('当前密码', 'Current password')}
+              rules={[{ required: true, message: t('请输入当前密码', 'Please enter your current password') }]}
+            >
+              <Input.Password
+                placeholder={t('请输入当前密码', 'Enter your current password')}
+                autoComplete="current-password"
+              />
+            </Form.Item>
+          )}
           {verificationRequired && verificationChallenge ? (
             <Form.Item
               name="verificationCode"
@@ -657,12 +1012,14 @@ type ProfileCenterBindingSectionProps = {
   loginMethods: LoginMethodItem[];
   passkeys: PasskeyCredentialRecord[];
   passkeyBinding: boolean;
+  passkeyBusy: boolean;
   passkeyEnabled: boolean;
   loginMethodsLoading: boolean;
   providers: SecondFactorProviderStatus[];
   providersLoading: boolean;
   bindingLoading: boolean;
   bindingSubmitting: boolean;
+  unbindBusy: boolean;
   onBindPasskey: () => void;
   onRenamePasskey: (id: number, label?: string) => void;
   onDeletePasskey: (id: number) => void;
@@ -675,12 +1032,14 @@ const ProfileCenterBindingSection = ({
   loginMethods,
   passkeys,
   passkeyBinding,
+  passkeyBusy,
   passkeyEnabled,
   loginMethodsLoading,
   providers,
   providersLoading,
   bindingLoading,
   bindingSubmitting,
+  unbindBusy,
   onBindPasskey,
   onRenamePasskey,
   onDeletePasskey,
@@ -773,16 +1132,18 @@ const ProfileCenterBindingSection = ({
                   width: isMobile ? '100%' : 'auto',
                 }}
               >
-                <Button
+                {!provider.bound ? (
+                  <Button
                   type="primary"
                   block={isMobile}
                   onClick={() => onBind(provider)}
-                  disabled={currentBindingLoading || currentBindingSubmitting || provider.systemEnabled === false}
+                  disabled={currentBindingLoading || currentBindingSubmitting || unbindBusy || provider.systemEnabled === false}
                 >
-                  {provider.systemEnabled === false ? t('系统未启用', 'System disabled') : provider.bound ? t('重新绑定', 'Rebind') : t('绑定', 'Bind')}
-                </Button>
+                  {provider.systemEnabled === false ? t('系统未启用', 'System disabled') : t('绑定', 'Bind')}
+                  </Button>
+                ) : null}
                 {provider.bound ? (
-                  <Button danger block={isMobile} onClick={() => onUnbind(provider)} disabled={provider.systemEnabled === false}>
+                  <Button danger block={isMobile} onClick={() => onUnbind(provider)} disabled={unbindBusy || provider.systemEnabled === false}>
                     {t('解绑', 'Unbind')}
                   </Button>
                 ) : null}
@@ -808,14 +1169,12 @@ const ProfileCenterBindingSection = ({
             <List.Item
               style={{ paddingInline: 0 }}
               actions={[
-                <Button key="rename" type="link" onClick={() => onRenamePasskey(item.id, item.label)}>
+                <Button key="rename" type="link" onClick={() => onRenamePasskey(item.id, item.label)} disabled={passkeyBusy}>
                   {t('重命名', 'Rename')}
                 </Button>,
-                <Popconfirm key="delete" title={t('确认删除该通行密钥？', 'Delete this passkey?')} onConfirm={() => onDeletePasskey(item.id)}>
-                  <Button type="link" danger>
-                    {t('删除', 'Delete')}
-                  </Button>
-                </Popconfirm>,
+                <Button key="delete" type="link" danger onClick={() => onDeletePasskey(item.id)} disabled={passkeyBusy}>
+                  {t('删除', 'Delete')}
+                </Button>,
               ]}
             >
               <List.Item.Meta
@@ -840,7 +1199,7 @@ const ProfileCenterBindingSection = ({
         className="saas-profile-page__card"
         extra={
           <Tooltip title={passkeyEnabled ? undefined : t('当前未开启通行密钥登录', 'Passkey sign-in is not enabled')}>
-            <Button icon={<KeyOutlined />} loading={passkeyBinding} disabled={passkeyBinding || !passkeyEnabled} onClick={onBindPasskey}>
+            <Button icon={<KeyOutlined />} loading={passkeyBinding} disabled={passkeyBusy || !passkeyEnabled} onClick={onBindPasskey}>
             {t('新增通行密钥', 'Add passkey')}
             </Button>
           </Tooltip>
@@ -918,12 +1277,18 @@ const ProfileCenterPage = () => {
                 loginMethods={interactionAccess.passkeyAccess.loginMethods}
                 passkeys={passkeys}
                 passkeyBinding={interactionAccess.passkeyAccess.passkeyBinding}
+                passkeyBusy={
+                  interactionAccess.passkeyAccess.passkeyBinding
+                  || interactionAccess.passkeyAccess.passkeyVerificationChallengeLoading
+                  || interactionAccess.passkeyAccess.passkeyVerificationSubmitting
+                }
                 passkeyEnabled={interactionAccess.passkeyAccess.passkeyEnabled}
                 loginMethodsLoading={loginMethodsLoading}
                 providers={providers}
                 providersLoading={providersLoading}
                 bindingLoading={interactionAccess.securityAccess.bindingLoading}
                 bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
+                unbindBusy={interactionAccess.securityAccess.unbindChallengeLoading || interactionAccess.securityAccess.unbindSubmitting}
                 onBindPasskey={interactionAccess.passkeyAccess.onBindPasskey}
                 onRenamePasskey={interactionAccess.passkeyAccess.onRenamePasskey}
                 onDeletePasskey={interactionAccess.passkeyAccess.onDeletePasskey}
@@ -981,7 +1346,7 @@ const ProfileCenterPage = () => {
               </Typography.Paragraph>
             </Card>
           </Result>
-        ) : (
+        ) : interactionAccess.securityAccess.bindingChallenge ? (
           <BindSecondFactorTotpSteps
             bindingProvider={interactionAccess.securityAccess.bindingProvider}
             bindingChallenge={interactionAccess.securityAccess.bindingChallenge}
@@ -994,8 +1359,50 @@ const ProfileCenterPage = () => {
             onRetry={() => void interactionAccess.securityAccess.retryBindChallenge()}
             onVerify={interactionAccess.securityAccess.handleVerifyBind}
           />
+        ) : (
+          <BindSecondFactorVerificationGate
+            provider={interactionAccess.securityAccess.bindingProvider}
+            verificationProvider={interactionAccess.securityAccess.bindingVerificationFactor}
+            verificationChallenge={interactionAccess.securityAccess.bindingVerificationChallenge}
+            verificationLoading={interactionAccess.securityAccess.bindingVerificationChallengeLoading}
+            bindingLoading={interactionAccess.securityAccess.bindingLoading}
+            bindingSubmitting={interactionAccess.securityAccess.bindingSubmitting}
+            bindingAlert={interactionAccess.securityAccess.bindingAlert}
+            formProps={interactionAccess.securityAccess.bindVerificationFormProps}
+            onCancel={interactionAccess.securityAccess.closeBindModal}
+            onRetry={() => void interactionAccess.securityAccess.onRetryBindVerificationChallenge()}
+            onSubmit={interactionAccess.securityAccess.onConfirmBindVerification}
+            isMobile={responsive.isMobile}
+          />
         )}
       </Modal>
+      <UnbindSecondFactorModal
+        open={Boolean(interactionAccess.securityAccess.unbindProvider)}
+        provider={interactionAccess.securityAccess.unbindProvider}
+        challenge={interactionAccess.securityAccess.unbindChallenge}
+        challengeLoading={interactionAccess.securityAccess.unbindChallengeLoading}
+        submitting={interactionAccess.securityAccess.unbindSubmitting}
+        alertMessage={interactionAccess.securityAccess.unbindAlert}
+        formProps={interactionAccess.securityAccess.unbindFormProps}
+        onCancel={interactionAccess.securityAccess.closeUnbindModal}
+        onRetry={() => void interactionAccess.securityAccess.retryUnbindChallenge()}
+        onSubmit={interactionAccess.securityAccess.handleConfirmUnbind}
+        isMobile={responsive.isMobile}
+      />
+      <PasskeyVerificationModal
+        open={interactionAccess.passkeyAccess.passkeyVerificationOpen}
+        action={interactionAccess.passkeyAccess.passkeyVerificationAction}
+        verificationProvider={interactionAccess.passkeyAccess.passkeyVerificationFactor}
+        verificationChallenge={interactionAccess.passkeyAccess.passkeyVerificationChallenge}
+        challengeLoading={interactionAccess.passkeyAccess.passkeyVerificationChallengeLoading}
+        submitting={interactionAccess.passkeyAccess.passkeyVerificationSubmitting}
+        alertMessage={interactionAccess.passkeyAccess.passkeyVerificationAlert}
+        formProps={interactionAccess.passkeyAccess.passkeyVerificationFormProps}
+        onCancel={interactionAccess.passkeyAccess.onClosePasskeyVerification}
+        onRetry={() => void interactionAccess.passkeyAccess.onRetryPasskeyVerificationChallenge()}
+        onSubmit={interactionAccess.passkeyAccess.onConfirmPasskeyVerification}
+        isMobile={responsive.isMobile}
+      />
       <ContactBindModal
         isMobile={responsive.isMobile}
         open={interactionAccess.contactBindAccess.contactBindOpen}
@@ -1006,9 +1413,14 @@ const ProfileCenterPage = () => {
         autoComplete={interactionAccess.contactBindAccess.contactBindAutoComplete}
         inputMode={interactionAccess.contactBindAccess.contactBindInputMode}
         submitting={
-          interactionAccess.contactBindAccess.contactBindSubmitting || interactionAccess.contactBindAccess.contactBindChallengeLoading
+          interactionAccess.contactBindAccess.contactBindSubmitting
+          || interactionAccess.contactBindAccess.contactBindChallengeLoading
+          || interactionAccess.contactBindAccess.contactBindCurrentChallengeLoading
         }
         alertMessage={interactionAccess.contactBindAccess.contactBindAlert}
+        currentVerificationProvider={interactionAccess.contactBindAccess.contactBindCurrentFactor}
+        currentVerificationChallenge={interactionAccess.contactBindAccess.contactBindCurrentChallenge}
+        currentVerificationLoading={interactionAccess.contactBindAccess.contactBindCurrentChallengeLoading}
         verificationRequired={interactionAccess.contactBindAccess.contactBindVerificationRequired}
         verificationChallenge={interactionAccess.contactBindAccess.contactBindChallenge}
         okText={interactionAccess.contactBindAccess.contactBindOkText}
@@ -1020,9 +1432,11 @@ const ProfileCenterPage = () => {
         formProps={interactionAccess.contactBindAccess.contactBindFormProps}
         onCancel={interactionAccess.contactBindAccess.closeContactBindModal}
         onConfirm={() => void interactionAccess.contactBindAccess.handleContactBindConfirm()}
+        onRetryCurrentVerification={() => void interactionAccess.contactBindAccess.retryContactBindCurrentChallenge()}
       />
     </ManagementPage>
   );
 };
 
 export default ProfileCenterPage;
+

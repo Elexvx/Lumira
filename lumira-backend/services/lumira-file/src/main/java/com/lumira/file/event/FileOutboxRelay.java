@@ -47,7 +47,8 @@ public class FileOutboxRelay {
         if (!relayEnabled) {
             return 0;
         }
-        int normalizedBatchSize = Math.max(1, batchSize);
+        validateBatchSize();
+        int normalizedBatchSize = batchSize;
         int normalizedMaxDrainRounds = Math.max(1, maxDrainRounds);
         int normalizedMaxBurstRounds = Math.max(normalizedMaxDrainRounds, maxBurstRounds);
         int effectiveMaxRounds = effectiveMaxRounds(
@@ -69,6 +70,12 @@ public class FileOutboxRelay {
 
     public boolean replay(Long id) {
         return outboxService.replay(id, dispatcher);
+    }
+
+    private void validateBatchSize() {
+        if (batchSize < 1 || batchSize > PlatformEventOutboxService.MAX_DISPATCH_LIMIT) {
+            throw new IllegalStateException("File outbox batch size must be between 1 and " + PlatformEventOutboxService.MAX_DISPATCH_LIMIT);
+        }
     }
 
     private int effectiveMaxRounds(

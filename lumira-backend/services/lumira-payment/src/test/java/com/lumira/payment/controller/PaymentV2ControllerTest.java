@@ -8,6 +8,7 @@ import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
@@ -84,18 +85,29 @@ class PaymentV2ControllerTest {
     }
 
     @Test
+    void providers_shouldRejectAdminUsernameWithoutProtectedAdminId() {
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser(42L, "admin", "payment:settings:view"));
+
+        assertThatThrownBy(() -> controller.providers())
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(paymentManagementAppService, never()).listProviderSettings();
+    }
+
+    @Test
     void updateProvider_shouldDelegateWithOperator() {
         CurrentUser admin = currentUser(1001L, "admin", null, "payment:settings:manage");
         PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();
         PaymentProviderSettingsDTO result = new PaymentProviderSettingsDTO();
         result.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
-        when(paymentManagementAppService.updatePaymentProviderSettings(1001L, "stripe", request)).thenReturn(result);
+        when(paymentManagementAppService.updatePaymentProviderSettings(admin, "stripe", request)).thenReturn(result);
 
         var response = controller.updateProvider("stripe", request);
 
         assertThat(response.getData()).isSameAs(result);
-        verify(paymentManagementAppService).updatePaymentProviderSettings(1001L, "stripe", request);
+        verify(paymentManagementAppService).updatePaymentProviderSettings(admin, "stripe", request);
     }
 
     @Test
@@ -115,13 +127,103 @@ class PaymentV2ControllerTest {
         );
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "会员订阅", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(paymentTransactionService.createOrder(42L, request)).thenReturn(order);
+        when(paymentTransactionService.createOrder(currentUser, request)).thenReturn(order);
 
         var response = controller.createOrder(request);
 
         assertThat(response.getData()).isSameAs(order);
         verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService).createOrder(42L, request);
+        verify(paymentTransactionService).createOrder(currentUser, request);
+    }
+
+    @Test
+    void createOrder_shouldRejectUnauthenticatedUserBeforePermissionAndService() {
+        CurrentUser currentUser = new CurrentUser(42L, "alice", 1001L, "session-1", 1, false, Set.of("payment:order:create"));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void createOrder_shouldRejectBlankUsernameBeforePermissionAndService() {
+        CurrentUser currentUser = currentUser(42L, " ", "payment:order:create");
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void createOrder_shouldRejectMissingSessionVersionBeforePermissionAndService() {
+        CurrentUser currentUser = new CurrentUser(42L, "alice", 1001L, "session-1", null, true, Set.of("payment:order:create"));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void order_shouldQueryWithinCurrentUserScope() {
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:view");
+        PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "subject", 100L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentTransactionService.getOrderForUser(currentUser, "ORD-1")).thenReturn(order);
+
+        var response = controller.order("ORD-1");
+
+        assertThat(response.getData()).isSameAs(order);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:view");
+        verify(paymentTransactionService).getOrderForUser(currentUser, "ORD-1");
+        verify(paymentTransactionService, never()).getOrder("ORD-1");
     }
 
     @Test
@@ -130,13 +232,28 @@ class PaymentV2ControllerTest {
         PaymentCreateRefundRequestDTO request = new PaymentCreateRefundRequestDTO("REF-1", 100L, "CNY", "重复付款", Map.of(), "rid-1");
         PaymentRefundDTO refund = new PaymentRefundDTO("REF-1", "ORD-1", "stripe", "pr_1", 100L, "CNY", "PENDING", "重复付款", Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(paymentTransactionService.createRefund(42L, "ORD-1", request)).thenReturn(refund);
+        when(paymentTransactionService.createRefund(currentUser, "ORD-1", request)).thenReturn(refund);
 
         var response = controller.createRefund("ORD-1", request);
 
         assertThat(response.getData()).isSameAs(refund);
         verify(permissionGuard).requirePermission(currentUser, "payment:refund:create");
-        verify(paymentTransactionService).createRefund(42L, "ORD-1", request);
+        verify(paymentTransactionService).createRefund(currentUser, "ORD-1", request);
+    }
+
+    @Test
+    void refund_shouldQueryWithinCurrentUserScope() {
+        CurrentUser currentUser = currentUser(42L, "alice", "payment:refund:view");
+        PaymentRefundDTO refund = new PaymentRefundDTO("REF-1", "ORD-1", "stripe", "pr_1", 100L, "CNY", "PENDING", "duplicate", Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentTransactionService.getRefundForUser(currentUser, "REF-1")).thenReturn(refund);
+
+        var response = controller.refund("REF-1");
+
+        assertThat(response.getData()).isSameAs(refund);
+        verify(permissionGuard).requirePermission(currentUser, "payment:refund:view");
+        verify(paymentTransactionService).getRefundForUser(currentUser, "REF-1");
+        verify(paymentTransactionService, never()).getRefund("REF-1");
     }
 
     @Test
@@ -153,7 +270,7 @@ class PaymentV2ControllerTest {
 
         var response = controller.webhook("stripe", "{\"eventId\":\"evt-1\"}", request);
 
-        assertThat(response.getData()).isSameAs(event);
+        assertThat(response).isEqualTo("success");
         verify(paymentWebhookService).handleWebhook("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
@@ -168,7 +285,7 @@ class PaymentV2ControllerTest {
 
         var response = controller.webhook("paypal", "{}", request);
 
-        assertThat(response.getData()).isSameAs(event);
+        assertThat(response).isEqualTo("success");
         verify(paymentWebhookService).handleWebhook("paypal", "{}", Map.of("X-Webhook-Token", "token-1"));
     }
 
@@ -177,7 +294,10 @@ class PaymentV2ControllerTest {
     }
 
     private CurrentUser currentUser(Long userId, String username, Long legacyScopeId, String permission) {
-        return new CurrentUser(userId, username, legacyScopeId, "session-1", 1, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(userId, username, legacyScopeId, "session-1", 1, true, Set.of(permission));
+        currentUser.setUserUuid("user-uuid-" + userId);
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
     }
 
     private HttpServletRequest requestWithHeaders(Map<String, String> headers) {

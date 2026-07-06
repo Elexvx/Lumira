@@ -29,8 +29,10 @@ public class FileStorageSpaceEntity {
     private Integer anonymousAccessAllowed;
     private String status;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
     @TableField(exist = false)
@@ -182,6 +184,14 @@ public class FileStorageSpaceEntity {
         this.createdBy = createdBy;
     }
 
+    public String getCreatedByUuid() {
+        return createdByUuid;
+    }
+
+    public void setCreatedByUuid(String createdByUuid) {
+        this.createdByUuid = createdByUuid;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -196,6 +206,14 @@ public class FileStorageSpaceEntity {
 
     public void setUpdatedBy(Long updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public String getUpdatedByUuid() {
+        return updatedByUuid;
+    }
+
+    public void setUpdatedByUuid(String updatedByUuid) {
+        this.updatedByUuid = updatedByUuid;
     }
 
     public LocalDateTime getUpdatedAt() {

@@ -8,6 +8,7 @@ import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.plugin.app.PluginManagementAppService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,14 +50,14 @@ public class LumiraAuthPostLoginBootstrapProvider implements AuthPostLoginBootst
             CurrentUserDTO currentUser,
             AuthReadModelVersionProvider.AuthBootstrapReadModelVersions readModelVersions
     ) {
-        if (currentUser == null) {
+        CurrentUser authenticatedCurrentUser = toTrustedCurrentUser(currentUser);
+        if (authenticatedCurrentUser == null) {
             return new AuthPostLoginBootstrapPayload(List.of(), List.of(), Map.of());
         }
-        CurrentUser authenticatedCurrentUser = toAuthenticatedCurrentUser(currentUser);
         CompletableFuture<Map<String, Object>> bootstrapFuture = CompletableFuture.supplyAsync(
                 () -> pluginManagementAppService.currentBootstrap(
-                        currentUser.permissions(),
-                        currentUser.permissionsVersion(),
+                        List.copyOf(authenticatedCurrentUser.getPermissions()),
+                        authenticatedCurrentUser.getPermissionsVersion(),
                         readModelVersions == null ? null : readModelVersions.pluginBootstrapVersion(),
                         readModelVersions == null ? null : readModelVersions.platformMenuTreeVersion()
                 ),
@@ -79,7 +80,10 @@ public class LumiraAuthPostLoginBootstrapProvider implements AuthPostLoginBootst
         );
     }
 
-    private CurrentUser toAuthenticatedCurrentUser(CurrentUserDTO currentUser) {
+    private CurrentUser toTrustedCurrentUser(CurrentUserDTO currentUser) {
+        if (currentUser == null) {
+            return null;
+        }
         Set<String> permissions = currentUser.permissions() == null
                 ? Set.of()
                 : new LinkedHashSet<>(currentUser.permissions());
@@ -102,6 +106,8 @@ public class LumiraAuthPostLoginBootstrapProvider implements AuthPostLoginBootst
         authenticatedCurrentUser.setDataScopes(currentUser.dataScopes() == null ? List.of() : List.copyOf(currentUser.dataScopes()));
         authenticatedCurrentUser.setRequiresPasswordChange(currentUser.requiresPasswordChange());
         authenticatedCurrentUser.setDefaultHomePath(currentUser.defaultHomePath());
-        return authenticatedCurrentUser;
+        return AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedCurrentUser)
+                ? authenticatedCurrentUser
+                : null;
     }
 }

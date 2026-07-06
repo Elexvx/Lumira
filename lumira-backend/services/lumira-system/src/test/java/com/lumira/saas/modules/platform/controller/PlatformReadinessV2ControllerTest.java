@@ -1,9 +1,18 @@
 package com.lumira.saas.modules.platform.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.modules.architecture.application.OwnerReadModelMetricsService;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -15,7 +24,7 @@ class PlatformReadinessV2ControllerTest {
         when(metricsService.platformRuntimeAppearanceLatestVersion()).thenReturn(5L);
         when(metricsService.platformReadModelVersionLagMillis()).thenReturn(120.0);
 
-        var controller = new PlatformReadinessV2Controller(metricsService);
+        var controller = new PlatformReadinessV2Controller(metricsService, securityContext(Set.of("system:monitor:service:view")), new PermissionGuard());
         var response = controller.readiness();
 
         assertThat(response.getHttpStatus()).isEqualTo(200);
@@ -81,6 +90,28 @@ class PlatformReadinessV2ControllerTest {
                 .anySatisfy(metric -> {
                     assertThat(metric.name()).isEqualTo("platform.read_model.version_lag_ms");
                     assertThat(metric.value()).isEqualTo(120.0);
-                });
+        });
+    }
+
+    @Test
+    void metricsShouldRequireMonitorPermissionBeforeReadingMetricValues() {
+        OwnerReadModelMetricsService metricsService = Mockito.mock(OwnerReadModelMetricsService.class);
+        var controller = new PlatformReadinessV2Controller(metricsService, securityContext(Set.of("system:config:view")), new PermissionGuard());
+
+        assertThatThrownBy(controller::metrics)
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(metricsService, never()).platformConfigReadP95Millis();
+        verify(metricsService, never()).platformRuntimeAppearanceLatestVersion();
+    }
+
+    private SecurityContextFacade securityContext(Set<String> permissions) {
+        SecurityContextFacade securityContextFacade = Mockito.mock(SecurityContextFacade.class);
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, permissions);
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("permissions-1");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        return securityContextFacade;
     }
 }

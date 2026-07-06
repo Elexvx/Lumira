@@ -19,6 +19,7 @@ public class ExportTaskEntity {
     private String fileName;
     private String errorMessage;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;
@@ -44,6 +45,8 @@ public class ExportTaskEntity {
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getStartedAt() { return startedAt; }

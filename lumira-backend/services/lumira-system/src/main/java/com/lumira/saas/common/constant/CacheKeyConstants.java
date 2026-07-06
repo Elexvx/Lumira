@@ -34,6 +34,10 @@ public final class CacheKeyConstants {
         return String.join(":", PREFIX, SESSION_USER, String.valueOf(userId), sessionId);
     }
 
+    public static String userSessionKey(Long userId, String userUuid, String sessionId) {
+        return String.join(":", PREFIX, SESSION_USER, String.valueOf(userId), String.valueOf(userUuid), sessionId);
+    }
+
     public static String onlineSessionKey() {
         return String.join(":", PREFIX, ONLINE_SESSION);
     }
@@ -42,8 +46,16 @@ public final class CacheKeyConstants {
         return String.join(":", PREFIX, ONLINE_SESSION_USER, String.valueOf(userId));
     }
 
+    public static String onlineSessionUserKey(Long userId, String userUuid) {
+        return String.join(":", PREFIX, ONLINE_SESSION_USER, String.valueOf(userId), String.valueOf(userUuid));
+    }
+
     public static String onlineSessionLatestUserKey(Long userId) {
         return String.join(":", PREFIX, ONLINE_SESSION_LATEST_USER, String.valueOf(userId));
+    }
+
+    public static String onlineSessionLatestUserKey(Long userId, String userUuid) {
+        return String.join(":", PREFIX, ONLINE_SESSION_LATEST_USER, String.valueOf(userId), String.valueOf(userUuid));
     }
 
     public static String onlineSessionEventsChannel() {

@@ -17,8 +17,10 @@ public class SysConfigEntity {
     private Integer isSystem;
     private String remark;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
 
@@ -38,10 +40,14 @@ public class SysConfigEntity {
     public void setRemark(String remark) { this.remark = remark; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getDeleted() { return deleted; }

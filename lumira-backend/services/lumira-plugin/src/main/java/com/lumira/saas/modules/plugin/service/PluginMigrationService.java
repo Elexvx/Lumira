@@ -33,15 +33,15 @@ public class PluginMigrationService {
         this.pluginPersistenceService = pluginPersistenceService;
     }
 
-    public void executeUpMigrations(String pluginCode, String pluginVersion, Path versionHome, Long operatorId) {
-        execute(pluginCode, pluginVersion, versionHome, "up", operatorId);
+    public void executeUpMigrations(String pluginCode, String pluginVersion, Path versionHome, Long operatorId, String operatorUuid) {
+        execute(pluginCode, pluginVersion, versionHome, "up", operatorId, operatorUuid);
     }
 
-    public void executeDownMigrations(String pluginCode, String pluginVersion, Path versionHome, Long operatorId) {
-        execute(pluginCode, pluginVersion, versionHome, "down", operatorId);
+    public void executeDownMigrations(String pluginCode, String pluginVersion, Path versionHome, Long operatorId, String operatorUuid) {
+        execute(pluginCode, pluginVersion, versionHome, "down", operatorId, operatorUuid);
     }
 
-    private void execute(String pluginCode, String pluginVersion, Path versionHome, String direction, Long operatorId) {
+    private void execute(String pluginCode, String pluginVersion, Path versionHome, String direction, Long operatorId, String operatorUuid) {
         try {
             List<ResourceScript> scripts = resolveScripts(pluginCode, versionHome, direction);
             if (scripts.isEmpty()) {
@@ -63,7 +63,8 @@ public class PluginMigrationService {
                             script.scriptPath(),
                             "SUCCESS",
                             null,
-                            operatorId
+                            operatorId,
+                            operatorUuid
                     );
                 } catch (Throwable throwable) {
                     pluginPersistenceService.insertSchemaHistory(
@@ -74,7 +75,8 @@ public class PluginMigrationService {
                             script.scriptPath(),
                             "FAILED",
                             rootCauseMessage(throwable),
-                            operatorId
+                            operatorId,
+                            operatorUuid
                     );
                     throw throwable;
                 }

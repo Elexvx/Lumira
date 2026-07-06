@@ -111,8 +111,22 @@ public class ReadModelVersionService {
                         insert into ddd_read_model_version (
                             context_name, scope, version, last_event_key, rebuilt_at
                         ) values (?, ?, 1, ?, ?)
-                        on duplicate key update version = version + 1,
-                            last_event_key = values(last_event_key), rebuilt_at = values(rebuilt_at)
+                        on duplicate key update
+                            version = case
+                                when values(last_event_key) is not null and last_event_key = values(last_event_key)
+                                    then version
+                                else version + 1
+                            end,
+                            last_event_key = case
+                                when values(last_event_key) is not null and last_event_key = values(last_event_key)
+                                    then last_event_key
+                                else values(last_event_key)
+                            end,
+                            rebuilt_at = case
+                                when values(last_event_key) is not null and last_event_key = values(last_event_key)
+                                    then rebuilt_at
+                                else values(rebuilt_at)
+                            end
                         """,
                 normalize(contextName),
                 normalize(scope),

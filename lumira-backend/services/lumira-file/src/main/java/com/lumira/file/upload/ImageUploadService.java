@@ -13,6 +13,7 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -144,7 +145,21 @@ public class ImageUploadService {
         while (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
-        return StringUtils.hasText(normalized) ? normalized : null;
+        if (!StringUtils.hasText(normalized)) {
+            return null;
+        }
+        if (normalized.contains(":")) {
+            throw badRequest("鍥剧墖瀛樺偍璺緞鏃犳晥");
+        }
+        try {
+            Path subPath = Path.of(normalized).normalize();
+            if (subPath.isAbsolute() || subPath.startsWith("..")) {
+                throw badRequest("鍥剧墖瀛樺偍璺緞鏃犳晥");
+            }
+            return subPath.toString().replace('\\', '/');
+        } catch (InvalidPathException exception) {
+            throw badRequest("鍥剧墖瀛樺偍璺緞鏃犳晥");
+        }
     }
 
     private byte[] readBytes(MultipartFile file) {

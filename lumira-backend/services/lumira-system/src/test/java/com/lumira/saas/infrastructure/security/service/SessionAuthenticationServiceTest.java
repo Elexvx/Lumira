@@ -88,6 +88,38 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
+    void shouldRejectCachedSessionPermissionsWhenTrustedUserIsDisabled() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        permissionSnapshotService.setTrustedActiveUser(false);
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        session.setDeptIds(java.util.List.of());
+        session.setDescendantDeptIds(java.util.List.of());
+        session.setDataScopes(java.util.List.of());
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
+        assertFalse(permissionSnapshotService.roleSnapshotLoaded);
+    }
+
+    @Test
     void shouldGrantWildcardToProtectedAdminEvenWhenCachedSessionSnapshotIsEmpty() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
@@ -120,6 +152,89 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
+    void shouldRejectAccessTokenWhenUsernameDoesNotMatchTrustedSession() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        authSessionStore.put(session);
+        TokenClaims claims = buildClaims(session);
+        claims.setUsername("admin");
+        jwtTokenService.setClaims(claims);
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
+    }
+
+    @Test
+    void shouldRejectAccessTokenWhenSimulatedRoleIdDoesNotMatchTrustedSession() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(9001L);
+        authSessionStore.put(session);
+        TokenClaims claims = buildClaims(session);
+        claims.setSimulatedRoleId(9002L);
+        jwtTokenService.setClaims(claims);
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertFalse(permissionSnapshotService.roleSnapshotLoaded);
+    }
+
+    @Test
+    void shouldNotGrantProtectedAdminWildcardWhenOnlyUsernameClaimIsAdmin() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setUsername("admin");
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of());
+        session.setDeptIds(java.util.List.of());
+        session.setDescendantDeptIds(java.util.List.of());
+        session.setDataScopes(java.util.List.of());
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        SessionAuthenticationService.AuthenticatedAccess access = service.authenticateAccessToken("access-token");
+
+        assertEquals(Set.of("session:read"), access.currentUser().getPermissions());
+        assertEquals("admin", access.currentUser().getUsername());
+        assertFalse(access.currentUser().getPermissions().contains("*"));
+    }
+
+    @Test
     void shouldCacheStableAuthenticatedAccessForHotToken() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
@@ -147,9 +262,81 @@ class SessionAuthenticationServiceTest {
         service.authenticateAccessToken("access-token");
 
         assertEquals(1, jwtTokenService.parseCount);
-        assertEquals(1, authSessionStore.findCount);
+        assertEquals(2, authSessionStore.findCount);
         assertFalse(permissionSnapshotService.userSnapshotLoaded);
         assertFalse(permissionSnapshotService.roleSnapshotLoaded);
+    }
+
+    @Test
+    void shouldRejectCachedAccessWhenTrustedSessionWasRemoved() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        session.setPrimaryDeptId(9L);
+        session.setDeptIds(java.util.List.of(9L));
+        session.setDescendantDeptIds(java.util.List.of(10L));
+        session.setDataScopes(java.util.List.of());
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        service.authenticateAccessToken("access-token");
+        authSessionStore.remove(session, true);
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertEquals(2, jwtTokenService.parseCount);
+        assertEquals(3, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldRejectCachedAccessWhenSessionPermissionsVersionBecomesStale() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        session.setPrimaryDeptId(9L);
+        session.setDeptIds(java.util.List.of(9L));
+        session.setDescendantDeptIds(java.util.List.of(10L));
+        session.setDataScopes(java.util.List.of());
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        service.authenticateAccessToken("access-token");
+        permissionSnapshotService.setCurrentVersion(2L);
+        permissionSnapshotService.setLoadedVersion("v2:data-scope-cache-v4");
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertEquals(2, jwtTokenService.parseCount);
+        assertEquals(3, authSessionStore.findCount);
+        assertTrue(permissionSnapshotService.userSnapshotLoaded);
     }
 
     @Test
@@ -178,7 +365,33 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
-    void shouldRefreshSessionPermissionsWhenVersionIsOutdated() {
+    void shouldNotCacheSimulatedRoleAccess() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(9001L);
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        service.authenticateAccessToken("access-token");
+        permissionSnapshotService.roleSnapshotLoaded = false;
+        service.authenticateAccessToken("access-token");
+
+        assertEquals(2, jwtTokenService.parseCount);
+        assertEquals(2, authSessionStore.findCount);
+        assertTrue(permissionSnapshotService.roleSnapshotLoaded);
+    }
+
+    @Test
+    void shouldRejectAccessTokenWhenPermissionSnapshotVersionIsOutdated() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         permissionSnapshotService.setCurrentVersion(2L);
         permissionSnapshotService.setLoadedVersion("v2:data-scope-cache-v4");
@@ -203,13 +416,12 @@ class SessionAuthenticationServiceTest {
         authSessionStore.put(session);
         jwtTokenService.setClaims(buildClaims(session));
 
-        SessionAuthenticationService.AuthenticatedAccess access = service.authenticateAccessToken("access-token");
-
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
         assertTrue(permissionSnapshotService.userSnapshotLoaded);
-        assertEquals(Set.of("user:read"), access.currentUser().getPermissions());
-        assertEquals(Set.of(), access.currentUser().getRoleIds());
         assertEquals(0, authSessionStore.saveCount);
-        assertTrue(access.sessionStateUpdated());
     }
 
     @Test
@@ -308,15 +520,238 @@ class SessionAuthenticationServiceTest {
         );
     }
 
+    @Test
+    void shouldRejectIncompleteAccessClaimsBeforeSessionLookup() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        TokenClaims claims = new TokenClaims();
+        claims.setTokenType(TokenType.ACCESS);
+        claims.setUserId(2001L);
+        claims.setSessionVersion(1);
+        jwtTokenService.setClaims(claims);
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertEquals(0, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldRejectBlankUsernameAccessClaimsBeforeSessionLookup() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        TokenClaims claims = buildClaims(session);
+        claims.setUsername(" ");
+        jwtTokenService.setClaims(claims);
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertEquals(0, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldRejectOversizedAccessTokenBeforeParsing() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("a".repeat(8 * 1024 + 1))
+        );
+        assertEquals(0, jwtTokenService.parseCount);
+        assertEquals(0, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldRejectUnsafeSessionTicketBeforeSessionLookup() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateSessionTicket("../session", 2001L, "user-uuid-2001", null, 1, "v1:data-scope-cache-v4")
+        );
+        assertEquals(0, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldRejectInvalidSessionTicketUserBeforeSessionLookup() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateSessionTicket("session-1", 0L, "user-uuid-2001", null, 1, "v1:data-scope-cache-v4")
+        );
+        assertEquals(0, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldRejectLegacyNumericOnlySessionTicketBeforeSessionLookup() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateSessionTicket("session-1", 2001L, 1)
+        );
+        assertEquals(0, authSessionStore.findCount);
+    }
+
+    @Test
+    void shouldAuthenticateTrustedSessionTicketSnapshot() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+        AuthSession session = buildSession(null);
+        authSessionStore.put(session);
+
+        SessionAuthenticationService.AuthenticatedAccess access = service.authenticateSessionTicket(
+                "session-1",
+                2001L,
+                " user-uuid-2001 ",
+                null,
+                1,
+                " v1:data-scope-cache-v4 "
+        );
+
+        assertEquals("user-uuid-2001", access.currentUser().getUserUuid());
+        assertEquals("v1:data-scope-cache-v4", access.currentUser().getPermissionsVersion());
+        assertTrue(permissionSnapshotService.userSnapshotLoaded);
+    }
+
+    @Test
+    void shouldRejectSessionTicketWhenUserUuidDoesNotMatchSession() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+        authSessionStore.put(buildSession(null));
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateSessionTicket("session-1", 2001L, "other-uuid", null, 1, "v1:data-scope-cache-v4")
+        );
+    }
+
+    @Test
+    void shouldRejectSessionTicketWhenPermissionsVersionDoesNotMatchSnapshot() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+        authSessionStore.put(buildSession(null));
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateSessionTicket("session-1", 2001L, "user-uuid-2001", null, 1, "stale")
+        );
+    }
+
+    @Test
+    void shouldRejectSessionTicketWhenSimulatedRoleIdDoesNotMatchSession() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+        authSessionStore.put(buildSession(9001L));
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateSessionTicket("session-1", 2001L, "user-uuid-2001", 9002L, 1, "role-version")
+        );
+    }
+
     private static AuthSession buildSession(Long simulatedRoleId) {
         AuthSession session = new AuthSession();
         session.setSessionId("session-1");
         session.setUserId(2001L);
+        session.setUserUuid("user-uuid-2001");
         session.setUsername("ordinary");
         session.setLoginTime(Instant.now().minusSeconds(60));
         session.setLastActivityAt(Instant.now().minusSeconds(30));
         session.setExpireTime(Instant.now().plusSeconds(3600));
         session.setSessionVersion(1);
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
         session.setSimulatedRoleId(simulatedRoleId);
         return session;
     }
@@ -325,8 +760,11 @@ class SessionAuthenticationServiceTest {
         TokenClaims claims = new TokenClaims();
         claims.setSessionId(session.getSessionId());
         claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
         claims.setUsername(session.getUsername());
+        claims.setSimulatedRoleId(session.getSimulatedRoleId());
         claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getSimulatedRoleId() == null ? session.getPermissionsVersion() : "role-version");
         claims.setTokenType(TokenType.ACCESS);
         claims.setTokenId("token-1");
         return claims;
@@ -380,6 +818,7 @@ class SessionAuthenticationServiceTest {
     private static final class StubPermissionSnapshotService extends PermissionSnapshotService {
         private boolean userSnapshotLoaded;
         private boolean roleSnapshotLoaded;
+        private boolean trustedActiveUser = true;
         private long currentVersion = 1L;
         private String loadedVersion = "v1:data-scope-cache-v4";
 
@@ -388,7 +827,7 @@ class SessionAuthenticationServiceTest {
         }
 
         @Override
-        public PermissionSnapshot loadSnapshot(Long userId) {
+        public PermissionSnapshot loadSnapshot(Long userId, String userUuid) {
             userSnapshotLoaded = true;
             return new PermissionSnapshot(loadedVersion, Set.of("user:read"));
         }
@@ -405,12 +844,21 @@ class SessionAuthenticationServiceTest {
             return version != null && version.equals(currentVersion);
         }
 
+        @Override
+        public boolean isTrustedActiveUser(Long userId, String userUuid) {
+            return trustedActiveUser;
+        }
+
         private void setCurrentVersion(long currentVersion) {
             this.currentVersion = currentVersion;
         }
 
         private void setLoadedVersion(String loadedVersion) {
             this.loadedVersion = loadedVersion;
+        }
+
+        private void setTrustedActiveUser(boolean trustedActiveUser) {
+            this.trustedActiveUser = trustedActiveUser;
         }
     }
 
@@ -435,7 +883,7 @@ class SessionAuthenticationServiceTest {
         }
 
         @Override
-        public Optional<String> findLatestActiveUserSessionId(Long userId) {
+        public Optional<String> findLatestActiveUserSessionId(Long userId, String userUuid) {
             return Optional.ofNullable(latestUserSessionIds.get(userId));
         }
 

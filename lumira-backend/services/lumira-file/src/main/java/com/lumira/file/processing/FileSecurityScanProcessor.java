@@ -40,6 +40,10 @@ public class FileSecurityScanProcessor {
     }
 
     public SecurityScanResult scan(Long fileId, Long userId) {
+        throw new IllegalStateException("File security scan owner UUID is required");
+    }
+
+    public SecurityScanResult scan(Long fileId, Long userId, String userUuid) {
         Instant startedAt = Instant.now();
         FileSecurityScanEngine engine = scanEngineSelector.select();
         try {
@@ -47,15 +51,17 @@ public class FileSecurityScanProcessor {
             if (location == null) {
                 throw new IllegalStateException("File object is unavailable for security scan: " + fileId);
             }
+            Long ownerId = requireFileOwner(location, userId, userUuid);
             SecurityScanResult result;
             if (!"LOCAL".equalsIgnoreCase(location.storageType())) {
                 result = new SecurityScanResult(fileId, engine.engineName(), VERDICT_UNSUPPORTED_STORAGE, "REMOTE_STORAGE_NOT_SCANNED", 0L);
             } else {
                 result = scanLocal(engine, location, fileId);
             }
-            upsertArtifact(fileId, result, userId);
+            String ownerUuid = requireUserUuid(userUuid);
+            upsertArtifact(fileId, result, ownerId, ownerUuid);
             if (VERDICT_THREAT_DETECTED.equals(result.verdict())) {
-                quarantineFile(fileId, userId);
+                quarantineFile(fileId, ownerId, ownerUuid);
             }
             securityScanMetrics.recordVerdict(result.engine(), result.verdict(), Duration.between(startedAt, Instant.now()));
             return result;
@@ -78,19 +84,29 @@ public class FileSecurityScanProcessor {
         List<FileLocation> locations = jdbcTemplate.query(
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
-                               fo.file_extension as fileExtension, coalesce(fs.root_path, '') as rootPath
+                               fo.file_extension as fileExtension, coalesce(fs.root_path, '') as rootPath,
+                               fo.uploaded_by as uploadedBy, u.uuid as uploadedByUserUuid
                         from file_object fo
+                        join sys_user u
+                          on u.id = fo.uploaded_by
+                         and u.uuid = fo.uploaded_by_uuid
+                         and u.deleted = 0
+                         and u.status = 'ENABLED'
+                         and u.uuid is not null
+                         and u.uuid <> ''
                         left join file_storage_space fs
                           on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.id = ? and fo.deleted = 0
+                        where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
                         rs.getString("storageType"),
                         rs.getString("objectKey"),
                         rs.getString("rootPath"),
-                        rs.getString("fileExtension")
+                        rs.getString("fileExtension"),
+                        rs.getLong("uploadedBy"),
+                        rs.getString("uploadedByUserUuid")
                 ),
                 fileId
         );
@@ -137,43 +153,104 @@ public class FileSecurityScanProcessor {
         return uploadRoot.resolve(normalizedRootPath).normalize();
     }
 
-    private void upsertArtifact(Long fileId, SecurityScanResult result, Long userId) {
+    private void upsertArtifact(Long fileId, SecurityScanResult result, Long userId, String userUuid) {
+        Long ownerId = requireUserId(userId);
+        String ownerUuid = requireUserUuid(userUuid);
         String payload = buildPayload(result);
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
                             file_id, task_type, artifact_type, content_text, content_length,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        )
+                        select ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
+                        from file_object fo
+                        join sys_user u
+                          on u.id = fo.uploaded_by
+                         and u.uuid = fo.uploaded_by_uuid
+                         and u.deleted = 0
+                         and u.status = 'ENABLED'
+                        where fo.id = ?
+                          and fo.uploaded_by = ?
+                          and fo.uploaded_by_uuid = ?
+                          and fo.deleted = 0
+                          and fo.status = 'ENABLED'
                         on duplicate key update
-                            task_type = values(task_type),
-                            content_text = values(content_text),
-                            content_length = values(content_length),
-                            deleted = 0,
-                            updated_at = current_timestamp,
-                            updated_by = values(updated_by)
+                            task_type = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(task_type) else task_type end,
+                            content_text = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_text) else content_text end,
+                            content_length = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_length) else content_length end,
+                            deleted = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then 0 else deleted end,
+                            updated_at = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then current_timestamp else updated_at end,
+                            updated_by = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(updated_by) else updated_by end,
+                            updated_by_uuid = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(updated_by_uuid) else updated_by_uuid end
                         """,
                 fileId,
                 FileProcessingTaskService.TASK_SECURITY_SCAN,
                 ARTIFACT_SECURITY_SCAN_RESULT,
                 payload,
                 payload.length(),
-                userId == null ? 0L : userId,
-                userId == null ? 0L : userId
+                ownerId,
+                ownerUuid,
+                ownerId,
+                ownerUuid,
+                fileId,
+                ownerId,
+                ownerUuid
         );
+        if (updated <= 0) {
+            throw new IllegalStateException("File security scan artifact state changed, please retry");
+        }
     }
 
-    private void quarantineFile(Long fileId, Long userId) {
-        jdbcTemplate.update(
+    private void quarantineFile(Long fileId, Long userId, String userUuid) {
+        Long ownerId = requireUserId(userId);
+        String ownerUuid = requireUserUuid(userUuid);
+        int updated = jdbcTemplate.update(
                 """
                         update file_object
-                        set status = ?, updated_at = current_timestamp, updated_by = ?
-                        where id = ? and deleted = 0
+                        set status = ?, updated_at = current_timestamp, updated_by = ?, updated_by_uuid = ?
+                        where id = ?
+                          and uploaded_by = ?
+                          and uploaded_by_uuid = ?
+                          and deleted = 0
+                          and status = 'ENABLED'
                         """,
                 "QUARANTINED",
-                userId == null ? 0L : userId,
-                fileId
+                ownerId,
+                ownerUuid,
+                fileId,
+                ownerId,
+                ownerUuid
         );
+        if (updated != 1) {
+            throw new IllegalStateException("File security quarantine state changed, please retry");
+        }
+    }
+
+    private Long requireUserId(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalStateException("File processing artifact owner is required");
+        }
+        return userId;
+    }
+
+    private String requireUserUuid(String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new IllegalStateException("File processing artifact owner UUID is required");
+        }
+        return userUuid.trim();
+    }
+
+    private Long requireFileOwner(FileLocation location, Long userId, String userUuid) {
+        Long ownerId = requireUserId(location.uploadedBy());
+        Long requestedOwnerId = requireUserId(userId);
+        if (!ownerId.equals(requestedOwnerId)
+                || !StringUtils.hasText(location.uploadedByUserUuid())
+                || !StringUtils.hasText(userUuid)
+                || !location.uploadedByUserUuid().trim().equals(userUuid.trim())) {
+            throw new IllegalStateException("File processing task owner does not match file owner");
+        }
+        return ownerId;
     }
 
     private String buildPayload(SecurityScanResult result) {
@@ -198,7 +275,9 @@ public class FileSecurityScanProcessor {
             String storageType,
             String objectKey,
             String rootPath,
-            String fileExtension
+            String fileExtension,
+            Long uploadedBy,
+            String uploadedByUserUuid
     ) {
     }
 

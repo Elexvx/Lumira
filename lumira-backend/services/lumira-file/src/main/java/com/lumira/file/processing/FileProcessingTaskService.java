@@ -1,6 +1,8 @@
 package com.lumira.file.processing;
 
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -29,7 +31,7 @@ public class FileProcessingTaskService {
     public static final String STATUS_SUCCEEDED = "SUCCEEDED";
     public static final String STATUS_FAILED = "FAILED";
     public static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
-    private static final int MAX_CLAIM_LIMIT = 100;
+    public static final int MAX_CLAIM_LIMIT = 100;
     private static final int MAX_RETRY_COUNT = 5;
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_ERROR_LENGTH = 512;
@@ -82,6 +84,7 @@ public class FileProcessingTaskService {
         for (ProcessingTask task : claimPendingTasks(limit)) {
             Instant startedAt = Instant.now();
             try {
+                requireTrustedProcessingTask(task);
                 process(task);
                 markSucceeded(task);
                 recordSucceeded(task.taskType(), Duration.between(startedAt, Instant.now()));
@@ -95,7 +98,7 @@ public class FileProcessingTaskService {
     }
 
     public List<ProcessingTask> claimPendingTasks(int limit) {
-        int normalizedLimit = Math.max(1, Math.min(limit, MAX_CLAIM_LIMIT));
+        int normalizedLimit = requireClaimLimit(limit);
         LocalDateTime now = LocalDateTime.now();
         String claimToken = UUID.randomUUID().toString();
         LocalDateTime claimExpiresAt = now.plusMinutes(15);
@@ -103,15 +106,31 @@ public class FileProcessingTaskService {
                 """
                         update file_processing_task t
                         join (
-                            select id
-                            from file_processing_task
-                            where deleted = 0
+                            select t.id
+                            from file_processing_task t
+                            join file_object fo
+                              on fo.id = t.file_id
+                             and fo.deleted = 0
+                             and fo.status = 'ENABLED'
+                             and fo.uploaded_by is not null
+                             and fo.uploaded_by > 0
+                             and t.created_by = fo.uploaded_by
+                             and t.created_by_uuid = fo.uploaded_by_uuid
+                            join sys_user u
+                              on u.id = fo.uploaded_by
+                             and u.uuid = fo.uploaded_by_uuid
+                             and u.deleted = 0
+                             and u.status = 'ENABLED'
+                             and u.uuid is not null
+                             and u.uuid <> ''
+                             and t.created_by_uuid = u.uuid
+                            where t.deleted = 0
                               and (
-                                    status = ?
-                                    or (status = ? and (next_retry_at is null or next_retry_at <= ?))
-                                    or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                                    t.status = ?
+                                    or (t.status = ? and (t.next_retry_at is null or t.next_retry_at <= ?))
+                                    or (t.status = ? and t.claim_expires_at is not null and t.claim_expires_at <= ?)
                               )
-                            order by priority desc, created_at asc, id asc
+                            order by t.priority desc, t.created_at asc, t.id asc
                             limit ?
                         ) picked on picked.id = t.id
                         set t.status = ?,
@@ -139,12 +158,29 @@ public class FileProcessingTaskService {
                 """
                         select id, file_id as fileId, task_type as taskType,
                                status, priority, retry_count as retryCount, next_retry_at as nextRetryAt,
-                               claimed_at as claimedAt, completed_at as completedAt, last_error as lastError,
-                               created_by as createdBy, created_at as createdAt, updated_by as updatedBy,
-                               updated_at as updatedAt, claim_token as claimToken
-                        from file_processing_task
-                        where deleted = 0 and claim_token = ?
-                        order by priority desc, created_at asc, id asc
+                               t.claimed_at as claimedAt, t.completed_at as completedAt, t.last_error as lastError,
+                               fo.uploaded_by as createdBy, t.created_by_uuid as createdByUserUuid,
+                               t.created_at as createdAt, t.updated_by as updatedBy,
+                               t.updated_at as updatedAt, t.claim_token as claimToken
+                        from file_processing_task t
+                        join file_object fo
+                          on fo.id = t.file_id
+                         and fo.deleted = 0
+                         and fo.status = 'ENABLED'
+                             and fo.uploaded_by is not null
+                             and fo.uploaded_by > 0
+                             and t.created_by = fo.uploaded_by
+                             and t.created_by_uuid = fo.uploaded_by_uuid
+                        join sys_user u
+                          on u.id = fo.uploaded_by
+                         and u.uuid = fo.uploaded_by_uuid
+                         and u.deleted = 0
+                         and u.status = 'ENABLED'
+                         and u.uuid is not null
+                         and u.uuid <> ''
+                         and t.created_by_uuid = u.uuid
+                        where t.deleted = 0 and t.claim_token = ?
+                        order by t.priority desc, t.created_at asc, t.id asc
                 """,
                 (rs, rowNum) -> new ProcessingTask(
                         rs.getLong("id"),
@@ -158,6 +194,7 @@ public class FileProcessingTaskService {
                         rs.getObject("completedAt", LocalDateTime.class),
                         rs.getString("lastError"),
                         rs.getLong("createdBy"),
+                        rs.getString("createdByUserUuid"),
                         rs.getObject("createdAt", LocalDateTime.class),
                         rs.getLong("updatedBy"),
                         rs.getObject("updatedAt", LocalDateTime.class),
@@ -168,7 +205,7 @@ public class FileProcessingTaskService {
     }
 
     public void markSucceeded(ProcessingTask task) {
-        if (task == null || task.id() == null || !StringUtils.hasText(task.claimToken())) {
+        if (task == null || task.id() == null || task.id() <= 0 || !isTrustedClaimToken(task.claimToken())) {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
@@ -176,50 +213,45 @@ public class FileProcessingTaskService {
                 """
                         update file_processing_task
                         set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
-                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?, updated_by_uuid = ?
                         where id = ? and claim_token = ? and deleted = 0 and status = 'PROCESSING'
+                          and file_id = ?
+                          and task_type = ?
+                          and created_by = ?
+                          and created_by_uuid = ?
                         """,
                 STATUS_SUCCEEDED,
                 now,
                 now,
-                task.updatedBy() == null ? 0L : task.updatedBy(),
+                requireTaskOwnerId(task),
+                requireTaskOwnerUuid(task),
                 task.id(),
-                task.claimToken()
+                task.claimToken(),
+                task.fileId(),
+                task.taskType(),
+                requireTaskOwnerId(task),
+                requireTaskOwnerUuid(task)
         );
         recordClaimMismatchIfNeeded(updated, task, "markSucceeded");
     }
 
     public void markSucceeded(Long taskId, Long userId) {
-        markSucceeded(taskId, userId, null);
+        throw new IllegalStateException("File processing task owner UUID is required");
     }
 
     public void markSucceeded(Long taskId, Long userId, String claimToken) {
-        if (taskId == null || !StringUtils.hasText(claimToken)) {
-            return;
+        throw new IllegalStateException("File processing task owner UUID is required");
+    }
+
+    private int requireClaimLimit(int limit) {
+        if (limit < 1 || limit > MAX_CLAIM_LIMIT) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Invalid file processing task claim limit");
         }
-        LocalDateTime now = LocalDateTime.now();
-        int updated = jdbcTemplate.update(
-                """
-                        update file_processing_task
-                        set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
-                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-                        where id = ? and claim_token = ? and deleted = 0 and status = 'PROCESSING'
-                        """,
-                STATUS_SUCCEEDED,
-                now,
-                now,
-                userId == null ? 0L : userId,
-                taskId,
-                claimToken
-        );
-        if (updated == 0) {
-            log.warn("File processing task markSucceeded claim mismatch taskId={}", taskId);
-            recordClaimMismatch("UNKNOWN", "markSucceeded");
-        }
+        return limit;
     }
 
     public void markFailed(ProcessingTask task, String errorMessage) {
-        if (task == null || task.id() == null || !StringUtils.hasText(task.claimToken())) {
+        if (task == null || task.id() == null || task.id() <= 0 || !isTrustedClaimToken(task.claimToken())) {
             return;
         }
         int retryCount = task.retryCount() == null ? 0 : task.retryCount();
@@ -230,17 +262,28 @@ public class FileProcessingTaskService {
                 """
                         update file_processing_task
                         set status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
-                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?, updated_by_uuid = ?
                         where id = ? and claim_token = ? and deleted = 0 and status = 'PROCESSING'
+                          and file_id = ?
+                          and task_type = ?
+                          and created_by = ?
+                          and created_by_uuid = ?
+                          and retry_count = ?
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
                 deadLetter ? null : now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)),
                 truncate(errorMessage),
                 now,
-                task.updatedBy() == null ? 0L : task.updatedBy(),
+                taskOwnerIdOrNull(task),
+                taskOwnerUuidOrNull(task),
                 task.id(),
-                task.claimToken()
+                task.claimToken(),
+                task.fileId(),
+                task.taskType(),
+                taskOwnerIdOrNull(task),
+                taskOwnerUuidOrNull(task),
+                retryCount
         );
         recordClaimMismatchIfNeeded(updated, task, "markFailed");
     }
@@ -257,30 +300,105 @@ public class FileProcessingTaskService {
     private void process(ProcessingTask task) {
         if (TASK_SECURITY_SCAN.equals(task.taskType())) {
             requireProcessor(securityScanProcessor, task.taskType(), FileSecurityScanProcessor.class.getSimpleName());
-            securityScanProcessor.scan(task.fileId(), task.updatedBy());
+            securityScanProcessor.scan(task.fileId(), requireTaskOwnerId(task), requireTaskOwnerUuid(task));
             return;
         }
         if (TASK_THUMBNAIL.equals(task.taskType())) {
             requireProcessor(thumbnailProcessor, task.taskType(), FileThumbnailProcessor.class.getSimpleName());
-            thumbnailProcessor.generateThumbnail(task.fileId(), task.updatedBy());
+            thumbnailProcessor.generateThumbnail(task.fileId(), requireTaskOwnerId(task), requireTaskOwnerUuid(task));
             return;
         }
         if (TASK_OCR.equals(task.taskType())) {
             requireProcessor(ocrProcessor, task.taskType(), FileOcrProcessor.class.getSimpleName());
-            ocrProcessor.extractImageText(task.fileId(), task.updatedBy());
+            ocrProcessor.extractImageText(task.fileId(), requireTaskOwnerId(task), requireTaskOwnerUuid(task));
             return;
         }
         if (TASK_TEXT_EXTRACT.equals(task.taskType())) {
             requireProcessor(textExtractionProcessor, task.taskType(), FileTextExtractionProcessor.class.getSimpleName());
-            textExtractionProcessor.extractText(task.fileId(), task.updatedBy());
+            textExtractionProcessor.extractText(task.fileId(), requireTaskOwnerId(task), requireTaskOwnerUuid(task));
             return;
         }
         if (TASK_AI_PARSE.equals(task.taskType())) {
             requireProcessor(aiParseProcessor, task.taskType(), FileAiParseProcessor.class.getSimpleName());
-            aiParseProcessor.prepareForAiParse(task.fileId(), task.updatedBy());
+            aiParseProcessor.prepareForAiParse(task.fileId(), requireTaskOwnerId(task), requireTaskOwnerUuid(task));
             return;
         }
         throw new IllegalStateException("File processing task processor is not implemented: " + task.taskType());
+    }
+
+    private void requireTrustedProcessingTask(ProcessingTask task) {
+        if (task == null
+                || task.id() == null
+                || task.id() <= 0
+                || task.fileId() == null
+                || task.fileId() <= 0
+                || !STATUS_PROCESSING.equals(task.status())
+                || !isTrustedClaimToken(task.claimToken())
+                || task.retryCount() == null
+                || task.retryCount() < 0
+                || task.retryCount() >= MAX_RETRY_COUNT
+                || task.createdBy() == null
+                || task.createdBy() <= 0
+                || !StringUtils.hasText(task.createdByUserUuid())
+                || !isKnownTaskType(task.taskType())) {
+            throw new IllegalStateException("File processing task row is invalid");
+        }
+    }
+
+    private boolean isKnownTaskType(String taskType) {
+        return TASK_SECURITY_SCAN.equals(taskType)
+                || TASK_THUMBNAIL.equals(taskType)
+                || TASK_OCR.equals(taskType)
+                || TASK_TEXT_EXTRACT.equals(taskType)
+                || TASK_AI_PARSE.equals(taskType);
+    }
+
+    private boolean isTrustedClaimToken(String claimToken) {
+        if (!StringUtils.hasText(claimToken) || claimToken.length() > 128) {
+            return false;
+        }
+        for (int i = 0; i < claimToken.length(); i++) {
+            char ch = claimToken.charAt(i);
+            if (ch < 33 || ch > 126) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Long requireTaskOwnerId(ProcessingTask task) {
+        if (task == null) {
+            throw new IllegalStateException("File processing task is required");
+        }
+        return requireUserId(task.createdBy());
+    }
+
+    private String requireTaskOwnerUuid(ProcessingTask task) {
+        if (task == null || !StringUtils.hasText(task.createdByUserUuid())) {
+            throw new IllegalStateException("File processing task owner UUID is required");
+        }
+        return task.createdByUserUuid().trim();
+    }
+
+    private Long requireUserId(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalStateException("File processing task owner is required");
+        }
+        return userId;
+    }
+
+    private Long taskOwnerIdOrNull(ProcessingTask task) {
+        if (task == null || task.createdBy() == null || task.createdBy() <= 0) {
+            return null;
+        }
+        return task.createdBy();
+    }
+
+    private String taskOwnerUuidOrNull(ProcessingTask task) {
+        if (task == null || !StringUtils.hasText(task.createdByUserUuid())) {
+            return null;
+        }
+        return task.createdByUserUuid().trim();
     }
 
     private void requireProcessor(@Nullable Object processor, String taskType, String processorName) {
@@ -341,6 +459,7 @@ public class FileProcessingTaskService {
             LocalDateTime completedAt,
             String lastError,
             Long createdBy,
+            String createdByUserUuid,
             LocalDateTime createdAt,
             Long updatedBy,
             LocalDateTime updatedAt,
@@ -363,12 +482,33 @@ public class FileProcessingTaskService {
                 LocalDateTime updatedAt
         ) {
             this(id, fileId, taskType, status, priority, retryCount, nextRetryAt,
-                    claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt, null);
+                    claimedAt, completedAt, lastError, createdBy, null, createdAt, updatedBy, updatedAt, null);
+        }
+
+        public ProcessingTask(
+                Long id,
+                Long fileId,
+                String taskType,
+                String status,
+                Integer priority,
+                Integer retryCount,
+                LocalDateTime nextRetryAt,
+                LocalDateTime claimedAt,
+                LocalDateTime completedAt,
+                String lastError,
+                Long createdBy,
+                String createdByUserUuid,
+                LocalDateTime createdAt,
+                Long updatedBy,
+                LocalDateTime updatedAt
+        ) {
+            this(id, fileId, taskType, status, priority, retryCount, nextRetryAt,
+                    claimedAt, completedAt, lastError, createdBy, createdByUserUuid, createdAt, updatedBy, updatedAt, null);
         }
 
         ProcessingTask withStatus(String status) {
             return new ProcessingTask(id, fileId, taskType, status, priority, retryCount,
-                    nextRetryAt, claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt, claimToken);
+                    nextRetryAt, claimedAt, completedAt, lastError, createdBy, createdByUserUuid, createdAt, updatedBy, updatedAt, claimToken);
         }
     }
 }

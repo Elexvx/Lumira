@@ -1,10 +1,13 @@
 package com.lumira.saas.modules.iam.app;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationVerdict;
 import com.lumira.common.security.authorization.DelegationGrantDecision;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -13,6 +16,8 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class DefaultDelegationGrantEvaluatorTest {
 
@@ -70,9 +75,119 @@ class DefaultDelegationGrantEvaluatorTest {
         assertThat(decision.reasonCode()).isEqualTo("DELEGATION_HUMAN_SUBJECT_NOT_FOUND");
     }
 
+    @Test
+    void refusesToInferHumanUserIdFromUntrustedCurrentUser() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        CurrentUser currentUser = new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("system:file:view"));
+
+        DelegationGrantDecision decision = evaluator.evaluate(
+                AuthorizationRequest.aiTool(currentUser, 300L, "file.object.search", "system:file:view", "LOW", true, true, Map.of())
+        );
+
+        assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.DENY);
+        assertThat(decision.reasonCode()).isEqualTo("DELEGATION_CONTEXT_INCOMPLETE");
+        assertThat(jdbc.subjectLookupCount).isZero();
+    }
+
+    @Test
+    void refusesExplicitHumanUserIdThatDoesNotMatchTrustedCurrentUser() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        CurrentUser currentUser = trustedUser(100L, "system:file:view");
+
+        DelegationGrantDecision decision = evaluator.evaluate(
+                explicitHumanRequest(currentUser, 200L)
+        );
+
+        assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.DENY);
+        assertThat(decision.reasonCode()).isEqualTo("DELEGATION_HUMAN_SUBJECT_UNTRUSTED");
+        assertThat(jdbc.subjectLookupCount).isZero();
+    }
+
+    @Test
+    void refusesExplicitHumanUserUuidThatDoesNotMatchTrustedCurrentUser() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        CurrentUser currentUser = trustedUser(100L, "system:file:view");
+
+        DelegationGrantDecision decision = evaluator.evaluate(
+                explicitHumanRequest(currentUser, 100L, "other-user-uuid")
+        );
+
+        assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.DENY);
+        assertThat(decision.reasonCode()).isEqualTo("DELEGATION_HUMAN_SUBJECT_UNTRUSTED");
+        assertThat(jdbc.subjectLookupCount).isZero();
+    }
+
+    @Test
+    void refusesExplicitHumanUserIdWhenCurrentUserIsNotFullyTrusted() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        CurrentUser currentUser = trustedUser(100L, "system:file:view");
+        currentUser.setPermissionsVersion(null);
+
+        DelegationGrantDecision decision = evaluator.evaluate(
+                explicitHumanRequest(currentUser, 100L)
+        );
+
+        assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.DENY);
+        assertThat(decision.reasonCode()).isEqualTo("DELEGATION_HUMAN_SUBJECT_UNTRUSTED");
+        assertThat(jdbc.subjectLookupCount).isZero();
+    }
+
+    @Test
+    void revokedSessionTicketMakesDelegationContextFailClosed() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 100L, "user-uuid-100", null, 1, "permissions-1"))
+                .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc, sessionAuthenticationService);
+
+        DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "LOW", true, true));
+
+        assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.DENY);
+        assertThat(decision.reasonCode()).isEqualTo("DELEGATION_HUMAN_SUBJECT_UNTRUSTED");
+        assertThat(jdbc.subjectLookupCount).isZero();
+    }
+
     private AuthorizationRequest request(String toolCode, String permissionKey, String riskLevel, boolean confirmed, boolean approvalGranted) {
-        CurrentUser user = new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of(permissionKey));
+        CurrentUser user = trustedUser(100L, permissionKey);
         return AuthorizationRequest.aiTool(user, 300L, toolCode, permissionKey, riskLevel, confirmed, approvalGranted, Map.of());
+    }
+
+    private AuthorizationRequest explicitHumanRequest(CurrentUser currentUser, Long humanUserId) {
+        return explicitHumanRequest(currentUser, humanUserId, currentUser == null ? null : currentUser.getUserUuid());
+    }
+
+    private AuthorizationRequest explicitHumanRequest(CurrentUser currentUser, Long humanUserId, String humanUserUuid) {
+        return new AuthorizationRequest(
+                com.lumira.common.security.authorization.SubjectRef.humanUser(humanUserId),
+                com.lumira.common.security.authorization.SubjectRef.digitalEmployee(300L),
+                humanUserId,
+                humanUserUuid,
+                300L,
+                "ai_tool",
+                "execute",
+                "system:file:view",
+                "file.object.search",
+                "LOW",
+                null,
+                Map.of(),
+                true,
+                true,
+                "AI_AGENT",
+                "req-1",
+                "trace-1",
+                currentUser
+        );
+    }
+
+    private CurrentUser trustedUser(Long userId, String permissionKey) {
+        CurrentUser user = new CurrentUser(userId, "admin", 1001L, "session-1", 1, true, Set.of(permissionKey));
+        user.setUserUuid("user-uuid-" + userId);
+        user.setPermissionsVersion("permissions-1");
+        return user;
     }
 
     private Map<String, Object> grant(String toolCode, String permissionKey, String scopeType, String maxRiskLevel,
@@ -94,10 +209,12 @@ class DefaultDelegationGrantEvaluatorTest {
         private Long humanSubjectId = 10L;
         private Long employeeSubjectId = 20L;
         private List<Map<String, Object>> grants = List.of();
+        private int subjectLookupCount;
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             if (sql.contains("from iam_subject")) {
+                subjectLookupCount++;
                 String subjectType = String.valueOf(args[0]);
                 Long value = "HUMAN_USER".equals(subjectType) ? humanSubjectId : employeeSubjectId;
                 return value == null ? null : requiredType.cast(value);

@@ -66,7 +66,7 @@ Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React�
 ### 4.3 技术目标
 
 1. 保持前后端分离架构，统一 API 响应、请求封装、错误处理和鉴权方式。
-2. 后端以 `lumira-server` 为统一运行入口，保留模块化边界和未来拆分可能。
+2. 后端以 `lumira-server` 为同步请求入口，并配套 `lumira-async`、`lumira-job-executor` 运行后台异步与调度任务，同时保留模块化边界和未来拆分可能。
 3. 支持 MySQL 持久化、Redis 会话与缓存、Flyway 数据迁移。
 4. 支持 Docker Compose 部署、生产环境变量隔离、API 代理、健康检查和轻量压测。
 5. 支持 Prometheus、Grafana、Loki、Tempo、OpenTelemetry 等可观测性能力按需启用。
@@ -513,7 +513,7 @@ Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React�
 ### 7.6 部署运维流程
 
 1. 前端部署到 Vercel，默认通过 `/api` 和 `/ws` 转发到后端公网域名。
-2. 后端通过 Docker Compose 启动 `lumira-server`、API proxy、MySQL、Redis、XXL-Job 等组件。
+2. 后端通过 Docker Compose 启动 `lumira-server`、`lumira-async`、`lumira-job-executor`、API proxy、MySQL、Redis、XXL-Job 等组件。
 3. 部署脚本执行环境检测、构建、启动和健康检查。
 4. 运维人员通过健康接口、日志、监控页面和可观测性看板检查系统状态。
 5. 重要变更前执行备份，异常时通过恢复脚本回滚数据与文件。
@@ -677,7 +677,7 @@ Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React�
 | 需求编号 | 需求名称 | 需求说明 | 优先级 |
 | --- | --- | --- | --- |
 | DEPLOY-001 | 前端部署 | 支持 Vercel 托管，前端通过 `/api` 和 `/ws` 转发到后端 | P0 |
-| DEPLOY-002 | 后端部署 | 支持 Docker Compose 部署 `lumira-server` 和 API proxy | P0 |
+| DEPLOY-002 | 后端部署 | 支持 Docker Compose 部署 `lumira-server`、`lumira-async`、`lumira-job-executor` 和 API proxy | P0 |
 | DEPLOY-003 | 环境检查 | 支持部署前检查 CPU、内存、磁盘、Docker、端口和环境变量 | P0 |
 | DEPLOY-004 | 健康检查 | 支持 `/health`、`/api/health`、`/actuator/health` 等检查 | P0 |
 | DEPLOY-005 | 备份恢复 | 支持 MySQL、Redis、上传文件、插件文件和环境配置备份恢复 | P1 |
@@ -813,7 +813,7 @@ Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React�
 2. 后端按 `services/*-service` 和 `libs/*` 组织，禁止跨模块随意穿透内部实现。
 3. 新增业务能力必须明确模块 owner、表归属、API 契约和权限标识。
 4. 数据库变更必须通过迁移脚本管理。
-5. 文档、脚本、监控和部署说明默认以 `lumira-server` 为后端运行入口。
+5. 文档、脚本、监控和部署说明默认以 `lumira-server` 为同步请求入口，并显式说明 `lumira-async`、`lumira-job-executor` 的后台职责。
 
 ### 12.4 可扩展性
 

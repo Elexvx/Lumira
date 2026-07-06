@@ -59,7 +59,10 @@ export function optionalOutput(command, commandArgs, options = {}) {
 }
 
 export function commandExists(command) {
-  return spawnSync('sh', ['-lc', `command -v ${command} >/dev/null 2>&1`], { stdio: 'ignore' }).status === 0;
+  if (process.platform === 'win32') {
+    return spawnSync('where.exe', [command], { stdio: 'ignore', shell: false }).status === 0;
+  }
+  return spawnSync('sh', ['-lc', `command -v ${command} >/dev/null 2>&1`], { stdio: 'ignore', shell: false }).status === 0;
 }
 
 function resolveSpawnCommand(command, args = []) {

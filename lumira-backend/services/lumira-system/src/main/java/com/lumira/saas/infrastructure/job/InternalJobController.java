@@ -22,16 +22,16 @@ public class InternalJobController {
 
     private final PlatformEventOutboxRelay platformEventOutboxRelay;
     private final ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider;
-    private final String internalToken;
+    private final String jobInternalToken;
 
     public InternalJobController(
             PlatformEventOutboxRelay platformEventOutboxRelay,
             ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider,
-            @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken
+            @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobInternalToken
     ) {
         this.platformEventOutboxRelay = platformEventOutboxRelay;
         this.onlineSessionStreamServiceProvider = onlineSessionStreamServiceProvider;
-        this.internalToken = internalToken;
+        this.jobInternalToken = jobInternalToken;
     }
 
     @PostMapping("/outbox/relay")
@@ -46,6 +46,7 @@ public class InternalJobController {
             @RequestHeader(name = "X-Job-Token", required = false) String token
     ) {
         ensureAuthorized(token);
+        requirePositiveId(id);
         return ApiResponse.success(platformEventOutboxRelay.replay(id), null);
     }
 
@@ -60,11 +61,17 @@ public class InternalJobController {
     }
 
     private void ensureAuthorized(String token) {
-        if (!InternalJobTokenValidator.isConfigured(internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内部任务令牌未配置");
+        if (!InternalJobTokenValidator.isConfigured(jobInternalToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Internal job token is not configured");
         }
-        if (!InternalJobTokenValidator.isAuthorized(token, internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权访问内部任务接口");
+        if (!InternalJobTokenValidator.isAuthorized(token, jobInternalToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Unauthorized internal job access");
+        }
+    }
+
+    private void requirePositiveId(Long id) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Valid outbox event id is required");
         }
     }
 }

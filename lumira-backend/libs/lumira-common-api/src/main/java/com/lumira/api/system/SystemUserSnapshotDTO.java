@@ -18,24 +18,4 @@ public record SystemUserSnapshotDTO(
         String idCardNumber,
         String locale
 ) {
-    public SystemUserSnapshotDTO(
-            Long userId,
-            String username,
-            String passwordHash,
-            String status,
-            String mobile,
-            String email,
-            String nickname,
-            String realName,
-            String avatarUrl,
-            String birthMonth,
-            String gender,
-            String region,
-            String availableTime,
-            String idCardNumber,
-            String locale
-    ) {
-        this(userId, null, username, passwordHash, status, mobile, email, nickname, realName, avatarUrl,
-                birthMonth, gender, region, availableTime, idCardNumber, locale);
-    }
 }

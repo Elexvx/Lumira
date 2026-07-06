@@ -6,6 +6,7 @@ import com.lumira.team.infrastructure.persistence.BeanPropertyRowMapper;
 import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
 import com.lumira.team.vo.TeamVO;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Set;
@@ -23,20 +24,20 @@ public class TeamPermissionService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void requireTeamOwner(Long teamId, Long userId) {
-        requireAnyRole(teamId, userId, Set.of(OWNER), "Team owner permission required");
+    public void requireTeamOwner(Long teamId, Long userId, String userUuid) {
+        requireAnyRole(teamId, userId, userUuid, Set.of(OWNER), "Team owner permission required");
     }
 
-    public void requireTeamAdmin(Long teamId, Long userId) {
-        requireAnyRole(teamId, userId, Set.of(OWNER, ADMIN), "Team admin permission required");
+    public void requireTeamAdmin(Long teamId, Long userId, String userUuid) {
+        requireAnyRole(teamId, userId, userUuid, Set.of(OWNER, ADMIN), "Team admin permission required");
     }
 
-    public void requireTeamManager(Long teamId, Long userId) {
-        requireAnyRole(teamId, userId, Set.of(OWNER, ADMIN, MANAGER), "Team manager permission required");
+    public void requireTeamManager(Long teamId, Long userId, String userUuid) {
+        requireAnyRole(teamId, userId, userUuid, Set.of(OWNER, ADMIN, MANAGER), "Team manager permission required");
     }
 
-    public void requireTeamMember(Long teamId, Long userId) {
-        requireAnyRole(teamId, userId, Set.of(OWNER, ADMIN, MANAGER, MEMBER), "Team membership required");
+    public void requireTeamMember(Long teamId, Long userId, String userUuid) {
+        requireAnyRole(teamId, userId, userUuid, Set.of(OWNER, ADMIN, MANAGER, MEMBER), "Team membership required");
     }
 
     public boolean canInvite(String role) {
@@ -55,42 +56,52 @@ public class TeamPermissionService {
         if (OWNER.equals(targetRole)) {
             return false;
         }
+        if (removingSelf) {
+            return OWNER.equals(actorRole) ? false : Set.of(ADMIN, MANAGER, MEMBER).contains(actorRole);
+        }
         if (OWNER.equals(actorRole)) {
             return true;
         }
         if (ADMIN.equals(actorRole)) {
-            return !OWNER.equals(targetRole);
+            return MANAGER.equals(targetRole) || MEMBER.equals(targetRole);
         }
         if (MANAGER.equals(actorRole)) {
             return MEMBER.equals(targetRole);
         }
-        return removingSelf && MEMBER.equals(actorRole);
+        return false;
     }
 
-    public TeamVO.Member activeMember(Long teamId, Long userId) {
+    public TeamVO.Member activeMember(Long teamId, Long userId, String userUuid) {
+        requirePositiveId(teamId, "Team id is required");
+        requirePositiveId(userId, "User id is required");
+        requireUserUuid(userUuid);
         List<TeamVO.Member> members = jdbcTemplate.query(
                 """
-                        select id, team_id as teamId, user_id as userId, role,
+                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid, role,
                                member_alias as memberAlias, status, invited_by as invitedBy,
                                joined_at as joinedAt, created_at as createdAt
                         from team_member
                         where team_id = ?
                           and user_id = ?
+                          and user_uuid = ?
                           and status = 'ACTIVE'
                           and deleted = 0
                         limit 1
                 """,
                 new BeanPropertyRowMapper<>(TeamVO.Member.class),
                 teamId,
-                userId
+                userId,
+                userUuid.trim()
         );
         return members.isEmpty() ? null : members.get(0);
     }
 
     public TeamVO.Member memberById(Long teamId, Long memberId) {
+        requirePositiveId(teamId, "Team id is required");
+        requirePositiveId(memberId, "Team member id is required");
         List<TeamVO.Member> members = jdbcTemplate.query(
                 """
-                        select id, team_id as teamId, user_id as userId, role,
+                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid, role,
                                member_alias as memberAlias, status, invited_by as invitedBy,
                                joined_at as joinedAt, created_at as createdAt
                         from team_member
@@ -106,15 +117,31 @@ public class TeamPermissionService {
         return members.isEmpty() ? null : members.get(0);
     }
 
-    public String activeRole(Long teamId, Long userId) {
-        TeamVO.Member member = activeMember(teamId, userId);
+    public String activeRole(Long teamId, Long userId, String userUuid) {
+        requirePositiveId(teamId, "Team id is required");
+        requirePositiveId(userId, "User id is required");
+        TeamVO.Member member = activeMember(teamId, userId, userUuid);
         return member == null ? null : member.getRole();
     }
 
-    private void requireAnyRole(Long teamId, Long userId, Set<String> allowedRoles, String message) {
-        String role = activeRole(teamId, userId);
+    private void requireAnyRole(Long teamId, Long userId, String userUuid, Set<String> allowedRoles, String message) {
+        requirePositiveId(teamId, "Team id is required");
+        requirePositiveId(userId, "User id is required");
+        String role = activeRole(teamId, userId, userUuid);
         if (!allowedRoles.contains(role)) {
             throw new BizException(ErrorCode.FORBIDDEN, message, message);
+        }
+    }
+
+    private void requireUserUuid(String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User uuid is required", "User uuid is required");
+        }
+    }
+
+    private void requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message, message);
         }
     }
 }

@@ -1,8 +1,14 @@
 package com.lumira.saas.modules.plugin.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
@@ -12,11 +18,13 @@ import com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,15 +38,18 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/plugins")
 public class PluginManagementController {
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final PluginManagementAppService pluginManagementAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
+    private final SystemInternalApi systemInternalApi;
 
     public PluginManagementController(
             PluginManagementAppService pluginManagementAppService,
@@ -46,10 +57,22 @@ public class PluginManagementController {
             PermissionGuard permissionGuard,
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy
     ) {
+        this(pluginManagementAppService, securityContextFacade, permissionGuard, runtimeSecurityPolicy, null);
+    }
+
+    @Autowired
+    public PluginManagementController(
+            PluginManagementAppService pluginManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
+            SystemInternalApi systemInternalApi
+    ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.runtimeSecurityPolicy = runtimeSecurityPolicy;
+        this.systemInternalApi = systemInternalApi;
     }
 
     @GetMapping("/definitions")
@@ -198,7 +221,7 @@ public class PluginManagementController {
     @GetMapping("/current/available")
     public ApiResponse<List<PluginVO.PluginAvailabilityVO>> currentAvailable() {
         return ApiResponse.success(
-                pluginManagementAppService.availablePlugins(),
+                pluginManagementAppService.currentAvailablePlugins(permissionList(currentUser())),
                 TraceContext.getRequestId()
         );
     }
@@ -206,9 +229,8 @@ public class PluginManagementController {
     @GetMapping("/current/bootstrap")
     public ApiResponse<Map<String, Object>> currentBootstrap() {
         CurrentUser currentUser = currentUser();
-        List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentBootstrap(permissions, currentUser.getPermissionsVersion()),
+                pluginManagementAppService.currentBootstrap(permissionList(currentUser), permissionsVersion(currentUser)),
                 TraceContext.getRequestId()
         );
     }
@@ -216,25 +238,20 @@ public class PluginManagementController {
     @GetMapping("/current/menus")
     public ApiResponse<List<Map<String, Object>>> currentMenus() {
         CurrentUser currentUser = currentUser();
-        List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentMenus(permissions, currentUser.getPermissionsVersion()),
+                pluginManagementAppService.currentMenus(permissionList(currentUser), permissionsVersion(currentUser)),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/current/permissions")
     public ApiResponse<List<String>> currentPermissions() {
-        CurrentUser currentUser = currentUser();
-        return ApiResponse.success(currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList(), TraceContext.getRequestId());
+        return ApiResponse.success(permissionList(currentUser()), TraceContext.getRequestId());
     }
 
     @GetMapping("/current/{pluginCode}/manifest")
     public ResponseEntity<Resource> currentManifest(@PathVariable("pluginCode") String pluginCode) {
-        PluginVO.PluginAvailabilityVO plugin = pluginManagementAppService.availablePlugins().stream()
-                .filter(item -> pluginCode.equals(item.getPluginCode()))
-                .findFirst()
-                .orElseThrow();
+        PluginVO.PluginAvailabilityVO plugin = currentAvailablePlugin(pluginCode, currentUser());
         Path path = pluginManagementAppService.resolveManifestPath(pluginCode, plugin.getVersion());
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -243,10 +260,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/assets/**")
     public ResponseEntity<Resource> currentAsset(@PathVariable("pluginCode") String pluginCode, HttpServletRequest request) {
-        PluginVO.PluginAvailabilityVO plugin = pluginManagementAppService.availablePlugins().stream()
-                .filter(item -> pluginCode.equals(item.getPluginCode()))
-                .findFirst()
-                .orElseThrow();
+        PluginVO.PluginAvailabilityVO plugin = currentAvailablePlugin(pluginCode, currentUser());
         String prefix = "/api/v1/plugins/current/" + pluginCode + "/assets/";
         String assetPath = request.getRequestURI().substring(request.getRequestURI().indexOf(prefix) + prefix.length());
         Path path = pluginManagementAppService.resolvePluginAssetPath(pluginCode, plugin.getVersion(), assetPath);
@@ -256,10 +270,76 @@ public class PluginManagementController {
     }
 
     private CurrentUser currentUser() {
-        return securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        return refreshTrustedCurrentUser(currentUser);
     }
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(currentUser(), permissionKey);
+    }
+
+    private List<String> permissionList(CurrentUser currentUser) {
+        return !isTrustedCurrentUser(currentUser) || currentUser.getPermissions() == null
+                ? List.of()
+                : currentUser.getPermissions().stream().sorted().toList();
+    }
+
+    private String permissionsVersion(CurrentUser currentUser) {
+        return isTrustedCurrentUser(currentUser) ? currentUser.getPermissionsVersion() : null;
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+    }
+
+    private PluginVO.PluginAvailabilityVO currentAvailablePlugin(String pluginCode, CurrentUser currentUser) {
+        return pluginManagementAppService.currentAvailablePlugins(permissionList(currentUser)).stream()
+                .filter(item -> pluginCode.equals(item.getPluginCode()))
+                .findFirst()
+                .orElseThrow(() -> new BizException(ErrorCode.FORBIDDEN, "Plugin is not available for current user"));
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.status())
+                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
+                userId,
+                userSnapshot.userUuid().trim()
+        );
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(userSnapshot.userId());
+        currentUser.setUserUuid(userSnapshot.userUuid().trim());
+        currentUser.setUsername(userSnapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(
+                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
+        );
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        return currentUser;
     }
 }

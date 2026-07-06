@@ -50,6 +50,7 @@ services/*/storage/
 # Local agent/Codex workspace state
 .agents/
 .codex/
+.codex-tmp/
 
 # Java
 **/target/

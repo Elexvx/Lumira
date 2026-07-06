@@ -19,6 +19,8 @@ public final class TeamVO {
         private String joinMode;
         @JsonIgnore
         private Long ownerUserId;
+        @JsonIgnore
+        private String ownerUserUuid;
         private Integer memberCount;
         private String status;
         private String myRole;
@@ -42,6 +44,8 @@ public final class TeamVO {
         public void setJoinMode(String joinMode) { this.joinMode = joinMode; }
         public Long getOwnerUserId() { return ownerUserId; }
         public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+        public String getOwnerUserUuid() { return ownerUserUuid; }
+        public void setOwnerUserUuid(String ownerUserUuid) { this.ownerUserUuid = ownerUserUuid; }
         public Integer getMemberCount() { return memberCount; }
         public void setMemberCount(Integer memberCount) { this.memberCount = memberCount; }
         public String getStatus() { return status; }
@@ -58,6 +62,7 @@ public final class TeamVO {
         private Long id;
         private Long teamId;
         private Long userId;
+        private String userUuid;
         private String role;
         private String memberAlias;
         private String memberName;
@@ -68,6 +73,7 @@ public final class TeamVO {
         private String memberSource;
         private String status;
         private Long invitedBy;
+        private String invitedByUuid;
         private LocalDateTime joinedAt;
         private LocalDateTime createdAt;
         public Long getId() { return id; }
@@ -76,6 +82,8 @@ public final class TeamVO {
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public String getRole() { return role; }
         public void setRole(String role) { this.role = role; }
         public String getMemberAlias() { return memberAlias; }
@@ -96,6 +104,8 @@ public final class TeamVO {
         public void setStatus(String status) { this.status = status; }
         public Long getInvitedBy() { return invitedBy; }
         public void setInvitedBy(Long invitedBy) { this.invitedBy = invitedBy; }
+        public String getInvitedByUuid() { return invitedByUuid; }
+        public void setInvitedByUuid(String invitedByUuid) { this.invitedByUuid = invitedByUuid; }
         public LocalDateTime getJoinedAt() { return joinedAt; }
         public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
         public LocalDateTime getCreatedAt() { return createdAt; }
@@ -169,10 +179,12 @@ public final class TeamVO {
         private Long id;
         private Long teamId;
         private Long userId;
+        private String userUuid;
         private Long inviteId;
         private String applyMessage;
         private String status;
         private Long reviewedBy;
+        private String reviewedByUuid;
         private LocalDateTime reviewedAt;
         private String reviewMessage;
         private LocalDateTime createdAt;
@@ -182,6 +194,8 @@ public final class TeamVO {
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public Long getInviteId() { return inviteId; }
         public void setInviteId(Long inviteId) { this.inviteId = inviteId; }
         public String getApplyMessage() { return applyMessage; }
@@ -190,6 +204,8 @@ public final class TeamVO {
         public void setStatus(String status) { this.status = status; }
         public Long getReviewedBy() { return reviewedBy; }
         public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
+        public String getReviewedByUuid() { return reviewedByUuid; }
+        public void setReviewedByUuid(String reviewedByUuid) { this.reviewedByUuid = reviewedByUuid; }
         public LocalDateTime getReviewedAt() { return reviewedAt; }
         public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
         public String getReviewMessage() { return reviewMessage; }

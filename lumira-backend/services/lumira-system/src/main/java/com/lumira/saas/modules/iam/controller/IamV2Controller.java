@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.iam.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -29,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/iam")
@@ -59,14 +64,14 @@ public class IamV2Controller {
 
     @GetMapping("/permissions")
     public ApiResponse<List<SystemVO.PermissionVO>> permissions() {
-        require("system:role:view");
-        return ApiResponse.success(systemManagementAppService.listPermissions(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:view");
+        return ApiResponse.success(systemManagementAppService.listPermissions(currentUser), TraceContext.getRequestId());
     }
 
     @GetMapping("/permissions/tree")
     public ApiResponse<List<SystemVO.PermissionTreeVO>> permissionTree() {
-        require("system:role:view");
-        return ApiResponse.success(systemManagementAppService.listPermissionTree(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:view");
+        return ApiResponse.success(systemManagementAppService.listPermissionTree(currentUser), TraceContext.getRequestId());
     }
 
     @GetMapping("/users")
@@ -87,10 +92,10 @@ public class IamV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("system:user:view");
+        CurrentUser currentUser = require("system:user:view");
         return ApiResponse.success(
                 systemManagementAppService.listUsers(
-                        securityContextFacade.getCurrentUser(),
+                        currentUser,
                         userId,
                         null,
                         username,
@@ -114,61 +119,61 @@ public class IamV2Controller {
 
     @GetMapping("/users/{id}")
     public ApiResponse<SystemVO.UserDetailVO> user(@PathVariable("id") Long id) {
-        require("system:user:view");
-        return ApiResponse.success(systemManagementAppService.getUser(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:view");
+        return ApiResponse.success(systemManagementAppService.getUser(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/users")
     @RepeatSubmit
     public ApiResponse<SystemVO.UserDetailVO> createUser(@Valid @RequestBody SystemDTO.UserUpsertRequest request) {
-        require("system:user:create");
-        return ApiResponse.success(systemManagementAppService.createUser(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:create");
+        return ApiResponse.success(systemManagementAppService.createUser(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/users/{id}")
     @RepeatSubmit
     public ApiResponse<SystemVO.UserDetailVO> updateUser(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.UserUpsertRequest request) {
-        require("system:user:update");
-        return ApiResponse.success(systemManagementAppService.updateUser(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:update");
+        return ApiResponse.success(systemManagementAppService.updateUser(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @PatchMapping("/users/{id}/status")
     @RepeatSubmit
     public ApiResponse<Boolean> changeUserStatus(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.UserStatusRequest request) {
-        require("system:user:status");
-        return ApiResponse.success(systemManagementAppService.updateUserStatus(securityContextFacade.getCurrentUser(), id, request.getStatus()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:status");
+        return ApiResponse.success(systemManagementAppService.updateUserStatus(currentUser, id, request.getStatus()), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/users/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteUser(@PathVariable("id") Long id) {
-        require("system:user:delete");
-        return ApiResponse.success(systemManagementAppService.deleteUser(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:delete");
+        return ApiResponse.success(systemManagementAppService.deleteUser(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/users/{id}/roles")
     public ApiResponse<List<SystemVO.RoleVO>> userRoles(@PathVariable("id") Long id) {
-        require("system:user:view");
-        return ApiResponse.success(systemManagementAppService.listUserRoles(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:view");
+        return ApiResponse.success(systemManagementAppService.listUserRoles(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/users/export-fields")
     public ApiResponse<List<ExportFieldVO>> userExportFields() {
-        require("system:user:export");
-        return ApiResponse.success(userExportAppService.listUserExportFields(), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:export");
+        return ApiResponse.success(userExportAppService.listUserExportFields(currentUser), TraceContext.getRequestId());
     }
 
     @PostMapping("/users/export")
     @RepeatSubmit
     public ApiResponse<ExportVO.ExportStartVO> exportUsers(@Valid @RequestBody ExportDTO.UserExportRequest request) {
-        require("system:user:export");
-        return ApiResponse.success(userExportAppService.exportUsers(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:export");
+        return ApiResponse.success(userExportAppService.exportUsers(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/export-tasks/{taskId}")
     public ApiResponse<ExportVO.ExportTaskVO> exportTask(@PathVariable("taskId") Long taskId) {
-        require("system:user:export");
-        return ApiResponse.success(exportTaskService.getTask(securityContextFacade.getCurrentUser(), taskId), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:user:export");
+        return ApiResponse.success(exportTaskService.getTask(currentUser, taskId), TraceContext.getRequestId());
     }
 
     @GetMapping("/roles")
@@ -179,141 +184,150 @@ public class IamV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require("system:role:view");
+        CurrentUser currentUser = require("system:role:view");
         return ApiResponse.success(
-                systemManagementAppService.listRoles(securityContextFacade.getCurrentUser(), roleCode, roleName, roleType, pageNo, pageSize),
+                systemManagementAppService.listRoles(currentUser, roleCode, roleName, roleType, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/roles/{id}")
     public ApiResponse<SystemVO.RoleDetailVO> role(@PathVariable("id") Long id) {
-        require("system:role:view");
-        return ApiResponse.success(systemManagementAppService.getRole(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:view");
+        return ApiResponse.success(systemManagementAppService.getRole(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/roles/default-registration-role")
     public ApiResponse<SystemVO.DefaultRegistrationRoleVO> defaultRegistrationRole() {
-        require("system:role:view");
-        return ApiResponse.success(systemManagementAppService.getDefaultRegistrationRole(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:view");
+        return ApiResponse.success(systemManagementAppService.getDefaultRegistrationRole(currentUser), TraceContext.getRequestId());
     }
 
     @PutMapping("/roles/default-registration-role")
     @RepeatSubmit
     public ApiResponse<SystemVO.DefaultRegistrationRoleVO> updateDefaultRegistrationRole(@Valid @RequestBody SystemDTO.DefaultRegistrationRoleRequest request) {
-        require("system:role:update");
-        return ApiResponse.success(systemManagementAppService.updateDefaultRegistrationRole(securityContextFacade.getCurrentUser(), request.getRoleId()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:update");
+        return ApiResponse.success(systemManagementAppService.updateDefaultRegistrationRole(currentUser, request.getRoleId()), TraceContext.getRequestId());
     }
 
     @PostMapping("/roles")
     @RepeatSubmit
     public ApiResponse<SystemVO.RoleDetailVO> createRole(@Valid @RequestBody SystemDTO.RoleUpsertRequest request) {
-        require("system:role:create");
-        return ApiResponse.success(systemManagementAppService.createRole(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:create");
+        return ApiResponse.success(systemManagementAppService.createRole(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/roles/{id}")
     @RepeatSubmit
     public ApiResponse<SystemVO.RoleDetailVO> updateRole(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.RoleUpsertRequest request) {
-        require("system:role:update");
-        return ApiResponse.success(systemManagementAppService.updateRole(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:update");
+        return ApiResponse.success(systemManagementAppService.updateRole(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/roles/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteRole(@PathVariable("id") Long id) {
-        require("system:role:delete");
-        return ApiResponse.success(systemManagementAppService.deleteRole(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:delete");
+        return ApiResponse.success(systemManagementAppService.deleteRole(currentUser, id), TraceContext.getRequestId());
     }
 
     @PutMapping("/roles/{id}/permissions")
     @RepeatSubmit
     public ApiResponse<Boolean> updateRolePermissions(@PathVariable("id") Long id, @RequestBody SystemDTO.RolePermissionRequest request) {
-        require("system:role:grant");
-        return ApiResponse.success(systemManagementAppService.updateRolePermissions(securityContextFacade.getCurrentUser(), id, request.getPermissionKeys()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:role:grant");
+        return ApiResponse.success(systemManagementAppService.updateRolePermissions(currentUser, id, request.getPermissionKeys()), TraceContext.getRequestId());
     }
 
     @GetMapping("/menus")
     public ApiResponse<List<SystemVO.MenuVO>> menus() {
-        require("system:menu:view");
-        return ApiResponse.success(systemManagementAppService.listMenus(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:view");
+        return ApiResponse.success(systemManagementAppService.listMenus(currentUser), TraceContext.getRequestId());
     }
 
     @GetMapping("/menus/{id}")
     public ApiResponse<SystemVO.MenuVO> menu(@PathVariable("id") Long id) {
-        require("system:menu:view");
-        return ApiResponse.success(systemManagementAppService.getMenu(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:view");
+        return ApiResponse.success(systemManagementAppService.getMenu(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/menus")
     @RepeatSubmit
     public ApiResponse<SystemVO.MenuVO> createMenu(@Valid @RequestBody SystemDTO.MenuUpsertRequest request) {
-        require("system:menu:create");
-        return ApiResponse.success(systemManagementAppService.createMenu(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:create");
+        return ApiResponse.success(systemManagementAppService.createMenu(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/menus/{id}")
     @RepeatSubmit
     public ApiResponse<SystemVO.MenuVO> updateMenu(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.MenuUpsertRequest request) {
-        require("system:menu:update");
-        return ApiResponse.success(systemManagementAppService.updateMenu(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:update");
+        return ApiResponse.success(systemManagementAppService.updateMenu(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/menus/reorder")
     @RepeatSubmit
     public ApiResponse<Boolean> reorderMenus(@Valid @RequestBody SystemDTO.MenuReorderRequest request) {
-        require("system:menu:update");
-        return ApiResponse.success(systemManagementAppService.reorderMenus(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:update");
+        return ApiResponse.success(systemManagementAppService.reorderMenus(currentUser, request), TraceContext.getRequestId());
     }
 
     @PatchMapping("/menus/{id}/status")
     @RepeatSubmit
     public ApiResponse<Boolean> updateMenuStatus(@PathVariable("id") Long id, @Valid @RequestBody SystemDTO.MenuStatusRequest request) {
-        require("system:menu:status");
-        return ApiResponse.success(systemManagementAppService.updateMenuStatus(securityContextFacade.getCurrentUser(), id, request.getStatus()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:status");
+        return ApiResponse.success(systemManagementAppService.updateMenuStatus(currentUser, id, request.getStatus()), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/menus/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteMenu(@PathVariable("id") Long id) {
-        require("system:menu:delete");
-        return ApiResponse.success(systemManagementAppService.deleteMenu(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:menu:delete");
+        return ApiResponse.success(systemManagementAppService.deleteMenu(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/departments")
     public ApiResponse<List<DepartmentVO>> departments() {
-        require("system:department:view");
-        return ApiResponse.success(departmentAppService.listDepartments(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:department:view");
+        return ApiResponse.success(departmentAppService.listDepartments(currentUser), TraceContext.getRequestId());
     }
 
     @GetMapping("/departments/{id}")
     public ApiResponse<DepartmentVO> department(@PathVariable("id") Long id) {
-        require("system:department:view");
-        return ApiResponse.success(departmentAppService.getDepartment(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:department:view");
+        return ApiResponse.success(departmentAppService.getDepartment(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/departments")
     @RepeatSubmit
     public ApiResponse<DepartmentVO> createDepartment(@Valid @RequestBody DepartmentUpsertRequest request) {
-        require("system:department:create");
-        return ApiResponse.success(departmentAppService.createDepartment(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:department:create");
+        return ApiResponse.success(departmentAppService.createDepartment(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/departments/{id}")
     @RepeatSubmit
     public ApiResponse<DepartmentVO> updateDepartment(@PathVariable("id") Long id, @Valid @RequestBody DepartmentUpsertRequest request) {
-        require("system:department:update");
-        return ApiResponse.success(departmentAppService.updateDepartment(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:department:update");
+        return ApiResponse.success(departmentAppService.updateDepartment(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/departments/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteDepartment(@PathVariable("id") Long id) {
-        require("system:department:delete");
-        return ApiResponse.success(departmentAppService.deleteDepartment(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("system:department:delete");
+        return ApiResponse.success(departmentAppService.deleteDepartment(currentUser, id), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
     }
 }

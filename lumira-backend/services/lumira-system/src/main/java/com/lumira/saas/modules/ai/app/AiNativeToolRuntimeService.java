@@ -3,18 +3,24 @@ package com.lumira.saas.modules.ai.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AiConfigAccessPolicy;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.authorization.AuthorizationDecision;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationService;
 import com.lumira.common.security.authorization.AuthorizationVerdict;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -33,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public interface AiNativeToolRuntimeService {
 
@@ -41,6 +48,8 @@ public interface AiNativeToolRuntimeService {
     List<AiVO.ToolVO> listTools(CurrentUser currentUser, Long employeeId);
 
     AiVO.ToolExecuteResultVO execute(CurrentUser currentUser, AiDTO.ToolExecuteRequest request);
+
+    AiVO.ToolExecuteResultVO executeTrustedPlan(CurrentUser currentUser, AiDTO.ToolExecuteRequest request, boolean approvalGranted);
 
     default boolean isDirectExecutable(CurrentUser currentUser, String toolCode) {
         if (!StringUtils.hasText(toolCode)) {
@@ -73,18 +82,52 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private static final Logger log = LoggerFactory.getLogger(DefaultAiNativeToolRuntimeService.class);
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 200;
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionGuard permissionGuard;
     private final AuthorizationService authorizationService;
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
     private final ObjectMapper objectMapper;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final SystemManagementAppService systemManagementAppService;
     private final AiPlatformQueryFacade platformQueryFacade;
     private final AiIamQueryFacade iamQueryFacade;
     private final FileInternalApi fileInternalApi;
     private final Map<String, NativeTool> tools;
     private final boolean writeToolsEnabled;
+
+    DefaultAiNativeToolRuntimeService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionGuard permissionGuard,
+            AuthorizationService authorizationService,
+            AiSkillPermissionChecker aiSkillPermissionChecker,
+            ObjectMapper objectMapper,
+            AiPlatformQueryFacade platformQueryFacade,
+            AiIamQueryFacade iamQueryFacade,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemManagementAppService systemManagementAppService,
+            FileInternalApi fileInternalApi,
+            @Value("${saas.ai.native-tools.write-enabled:false}") boolean writeToolsEnabled
+    ) {
+        this(
+                jdbcTemplate,
+                permissionGuard,
+                authorizationService,
+                aiSkillPermissionChecker,
+                objectMapper,
+                platformQueryFacade,
+                iamQueryFacade,
+                permissionSnapshotService,
+                null,
+                null,
+                systemManagementAppService,
+                fileInternalApi,
+                writeToolsEnabled
+        );
+    }
 
     @Autowired
     DefaultAiNativeToolRuntimeService(
@@ -95,9 +138,43 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             ObjectMapper objectMapper,
             AiPlatformQueryFacade platformQueryFacade,
             AiIamQueryFacade iamQueryFacade,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService,
             SystemManagementAppService systemManagementAppService,
             FileInternalApi fileInternalApi,
             @Value("${saas.ai.native-tools.write-enabled:false}") boolean writeToolsEnabled
+    ) {
+        this(
+                jdbcTemplate,
+                permissionGuard,
+                authorizationService,
+                aiSkillPermissionChecker,
+                objectMapper,
+                platformQueryFacade,
+                iamQueryFacade,
+                permissionSnapshotService,
+                null,
+                sessionAuthenticationService,
+                systemManagementAppService,
+                fileInternalApi,
+                writeToolsEnabled
+        );
+    }
+
+    DefaultAiNativeToolRuntimeService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionGuard permissionGuard,
+            AuthorizationService authorizationService,
+            AiSkillPermissionChecker aiSkillPermissionChecker,
+            ObjectMapper objectMapper,
+            AiPlatformQueryFacade platformQueryFacade,
+            AiIamQueryFacade iamQueryFacade,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemManagementAppService systemManagementAppService,
+            FileInternalApi fileInternalApi,
+            boolean writeToolsEnabled
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionGuard = permissionGuard;
@@ -106,6 +183,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         this.objectMapper = objectMapper;
         this.platformQueryFacade = platformQueryFacade == null ? new DefaultAiPlatformQueryFacade(jdbcTemplate) : platformQueryFacade;
         this.iamQueryFacade = iamQueryFacade == null ? new DefaultAiIamQueryFacade(jdbcTemplate) : iamQueryFacade;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.systemManagementAppService = systemManagementAppService;
         this.fileInternalApi = fileInternalApi;
         this.writeToolsEnabled = writeToolsEnabled;
@@ -156,7 +236,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                                         "configKey", Map.of("type", "string", "description", "配置键")
                                 )
                         ),
-                        this::readConfig
+                        this::readScopedConfig
                 ),
                 "system.user.search", new NativeTool(
                         "system.user.search",
@@ -256,8 +336,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 false,
                 true,
                 "system:user:update",
-                Map.of("type", "object", "required", List.of("userId"), "properties", Map.ofEntries(
+                Map.of("type", "object", "required", List.of("userId", "userUuid"), "properties", Map.ofEntries(
                         Map.entry("userId", Map.of("type", "integer")),
+                        Map.entry("userUuid", Map.of("type", "string")),
                         Map.entry("username", Map.of("type", "string")),
                         Map.entry("nickname", Map.of("type", "string")),
                         Map.entry("realName", Map.of("type", "string")),
@@ -280,8 +361,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 false,
                 true,
                 "system:user:status",
-                Map.of("type", "object", "required", List.of("userId", "status"), "properties", Map.of(
+                Map.of("type", "object", "required", List.of("userId", "userUuid", "status"), "properties", Map.of(
                         "userId", Map.of("type", "integer"),
+                        "userUuid", Map.of("type", "string"),
                         "status", Map.of("type", "string", "enum", List.of("ENABLED", "DISABLED"))
                 )),
                 this::updateUserStatus
@@ -295,8 +377,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 false,
                 true,
                 "system:user:delete",
-                Map.of("type", "object", "required", List.of("userId"), "properties", Map.of(
-                        "userId", Map.of("type", "integer")
+                Map.of("type", "object", "required", List.of("userId", "userUuid"), "properties", Map.of(
+                        "userId", Map.of("type", "integer"),
+                        "userUuid", Map.of("type", "string")
                 )),
                 this::deleteUser
         ));
@@ -363,9 +446,10 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     @Override
     public List<AiVO.ToolVO> listTools(CurrentUser currentUser, Long employeeId) {
+        CurrentUser runtimeUser = refreshTrustedCurrentUserIfAvailable(currentUser);
         return tools.values().stream()
                 .sorted(Comparator.comparing(NativeTool::code))
-                .filter(tool -> visible(currentUser, employeeId, tool))
+                .filter(tool -> visible(runtimeUser, employeeId, tool))
                 .map(NativeTool::toVO)
                 .toList();
     }
@@ -391,10 +475,21 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     @Override
     public AiVO.ToolExecuteResultVO execute(CurrentUser currentUser, AiDTO.ToolExecuteRequest request) {
+        return executeInternal(currentUser, request, false);
+    }
+
+    @Override
+    public AiVO.ToolExecuteResultVO executeTrustedPlan(CurrentUser currentUser, AiDTO.ToolExecuteRequest request, boolean approvalGranted) {
+        return executeInternal(currentUser, request, approvalGranted);
+    }
+
+    private AiVO.ToolExecuteResultVO executeInternal(CurrentUser currentUser, AiDTO.ToolExecuteRequest request, boolean approvalGranted) {
         if (request == null || !StringUtils.hasText(request.getToolCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
         }
-        requireLogin(currentUser);
+        CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
+        Long actorUserId = requireLogin(runtimeUser);
+        String actorUsername = trustedUsername(runtimeUser);
         String toolCode = request.getToolCode().trim();
         NativeTool tool = tools.get(toolCode);
         if (tool == null) {
@@ -402,17 +497,17 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         boolean confirmed = Boolean.TRUE.equals(request.getConfirmed());
         Map<String, Object> arguments = request.getArguments() == null ? Map.of() : request.getArguments();
-        boolean approvalGranted = Boolean.TRUE.equals(arguments.get("_authorizationApprovalGranted"));
         Map<String, Object> executionArguments = stripInternalAuthorizationArguments(arguments);
 
         try {
             requireEmployee(request.getEmployeeId());
-            authorizationService.require(AuthorizationRequest.aiTool(
-                    currentUser,
+            authorizationService.require(AuthorizationRequest.aiToolAction(
+                    runtimeUser,
                     request.getEmployeeId(),
                     toolCode,
                     tool.requiredPermission(),
                     tool.riskLevel(),
+                    tool.readOnly() ? "view" : "execute",
                     confirmed,
                     approvalGranted,
                     executionArguments
@@ -421,22 +516,29 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                     toolCode,
                     tool.requiredPermission(),
                     tool.riskLevel(),
+                    tool.readOnly(),
                     confirmed
             );
             if (StringUtils.hasText(tool.requiredPermission())) {
-                permissionGuard.requirePermission(currentUser, tool.requiredPermission());
+                permissionGuard.requirePermission(runtimeUser, tool.requiredPermission());
             }
-            Map<String, Object> data = tool.executor().execute(new ToolExecutionContext(currentUser, executionArguments));
+            Map<String, Object> data = tool.executor().execute(new ToolExecutionContext(
+                    runtimeUser,
+                    executionArguments,
+                    actorUserId,
+                    runtimeUser.getUserUuid(),
+                    actorUsername
+            ));
             AiVO.ToolExecuteResultVO result = new AiVO.ToolExecuteResultVO();
             result.setToolCode(toolCode);
             result.setResultStatus("SUCCESS");
             result.setMessage("工具调用成功");
             result.setData(data);
             result.setExecutedAt(LocalDateTime.now());
-            recordToolAuditLog(request, tool, confirmed, "allow", "SUCCESS", "AI 工具调用成功", data);
+            recordToolAuditLog(currentUser, request, tool, confirmed, "allow", "SUCCESS", "AI 工具调用成功", data);
             return result;
         } catch (RuntimeException exception) {
-            recordFailedToolAuditLog(request, tool, confirmed, exception);
+            recordFailedToolAuditLog(currentUser, request, tool, confirmed, exception);
             throw exception;
         }
     }
@@ -452,27 +554,37 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private Map<String, Object> permissionSnapshot(ToolExecutionContext context) {
         CurrentUser currentUser = context.currentUser();
+        boolean trusted = isTrustedCurrentUser(currentUser);
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("userId", currentUser == null ? null : currentUser.getUserId());
-        data.put("username", currentUser == null ? null : currentUser.getUsername());
-        data.put("authenticated", currentUser != null && currentUser.isAuthenticated());
-        data.put("permissions", currentUser == null ? List.of() : currentUser.getPermissions().stream().sorted().toList());
-        data.put("roleIds", currentUser == null ? List.of() : currentUser.getRoleIds().stream().sorted().toList());
-        data.put("primaryDeptId", currentUser == null ? null : currentUser.getPrimaryDeptId());
-        data.put("deptIds", currentUser == null ? List.of() : currentUser.getDeptIds().stream().sorted().toList());
-        data.put("descendantDeptIds", currentUser == null ? List.of() : currentUser.getDescendantDeptIds().stream().sorted().toList());
+        data.put("userId", trusted ? currentUser.getUserId() : null);
+        data.put("userUuid", trusted ? currentUser.getUserUuid() : null);
+        data.put("username", trusted ? currentUser.getUsername() : null);
+        data.put("authenticated", trusted);
+        data.put("permissions", trusted && currentUser.getPermissions() != null ? currentUser.getPermissions().stream().sorted().toList() : List.of());
+        data.put("roleIds", trusted && currentUser.getRoleIds() != null ? currentUser.getRoleIds().stream().sorted().toList() : List.of());
+        data.put("primaryDeptId", trusted ? currentUser.getPrimaryDeptId() : null);
+        data.put("deptIds", trusted && currentUser.getDeptIds() != null ? currentUser.getDeptIds().stream().sorted().toList() : List.of());
+        data.put("descendantDeptIds", trusted && currentUser.getDescendantDeptIds() != null ? currentUser.getDescendantDeptIds().stream().sorted().toList() : List.of());
         return data;
     }
 
     private Map<String, Object> listMenus(ToolExecutionContext context) {
         String status = stringArg(context.arguments(), "status", "ENABLED");
         int limit = limitArg(context.arguments());
-        List<Map<String, Object>> menus = platformQueryFacade.listMenus(status, limit);
+        List<Map<String, Object>> menus = filterVisibleMenus(
+                platformQueryFacade.listMenus(status, limit),
+                trustedPermissions(context.currentUser())
+        );
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", menus);
         data.put("limit", limit);
         data.put("count", menus.size());
         return data;
+    }
+
+    private Map<String, Object> readScopedConfig(ToolExecutionContext context) {
+        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿璇诲彇: ");
+        return readConfig(context);
     }
 
     private Map<String, Object> readConfig(ToolExecutionContext context) {
@@ -490,6 +602,25 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("config", config);
         return data;
+    }
+
+    private List<Map<String, Object>> filterVisibleMenus(List<Map<String, Object>> menus, Set<String> permissions) {
+        if (menus == null || menus.isEmpty()) {
+            return List.of();
+        }
+        Set<String> trustedPermissions = permissions == null ? Set.of() : permissions;
+        return menus.stream()
+                .filter(menu -> isVisibleMenu(menu, trustedPermissions))
+                .toList();
+    }
+
+    private boolean isVisibleMenu(Map<String, Object> menu, Set<String> permissions) {
+        Object permissionKey = menu == null ? null : menu.get("permissionKey");
+        if (!(permissionKey instanceof String text) || !StringUtils.hasText(text)) {
+            return true;
+        }
+        String normalized = text.trim();
+        return permissions.contains("*") || permissions.contains(normalized);
     }
 
     private Map<String, Object> searchUsers(ToolExecutionContext context) {
@@ -520,6 +651,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 不能为空");
         }
         SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
+        requireTargetUserUuid(context, existing);
         SystemDTO.UserUpsertRequest request = mergeUserRequest(existing, context.arguments());
         SystemVO.UserDetailVO user = systemManagementAppService.updateUser(context.currentUser(), userId, request);
         return Map.of("user", user);
@@ -531,7 +663,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (userId == null || !StringUtils.hasText(status)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 和 status 不能为空");
         }
-        if (userId.equals(context.currentUser().getUserId()) && "DISABLED".equalsIgnoreCase(status)) {
+        SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
+        requireTargetUserUuid(context, existing);
+        if (isActorUser(context, userId) && "DISABLED".equalsIgnoreCase(status)) {
             throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 禁用当前登录账号");
         }
         if (Long.valueOf(1001L).equals(userId) && "DISABLED".equalsIgnoreCase(status)) {
@@ -546,7 +680,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (userId == null) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 不能为空");
         }
-        if (userId.equals(context.currentUser().getUserId())) {
+        SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
+        requireTargetUserUuid(context, existing);
+        if (isActorUser(context, userId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 删除当前登录账号");
         }
         if (Long.valueOf(1001L).equals(userId)) {
@@ -554,6 +690,21 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         boolean deleted = systemManagementAppService.deleteUser(context.currentUser(), userId);
         return Map.of("deleted", deleted, "userId", userId);
+    }
+
+    private String requireTargetUserUuid(ToolExecutionContext context, SystemVO.UserDetailVO existing) {
+        String expectedUserUuid = stringArg(context.arguments(), "userUuid", null);
+        if (!StringUtils.hasText(expectedUserUuid)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userUuid must not be blank");
+        }
+        if (existing == null || !StringUtils.hasText(existing.getUserUuid())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Target user identity cannot be verified");
+        }
+        String actualUserUuid = existing.getUserUuid().trim();
+        if (!expectedUserUuid.trim().equals(actualUserUuid)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Target user identity mismatch");
+        }
+        return actualUserUuid;
     }
 
     private Map<String, Object> updateCurrentAvatar(ToolExecutionContext context) {
@@ -576,9 +727,10 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         CurrentUser currentUser = context.currentUser();
         FileObjectDTO file = fileInternalApi.getFileForUser(
                 fileId,
-                currentUser == null ? null : currentUser.getUserId(),
-                currentUser == null ? null : currentUser.getUsername(),
-                hasPermission(context.currentUser(), "system:file:manage"),
+                context.actorUserId(),
+                context.actorUserUuid(),
+                context.actorUsername(),
+                false,
                 false
         );
         if (file == null || !StringUtils.hasText(file.publicUrl())) {
@@ -724,6 +876,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private Map<String, Object> createConfig(ToolExecutionContext context) {
+        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿淇敼: ");
         ensureNonSensitiveConfig(context.arguments());
         SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.ConfigUpsertRequest.class);
         SystemVO.ConfigVO config = systemManagementAppService.createConfig(context.currentUser(), request);
@@ -732,6 +885,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private Map<String, Object> updateConfig(ToolExecutionContext context) {
         Long configId = requireLong(context.arguments(), "configId");
+        ensureAiConfigUpdateAllowed(context, configId);
+        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿淇敼: ");
         ensureNonSensitiveConfig(context.arguments());
         SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "configId"), SystemDTO.ConfigUpsertRequest.class);
         SystemVO.ConfigVO config = systemManagementAppService.updateConfig(context.currentUser(), configId, request);
@@ -773,6 +928,34 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
     }
 
+    private void ensureAiConfigUpdateAllowed(ToolExecutionContext context, Long configId) {
+        if (configId == null) {
+            return;
+        }
+        SystemVO.ConfigVO existing = requireSystemManagementAppService().getConfig(context.currentUser(), configId);
+        ensureAiConfigKeyAllowed(existing == null ? null : existing.getConfigKey(), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿淇敼: ");
+    }
+
+    private void ensureAiConfigKeyAllowed(String configKey, String messagePrefix) {
+        if (!StringUtils.hasText(configKey)) {
+            return;
+        }
+        if (!isAiManageableConfigKey(configKey)) {
+            throw new BizException(ErrorCode.FORBIDDEN, messagePrefix + configKey);
+        }
+    }
+
+    private boolean isAiManageableConfigKey(String configKey) {
+        return AiConfigAccessPolicy.isAiManageableConfigKey(configKey);
+    }
+
+    private SystemManagementAppService requireSystemManagementAppService() {
+        if (systemManagementAppService == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "System management service is not available");
+        }
+        return systemManagementAppService;
+    }
+
     private void ensureNonSensitiveConfig(Map<String, Object> arguments) {
         String configKey = stringArg(arguments, "configKey", null);
         if (StringUtils.hasText(configKey) && looksSensitive(configKey)) {
@@ -805,12 +988,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         CurrentUser currentUser = context.currentUser();
         List<Map<String, Object>> files = fileInternalApi.searchFilesForUser(
-                        currentUser == null ? null : currentUser.getUserId(),
-                        currentUser == null ? null : currentUser.getUsername(),
+                        context.actorUserId(),
+                        context.actorUserUuid(),
+                        context.actorUsername(),
                         keyword,
                         contentType,
                         status,
-                        hasPermission(context.currentUser(), "system:file:manage"),
+                        false,
                         limit
                 )
                 .stream()
@@ -892,6 +1076,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void recordToolAuditLog(
+            CurrentUser currentUser,
             AiDTO.ToolExecuteRequest request,
             NativeTool tool,
             boolean confirmed,
@@ -900,16 +1085,18 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             String detailMessage,
             Map<String, Object> responsePayload
     ) {
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into ai_tool_audit_log (
-                            conversation_id, employee_id, skill_code, tool_name, permission_mode,
+                            conversation_id, employee_id, owner_user_id, owner_user_uuid, skill_code, tool_name, permission_mode,
                             confirm_required, confirm_result, result_status, detail_message,
                             request_payload_json, response_payload_json, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
                 request.getConversationId(),
                 request.getEmployeeId(),
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 tool.code(),
                 tool.code(),
                 permissionMode,
@@ -922,9 +1109,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
+        if (inserted != 1) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "AI tool audit changed, please retry");
+        }
     }
 
     private void recordFailedToolAuditLog(
+            CurrentUser currentUser,
             AiDTO.ToolExecuteRequest request,
             NativeTool tool,
             boolean confirmed,
@@ -936,6 +1127,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                     ? "deny"
                     : "allow";
             recordToolAuditLog(
+                    currentUser,
                     request,
                     tool,
                     confirmed,
@@ -969,24 +1161,147 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private boolean looksSensitive(String value) {
-        String normalized = value.toLowerCase(Locale.ROOT);
-        return normalized.contains("password")
-                || normalized.contains("secret")
-                || normalized.contains("token")
-                || normalized.contains("credential")
-                || normalized.contains("private")
-                || normalized.endsWith(".key")
-                || normalized.contains("app-secret");
+        return AiConfigAccessPolicy.looksSensitive(value);
     }
 
     private boolean hasPermission(CurrentUser currentUser, String permissionKey) {
-        return currentUser != null
-                && currentUser.getPermissions() != null
-                && (currentUser.getPermissions().contains("*")
-                || currentUser.getPermissions().contains(permissionKey)
-                || currentUser.getPermissions().stream()
+        if (!isTrustedCurrentUser(currentUser)) {
+            return false;
+        }
+        Set<String> permissions = trustedPermissions(currentUser);
+        return permissions.contains("*")
+                || permissions.contains(permissionKey)
+                || permissions.stream()
                 .filter(permission -> StringUtils.hasText(permission) && permission.endsWith("*"))
-                .anyMatch(permission -> permissionKey.startsWith(permission.substring(0, permission.length() - 1))));
+                .anyMatch(permission -> permissionKey.startsWith(permission.substring(0, permission.length() - 1)));
+    }
+
+    private Set<String> trustedPermissions(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            return Set.of();
+        }
+        return currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+    }
+
+    private CurrentUser refreshTrustedCurrentUserIfAvailable(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (sessionAuthenticationService == null && permissionSnapshotService == null) {
+            return currentUser;
+        }
+        return refreshTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    ),
+                    ErrorCode.UNAUTHORIZED,
+                    "Trusted user context is invalid"
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return currentUser;
+        }
+        if (permissionSnapshotService == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String userUuid = currentUser.getUserUuid();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user context is invalid");
+        }
+        String normalizedUserUuid = userUuid.trim();
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user context is invalid");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid()) || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user context is invalid");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        CurrentUser refreshed = new CurrentUser(
+                currentUser.getUserId(),
+                currentUser.getUsername(),
+                currentUser.getSessionId(),
+                currentUser.getSessionVersion(),
+                true,
+                snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()),
+                snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()),
+                snapshot.getPrimaryDeptId(),
+                snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()),
+                snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()),
+                snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes())
+        );
+        refreshed.setUserUuid(normalizedUserUuid);
+        refreshed.setPermissionsVersion(snapshot.getVersion());
+        refreshed.setDefaultHomePath(snapshot.getDefaultHomePath());
+        refreshed.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
+        refreshed.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        refreshed.setLoginType(currentUser.getLoginType());
+        copyTrustedCurrentUser(currentUser, refreshed);
+        return currentUser;
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(
+            SessionAuthenticationService.AuthenticatedAccess authenticatedAccess,
+            ErrorCode errorCode,
+            String message
+    ) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(errorCode, message);
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
     }
 
     private String like(String value) {
@@ -1111,13 +1426,42 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         return value.substring(0, maxLength);
     }
 
-    private void requireLogin(CurrentUser currentUser) {
-        if (currentUser == null) {
+    private Long requireLogin(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
+        return currentUser.getUserId();
     }
 
-    private record ToolExecutionContext(CurrentUser currentUser, Map<String, Object> arguments) {
+    private String trustedUsername(CurrentUser currentUser) {
+        requireLogin(currentUser);
+        return currentUser.getUsername();
+    }
+
+    private boolean isActorUser(ToolExecutionContext context, Long userId) {
+        return context != null
+                && userId != null
+                && userId.equals(context.actorUserId())
+                && StringUtils.hasText(context.actorUserUuid())
+                && context.currentUser() != null
+                && StringUtils.hasText(context.currentUser().getUserUuid())
+                && context.actorUserUuid().trim().equals(context.currentUser().getUserUuid().trim());
+    }
+
+    private record ToolExecutionContext(CurrentUser currentUser, Map<String, Object> arguments, Long actorUserId, String actorUserUuid, String actorUsername) {
+        private ToolExecutionContext(CurrentUser currentUser, Map<String, Object> arguments) {
+            this(
+                    currentUser,
+                    arguments,
+                    isTrustedContextUser(currentUser) ? currentUser.getUserId() : null,
+                    isTrustedContextUser(currentUser) ? currentUser.getUserUuid() : null,
+                    isTrustedContextUser(currentUser) ? currentUser.getUsername() : null
+            );
+        }
+
+        private static boolean isTrustedContextUser(CurrentUser currentUser) {
+            return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+        }
     }
 
     @FunctionalInterface

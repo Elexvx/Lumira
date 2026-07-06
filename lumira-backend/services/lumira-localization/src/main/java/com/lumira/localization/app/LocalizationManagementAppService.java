@@ -6,7 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.localization.dto.LocalizationDTO;
 import com.lumira.localization.dto.LocalizationQueryModels.EntryQuery;
@@ -42,6 +47,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
@@ -242,13 +248,15 @@ public class LocalizationManagementAppService {
     }
 
     @Transactional
-    public LocalizationVO.LanguageVO saveLanguage(Long id, LocalizationDTO.LanguageUpsertRequest request) {
+    public LocalizationVO.LanguageVO saveLanguage(CurrentUser currentUser, Long id, LocalizationDTO.LanguageUpsertRequest request) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:update");
         String localeCode = normalizeLocale(request.getLocaleCode());
         boolean isDefault = Boolean.TRUE.equals(request.getDefaultLanguage());
         if (isDefault) {
             languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
                     .set("is_default", 0)
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("deleted", 0));
         }
@@ -263,12 +271,14 @@ public class LocalizationManagementAppService {
             entity.sortNo = request.getSortNo() == null ? 0 : request.getSortNo();
             entity.isDefault = isDefault ? 1 : 0;
             entity.status = normalizeStatus(request.getStatus());
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            languageMapper.insert(entity);
+            requireLocalizationWrite(languageMapper.insert(entity), "Localization language changed, please retry");
         } else {
-            languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
+            requireLocalizationWrite(languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
                     .set("locale_code", localeCode)
                     .set("language_name", request.getLanguageName().trim())
                     .set("native_name", normalizeText(request.getNativeName()))
@@ -276,25 +286,34 @@ public class LocalizationManagementAppService {
                     .set("sort_no", request.getSortNo() == null ? 0 : request.getSortNo())
                     .set("is_default", isDefault ? 1 : 0)
                     .set("status", normalizeStatus(request.getStatus()))
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("id", existingId)
-                    .eq("deleted", 0));
+                    .eq("deleted", 0)), "Localization language changed, please retry");
         }
         return getLanguage(localeCode);
     }
 
     @Transactional
-    public void deleteLanguage(Long id) {
-        languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
+    public void deleteLanguage(CurrentUser currentUser, Long id) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:update");
+        requireLocalizationWrite(languageMapper.update(null, new UpdateWrapper<LanguageEntity>()
                 .set("deleted", 1)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", LocalDateTime.now())
-                .eq("id", id));
+                .eq("id", id)
+                .eq("deleted", 0)), "Localization language changed, please retry");
     }
 
     @Transactional
-    public LocalizationVO.NamespaceVO saveNamespace(Long id, LocalizationDTO.NamespaceUpsertRequest request) {
+    public LocalizationVO.NamespaceVO saveNamespace(CurrentUser currentUser, Long id, LocalizationDTO.NamespaceUpsertRequest request) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:update");
+        return saveNamespaceInternal(operator, id, request);
+    }
+
+    private LocalizationVO.NamespaceVO saveNamespaceInternal(TrustedOperator operator, Long id, LocalizationDTO.NamespaceUpsertRequest request) {
         String namespaceCode = request.getNamespaceCode().trim();
         Long existingId = id == null ? queryNamespaceId(namespaceCode).orElse(null) : id;
         if (existingId == null) {
@@ -305,68 +324,88 @@ public class LocalizationManagementAppService {
             entity.sourceRef = normalizeText(request.getSourceRef());
             entity.sortNo = request.getSortNo() == null ? 0 : request.getSortNo();
             entity.status = normalizeStatus(request.getStatus());
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            namespaceMapper.insert(entity);
+            requireLocalizationWrite(namespaceMapper.insert(entity), "Localization namespace changed, please retry");
         } else {
-            namespaceMapper.update(null, new UpdateWrapper<NamespaceEntity>()
+            requireLocalizationWrite(namespaceMapper.update(null, new UpdateWrapper<NamespaceEntity>()
                     .set("namespace_code", namespaceCode)
                     .set("namespace_name", request.getNamespaceName().trim())
                     .set("source_type", normalizeSourceType(request.getSourceType()))
                     .set("source_ref", normalizeText(request.getSourceRef()))
                     .set("sort_no", request.getSortNo() == null ? 0 : request.getSortNo())
                     .set("status", normalizeStatus(request.getStatus()))
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("id", existingId)
-                    .eq("deleted", 0));
+                    .eq("deleted", 0)), "Localization namespace changed, please retry");
         }
         return getNamespace(namespaceCode);
     }
 
     @Transactional
-    public void deleteNamespace(Long id) {
-        namespaceMapper.update(null, new UpdateWrapper<NamespaceEntity>()
+    public void deleteNamespace(CurrentUser currentUser, Long id) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:update");
+        requireLocalizationWrite(namespaceMapper.update(null, new UpdateWrapper<NamespaceEntity>()
                 .set("deleted", 1)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", LocalDateTime.now())
-                .eq("id", id));
+                .eq("id", id)
+                .eq("deleted", 0)), "Localization namespace changed, please retry");
     }
 
     @Transactional
-    public LocalizationVO.EntryVO saveEntry(LocalizationDTO.EntryUpsertRequest request) {
-        return saveEntryInternal(request);
+    public LocalizationVO.EntryVO saveEntry(CurrentUser currentUser, LocalizationDTO.EntryUpsertRequest request) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:update");
+        return saveEntryInternal(request, operator);
     }
 
     @Transactional
-    public void deleteEntry(Long id) {
+    public void deleteEntry(CurrentUser currentUser, Long id) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:update");
         LocalDateTime now = LocalDateTime.now();
-        entryMapper.update(null, new UpdateWrapper<EntryEntity>()
+        int deletedEntry = entryMapper.update(null, new UpdateWrapper<EntryEntity>()
                 .set("deleted", 1)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", now)
-                .eq("id", id));
+                .eq("id", id)
+                .eq("deleted", 0));
+        if (deletedEntry <= 0) {
+            throw new IllegalArgumentException("本地化条目不存在或已删除");
+        }
         translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
                 .set("deleted", 1)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", now)
-                .eq("entry_id", id));
+                .eq("entry_id", id)
+                .eq("deleted", 0)
+                .exists("select 1 from sys_localization_entry e where e.id = entry_id and e.deleted = 1"));
         usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
                 .set("deleted", 1)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", now)
-                .eq("entry_id", id));
+                .eq("entry_id", id)
+                .eq("deleted", 0)
+                .exists("select 1 from sys_localization_entry e where e.id = entry_id and e.deleted = 1"));
     }
 
     @Transactional
-    public LocalizationVO.SyncResultVO sync(LocalizationDTO.SyncRequest request) {
+    public LocalizationVO.SyncResultVO sync(CurrentUser currentUser, LocalizationDTO.SyncRequest request) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:sync");
         LocalizationVO.SyncResultVO result = new LocalizationVO.SyncResultVO();
         Map<String, String> localesEncountered = new LinkedHashMap<>();
         localesEncountered.put(normalizeLocale(request.getSourceLocale()), request.getSourceLocale());
         SyncIndexes indexes = loadSyncIndexes();
         for (LocalizationDTO.EntryUpsertRequest item : request.getItems()) {
-            syncEntryInternal(item, indexes);
+            syncEntryInternal(item, indexes, operator);
             if (StringUtils.hasText(item.getSourceLocale())) {
                 localesEncountered.put(normalizeLocale(item.getSourceLocale()), item.getSourceLocale());
             }
@@ -383,7 +422,7 @@ public class LocalizationManagementAppService {
         return result;
     }
 
-    private void syncEntryInternal(LocalizationDTO.EntryUpsertRequest request, SyncIndexes indexes) {
+    private void syncEntryInternal(LocalizationDTO.EntryUpsertRequest request, SyncIndexes indexes, TrustedOperator operator) {
         String namespaceCode = request.getNamespaceCode().trim();
         NamespaceEntity namespace = indexes.namespacesByCode.get(namespaceCode);
         Long namespaceId = namespace == null ? null : namespace.id;
@@ -395,10 +434,12 @@ public class LocalizationManagementAppService {
             newNamespace.sourceRef = normalizeText(request.getSourceRef());
             newNamespace.sortNo = 0;
             newNamespace.status = normalizeStatus(request.getStatus());
-            newNamespace.createdBy = 0L;
-            newNamespace.updatedBy = 0L;
+            newNamespace.createdBy = operator.userId();
+            newNamespace.createdByUuid = operator.userUuid();
+            newNamespace.updatedBy = operator.userId();
+            newNamespace.updatedByUuid = operator.userUuid();
             newNamespace.deleted = 0;
-            namespaceMapper.insert(newNamespace);
+            requireLocalizationWrite(namespaceMapper.insert(newNamespace), "Localization namespace changed, please retry");
             namespaceId = newNamespace.id;
             indexes.namespacesByCode.put(namespaceCode, newNamespace);
         }
@@ -416,15 +457,17 @@ public class LocalizationManagementAppService {
             entity.sourceType = normalizeSourceType(request.getSourceType());
             entity.sourceRef = normalizeText(request.getSourceRef());
             entity.status = normalizeStatus(request.getStatus());
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            entryMapper.insert(entity);
+            requireLocalizationWrite(entryMapper.insert(entity), "Localization entry changed, please retry");
             entryId = entity.id;
             indexes.entriesByNamespaceAndKey.put(entryKey, entity);
             indexes.entriesById.put(entryId, entity);
         } else if (entry == null || shouldUpdateEntry(entry, namespaceId, request)) {
-            entryMapper.update(null, new UpdateWrapper<EntryEntity>()
+            requireLocalizationWrite(entryMapper.update(null, new UpdateWrapper<EntryEntity>()
                     .set("namespace_id", namespaceId)
                     .set("message_key", key)
                     .set("default_message", request.getDefaultMessage().trim())
@@ -432,10 +475,11 @@ public class LocalizationManagementAppService {
                     .set("source_type", normalizeSourceType(request.getSourceType()))
                     .set("source_ref", normalizeText(request.getSourceRef()))
                     .set("status", normalizeStatus(request.getStatus()))
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("id", entryId)
-                    .eq("deleted", 0));
+                    .eq("deleted", 0)), "Localization entry changed, please retry");
             if (entry != null) {
                 entry.namespaceId = namespaceId;
                 entry.messageKey = key;
@@ -447,13 +491,13 @@ public class LocalizationManagementAppService {
             }
         }
 
-        upsertUsageRef(entryId, request.getSourceType(), request.getSourceRef(), request.getDefaultMessage(), indexes);
+        upsertUsageRef(entryId, request.getSourceType(), request.getSourceRef(), request.getDefaultMessage(), indexes, operator);
         Map<String, String> translations = new LinkedHashMap<>(request.getTranslations() == null ? Map.of() : request.getTranslations());
         if (StringUtils.hasText(request.getLocaleCode()) || StringUtils.hasText(request.getTranslatedMessage())) {
             translations.put(normalizeLocale(request.getLocaleCode()), request.getTranslatedMessage());
         }
         for (Map.Entry<String, String> translationEntry : translations.entrySet()) {
-            upsertTranslation(entryId, translationEntry.getKey(), translationEntry.getValue(), indexes);
+            upsertTranslation(entryId, translationEntry.getKey(), translationEntry.getValue(), indexes, operator);
         }
     }
 
@@ -470,6 +514,7 @@ public class LocalizationManagementAppService {
 
     @Transactional
     public LocalizationVO.ReleaseVO publish(LocalizationDTO.PublishRequest request, CurrentUser currentUser) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:publish");
         String localeCode = normalizeLocale(request.getLocaleCode());
         LocalizationVO.RuntimeBundleVO bundle = buildRuntimeBundle(localeCode);
         String fallbackLocale = resolveFallbackLocale(localeCode);
@@ -480,7 +525,8 @@ public class LocalizationManagementAppService {
             LocalDateTime now = LocalDateTime.now();
             releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
                     .set("active_flag", 0)
-                    .set("updated_by", currentUser.getUserId())
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", now)
                     .eq("deleted", 0)
                     .eq("locale_code", localeCode));
@@ -492,12 +538,15 @@ public class LocalizationManagementAppService {
             release.bundleJson = bundleJson;
             release.note = StringUtils.hasText(request.getNote()) ? request.getNote().trim() : DEFAULT_RELEASE_NOTE;
             release.activeFlag = 1;
-            release.publishedBy = currentUser.getUserId();
+            release.publishedBy = operator.userId();
+            release.publishedByUuid = operator.userUuid();
             release.publishedAt = now;
-            release.createdBy = currentUser.getUserId();
-            release.updatedBy = currentUser.getUserId();
+            release.createdBy = operator.userId();
+            release.createdByUuid = operator.userUuid();
+            release.updatedBy = operator.userId();
+            release.updatedByUuid = operator.userUuid();
             release.deleted = 0;
-            releaseMapper.insert(release);
+            requireLocalizationWrite(releaseMapper.insert(release), "Localization release changed, please retry");
             ReleaseAggregate releaseAggregate = new ReleaseAggregate(
                     release.id == null ? nextVersion : release.id,
                     localeCode,
@@ -515,6 +564,7 @@ public class LocalizationManagementAppService {
 
     @Transactional
     public LocalizationVO.ReleaseVO rollback(LocalizationDTO.RollbackRequest request, CurrentUser currentUser) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, "localization:rollback");
         LocalizationVO.ReleaseVO release = getRelease(request.getReleaseId());
         if (release == null) {
             throw new IllegalArgumentException("发布版本不存在");
@@ -522,16 +572,25 @@ public class LocalizationManagementAppService {
         LocalDateTime now = LocalDateTime.now();
         releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
                 .set("active_flag", 0)
-                .set("updated_by", currentUser.getUserId())
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", now)
                 .eq("deleted", 0)
-                .eq("locale_code", release.getLocaleCode()));
-        releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
+                .eq("locale_code", release.getLocaleCode())
+                .eq("active_flag", 1));
+        int activated = releaseMapper.update(null, new UpdateWrapper<ReleaseEntity>()
                 .set("active_flag", 1)
-                .set("updated_by", currentUser.getUserId())
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", now)
                 .eq("id", request.getReleaseId())
+                .eq("locale_code", release.getLocaleCode())
+                .eq("release_version", release.getReleaseVersion())
+                .eq("active_flag", 0)
                 .eq("deleted", 0));
+        if (activated <= 0) {
+            throw new IllegalStateException("本地化回滚版本状态已变化");
+        }
         ReleaseAggregate releaseAggregate = new ReleaseAggregate(
                 request.getReleaseId(),
                 release.getLocaleCode(),
@@ -608,9 +667,9 @@ public class LocalizationManagementAppService {
         );
     }
 
-    private LocalizationVO.EntryVO saveEntryInternal(LocalizationDTO.EntryUpsertRequest request) {
+    private LocalizationVO.EntryVO saveEntryInternal(LocalizationDTO.EntryUpsertRequest request, TrustedOperator operator) {
         String namespaceCode = request.getNamespaceCode().trim();
-        LocalizationVO.NamespaceVO namespace = saveNamespace(null, buildNamespaceRequest(request));
+        LocalizationVO.NamespaceVO namespace = saveNamespaceInternal(operator, null, buildNamespaceRequest(request));
         Long namespaceId = queryNamespaceId(namespace.getNamespaceCode()).orElseThrow();
         String key = request.getMessageKey().trim();
         Long entryId = request.getId() != null ? request.getId() : queryEntryId(namespaceId, key).orElse(null);
@@ -623,13 +682,15 @@ public class LocalizationManagementAppService {
             entity.sourceType = normalizeSourceType(request.getSourceType());
             entity.sourceRef = normalizeText(request.getSourceRef());
             entity.status = normalizeStatus(request.getStatus());
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            entryMapper.insert(entity);
+            requireLocalizationWrite(entryMapper.insert(entity), "Localization entry changed, please retry");
             entryId = entity.id;
         } else {
-            entryMapper.update(null, new UpdateWrapper<EntryEntity>()
+            requireLocalizationWrite(entryMapper.update(null, new UpdateWrapper<EntryEntity>()
                     .set("namespace_id", namespaceId)
                     .set("message_key", key)
                     .set("default_message", request.getDefaultMessage().trim())
@@ -637,19 +698,20 @@ public class LocalizationManagementAppService {
                     .set("source_type", normalizeSourceType(request.getSourceType()))
                     .set("source_ref", normalizeText(request.getSourceRef()))
                     .set("status", normalizeStatus(request.getStatus()))
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("id", entryId)
-                    .eq("deleted", 0));
+                    .eq("deleted", 0)), "Localization entry changed, please retry");
         }
 
-        upsertUsageRef(entryId, request.getSourceType(), request.getSourceRef(), request.getDefaultMessage());
+        upsertUsageRef(entryId, request.getSourceType(), request.getSourceRef(), request.getDefaultMessage(), operator);
         Map<String, String> translations = new LinkedHashMap<>(request.getTranslations());
         if (StringUtils.hasText(request.getLocaleCode()) || StringUtils.hasText(request.getTranslatedMessage())) {
             translations.put(normalizeLocale(request.getLocaleCode()), request.getTranslatedMessage());
         }
         for (Map.Entry<String, String> translationEntry : translations.entrySet()) {
-            upsertTranslation(entryId, translationEntry.getKey(), translationEntry.getValue());
+            upsertTranslation(entryId, translationEntry.getKey(), translationEntry.getValue(), operator);
         }
         String targetLocale = StringUtils.hasText(request.getLocaleCode()) ? request.getLocaleCode() : request.getSourceLocale();
         return getEntry(entryId, normalizeLocale(targetLocale));
@@ -666,18 +728,21 @@ public class LocalizationManagementAppService {
         return namespace;
     }
 
-    private void upsertTranslation(Long entryId, String localeCode, String translatedMessage) {
+    private void upsertTranslation(Long entryId, String localeCode, String translatedMessage, TrustedOperator operator) {
         String normalizedLocale = normalizeLocale(localeCode);
         String value = normalizeText(translatedMessage);
         Long translationId = queryTranslationId(entryId, normalizedLocale).orElse(null);
         if (!StringUtils.hasText(value)) {
             if (translationId != null) {
-                translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                requireLocalizationWrite(translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
                         .set("deleted", 1)
-                        .set("updated_by", 0)
+                        .set("updated_by", operator.userId())
+                        .set("updated_by_uuid", operator.userUuid())
                         .set("updated_at", LocalDateTime.now())
                         .eq("id", translationId)
-                        .eq("deleted", 0));
+                        .eq("entry_id", entryId)
+                        .eq("locale_code", normalizedLocale)
+                        .eq("deleted", 0)), "Localization translation changed, please retry");
             }
             return;
         }
@@ -690,22 +755,27 @@ public class LocalizationManagementAppService {
             entity.translationStatus = DEFAULT_TRANSLATION_STATUS;
             entity.machineGenerated = 0;
             entity.reviewStatus = "PENDING";
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            translationMapper.insert(entity);
+            requireLocalizationWrite(translationMapper.insert(entity), "Localization translation changed, please retry");
         } else {
-            translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+            requireLocalizationWrite(translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
                     .set("translated_message", value)
                     .set("translation_status", DEFAULT_TRANSLATION_STATUS)
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("id", translationId)
-                    .eq("deleted", 0));
+                    .eq("entry_id", entryId)
+                    .eq("locale_code", normalizedLocale)
+                    .eq("deleted", 0)), "Localization translation changed, please retry");
         }
     }
 
-    private void upsertTranslation(Long entryId, String localeCode, String translatedMessage, SyncIndexes indexes) {
+    private void upsertTranslation(Long entryId, String localeCode, String translatedMessage, SyncIndexes indexes, TrustedOperator operator) {
         String normalizedLocale = normalizeLocale(localeCode);
         String value = normalizeText(translatedMessage);
         String key = translationKey(entryId, normalizedLocale);
@@ -713,12 +783,15 @@ public class LocalizationManagementAppService {
         Long translationId = translation == null ? null : translation.id;
         if (!StringUtils.hasText(value)) {
             if (translationId != null) {
-                translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+                requireLocalizationWrite(translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
                         .set("deleted", 1)
-                        .set("updated_by", 0)
+                        .set("updated_by", operator.userId())
+                        .set("updated_by_uuid", operator.userUuid())
                         .set("updated_at", LocalDateTime.now())
                         .eq("id", translationId)
-                        .eq("deleted", 0));
+                        .eq("entry_id", entryId)
+                        .eq("locale_code", normalizedLocale)
+                        .eq("deleted", 0)), "Localization translation changed, please retry");
                 indexes.translationsByEntryAndLocale.remove(key);
             }
             return;
@@ -732,25 +805,30 @@ public class LocalizationManagementAppService {
             entity.translationStatus = DEFAULT_TRANSLATION_STATUS;
             entity.machineGenerated = 0;
             entity.reviewStatus = "PENDING";
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            translationMapper.insert(entity);
+            requireLocalizationWrite(translationMapper.insert(entity), "Localization translation changed, please retry");
             indexes.translationsByEntryAndLocale.put(key, entity);
         } else if (!sameText(translation.translatedMessage, value) || !DEFAULT_TRANSLATION_STATUS.equalsIgnoreCase(String.valueOf(translation.translationStatus))) {
-            translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
+            requireLocalizationWrite(translationMapper.update(null, new UpdateWrapper<TranslationEntity>()
                     .set("translated_message", value)
                     .set("translation_status", DEFAULT_TRANSLATION_STATUS)
-                    .set("updated_by", 0)
+                    .set("updated_by", operator.userId())
+                    .set("updated_by_uuid", operator.userUuid())
                     .set("updated_at", LocalDateTime.now())
                     .eq("id", translationId)
-                    .eq("deleted", 0));
+                    .eq("entry_id", entryId)
+                    .eq("locale_code", normalizedLocale)
+                    .eq("deleted", 0)), "Localization translation changed, please retry");
             translation.translatedMessage = value;
             translation.translationStatus = DEFAULT_TRANSLATION_STATUS;
         }
     }
 
-    private void upsertUsageRef(Long entryId, String sourceType, String sourceRef, String sourceText) {
+    private void upsertUsageRef(Long entryId, String sourceType, String sourceRef, String sourceText, TrustedOperator operator) {
         if (!StringUtils.hasText(sourceRef)) {
             return;
         }
@@ -762,22 +840,29 @@ public class LocalizationManagementAppService {
             entity.sourceRef = sourceRef.trim();
             entity.sourceLine = null;
             entity.sourceText = sourceText;
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            usageRefMapper.insert(entity);
+            requireLocalizationWrite(usageRefMapper.insert(entity), "Localization usage reference changed, please retry");
             return;
         }
 
-        usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
+        requireLocalizationWrite(usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
                 .set("source_text", sourceText)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", LocalDateTime.now())
                 .eq("id", usageId)
-                .eq("deleted", 0));
+                .eq("entry_id", entryId)
+                .eq("source_type", normalizeSourceType(sourceType))
+                .eq("source_ref", sourceRef.trim())
+                .isNull("source_line")
+                .eq("deleted", 0)), "Localization usage reference changed, please retry");
     }
 
-    private void upsertUsageRef(Long entryId, String sourceType, String sourceRef, String sourceText, SyncIndexes indexes) {
+    private void upsertUsageRef(Long entryId, String sourceType, String sourceRef, String sourceText, SyncIndexes indexes, TrustedOperator operator) {
         if (!StringUtils.hasText(sourceRef)) {
             return;
         }
@@ -793,10 +878,12 @@ public class LocalizationManagementAppService {
             entity.sourceRef = normalizedSourceRef;
             entity.sourceLine = null;
             entity.sourceText = sourceText;
-            entity.createdBy = 0L;
-            entity.updatedBy = 0L;
+            entity.createdBy = operator.userId();
+            entity.createdByUuid = operator.userUuid();
+            entity.updatedBy = operator.userId();
+            entity.updatedByUuid = operator.userUuid();
             entity.deleted = 0;
-            usageRefMapper.insert(entity);
+            requireLocalizationWrite(usageRefMapper.insert(entity), "Localization usage reference changed, please retry");
             indexes.usageRefsByEntryAndSource.put(key, entity);
             return;
         }
@@ -804,12 +891,17 @@ public class LocalizationManagementAppService {
         if (sameText(usageRef.sourceText, sourceText)) {
             return;
         }
-        usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
+        requireLocalizationWrite(usageRefMapper.update(null, new UpdateWrapper<UsageRefEntity>()
                 .set("source_text", sourceText)
-                .set("updated_by", 0)
+                .set("updated_by", operator.userId())
+                .set("updated_by_uuid", operator.userUuid())
                 .set("updated_at", LocalDateTime.now())
                 .eq("id", usageId)
-                .eq("deleted", 0));
+                .eq("entry_id", entryId)
+                .eq("source_type", normalizedSourceType)
+                .eq("source_ref", normalizedSourceRef)
+                .isNull("source_line")
+                .eq("deleted", 0)), "Localization usage reference changed, please retry");
         usageRef.sourceText = sourceText;
     }
 
@@ -909,6 +1001,63 @@ public class LocalizationManagementAppService {
         } catch (Exception ignored) {
             // Keep write operations stable when read-model infra is temporarily unavailable.
         }
+    }
+
+    private TrustedOperator requireTrustedOperator(CurrentUser currentUser, String permission) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        Set<String> permissions = currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+        if (!permissions.contains("*") && !permissions.contains(permission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Permission denied");
+        }
+        return new TrustedOperator(currentUser.getUserId(), currentUser.getUserUuid().trim());
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(userId);
+        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(snapshot.userUuid()) || !snapshot.userUuid().trim().equals(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!"ENABLED".equalsIgnoreCase(snapshot.status())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(snapshot.userId());
+        currentUser.setUserUuid(snapshot.userUuid().trim());
+        currentUser.setUsername(snapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds()));
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+    }
+
+    private void requireLocalizationWrite(int affectedRows, String message) {
+        if (affectedRows != 1) {
+            throw new BizException(ErrorCode.BIZ_ERROR, message);
+        }
+    }
+
+    private record TrustedOperator(Long userId, String userUuid) {
     }
 
     private String readModelVersionCacheKey(String scope) {

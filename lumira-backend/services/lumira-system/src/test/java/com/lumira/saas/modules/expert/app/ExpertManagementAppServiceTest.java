@@ -1,31 +1,42 @@
 package com.lumira.saas.modules.expert.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.expert.dto.ExpertDTO;
 import com.lumira.saas.modules.expert.vo.ExpertVO;
 import com.lumira.saas.modules.workflow.app.WorkflowAppService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ExpertManagementAppServiceTest {
 
     @Test
-    void createExpertStartsApprovalWorkflowWithoutCreatingAccount() {
+    void createExpertStartsApprovalWorkflowWithoutCreatingAccount() throws Exception {
         ExpertSql sql = new ExpertSql();
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
         when(workflowAppService.startWorkflow(any(CurrentUser.class), eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION), eq(501L), eq("exp-001"), eq("Ada Expert"), any(Map.class))).thenReturn(7001L);
@@ -39,6 +50,299 @@ class ExpertManagementAppServiceTest {
         assertThat(expert.getApprovalInstanceId()).isEqualTo(7001L);
         verify(workflowAppService).startWorkflow(any(CurrentUser.class), eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION), eq(501L), eq("exp-001"), eq("Ada Expert"), any(Map.class));
         assertThat(sql.workflowInstanceUpdates).isEqualTo(1);
+        assertThat(sql.insertSql).contains("created_by_uuid", "updated_by_uuid");
+        assertThat(sql.workflowInstanceUpdateSql)
+                .contains("updated_by_uuid")
+                .contains("and code = ?")
+                .contains("and status = ?")
+                .contains("and approval_status = 'PENDING'");
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/expert/app/ExpertManagementAppService.java"));
+        assertThat(source).contains("Expert application changed, please retry");
+        assertThat(sql.insertArgs).contains(1001L, "user-uuid-1001");
+        assertThat(sql.workflowInstanceUpdateArgs).contains(1001L, "user-uuid-1001", "exp-001", "inactive");
+    }
+
+    @Test
+    void createExpertShouldRejectWhenInsertMissesBeforeWorkflowStart() {
+        ExpertSql sql = new ExpertSql();
+        sql.insertResult = 0;
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+
+        assertThatThrownBy(() -> service.createExpert(admin(), expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+                    assertThat(exception.getMessage()).contains("Expert application changed, please retry");
+                });
+
+        assertThat(sql.lastInsertIdQueries).isZero();
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateExpertShouldRequireUpdatePermissionAtServiceLayer() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+
+        assertThatThrownBy(() -> service.updateExpert(user("expert:view"), 501L, expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+        verify(sql, never()).update(anyString(), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void listExpertsShouldRequireViewPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+
+        assertThatThrownBy(() -> service.listExperts(user("expert:update"), null, null, null, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(sql, never()).queryForObject(anyString(), eq(Long.class), any());
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+    }
+
+    @Test
+    void listExpertsShouldRejectBlankUsernameBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+
+        assertThatThrownBy(() -> service.listExperts(blankUsernameUser(), null, null, null, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(sql, never()).queryForObject(anyString(), eq(Long.class), any());
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+    }
+
+    @Test
+    void listExpertsShouldRejectMissingSessionVersionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+
+        assertThatThrownBy(() -> service.listExperts(missingSessionVersionUser(), null, null, null, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(sql, never()).queryForObject(anyString(), eq(Long.class), any());
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+    }
+
+    @Test
+    void listExpertsShouldRejectMissingUserUuidBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        CurrentUser currentUser = user("expert:view");
+        currentUser.setUserUuid(" ");
+
+        assertThatThrownBy(() -> service.listExperts(currentUser, null, null, null, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(sql, never()).queryForObject(anyString(), eq(Long.class), any());
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+    }
+
+    @Test
+    void createExpertShouldRejectMissingPermissionsVersionBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        CurrentUser currentUser = user("expert:create");
+        currentUser.setPermissionsVersion(" ");
+
+        assertThatThrownBy(() -> service.createExpert(currentUser, expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(sql, never()).update(anyString(), any());
+        verify(sql, never()).queryForObject(anyString(), any(Class.class), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createExpertShouldRejectWhenLiveSnapshotRevokesCreatePermissionBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("expert:view")));
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService);
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(sql, never()).update(anyString(), any());
+        verify(sql, never()).queryForObject(anyString(), any(Class.class), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createExpertShouldRejectDisabledTrustedIdentityBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "DISABLED"));
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+        verify(sql, never()).update(anyString(), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createExpertShouldRefreshLiveUsernameBeforeWorkflowStart() throws Exception {
+        ExpertSql sql = new ExpertSql();
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        when(workflowAppService.startWorkflow(any(CurrentUser.class), eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION), eq(501L), eq("exp-001"), eq("Ada Expert"), any(Map.class)))
+                .thenReturn(7001L);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*", "expert:create")));
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService, systemInternalApi, null);
+        CurrentUser currentUser = admin();
+        currentUser.setUsername("admin-stale");
+
+        service.createExpert(currentUser, expertRequest());
+
+        verify(workflowAppService).startWorkflow(
+                argThat(user -> "admin-live".equals(user.getUsername())),
+                eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION),
+                eq(501L),
+                eq("exp-001"),
+                eq("Ada Expert"),
+                any(Map.class)
+        );
+        assertThat(currentUser.getUsername()).isEqualTo("admin-live");
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+    }
+
+    @Test
+    void createExpertShouldRejectRevokedSessionTicketBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", null, 1, "permissions-1"))
+                .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
+        ExpertManagementAppService service =
+                new ExpertManagementAppService(sql, workflowAppService, null, sessionAuthenticationService);
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(sql, never()).update(anyString(), any());
+        verify(sql, never()).queryForObject(anyString(), any(Class.class), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createExpertShouldRejectNullRequestBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), null))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(sql, never()).update(anyString(), any());
+        verify(sql, never()).queryForObject(anyString(), any(Class.class), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void expertResourceOperationsShouldRejectInvalidIdsBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+
+        assertThatThrownBy(() -> service.getExpert(user("expert:view"), 0L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThatThrownBy(() -> service.updateExpert(user("expert:update"), -1L, expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThatThrownBy(() -> service.deleteExpert(user("expert:delete"), null))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+        verify(sql, never()).update(anyString(), any());
+    }
+
+    @Test
+    void createExpertShouldRejectUnsafeFieldsBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertDTO.ExpertUpsertRequest unsafeAvatar = expertRequest();
+        unsafeAvatar.setAvatarUrl("javascript:alert(1)");
+        ExpertDTO.ExpertUpsertRequest oversizedBio = expertRequest();
+        oversizedBio.setBio("x".repeat(1001));
+        ExpertDTO.ExpertUpsertRequest invalidEmail = expertRequest();
+        invalidEmail.setEmail("not-an-email");
+        ExpertDTO.ExpertUpsertRequest invalidMobile = expertRequest();
+        invalidMobile.setMobile("123");
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), unsafeAvatar))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), oversizedBio))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), invalidEmail))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), invalidMobile))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(sql, never()).update(anyString(), any());
+        verify(sql, never()).query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<ExpertVO.Expert>>any(), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateExpertShouldBindOriginalCodeStatusAndApprovalStatusInFinalWrite() {
+        ExpertSql sql = new ExpertSql();
+        sql.seedExpert();
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+
+        service.updateExpert(admin(), 501L, expertRequest());
+
+        assertThat(sql.lastUpdateSql)
+                .contains("where id = ? and code = ? and status = ? and approval_status = ? and deleted = 0");
+        assertThat(sql.lastUpdateArgs).containsSubsequence(501L, "exp-001", "inactive", "PENDING");
+    }
+
+    @Test
+    void deleteExpertShouldBindOriginalCodeStatusAndApprovalStatusInFinalWrite() {
+        ExpertSql sql = new ExpertSql();
+        sql.seedExpert();
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+
+        service.deleteExpert(admin(), 501L);
+
+        assertThat(sql.lastUpdateSql)
+                .contains("where id = ? and code = ? and status = ? and approval_status = ? and deleted = 0");
+        assertThat(sql.lastUpdateArgs).containsSubsequence(501L, "exp-001", "inactive", "PENDING");
     }
 
     private ExpertDTO.ExpertUpsertRequest expertRequest() {
@@ -57,43 +361,116 @@ class ExpertManagementAppServiceTest {
     }
 
     private CurrentUser admin() {
+        return user("*");
+    }
+
+    private CurrentUser user(String permission) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setPermissions(Set.of("*"));
+        currentUser.setSessionId("session-1");
+        currentUser.setSessionVersion(1);
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("permissions-1");
+        currentUser.setAuthenticated(true);
+        currentUser.setPermissions(Set.of(permission));
         return currentUser;
+    }
+
+    private CurrentUser blankUsernameUser() {
+        CurrentUser currentUser = user("expert:view");
+        currentUser.setUsername(" ");
+        return currentUser;
+    }
+
+    private CurrentUser missingSessionVersionUser() {
+        CurrentUser currentUser = user("expert:view");
+        currentUser.setSessionVersion(null);
+        return currentUser;
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     private static final class ExpertSql extends MyBatisQueryOperations {
         private final Map<String, Object> expert = new LinkedHashMap<>();
         private int workflowInstanceUpdates;
+        private String insertSql;
+        private List<Object> insertArgs = List.of();
+        private String workflowInstanceUpdateSql;
+        private List<Object> workflowInstanceUpdateArgs = List.of();
+        private String lastUpdateSql;
+        private List<Object> lastUpdateArgs = List.of();
+        private int insertResult = 1;
+        private int lastInsertIdQueries;
+
+        private void seedExpert() {
+            expert.put("id", 501L);
+            expert.put("code", "exp-001");
+            expert.put("name", "Ada Expert");
+            expert.put("title", "鏁欐巿");
+            expert.put("organization", "Lumira University");
+            expert.put("position", "瀵煎笀");
+            expert.put("expertise", "AI");
+            expert.put("mobile", "13800000000");
+            expert.put("email", "ada@example.com");
+            expert.put("status", "inactive");
+            expert.put("approvalStatus", "PENDING");
+            expert.put("sort", 10);
+            expert.put("createdAt", LocalDateTime.now());
+            expert.put("updatedAt", LocalDateTime.now());
+        }
 
         @Override
         public int update(String sql, Object... args) {
             String normalized = sql.toLowerCase();
+            lastUpdateSql = sql;
+            lastUpdateArgs = Arrays.asList(args);
             if (normalized.contains("insert into aiadc_expert")) {
+                insertSql = sql;
+                insertArgs = Arrays.asList(args);
                 expert.put("id", 501L);
-                expert.put("code", args[1]);
-                expert.put("name", args[2]);
-                expert.put("title", args[3]);
-                expert.put("organization", args[4]);
-                expert.put("position", args[5]);
-                expert.put("expertise", args[6]);
-                expert.put("phone", args[7]);
-                expert.put("mobile", args[8]);
-                expert.put("idCardNumber", args[9]);
-                expert.put("email", args[10]);
-                expert.put("avatarUrl", args[11]);
-                expert.put("bio", args[12]);
-                expert.put("tags", args[13]);
-                expert.put("status", args[14]);
+                expert.put("code", args[0]);
+                expert.put("name", args[1]);
+                expert.put("title", args[2]);
+                expert.put("organization", args[3]);
+                expert.put("position", args[4]);
+                expert.put("expertise", args[5]);
+                expert.put("phone", args[6]);
+                expert.put("mobile", args[7]);
+                expert.put("idCardNumber", args[8]);
+                expert.put("email", args[9]);
+                expert.put("avatarUrl", args[10]);
+                expert.put("bio", args[11]);
+                expert.put("tags", args[12]);
+                expert.put("status", args[13]);
                 expert.put("approvalStatus", "PENDING");
-                expert.put("sort", args[15]);
+                expert.put("sort", args[14]);
                 expert.put("createdAt", LocalDateTime.now());
                 expert.put("updatedAt", LocalDateTime.now());
-                return 1;
+                return insertResult;
             }
             if (normalized.contains("set approval_instance_id = ?")) {
+                workflowInstanceUpdateSql = sql;
+                workflowInstanceUpdateArgs = Arrays.asList(args);
                 expert.put("approvalInstanceId", args[0]);
                 workflowInstanceUpdates += 1;
                 return 1;
@@ -105,6 +482,7 @@ class ExpertManagementAppServiceTest {
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             String normalized = sql.toLowerCase();
             if (normalized.contains("last_insert_id")) {
+                lastInsertIdQueries += 1;
                 return requiredType.cast(501L);
             }
             if (normalized.contains("from sys_dict_type") || normalized.contains("from sys_dict_item")) {

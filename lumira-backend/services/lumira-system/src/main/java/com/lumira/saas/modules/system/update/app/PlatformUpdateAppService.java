@@ -1,11 +1,19 @@
 package com.lumira.saas.modules.system.update.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.runtime.ServiceVersionInfo;
 import com.lumira.common.runtime.ServiceVersionInfoFactory;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.update.entity.PlatformUpdateTaskEntity;
 import com.lumira.saas.modules.system.update.mapper.PlatformUpdateTaskMapper;
 import com.lumira.saas.modules.system.update.vo.PlatformUpdateVO;
@@ -19,11 +27,14 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -41,15 +52,79 @@ public class PlatformUpdateAppService {
     private static final String TASK_RUNNING = "RUNNING";
     private static final String TASK_INSTALL = "INSTALL";
     private static final String TASK_ROLLBACK = "ROLLBACK";
+    private static final String PERMISSION_VIEW = "system:update:view";
+    private static final String PERMISSION_CHECK = "system:update:check";
+    private static final String PERMISSION_INSTALL = "system:update:install";
+    private static final String PERMISSION_ROLLBACK = "system:update:rollback";
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final String IMAGE_DIGEST_MARKER = "@sha256:";
+    private static final int MAX_VERSION_LENGTH = 80;
+    private static final int MAX_COMMIT_LENGTH = 64;
+    private static final int MAX_BRANCH_LENGTH = 80;
+    private static final int MAX_RELEASED_AT_LENGTH = 64;
+    private static final int MAX_TITLE_LENGTH = 500;
+    private static final int MAX_URL_LENGTH = 1024;
+    private static final int MAX_IMAGE_LENGTH = 512;
+    private static final int MAX_UPDATER_TASK_ID_LENGTH = 128;
+    private static final int MAX_UPDATER_TEXT_LENGTH = 2000;
+    private static final Pattern COMMIT_PATTERN = Pattern.compile("^[0-9a-fA-F]{7,64}$");
+    private static final Pattern DIGEST_PINNED_IMAGE_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,446}@sha256:[0-9a-fA-F]{64}$");
+    private static final Set<String> UPDATER_STATUSES = Set.of("PENDING", TASK_RUNNING, "SUCCEEDED", "FAILED", "ROLLED_BACK");
 
     private final Environment environment;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
     private final ObjectMapper objectMapper;
     private final PlatformUpdateTaskMapper taskMapper;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final HttpClient httpClient;
     private volatile PlatformUpdateVO.StatusVO cachedStatus;
     private volatile Path cachedGitDirectory;
+
+    @Autowired
+    public PlatformUpdateAppService(
+            Environment environment,
+            ObjectProvider<BuildProperties> buildPropertiesProvider,
+            ObjectMapper objectMapper,
+            PlatformUpdateTaskMapper taskMapper,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(environment, buildPropertiesProvider, objectMapper, taskMapper, permissionSnapshotService, null, null);
+    }
+
+    @Autowired
+    public PlatformUpdateAppService(
+            Environment environment,
+            ObjectProvider<BuildProperties> buildPropertiesProvider,
+            ObjectMapper objectMapper,
+            PlatformUpdateTaskMapper taskMapper,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this.environment = environment;
+        this.buildPropertiesProvider = buildPropertiesProvider;
+        this.objectMapper = objectMapper;
+        this.taskMapper = taskMapper;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+    }
+
+    public PlatformUpdateAppService(
+            Environment environment,
+            ObjectProvider<BuildProperties> buildPropertiesProvider,
+            ObjectMapper objectMapper,
+            PlatformUpdateTaskMapper taskMapper,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(environment, buildPropertiesProvider, objectMapper, taskMapper, permissionSnapshotService, null, sessionAuthenticationService);
+    }
 
     public PlatformUpdateAppService(
             Environment environment,
@@ -57,25 +132,29 @@ public class PlatformUpdateAppService {
             ObjectMapper objectMapper,
             PlatformUpdateTaskMapper taskMapper
     ) {
-        this.environment = environment;
-        this.buildPropertiesProvider = buildPropertiesProvider;
-        this.objectMapper = objectMapper;
-        this.taskMapper = taskMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
+        this(environment, buildPropertiesProvider, objectMapper, taskMapper, null);
     }
 
-    public PlatformUpdateVO.StatusVO getStatus() {
+    public PlatformUpdateVO.StatusVO getStatus(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_VIEW);
+        return getStatusInternal();
+    }
+
+    private PlatformUpdateVO.StatusVO getStatusInternal() {
         PlatformUpdateVO.StatusVO status = cachedStatus;
         if (status == null) {
-            status = checkLatest();
+            status = checkLatestInternal();
         }
         status.setActiveTask(findActiveTask());
         return status;
     }
 
-    public PlatformUpdateVO.StatusVO checkLatest() {
+    public PlatformUpdateVO.StatusVO checkLatest(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_CHECK);
+        return checkLatestInternal();
+    }
+
+    private PlatformUpdateVO.StatusVO checkLatestInternal() {
         PlatformUpdateVO.StatusVO status = new PlatformUpdateVO.StatusVO();
         ServiceVersionInfo currentVersion = currentVersion();
         PlatformUpdateVO.CurrentVersionVO current = new PlatformUpdateVO.CurrentVersionVO();
@@ -157,7 +236,8 @@ public class PlatformUpdateAppService {
     }
 
     public PlatformUpdateVO.TaskVO install(CurrentUser currentUser) {
-        PlatformUpdateVO.StatusVO status = checkLatest();
+        requirePermission(currentUser, PERMISSION_INSTALL);
+        PlatformUpdateVO.StatusVO status = checkLatestInternal();
         if (!Boolean.TRUE.equals(status.getUpdaterAvailable())) {
             throw new IllegalStateException("平台更新代理不可用，请先配置并启动 lumira-updater。");
         }
@@ -170,15 +250,17 @@ public class PlatformUpdateAppService {
     }
 
     public PlatformUpdateVO.TaskVO rollback(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_ROLLBACK);
         if (!isUpdaterAvailable()) {
             throw new IllegalStateException("平台更新代理不可用，请先配置并启动 lumira-updater。");
         }
-        PlatformUpdateVO.LatestVersionVO latest = getStatus().getLatest();
+        PlatformUpdateVO.LatestVersionVO latest = getStatusInternal().getLatest();
         PlatformUpdateTaskEntity task = createTask(TASK_ROLLBACK, latest, currentUser);
         return startUpdaterTask(task, "/v1/update/rollback");
     }
 
-    public List<PlatformUpdateVO.TaskVO> listTasks() {
+    public List<PlatformUpdateVO.TaskVO> listTasks(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_VIEW);
         return taskMapper.selectList(new LambdaQueryWrapper<PlatformUpdateTaskEntity>()
                         .orderByDesc(PlatformUpdateTaskEntity::getCreatedAt)
                         .last("LIMIT 20"))
@@ -187,7 +269,9 @@ public class PlatformUpdateAppService {
                 .toList();
     }
 
-    public PlatformUpdateVO.TaskVO getTask(Long id) {
+    public PlatformUpdateVO.TaskVO getTask(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, PERMISSION_VIEW);
+        requirePositiveId(id, "Update task id is required");
         PlatformUpdateTaskEntity task = taskMapper.selectById(id);
         if (task == null) {
             throw new IllegalArgumentException("更新任务不存在: " + id);
@@ -199,27 +283,28 @@ public class PlatformUpdateAppService {
     @Scheduled(initialDelayString = "${platform.update.check-initial-delay-ms:60000}", fixedDelayString = "${platform.update.check-interval-ms:1800000}")
     public void scheduledCheckLatest() {
         try {
-            checkLatest();
+            checkLatestInternal();
         } catch (Exception ex) {
             log.warn("Platform update scheduled check failed", ex);
         }
     }
 
     private PlatformUpdateVO.TaskVO startUpdaterTask(PlatformUpdateTaskEntity task, String path) {
+        PlatformUpdateTaskEntity expected = snapshotTask(task);
         try {
             JsonNode response = postUpdater(path, task);
-            task.setUpdaterTaskId(firstText(response.path("taskId").asText(null), response.path("id").asText(null)));
-            task.setStatus(firstText(response.path("status").asText(null), TASK_RUNNING));
-            task.setLogSummary(response.path("message").asText(null));
-            task.setBackupPath(response.path("backupPath").asText(null));
+            task.setUpdaterTaskId(normalizeUpdaterTaskId(firstText(response.path("taskId").asText(null), response.path("id").asText(null))));
+            task.setStatus(normalizeUpdaterStatus(firstText(response.path("status").asText(null), TASK_RUNNING), TASK_RUNNING));
+            task.setLogSummary(boundedText(response.path("message").asText(null), MAX_UPDATER_TEXT_LENGTH, "updater message"));
+            task.setBackupPath(boundedText(response.path("backupPath").asText(null), MAX_URL_LENGTH, "updater backupPath"));
             task.setUpdatedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
+            updateTaskIfUnchanged(task, expected);
         } catch (Exception ex) {
             task.setStatus("FAILED");
             task.setErrorMessage(ex.getMessage());
             task.setFinishedAt(LocalDateTime.now());
             task.setUpdatedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
+            updateTaskIfUnchanged(task, expected);
         }
         return toTaskVO(task);
     }
@@ -228,17 +313,18 @@ public class PlatformUpdateAppService {
         if (!StringUtils.hasText(task.getUpdaterTaskId()) || isTerminal(task.getStatus())) {
             return;
         }
+        PlatformUpdateTaskEntity expected = snapshotTask(task);
         try {
             JsonNode response = getUpdater("/v1/update/tasks/" + task.getUpdaterTaskId());
-            task.setStatus(firstText(response.path("status").asText(null), task.getStatus()));
-            task.setBackupPath(firstText(response.path("backupPath").asText(null), task.getBackupPath()));
-            task.setLogSummary(firstText(response.path("message").asText(null), response.path("logSummary").asText(null), task.getLogSummary()));
-            task.setErrorMessage(firstText(response.path("errorMessage").asText(null), task.getErrorMessage()));
+            task.setStatus(normalizeUpdaterStatus(firstText(response.path("status").asText(null), task.getStatus()), task.getStatus()));
+            task.setBackupPath(boundedText(firstText(response.path("backupPath").asText(null), task.getBackupPath()), MAX_URL_LENGTH, "updater backupPath"));
+            task.setLogSummary(boundedText(firstText(response.path("message").asText(null), response.path("logSummary").asText(null), task.getLogSummary()), MAX_UPDATER_TEXT_LENGTH, "updater logSummary"));
+            task.setErrorMessage(boundedText(firstText(response.path("errorMessage").asText(null), task.getErrorMessage()), MAX_UPDATER_TEXT_LENGTH, "updater errorMessage"));
             if (isTerminal(task.getStatus()) && task.getFinishedAt() == null) {
                 task.setFinishedAt(LocalDateTime.now());
             }
             task.setUpdatedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
+            updateTaskIfUnchanged(task, expected);
         } catch (Exception ex) {
             log.warn("Failed to sync updater task {}", task.getUpdaterTaskId(), ex);
         }
@@ -261,17 +347,168 @@ public class PlatformUpdateAppService {
         LocalDateTime now = LocalDateTime.now();
         task.setTaskType(taskType);
         task.setStatus("PENDING");
-        task.setTargetVersion(latest == null ? null : latest.getVersion());
-        task.setTargetCommit(latest == null ? null : latest.getCommitId());
-        task.setServerImage(latest == null ? null : latest.getServerImage());
-        task.setFrontendImage(latest == null ? null : latest.getFrontendImage());
-        task.setCreatedBy(currentUser == null ? null : currentUser.getUserId());
-        task.setCreatedByName(currentUser == null ? null : currentUser.getUsername());
+        task.setTargetVersion(latest == null ? null : boundedText(latest.getVersion(), MAX_VERSION_LENGTH, "version"));
+        task.setTargetCommit(latest == null ? null : normalizeCommit(latest.getCommitId(), false));
+        task.setServerImage(latest == null ? null : requireDigestPinnedImage(latest.getServerImage(), "serverImage"));
+        task.setFrontendImage(latest == null ? null : requireDigestPinnedImage(latest.getFrontendImage(), "frontendImage"));
+        task.setCreatedBy(requireTrustedUserId(currentUser));
+        task.setCreatedByUuid(trustedUserUuid(currentUser));
+        task.setCreatedByName(trustedUsername(currentUser));
         task.setStartedAt(now);
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
-        taskMapper.insert(task);
+        int inserted = taskMapper.insert(task);
+        if (inserted != 1) {
+            throw biz(ErrorCode.BIZ_ERROR, "Platform update task changed, please retry");
+        }
         return task;
+    }
+
+    private PlatformUpdateTaskEntity snapshotTask(PlatformUpdateTaskEntity task) {
+        PlatformUpdateTaskEntity snapshot = new PlatformUpdateTaskEntity();
+        snapshot.setId(task.getId());
+        snapshot.setTaskType(task.getTaskType());
+        snapshot.setStatus(task.getStatus());
+        snapshot.setUpdaterTaskId(task.getUpdaterTaskId());
+        snapshot.setCreatedBy(task.getCreatedBy());
+        snapshot.setCreatedByUuid(task.getCreatedByUuid());
+        return snapshot;
+    }
+
+    private void updateTaskIfUnchanged(PlatformUpdateTaskEntity task, PlatformUpdateTaskEntity expected) {
+        if (task == null || expected == null || expected.getId() == null) {
+            return;
+        }
+        LambdaUpdateWrapper<PlatformUpdateTaskEntity> wrapper = new LambdaUpdateWrapper<PlatformUpdateTaskEntity>()
+                .eq(PlatformUpdateTaskEntity::getId, expected.getId())
+                .eq(PlatformUpdateTaskEntity::getTaskType, expected.getTaskType())
+                .eq(PlatformUpdateTaskEntity::getStatus, expected.getStatus())
+                .eq(PlatformUpdateTaskEntity::getCreatedBy, expected.getCreatedBy())
+                .eq(PlatformUpdateTaskEntity::getCreatedByUuid, expected.getCreatedByUuid());
+        if (StringUtils.hasText(expected.getUpdaterTaskId())) {
+            wrapper.eq(PlatformUpdateTaskEntity::getUpdaterTaskId, expected.getUpdaterTaskId());
+        } else {
+            wrapper.isNull(PlatformUpdateTaskEntity::getUpdaterTaskId);
+        }
+        int updated = taskMapper.update(task, wrapper);
+        if (updated <= 0) {
+            log.warn("Platform update task changed before state write taskId={} taskType={}", expected.getId(), expected.getTaskType());
+        }
+    }
+
+    private Long requireTrustedUserId(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getUserId();
+    }
+
+    private String trustedUsername(CurrentUser currentUser) {
+        requireTrustedUserId(currentUser);
+        return currentUser.getUsername();
+    }
+
+    private String trustedUserUuid(CurrentUser currentUser) {
+        requireTrustedUserId(currentUser);
+        return currentUser.getUserUuid().trim();
+    }
+
+    private Long requirePermission(CurrentUser currentUser, String permissionKey) {
+        Long actorUserId = requireTrustedUserId(currentUser);
+        Set<String> permissions = currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+        if (!permissions.contains("*") && !permissions.contains(permissionKey)) {
+            throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
+        }
+        return actorUserId;
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        if (authenticatedAccess == null || !AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedAccess.currentUser())) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return authenticatedAccess.currentUser();
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
     }
 
     private JsonNode postUpdater(String path, PlatformUpdateTaskEntity task) throws Exception {
@@ -320,15 +557,13 @@ public class PlatformUpdateAppService {
     }
 
     private PlatformUpdateVO.LatestVersionVO fetchLatest(String sourceUrl, boolean manifestSource) throws Exception {
-        if (manifestSource) {
-            validateManifestSourceUrl(sourceUrl);
-        }
+        validateUpdateSourceUrl(sourceUrl, manifestSource);
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(sourceUrl))
                 .timeout(Duration.ofSeconds(8))
                 .header("Accept", "application/vnd.github+json, application/json")
                 .header("User-Agent", "lumira-update-checker")
                 .GET();
-        addSourceToken(builder);
+        addSourceToken(builder, sourceUrl);
         HttpRequest request = builder.build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -339,6 +574,10 @@ public class PlatformUpdateAppService {
     }
 
     private void validateManifestSourceUrl(String sourceUrl) {
+        validateUpdateSourceUrl(sourceUrl, true);
+    }
+
+    private void validateUpdateSourceUrl(String sourceUrl, boolean manifestSource) {
         URI uri;
         try {
             uri = URI.create(sourceUrl);
@@ -352,30 +591,34 @@ public class PlatformUpdateAppService {
         if (!StringUtils.hasText(host)) {
             throw new IllegalStateException("Update manifest URL host is required");
         }
+        if (StringUtils.hasText(uri.getUserInfo())) {
+            throw new IllegalStateException("Update manifest URL must not contain user info");
+        }
+        if (isDefaultGithubHost(host)) {
+            return;
+        }
         String allowedHosts = firstText(
                 environment.getProperty("PLATFORM_UPDATE_ALLOWED_HOSTS"),
                 environment.getProperty("platform.update.allowed-hosts"),
                 System.getenv("PLATFORM_UPDATE_ALLOWED_HOSTS")
         );
-        if (!StringUtils.hasText(allowedHosts)) {
+        if (!StringUtils.hasText(allowedHosts) && manifestSource) {
             return;
         }
-        for (String allowedHost : allowedHosts.split(",")) {
-            if (host.equalsIgnoreCase(allowedHost.trim())) {
-                return;
-            }
+        if (isAllowedUpdateHost(host, allowedHosts)) {
+            return;
         }
         throw new IllegalStateException("Update manifest host is not allowed");
     }
 
     private PlatformUpdateVO.LatestVersionVO fromManifest(JsonNode root) {
         PlatformUpdateVO.LatestVersionVO latest = new PlatformUpdateVO.LatestVersionVO();
-        latest.setCommitId(firstText(root.path("commit").asText(null), root.path("commitId").asText(null)));
-        latest.setVersion(firstText(root.path("version").asText(null), latest.getCommitId()));
-        latest.setBranch(firstText(root.path("branch").asText(null), root.path("channel").asText(null), DEFAULT_BRANCH));
-        latest.setReleasedAt(root.path("releasedAt").asText(null));
-        latest.setTitle(firstText(root.path("releaseNotes").asText(null), root.path("title").asText(null), "Lumira release"));
-        latest.setUrl(firstText(root.path("url").asText(null), root.path("releaseUrl").asText(null)));
+        latest.setCommitId(normalizeCommit(firstText(root.path("commit").asText(null), root.path("commitId").asText(null)), true));
+        latest.setVersion(boundedText(firstText(root.path("version").asText(null), latest.getCommitId()), MAX_VERSION_LENGTH, "version"));
+        latest.setBranch(boundedText(firstText(root.path("branch").asText(null), root.path("channel").asText(null), DEFAULT_BRANCH), MAX_BRANCH_LENGTH, "branch"));
+        latest.setReleasedAt(boundedText(root.path("releasedAt").asText(null), MAX_RELEASED_AT_LENGTH, "releasedAt"));
+        latest.setTitle(boundedText(firstText(root.path("releaseNotes").asText(null), root.path("title").asText(null), "Lumira release"), MAX_TITLE_LENGTH, "releaseNotes"));
+        latest.setUrl(boundedText(firstText(root.path("url").asText(null), root.path("releaseUrl").asText(null)), MAX_URL_LENGTH, "releaseUrl"));
         latest.setServerImage(requireDigestPinnedImage(root.path("serverImage").asText(null), "serverImage"));
         latest.setFrontendImage(requireDigestPinnedImage(root.path("frontendImage").asText(null), "frontendImage"));
         latest.setMigrationRequired(root.path("migrationRequired").asBoolean(false));
@@ -388,7 +631,7 @@ public class PlatformUpdateAppService {
             return image;
         }
         String trimmed = image.trim();
-        if (!trimmed.contains(IMAGE_DIGEST_MARKER)) {
+        if (!trimmed.contains(IMAGE_DIGEST_MARKER) || trimmed.length() > MAX_IMAGE_LENGTH || !DIGEST_PINNED_IMAGE_PATTERN.matcher(trimmed).matches()) {
             throw new IllegalStateException("Update manifest " + fieldName + " must use sha256 digest pinning");
         }
         return trimmed;
@@ -396,12 +639,12 @@ public class PlatformUpdateAppService {
 
     private PlatformUpdateVO.LatestVersionVO fromGithubCommit(JsonNode root) {
         PlatformUpdateVO.LatestVersionVO latest = new PlatformUpdateVO.LatestVersionVO();
-        latest.setCommitId(firstText(root.path("commit").path("sha").asText(null), root.path("sha").asText(null)));
-        latest.setVersion(firstText(root.path("version").asText(null), latest.getCommitId()));
-        latest.setBranch(firstText(root.path("branch").asText(null), DEFAULT_BRANCH));
-        latest.setReleasedAt(firstText(root.path("releasedAt").asText(null), root.path("commit").path("committer").path("date").asText(null)));
-        latest.setTitle(firstText(root.path("title").asText(null), firstLine(root.path("commit").path("message").asText(null)), "GitHub latest commit"));
-        latest.setUrl(firstText(root.path("updateUrl").asText(null), root.path("html_url").asText(null)));
+        latest.setCommitId(normalizeCommit(firstText(root.path("commit").path("sha").asText(null), root.path("sha").asText(null)), true));
+        latest.setVersion(boundedText(firstText(root.path("version").asText(null), latest.getCommitId()), MAX_VERSION_LENGTH, "version"));
+        latest.setBranch(boundedText(firstText(root.path("branch").asText(null), DEFAULT_BRANCH), MAX_BRANCH_LENGTH, "branch"));
+        latest.setReleasedAt(boundedText(firstText(root.path("releasedAt").asText(null), root.path("commit").path("committer").path("date").asText(null)), MAX_RELEASED_AT_LENGTH, "releasedAt"));
+        latest.setTitle(boundedText(firstText(root.path("title").asText(null), firstLine(root.path("commit").path("message").asText(null)), "GitHub latest commit"), MAX_TITLE_LENGTH, "title"));
+        latest.setUrl(boundedText(firstText(root.path("updateUrl").asText(null), root.path("html_url").asText(null)), MAX_URL_LENGTH, "updateUrl"));
         return latest;
     }
 
@@ -550,22 +793,123 @@ public class PlatformUpdateAppService {
 
     private URI updaterUri(String path) {
         String baseUrl = resolveUpdaterBaseUrl();
-        String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        URI baseUri = validateUpdaterBaseUrl(baseUrl);
+        String normalizedBase = baseUri.toString().endsWith("/") ? baseUri.toString().substring(0, baseUri.toString().length() - 1) : baseUri.toString();
         String normalizedPath = path.startsWith("/") ? path : "/" + path;
         return URI.create(normalizedBase + normalizedPath);
     }
 
-    private void addSourceToken(HttpRequest.Builder builder) {
-        String token = firstText(
-                environment.getProperty("PLATFORM_UPDATE_SOURCE_TOKEN"),
-                environment.getProperty("platform.update.source-token"),
-                environment.getProperty("GITHUB_TOKEN"),
-                System.getenv("PLATFORM_UPDATE_SOURCE_TOKEN"),
-                System.getenv("GITHUB_TOKEN")
+    private URI validateUpdaterBaseUrl(String baseUrl) {
+        URI uri;
+        try {
+            uri = URI.create(baseUrl);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("Updater agent URL is invalid", exception);
+        }
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalStateException("Updater agent URL must use HTTP(S)");
+        }
+        String host = uri.getHost();
+        if (!StringUtils.hasText(host)) {
+            throw new IllegalStateException("Updater agent URL host is required");
+        }
+        if (StringUtils.hasText(uri.getUserInfo())) {
+            throw new IllegalStateException("Updater agent URL must not contain user info");
+        }
+        if (isLoopbackHost(host) || isAllowedUpdaterAgentHost(host)) {
+            return uri;
+        }
+        throw new IllegalStateException("Updater agent host is not allowed");
+    }
+
+    private boolean isLoopbackHost(String host) {
+        return "localhost".equalsIgnoreCase(host)
+                || "127.0.0.1".equals(host)
+                || "::1".equals(host)
+                || "[::1]".equals(host);
+    }
+
+    private boolean isAllowedUpdaterAgentHost(String host) {
+        String allowedHosts = firstText(
+                environment.getProperty("PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS"),
+                environment.getProperty("platform.update.agent-allowed-hosts"),
+                System.getenv("PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS")
         );
-        if (StringUtils.hasText(token)) {
+        return isAllowedUpdateHost(host, allowedHosts);
+    }
+
+    private void addSourceToken(HttpRequest.Builder builder, String sourceUrl) {
+        String token = resolveSourceToken(sourceUrl);
+        if (StringUtils.hasText(token) && isTrustedSourceTokenHost(sourceUrl)) {
             builder.header("Authorization", "Bearer " + token);
         }
+    }
+
+    private String resolveSourceToken(String sourceUrl) {
+        if (isTrustedGithubSourceHost(sourceUrl)) {
+            return firstText(
+                    environment.getProperty("PLATFORM_UPDATE_SOURCE_TOKEN"),
+                    environment.getProperty("platform.update.source-token"),
+                    environment.getProperty("GITHUB_TOKEN"),
+                    System.getenv("PLATFORM_UPDATE_SOURCE_TOKEN"),
+                    System.getenv("GITHUB_TOKEN")
+            );
+        }
+        return firstText(
+                environment.getProperty("PLATFORM_UPDATE_SOURCE_TOKEN"),
+                environment.getProperty("platform.update.source-token"),
+                System.getenv("PLATFORM_UPDATE_SOURCE_TOKEN")
+        );
+    }
+
+    private boolean isTrustedSourceTokenHost(String sourceUrl) {
+        URI uri;
+        try {
+            uri = URI.create(sourceUrl);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        String host = uri.getHost();
+        if (!StringUtils.hasText(host)) {
+            return false;
+        }
+        if (isDefaultGithubHost(host)) {
+            return true;
+        }
+        String allowedHosts = firstText(
+                environment.getProperty("PLATFORM_UPDATE_ALLOWED_HOSTS"),
+                environment.getProperty("platform.update.allowed-hosts"),
+                System.getenv("PLATFORM_UPDATE_ALLOWED_HOSTS")
+        );
+        return isAllowedUpdateHost(host, allowedHosts);
+    }
+
+    private boolean isTrustedGithubSourceHost(String sourceUrl) {
+        URI uri;
+        try {
+            uri = URI.create(sourceUrl);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        String host = uri.getHost();
+        return StringUtils.hasText(host) && isDefaultGithubHost(host);
+    }
+
+    private boolean isDefaultGithubHost(String host) {
+        return "api.github.com".equalsIgnoreCase(host) || "github.com".equalsIgnoreCase(host);
+    }
+
+    private boolean isAllowedUpdateHost(String host, String allowedHosts) {
+        if (!StringUtils.hasText(host) || !StringUtils.hasText(allowedHosts)) {
+            return false;
+        }
+        for (String allowedHost : allowedHosts.split(",")) {
+            if (host.equalsIgnoreCase(allowedHost.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isUpdaterAvailable() {
@@ -622,6 +966,46 @@ public class PlatformUpdateAppService {
         return sourceUrl.contains("api.github.com") || sourceUrl.contains("github.com") ? "github" : "custom";
     }
 
+    private String normalizeCommit(String commit, boolean optional) {
+        if (!StringUtils.hasText(commit)) {
+            if (optional) {
+                return null;
+            }
+            throw new IllegalStateException("Update manifest commit is required");
+        }
+        String trimmed = commit.trim();
+        if (trimmed.length() > MAX_COMMIT_LENGTH || !COMMIT_PATTERN.matcher(trimmed).matches()) {
+            throw new IllegalStateException("Update manifest commit is invalid");
+        }
+        return trimmed;
+    }
+
+    private String boundedText(String value, int maxLength, String fieldName) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > maxLength) {
+            throw new IllegalStateException("Update field " + fieldName + " is too long");
+        }
+        return trimmed;
+    }
+
+    private String normalizeUpdaterTaskId(String taskId) {
+        return boundedText(taskId, MAX_UPDATER_TASK_ID_LENGTH, "updater taskId");
+    }
+
+    private String normalizeUpdaterStatus(String status, String fallback) {
+        String normalized = StringUtils.hasText(status) ? status.trim().toUpperCase() : fallback;
+        if (!StringUtils.hasText(normalized)) {
+            return fallback;
+        }
+        if (!UPDATER_STATUSES.contains(normalized)) {
+            throw new IllegalStateException("Updater returned invalid task status");
+        }
+        return normalized;
+    }
+
     private String firstLine(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -650,12 +1034,23 @@ public class PlatformUpdateAppService {
         vo.setLogSummary(entity.getLogSummary());
         vo.setErrorMessage(entity.getErrorMessage());
         vo.setCreatedBy(entity.getCreatedBy());
+        vo.setCreatedByUuid(entity.getCreatedByUuid());
         vo.setCreatedByName(entity.getCreatedByName());
         vo.setStartedAt(entity.getStartedAt());
         vo.setFinishedAt(entity.getFinishedAt());
         vo.setCreatedAt(entity.getCreatedAt());
         vo.setUpdatedAt(entity.getUpdatedAt());
         return vo;
+    }
+
+    private static BizException biz(ErrorCode code, String message) {
+        return new BizException(code, message, message);
+    }
+
+    private void requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, message);
+        }
     }
 
     private record UpdaterRequest(String targetVersion, String targetCommit, String serverImage, String frontendImage, Long platformTaskId) {

@@ -9,6 +9,7 @@ public class IamUserProfileEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String nickname;
     private String realName;
     private String gender;
@@ -24,6 +25,8 @@ public class IamUserProfileEntity {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getNickname() { return nickname; }
     public void setNickname(String nickname) { this.nickname = nickname; }
     public String getRealName() { return realName; }

@@ -7,7 +7,6 @@ public class VerificationChallengeDTO {
     private String maskedContact;
     private String promptMessage;
     private Long expiresInSeconds;
-    private String debugCode;
 
     public String getFactorCode() {
         return factorCode;
@@ -55,13 +54,5 @@ public class VerificationChallengeDTO {
 
     public void setExpiresInSeconds(Long expiresInSeconds) {
         this.expiresInSeconds = expiresInSeconds;
-    }
-
-    public String getDebugCode() {
-        return debugCode;
-    }
-
-    public void setDebugCode(String debugCode) {
-        this.debugCode = debugCode;
     }
 }

@@ -48,7 +48,7 @@ public class UserDomainService {
     }
 
     public Optional<SysUserEntity> findById(Long userId) {
-        if (userId == null) {
+        if (userId == null || userId <= 0) {
             return Optional.empty();
         }
 

@@ -1,5 +1,6 @@
 package com.lumira.payment.controller;
 
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -7,7 +8,12 @@ import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
@@ -18,6 +24,8 @@ import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,18 +39,21 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/payment")
 public class PaymentController {
     private static final Long PROTECTED_ADMIN_ID = 1001L;
     private static final String PROTECTED_ADMIN_USERNAME = "admin";
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final PaymentManagementAppService paymentManagementAppService;
     private final PaymentTransactionService paymentTransactionService;
     private final PaymentWebhookService paymentWebhookService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final SystemInternalApi systemInternalApi;
 
     public PaymentController(
             PaymentManagementAppService paymentManagementAppService,
@@ -51,11 +62,31 @@ public class PaymentController {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
+        this(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard,
+                null
+        );
+    }
+
+    @Autowired
+    public PaymentController(
+            PaymentManagementAppService paymentManagementAppService,
+            PaymentTransactionService paymentTransactionService,
+            PaymentWebhookService paymentWebhookService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi
+    ) {
         this.paymentManagementAppService = paymentManagementAppService;
         this.paymentTransactionService = paymentTransactionService;
         this.paymentWebhookService = paymentWebhookService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.systemInternalApi = systemInternalApi;
     }
 
     @GetMapping("/providers")
@@ -76,10 +107,9 @@ public class PaymentController {
             @PathVariable String providerCode,
             @Valid @RequestBody PaymentProviderSettingsDTO request
     ) {
-        requireManage();
-        var currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireManage();
         return ApiResponse.success(
-                paymentManagementAppService.updatePaymentProviderSettings(currentUser.getUserId(), providerCode, request),
+                paymentManagementAppService.updatePaymentProviderSettings(currentUser, providerCode, request),
                 TraceContext.getRequestId()
         );
     }
@@ -87,10 +117,9 @@ public class PaymentController {
     @PostMapping("/providers/{providerCode}/test")
     @RepeatSubmit
     public ApiResponse<PaymentProviderTestResultDTO> testProvider(@PathVariable String providerCode) {
-        requireTest();
-        var currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireTest();
         return ApiResponse.success(
-                paymentManagementAppService.testPaymentProvider(currentUser.getUserId(), providerCode),
+                paymentManagementAppService.testPaymentProvider(currentUser, providerCode),
                 TraceContext.getRequestId()
         );
     }
@@ -98,18 +127,17 @@ public class PaymentController {
     @PostMapping("/orders")
     @RepeatSubmit
     public ApiResponse<PaymentOrderDTO> createOrder(@Valid @RequestBody PaymentCreateOrderRequestDTO request) {
-        requireOrderManage();
-        var currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireOrderManage();
         return ApiResponse.success(
-                paymentTransactionService.createOrder(currentUser.getUserId(), request),
+                paymentTransactionService.createOrder(currentUser, request),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/orders/{orderNo}")
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
-        requireOrderView();
-        return ApiResponse.success(paymentTransactionService.getOrder(orderNo), TraceContext.getRequestId());
+        CurrentUser currentUser = requireOrderView();
+        return ApiResponse.success(paymentTransactionService.getOrderForUser(currentUser, orderNo), TraceContext.getRequestId());
     }
 
     @PostMapping("/orders/{orderNo}/refunds")
@@ -118,18 +146,17 @@ public class PaymentController {
             @PathVariable String orderNo,
             @Valid @RequestBody PaymentCreateRefundRequestDTO request
     ) {
-        requireRefundManage();
-        var currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireRefundManage();
         return ApiResponse.success(
-                paymentTransactionService.createRefund(currentUser.getUserId(), orderNo, request),
+                paymentTransactionService.createRefund(currentUser, orderNo, request),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/refunds/{refundNo}")
     public ApiResponse<PaymentRefundDTO> refund(@PathVariable String refundNo) {
-        requireRefundView();
-        return ApiResponse.success(paymentTransactionService.getRefund(refundNo), TraceContext.getRequestId());
+        CurrentUser currentUser = requireRefundView();
+        return ApiResponse.success(paymentTransactionService.getRefundForUser(currentUser, refundNo), TraceContext.getRequestId());
     }
 
     @PostMapping("/webhooks/{providerCode}")
@@ -150,38 +177,48 @@ public class PaymentController {
     }
 
     private void requireView() {
-        var currentUser = securityContextFacade.getCurrentUser();
+        var currentUser = currentUser();
         requireSettingsAdmin(currentUser);
     }
 
-    private void requireManage() {
-        var currentUser = securityContextFacade.getCurrentUser();
+    private CurrentUser requireManage() {
+        var currentUser = currentUser();
         requireSettingsAdmin(currentUser);
+        return currentUser;
     }
 
-    private void requireTest() {
-        var currentUser = securityContextFacade.getCurrentUser();
+    private CurrentUser requireTest() {
+        var currentUser = currentUser();
         requireSettingsAdmin(currentUser);
+        return currentUser;
     }
 
-    private void requireOrderManage() {
-        var currentUser = securityContextFacade.getCurrentUser();
+    private CurrentUser requireOrderManage() {
+        var currentUser = currentUser();
+        requireAuthenticated(currentUser);
         permissionGuard.requirePermission(currentUser, "payment:order:create");
+        return currentUser;
     }
 
-    private void requireOrderView() {
-        var currentUser = securityContextFacade.getCurrentUser();
+    private CurrentUser requireOrderView() {
+        var currentUser = currentUser();
+        requireAuthenticated(currentUser);
         permissionGuard.requirePermission(currentUser, "payment:order:view");
+        return currentUser;
     }
 
-    private void requireRefundManage() {
-        var currentUser = securityContextFacade.getCurrentUser();
+    private CurrentUser requireRefundManage() {
+        var currentUser = currentUser();
+        requireAuthenticated(currentUser);
         permissionGuard.requirePermission(currentUser, "payment:refund:create");
+        return currentUser;
     }
 
-    private void requireRefundView() {
-        var currentUser = securityContextFacade.getCurrentUser();
+    private CurrentUser requireRefundView() {
+        var currentUser = currentUser();
+        requireAuthenticated(currentUser);
         permissionGuard.requirePermission(currentUser, "payment:refund:view");
+        return currentUser;
     }
 
     private void requireAny(CurrentUser currentUser, String... permissionKeys) {
@@ -197,9 +234,10 @@ public class PaymentController {
     }
 
     private void requireSettingsAdmin(CurrentUser currentUser) {
-        if (currentUser != null
-                && (PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
-                || (currentUser.getUsername() != null && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername().trim())))) {
+        if (isAuthenticatedUser(currentUser)
+                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
+                && StringUtils.hasText(currentUser.getUsername())
+                && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername().trim())) {
             return;
         }
         throw new com.lumira.common.exception.BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, "仅超级管理员可访问设置");
@@ -214,4 +252,67 @@ public class PaymentController {
         }
         return headers;
     }
+
+    private boolean isAuthenticatedUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+    }
+
+    private void requireAuthenticated(CurrentUser currentUser) {
+        if (!isAuthenticatedUser(currentUser)) {
+            throw new com.lumira.common.exception.BizException(com.lumira.common.enums.ErrorCode.UNAUTHORIZED, "Login required");
+        }
+    }
+
+    private CurrentUser currentUser() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (!isAuthenticatedUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return refreshTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.status())
+                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
+                userId,
+                userSnapshot.userUuid().trim()
+        );
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(userSnapshot.userId());
+        currentUser.setUserUuid(userSnapshot.userUuid().trim());
+        currentUser.setUsername(userSnapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(
+                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
+        );
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        return currentUser;
+    }
+
 }

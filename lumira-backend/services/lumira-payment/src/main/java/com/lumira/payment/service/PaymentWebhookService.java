@@ -87,11 +87,11 @@ public class PaymentWebhookService {
     public PaymentWebhookEventDTO handleWebhook(String providerCode, String payload, Map<String, String> headers) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
         String normalizedPayload = StringUtils.hasText(payload) ? payload.trim() : "{}";
-        Map<String, String> payloadFields = parsePayloadFields(normalizedPayload);
         if (normalizedPayload.getBytes(StandardCharsets.UTF_8).length > MAX_WEBHOOK_PAYLOAD_BYTES) {
             recordRejectedWebhook(providerCode, "PAYLOAD_TOO_LARGE", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook payload too large", "Webhook request is invalid");
         }
+        Map<String, String> payloadFields = parsePayloadFields(normalizedPayload);
         PaymentProviderSettingsDTO settings = paymentManagementAppService.getRequiredProviderSettings(providerCode);
         String eventId = resolveEventId(headers, normalizedPayload);
         String eventType = resolveEventType(headers, normalizedPayload);
@@ -105,6 +105,16 @@ public class PaymentWebhookService {
             timestamp = firstText(payloadFields, "notify_time", "gmt_payment");
         }
 
+        if (!verifySignature(definition, settings, normalizedPayload, payloadFields, signature, timestamp, nonce)) {
+            recordRejectedWebhook(providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
+        }
+        if (!isFreshTimestamp(timestamp)) {
+            recordRejectedWebhook(providerCode, "TIMESTAMP_EXPIRED", normalizedPayload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook timestamp expired", "Webhook request is invalid");
+        }
+        requireWebhookEventIdentity(providerCode, eventId, eventType, normalizedPayload, headers);
+
         PaymentWebhookEventRow existing = findWebhookEvent(providerCode, eventId);
         if (existing != null) {
             return toDto(existing);
@@ -113,15 +123,6 @@ public class PaymentWebhookService {
         if (StringUtils.hasText(nonce) && isNonceReplayed(providerCode, nonce)) {
             recordRejectedWebhook(providerCode, "NONCE_REPLAY", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook replay rejected", "Webhook request is invalid");
-        }
-
-        if (!verifySignature(definition, settings, normalizedPayload, payloadFields, signature, timestamp, nonce)) {
-            recordRejectedWebhook(providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
-            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
-        }
-        if (!isFreshTimestamp(timestamp)) {
-            recordRejectedWebhook(providerCode, "TIMESTAMP_EXPIRED", normalizedPayload, headers);
-            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook timestamp expired", "Webhook request is invalid");
         }
 
         PaymentWebhookEventRow row = new PaymentWebhookEventRow();
@@ -136,17 +137,17 @@ public class PaymentWebhookService {
         row.setProcessed(0);
         row.setProcessMessage("PENDING");
         row.setReceivedAt(LocalDateTime.now());
-        row.setCreatedBy(0L);
-        row.setUpdatedBy(0L);
+        row.setCreatedBy(null);
+        row.setUpdatedBy(null);
         row.setDeleted(0);
 
-        jdbcTemplate.update(
+        int inserted = jdbcTemplate.update(
                 """
                         insert into payment_webhook_event (
                             provider_code, event_id, event_type, nonce, request_timestamp, payload_json,
                             signature, signature_valid, processed, process_message, received_at, created_by,
-                            updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0)
+                            created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 0)
                         """,
                 row.getProviderCode(),
                 row.getEventId(),
@@ -158,18 +159,25 @@ public class PaymentWebhookService {
                 row.getSignatureValid(),
                 row.getProcessMessage(),
                 row.getReceivedAt(),
-                0L,
-                0L
+                null,
+                null,
+                null,
+                null
         );
+        if (inserted != 1) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Payment webhook event changed during insert");
+        }
 
         String processMessage = applyEvent(providerCode, normalizedPayload, eventType);
-        markProcessed(providerCode, eventId, processMessage);
+        if (!markProcessed(providerCode, eventId, eventType, processMessage)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Payment webhook event was changed during processing");
+        }
         row.setProcessed(1);
         row.setProcessMessage(processMessage);
         row.setProcessedAt(LocalDateTime.now());
 
         outboxService.recordAfterCommit(
-                0L,
+                null,
                 "payment",
                 "payment.webhook.received",
                 providerCode + ":" + eventId,
@@ -191,6 +199,31 @@ public class PaymentWebhookService {
                 row.getReceivedAt(),
                 row.getProcessedAt()
         );
+    }
+
+    private void requireWebhookEventIdentity(
+            String providerCode,
+            String eventId,
+            String eventType,
+            String payload,
+            Map<String, String> headers
+    ) {
+        if (!StringUtils.hasText(eventId)) {
+            recordRejectedWebhook(providerCode, "EVENT_ID_MISSING", payload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook event id is required", "Webhook request is invalid");
+        }
+        if (eventId.trim().length() > 128) {
+            recordRejectedWebhook(providerCode, "EVENT_ID_TOO_LONG", payload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook event id is invalid", "Webhook request is invalid");
+        }
+        if (!StringUtils.hasText(eventType)) {
+            recordRejectedWebhook(providerCode, "EVENT_TYPE_MISSING", payload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook event type is required", "Webhook request is invalid");
+        }
+        if (eventType.trim().length() > 128) {
+            recordRejectedWebhook(providerCode, "EVENT_TYPE_TOO_LONG", payload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook event type is invalid", "Webhook request is invalid");
+        }
     }
 
     private void recordRejectedWebhook(String providerCode, String reason, String payload, Map<String, String> headers) {
@@ -234,18 +267,41 @@ public class PaymentWebhookService {
         if (normalizedEvent.contains("refund")) {
             String refundNo = extractField(payload, "refundNo", "refund_no", "id");
             if (StringUtils.hasText(refundNo)) {
-                jdbcTemplate.update(
+                PaymentRefundRow refund = findRefundForWebhook(normalizedProvider, refundNo.trim());
+                if (refund == null) {
+                    throw new BizException(ErrorCode.NOT_FOUND, "Payment refund does not exist");
+                }
+                int refundUpdated = jdbcTemplate.update(
                         """
                                 update payment_refund
-                                set status = 'REFUNDED', refunded_at = ?, updated_at = ?, updated_by = ?, deleted = 0
-                                where refund_no = ? and deleted = 0
+                                set status = 'REFUNDED', refunded_at = ?, updated_at = ?, updated_by = ?, updated_by_uuid = ?, deleted = 0
+                                where id = ?
+                                  and refund_no = ?
+                                  and order_no = ?
+                                  and provider_code = ?
+                                  and amount_minor = ?
+                                  and created_by = ?
+                                  and created_by_uuid = ?
+                                  and status = ?
+                                  and deleted = 0
                                   and status not in ('REFUNDED', 'FAILED')
                                 """,
                         LocalDateTime.now(),
                         LocalDateTime.now(),
-                        0L,
-                        refundNo.trim()
+                        null,
+                        null,
+                        refund.getId(),
+                        refundNo.trim(),
+                        refund.getOrderNo(),
+                        normalizedProvider,
+                        refund.getAmountMinor(),
+                        refund.getCreatedBy(),
+                        refund.getCreatedByUuid(),
+                        refund.getStatus()
                 );
+                if (refundUpdated != 1) {
+                    throw new BizException(ErrorCode.BIZ_ERROR, "Payment refund state changed during webhook processing");
+                }
             }
             return "Refund webhook processed";
         }
@@ -259,7 +315,7 @@ public class PaymentWebhookService {
 
         String orderNo = extractField(payload, "orderNo", "order_no", "merchantOrderNo", "out_trade_no", "id");
         if (StringUtils.hasText(orderNo)) {
-            PaymentOrderRow order = findOrderForWebhook(orderNo.trim());
+            PaymentOrderRow order = findOrderForWebhook(normalizedProvider, orderNo.trim());
             assertWebhookAmountMatchesOrder(normalizedProvider, payloadFields, order);
             PaymentOrderAggregate orderAggregate = new PaymentOrderAggregate(
                     orderNo.trim(),
@@ -270,19 +326,33 @@ public class PaymentWebhookService {
             int updated = jdbcTemplate.update(
                     """
                             update payment_order
-                            set status = 'PAID', paid_at = ?, updated_at = ?, updated_by = ?, deleted = 0
-                            where order_no = ? and deleted = 0
+                            set status = 'PAID', paid_at = ?, updated_at = ?, updated_by = ?, updated_by_uuid = ?, deleted = 0
+                            where id = ?
+                              and order_no = ?
+                              and provider_code = ?
+                              and amount_minor = ?
+                              and created_by = ?
+                              and created_by_uuid = ?
+                              and status = ?
+                              and deleted = 0
                               and status not in ('PAID', 'SUCCESS', 'SETTLED')
                             """,
                     LocalDateTime.now(),
                     LocalDateTime.now(),
-                    0L,
-                    orderNo.trim()
+                    null,
+                    null,
+                    order.getId(),
+                    orderNo.trim(),
+                    normalizedProvider,
+                    order.getAmountMinor(),
+                    order.getCreatedBy(),
+                    order.getCreatedByUuid(),
+                    order.getStatus()
             );
             if (updated > 0) {
                 domainEventPublisher.publishAll(orderAggregate.pullDomainEvents());
+                markCompetitionRegistrationPaid(orderNo.trim(), order);
             }
-            markCompetitionRegistrationPaid(orderNo.trim(), order);
         }
         return "Payment webhook processed";
     }
@@ -296,19 +366,29 @@ public class PaymentWebhookService {
         if (!StringUtils.hasText(participantNo)) {
             return;
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update competition_registration
                         set status = 'CONFIRMED', participant_no = ?, payment_order_no = ?,
-                            updated_by = 0, updated_at = ?
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ? and deleted = 0
+                          and owner_user_id = ? and owner_user_uuid = ?
+                          and payment_order_no = ?
                           and participant_no is null
                         """,
                 participantNo,
                 orderNo,
+                null,
+                null,
                 LocalDateTime.now(),
-                registrationId
+                registrationId,
+                order.getCreatedBy(),
+                order.getCreatedByUuid(),
+                orderNo
         );
+        if (updated != 1) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Competition registration state changed during payment webhook processing");
+        }
     }
 
     private Long extractRegistrationId(String requestJson) {
@@ -353,7 +433,7 @@ public class PaymentWebhookService {
         }
     }
 
-    private PaymentOrderRow findOrderForWebhook(String orderNo) {
+    private PaymentOrderRow findOrderForWebhook(String providerCode, String orderNo) {
         try {
             return jdbcTemplate.queryForObject(
                     """
@@ -362,13 +442,15 @@ public class PaymentWebhookService {
                                    status, payment_url as paymentUrl, client_ip as clientIp, notify_url as notifyUrl,
                                    return_url as returnUrl, request_json as requestJson, response_json as responseJson,
                                    idempotency_key as idempotencyKey, failure_code as failureCode, failure_message as failureMessage,
-                                   expires_at as expiresAt, paid_at as paidAt, created_by as createdBy, created_at as createdAt,
+                                   expires_at as expiresAt, paid_at as paidAt, created_by as createdBy,
+                                   created_by_uuid as createdByUuid, created_at as createdAt,
                                    updated_by as updatedBy, updated_at as updatedAt, deleted
                             from payment_order
-                            where order_no = ? and deleted = 0
+                            where provider_code = ? and order_no = ? and deleted = 0
                             limit 1
                             """,
                     new BeanPropertyRowMapper<>(PaymentOrderRow.class),
+                    providerCatalog.normalize(providerCode),
                     orderNo
             );
         } catch (EmptyResultDataAccessException ignored) {
@@ -376,20 +458,55 @@ public class PaymentWebhookService {
         }
     }
 
-    private void markProcessed(String providerCode, String eventId, String processMessage) {
-        jdbcTemplate.update(
+    private boolean markProcessed(String providerCode, String eventId, String eventType, String processMessage) {
+        int updated = jdbcTemplate.update(
                 """
                         update payment_webhook_event
-                        set processed = 1, process_message = ?, processed_at = ?, updated_at = ?, updated_by = ?, deleted = 0
-                        where provider_code = ? and event_id = ? and deleted = 0
+                        set processed = 1, process_message = ?, processed_at = ?, updated_at = ?, updated_by = ?, updated_by_uuid = ?, deleted = 0
+                        where provider_code = ?
+                          and event_id = ?
+                          and event_type = ?
+                          and processed = 0
+                          and signature_valid = 1
+                          and deleted = 0
                         """,
-                processMessage,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                0L,
-                providerCatalog.normalize(providerCode),
-                eventId
+                new Object[]{
+                        processMessage,
+                        LocalDateTime.now(),
+                        LocalDateTime.now(),
+                        null,
+                        null,
+                        providerCatalog.normalize(providerCode),
+                        eventId,
+                        eventType
+                }
         );
+        return updated == 1;
+    }
+
+    private PaymentRefundRow findRefundForWebhook(String providerCode, String refundNo) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select id, refund_no as refundNo, order_no as orderNo,
+                                   provider_code as providerCode, provider_refund_no as providerRefundNo,
+                                   amount_minor as amountMinor, currency, status, reason,
+                                   request_json as requestJson, response_json as responseJson,
+                                   idempotency_key as idempotencyKey, failure_code as failureCode,
+                                   failure_message as failureMessage, refunded_at as refundedAt,
+                                   created_by as createdBy, created_by_uuid as createdByUuid,
+                                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
+                            from payment_refund
+                            where provider_code = ? and refund_no = ? and deleted = 0
+                            limit 1
+                            """,
+                    new BeanPropertyRowMapper<>(PaymentRefundRow.class),
+                    providerCatalog.normalize(providerCode),
+                    refundNo
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return null;
+        }
     }
 
     private boolean verifySignature(
@@ -602,19 +719,19 @@ public class PaymentWebhookService {
     }
 
     private String resolveEventId(Map<String, String> headers, String payload) {
-        String headerEventId = resolveHeader(headers, "event-id", "X-Event-Id", "Idempotency-Key");
-        if (StringUtils.hasText(headerEventId)) {
-            return headerEventId.trim();
+        String payloadEventId = extractField(payload, "eventId", "event_id", "id", "notification_id");
+        if (StringUtils.hasText(payloadEventId)) {
+            return payloadEventId.trim();
         }
-        return extractField(payload, "eventId", "event_id", "id", "notification_id");
+        return "";
     }
 
     private String resolveEventType(Map<String, String> headers, String payload) {
-        String headerEventType = resolveHeader(headers, "event-type", "X-Event-Type", "Stripe-Event-Type");
-        if (StringUtils.hasText(headerEventType)) {
-            return headerEventType.trim();
+        String payloadEventType = extractField(payload, "eventType", "event_type", "type", "topic");
+        if (StringUtils.hasText(payloadEventType)) {
+            return payloadEventType.trim();
         }
-        return extractField(payload, "eventType", "event_type", "type", "topic");
+        return "";
     }
 
     private String resolveSignature(Map<String, String> headers, String payload) {

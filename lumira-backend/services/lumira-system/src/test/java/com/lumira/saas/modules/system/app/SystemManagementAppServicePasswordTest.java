@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.app;
 
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
@@ -16,11 +17,15 @@ import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -62,16 +67,20 @@ class SystemManagementAppServicePasswordTest {
         assertTrue(updated);
         assertEquals("NewPass1!", passwordPolicyService.validatedPassword);
         assertEquals(
-                "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                "update sys_user set password_hash = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
                 jdbcTemplate.lastSql
         );
         assertEquals("NewPass1!", jdbcTemplate.lastArgs[0]);
         assertEquals(2001L, jdbcTemplate.lastArgs[1]);
-        assertEquals(2001L, jdbcTemplate.lastArgs[3]);
+        assertEquals("user-uuid-2001", jdbcTemplate.lastArgs[2]);
+        assertEquals(2001L, jdbcTemplate.lastArgs[4]);
+        assertEquals("user-uuid-2001", jdbcTemplate.lastArgs[5]);
         assertEquals(2001L, authSessionStore.resolvedPasswordChangeUserId);
+        assertEquals("user-uuid-2001", authSessionStore.resolvedPasswordChangeUserUuid);
         assertEquals("session-1", authSessionStore.resolvedPasswordChangeSessionId);
         assertTrue(authSessionStore.resolvedPasswordChangePublishChange);
         assertEquals(2001L, authSessionStore.revokedUserId);
+        assertEquals("user-uuid-2001", authSessionStore.revokedUserUuid);
         assertEquals("session-1", authSessionStore.excludedSessionId);
         assertTrue(authSessionStore.publishChange);
         assertNotNull(operationAuditService.lastMessage);
@@ -110,9 +119,155 @@ class SystemManagementAppServicePasswordTest {
         assertEquals(null, authSessionStore.revokedUserId);
     }
 
+    @Test
+    void shouldRejectUnauthenticatedUserBeforeUserLookup() {
+        SysUserEntity user = buildUser("OldPass1!");
+        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                userDomainService,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setAuthenticated(false);
+        ProfileDTO.PasswordUpdateRequest request = buildRequest("OldPass1!", "NewPass1!", "NewPass1!");
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateCurrentUserPassword(currentUser, request));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, userDomainService.findByIdCalls);
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, jdbcTemplate.lastSql);
+        assertEquals(null, authSessionStore.revokedUserId);
+    }
+
+    @Test
+    void shouldRejectUserWithoutSessionVersionBeforeUserLookup() {
+        SysUserEntity user = buildUser("OldPass1!");
+        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                userDomainService,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setSessionVersion(null);
+        ProfileDTO.PasswordUpdateRequest request = buildRequest("OldPass1!", "NewPass1!", "NewPass1!");
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateCurrentUserPassword(currentUser, request));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, userDomainService.findByIdCalls);
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, jdbcTemplate.lastSql);
+        assertEquals(null, authSessionStore.revokedUserId);
+    }
+
+    @Test
+    void shouldRejectMismatchedSessionUserUuidBeforePasswordUpdate() {
+        SysUserEntity user = buildUser("OldPass1!");
+        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                userDomainService,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setUserUuid("other-user-uuid");
+        ProfileDTO.PasswordUpdateRequest request = buildRequest("OldPass1!", "NewPass1!", "NewPass1!");
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateCurrentUserPassword(currentUser, request));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(1, userDomainService.findByIdCalls);
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, jdbcTemplate.lastSql);
+        assertEquals(null, authSessionStore.revokedUserId);
+    }
+
+    @Test
+    void shouldRejectNullPasswordRequestBeforeUserLookup() {
+        SysUserEntity user = buildUser("OldPass1!");
+        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                userDomainService,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateCurrentUserPassword(buildCurrentUser(), null));
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, exception.getErrorCode());
+        assertEquals(0, userDomainService.findByIdCalls);
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, jdbcTemplate.lastSql);
+        assertEquals(null, authSessionStore.revokedUserId);
+    }
+
     private static SysUserEntity buildUser(String passwordHash) {
         SysUserEntity user = new SysUserEntity();
         user.setId(2001L);
+        user.setUuid("user-uuid-2001");
         user.setUsername("admin");
         user.setPasswordHash(passwordHash);
         user.setDeleted(0);
@@ -122,8 +277,12 @@ class SystemManagementAppServicePasswordTest {
     private static CurrentUser buildCurrentUser() {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(2001L);
+        currentUser.setUserUuid("user-uuid-2001");
         currentUser.setUsername("admin");
+        currentUser.setAuthenticated(true);
         currentUser.setSessionId("session-1");
+        currentUser.setSessionVersion(1);
+        currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
     }
 
@@ -137,6 +296,7 @@ class SystemManagementAppServicePasswordTest {
 
     private static final class StubUserDomainService extends UserDomainService {
         private final SysUserEntity user;
+        private int findByIdCalls;
 
         private StubUserDomainService(SysUserEntity user) {
             super(null);
@@ -145,6 +305,7 @@ class SystemManagementAppServicePasswordTest {
 
         @Override
         public Optional<SysUserEntity> findById(Long userId) {
+            findByIdCalls += 1;
             return Optional.ofNullable(user);
         }
     }
@@ -163,9 +324,11 @@ class SystemManagementAppServicePasswordTest {
 
     private static final class RecordingAuthSessionStore extends AuthSessionStore {
         private Long revokedUserId;
+        private String revokedUserUuid;
         private String excludedSessionId;
         private boolean publishChange;
         private Long resolvedPasswordChangeUserId;
+        private String resolvedPasswordChangeUserUuid;
         private String resolvedPasswordChangeSessionId;
         private boolean resolvedPasswordChangePublishChange;
 
@@ -174,15 +337,17 @@ class SystemManagementAppServicePasswordTest {
         }
 
         @Override
-        public void revokeUserSessionsExcept(Long userId, String excludedSessionId, boolean publishChange) {
+        public void revokeUserSessionsExcept(Long userId, String userUuid, String excludedSessionId, boolean publishChange) {
             this.revokedUserId = userId;
+            this.revokedUserUuid = userUuid;
             this.excludedSessionId = excludedSessionId;
             this.publishChange = publishChange;
         }
 
         @Override
-        public void markPasswordChangeResolved(Long userId, String sessionId, boolean publishChange) {
+        public void markPasswordChangeResolved(Long userId, String userUuid, String sessionId, boolean publishChange) {
             this.resolvedPasswordChangeUserId = userId;
+            this.resolvedPasswordChangeUserUuid = userUuid;
             this.resolvedPasswordChangeSessionId = sessionId;
             this.resolvedPasswordChangePublishChange = publishChange;
         }
@@ -194,12 +359,12 @@ class SystemManagementAppServicePasswordTest {
         }
 
         @Override
-        public Optional<IamUserAccount.CredentialView> findActiveCredential(Long userId, String credentialType) {
+        public Optional<IamUserAccount.CredentialView> findActiveCredential(Long userId, String userUuid, String credentialType) {
             return Optional.empty();
         }
 
         @Override
-        public void upsertPasswordCredential(Long userId, String passwordHash) {
+        public void upsertPasswordCredential(Long userId, String userUuid, String passwordHash) {
         }
     }
 
@@ -243,13 +408,52 @@ class SystemManagementAppServicePasswordTest {
         private String lastMessage;
 
         private RecordingOperationAuditService() {
-            super(null);
+            super(null, objectProvider(null));
         }
 
         @Override
-        public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+        public void log(Long userId, String userUuid, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
             this.lastMessage = detailMessage;
         }
+    }
+
+    private static <T> ObjectProvider<T> objectProvider(T value) {
+        return new ObjectProvider<>() {
+            @Override
+            public T getObject(Object... args) {
+                return value;
+            }
+
+            @Override
+            public T getIfAvailable() {
+                return value;
+            }
+
+            @Override
+            public T getIfUnique() {
+                return value;
+            }
+
+            @Override
+            public T getObject() {
+                return value;
+            }
+
+            @Override
+            public Iterator<T> iterator() {
+                return value == null ? List.<T>of().iterator() : List.of(value).iterator();
+            }
+
+            @Override
+            public Stream<T> stream() {
+                return value == null ? Stream.empty() : Stream.of(value);
+            }
+
+            @Override
+            public Stream<T> orderedStream() {
+                return stream();
+            }
+        };
     }
 
     private static final class PlainPasswordEncoder implements PasswordEncoder {

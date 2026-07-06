@@ -199,9 +199,11 @@ node bin/start-platform.mjs
 
 访问入口：
 
-- 前端：`http://localhost:8000`
+- 本地 API 代理：`http://localhost:8000`
 - 后端：`http://localhost:8080`
 - 健康检查：`http://localhost:8080/actuator/health`
+
+默认 `node bin/start-platform.mjs` 不会启动 `lumira-ui`；前端验收需要单独启动前端开发服务器，或显式启用本地前端预览容器。
 
 ### 7.2 测试环境
 

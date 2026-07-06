@@ -164,9 +164,30 @@ type CompetitionCreateDraftStorage = {
   values?: Partial<CompetitionFormValues>;
 };
 
+type CompetitionRegistrationDraftStorage = {
+  registrationId?: number;
+  currentStep?: number;
+  acceptedDocumentKeys?: string[];
+  confirmedTeamId?: number;
+  confirmedProjectId?: number;
+  paymentStatus?: string;
+  savedAt?: number;
+  values?: Partial<RegistrationFormValues>;
+};
+
 const COMPETITION_CATEGORY_DICT = 'aiadc_competition_category';
 const COMPETITION_LEVEL_DICT = 'aiadc_competition_level';
 const COMPETITION_CREATE_DRAFT_STORAGE_KEY = 'lumira.competition.create.draft.v1';
+const COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY = 'lumira.registration.create.draft.v1';
+
+const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
+  newTeam: {
+    teamType: 'GENERAL',
+    visibility: 'PRIVATE',
+    joinMode: 'INVITE_ONLY',
+    initialMembers: [],
+  },
+};
 
 const localeOptions: Array<{ label: string; value: CompetitionLocale }> = [
   { label: '中文', value: 'zh' },
@@ -745,6 +766,55 @@ const clearCompetitionCreateDraft = () => {
     return;
   }
   window.localStorage.removeItem(COMPETITION_CREATE_DRAFT_STORAGE_KEY);
+};
+
+const readCompetitionRegistrationDraft = () => {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+  try {
+    const stored = window.localStorage.getItem(COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as CompetitionRegistrationDraftStorage) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const writeCompetitionRegistrationDraft = (draft: CompetitionRegistrationDraftStorage) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.setItem(COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+};
+
+const clearCompetitionRegistrationDraft = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.removeItem(COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY);
+};
+
+const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationFormValues>) => {
+  const members = values.newTeam?.initialMembers || [];
+  const materials = values.materials || {};
+  return Boolean(
+    toPositiveId(values.competitionId)
+      || toPositiveId(values.teamId)
+      || trimOptional(values.newTeamName)
+      || trimOptional(values.newTeam?.avatarUrl)
+      || trimOptional(values.newTeam?.description)
+      || members.some((member) => (
+        trimOptional(member.memberName)
+        || trimOptional(member.employeeNo)
+        || trimOptional(member.departmentName)
+        || trimOptional(member.remark)
+        || Object.values(member.extraValues || {}).some((value) => trimOptional(value))
+      ))
+      || toPositiveId(values.projectId)
+      || trimOptional(values.newProjectTitle)
+      || trimOptional(values.newProjectDescription)
+      || Object.values(materials).some((value) => value !== undefined && value !== null && String(value).trim())
+  );
 };
 
 const hasCompetitionCreateDraftContent = (values: Partial<CompetitionFormValues>) => {
@@ -1857,6 +1927,35 @@ const createRegistrationWizardSearch = (stepIndex: number) => {
   return `?${params.toString()}`;
 };
 
+const getAllowedRegistrationWizardStep = (
+  requestedStep: number,
+  values: Partial<RegistrationFormValues>,
+  documentsAccepted: boolean,
+  activeRegistrationId?: number,
+) => {
+  const normalizedStep = Math.max(0, Math.min(requestedStep, registrationWizardMaxStep));
+  if (normalizedStep <= 0) {
+    return 0;
+  }
+  if (!toPositiveId(values.competitionId) || !documentsAccepted) {
+    return 0;
+  }
+  if (normalizedStep <= 1) {
+    return 1;
+  }
+  const members = values.newTeam?.initialMembers || [];
+  if (!trimOptional(values.newTeamName) || !members.length) {
+    return 1;
+  }
+  if (normalizedStep <= 2) {
+    return 2;
+  }
+  if (!activeRegistrationId && !toPositiveId(values.projectId) && !trimOptional(values.newProjectTitle)) {
+    return 2;
+  }
+  return normalizedStep;
+};
+
 const CompetitionRegistrationPage = () => {
   const { initialState } = useModel('@@initialState');
   const location = useLocation();
@@ -1876,9 +1975,13 @@ const CompetitionRegistrationPage = () => {
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
   const [registrationId, setRegistrationId] = useState<number>();
   const [paymentStatus, setPaymentStatus] = useState<string>();
+  const [registrationDraftSavedAt, setRegistrationDraftSavedAt] = useState<number>();
+  const [registrationDraftHydrated, setRegistrationDraftHydrated] = useState(false);
   const [teamAvatarUploading, setTeamAvatarUploading] = useState(false);
   const confirmedTeamIdRef = useRef<number | undefined>(undefined);
   const confirmedProjectIdRef = useRef<number | undefined>(undefined);
+  const registrationDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const latestRegistrationDraftRef = useRef<CompetitionRegistrationDraftStorage | undefined>(undefined);
   const [form] = Form.useForm<RegistrationFormValues>();
   const [memberForm] = Form.useForm<RegistrationTeamMemberDraft>();
   const [memberModalOpen, setMemberModalOpen] = useState(false);
@@ -1941,14 +2044,129 @@ const CompetitionRegistrationPage = () => {
     () => !registrationDocumentStates.length || pendingRegistrationDocumentCount === 0,
     [pendingRegistrationDocumentCount, registrationDocumentStates.length],
   );
+  const canAccessRegistrationPage = registrationActionPermission.can([
+    'aiadc:registration:view',
+    'aiadc:registration:create',
+    'aiadc:registration:update',
+    'aiadc:registration:pay',
+    'aiadc:material:view',
+    'aiadc:material:submit',
+    'aiadc:stage:view',
+    'aiadc:stage:manage',
+    'payment:order:view',
+  ]);
+  const canViewRegistrationList = canAccessRegistrationPage;
+  const canCreateRegistration = registrationActionPermission.can('aiadc:registration:create');
+  const canUpdateRegistration = registrationActionPermission.can('aiadc:registration:update');
+  const canPayRegistration = registrationActionPermission.can('aiadc:registration:pay');
+  const canLoadRegistrationCompetitions = registrationActionPermission.can([
+    'aiadc:competition:view',
+    'aiadc:registration:view',
+    'aiadc:registration:create',
+    'aiadc:registration:update',
+    'aiadc:registration:pay',
+    'aiadc:material:view',
+    'aiadc:material:submit',
+    'aiadc:stage:view',
+    'aiadc:stage:manage',
+    'payment:order:view',
+  ]);
+  const collectRegistrationValues = useCallback(() => ({
+    ...defaultRegistrationFormValues,
+    ...(form.getFieldsValue(true) as Partial<RegistrationFormValues>),
+  }), [form]);
+  const writeCurrentRegistrationDraftState = useCallback((
+    nextValues: Partial<RegistrationFormValues> = collectRegistrationValues(),
+    nextStep = step,
+    nextAcceptedDocumentKeys = acceptedDocumentKeys,
+    nextRegistrationId = registrationId,
+    nextPaymentStatus = paymentStatus,
+  ) => {
+    const savedAt = Date.now();
+    const draftState: CompetitionRegistrationDraftStorage = {
+      registrationId: nextRegistrationId,
+      currentStep: nextStep,
+      acceptedDocumentKeys: nextAcceptedDocumentKeys,
+      confirmedTeamId: confirmedTeamIdRef.current,
+      confirmedProjectId: confirmedProjectIdRef.current,
+      paymentStatus: nextPaymentStatus,
+      savedAt,
+      values: {
+        ...defaultRegistrationFormValues,
+        ...nextValues,
+      },
+    };
+    writeCompetitionRegistrationDraft(draftState);
+    setRegistrationDraftSavedAt(savedAt);
+    return draftState;
+  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationId, step]);
+  const persistRegistrationDraft = useCallback((
+    nextValues: Partial<RegistrationFormValues> = collectRegistrationValues(),
+    nextStep = step,
+    nextAcceptedDocumentKeys = acceptedDocumentKeys,
+    nextRegistrationId = registrationId,
+    nextPaymentStatus = paymentStatus,
+  ) => {
+    if (
+      !nextRegistrationId
+      && !nextAcceptedDocumentKeys.length
+      && !hasCompetitionRegistrationDraftContent(nextValues)
+      && nextStep <= 0
+    ) {
+      clearCompetitionRegistrationDraft();
+      latestRegistrationDraftRef.current = undefined;
+      setRegistrationDraftSavedAt(undefined);
+      return;
+    }
+    const draftState = writeCurrentRegistrationDraftState(
+      nextValues,
+      nextStep,
+      nextAcceptedDocumentKeys,
+      nextRegistrationId,
+      nextPaymentStatus,
+    );
+    latestRegistrationDraftRef.current = draftState;
+    if (registrationDraftSaveTimerRef.current) {
+      clearTimeout(registrationDraftSaveTimerRef.current);
+    }
+    registrationDraftSaveTimerRef.current = setTimeout(() => {
+      if (!hasCompetitionRegistrationDraftContent(draftState.values || {}) && !draftState.registrationId) {
+        writeCurrentRegistrationDraftState(draftState.values, draftState.currentStep, draftState.acceptedDocumentKeys);
+      }
+    }, 600);
+  }, [
+    acceptedDocumentKeys,
+    collectRegistrationValues,
+    paymentStatus,
+    registrationId,
+    step,
+    writeCurrentRegistrationDraftState,
+  ]);
+  const hydrateRegistrationDraft = useCallback((draft?: CompetitionRegistrationDraftStorage) => {
+    const values = {
+      ...defaultRegistrationFormValues,
+      ...(draft?.values || {}),
+    };
+    form.resetFields();
+    form.setFieldsValue(values);
+    confirmedTeamIdRef.current = draft?.confirmedTeamId;
+    confirmedProjectIdRef.current = draft?.confirmedProjectId;
+    setRegistrationId(draft?.registrationId);
+    setPaymentStatus(draft?.paymentStatus);
+    setAcceptedDocumentKeys(draft?.acceptedDocumentKeys || []);
+    setRegistrationDraftSavedAt(draft?.savedAt);
+    latestRegistrationDraftRef.current = draft;
+    return values;
+  }, [form]);
   const acceptRegistrationDocument = useCallback((documentKey: string, checked: boolean) => {
     setAcceptedDocumentKeys((current) => {
-      if (checked) {
-        return current.includes(documentKey) ? current : [...current, documentKey];
-      }
-      return current.filter((key) => key !== documentKey);
+      const nextKeys = checked
+        ? (current.includes(documentKey) ? current : [...current, documentKey])
+        : current.filter((key) => key !== documentKey);
+      persistRegistrationDraft(collectRegistrationValues(), step, nextKeys);
+      return nextKeys;
     });
-  }, []);
+  }, [collectRegistrationValues, persistRegistrationDraft, step]);
   const resetRegistrationDocumentProgress = useCallback(
     (documents: CompetitionConfigItem[]) => {
       setDocumentReadingCountdowns(
@@ -1961,8 +2179,19 @@ const CompetitionRegistrationPage = () => {
     [],
   );
 
-  const setWizardStep = useCallback((nextStep: number, replace = true) => {
+  const setWizardStep = useCallback((
+    nextStep: number,
+    replace = true,
+    draftOptions: { acceptedDocumentKeys?: string[]; registrationId?: number; paymentStatus?: string } = {},
+  ) => {
     const normalizedStep = Math.min(Math.max(nextStep, 0), registrationWizardMaxStep);
+    persistRegistrationDraft(
+      collectRegistrationValues(),
+      normalizedStep,
+      draftOptions.acceptedDocumentKeys ?? acceptedDocumentKeys,
+      draftOptions.registrationId ?? registrationId,
+      draftOptions.paymentStatus ?? paymentStatus,
+    );
     setStep(normalizedStep);
     setViewMode('wizard');
     const navigate = replace ? history.replace : history.push;
@@ -1970,26 +2199,86 @@ const CompetitionRegistrationPage = () => {
       pathname: location.pathname,
       search: createRegistrationWizardSearch(normalizedStep),
     });
-  }, [location.pathname]);
+  }, [acceptedDocumentKeys, collectRegistrationValues, location.pathname, paymentStatus, persistRegistrationDraft, registrationId]);
 
   const showRegistrationList = useCallback(() => {
+    persistRegistrationDraft();
     setViewMode('list');
     history.replace({ pathname: location.pathname, search: '' });
-  }, [location.pathname]);
+  }, [location.pathname, persistRegistrationDraft]);
 
   useEffect(() => {
-    void listCompetitions({ status: 'published', pageSize: 100 }).then((response) => setCompetitions(response.records || []));
+    let mounted = true;
+    if (!canLoadRegistrationCompetitions || (viewMode !== 'wizard' && !canViewRegistrationList)) {
+      setCompetitions([]);
+      return () => {
+        mounted = false;
+      };
+    }
+    void listCompetitions({ status: 'published', pageSize: 100 })
+      .then((response) => {
+        if (mounted) {
+          setCompetitions(response.records || []);
+        }
+      })
+      .catch((error) => {
+        if (mounted) {
+          showErrorMessage(error, '赛事列表加载失败');
+          setCompetitions([]);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [canLoadRegistrationCompetitions, canViewRegistrationList, viewMode]);
+
+  useEffect(() => {
+    hydrateRegistrationDraft(readCompetitionRegistrationDraft());
+    setRegistrationDraftHydrated(true);
+  }, [hydrateRegistrationDraft]);
+
+  useEffect(() => () => {
+    if (registrationDraftSaveTimerRef.current) {
+      clearTimeout(registrationDraftSaveTimerRef.current);
+    }
   }, []);
 
   useEffect(() => {
+    if (!registrationDraftHydrated) {
+      return;
+    }
     const requestedStep = parseRegistrationWizardStepFromSearch(location.search);
     if (requestedStep === undefined) {
       setViewMode('list');
       return;
     }
     setViewMode('wizard');
-    setStep(requestedStep);
-  }, [location.search]);
+    if (registrationDocumentsLoading) {
+      setStep(requestedStep);
+      return;
+    }
+    const values = collectRegistrationValues();
+    const allowedStep = getAllowedRegistrationWizardStep(requestedStep, values, allRegistrationDocumentsAccepted, registrationId);
+    if (allowedStep !== requestedStep) {
+      setStep(allowedStep);
+      history.replace({
+        pathname: location.pathname,
+        search: createRegistrationWizardSearch(allowedStep),
+      });
+      message.warning(allowedStep === 0 ? '请先选择赛事并确认报名文书' : allowedStep === 1 ? '请先补全团队信息' : '请先补全项目信息');
+      return;
+    }
+    setStep((currentValue) => (currentValue === requestedStep ? currentValue : requestedStep));
+  }, [
+    allRegistrationDocumentsAccepted,
+    collectRegistrationValues,
+    location.pathname,
+    location.search,
+    registrationDocumentsLoading,
+    registrationDraftHydrated,
+    registrationId,
+  ]);
+
 
   useEffect(() => {
     let mounted = true;
@@ -2015,6 +2304,11 @@ const CompetitionRegistrationPage = () => {
           .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
         setRegistrationDocuments(nextDocuments);
         resetRegistrationDocumentProgress(nextDocuments);
+        const currentDraft = latestRegistrationDraftRef.current;
+        if (currentDraft && toPositiveId(currentDraft.values?.competitionId) === toPositiveId(selectedCompetitionId)) {
+          const nextDocumentKeys = nextDocuments.map((item, index) => getRegistrationDocumentKey(item, index));
+          setAcceptedDocumentKeys((currentDraft.acceptedDocumentKeys || []).filter((key) => nextDocumentKeys.includes(key)));
+        }
         setRegistrationFields(
           (settings.fields || [])
             .filter((item) => item.enabled !== false)
@@ -2039,7 +2333,7 @@ const CompetitionRegistrationPage = () => {
     return () => {
       mounted = false;
     };
-  }, [resetRegistrationDocumentProgress, selectedCompetition?.uuid, viewMode]);
+  }, [resetRegistrationDocumentProgress, selectedCompetition?.uuid, selectedCompetitionId, viewMode]);
 
   useEffect(() => {
     if (step !== 0 || viewMode !== 'wizard' || activeRegistrationDocumentCountdown <= 0) {
@@ -2073,6 +2367,13 @@ const CompetitionRegistrationPage = () => {
       });
       if (uploadedUrl) {
         form.setFieldValue(['newTeam', 'avatarUrl'], uploadedUrl);
+        persistRegistrationDraft({
+          ...collectRegistrationValues(),
+          newTeam: {
+            ...(form.getFieldValue('newTeam') || {}),
+            avatarUrl: uploadedUrl,
+          },
+        });
         message.success('上传成功');
       }
     } catch (error) {
@@ -2097,23 +2398,16 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   const startNewRegistration = () => {
-    form.resetFields();
-    form.setFieldsValue({
-      newTeam: {
-        teamType: 'GENERAL',
-        visibility: 'PRIVATE',
-        joinMode: 'INVITE_ONLY',
-        initialMembers: [],
-      },
-    });
-    confirmedTeamIdRef.current = undefined;
-    confirmedProjectIdRef.current = undefined;
-    setRegistrationId(undefined);
-    setPaymentStatus(undefined);
+    const draft = readCompetitionRegistrationDraft();
+    hydrateRegistrationDraft(draft);
     setStageForm(undefined);
     setMemberModalOpen(false);
     setEditingMemberIndex(undefined);
-    setWizardStep(0, false);
+    setWizardStep(draft?.currentStep || 0, false, {
+      acceptedDocumentKeys: draft?.acceptedDocumentKeys || [],
+      registrationId: draft?.registrationId,
+      paymentStatus: draft?.paymentStatus,
+    });
   };
 
   const openRegistrationFlow = useCallback(async (record: CompetitionRegistrationRecord) => {
@@ -2132,7 +2426,10 @@ const CompetitionRegistrationPage = () => {
       if (competitionId) {
         await loadStageFormForCompetition(competitionId);
       }
-      setWizardStep(latest.status === 'PAID' || latest.status === 'CONFIRMED' ? 4 : 3, false);
+      setWizardStep(latest.status === 'PAID' || latest.status === 'CONFIRMED' ? 4 : 3, false, {
+        registrationId: latest.id,
+        paymentStatus: latest.status,
+      });
     } catch (error) {
       showErrorMessage(error, '报名记录加载失败');
     } finally {
@@ -2230,7 +2527,7 @@ const CompetitionRegistrationPage = () => {
           : await createRegistration(registrationPayload);
         setRegistrationId(registration.id);
         await loadStageFormForCompetition(competitionId);
-        setWizardStep(3);
+        setWizardStep(3, true, { registrationId: registration.id, paymentStatus: registration.status });
       } else if (step === 3) {
         if (registrationId && stageForm) {
           const materialValues = form.getFieldValue('materials') || {};
@@ -2267,6 +2564,9 @@ const CompetitionRegistrationPage = () => {
       const order = await createRegistrationPaymentOrder(registrationId, { providerCode: 'alipay' });
       setPaymentStatus(order.status || 'QUEUED');
       registrationActionRef.current?.reload();
+      clearCompetitionRegistrationDraft();
+      latestRegistrationDraftRef.current = undefined;
+      setRegistrationDraftSavedAt(undefined);
       if (order.paymentUrl) {
         window.location.assign(order.paymentUrl);
         return;
@@ -2301,6 +2601,13 @@ const CompetitionRegistrationPage = () => {
       currentMembers[editingMemberIndex] = member;
     }
     form.setFieldValue(['newTeam', 'initialMembers'], currentMembers);
+    persistRegistrationDraft({
+      ...collectRegistrationValues(),
+      newTeam: {
+        ...(form.getFieldValue('newTeam') || {}),
+        initialMembers: currentMembers,
+      },
+    });
     setMemberModalOpen(false);
     setEditingMemberIndex(undefined);
     memberForm.resetFields();
@@ -2310,6 +2617,13 @@ const CompetitionRegistrationPage = () => {
     const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
     currentMembers.splice(index, 1);
     form.setFieldValue(['newTeam', 'initialMembers'], currentMembers);
+    persistRegistrationDraft({
+      ...collectRegistrationValues(),
+      newTeam: {
+        ...(form.getFieldValue('newTeam') || {}),
+        initialMembers: currentMembers,
+      },
+    });
   };
 
   const getMemberSummary = (member: RegistrationTeamMemberDraft, index: number) => {
@@ -2333,9 +2647,6 @@ const CompetitionRegistrationPage = () => {
     );
     return matchedScopes.some((scope) => scope.scopeType === 'ALL');
   }, [initialState?.currentUser?.dataScopes]);
-  const canCreateRegistration = registrationActionPermission.can('aiadc:registration:create');
-  const canUpdateRegistration = registrationActionPermission.can('aiadc:registration:update');
-  const canPayRegistration = registrationActionPermission.can('aiadc:registration:pay');
   const nextButtonDisabled = step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted);
   const canAdvanceRegistration = step <= 2 ? canCreateRegistration : canUpdateRegistration;
   const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
@@ -2423,10 +2734,16 @@ const CompetitionRegistrationPage = () => {
     ],
     [competitionTitleMap, loading, openRegistrationFlow, registrationId, responsive.isDesktop],
   );
+  const registrationBreadcrumb = useMemo(
+    () => ({
+      items: [{ title: '赛事报名' }],
+    }),
+    [],
+  );
 
   if (viewMode === 'list') {
     return (
-      <ManagementPage title={'\u8d5b\u4e8b\u62a5\u540d'}>
+      <ManagementPage title={'\u8d5b\u4e8b\u62a5\u540d'} breadcrumb={registrationBreadcrumb}>
         <ManagementPageBody>
           <ManagementTable<CompetitionRegistrationRecord>
             actionRef={registrationActionRef}
@@ -2500,7 +2817,19 @@ const CompetitionRegistrationPage = () => {
               </Button>
             </Upload>
             {newTeamAvatarUrl ? (
-              <Button type="link" onClick={() => form.setFieldValue(["newTeam", "avatarUrl"], undefined)}>
+              <Button
+                type="link"
+                onClick={() => {
+                  form.setFieldValue(["newTeam", "avatarUrl"], undefined);
+                  persistRegistrationDraft({
+                    ...collectRegistrationValues(),
+                    newTeam: {
+                      ...(form.getFieldValue('newTeam') || {}),
+                      avatarUrl: undefined,
+                    },
+                  });
+                }}
+              >
                 移除
               </Button>
             ) : null}
@@ -2645,11 +2974,12 @@ const CompetitionRegistrationPage = () => {
   );
 
   return (
-    <ManagementPage title="赛事报名" extra={<Button onClick={showRegistrationList}>返回报名记录</Button>}>
-      <ManagementPageBody>
-        <Card>
+    <ManagementPage title="赛事报名" breadcrumb={registrationBreadcrumb} extra={<Button onClick={showRegistrationList}>返回报名记录</Button>}>
+      <ManagementPageBody className="competition-create-page">
+        <Card className="competition-create-shell">
           <Steps
             current={step}
+            responsive
             items={[
               { title: '选择赛事' },
               { title: '创建团队' },
@@ -2661,117 +2991,117 @@ const CompetitionRegistrationPage = () => {
           <Form<RegistrationFormValues>
             form={form}
             layout="vertical"
-            style={{ margin: '24px auto 0', maxWidth: 920, width: '100%' }}
-            initialValues={{
-              newTeam: {
-                teamType: 'GENERAL',
-                visibility: 'PRIVATE',
-                joinMode: 'INVITE_ONLY',
-                initialMembers: [],
-              },
-            }}
+            initialValues={defaultRegistrationFormValues}
+            onValuesChange={() => persistRegistrationDraft()}
           >
-            {step === 0 ? (
-              <>
-                <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
-                  <Select options={competitions.map((item) => ({ label: item.title, value: item.id }))} />
-                </Form.Item>
-                {selectedCompetitionId ? (
-                  <div className="competition-registration-documents">
-                    {registrationDocumentsLoading ? (
-                      <Alert type="info" showIcon message="正在加载报名文书..." />
-                    ) : registrationDocumentStates.length ? (
-                      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        {registrationDocumentStates.map(({ item: documentItem, documentKey, readingSeconds, countdown, accepted }, index) => (
-                          <Card
-                            key={documentKey}
-                            size="small"
-                            title={
-                              <Space size={8} wrap>
-                                <span>{`条款 ${index + 1}：${documentItem.title || '报名文书'}`}</span>
-                                {readingSeconds > 0 ? (
-                                  <Tag color={countdown > 0 ? 'orange' : 'green'}>
-                                    {countdown > 0 ? `需阅读 ${countdown}s` : '已完成阅读'}
-                                  </Tag>
-                                ) : (
-                                  <Tag color="blue">可直接确认</Tag>
-                                )}
-                              </Space>
-                            }
-                          >
-                            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                              <div className="competition-registration-documents__content">
-                                <XMarkdown content={sanitizeMarkdownInput(documentItem.contentText || '')} openLinksInNewTab escapeRawHtml />
-                              </div>
-                              <Checkbox
-                                checked={accepted}
-                                disabled={countdown > 0}
-                                onChange={(event) => acceptRegistrationDocument(documentKey, event.target.checked)}
-                              >
-                                {countdown > 0 ? `请阅读 ${countdown} 秒后确认` : '我已阅读并同意本条款'}
-                              </Checkbox>
-                            </Space>
-                          </Card>
-                        ))}
-                        {!allRegistrationDocumentsAccepted ? (
-                          <Alert
-                            type="warning"
-                            showIcon
-                            message={`Please finish ${pendingRegistrationDocumentCount} remaining agreements before continuing.`}
-                          />
-                        ) : (
-                          <Alert type="success" showIcon message="阅读文书条款已确认，可进入下一步。" />
-                        )}
-                      </Space>
-                    ) : (
-                      <Alert type="info" showIcon message="当前赛事未配置报名前展示文书，可直接进入下一步。" />
-                    )}
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-            {step === 1 ? renderTeamForm() : null}
-            {step === 2 ? (
-              <>
-                <Form.Item name="newProjectTitle" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
-                  <Input maxLength={128} />
-                </Form.Item>
-                <Form.Item name="newProjectDescription" label="椤圭洰绠€浠?">
-                  <Input.TextArea rows={3} maxLength={1000} />
-                </Form.Item>
-              </>
-            ) : null}
-            {step === 3 ? (
-              fields.length ? (
-                fields.map((field) => (
-                  <Form.Item
-                    key={field.key}
-                    name={["materials", field.key]}
-                    label={field.label || field.key}
-                    rules={[{ required: Boolean(field.required), message: `请填写${field.label || field.key}` }]}
-                  >
-                    {field.type === 'textarea' ? (
-                      <Input.TextArea rows={4} maxLength={field.maxLength} />
-                    ) : field.type === 'file' ? (
-                      <MaterialFileUploadInput field={field} />
-                    ) : (
-                      <Input maxLength={field.maxLength} />
-                    )}
+            <div className="competition-create-step">
+              {step === 0 ? (
+                <>
+                  <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
+                    <Select options={competitions.map((item) => ({ label: item.title, value: item.id }))} />
                   </Form.Item>
-                ))
-              ) : (
-                <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入支付确认。" />
-              )
-            ) : null}
-            {step === 4 ? (
-              <Alert
-                type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
-                showIcon
-                message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请确认报名并使用模拟接口支付。'}
-              />
-            ) : null}
+                  {selectedCompetitionId ? (
+                    <div className="competition-registration-documents">
+                      {registrationDocumentsLoading ? (
+                        <Alert type="info" showIcon message="正在加载报名文书..." />
+                      ) : registrationDocumentStates.length ? (
+                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          {registrationDocumentStates.map(({ item: documentItem, documentKey, readingSeconds, countdown, accepted }, index) => (
+                            <Card
+                              key={documentKey}
+                              size="small"
+                              title={
+                                <Space size={8} wrap>
+                                  <span>{`条款 ${index + 1}：${documentItem.title || '报名文书'}`}</span>
+                                  {readingSeconds > 0 ? (
+                                    <Tag color={countdown > 0 ? 'orange' : 'green'}>
+                                      {countdown > 0 ? `需阅读 ${countdown}s` : '已完成阅读'}
+                                    </Tag>
+                                  ) : (
+                                    <Tag color="blue">可直接确认</Tag>
+                                  )}
+                                </Space>
+                              }
+                            >
+                              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                                <div className="competition-registration-documents__content">
+                                  <XMarkdown content={sanitizeMarkdownInput(documentItem.contentText || '')} openLinksInNewTab escapeRawHtml />
+                                </div>
+                                <Checkbox
+                                  checked={accepted}
+                                  disabled={countdown > 0}
+                                  onChange={(event) => acceptRegistrationDocument(documentKey, event.target.checked)}
+                                >
+                                  {countdown > 0 ? `请阅读 ${countdown} 秒后确认` : '我已阅读并同意本条款'}
+                                </Checkbox>
+                              </Space>
+                            </Card>
+                          ))}
+                          {!allRegistrationDocumentsAccepted ? (
+                            <Alert
+                              type="warning"
+                              showIcon
+                              message={`Please finish ${pendingRegistrationDocumentCount} remaining agreements before continuing.`}
+                            />
+                          ) : (
+                            <Alert type="success" showIcon message="阅读文书条款已确认，可进入下一步。" />
+                          )}
+                        </Space>
+                      ) : (
+                        <Alert type="info" showIcon message="当前赛事未配置报名前展示文书，可直接进入下一步。" />
+                      )}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              {step === 1 ? renderTeamForm() : null}
+              {step === 2 ? (
+                <>
+                  <Form.Item name="newProjectTitle" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
+                    <Input maxLength={128} />
+                  </Form.Item>
+                  <Form.Item name="newProjectDescription" label="椤圭洰绠€浠?">
+                    <Input.TextArea rows={3} maxLength={1000} />
+                  </Form.Item>
+                </>
+              ) : null}
+              {step === 3 ? (
+                fields.length ? (
+                  fields.map((field) => (
+                    <Form.Item
+                      key={field.key}
+                      name={["materials", field.key]}
+                      label={field.label || field.key}
+                      rules={[{ required: Boolean(field.required), message: `请填写${field.label || field.key}` }]}
+                    >
+                      {field.type === 'textarea' ? (
+                        <Input.TextArea rows={4} maxLength={field.maxLength} />
+                      ) : field.type === 'file' ? (
+                        <MaterialFileUploadInput field={field} />
+                      ) : (
+                        <Input maxLength={field.maxLength} />
+                      )}
+                    </Form.Item>
+                  ))
+                ) : (
+                  <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入支付确认。" />
+                )
+              ) : null}
+              {step === 4 ? (
+                <Alert
+                  type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
+                  showIcon
+                  message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请确认报名并使用模拟接口支付。'}
+                />
+              ) : null}
+            </div>
           </Form>
-          <Space style={{ marginTop: 24 }}>
+          <div className="competition-create-actions">
+            {registrationDraftSavedAt ? (
+              <Typography.Text className="competition-create-draft-status" type="secondary">
+                草稿已自动保存
+              </Typography.Text>
+            ) : null}
             {step > 0 ? <Button onClick={() => setWizardStep(step - 1)}>上一步</Button> : null}
             {step < 4 ? (
               <Button type="primary" loading={loading} disabled={nextButtonDisabled || !canAdvanceRegistration} onClick={() => void goNext()}>
@@ -2782,7 +3112,7 @@ const CompetitionRegistrationPage = () => {
                 模拟支付
               </Button>
             )}
-          </Space>
+          </div>
         </Card>
       </ManagementPageBody>
     </ManagementPage>

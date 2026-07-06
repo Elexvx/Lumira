@@ -6,23 +6,31 @@ import com.lumira.team.vo.TeamVO;
 import java.util.List;
 
 public interface TeamMemberRepository {
-    void addOwner(Long teamId, Long userId);
+    void addOwner(Long teamId, Long userId, String userUuid);
 
     List<TeamVO.Member> listMembers(Long teamId);
 
     TeamVO.Member findMemberById(Long teamId, Long memberId);
 
-    void updateMemberRole(Long teamId, Long memberId, String role);
+    boolean updateMemberRole(Long teamId, TeamVO.Member expectedMember, String role);
 
-    void removeMember(Long teamId, Long memberId);
+    boolean removeMember(Long teamId, TeamVO.Member expectedMember);
 
-    void transferOwner(Long teamId, Long previousOwnerUserId, String previousOwnerRole, Long newOwnerMemberId);
+    boolean transferOwner(
+            Long teamId,
+            Long previousOwnerUserId,
+            String previousOwnerUserUuid,
+            String previousOwnerRole,
+            Long newOwnerMemberId,
+            Long newOwnerUserId,
+            String newOwnerUserUuid
+    );
 
-    void ensureDirectMember(Long teamId, Long userId, Long invitedBy, String role);
+    void ensureDirectMember(Long teamId, Long userId, String userUuid, Long invitedBy, String invitedByUuid, String role);
 
     Long addDraftMember(Long teamId, TeamDTO.DraftMemberRequest request);
 
-    void refreshMemberCount(Long teamId);
+    void refreshMemberCount(Long teamId, TeamVO.Team expectedTeam);
 
-    void removeMembersByTeam(Long teamId);
+    void removeMembersByTeam(Long teamId, TeamVO.Team expectedTeam);
 }

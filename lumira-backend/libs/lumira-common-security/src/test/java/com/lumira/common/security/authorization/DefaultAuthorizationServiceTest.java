@@ -28,10 +28,64 @@ class DefaultAuthorizationServiceTest {
 
         assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:view")).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
-        assertThat(service.evaluate(AuthorizationRequest.permission(user(null, "system:user:view"), "system:user:view")).verdict())
-                .isEqualTo(AuthorizationVerdict.ALLOW);
         assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:delete")).reasonCode())
                 .isEqualTo("RBAC_PERMISSION_MISSING");
+    }
+
+    @Test
+    void deniesUnauthenticatedSubjectEvenWhenPermissionIsPresent() {
+        DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
+        CurrentUser unauthenticated = user(1001L, "system:user:view");
+        unauthenticated.setAuthenticated(false);
+        CurrentUser invalidUserId = user(1001L, "system:user:view");
+        invalidUserId.setUserId(0L);
+        CurrentUser missingUserId = user(1001L, "system:user:view");
+        missingUserId.setUserId(null);
+        CurrentUser blankUsername = user(1001L, "system:user:view");
+        blankUsername.setUsername(" ");
+        CurrentUser missingSessionId = user(1001L, "system:user:view");
+        missingSessionId.setSessionId(null);
+        CurrentUser missingSessionVersion = user(1001L, "system:user:view");
+        missingSessionVersion.setSessionVersion(null);
+        CurrentUser missingUserUuid = user(1001L, "system:user:view");
+        missingUserUuid.setUserUuid(null);
+        CurrentUser missingPermissionsVersion = user(1001L, "system:user:view");
+        missingPermissionsVersion.setPermissionsVersion(null);
+
+        assertThat(service.evaluate(AuthorizationRequest.permission(unauthenticated, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(invalidUserId, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(missingUserId, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(blankUsername, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(missingSessionId, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(missingSessionVersion, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(missingUserUuid, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+        assertThat(service.evaluate(AuthorizationRequest.permission(missingPermissionsVersion, "system:user:view")).reasonCode())
+                .isEqualTo("SUBJECT_UNAUTHENTICATED");
+    }
+
+    @Test
+    void authorizationRequestFactoriesDoNotInferSubjectFromUntrustedCurrentUser() {
+        CurrentUser missingSessionVersion = user(1001L, "*");
+        missingSessionVersion.setSessionVersion(null);
+        CurrentUser missingUserUuid = user(1001L, "*");
+        missingUserUuid.setUserUuid(null);
+        CurrentUser missingPermissionsVersion = user(1001L, "*");
+        missingPermissionsVersion.setPermissionsVersion(null);
+
+        assertThat(AuthorizationRequest.permission(missingSessionVersion, "system:user:view").humanUserId()).isNull();
+        assertThat(AuthorizationRequest.permission(missingSessionVersion, "system:user:view").humanSubject().refId()).isNull();
+        assertThat(AuthorizationRequest.aiTool(missingSessionVersion, 300L, "file.object.search", "system:file:view", "LOW", true, true, Map.of()).humanUserId()).isNull();
+        assertThat(AuthorizationRequest.aiToolView(missingSessionVersion, 300L, "file.object.search", "system:file:view", "LOW", Map.of()).humanUserId()).isNull();
+        assertThat(AuthorizationRequest.plugin(missingSessionVersion, "plugin:view", "demo").humanUserId()).isNull();
+        assertThat(AuthorizationRequest.permission(missingUserUuid, "system:user:view").humanUserId()).isNull();
+        assertThat(AuthorizationRequest.permission(missingPermissionsVersion, "system:user:view").humanUserId()).isNull();
     }
 
     @Test
@@ -42,6 +96,25 @@ class DefaultAuthorizationServiceTest {
                 .isEqualTo(AuthorizationVerdict.ALLOW);
         assertThat(service.evaluate(aiRequest(user(1001L, "ai:tool:*"), 300L, "file.delete", "ai:tool:file.delete", "LOW", true, true,
                 Map.of("resourceTenantId", 2002L))).verdict()).isEqualTo(AuthorizationVerdict.ALLOW);
+    }
+
+    @Test
+    void dataScopeSelfRequiresMatchingUserUuid() {
+        DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
+        CurrentUser currentUser = user(1001L, "system:user:view");
+
+        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+                Map.of("dataScope", "self", "ownerUserId", 100L, "ownerUserUuid", "user-uuid-100"))).verdict())
+                .isEqualTo(AuthorizationVerdict.ALLOW);
+        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+                Map.of("dataScope", "self", "ownerUserUuid", "user-uuid-100"))).reasonCode())
+                .isEqualTo("DATA_SCOPE_SELF_DENIED");
+        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+                Map.of("dataScope", "self", "ownerUserId", 100L))).reasonCode())
+                .isEqualTo("DATA_SCOPE_SELF_DENIED");
+        assertThat(service.evaluate(request(1001L, "WEB", currentUser, "system:user:view", null, null, null,
+                Map.of("dataScope", "self", "ownerUserId", 100L, "ownerUserUuid", "other-uuid"))).reasonCode())
+                .isEqualTo("DATA_SCOPE_SELF_DENIED");
     }
 
     @Test
@@ -96,6 +169,39 @@ class DefaultAuthorizationServiceTest {
     }
 
     @Test
+    void systemJobRejectsLegacyInternalTokenFlagAndMixedSubjects() {
+        DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
+
+        AuthorizationRequest legacyInternalTokenRequest = request(1001L, "SYSTEM_JOB", null, null, "file", null, "test",
+                Map.of("internalToken", Boolean.TRUE));
+        assertThat(service.evaluate(legacyInternalTokenRequest).reasonCode())
+                .isEqualTo("SYSTEM_PRINCIPAL_MISSING");
+
+        AuthorizationRequest mixedSubjectRequest = new AuthorizationRequest(
+                SubjectRef.humanUser(100L),
+                null,
+                100L,
+                "user-uuid-100",
+                null,
+                "file",
+                "test",
+                null,
+                null,
+                "LOW",
+                null,
+                Map.of("systemPrincipal", Boolean.TRUE),
+                false,
+                true,
+                "SYSTEM_JOB",
+                "req-1",
+                "trace-1",
+                user(1001L, "*")
+        );
+        assertThat(service.evaluate(mixedSubjectRequest).reasonCode())
+                .isEqualTo("SYSTEM_JOB_SUBJECT_CONFLICT");
+    }
+
+    @Test
     void requireAllowsAuthorizedRequest() {
         assertThatCode(() -> service(allowGrant("unused", "LOW", false, false))
                 .require(AuthorizationRequest.permission(user(1001L, "*"), "system:user:view"))).doesNotThrowAnyException();
@@ -114,13 +220,22 @@ class DefaultAuthorizationServiceTest {
     }
 
     private CurrentUser user(Long tenantId, String permission) {
-        return new CurrentUser(100L, "admin", tenantId, "session-1", 1, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(100L, "admin", tenantId, "session-1", 1, true, Set.of(permission));
+        currentUser.setUserUuid("user-uuid-100");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
     }
 
     private AuthorizationRequest request(Long tenantId, String channel, CurrentUser user, String permissionKey,
                                          String resource, String tool, String action) {
-        return new AuthorizationRequest(null, null, user == null ? null : user.getUserId(), null,
-                resource, action, permissionKey, tool, "LOW", null, Map.of(), false, false, channel,
+        return request(tenantId, channel, user, permissionKey, resource, tool, action, Map.of());
+    }
+
+    private AuthorizationRequest request(Long tenantId, String channel, CurrentUser user, String permissionKey,
+                                         String resource, String tool, String action, Map<String, Object> arguments) {
+        return new AuthorizationRequest(null, null, user == null ? null : user.getUserId(),
+                user == null ? null : user.getUserUuid(), null,
+                resource, action, permissionKey, tool, "LOW", null, arguments, false, false, channel,
                 "req-1", "trace-1", user);
     }
 

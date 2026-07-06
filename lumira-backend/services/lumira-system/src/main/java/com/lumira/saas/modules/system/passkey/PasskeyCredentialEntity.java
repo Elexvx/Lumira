@@ -12,6 +12,7 @@ public class PasskeyCredentialEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String userHandle;
     private String credentialId;
     private String publicKeyCose;
@@ -22,8 +23,10 @@ public class PasskeyCredentialEntity {
     private String label;
     private LocalDateTime lastUsedAt;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
     @TableField(exist = false)
@@ -33,6 +36,8 @@ public class PasskeyCredentialEntity {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getUserHandle() { return userHandle; }
     public void setUserHandle(String userHandle) { this.userHandle = userHandle; }
     public String getCredentialId() { return credentialId; }
@@ -53,10 +58,14 @@ public class PasskeyCredentialEntity {
     public void setLastUsedAt(LocalDateTime lastUsedAt) { this.lastUsedAt = lastUsedAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getDeleted() { return deleted; }

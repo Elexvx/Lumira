@@ -2,6 +2,7 @@ package com.lumira.payment.security;
 
 import com.lumira.api.auth.CurrentUserDTO;
 import com.lumira.api.client.AuthInternalApi;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenType;
 import jakarta.servlet.FilterChain;
@@ -20,7 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
@@ -36,9 +39,13 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
             "/api/v1/*/version",
             "/actuator/health",
             "/actuator/info",
-            "/actuator/prometheus",
             "/error"
     );
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final int MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
+    private static final int MAX_SESSION_ID_LENGTH = 128;
+    private static final Pattern SAFE_BEARER_TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9._~+/=-]+$");
+    private static final Pattern SAFE_SESSION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
 
     private final JwtTokenService jwtTokenService;
     private final AuthInternalApi authInternalApi;
@@ -57,19 +64,34 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (SecurityContextHolder.getContext().getAuthentication() != null
-                && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
+        var existingAuthentication = SecurityContextHolder.getContext().getAuthentication();
+        if (AuthenticationTrustSupport.canReuse(existingAuthentication)) {
             filterChain.doFilter(request, response);
             return;
         }
+        if (existingAuthentication != null) {
+            SecurityContextHolder.clearContext();
+        }
 
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
+        if (StringUtils.hasText(authorization) && authorization.startsWith(BEARER_PREFIX)) {
             try {
-                var claims = jwtTokenService.parseToken(authorization.substring(7));
-                if (claims.getTokenType() == JwtTokenType.ACCESS) {
-                    CurrentUserDTO snapshot = authInternalApi.currentUser(claims.getSessionId());
-                    if (snapshot != null) {
+                String token = authorization.substring(BEARER_PREFIX.length()).trim();
+                if (!isTrustedBearerToken(token)) {
+                    throw new IllegalArgumentException("Bearer token is invalid");
+                }
+                var claims = jwtTokenService.parseToken(token);
+                if (isTrustedAccessClaims(claims)) {
+                    String trustedSessionId = normalizeSessionId(claims.getSessionId());
+                    CurrentUserDTO snapshot = authInternalApi.currentUser(
+                            trustedSessionId,
+                            claims.getUserId(),
+                            claims.getUserUuid(),
+                            claims.getSessionVersion(),
+                            claims.getPermissionsVersion(),
+                            normalizeSimulatedRoleId(claims.getSimulatedRoleId())
+                    );
+                    if (isTrustedSnapshot(snapshot, claims, trustedSessionId)) {
                         CurrentUser currentUser = new CurrentUser(
                                 snapshot.userId(),
                                 snapshot.username(),
@@ -85,6 +107,10 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
                                 snapshot.dataScopes()
                         );
                         currentUser.setUserUuid(snapshot.userUuid());
+                        currentUser.setSimulatedRoleId(snapshot.simulatedRoleId());
+                        currentUser.setPermissionsVersion(snapshot.permissionsVersion());
+                        currentUser.setRequiresPasswordChange(snapshot.requiresPasswordChange());
+                        currentUser.setDefaultHomePath(snapshot.defaultHomePath());
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(currentUser, authorization, List.of());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -100,5 +126,65 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private boolean isTrustedAccessClaims(com.lumira.common.security.JwtTokenClaims claims) {
+        return claims != null
+                && claims.getTokenType() == JwtTokenType.ACCESS
+                && normalizeSessionId(claims.getSessionId()) != null
+                && claims.getUserId() != null
+                && claims.getUserId() > 0
+                && StringUtils.hasText(claims.getUserUuid())
+                && StringUtils.hasText(claims.getUsername())
+                && claims.getSessionVersion() != null
+                && claims.getSessionVersion() > 0
+                && isTrustedSimulatedRoleId(claims.getSimulatedRoleId())
+                && StringUtils.hasText(claims.getPermissionsVersion());
+    }
+
+    private boolean isTrustedSnapshot(CurrentUserDTO snapshot, com.lumira.common.security.JwtTokenClaims claims, String trustedSessionId) {
+        return snapshot != null
+                && snapshot.userId() != null
+                && snapshot.userId() > 0
+                && snapshot.userId().equals(claims.getUserId())
+                && StringUtils.hasText(snapshot.userUuid())
+                && snapshot.userUuid().trim().equals(claims.getUserUuid().trim())
+                && StringUtils.hasText(snapshot.username())
+                && trustedSessionId != null
+                && trustedSessionId.equals(normalizeSessionId(snapshot.sessionId()))
+                && Objects.equals(normalizeSimulatedRoleId(snapshot.simulatedRoleId()), normalizeSimulatedRoleId(claims.getSimulatedRoleId()))
+                && snapshot.sessionVersion() != null
+                && snapshot.sessionVersion() > 0
+                && snapshot.sessionVersion().equals(claims.getSessionVersion())
+                && StringUtils.hasText(snapshot.permissionsVersion())
+                && snapshot.permissionsVersion().trim().equals(claims.getPermissionsVersion().trim());
+    }
+
+    private boolean isTrustedBearerToken(String token) {
+        return StringUtils.hasText(token)
+                && token.length() <= MAX_BEARER_TOKEN_LENGTH
+                && SAFE_BEARER_TOKEN_PATTERN.matcher(token).matches();
+    }
+
+    private String normalizeSessionId(String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            return null;
+        }
+        String normalized = sessionId.trim();
+        if (normalized.length() > MAX_SESSION_ID_LENGTH
+                || !SAFE_SESSION_ID_PATTERN.matcher(normalized).matches()
+                || normalized.contains("..")
+                || normalized.contains("//")) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
+    private boolean isTrustedSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId > 0;
     }
 }

@@ -23,6 +23,7 @@ export const DEFAULT_SETTING_ROUTE_ORDER = [
   '/settings/personalization',
   '/settings/security',
   '/settings/verification',
+  '/settings/payment',
   '/settings/notifications',
   '/settings/plugins',
   '/settings/files/all',

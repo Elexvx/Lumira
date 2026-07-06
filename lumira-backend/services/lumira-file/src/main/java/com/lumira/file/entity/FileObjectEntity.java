@@ -15,6 +15,7 @@ public class FileObjectEntity {
     private String bucket;
     private String objectKey;
     private Long uploadedBy;
+    private String uploadedByUuid;
     private String uploadedByName;
     private Long departmentId;
     private String visibilityScope;
@@ -31,8 +32,10 @@ public class FileObjectEntity {
     private String remark;
     private String status;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
 
@@ -74,6 +77,14 @@ public class FileObjectEntity {
 
     public void setUploadedBy(Long uploadedBy) {
         this.uploadedBy = uploadedBy;
+    }
+
+    public String getUploadedByUuid() {
+        return uploadedByUuid;
+    }
+
+    public void setUploadedByUuid(String uploadedByUuid) {
+        this.uploadedByUuid = uploadedByUuid;
     }
 
     public String getUploadedByName() {
@@ -204,6 +215,14 @@ public class FileObjectEntity {
         this.createdBy = createdBy;
     }
 
+    public String getCreatedByUuid() {
+        return createdByUuid;
+    }
+
+    public void setCreatedByUuid(String createdByUuid) {
+        this.createdByUuid = createdByUuid;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -218,6 +237,14 @@ public class FileObjectEntity {
 
     public void setUpdatedBy(Long updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public String getUpdatedByUuid() {
+        return updatedByUuid;
+    }
+
+    public void setUpdatedByUuid(String updatedByUuid) {
+        this.updatedByUuid = updatedByUuid;
     }
 
     public LocalDateTime getUpdatedAt() {

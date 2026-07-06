@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
+
 @Component
 public class PermissionGuard {
 
@@ -30,10 +32,19 @@ public class PermissionGuard {
         if (!StringUtils.hasText(permissionKey)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Missing permission configuration");
         }
-        if (currentUser == null
-                || currentUser.getPermissions() == null
+        if (!isTrustedCurrentUser(currentUser)
                 || (!currentUser.getPermissions().contains("*") && !currentUser.getPermissions().contains(permissionKey))) {
             throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
         }
+    }
+
+    public boolean hasPermission(CurrentUser currentUser, String permissionKey) {
+        if (!StringUtils.hasText(permissionKey) || !isTrustedCurrentUser(currentUser)) {
+            return false;
+        }
+        if (authorizationService != null) {
+            return authorizationService.evaluate(AuthorizationRequest.permission(currentUser, permissionKey)).allowed();
+        }
+        return currentUser.getPermissions().contains("*") || currentUser.getPermissions().contains(permissionKey);
     }
 }

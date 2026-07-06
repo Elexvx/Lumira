@@ -4,8 +4,11 @@ public class TokenClaims {
 
     private String sessionId;
     private Long userId;
+    private String userUuid;
     private String username;
+    private Long simulatedRoleId;
     private Integer sessionVersion;
+    private String permissionsVersion;
     private String tokenId;
     private TokenType tokenType;
 
@@ -25,6 +28,14 @@ public class TokenClaims {
         this.userId = userId;
     }
 
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
+    }
+
     public String getUsername() {
         return username;
     }
@@ -33,12 +44,28 @@ public class TokenClaims {
         this.username = username;
     }
 
+    public Long getSimulatedRoleId() {
+        return simulatedRoleId;
+    }
+
+    public void setSimulatedRoleId(Long simulatedRoleId) {
+        this.simulatedRoleId = simulatedRoleId;
+    }
+
     public Integer getSessionVersion() {
         return sessionVersion;
     }
 
     public void setSessionVersion(Integer sessionVersion) {
         this.sessionVersion = sessionVersion;
+    }
+
+    public String getPermissionsVersion() {
+        return permissionsVersion;
+    }
+
+    public void setPermissionsVersion(String permissionsVersion) {
+        this.permissionsVersion = permissionsVersion;
     }
 
     public String getTokenId() {

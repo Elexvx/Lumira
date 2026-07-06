@@ -22,6 +22,10 @@ import type {
   WechatLoginSettings,
 } from '@/types/api';
 
+const SETTINGS_REQUEST_TIMEOUT_MS = 30000;
+const SETTINGS_QUERY_RETRY_COUNT = 1;
+const SETTINGS_QUERY_RETRY_DELAY_MS = 1000;
+
 const useSystemVerificationPageAccess = () => {
   const { token } = theme.useToken();
   const actionPermission = useActionPermission();
@@ -44,45 +48,60 @@ const useSystemVerificationPageAccess = () => {
     queryFn: async () =>
       request<VerificationSettings>('/v1/system/verification/settings', {
         method: 'GET',
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
         ...API_OPTS.NO_REDIRECT,
       }),
     enabled: canViewVerification,
+    retry: SETTINGS_QUERY_RETRY_COUNT,
+    retryDelay: SETTINGS_QUERY_RETRY_DELAY_MS,
   });
   const smsSettingsQuery = useQuery({
     queryKey: ['sms-verification-settings'],
     queryFn: async () =>
       request<SmsVerificationSettings>('/v1/system/verification/sms-settings', {
         method: 'GET',
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
         ...API_OPTS.NO_REDIRECT,
       }),
     enabled: canViewVerification,
+    retry: SETTINGS_QUERY_RETRY_COUNT,
+    retryDelay: SETTINGS_QUERY_RETRY_DELAY_MS,
   });
   const smtpSettingsQuery = useQuery({
     queryKey: ['smtp-settings'],
     queryFn: async () =>
       request<SmtpSettings>('/v1/system/smtp-settings', {
         method: 'GET',
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
         ...API_OPTS.NO_REDIRECT,
       }),
     enabled: canViewVerification,
+    retry: SETTINGS_QUERY_RETRY_COUNT,
+    retryDelay: SETTINGS_QUERY_RETRY_DELAY_MS,
   });
   const wechatSettingsQuery = useQuery({
     queryKey: ['wechat-login-settings'],
     queryFn: async () =>
       request<WechatLoginSettings>('/v1/system/verification/wechat-settings', {
         method: 'GET',
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
         ...API_OPTS.NO_REDIRECT,
       }),
     enabled: canViewVerification,
+    retry: SETTINGS_QUERY_RETRY_COUNT,
+    retryDelay: SETTINGS_QUERY_RETRY_DELAY_MS,
   });
   const passkeySettingsQuery = useQuery({
     queryKey: ['passkey-settings'],
     queryFn: async () =>
       request<PasskeySettings>('/v1/system/verification/passkey-settings', {
         method: 'GET',
+        timeoutMs: SETTINGS_REQUEST_TIMEOUT_MS,
         ...API_OPTS.NO_REDIRECT,
       }),
     enabled: canViewVerification,
+    retry: SETTINGS_QUERY_RETRY_COUNT,
+    retryDelay: SETTINGS_QUERY_RETRY_DELAY_MS,
   });
 
   const verificationLoading =

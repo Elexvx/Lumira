@@ -1,9 +1,13 @@
 package com.lumira.saas.modules.competition.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
+import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.saas.common.annotation.RepeatSubmit;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.modules.competition.app.CertificateAppService;
@@ -29,6 +33,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 import java.util.List;
 
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
+
 @RestController
 @RequestMapping
 public class CertificateV2Controller {
@@ -47,15 +53,18 @@ public class CertificateV2Controller {
     private final CertificateAppService certificateAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final ClientIpResolver clientIpResolver;
 
     public CertificateV2Controller(
             CertificateAppService certificateAppService,
             SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard
+            PermissionGuard permissionGuard,
+            ClientIpResolver clientIpResolver
     ) {
         this.certificateAppService = certificateAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @GetMapping("/api/v2/aiadc/certificate-templates")
@@ -65,61 +74,61 @@ public class CertificateV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(TEMPLATE_VIEW);
-        return ApiResponse.success(certificateAppService.listTemplates(securityContextFacade.getCurrentUser(), keyword, status, pageNo, pageSize), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_VIEW);
+        return ApiResponse.success(certificateAppService.listTemplates(currentUser, keyword, status, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificate-templates/{id}")
     public ApiResponse<CertificateVO.Template> template(@PathVariable("id") Long id) {
-        require(TEMPLATE_VIEW);
-        return ApiResponse.success(certificateAppService.getTemplate(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_VIEW);
+        return ApiResponse.success(certificateAppService.getTemplate(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificate-templates")
     @RepeatSubmit
     public ApiResponse<CertificateVO.Template> createTemplate(@Valid @RequestBody CertificateDTO.TemplateUpsertRequest request) {
-        require(TEMPLATE_CREATE);
-        return ApiResponse.success(certificateAppService.createTemplate(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_CREATE);
+        return ApiResponse.success(certificateAppService.createTemplate(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/api/v2/aiadc/certificate-templates/{id}")
     @RepeatSubmit
     public ApiResponse<CertificateVO.Template> updateTemplate(@PathVariable("id") Long id, @Valid @RequestBody CertificateDTO.TemplateUpsertRequest request) {
-        require(TEMPLATE_UPDATE);
-        return ApiResponse.success(certificateAppService.updateTemplate(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_UPDATE);
+        return ApiResponse.success(certificateAppService.updateTemplate(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificate-templates/{id}/publish")
     @RepeatSubmit
     public ApiResponse<CertificateVO.TemplateVersion> publishTemplate(@PathVariable("id") Long id) {
-        require(TEMPLATE_PUBLISH);
-        return ApiResponse.success(certificateAppService.publishTemplate(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_PUBLISH);
+        return ApiResponse.success(certificateAppService.publishTemplate(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificate-templates/{id}/duplicate")
     @RepeatSubmit
     public ApiResponse<CertificateVO.Template> duplicateTemplate(@PathVariable("id") Long id) {
-        require(TEMPLATE_CREATE);
-        return ApiResponse.success(certificateAppService.duplicateTemplate(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_CREATE);
+        return ApiResponse.success(certificateAppService.duplicateTemplate(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificate-templates/{id}/archive")
     @RepeatSubmit
     public ApiResponse<CertificateVO.Template> archiveTemplate(@PathVariable("id") Long id) {
-        require(TEMPLATE_DELETE);
-        return ApiResponse.success(certificateAppService.archiveTemplate(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_DELETE);
+        return ApiResponse.success(certificateAppService.archiveTemplate(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificate-templates/{id}/versions")
     public ApiResponse<List<CertificateVO.TemplateVersion>> versions(@PathVariable("id") Long id) {
-        require(TEMPLATE_VIEW);
-        return ApiResponse.success(certificateAppService.listVersions(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_VIEW);
+        return ApiResponse.success(certificateAppService.listVersions(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificate-template-versions/{versionId}")
     public ApiResponse<CertificateVO.TemplateVersion> version(@PathVariable("versionId") Long versionId) {
-        require(TEMPLATE_VIEW);
-        return ApiResponse.success(certificateAppService.getVersion(securityContextFacade.getCurrentUser(), versionId), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_VIEW);
+        return ApiResponse.success(certificateAppService.getVersion(currentUser, versionId), TraceContext.getRequestId());
     }
 
     @PutMapping("/api/v2/aiadc/certificate-template-versions/{versionId}/canvas")
@@ -128,8 +137,8 @@ public class CertificateV2Controller {
             @PathVariable("versionId") Long versionId,
             @Valid @RequestBody CertificateDTO.CanvasSaveRequest request
     ) {
-        require(TEMPLATE_UPDATE);
-        return ApiResponse.success(certificateAppService.saveCanvas(securityContextFacade.getCurrentUser(), versionId, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_UPDATE);
+        return ApiResponse.success(certificateAppService.saveCanvas(currentUser, versionId, request), TraceContext.getRequestId());
     }
 
     @PostMapping(value = "/api/v2/aiadc/certificate-template-versions/{versionId}/background", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -138,21 +147,21 @@ public class CertificateV2Controller {
             @PathVariable("versionId") Long versionId,
             @RequestPart("file") MultipartFile file
     ) {
-        require(TEMPLATE_UPDATE);
-        return ApiResponse.success(certificateAppService.uploadBackground(securityContextFacade.getCurrentUser(), versionId, file), TraceContext.getRequestId());
+        CurrentUser currentUser = require(TEMPLATE_UPDATE);
+        return ApiResponse.success(certificateAppService.uploadBackground(currentUser, versionId, file), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificate-batches/preview")
     public ApiResponse<CertificateVO.GenerateResult> previewBatch(@Valid @RequestBody CertificateDTO.BatchGenerateRequest request) {
-        require(BATCH_CREATE);
-        return ApiResponse.success(certificateAppService.previewBatch(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(BATCH_CREATE);
+        return ApiResponse.success(certificateAppService.previewBatch(currentUser, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificate-batches")
     @RepeatSubmit
     public ApiResponse<CertificateVO.GenerateResult> generateBatch(@Valid @RequestBody CertificateDTO.BatchGenerateRequest request) {
-        require(BATCH_CREATE);
-        return ApiResponse.success(certificateAppService.generateBatch(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(BATCH_CREATE);
+        return ApiResponse.success(certificateAppService.generateBatch(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificate-batches")
@@ -160,14 +169,14 @@ public class CertificateV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(BATCH_VIEW);
-        return ApiResponse.success(certificateAppService.listBatches(securityContextFacade.getCurrentUser(), pageNo, pageSize), TraceContext.getRequestId());
+        CurrentUser currentUser = require(BATCH_VIEW);
+        return ApiResponse.success(certificateAppService.listBatches(currentUser, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificate-batches/{id}")
     public ApiResponse<CertificateVO.Batch> batch(@PathVariable("id") Long id) {
-        require(BATCH_VIEW);
-        return ApiResponse.success(certificateAppService.getBatch(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(BATCH_VIEW);
+        return ApiResponse.success(certificateAppService.getBatch(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificates")
@@ -178,21 +187,21 @@ public class CertificateV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(CERTIFICATE_VIEW);
-        return ApiResponse.success(certificateAppService.listRecords(securityContextFacade.getCurrentUser(), certificateNo, recipientName, status, pageNo, pageSize), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CERTIFICATE_VIEW);
+        return ApiResponse.success(certificateAppService.listRecords(currentUser, certificateNo, recipientName, status, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificates/{id}")
     public ApiResponse<CertificateVO.Record> certificate(@PathVariable("id") Long id) {
-        require(CERTIFICATE_VIEW);
-        return ApiResponse.success(certificateAppService.getRecord(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CERTIFICATE_VIEW);
+        return ApiResponse.success(certificateAppService.getRecord(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/api/v2/aiadc/certificates/{id}/download")
     public ResponseEntity<FileSystemResource> downloadCertificate(@PathVariable("id") Long id) {
-        require(CERTIFICATE_DOWNLOAD);
-        CertificateVO.Record record = certificateAppService.getRecord(securityContextFacade.getCurrentUser(), id);
-        Path path = Path.of(record.getCertificateFileUrl().replaceFirst("^/", ""));
+        CurrentUser currentUser = require(CERTIFICATE_DOWNLOAD);
+        CertificateVO.Record record = certificateAppService.getRecordForDownload(currentUser, id);
+        Path path = resolveCertificateFilePath(record.getCertificateFileUrl());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + record.getCertificateNo() + ".png\"")
                 .contentType(MediaType.IMAGE_PNG)
@@ -202,16 +211,16 @@ public class CertificateV2Controller {
     @PostMapping("/api/v2/aiadc/certificates/{id}/regenerate")
     @RepeatSubmit
     public ApiResponse<CertificateVO.Record> regenerateCertificate(@PathVariable("id") Long id) {
-        require(CERTIFICATE_REGENERATE);
-        return ApiResponse.success(certificateAppService.regenerateRecord(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CERTIFICATE_REGENERATE);
+        return ApiResponse.success(certificateAppService.regenerateRecord(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/api/v2/aiadc/certificates/{id}/revoke")
     @RepeatSubmit
     public ApiResponse<CertificateVO.Record> revokeCertificate(@PathVariable("id") Long id, @RequestBody(required = false) CertificateDTO.RevokeRequest request) {
-        require(CERTIFICATE_REVOKE);
+        CurrentUser currentUser = require(CERTIFICATE_REVOKE);
         return ApiResponse.success(
-                certificateAppService.revokeRecord(securityContextFacade.getCurrentUser(), id, request == null ? null : request.getReason()),
+                certificateAppService.revokeRecord(currentUser, id, request == null ? null : request.getReason()),
                 TraceContext.getRequestId()
         );
     }
@@ -236,15 +245,32 @@ public class CertificateV2Controller {
         );
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
+    }
+
+    private Path resolveCertificateFilePath(String certificateFileUrl) {
+        if (certificateFileUrl == null || certificateFileUrl.isBlank()) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Certificate file not found");
+        }
+        Path base = Path.of("storage", "certificates").toAbsolutePath().normalize();
+        Path path = Path.of(certificateFileUrl.replaceFirst("^/", "")).toAbsolutePath().normalize();
+        if (!path.startsWith(base)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Invalid certificate file path");
+        }
+        return path;
     }
 
     private String clientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 }

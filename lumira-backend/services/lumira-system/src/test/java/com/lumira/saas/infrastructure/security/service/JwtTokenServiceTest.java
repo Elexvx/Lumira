@@ -25,8 +25,10 @@ class JwtTokenServiceTest {
 
         assertEquals("session-1", tokenClaims.getSessionId());
         assertEquals(1L, tokenClaims.getUserId());
+        assertEquals("user-uuid-1", tokenClaims.getUserUuid());
         assertEquals("tester", tokenClaims.getUsername());
         assertEquals(2, tokenClaims.getSessionVersion());
+        assertEquals("permissions-2", tokenClaims.getPermissionsVersion());
     }
 
     @Test
@@ -39,6 +41,8 @@ class JwtTokenServiceTest {
 
         assertEquals("session-1", tokenClaims.getSessionId());
         assertEquals(1L, tokenClaims.getUserId());
+        assertEquals("user-uuid-1", tokenClaims.getUserUuid());
+        assertEquals("permissions-2", tokenClaims.getPermissionsVersion());
         assertEquals("refresh-1", tokenClaims.getTokenId());
     }
 
@@ -77,6 +81,22 @@ class JwtTokenServiceTest {
         assertEquals("JWT密钥长度不足", exception.getMessage());
     }
 
+    @Test
+    void shouldRejectInvalidSessionBeforeGeneratingAccessToken() {
+        JwtTokenService jwtTokenService = buildJwtTokenService("saas_foundation_jwt_secret_for_dev_env_please_change_me_2026");
+        AuthSession session = buildSession();
+        session.setSessionId("../session");
+
+        assertThrows(IllegalArgumentException.class, () -> jwtTokenService.generateAccessToken(session));
+    }
+
+    @Test
+    void shouldRejectInvalidRefreshTokenIdBeforeGeneratingRefreshToken() {
+        JwtTokenService jwtTokenService = buildJwtTokenService("saas_foundation_jwt_secret_for_dev_env_please_change_me_2026");
+
+        assertThrows(IllegalArgumentException.class, () -> jwtTokenService.generateRefreshToken(buildSession(), "../refresh"));
+    }
+
     private SecurityProperties buildSecurityProperties(String jwtSecret) {
         SecurityProperties securityProperties = new SecurityProperties();
         securityProperties.setJwtSecret(jwtSecret);
@@ -111,8 +131,10 @@ class JwtTokenServiceTest {
         AuthSession session = new AuthSession();
         session.setSessionId("session-1");
         session.setUserId(1L);
+        session.setUserUuid("user-uuid-1");
         session.setUsername("tester");
         session.setSessionVersion(2);
+        session.setPermissionsVersion("permissions-2");
         session.setLoginTime(Instant.now());
         session.setExpireTime(Instant.now().plusSeconds(604800));
         return session;

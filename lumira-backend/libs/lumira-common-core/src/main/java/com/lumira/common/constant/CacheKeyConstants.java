@@ -37,12 +37,20 @@ public final class CacheKeyConstants {
         return PREFIX + ":" + SESSION_USER + ":" + userId + ":" + sessionId;
     }
 
+    public static String userSessionKey(Long userId, String userUuid, String sessionId) {
+        return PREFIX + ":" + SESSION_USER + ":" + userId + ":" + userUuid + ":" + sessionId;
+    }
+
     public static String onlineSessionKey() {
         return String.join(":", PREFIX, ONLINE_SESSION);
     }
 
     public static String onlineSessionUserKey(Long userId) {
         return String.join(":", PREFIX, ONLINE_SESSION_USER, String.valueOf(userId));
+    }
+
+    public static String onlineSessionUserKey(Long userId, String userUuid) {
+        return String.join(":", PREFIX, ONLINE_SESSION_USER, String.valueOf(userId), String.valueOf(userUuid));
     }
 
     public static String onlineSessionEventsChannel() {

@@ -14,8 +14,10 @@ class PaymentProviderConfigRow {
     private Integer lastTestSuccess;
     private String lastTestMessage;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
 
@@ -41,10 +43,14 @@ class PaymentProviderConfigRow {
     public void setLastTestMessage(String lastTestMessage) { this.lastTestMessage = lastTestMessage; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Integer getDeleted() { return deleted; }
@@ -72,6 +78,7 @@ class PaymentOrderRow {
     private LocalDateTime expiresAt;
     private LocalDateTime paidAt;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
     private LocalDateTime updatedAt;
@@ -117,6 +124,8 @@ class PaymentOrderRow {
     public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
@@ -144,6 +153,7 @@ class PaymentRefundRow {
     private String failureMessage;
     private LocalDateTime refundedAt;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
     private LocalDateTime updatedAt;
@@ -181,6 +191,8 @@ class PaymentRefundRow {
     public void setRefundedAt(LocalDateTime refundedAt) { this.refundedAt = refundedAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
@@ -258,6 +270,7 @@ class PaymentWebhookEventRow {
 class PaymentOutboxRow {
     private Long id;
     private Long userId;
+    private String userUuid;
     private String sourceType;
     private String eventType;
     private String eventKey;
@@ -267,8 +280,10 @@ class PaymentOutboxRow {
     private LocalDateTime nextRetryAt;
     private String lastErrorMessage;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private String claimedBy;
     private String claimToken;
@@ -279,6 +294,8 @@ class PaymentOutboxRow {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getSourceType() { return sourceType; }
     public void setSourceType(String sourceType) { this.sourceType = sourceType; }
     public String getEventType() { return eventType; }
@@ -297,10 +314,14 @@ class PaymentOutboxRow {
     public void setLastErrorMessage(String lastErrorMessage) { this.lastErrorMessage = lastErrorMessage; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public String getClaimedBy() { return claimedBy; }

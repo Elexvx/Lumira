@@ -14,15 +14,25 @@ class MessageNoticeMapperHotPathSqlTest {
     void hotPathQueriesShouldForceVisibleRecentIndexAndUseCappedCounts() throws Exception {
         String xml = mapperXml();
 
+        assertThat(normalizeSql(xml))
+                .contains("n.target_user_id = #{userid} and n.target_user_uuid = #{useruuid}")
+                .contains("n.target_user_id = #{query.userid} and n.target_user_uuid = #{query.useruuid}");
+
         assertStatementContains(xml, "listVisiblePublished", "from msg_notice n force index (idx_msg_notice_visible_recent)");
         assertStatementContains(xml, "listVisiblePublished", "limit #{limit} offset #{offset}");
 
         assertStatementContains(xml, "countUnread", "from msg_notice n force index (idx_msg_notice_visible_recent)");
         assertStatementContains(xml, "countUnread", "limit #{limit}");
         assertStatementContains(xml, "countUnread", "not exists");
+        assertStatementContains(xml, "countUnread", "and r.user_uuid = #{userUuid}");
 
         assertStatementContains(xml, "markAllRead", "from msg_notice n force index (idx_msg_notice_visible_recent)");
         assertStatementContains(xml, "markAllRead", "not exists");
+        assertStatementContains(xml, "markAllRead", "notice_id, user_id, user_uuid");
+        assertStatementContains(xml, "upsertRead", "notice_id, user_id, user_uuid");
+        assertStatementContains(xml, "upsertRead", "from msg_notice n force index (idx_msg_notice_visible_recent)");
+        assertStatementContains(xml, "upsertRead", "<include refid=\"visiblePredicate\"/>");
+        assertStatementContains(xml, "upsertRead", "n.publish_status = 'PUBLISHED'");
 
         assertStatementContains(xml, "countArchive", "from msg_notice n force index (idx_msg_notice_visible_recent)");
         assertStatementContains(xml, "countArchive", "limit #{query.countLimit}");

@@ -6,6 +6,7 @@ public class TeamMemberDTO {
     private Long id;
     private Long teamId;
     private Long userId;
+    private String userUuid;
     private String role;
     private String status;
     private String extraValuesJson;
@@ -17,6 +18,8 @@ public class TeamMemberDTO {
     public void setTeamId(Long teamId) { this.teamId = teamId; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
     public String getStatus() { return status; }

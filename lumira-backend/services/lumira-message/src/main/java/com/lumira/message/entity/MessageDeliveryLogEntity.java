@@ -15,6 +15,7 @@ public class MessageDeliveryLogEntity {
     private String channel;
     private String targetScope;
     private Long targetUserId;
+    private String targetUserUuid;
     private String targetUserName;
     private String targetEmail;
     private String title;
@@ -23,7 +24,9 @@ public class MessageDeliveryLogEntity {
     private String errorMessage;
     private LocalDateTime sentAt;
     private Long createdBy;
+    private String createdByUuid;
     private Long updatedBy;
+    private String updatedByUuid;
     private Integer deleted;
 
     public Long getId() { return id; }
@@ -36,6 +39,8 @@ public class MessageDeliveryLogEntity {
     public void setTargetScope(String targetScope) { this.targetScope = targetScope; }
     public Long getTargetUserId() { return targetUserId; }
     public void setTargetUserId(Long targetUserId) { this.targetUserId = targetUserId; }
+    public String getTargetUserUuid() { return targetUserUuid; }
+    public void setTargetUserUuid(String targetUserUuid) { this.targetUserUuid = targetUserUuid; }
     public String getTargetUserName() { return targetUserName; }
     public void setTargetUserName(String targetUserName) { this.targetUserName = targetUserName; }
     public String getTargetEmail() { return targetEmail; }
@@ -52,8 +57,12 @@ public class MessageDeliveryLogEntity {
     public void setSentAt(LocalDateTime sentAt) { this.sentAt = sentAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getCreatedByUuid() { return createdByUuid; }
+    public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
     public Long getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
+    public String getUpdatedByUuid() { return updatedByUuid; }
+    public void setUpdatedByUuid(String updatedByUuid) { this.updatedByUuid = updatedByUuid; }
     public Integer getDeleted() { return deleted; }
     public void setDeleted(Integer deleted) { this.deleted = deleted; }
 }

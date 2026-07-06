@@ -28,7 +28,7 @@ public class MessageEventDeliveryService {
 
         MessageNoticeDTO notice = event.getNotice();
         if (notice == null) {
-            deliverByUserOrBroadcast(event, event.getUserId());
+            deliverByUserOrBroadcast(event);
             return;
         }
 
@@ -38,27 +38,32 @@ public class MessageEventDeliveryService {
         }
 
         if ("USER".equalsIgnoreCase(notice.getTargetScope()) && notice.getTargetUserId() != null) {
-            messageWebSocketRegistry.sendToUser(notice.getTargetUserId(), event);
+            for (MessageRecipientResolver.Recipient recipient : messageRecipientResolver.resolveRecipients(notice)) {
+                messageWebSocketRegistry.sendToUser(recipient.userId(), recipient.userUuid(), event);
+            }
             return;
         }
 
         if ("ROLE".equalsIgnoreCase(notice.getTargetScope()) && notice.getTargetRoleId() != null) {
-            List<Long> userIds = messageRecipientResolver.resolveRecipientUserIds(notice);
-            if (userIds.isEmpty()) {
+            List<MessageRecipientResolver.Recipient> recipients = messageRecipientResolver.resolveRecipients(notice);
+            if (recipients.isEmpty()) {
                 return;
             }
-            for (Long userId : userIds) {
-                messageWebSocketRegistry.sendToUser(userId, event);
+            for (MessageRecipientResolver.Recipient recipient : recipients) {
+                messageWebSocketRegistry.sendToUser(recipient.userId(), recipient.userUuid(), event);
             }
             return;
         }
 
-        messageWebSocketRegistry.sendToAll(event);
+        return;
     }
 
-    private void deliverByUserOrBroadcast(MessageEventDTO event, Long userId) {
-        if (userId != null) {
-            messageWebSocketRegistry.sendToUser(userId, event);
+    private void deliverByUserOrBroadcast(MessageEventDTO event) {
+        if (event.getUserId() != null && StringUtils.hasText(event.getUserUuid())) {
+            messageWebSocketRegistry.sendToUser(event.getUserId(), event.getUserUuid(), event);
+            return;
+        }
+        if (event.getUserId() != null) {
             return;
         }
         messageWebSocketRegistry.sendToAll(event);

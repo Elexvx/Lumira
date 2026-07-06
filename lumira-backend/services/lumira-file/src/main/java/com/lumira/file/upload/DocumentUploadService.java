@@ -8,6 +8,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -143,7 +144,21 @@ public class DocumentUploadService {
         while (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
-        return StringUtils.hasText(normalized) ? normalized : null;
+        if (!StringUtils.hasText(normalized)) {
+            return null;
+        }
+        if (normalized.contains(":")) {
+            throw badRequest("鏂囦欢瀛樺偍璺緞鏃犳晥");
+        }
+        try {
+            Path subPath = Path.of(normalized).normalize();
+            if (subPath.isAbsolute() || subPath.startsWith("..")) {
+                throw badRequest("鏂囦欢瀛樺偍璺緞鏃犳晥");
+            }
+            return subPath.toString().replace('\\', '/');
+        } catch (InvalidPathException exception) {
+            throw badRequest("鏂囦欢瀛樺偍璺緞鏃犳晥");
+        }
     }
 
     private byte[] readBytes(MultipartFile file) {

@@ -5,14 +5,18 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
@@ -48,6 +52,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -76,6 +82,7 @@ public class SystemManagementAppService {
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
     private static final String BRANDING_WEBSITE_LOGO_URL_KEY = "branding.website-logo-url";
@@ -203,6 +210,8 @@ public class SystemManagementAppService {
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final SystemPluginViewService systemPluginViewService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
     private final SystemVerificationAppService systemVerificationAppService;
@@ -231,6 +240,8 @@ public class SystemManagementAppService {
             MyBatisQueryOperations jdbcTemplate,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
@@ -250,6 +261,8 @@ public class SystemManagementAppService {
         this.jdbcTemplate = jdbcTemplate;
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.systemPluginViewService = systemPluginViewService;
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.systemVerificationAppService = systemVerificationAppService;
@@ -292,6 +305,94 @@ public class SystemManagementAppService {
             MyBatisQueryOperations jdbcTemplate,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemPluginViewService systemPluginViewService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService,
+            FieldCryptoService fieldCryptoService
+    ) {
+        this(
+                jdbcTemplate,
+                userDomainService,
+                permissionSnapshotService,
+                null,
+                sessionAuthenticationService,
+                systemPluginViewService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                iamUserService,
+                systemUserManagementAppService,
+                systemRoleManagementAppService,
+                fieldCryptoService
+        );
+    }
+
+    public SystemManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemPluginViewService systemPluginViewService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService,
+            FieldCryptoService fieldCryptoService
+    ) {
+        this(
+                jdbcTemplate,
+                userDomainService,
+                permissionSnapshotService,
+                null,
+                systemPluginViewService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                iamUserService,
+                systemUserManagementAppService,
+                systemRoleManagementAppService,
+                fieldCryptoService
+        );
+    }
+
+    public SystemManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
@@ -310,6 +411,7 @@ public class SystemManagementAppService {
                 jdbcTemplate,
                 userDomainService,
                 permissionSnapshotService,
+                null,
                 systemPluginViewService,
                 onlineSessionManagementAppService,
                 systemVerificationAppService,
@@ -351,6 +453,7 @@ public class SystemManagementAppService {
                 jdbcTemplate,
                 userDomainService,
                 permissionSnapshotService,
+                null,
                 systemPluginViewService,
                 onlineSessionManagementAppService,
                 systemVerificationAppService,
@@ -390,6 +493,7 @@ public class SystemManagementAppService {
                 jdbcTemplate,
                 userDomainService,
                 permissionSnapshotService,
+                null,
                 systemPluginViewService,
                 onlineSessionManagementAppService,
                 systemVerificationAppService,
@@ -444,6 +548,7 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
+        requireAuthenticatedUser(currentUser);
         PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
         CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<PluginVO.PluginAvailabilityVO>> availablePluginsFuture = CompletableFuture.supplyAsync(
@@ -472,6 +577,7 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {
+        requireAuthenticatedUser(currentUser);
         PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
         CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(
@@ -520,48 +626,54 @@ public class SystemManagementAppService {
 
     @Transactional
     public CurrentUserVO updateCurrentUserProfile(CurrentUser currentUser, com.lumira.saas.modules.system.dto.ProfileDTO.BasicInfoUpdateRequest request) {
-        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        String nextMobile = normalizeNullableText(request.getMobile());
-        String nextEmail = normalizeNullableText(request.getEmail());
-        if (contactValueChanged(user.getMobile(), nextMobile)) {
+        SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
+        Long currentUserId = user.getId();
+        requireRequest(request, "Profile update request is required");
+        String requestedMobile = normalizeNullableText(request.getMobile());
+        String requestedEmail = normalizeNullableText(request.getEmail());
+        if (request.getMobile() != null && contactValueChanged(user.getMobile(), requestedMobile)) {
             if (!systemVerificationAppService.isContactBindAvailable("mobile")) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用短信验证码，暂不允许绑定手机号");
             }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "手机号绑定需要验证码，请在已绑定登录方式中修改");
         }
-        if (contactValueChanged(user.getEmail(), nextEmail)) {
+        if (request.getEmail() != null && contactValueChanged(user.getEmail(), requestedEmail)) {
             if (!systemVerificationAppService.isContactBindAvailable("email")) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
             }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱绑定需要验证码，请在已绑定登录方式中修改");
         }
-        jdbcTemplate.update(
+        String persistedMobile = normalizeNullableText(user.getMobile());
+        String persistedEmail = normalizeNullableText(user.getEmail());
+        int updated = jdbcTemplate.update(
                 """
                         update sys_user
                         set avatar_url = ?, nickname = ?, real_name = ?, mobile = ?, email = ?, birth_month = ?, gender = ?, region = ?,
-                            available_time = ?, id_card_number = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                            available_time = ?, id_card_number = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and uuid = ? and deleted = 0
                         """,
-                normalizeNullableText(request.getAvatarUrl()),
+                normalizeOptionalProfileUrl(request.getAvatarUrl(), "Avatar URL"),
                 normalizeNullableText(request.getNickname()),
                 normalizeNullableText(request.getRealName()),
-                nextMobile,
-                nextEmail,
+                persistedMobile,
+                persistedEmail,
                 normalizeNullableText(request.getBirthMonth()),
                 normalizeNullableText(request.getGender()),
                 normalizeNullableText(request.getRegion()),
                 normalizeNullableText(request.getAvailableTime()),
                 normalizeNullableText(request.getIdCardNumber()),
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                user.getId()
+                user.getId(),
+                currentUser.getUserUuid()
         );
+        requireSystemWrite(updated, "User profile changed, please retry");
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         if (request.getExtraProfileValues() != null) {
-            updateCurrentUserExtraProfileValues(currentUser, user.getId(), request.getExtraProfileValues());
+            updateCurrentUserExtraProfileValues(currentUser, user.getId(), currentUser.getUserUuid(), request.getExtraProfileValues());
         }
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
         return buildCurrentUser(currentUser);
     }
 
@@ -570,29 +682,35 @@ public class SystemManagementAppService {
         if (!StringUtils.hasText(avatarUrl)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "头像地址不能为空");
         }
-        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        String normalizedAvatarUrl = normalizeNullableText(avatarUrl);
-        jdbcTemplate.update(
+        SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
+        String normalizedAvatarUrl = normalizeOptionalProfileUrl(avatarUrl, "Avatar URL");
+        int updated = jdbcTemplate.update(
                 """
                         update sys_user
-                        set avatar_url = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                        set avatar_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and uuid = ? and deleted = 0
                         """,
                 normalizedAvatarUrl,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                user.getId()
+                user.getId(),
+                currentUser.getUserUuid()
         );
+        requireSystemWrite(updated, "User profile changed, please retry");
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "更新个人头像");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "更新个人头像");
         return buildCurrentUser(currentUser);
     }
 
     @Transactional
     public CurrentUserVO updateCurrentUserEmail(CurrentUser currentUser, ProfileDTO.EmailUpdateRequest request) {
-        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        requireRequest(request, "Email update request is required");
+        ProfileDTO.ContactBindRequest contactBindRequest = new ProfileDTO.ContactBindRequest();
+        contactBindRequest.setContactType("email");
+        contactBindRequest.setValue(request.getEmail());
+        contactBindRequest.setChallengeId(request.getChallengeId());
+        contactBindRequest.setVerificationCode(request.getVerificationCode());
         String email = normalizeContactValue("email", request.getEmail());
         if (!systemVerificationAppService.isContactBindAvailable("email")) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
@@ -600,38 +718,101 @@ public class SystemManagementAppService {
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
         }
-        systemVerificationAppService.completeContactBind(
-                currentUser.getUserId(),
-                "email",
-                request.getChallengeId(),
-                request.getVerificationCode(),
-                email
-        );
-        jdbcTemplate.update(
-                """
-                        update sys_user
-                        set email = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
-                        """,
-                email,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                user.getId()
-        );
-        userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        return buildCurrentUser(currentUser);
+        contactBindRequest.setValue(email);
+        return updateCurrentUserContactBinding(currentUser, contactBindRequest);
     }
 
     public SystemVO.VerificationChallengeVO startCurrentUserContactBindChallenge(CurrentUser currentUser, ProfileDTO.ContactBindChallengeRequest request) {
+        SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
+        requireRequest(request, "Contact bind challenge request is required");
         String contactType = normalizeContactType(request.getContactType());
         String value = normalizeContactValue(contactType, request.getValue());
-        return systemVerificationAppService.startContactBindChallenge(currentUser.getUserId(), contactType, value);
+        requireSensitiveContactBindPasswordWhenNoCurrentFactor(currentUser, user, request);
+        return systemVerificationAppService.startContactBindChallenge(
+                user.getId(),
+                currentUser.getUserUuid(),
+                contactType,
+                value,
+                request.getCurrentFactorCode(),
+                request.getCurrentChallengeId(),
+                request.getCurrentVerificationCode()
+        );
+    }
+
+    private void requireSensitiveContactBindPasswordWhenNoCurrentFactor(
+            CurrentUser currentUser,
+            SysUserEntity user,
+            ProfileDTO.ContactBindChallengeRequest request
+    ) {
+        if (StringUtils.hasText(request.getCurrentFactorCode())
+                || StringUtils.hasText(request.getCurrentChallengeId())
+                || StringUtils.hasText(request.getCurrentVerificationCode())) {
+            return;
+        }
+        if (hasAvailableSensitiveContactBindFactor(user, currentUser.getUserUuid())) {
+            return;
+        }
+        if (canTrustWechatFirstContactBind(currentUser, user)) {
+            return;
+        }
+        String currentPassword = normalizeNullableText(request.getCurrentPassword());
+        if (!StringUtils.hasText(currentPassword)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Please enter your current password before changing this sign-in method");
+        }
+        String trustedUserUuid = currentUser.getUserUuid();
+        String currentPasswordHash = iamUserService.findActiveCredential(user.getId(), trustedUserUuid, "PASSWORD")
+                .map(IamUserAccount.CredentialView::getCredentialSecret)
+                .orElse(null);
+        if (!StringUtils.hasText(currentPasswordHash)) {
+            currentPasswordHash = user.getPasswordHash();
+        }
+        if (!StringUtils.hasText(currentPasswordHash) || !passwordEncoder.matches(currentPassword, currentPasswordHash)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Current password is incorrect");
+        }
+    }
+
+    private boolean hasAvailableSensitiveContactBindFactor(SysUserEntity user, String trustedUserUuid) {
+        List<SystemVO.VerificationProviderVO> providers = systemVerificationAppService.listProviders(user.getId(), trustedUserUuid);
+        if (providers != null && providers.stream().anyMatch(provider ->
+                "totp".equalsIgnoreCase(provider.getFactorCode())
+                        && Boolean.TRUE.equals(provider.getBound())
+                        && Boolean.TRUE.equals(provider.getEnabled()))) {
+            return true;
+        }
+        if (systemVerificationAppService.isContactBindAvailable("mobile") && StringUtils.hasText(user.getMobile())) {
+            return true;
+        }
+        return systemVerificationAppService.isContactBindAvailable("email") && StringUtils.hasText(user.getEmail());
+    }
+
+    private boolean canTrustWechatFirstContactBind(CurrentUser currentUser, SysUserEntity user) {
+        if (currentUser == null
+                || user == null
+                || !"WECHAT".equalsIgnoreCase(normalizeNullableText(currentUser.getLoginType()))
+                || StringUtils.hasText(user.getMobile())
+                || StringUtils.hasText(user.getEmail())) {
+            return false;
+        }
+        Long wechatBindingMarker = jdbcTemplate.queryForObject(
+                """
+                        select 1
+                        from sys_user_wechat_binding
+                        where user_id = ?
+                          and user_uuid = ?
+                          and deleted = 0
+                        limit 1
+                        """,
+                Long.class,
+                user.getId(),
+                currentUser.getUserUuid()
+        );
+        return wechatBindingMarker != null;
     }
 
     @Transactional
     public CurrentUserVO updateCurrentUserContactBinding(CurrentUser currentUser, ProfileDTO.ContactBindRequest request) {
-        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
+        requireRequest(request, "Contact bind request is required");
         String contactType = normalizeContactType(request.getContactType());
         String value = normalizeContactValue(contactType, request.getValue());
 
@@ -643,6 +824,7 @@ public class SystemManagementAppService {
         }
         systemVerificationAppService.completeContactBind(
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 contactType,
                 request.getChallengeId(),
                 request.getVerificationCode(),
@@ -650,54 +832,61 @@ public class SystemManagementAppService {
         );
 
         if ("mobile".equals(contactType)) {
-            jdbcTemplate.update(
+            int updated = jdbcTemplate.update(
                     """
                             update sys_user
-                            set mobile = ?, updated_by = ?, updated_at = ?
-                            where id = ? and deleted = 0
+                            set mobile = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where id = ? and uuid = ? and deleted = 0
                             """,
                     value,
                     currentUser.getUserId(),
+                    currentUser.getUserUuid(),
                     LocalDateTime.now(),
-                    user.getId()
+                    user.getId(),
+                    currentUser.getUserUuid()
             );
+            requireSystemWrite(updated, "User profile changed, please retry");
         } else if ("email".equals(contactType)) {
-            jdbcTemplate.update(
+            int updated = jdbcTemplate.update(
                     """
                             update sys_user
-                            set email = ?, updated_by = ?, updated_at = ?
-                            where id = ? and deleted = 0
+                            set email = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where id = ? and uuid = ? and deleted = 0
                             """,
                     value,
                     currentUser.getUserId(),
+                    currentUser.getUserUuid(),
                     LocalDateTime.now(),
-                    user.getId()
+                    user.getId(),
+                    currentUser.getUserUuid()
             );
+            requireSystemWrite(updated, "User profile changed, please retry");
         } else {
             throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
         }
 
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
         return buildCurrentUser(currentUser);
     }
 
     @Transactional
     public CurrentUserVO updateCurrentUserLocale(CurrentUser currentUser, ProfileDTO.LocaleUpdateRequest request) {
-        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
+        requireRequest(request, "Locale update request is required");
         String locale = normalizeLocale(request.getLocale());
         jdbcTemplate.update(
                 """
                         insert into iam_user_profile (
-                            user_id, nickname, real_name, gender, birth_month, region, locale, timezone, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, 'Asia/Shanghai', 0)
+                            user_id, user_uuid, nickname, real_name, gender, birth_month, region, locale, timezone, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 'Asia/Shanghai', 0)
                         on duplicate key update
-                            locale = values(locale),
-                            deleted = 0,
-                            updated_at = current_timestamp
+                            locale = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(locale) else locale end,
+                            deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end,
+                            updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end
                         """,
                 user.getId(),
+                currentUser.getUserUuid(),
                 user.getNickname(),
                 user.getRealName(),
                 user.getGender(),
@@ -705,14 +894,16 @@ public class SystemManagementAppService {
                 user.getRegion(),
                 locale
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
         return buildCurrentUser(currentUser);
     }
 
     @Transactional
     public boolean updateCurrentUserPassword(CurrentUser currentUser, ProfileDTO.PasswordUpdateRequest request) {
-        SysUserEntity user = userDomainService.findById(currentUser.getUserId())
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Password update request is required");
+        }
+        SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
 
         String currentPassword = normalizeNullableText(request.getCurrentPassword());
         String newPassword = normalizeNullableText(request.getNewPassword());
@@ -724,7 +915,8 @@ public class SystemManagementAppService {
         if (!newPassword.equals(confirmPassword)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "两次输入的新密码不一致");
         }
-        String currentPasswordHash = iamUserService.findActiveCredential(user.getId(), "PASSWORD")
+        String trustedUserUuid = currentUser.getUserUuid();
+        String currentPasswordHash = iamUserService.findActiveCredential(user.getId(), trustedUserUuid, "PASSWORD")
                 .map(IamUserAccount.CredentialView::getCredentialSecret)
                 .orElse(null);
         boolean fallbackToSysUserPassword = !StringUtils.hasText(currentPasswordHash);
@@ -735,22 +927,27 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "当前密码不正确");
         }
         if (fallbackToSysUserPassword) {
-            iamUserService.upsertPasswordCredential(user.getId(), user.getPasswordHash());
+            iamUserService.upsertPasswordCredential(user.getId(), trustedUserUuid, user.getPasswordHash());
         }
 
         passwordPolicyService.validatePassword(newPassword);
         String encodedPassword = passwordEncoder.encode(newPassword);
-        jdbcTemplate.update(
-                "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+        int updated = jdbcTemplate.update(
+                "update sys_user set password_hash = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
                 encodedPassword,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                user.getId()
+                user.getId(),
+                currentUser.getUserUuid()
         );
-        iamUserService.upsertPasswordCredential(user.getId(), encodedPassword);
-        authSessionStore.markPasswordChangeResolved(currentUser.getUserId(), currentUser.getSessionId(), true);
-        authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getSessionId(), true);
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "User password changed, please retry");
+        }
+        iamUserService.upsertPasswordCredential(user.getId(), trustedUserUuid, encodedPassword);
+        authSessionStore.markPasswordChangeResolved(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getSessionId(), true);
+        authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getSessionId(), true);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
         return true;
     }
 
@@ -1071,6 +1268,8 @@ public class SystemManagementAppService {
 
     @Transactional
     public boolean reorderMenus(CurrentUser currentUser, SystemDTO.MenuReorderRequest request) {
+        Long operatorId = requirePermission(currentUser, "system:menu:update");
+        String operatorUuid = currentUser.getUserUuid();
         LocalDateTime now = LocalDateTime.now();
         if (request == null || CollectionUtils.isEmpty(request.getItems())) {
             return true;
@@ -1083,24 +1282,29 @@ public class SystemManagementAppService {
             if (item.getId() <= 0) {
                 continue;
             }
-            ensureEditableMenu(item.getId());
+            SystemVO.MenuVO menu = ensureEditableMenu(item.getId());
             ensureEditableParentMenu(item.getParentId());
-            jdbcTemplate.update(
+            int updated = jdbcTemplate.update(
                     """
                             update sys_menu
-                            set parent_id = ?, sort_no = ?, updated_by = ?, updated_at = ?
-                            where id = ? and deleted = 0
+                            set parent_id = ?, sort_no = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where id = ? and menu_code = ? and menu_type = ? and deleted = 0
                             """,
                     item.getParentId() == null ? 0L : item.getParentId(),
                     item.getSortNo(),
-                    currentUser.getUserId(),
+                    operatorId,
+                    operatorUuid,
                     now,
-                    item.getId()
+                    item.getId(),
+                    menu.getMenuCode(),
+                    menu.getMenuType()
             );
+            requireSystemWrite(updated, "Menu changed, please retry");
         }
 
         operationAuditService.log(
-                currentUser.getUserId(),
+                operatorId,
+                currentUser.getUserUuid(),
                 currentUser.getUsername(),
                 "menu",
                 "reorder",
@@ -1134,10 +1338,12 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.MenuVO createMenu(CurrentUser currentUser, SystemDTO.MenuUpsertRequest request) {
+        requirePermission(currentUser, "system:menu:create");
+        requireRequest(request, "Menu request is required");
         ensureEditableMenuRequest(request);
         ensureEditableParentMenu(request.getParentId());
-        Long menuId = insertMenu(null, request, currentUser.getUserId());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
+        Long menuId = insertMenu(null, request, currentUser.getUserId(), currentUser.getUserUuid());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
         bumpMenuTreeReadModelVersion("system.menu.create");
         invalidateMenuCountCache();
         return getMenu(currentUser, menuId);
@@ -1145,10 +1351,13 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.MenuVO updateMenu(CurrentUser currentUser, Long menuId, SystemDTO.MenuUpsertRequest request) {
-        ensureEditableMenu(menuId);
+        requirePermission(currentUser, "system:menu:update");
+        requirePositiveId(menuId, "Menu id is required");
+        requireRequest(request, "Menu request is required");
+        SystemVO.MenuVO existingMenu = ensureEditableMenu(menuId);
         ensureEditableParentMenu(request.getParentId());
-        insertMenu(menuId, request, currentUser.getUserId());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
+        insertMenu(menuId, existingMenu, request, currentUser.getUserId(), currentUser.getUserUuid());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
         bumpMenuTreeReadModelVersion("system.menu.update");
         invalidateMenuCountCache();
         return getMenu(currentUser, menuId);
@@ -1156,15 +1365,25 @@ public class SystemManagementAppService {
 
     @Transactional
     public boolean updateMenuStatus(CurrentUser currentUser, Long menuId, String status) {
-        ensureEditableMenu(menuId);
-        jdbcTemplate.update(
-                "update sys_menu set status = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+        requirePermission(currentUser, "system:menu:update");
+        requirePositiveId(menuId, "Menu id is required");
+        SystemVO.MenuVO menu = ensureEditableMenu(menuId);
+        int updated = jdbcTemplate.update(
+                """
+                        update sys_menu
+                        set status = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and menu_code = ? and menu_type = ? and deleted = 0
+                        """,
                 status,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                menuId
+                menuId,
+                menu.getMenuCode(),
+                menu.getMenuType()
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
+        requireSystemWrite(updated, "Menu changed, please retry");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
         bumpMenuTreeReadModelVersion("system.menu.status");
         invalidateMenuCountCache();
         return true;
@@ -1172,7 +1391,9 @@ public class SystemManagementAppService {
 
     @Transactional
     public boolean deleteMenu(CurrentUser currentUser, Long menuId) {
-        ensureEditableMenu(menuId);
+        requirePermission(currentUser, "system:menu:delete");
+        requirePositiveId(menuId, "Menu id is required");
+        SystemVO.MenuVO editableMenu = ensureEditableMenu(menuId);
         boolean hasChildMenu = jdbcTemplate.exists(
                 "select 1 from sys_menu where parent_id = ? and deleted = 0 limit 1",
                 menuId
@@ -1190,13 +1411,21 @@ public class SystemManagementAppService {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "菜单权限仍被角色引用，请先调整角色权限");
             }
         }
-        jdbcTemplate.update(
-                "update sys_menu set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+        int updated = jdbcTemplate.update(
+                """
+                        update sys_menu
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and menu_code = ? and menu_type = ? and deleted = 0
+                        """,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                menuId
+                menuId,
+                editableMenu.getMenuCode(),
+                editableMenu.getMenuType()
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
+        requireSystemWrite(updated, "Menu changed, please retry");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
         bumpMenuTreeReadModelVersion("system.menu.delete");
         permissionSnapshotService.invalidatePermissions();
         invalidateMenuCountCache();
@@ -1248,51 +1477,66 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.DictTypeVO createDictType(CurrentUser currentUser, SystemDTO.DictTypeUpsertRequest request) {
-        Long id = upsertDictType(null, request, currentUser.getUserId());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "create", "CREATE", "SUCCESS", "创建字典类型: " + request.getDictCode());
+        requirePermission(currentUser, "system:dict:create");
+        requireRequest(request, "Dict type request is required");
+        Long id = upsertDictType(null, request, currentUser.getUserId(), currentUser.getUserUuid());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "create", "CREATE", "SUCCESS", "创建字典类型: " + request.getDictCode());
         return getDictType(currentUser, id);
     }
 
     @Transactional
     public SystemVO.DictTypeVO updateDictType(CurrentUser currentUser, Long id, SystemDTO.DictTypeUpsertRequest request) {
-        upsertDictType(id, request, currentUser.getUserId());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "update", "UPDATE", "SUCCESS", "更新字典类型: " + request.getDictCode());
+        requirePermission(currentUser, "system:dict:update");
+        requirePositiveId(id, "Dict type id is required");
+        requireRequest(request, "Dict type request is required");
+        SystemVO.DictTypeVO existingType = getDictType(currentUser, id);
+        upsertDictType(id, existingType, request, currentUser.getUserId(), currentUser.getUserUuid());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "update", "UPDATE", "SUCCESS", "更新字典类型: " + request.getDictCode());
         return getDictType(currentUser, id);
     }
 
     @Transactional
     public boolean deleteDictType(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, "system:dict:delete");
+        requirePositiveId(id, "Dict type id is required");
         SystemVO.DictTypeVO type = getDictType(currentUser, id);
         if (isSystemDictType(type)) {
             throw new BizException(ErrorCode.FORBIDDEN, "系统字典不允许删除");
         }
+        int typeDeleted = jdbcTemplate.update(
+                """
+                        update sys_dict_type
+                        set deleted = 1,
+                            dict_code = concat(left(dict_code, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
+                            updated_by = ?,
+                            updated_by_uuid = ?,
+                            updated_at = ?
+                        where id = ? and dict_code = ? and is_system = ? and deleted = 0
+                        """,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                LocalDateTime.now(),
+                id,
+                type.getDictCode(),
+                type.getIsSystem()
+        );
+        requireSystemWrite(typeDeleted, "Dict type changed, please retry");
         jdbcTemplate.update(
                 """
                         update sys_dict_item
                         set deleted = 1,
                             item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
                             updated_by = ?,
+                            updated_by_uuid = ?,
                             updated_at = ?
                         where dict_type_id = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
                 id
         );
-        jdbcTemplate.update(
-                """
-                        update sys_dict_type
-                        set deleted = 1,
-                            dict_code = concat(left(dict_code, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
-                            updated_by = ?,
-                            updated_at = ?
-                        where id = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                id
-        );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
         return true;
     }
 
@@ -1356,37 +1600,53 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.DictItemVO createDictItem(CurrentUser currentUser, Long dictTypeId, SystemDTO.DictItemUpsertRequest request) {
+        requirePermission(currentUser, "system:dict:create");
+        requirePositiveId(dictTypeId, "Dict type id is required");
+        requireRequest(request, "Dict item request is required");
         getDictType(currentUser, dictTypeId);
-        Long id = upsertDictItem(null, dictTypeId, request, currentUser.getUserId());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "item-create", "CREATE", "SUCCESS", "创建字典项: " + request.getItemLabel());
+        Long id = upsertDictItem(null, dictTypeId, request, currentUser.getUserId(), currentUser.getUserUuid());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "item-create", "CREATE", "SUCCESS", "创建字典项: " + request.getItemLabel());
         return getDictItem(currentUser, dictTypeId, id);
     }
 
     @Transactional
     public SystemVO.DictItemVO updateDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId, SystemDTO.DictItemUpsertRequest request) {
-        upsertDictItem(itemId, dictTypeId, request, currentUser.getUserId());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
+        requirePermission(currentUser, "system:dict:update");
+        requirePositiveId(dictTypeId, "Dict type id is required");
+        requirePositiveId(itemId, "Dict item id is required");
+        requireRequest(request, "Dict item request is required");
+        SystemVO.DictItemVO existingItem = getDictItem(currentUser, dictTypeId, itemId);
+        upsertDictItem(itemId, dictTypeId, existingItem, request, currentUser.getUserId(), currentUser.getUserUuid());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
         return getDictItem(currentUser, dictTypeId, itemId);
     }
 
     @Transactional
     public boolean deleteDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
+        requirePermission(currentUser, "system:dict:delete");
+        requirePositiveId(dictTypeId, "Dict type id is required");
+        requirePositiveId(itemId, "Dict item id is required");
         SystemVO.DictItemVO item = getDictItem(currentUser, dictTypeId, itemId);
-        jdbcTemplate.update(
+        int deleted = jdbcTemplate.update(
                 """
                         update sys_dict_item
                         set deleted = 1,
                             item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
                             updated_by = ?,
+                            updated_by_uuid = ?,
                             updated_at = ?
-                        where id = ? and dict_type_id = ? and deleted = 0
+                        where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
                 itemId,
-                dictTypeId
+                dictTypeId,
+                item.getItemValue(),
+                item.getStatus()
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
+        requireSystemWrite(deleted, "Dict item changed, please retry");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
         return true;
     }
 
@@ -1454,22 +1714,35 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.ConfigVO updateConfig(CurrentUser currentUser, Long id, SystemDTO.ConfigUpsertRequest request) {
-        jdbcTemplate.update(
+        requirePermission(currentUser, "system:config:update");
+        requirePositiveId(id, "Config id is required");
+        requireRequest(request, "Config request is required");
+        SystemVO.ConfigVO currentConfig = getConfig(currentUser, id);
+        int updated = jdbcTemplate.update(
                 """
                         update sys_config
                         set config_key = ?, config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ?
+                          and config_key = ?
+                          and config_scope = 'PLATFORM'
+                          and is_system = 0
+                          and deleted = 0
                         """,
                 request.getConfigKey(),
                 request.getConfigName(),
-                resolveStoredConfigValue(id, request.getConfigKey(), request.getConfigValue()),
+                resolveStoredConfigValue(id, currentConfig.getConfigKey(), request.getConfigKey(), request.getConfigValue()),
                 request.getRemark(),
                 currentUser.getUserId(),
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                id
+                id,
+                currentConfig.getConfigKey()
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Config changed, please retry");
+        }
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
         return getConfig(currentUser, id);
     }
 
@@ -1502,21 +1775,26 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.ConfigVO createConfig(CurrentUser currentUser, SystemDTO.ConfigUpsertRequest request) {
-        jdbcTemplate.update(
+        requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Config request is required");
+        int inserted = jdbcTemplate.update(
                 """
                         insert into sys_config (
                             config_key, config_name, config_value, config_scope, is_system, remark,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)
                         """,
                 request.getConfigKey(),
                 request.getConfigName(),
                 encryptConfigValue(request.getConfigKey(), request.getConfigValue()),
                 request.getRemark(),
                 currentUser.getUserId(),
-                currentUser.getUserId()
+                currentUser.getUserUuid(),
+                currentUser.getUserId(),
+                currentUser.getUserUuid()
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
+        requireSystemWrite(inserted, "Config changed, please retry");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
         SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
                 """
                         select id, config_key as configKey, config_name as configName,
@@ -1533,20 +1811,27 @@ public class SystemManagementAppService {
         return config;
     }
 
-    private String resolveStoredConfigValue(Long id, String configKey, String requestedValue) {
-        if (isSensitiveConfigKey(configKey) && MASKED_CONFIG_VALUE.equals(requestedValue)) {
+    private String resolveStoredConfigValue(Long id, String currentConfigKey, String requestedConfigKey, String requestedValue) {
+        if (isSensitiveConfigKey(currentConfigKey)
+                && currentConfigKey.equals(requestedConfigKey)
+                && MASKED_CONFIG_VALUE.equals(requestedValue)) {
             String currentValue = jdbcTemplate.queryForObject(
                     """
                             select config_value
                             from sys_config
-                            where id = ? and deleted = 0
+                            where id = ?
+                              and config_key = ?
+                              and config_scope = 'PLATFORM'
+                              and is_system = 0
+                              and deleted = 0
                             """,
                     String.class,
-                    id
+                    id,
+                    currentConfigKey
             );
             return currentValue;
         }
-        return encryptConfigValue(configKey, requestedValue);
+        return encryptConfigValue(requestedConfigKey, requestedValue);
     }
 
     private String encryptConfigValue(String configKey, String configValue) {
@@ -1560,16 +1845,25 @@ public class SystemManagementAppService {
         return toSecuritySettingsVO(securitySettingsService.loadSettings());
     }
 
+    public SystemVO.SecuritySettingsVO getSecuritySettings(CurrentUser currentUser) {
+        requirePermission(currentUser, "system:config:view");
+        return getSecuritySettings();
+    }
+
     @Transactional
     public SystemVO.SecuritySettingsVO updateSecuritySettings(CurrentUser currentUser, SystemDTO.SecuritySettingsRequest request) {
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Security settings request is required");
         SecuritySettingsService.SecuritySettingsSnapshot updated = securitySettingsService.updateSettings(
-                toSnapshot(securitySettingsService.loadSettings(), request)
+                toSnapshot(securitySettingsService.loadSettings(), request),
+                currentUser
         );
         if (!updated.isAllowMultiDeviceLogin()) {
             onlineSessionManagementAppService.retainLatestSessionForEachUser();
         }
         operationAuditService.log(
-                currentUser.getUserId(),
+                operatorId,
+                currentUser.getUserUuid(),
                 currentUser.getUsername(),
                 "security",
                 "update",
@@ -1592,16 +1886,29 @@ public class SystemManagementAppService {
         return settings;
     }
 
+    public SystemVO.RuntimeAppearanceSettingsVO getPublicRuntimeAppearanceSettings() {
+        SystemVO.RuntimeAppearanceSettingsVO settings = new SystemVO.RuntimeAppearanceSettingsVO();
+        settings.setBrandingSettings(getPublicBrandingSettings());
+        settings.setWatermarkSettings(getPublicWatermarkSettings());
+        settings.setFloatingWindowSettings(getPublicFloatingWindowSettings());
+        return settings;
+    }
+
     public SystemVO.BrandingSettingsVO getPublicBrandingSettings() {
         return systemPlatformSettingsAppService.getPublicBrandingSettings();
     }
 
     public SystemVO.SecuritySettingsVO getPublicSecuritySettings() {
-        return toSecuritySettingsVO(securitySettingsService.loadSettingsFresh());
+        return toPublicSecuritySettingsVO(securitySettingsService.loadSettingsFresh());
     }
 
     public SystemVO.AgreementSettingsVO getAgreementSettings() {
         return systemPlatformSettingsAppService.getAgreementSettings();
+    }
+
+    public SystemVO.AgreementSettingsVO getAgreementSettings(CurrentUser currentUser) {
+        requireAuthenticatedUser(currentUser);
+        return getAgreementSettings();
     }
 
     public SystemVO.AgreementSettingsVO getPublicAgreementSettings() {
@@ -1623,6 +1930,10 @@ public class SystemManagementAppService {
         return systemPlatformSettingsAppService.getWatermarkSettings(currentUser);
     }
 
+    public SystemVO.WatermarkSettingsVO getPublicWatermarkSettings() {
+        return systemPlatformSettingsAppService.getPublicWatermarkSettings();
+    }
+
     @Transactional
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         return systemPlatformSettingsAppService.updateWatermarkSettings(currentUser, request);
@@ -1630,6 +1941,10 @@ public class SystemManagementAppService {
 
     public SystemVO.FloatingWindowSettingsVO getFloatingWindowSettings(CurrentUser currentUser) {
         return systemPlatformSettingsAppService.getFloatingWindowSettings(currentUser);
+    }
+
+    public SystemVO.FloatingWindowSettingsVO getPublicFloatingWindowSettings() {
+        return systemPlatformSettingsAppService.getPublicFloatingWindowSettings();
     }
 
     @Transactional
@@ -1650,6 +1965,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
+        requirePermission(currentUser, "system:audit:view");
         String baseSql = """
                 from audit_login_log l
                 where 1 = 1
@@ -1730,6 +2046,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
+        requirePermission(currentUser, "system:audit:view");
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -1766,6 +2083,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
+        requirePermission(currentUser, "system:audit:view");
         String baseSql = """
                 from audit_operation_log l
                 where l.deleted = 0
@@ -1811,6 +2129,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
+        requirePermission(currentUser, "system:audit:view");
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
@@ -1876,8 +2195,28 @@ public class SystemManagementAppService {
         return StringUtils.hasText(normalized) ? normalized : null;
     }
 
+    private String normalizeOptionalProfileUrl(String value, String fieldName) {
+        String normalized = normalizeNullableText(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("/") && !normalized.startsWith("//") && !normalized.contains("\\")) {
+            return normalized;
+        }
+        try {
+            URI uri = new URI(normalized);
+            String scheme = uri.getScheme();
+            if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+                return normalized;
+            }
+        } catch (URISyntaxException exception) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, fieldName + " is invalid");
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, fieldName + " is invalid");
+    }
+
     private boolean canViewSensitiveUserInfo(CurrentUser currentUser) {
-        return currentUser != null
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)
                 && currentUser.getPermissions() != null
                 && (currentUser.getPermissions().contains("*")
                 || currentUser.getPermissions().contains("system:user:sensitive:view"));
@@ -1900,13 +2239,14 @@ public class SystemManagementAppService {
     }
 
     private void decorateIamUserDetail(SystemVO.UserDetailVO detail, Long userId, boolean canViewSensitive) {
-        detail.setIdentities(iamUserService.listIdentities(userId).stream()
+        String userUuid = requireUserUuid(userId);
+        detail.setIdentities(iamUserService.listIdentities(userId, userUuid).stream()
                 .map(identity -> toUserIdentityVO(identity, canViewSensitive))
                 .toList());
-        detail.setRecentDevices(iamUserService.listRecentDevices(userId, 10).stream()
+        detail.setRecentDevices(iamUserService.listRecentDevices(userId, userUuid, 10).stream()
                 .map(device -> toUserDeviceVO(device, canViewSensitive))
                 .toList());
-        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId)
+        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId, userUuid)
                 .map(this::toUserSecuritySettingVO)
                 .orElse(null));
     }
@@ -2151,6 +2491,20 @@ public class SystemManagementAppService {
         return vo;
     }
 
+    private SystemVO.SecuritySettingsVO toPublicSecuritySettingsVO(SecuritySettingsService.SecuritySettingsSnapshot snapshot) {
+        SystemVO.SecuritySettingsVO vo = new SystemVO.SecuritySettingsVO();
+        vo.setCaptchaEnabled(snapshot.isCaptchaEnabled());
+        vo.setCaptchaType(defaultIfBlank(snapshot.getCaptchaType(), "IMAGE").trim().toUpperCase());
+        vo.setVerificationCodeExpireSeconds(snapshot.getVerificationCodeExpireSeconds());
+        vo.setVerificationCodeCooldownSeconds(snapshot.getVerificationCodeCooldownSeconds());
+        vo.setPasswordMinLength(snapshot.getPasswordMinLength());
+        vo.setPasswordRequireUppercase(snapshot.isPasswordRequireUppercase());
+        vo.setPasswordRequireLowercase(snapshot.isPasswordRequireLowercase());
+        vo.setPasswordRequireSpecialCharacter(snapshot.isPasswordRequireSpecialCharacter());
+        vo.setPasswordAllowConsecutiveCharacters(snapshot.isPasswordAllowConsecutiveCharacters());
+        return vo;
+    }
+
     private CurrentUserVO buildCurrentUser(CurrentUser currentUser) {
         return buildCurrentUser(currentUser, resolvePermissionSnapshot(currentUser));
     }
@@ -2162,8 +2516,9 @@ public class SystemManagementAppService {
                         "会话关联用户不存在: " + currentUser.getUserId(),
                         ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                 ));
-        CompletableFuture<Map<String, String>> extraProfileValuesFuture = CompletableFuture.supplyAsync(() -> loadExtraProfileValues(user.getId()), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<String> localeFuture = CompletableFuture.supplyAsync(() -> resolveLocale(user.getId()), BLOCKING_IO_EXECUTOR);
+        String userUuid = currentUser.getUserUuid();
+        CompletableFuture<Map<String, String>> extraProfileValuesFuture = CompletableFuture.supplyAsync(() -> loadExtraProfileValues(user.getId(), userUuid), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<String> localeFuture = CompletableFuture.supplyAsync(() -> resolveLocale(user.getId(), userUuid), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<CurrentUserVO.RoleOptionVO>> availableRolesFuture = CompletableFuture.supplyAsync(
                 () -> listAvailableRoles(currentUser.getUserId()),
                 BLOCKING_IO_EXECUTOR
@@ -2193,19 +2548,20 @@ public class SystemManagementAppService {
         return response;
     }
 
-    private void updateCurrentUserExtraProfileValues(CurrentUser currentUser, Long userId, Map<String, String> requestedValues) {
+    private void updateCurrentUserExtraProfileValues(CurrentUser currentUser, Long userId, String userUuid, Map<String, String> requestedValues) {
         Map<String, String> sanitizedValues = sanitizeExtraProfileValues(currentUser, requestedValues);
         try {
             String extraJson = OBJECT_MAPPER.writeValueAsString(Map.of(EXTRA_PROFILE_VALUES_KEY, sanitizedValues));
-            jdbcTemplate.update(
+            int updated = jdbcTemplate.update(
                     """
-                            insert into iam_user_profile (user_id, extra_json, deleted)
-                            values (?, ?, 0)
-                            on duplicate key update extra_json = json_merge_patch(coalesce(extra_json, json_object()), values(extra_json)),
-                                                    deleted = 0,
-                                                    updated_at = current_timestamp
+                            insert into iam_user_profile (user_id, user_uuid, extra_json, deleted)
+                            values (?, ?, ?, 0)
+                            on duplicate key update extra_json = case when user_id = values(user_id) and user_uuid = values(user_uuid) then json_merge_patch(coalesce(extra_json, json_object()), values(extra_json)) else extra_json end,
+                                                    deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end,
+                                                    updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end
                             """,
                     userId,
+                    userUuid,
                     extraJson
             );
         } catch (JsonProcessingException ex) {
@@ -2235,18 +2591,19 @@ public class SystemManagementAppService {
         return sanitizedValues;
     }
 
-    private Map<String, String> loadExtraProfileValues(Long userId) {
+    private Map<String, String> loadExtraProfileValues(Long userId, String userUuid) {
         String extraJson;
         try {
             extraJson = jdbcTemplate.queryForObject(
                     """
                             select extra_json
                             from iam_user_profile
-                            where user_id = ? and deleted = 0
+                            where user_id = ? and user_uuid = ? and deleted = 0
                             limit 1
                             """,
                     String.class,
-                    userId
+                    userId,
+                    userUuid
             );
         } catch (EmptyResultDataAccessException ignored) {
             return Map.of();
@@ -2279,6 +2636,56 @@ public class SystemManagementAppService {
         return resolvePermissionSnapshot(currentUser.getUserId(), currentUser.getSimulatedRoleId(), currentUser);
     }
 
+    private Long requireAuthenticatedUser(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User login is required");
+        }
+        return currentUser.getUserId();
+    }
+
+    private SysUserEntity requireAuthenticatedUserEntity(CurrentUser currentUser) {
+        Long userId = requireAuthenticatedUser(currentUser);
+        SysUserEntity user = userDomainService.findById(userId)
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+        if (!StringUtils.hasText(user.getUuid()) || !user.getUuid().trim().equals(currentUser.getUserUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity mismatch");
+        }
+        return user;
+    }
+
+    private Long requirePermission(CurrentUser currentUser, String permission) {
+        Long userId = requireAuthenticatedUser(currentUser);
+        if (!hasPermission(currentUser, permission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permission);
+        }
+        return userId;
+    }
+
+    private boolean hasPermission(CurrentUser currentUser, String permission) {
+        Set<String> permissions = currentUser == null ? null : currentUser.getPermissions();
+        return permissions != null && (permissions.contains("*") || permissions.contains(permission));
+    }
+
+    private void requireRequest(Object request, String message) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message);
+        }
+    }
+
+    private Long requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message);
+        }
+        return id;
+    }
+
+    private void requireSystemWrite(int updated, String message) {
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, message);
+        }
+    }
+
     private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long userId, Long simulatedRoleId, CurrentUser currentUser) {
         if (userId == null) {
             return PermissionSnapshotService.PermissionSnapshot.empty();
@@ -2290,11 +2697,103 @@ public class SystemManagementAppService {
         if (snapshotFromCurrentUser != null) {
             return snapshotFromCurrentUser;
         }
-        return permissionSnapshotService.loadSnapshot(userId);
+        if (currentUser == null || !StringUtils.hasText(currentUser.getUserUuid())) {
+            return PermissionSnapshotService.PermissionSnapshot.empty();
+        }
+        return permissionSnapshotService.loadSnapshot(userId, currentUser.getUserUuid());
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User login is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "User login is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "User login is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            currentUser.setUserId(userSnapshot.userId());
+            currentUser.setUserUuid(userSnapshot.userUuid().trim());
+            currentUser.setUsername(userSnapshot.username());
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User login is required");
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
     }
 
     private PermissionSnapshotService.PermissionSnapshot snapshotFromCurrentUser(CurrentUser currentUser) {
-        if (currentUser == null || !StringUtils.hasText(currentUser.getPermissionsVersion())) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)
+                || !StringUtils.hasText(currentUser.getPermissionsVersion())) {
             return null;
         }
         return new PermissionSnapshotService.PermissionSnapshot(
@@ -2313,6 +2812,7 @@ public class SystemManagementAppService {
         if (userId == null) {
             return List.of();
         }
+        String userUuid = requireUserUuid(userId);
         return jdbcTemplate.query(
                 """
                         select r.id as id,
@@ -2323,7 +2823,9 @@ public class SystemManagementAppService {
                         from sys_user_role ur
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
                         left join sys_role_permission rp on rp.role_id = r.id and rp.deleted = 0
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         group by r.id, r.role_code, r.role_name, r.role_type
                         order by r.id desc
                         """,
@@ -2336,12 +2838,13 @@ public class SystemManagementAppService {
                     role.setPermissionCount(rs.getInt("permissionCount"));
                     return role;
                 },
-                userId
+                userId,
+                userUuid
         );
     }
 
-    private String resolveLocale(Long userId) {
-        if (userId == null) {
+    private String resolveLocale(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
             return DEFAULT_LOCALE;
         }
         try {
@@ -2349,11 +2852,12 @@ public class SystemManagementAppService {
                     """
                             select locale
                             from iam_user_profile
-                            where user_id = ? and deleted = 0
+                            where user_id = ? and user_uuid = ? and deleted = 0
                             limit 1
                             """,
                     String.class,
-                    userId
+                    userId,
+                    userUuid
             );
             return normalizeLocale(locale);
         } catch (EmptyResultDataAccessException ex) {
@@ -2366,16 +2870,20 @@ public class SystemManagementAppService {
     }
 
     private List<String> listCurrentRoleNames(Long userId) {
+        String userUuid = requireUserUuid(userId);
         return jdbcTemplate.queryForList(
                 """
                         select r.role_name
                         from sys_user_role ur
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         order by r.id asc
                         """,
                 String.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
@@ -2396,29 +2904,37 @@ public class SystemManagementAppService {
     }
 
     private List<Long> listUserRoleIds(Long userId) {
+        String userUuid = requireUserUuid(userId);
         return jdbcTemplate.queryForList(
                 """
                         select ur.role_id
                         from sys_user_role ur
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         order by ur.role_id asc
                         """,
                 Long.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
     private List<String> listUserRoleNames(Long userId) {
+        String userUuid = requireUserUuid(userId);
         return jdbcTemplate.queryForList(
                 """
                         select r.role_name
                         from sys_user_role ur
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id = ? and ur.deleted = 0
+                        where ur.user_id = ?
+                          and ur.user_uuid = ?
+                          and ur.deleted = 0
                         order by r.id asc
                         """,
                 String.class,
-                userId
+                userId,
+                userUuid
         );
     }
 
@@ -2430,8 +2946,15 @@ public class SystemManagementAppService {
                 """
                         select ur.user_id as userId, r.role_name as roleName
                         from sys_user_role ur
+                        join sys_user u
+                          on u.id = ur.user_id
+                         and u.uuid = ur.user_uuid
+                         and u.deleted = 0
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id in (%s) and ur.deleted = 0
+                        where ur.user_id in (%s)
+                          and ur.user_uuid is not null
+                          and trim(ur.user_uuid) <> ''
+                          and ur.deleted = 0
                         order by ur.user_id asc, r.id asc
                         """.formatted(placeholders),
                 rs -> {
@@ -2473,7 +2996,7 @@ public class SystemManagementAppService {
         return user;
     }
 
-    private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId) {
+    private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId, String operatorUuid) {
         String normalizedStatus = normalizeUserStatus(request.getStatus());
         if (userId != null && isProtectedAdminAccount(userId, request.getUsername()) && "DISABLED".equals(normalizedStatus)) {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
@@ -2484,13 +3007,13 @@ public class SystemManagementAppService {
             }
             String password = request.getPassword();
             passwordPolicyService.validatePassword(password);
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into sys_user (
                                 uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
                                 available_time, id_card_number, status,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     UserUidGenerator.nextNumericUid(),
                     request.getUsername(),
@@ -2507,22 +3030,26 @@ public class SystemManagementAppService {
                     normalizeNullableText(request.getIdCardNumber()),
                     normalizedStatus,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requireSystemWrite(inserted, "User changed, please retry");
             Long createdUserId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
             userDomainService.findById(createdUserId).ifPresent(user -> {
                 iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
-                iamUserService.recordUserRegistered(user.getId(), "ADMIN_CREATE", null, null);
+                iamUserService.recordUserRegistered(user.getId(), user.getUuid(), "ADMIN_CREATE", null, null);
             });
             return createdUserId;
         }
-        jdbcTemplate.update(
+        String userUuid = requireUserUuid(userId);
+        int updated = jdbcTemplate.update(
                 """
                         update sys_user
                         set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?,
                             birth_month = ?, gender = ?, region = ?, available_time = ?, id_card_number = ?, status = ?,
-                            updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and uuid = ? and deleted = 0
                         """,
                 request.getUsername(),
                 normalizeNullableText(request.getMobile()),
@@ -2537,20 +3064,26 @@ public class SystemManagementAppService {
                 normalizeNullableText(request.getIdCardNumber()),
                 normalizedStatus,
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                userId
+                userId,
+                userUuid
         );
+        requireSystemWrite(updated, "User changed, please retry");
         if (StringUtils.hasText(request.getPassword())) {
             passwordPolicyService.validatePassword(request.getPassword());
             String encodedPassword = passwordEncoder.encode(request.getPassword());
-            jdbcTemplate.update(
-                    "update sys_user set password_hash = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+            int passwordUpdated = jdbcTemplate.update(
+                    "update sys_user set password_hash = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
                     encodedPassword,
                     operatorId,
+                    operatorUuid,
                     LocalDateTime.now(),
-                    userId
+                    userId,
+                    userUuid
             );
-            iamUserService.upsertPasswordCredential(userId, encodedPassword);
+            requireSystemWrite(passwordUpdated, "User changed, please retry");
+            iamUserService.upsertPasswordCredential(userId, userUuid, encodedPassword);
         }
         userDomainService.findById(userId).ifPresent(iamUserService::updateProfile);
         return userId;
@@ -2561,10 +3094,11 @@ public class SystemManagementAppService {
                 || (StringUtils.hasText(username) && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username));
     }
 
-    private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId) {
+    private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId, String operatorUuid) {
         if (CollectionUtils.isEmpty(roleIds)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "用户角色不能为空");
         }
+        String userUuid = requireUserUuid(userId);
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
         Long existingRoleCount = jdbcTemplate.queryForObject(
                 "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
@@ -2575,21 +3109,52 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
         }
         jdbcTemplate.update(
-                "delete from sys_user_role where user_id = ?",
-                userId
+                """
+                        update sys_user_role
+                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where user_id = ? and user_uuid = ? and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                LocalDateTime.now(),
+                userId,
+                userUuid
         );
         for (Long roleId : distinctRoleIds) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
-                            insert into sys_user_role (user_id, role_id, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, 0)
+                            insert into sys_user_role (user_id, user_uuid, role_id, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+                            select ?, ?, r.id, ?, ?, ?, ?, 0
+                            from sys_role r
+                            where r.id = ? and r.deleted = 0
                             """,
                     userId,
-                    roleId,
+                    userUuid,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid,
+                    roleId
             );
+            requireSystemWrite(inserted, "Role changed, please retry");
         }
+    }
+
+    private String requireUserUuid(Long userId) {
+        String userUuid;
+        try {
+            userUuid = jdbcTemplate.queryForObject(
+                    "select uuid from sys_user where id = ? and deleted = 0 limit 1",
+                    String.class,
+                    userId
+            );
+        } catch (EmptyResultDataAccessException exception) {
+            userUuid = null;
+        }
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "用户身份 UUID 缺失");
+        }
+        return userUuid.trim();
     }
 
     private String normalizeUserStatus(String status) {
@@ -2603,14 +3168,18 @@ public class SystemManagementAppService {
         return normalized;
     }
 
-    private Long insertMenu(Long menuId, SystemDTO.MenuUpsertRequest request, Long operatorId) {
+    private Long insertMenu(Long menuId, SystemDTO.MenuUpsertRequest request, Long operatorId, String operatorUuid) {
+        return insertMenu(menuId, null, request, operatorId, operatorUuid);
+    }
+
+    private Long insertMenu(Long menuId, SystemVO.MenuVO existingMenu, SystemDTO.MenuUpsertRequest request, Long operatorId, String operatorUuid) {
         if (menuId == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into sys_menu (
                                 parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no,
-                                permission_key, status, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                                permission_key, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     request.getParentId() == null ? 0L : request.getParentId(),
                     request.getMenuCode(),
@@ -2623,16 +3192,19 @@ public class SystemManagementAppService {
                     request.getPermissionKey(),
                     request.getStatus(),
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requireSystemWrite(inserted, "Menu changed, please retry");
             return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_menu
                         set parent_id = ?, menu_code = ?, menu_name = ?, menu_type = ?, path = ?, component = ?,
-                            icon = ?, sort_no = ?, permission_key = ?, status = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                            icon = ?, sort_no = ?, permission_key = ?, status = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and menu_code = ? and menu_type = ? and deleted = 0
                         """,
                 request.getParentId() == null ? 0L : request.getParentId(),
                 request.getMenuCode(),
@@ -2645,15 +3217,19 @@ public class SystemManagementAppService {
                 request.getPermissionKey(),
                 request.getStatus(),
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                menuId
+                menuId,
+                existingMenu == null ? null : existingMenu.getMenuCode(),
+                existingMenu == null ? null : existingMenu.getMenuType()
         );
+        requireSystemWrite(updated, "Menu changed, please retry");
         return menuId;
     }
 
-    private void ensureEditableMenu(Long menuId) {
+    private SystemVO.MenuVO ensureEditableMenu(Long menuId) {
         if (menuId == null || menuId <= 0) {
-            return;
+            return null;
         }
         SystemVO.MenuVO menu = queryOne(
                 """
@@ -2670,6 +3246,7 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
         }
         ensureEditableMenu(menu);
+        return menu;
     }
 
     private void ensureEditableMenu(SystemVO.MenuVO menu) {
@@ -2697,45 +3274,60 @@ public class SystemManagementAppService {
         }
     }
 
-    private Long upsertDictType(Long id, SystemDTO.DictTypeUpsertRequest request, Long operatorId) {
+    private Long upsertDictType(Long id, SystemDTO.DictTypeUpsertRequest request, Long operatorId, String operatorUuid) {
+        return upsertDictType(id, null, request, operatorId, operatorUuid);
+    }
+
+    private Long upsertDictType(Long id, SystemVO.DictTypeVO existingType, SystemDTO.DictTypeUpsertRequest request, Long operatorId, String operatorUuid) {
         if (id == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
-                            insert into sys_dict_type (dict_code, dict_name, status, is_system, remark, created_by, updated_by, deleted)
-                            values (?, ?, ?, 0, ?, ?, ?, 0)
+                            insert into sys_dict_type (dict_code, dict_name, status, is_system, remark, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+                            values (?, ?, ?, 0, ?, ?, ?, ?, ?, 0)
                             """,
                     request.getDictCode(),
                     request.getDictName(),
                     request.getStatus(),
                     request.getRemark(),
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requireSystemWrite(inserted, "Dict type changed, please retry");
             return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_dict_type
-                        set dict_code = ?, dict_name = ?, status = ?, remark = ?, updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
+                        set dict_code = ?, dict_name = ?, status = ?, remark = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and dict_code = ? and is_system = ? and deleted = 0
                         """,
                 request.getDictCode(),
                 request.getDictName(),
                 request.getStatus(),
                 request.getRemark(),
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                id
+                id,
+                existingType == null ? null : existingType.getDictCode(),
+                existingType == null ? null : existingType.getIsSystem()
         );
+        requireSystemWrite(updated, "Dict type changed, please retry");
         return id;
     }
 
-    private Long upsertDictItem(Long id, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId) {
+    private Long upsertDictItem(Long id, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId, String operatorUuid) {
+        return upsertDictItem(id, dictTypeId, null, request, operatorId, operatorUuid);
+    }
+
+    private Long upsertDictItem(Long id, Long dictTypeId, SystemVO.DictItemVO existingItem, SystemDTO.DictItemUpsertRequest request, Long operatorId, String operatorUuid) {
         if (id == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
-                            insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
                     dictTypeId,
                     request.getItemLabel(),
@@ -2744,15 +3336,18 @@ public class SystemManagementAppService {
                     request.getStatus(),
                     request.getRemark(),
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            requireSystemWrite(inserted, "Dict item changed, please retry");
             return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_dict_item
-                        set item_label = ?, item_value = ?, sort_no = ?, status = ?, remark = ?, updated_by = ?, updated_at = ?
-                        where id = ? and dict_type_id = ? and deleted = 0
+                        set item_label = ?, item_value = ?, sort_no = ?, status = ?, remark = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0
                         """,
                 request.getItemLabel(),
                 request.getItemValue(),
@@ -2760,10 +3355,14 @@ public class SystemManagementAppService {
                 request.getStatus(),
                 request.getRemark(),
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
                 id,
-                dictTypeId
+                dictTypeId,
+                existingItem == null ? null : existingItem.getItemValue(),
+                existingItem == null ? null : existingItem.getStatus()
         );
+        requireSystemWrite(updated, "Dict item changed, please retry");
         return id;
     }
 

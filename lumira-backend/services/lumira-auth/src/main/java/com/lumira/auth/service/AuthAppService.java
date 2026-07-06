@@ -2,8 +2,10 @@ package com.lumira.auth.service;
 
 import com.lumira.api.auth.*;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.CurrentUserRoleOptionDTO;
 import com.lumira.api.system.LoginAuditRecordRequestDTO;
 import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.PasswordLoginVerificationDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
@@ -13,8 +15,8 @@ import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ReadModelVersionCache;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.InitialAdminPassword;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
 import com.lumira.common.security.SecurityContextFacade;
@@ -44,6 +46,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 @Service
 public class AuthAppService {
@@ -68,6 +71,8 @@ public class AuthAppService {
     private static final String GLOBAL_PLATFORM_RUNTIME_APPEARANCE_READ_MODEL_VERSION_CACHE_KEY = "platform/runtime-appearance";
     private static final String GLOBAL_PLATFORM_MENU_TREE_READ_MODEL_VERSION_CACHE_KEY = "platform/menu-tree";
     private static final String GLOBAL_PLUGIN_BOOTSTRAP_READ_MODEL_VERSION_CACHE_KEY = "plugin/bootstrap";
+    private static final int MAX_SESSION_ID_LENGTH = 128;
+    private static final Pattern SAFE_SESSION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
     private static final long CURRENT_USER_CACHE_TTL_MILLIS = 60_000L;
     private static final long BOOTSTRAP_READ_MODEL_VERSION_CACHE_TTL_MILLIS = 2_000L;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
@@ -86,7 +91,7 @@ public class AuthAppService {
     private final AuthPostLoginBootstrapProvider authPostLoginBootstrapProvider;
     private final AuthReadModelVersionProvider authReadModelVersionProvider;
     private final ReadModelVersionCache readModelVersionCache;
-    private final Cache<Long, PermissionSnapshotVersionCache> permissionSnapshotVersionCache;
+    private final Cache<PermissionSnapshotCacheKey, PermissionSnapshotVersionCache> permissionSnapshotVersionCache;
     private final LongAdder permissionSnapshotVersionCacheHits = new LongAdder();
     private final LongAdder permissionSnapshotVersionCacheMisses = new LongAdder();
     private final LongAdder permissionSnapshotVersionCacheRefreshes = new LongAdder();
@@ -304,29 +309,32 @@ public class AuthAppService {
             if (securitySettingsService.isCaptchaEnabled() || hasCaptchaEvidence(request)) {
                 if (!hasCaptchaEvidence(request)) {
                     loginProtectionService.recordFailure(account, loginIp);
-                    recordLoginAudit(null, account, "CAPTCHA", "FAIL", "CAPTCHA_REQUIRED", loginIp, userAgent);
+                    recordLoginAudit(null, null, account, "CAPTCHA", "FAIL", "CAPTCHA_REQUIRED", loginIp, userAgent);
                     throw new BizException(ErrorCode.CAPTCHA_INVALID, "captcha required");
                 }
                 boolean captchaValid = Boolean.TRUE.equals(systemInternalApi.validateCaptcha(new com.lumira.api.system.CaptchaValidationRequestDTO(request.captchaId(), request.captchaCode(), request.captchaProof())));
                 if (!captchaValid) {
                     loginProtectionService.recordFailure(account, loginIp);
-                    recordLoginAudit(null, account, "CAPTCHA", "FAIL", "CAPTCHA_INVALID", loginIp, userAgent);
+                    recordLoginAudit(null, null, account, "CAPTCHA", "FAIL", "CAPTCHA_INVALID", loginIp, userAgent);
                     throw new BizException(ErrorCode.CAPTCHA_INVALID, "captcha invalid");
                 }
             }
 
-            CompletableFuture<SystemUserSnapshotDTO> userFuture = supplyBlockingIo(() -> systemInternalApi.findLoginUser(account));
+            String loginPassword = resolveLoginPassword(request, httpServletRequest);
+            CompletableFuture<PasswordLoginVerificationDTO> verificationFuture =
+                    supplyBlockingIo(() -> systemInternalApi.verifyPasswordLogin(account, loginPassword));
             CompletableFuture<LoginCapabilitiesDTO> loginCapabilitiesFuture = supplyBlockingIo(this::loadLoginCapabilities);
-            SystemUserSnapshotDTO user = userFuture.join();
+            PasswordLoginVerificationDTO verification = verificationFuture.join();
+            SystemUserSnapshotDTO user = verification == null ? null : verification.user();
             LoginCapabilitiesDTO loginCapabilities = loginCapabilitiesFuture.join();
             if (loginCapabilities != null && !loginCapabilities.passwordLoginAvailable()) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(null, account, "PASSWORD", "FAIL", "账号密码登录未启用", loginIp, userAgent);
-                throw new BizException(ErrorCode.FORBIDDEN, "账号密码登录未启用");
+                recordLoginAudit(null, null, account, "PASSWORD", "FAIL", "PASSWORD_LOGIN_DISABLED", loginIp, userAgent);
+                throw new BizException(ErrorCode.FORBIDDEN, "Password login is disabled");
             }
             if (user == null) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(null, account, "PASSWORD", "FAIL", "ACCOUNT_NOT_FOUND", loginIp, userAgent);
+                recordLoginAudit(null, null, account, "PASSWORD", "FAIL", "ACCOUNT_NOT_FOUND", loginIp, userAgent);
                 throw loginFailed();
             }
             if (!"ENABLED".equalsIgnoreCase(user.status())) {
@@ -334,19 +342,17 @@ public class AuthAppService {
                 recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "FAIL", "ACCOUNT_DISABLED", loginIp, userAgent);
                 throw loginFailed();
             }
-
-            String loginPassword = resolveLoginPassword(request, httpServletRequest);
-            if (!passwordEncoder.matches(loginPassword, user.passwordHash())) {
+            if (verification == null || !Boolean.TRUE.equals(verification.passwordMatched())) {
                 loginProtectionService.recordFailure(account, loginIp);
                 recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
                 throw loginFailed();
             }
-            boolean requiresPasswordChange = requiresInitialAdminPasswordChange(account, user, loginPassword);
+            boolean requiresPasswordChange = Boolean.TRUE.equals(verification.requiresPasswordChange());
 
             CompletableFuture<List<LoginResponseDTO.SecondFactorOptionDTO>> secondFactorOptionsFuture =
-                    supplyBlockingIo(() -> loadLoginSecondFactorOptions(user.userId()));
+                    supplyBlockingIo(() -> loadLoginSecondFactorOptions(user.userId(), user.userUuid()));
             CompletableFuture<PermissionSnapshotDTO> snapshotFuture =
-                    supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(user.userId()));
+                    supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(user.userId(), user.userUuid()));
             List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = secondFactorOptionsFuture.join();
             if (secondFactorOptions != null && !secondFactorOptions.isEmpty()) {
                 LoginResponseDTO response = new LoginResponseDTO();
@@ -357,9 +363,9 @@ public class AuthAppService {
             }
 
             PermissionSnapshotDTO snapshot = snapshotFuture.join();
-            cachePermissionSnapshotVersion(user.userId(), snapshot);
+            cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
 
-            AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresPasswordChange);
+            AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresPasswordChange, "PASSWORD");
             saveSessionWithMultiDevicePolicy(session);
             loginProtectionService.clearFailureState(account, loginIp);
             recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
@@ -377,11 +383,6 @@ public class AuthAppService {
         return loginEncryptionService.decryptPassword(request.password());
     }
 
-    private boolean requiresInitialAdminPasswordChange(String account, SystemUserSnapshotDTO user, String loginPassword) {
-        boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
-        return adminAccount && passwordEncoder.matches(InitialAdminPassword.DEFAULT_PASSWORD, user.passwordHash());
-    }
-
     private BizException loginFailed() {
         return new BizException(
                 ErrorCode.LOGIN_FAILED,
@@ -397,20 +398,78 @@ public class AuthAppService {
     }
 
     private boolean requiresInitialAdminPasswordChange(SystemUserSnapshotDTO user) {
-        return user != null
-                && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username())
-                && passwordEncoder.matches(InitialAdminPassword.DEFAULT_PASSWORD, user.passwordHash());
+        if (user == null || !DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username())) {
+            return false;
+        }
+        if (user.userId() == null || !StringUtils.hasText(user.userUuid())) {
+            return true;
+        }
+        return Boolean.TRUE.equals(systemInternalApi.requiresInitialPasswordChange(user.userId(), user.userUuid()));
     }
 
     public LoginCodeChallengeDTO loginCodeChallenge(LoginCodeChallengeRequest request, HttpServletRequest httpServletRequest) {
-        return systemInternalApi.loginCodeChallenge(request.account(), request.loginType());
-    }
-    public LoginResponseDTO completeLoginCodeLogin(LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
-        var verification = systemInternalApi.completeLoginCodeLogin(request);
-        if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "验证码校验失败" : verification.message());
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String challengeScope = request.account();
+        loginProtectionService.ensureCanAttempt(challengeScope, loginIp);
+        loginProtectionService.recordAttempt(challengeScope, loginIp);
+        try {
+            return systemInternalApi.loginCodeChallenge(request.account(), request.loginType());
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(challengeScope, loginIp);
+            throw exception;
         }
-        return loginVerifiedUser(verification.userId(), httpServletRequest, "LOGIN_CODE");
+    }
+
+    public LoginCodeChallengeDTO passwordResetChallenge(PasswordResetChallengeRequest request, HttpServletRequest httpServletRequest) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String challengeScope = request.contact();
+        loginProtectionService.ensureCanAttempt(challengeScope, loginIp);
+        loginProtectionService.recordAttempt(challengeScope, loginIp);
+        try {
+            return systemInternalApi.passwordResetChallenge(request);
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(challengeScope, loginIp);
+            throw exception;
+        }
+    }
+
+    public Boolean completePasswordReset(PasswordResetCompleteRequest request, HttpServletRequest httpServletRequest) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String challengeScope = request.challengeId();
+        loginProtectionService.ensureCanAttempt(challengeScope, loginIp);
+        loginProtectionService.recordAttempt(challengeScope, loginIp);
+        try {
+            Boolean completed = systemInternalApi.completePasswordReset(request);
+            if (Boolean.TRUE.equals(completed)) {
+                loginProtectionService.clearFailureState(challengeScope, loginIp);
+            }
+            return completed;
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(challengeScope, loginIp);
+            throw exception;
+        }
+    }
+
+    public LoginResponseDTO completeLoginCodeLogin(LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
+        return completeLoginCodeLoginProtected(request, httpServletRequest);
+    }
+
+    private LoginResponseDTO completeLoginCodeLoginProtected(LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String challengeScope = request.challengeId();
+        loginProtectionService.ensureCanAttempt(challengeScope, loginIp);
+        loginProtectionService.recordAttempt(challengeScope, loginIp);
+        try {
+            var verification = systemInternalApi.completeLoginCodeLogin(request);
+            if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
+                throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "Verification failed" : verification.message());
+            }
+            loginProtectionService.clearFailureState(challengeScope, loginIp);
+            return loginVerifiedUser(verification.userId(), verification.userUuid(), httpServletRequest, "LOGIN_CODE");
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(challengeScope, loginIp);
+            throw exception;
+        }
     }
 
     public WechatAuthorizeUrlDTO wechatAuthorizeUrl() {
@@ -420,20 +479,30 @@ public class AuthAppService {
     public LoginResponseDTO wechatLogin(WechatLoginRequest request, HttpServletRequest httpServletRequest) {
         WechatLoginService.WechatOAuthUser wechatUser = wechatLoginService.exchangeCode(request.code(), request.state());
         SystemUserSnapshotDTO user = systemInternalApi.resolveWechatLoginUser(
-                new WechatLoginUserRequestDTO(wechatUser.openid(), wechatUser.unionid(), wechatUser.scope())
+                new WechatLoginUserRequestDTO(
+                        wechatUser.openid(),
+                        wechatUser.unionid(),
+                        wechatUser.scope(),
+                        wechatUser.nickname(),
+                        wechatUser.avatarUrl(),
+                        wechatUser.country(),
+                        wechatUser.province(),
+                        wechatUser.city(),
+                        wechatUser.sex()
+                )
         );
         if (user == null) {
-            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "微信登录用户创建失败");
+            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "Wechat login user creation failed");
         }
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
-            throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
+            throw new BizException(ErrorCode.ACCOUNT_DISABLED, "Login failed: account is disabled: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
-        CompletableFuture<PermissionSnapshotDTO> snapshotFuture = supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(user.userId()));
+        CompletableFuture<PermissionSnapshotDTO> snapshotFuture = supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(user.userId(), user.userUuid()));
         CompletableFuture<List<LoginResponseDTO.SecondFactorOptionDTO>> secondFactorOptionsFuture = supplyBlockingIo(
-                () -> loadLoginSecondFactorOptions(user.userId())
+                () -> loadLoginSecondFactorOptions(user.userId(), user.userUuid())
         );
         PermissionSnapshotDTO snapshot = snapshotFuture.join();
-        cachePermissionSnapshotVersion(user.userId(), snapshot);
+        cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
         List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = secondFactorOptionsFuture.join();
@@ -442,45 +511,70 @@ public class AuthAppService {
             return toPendingSecondFactorResponse(user, snapshot, secondFactorOptions);
         }
 
-        AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
+        AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user), "WECHAT");
         saveSessionWithMultiDevicePolicy(session);
         recordLoginAudit(user.userId(), user.userUuid(), user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
     public LoginResponseDTO completeSecondFactorLogin(SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
-        var verification = systemInternalApi.completeSecondFactorLogin(request);
-        if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "二次验证失败" : verification.message());
+        return completeSecondFactorLoginProtected(request, httpServletRequest);
+    }
+
+    private LoginResponseDTO completeSecondFactorLoginProtected(SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
+        String loginIp = clientIpResolver.resolve(httpServletRequest);
+        String challengeScope = request.challengeId();
+        loginProtectionService.ensureCanAttempt(challengeScope, loginIp);
+        loginProtectionService.recordAttempt(challengeScope, loginIp);
+        try {
+            var verification = systemInternalApi.completeSecondFactorLogin(request);
+            if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
+                throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "Second-factor verification failed" : verification.message());
+            }
+            loginProtectionService.clearFailureState(challengeScope, loginIp);
+            return loginVerifiedUser(verification.userId(), verification.userUuid(), httpServletRequest, "SECOND_FACTOR");
+        } catch (RuntimeException exception) {
+            loginProtectionService.recordFailure(challengeScope, loginIp);
+            throw exception;
         }
-        return loginVerifiedUser(verification.userId(), httpServletRequest, "SECOND_FACTOR");
     }
 
     public void logout(HttpServletRequest httpServletRequest) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
         authSessionStore.findBySessionId(currentUser.getSessionId()).ifPresent(session -> {
             invalidateAuthBootstrapCache(session);
             AuthSessionAggregate sessionAggregate = new AuthSessionAggregate(
                     session.getSessionId(),
                     session.getUserId(),
+                    session.getUserUuid(),
                     session.getLastActivityAt()
             );
             sessionAggregate.revoke("logout");
             authSessionStore.remove(session, true);
         });
     }
+
+    public boolean keepalive() {
+        requireAuthenticatedCurrentUser();
+        return true;
+    }
+
     public RefreshTokenResponseDTO refreshToken(RefreshTokenRequest request) {
         long start = System.nanoTime();
         try {
-            JwtTokenClaims claims = jwtTokenService.parseToken(request.refreshToken());
+            if (request == null || !StringUtils.hasText(request.refreshToken())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
+            }
+            JwtTokenClaims claims = jwtTokenService.parseToken(request.refreshToken().trim());
             if (claims.getTokenType() != JwtTokenType.REFRESH) {
-                throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token无效");
+                throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
             }
             AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
+                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
             validateRefreshTokenClaims(claims, session);
             AuthSessionAggregate sessionAggregate = new AuthSessionAggregate(
                     session.getSessionId(),
                     session.getUserId(),
+                    session.getUserUuid(),
                     session.getLastActivityAt()
             );
             sessionAggregate.touch(Instant.now());
@@ -500,10 +594,23 @@ public class AuthAppService {
     }
 
     private void validateRefreshTokenClaims(JwtTokenClaims claims, AuthSession session) {
+        String claimUserUuid = normalizeText(claims.getUserUuid());
+        String sessionUserUuid = normalizeText(session.getUserUuid());
+        String claimPermissionsVersion = normalizeText(claims.getPermissionsVersion());
+        String sessionPermissionsVersion = normalizeText(session.getPermissionsVersion());
+        Long claimSimulatedRoleId = normalizeSimulatedRoleId(claims.getSimulatedRoleId());
+        Long sessionSimulatedRoleId = normalizeSimulatedRoleId(session.getSimulatedRoleId());
         if (!StringUtils.hasText(claims.getTokenId())
+                || !StringUtils.hasText(claimUserUuid)
+                || !StringUtils.hasText(sessionUserUuid)
+                || !StringUtils.hasText(claimPermissionsVersion)
+                || !StringUtils.hasText(sessionPermissionsVersion)
                 || !Objects.equals(claims.getTokenId(), session.getRefreshTokenId())
                 || !Objects.equals(claims.getUserId(), session.getUserId())
-                || !Objects.equals(claims.getSessionVersion(), session.getSessionVersion())) {
+                || !Objects.equals(claimUserUuid, sessionUserUuid)
+                || !Objects.equals(claimSimulatedRoleId, sessionSimulatedRoleId)
+                || !Objects.equals(claims.getSessionVersion(), session.getSessionVersion())
+                || !Objects.equals(claimPermissionsVersion, sessionPermissionsVersion)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
         }
     }
@@ -511,13 +618,13 @@ public class AuthAppService {
     public CurrentUserDTO currentUser() {
         long start = System.nanoTime();
         try {
-            CurrentUser currentUser = securityContextFacade.getCurrentUser();
+            CurrentUser currentUser = requireAuthenticatedCurrentUser();
             CurrentUserDTO cached = getCachedCurrentUser(currentUser);
             if (cached != null) {
                 return cached;
             }
             AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
+                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
             CurrentUserDTO resolved = resolveCurrentUserFromSession(session);
             putCachedCurrentUser(session, resolved);
             return resolved;
@@ -527,17 +634,106 @@ public class AuthAppService {
     }
 
     public CurrentUserDTO currentUserBySessionId(String sessionId) {
-        AuthSession session = authSessionStore.findBySessionId(sessionId)
-                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
+        String normalizedSessionId = requireSessionId(sessionId);
+        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
+                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
         return resolveCurrentUserFromSession(session);
+    }
+
+    public CurrentUserDTO currentUserBySessionId(String sessionId, Long expectedUserId, Integer expectedSessionVersion) {
+        if (System.nanoTime() >= 0L) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Full session identity snapshot is required");
+        }
+        String normalizedSessionId = requireSessionId(sessionId);
+        Long normalizedExpectedUserId = normalizeExpectedUserId(expectedUserId);
+        Integer normalizedExpectedSessionVersion = normalizeExpectedSessionVersion(expectedSessionVersion);
+        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
+                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+        if (normalizedExpectedUserId != null && !Objects.equals(normalizedExpectedUserId, session.getUserId())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Token user does not match session");
+        }
+        if (normalizedExpectedSessionVersion != null && !Objects.equals(normalizedExpectedSessionVersion, session.getSessionVersion())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session version does not match");
+        }
+        return resolveCurrentUserFromSession(session);
+    }
+
+    public CurrentUserDTO currentUserBySessionId(
+            String sessionId,
+            Long expectedUserId,
+            String expectedUserUuid,
+            Integer expectedSessionVersion,
+            String expectedPermissionsVersion,
+            Long expectedSimulatedRoleId
+    ) {
+        String normalizedSessionId = requireSessionId(sessionId);
+        Long normalizedExpectedUserId = requireExpectedUserId(expectedUserId);
+        String normalizedExpectedUserUuid = requireExpectedText(expectedUserUuid, "Expected user uuid is required");
+        Integer normalizedExpectedSessionVersion = requireExpectedSessionVersion(expectedSessionVersion);
+        String normalizedExpectedPermissionsVersion = requireExpectedText(expectedPermissionsVersion, "Expected permissions version is required");
+        Long normalizedExpectedSimulatedRoleId = normalizeSimulatedRoleId(expectedSimulatedRoleId);
+        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
+                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session expired"));
+        if (!Objects.equals(normalizedExpectedUserId, session.getUserId())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session user mismatch");
+        }
+        if (!normalizedExpectedUserUuid.equals(session.getUserUuid())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session user mismatch");
+        }
+        if (!Objects.equals(normalizedExpectedSessionVersion, session.getSessionVersion())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session version mismatch");
+        }
+        if (!Objects.equals(normalizedExpectedSimulatedRoleId, normalizeSimulatedRoleId(session.getSimulatedRoleId()))) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session simulated role mismatch");
+        }
+        CurrentUserDTO currentUser = resolveCurrentUserFromSession(session);
+        if (!normalizedExpectedPermissionsVersion.equals(currentUser.permissionsVersion())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session permissions mismatch");
+        }
+        return currentUser;
+    }
+
+    public SimulatedRoleSwitchResponseDTO switchSimulatedRole(SimulatedRoleSwitchRequest request) {
+        long start = System.nanoTime();
+        try {
+            CurrentUser currentUser = requireAuthenticatedCurrentUser();
+            AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
+                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+            SystemUserSnapshotDTO user = requireTrustedActiveSessionProfile(session);
+            Long requestedRoleId = normalizeSimulatedRoleId(request == null ? null : request.roleId());
+            PermissionSnapshotDTO snapshot = requestedRoleId == null
+                    ? systemInternalApi.permissionSnapshot(user.userId(), user.userUuid())
+                    : systemInternalApi.simulatedRolePermissionSnapshot(user.userId(), user.userUuid(), requestedRoleId);
+            String previousCurrentUserCacheKey = currentUserCacheKey(session);
+            session.setSimulatedRoleId(requestedRoleId);
+            session.setLastActivityAt(Instant.now());
+            session.setRefreshTokenId(UUID.randomUUID().toString());
+            hydrateSessionPermissionSnapshotOnly(session, snapshot);
+            authSessionStore.save(session, true);
+            if (StringUtils.hasText(previousCurrentUserCacheKey)) {
+                currentUserCache.invalidate(previousCurrentUserCacheKey);
+            }
+            invalidateAuthBootstrapCache(session);
+            CurrentUserDTO resolved = currentUserFromProfileAndSession(user, session);
+            putCachedCurrentUser(session, resolved);
+            return new SimulatedRoleSwitchResponseDTO(
+                    resolved,
+                    jwtTokenService.generateAccessToken(session),
+                    jwtTokenService.generateRefreshToken(session, session.getRefreshTokenId()),
+                    "Bearer",
+                    jwtTokenService.getAccessTokenExpireSeconds()
+            );
+        } finally {
+            stopAuthTimer(authCurrentUserTimer, start);
+        }
     }
 
     public AuthBootstrapDTO bootstrap() {
         long start = System.nanoTime();
         try {
-            CurrentUser currentUser = securityContextFacade.getCurrentUser();
+            CurrentUser currentUser = requireAuthenticatedCurrentUser();
             AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
+                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
 
             reconcileInitialPasswordState(session);
             ResolvedAuthBootstrapCacheKey authBootstrapCacheKey = resolveAuthBootstrapCacheKey(session);
@@ -569,13 +765,14 @@ public class AuthAppService {
     private CurrentUserDTO resolveCurrentUserFromSession(AuthSession session) {
         reconcileInitialPasswordState(session);
         if (hasCurrentUserSnapshot(session) && refreshPermissionSnapshotVersionIfNeeded(session)) {
-            return currentUserFromSession(session);
+            return currentUserFromProfileAndSession(requireTrustedActiveSessionProfile(session), session);
         }
-        CurrentUserSessionHydration hydration = loadCurrentUserSessionHydration(session.getUserId());
+        CurrentUserSessionHydration hydration = loadCurrentUserSessionHydration(session);
         SystemUserSnapshotDTO user = hydration.user();
         if (user == null) {
-            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "会话用户已不存在");
+            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "Session user was not found");
         }
+        requireEnabledSessionUser(user);
         return currentUserBySession(session, user, hydration.snapshot());
     }
 
@@ -610,8 +807,11 @@ public class AuthAppService {
     }
 
     public List<LoginResponseDTO.SecondFactorOptionDTO> verificationProviders() {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        List<com.lumira.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentUser.getUserId());
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        List<com.lumira.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(
+                currentUser.getUserId(),
+                currentUser.getUserUuid()
+        );
         if (providers == null) {
             return List.of();
         }
@@ -619,67 +819,78 @@ public class AuthAppService {
     }
 
     public com.lumira.api.system.VerificationProviderDTO verificationProvider(String factorCode) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.verificationProvider(currentUser.getUserId(), factorCode);
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        return systemInternalApi.verificationProvider(currentUser.getUserId(), currentUser.getUserUuid(), factorCode);
     }
 
-    public com.lumira.api.system.VerificationChallengeDTO verificationBind(String factorCode) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.bindVerificationProvider(currentUser.getUserId(), factorCode);
+    public com.lumira.api.system.VerificationBindingChallengeDTO verificationBind(String factorCode, VerificationBindRequest request) {
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        return systemInternalApi.bindVerificationProvider(currentUser.getUserId(), currentUser.getUserUuid(), factorCode, request);
     }
 
-    public Boolean verificationUnbind(String factorCode) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.unbindVerificationProvider(currentUser.getUserId(), factorCode);
+    public Boolean verificationUnbind(String factorCode, SecondFactorCompleteRequest request) {
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        if (!factorCode.equalsIgnoreCase(request.factorCode())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "婵°倗濮撮惌渚€鎯佹径鎰闁荤喐澹嗙涵鈧繛鎴炴尭缁夊浜搁鈧弻?");
+        }
+        return systemInternalApi.unbindVerificationProvider(currentUser.getUserId(), currentUser.getUserUuid(), factorCode, request);
     }
 
     public com.lumira.api.system.VerificationChallengeDTO verificationChallenge(String factorCode) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.verificationChallenge(currentUser.getUserId(), factorCode);
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        return systemInternalApi.verificationChallenge(currentUser.getUserId(), currentUser.getUserUuid(), factorCode);
     }
 
     public com.lumira.api.system.VerificationVerificationDTO verificationVerify(String factorCode, SecondFactorCompleteRequest request) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
         if (!factorCode.equalsIgnoreCase(request.factorCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Verification factor does not match request");
         }
-        return systemInternalApi.verificationVerify(currentUser.getUserId(), factorCode, request.challengeId(), request.verificationCode());
+        return systemInternalApi.verificationVerify(
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                factorCode,
+                request.challengeId(),
+                request.verificationCode()
+        );
     }
 
-    public LoginResponseDTO loginVerifiedUser(Long userId, HttpServletRequest request) {
-        return loginVerifiedUser(userId, request, "PASSKEY");
+    public LoginResponseDTO loginVerifiedUser(Long userId, String userUuid, HttpServletRequest request) {
+        return loginVerifiedUser(userId, userUuid, request, "PASSKEY");
     }
 
-    private LoginResponseDTO loginVerifiedUser(Long userId, HttpServletRequest request, String loginType) {
-        CompletableFuture<SystemUserSnapshotDTO> userFuture = supplyBlockingIo(() -> systemInternalApi.findUserById(userId));
-        CompletableFuture<PermissionSnapshotDTO> snapshotFuture = supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(userId));
+    private LoginResponseDTO loginVerifiedUser(Long userId, String userUuid, HttpServletRequest request, String loginType) {
+        Long normalizedUserId = requireVerifiedLoginUserId(userId, userUuid);
+        String normalizedUserUuid = userUuid.trim();
+        CompletableFuture<SystemUserSnapshotDTO> userFuture = supplyBlockingIo(() -> systemInternalApi.findUserProfileById(normalizedUserId));
         SystemUserSnapshotDTO user = userFuture.join();
+        if (user != null && (!StringUtils.hasText(user.userUuid()) || !user.userUuid().trim().equals(normalizedUserUuid))) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Verified user identity mismatch");
+        }
         if (user == null) {
-            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在");
+            throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "Verified login user was not found");
         }
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
-            throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
+            throw new BizException(ErrorCode.ACCOUNT_DISABLED, "Verified login user is disabled: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
-        PermissionSnapshotDTO snapshot = snapshotFuture.join();
-        cachePermissionSnapshotVersion(user.userId(), snapshot);
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(user.userId(), user.userUuid());
+        cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         String loginIp = clientIpResolver.resolve(request);
         String userAgent = request.getHeader("User-Agent");
-        AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
+        AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user), loginType);
         saveSessionWithMultiDevicePolicy(session);
         recordLoginAudit(user.userId(), user.userUuid(), user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
 
-    private void recordLoginAudit(
-            Long userId,
-            String username,
-            String loginType,
-            String loginResult,
-            String failReason,
-            String loginIp,
-            String userAgent
-    ) {
-        recordLoginAudit(userId, null, username, loginType, loginResult, failReason, loginIp, userAgent);
+    private Long requireVerifiedLoginUserId(Long userId, String userUuid) {
+        if (userId == null || userId <= 0) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Verified login user is required");
+        }
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Verified login user uuid is required");
+        }
+        return userId;
     }
 
     private void recordLoginAudit(
@@ -721,8 +932,8 @@ public class AuthAppService {
         return pending;
     }
 
-    private List<LoginResponseDTO.SecondFactorOptionDTO> loadLoginSecondFactorOptions(Long userId) {
-        List<LoginResponseDTO.SecondFactorOptionDTO> options = systemInternalApi.listLoginSecondFactorOptions(userId);
+    private List<LoginResponseDTO.SecondFactorOptionDTO> loadLoginSecondFactorOptions(Long userId, String userUuid) {
+        List<LoginResponseDTO.SecondFactorOptionDTO> options = systemInternalApi.listLoginSecondFactorOptions(userId, userUuid);
         if (options == null || options.isEmpty()) {
             return List.of();
         }
@@ -731,12 +942,20 @@ public class AuthAppService {
                 .toList();
     }
 
-    private AuthSession buildSession(SystemUserSnapshotDTO user, String loginIp, String userAgent, PermissionSnapshotDTO snapshot, boolean requiresPasswordChange) {
+    private AuthSession buildSession(
+            SystemUserSnapshotDTO user,
+            String loginIp,
+            String userAgent,
+            PermissionSnapshotDTO snapshot,
+            boolean requiresPasswordChange,
+            String loginType
+    ) {
         AuthSession session = new AuthSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(user.userId());
         session.setUserUuid(user.userUuid());
         session.setUsername(user.username());
+        session.setLoginType(loginType);
         session.setLoginTime(Instant.now());
         session.setLastActivityAt(Instant.now());
         session.setExpireTime(Instant.now().plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
@@ -751,17 +970,6 @@ public class AuthAppService {
     private void hydrateSessionSnapshot(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot, boolean requiresPasswordChange) {
         session.setUserUuid(user.userUuid());
         session.setUsername(user.username());
-        session.setNickname(user.nickname());
-        session.setRealName(user.realName());
-        session.setAvatarUrl(user.avatarUrl());
-        session.setMobile(user.mobile());
-        session.setEmail(user.email());
-        session.setBirthMonth(user.birthMonth());
-        session.setGender(user.gender());
-        session.setRegion(user.region());
-        session.setAvailableTime(user.availableTime());
-        session.setIdCardNumber(user.idCardNumber());
-        session.setLocale(user.locale());
         session.setPermissionsVersion(snapshot.version());
         session.setPermissions(snapshot.permissions() == null ? List.of() : List.copyOf(snapshot.permissions()));
         session.setRoleIds(snapshot.roleIds() == null ? List.of() : List.copyOf(snapshot.roleIds()));
@@ -775,7 +983,7 @@ public class AuthAppService {
 
     private void saveSessionWithMultiDevicePolicy(AuthSession session) {
         if (!securitySettingsService.isAllowMultiDeviceLogin()) {
-            authSessionStore.revokeUserSessions(session.getUserId(), true);
+            authSessionStore.revokeUserSessions(session.getUserId(), session.getUserUuid(), true);
         }
         authSessionStore.save(session, true);
     }
@@ -816,7 +1024,8 @@ public class AuthAppService {
                 sessionId,
                 snapshot.version(),
                 1,
-                snapshot.permissions()
+                snapshot.permissions(),
+                snapshot.roleIds()
         );
     }
 
@@ -837,13 +1046,59 @@ public class AuthAppService {
     private CurrentUserDTO currentUserBySession(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {
         hydrateSessionSnapshot(session, user, snapshot, requiresInitialAdminPasswordChange(user));
         authSessionStore.save(session, false);
-        return currentUserFromSession(session);
+        return currentUserFromProfileAndSession(user, session);
     }
 
-    private CurrentUserSessionHydration loadCurrentUserSessionHydration(Long userId) {
-        CompletableFuture<SystemUserSnapshotDTO> userFuture = supplyBlockingIo(() -> systemInternalApi.findUserById(userId));
-        CompletableFuture<PermissionSnapshotDTO> snapshotFuture = supplyBlockingIo(() -> systemInternalApi.permissionSnapshot(userId));
-        return new CurrentUserSessionHydration(userFuture.join(), snapshotFuture.join());
+    private CurrentUserSessionHydration loadCurrentUserSessionHydration(AuthSession session) {
+        Long userId = session == null ? null : session.getUserId();
+        String normalizedUserUuid = normalizeText(session == null ? null : session.getUserUuid());
+        if (userId == null || !StringUtils.hasText(normalizedUserUuid)) {
+            return new CurrentUserSessionHydration(null, null);
+        }
+        SystemUserSnapshotDTO user = systemInternalApi.findUserProfileById(userId);
+        if (user == null || !normalizedUserUuid.equals(normalizeText(user.userUuid()))) {
+            return new CurrentUserSessionHydration(null, null);
+        }
+        PermissionSnapshotDTO snapshot = loadPermissionSnapshotFromSystemRemote(user.userId(), user.userUuid(), session == null ? null : session.getSimulatedRoleId());
+        return new CurrentUserSessionHydration(user, snapshot);
+    }
+
+    private SystemUserSnapshotDTO requireTrustedActiveSessionProfile(AuthSession session) {
+        String sessionUserUuid = normalizeText(session == null ? null : session.getUserUuid());
+        if (session == null || session.getUserId() == null || !StringUtils.hasText(sessionUserUuid)) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session user identity is invalid");
+        }
+        SystemUserSnapshotDTO user = systemInternalApi.findUserProfileById(session.getUserId());
+        if (user == null || !sessionUserUuid.equals(normalizeText(user.userUuid()))) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session user changed");
+        }
+        requireEnabledSessionUser(user);
+        return user;
+    }
+
+    private void requireEnabledSessionUser(SystemUserSnapshotDTO user) {
+        if (user == null || !"ENABLED".equalsIgnoreCase(normalizeText(user.status()))) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session user is disabled");
+        }
+    }
+
+    private List<CurrentUserRoleOptionDTO> loadCurrentUserRoleOptions(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
+            return List.of();
+        }
+        List<CurrentUserRoleOptionDTO> roleOptions = systemInternalApi.userRoleOptions(userId, userUuid);
+        return roleOptions == null ? List.of() : List.copyOf(roleOptions);
+    }
+
+    private boolean isTrustedActiveUser(Long userId, String userUuid) {
+        String normalizedUserUuid = normalizeText(userUuid);
+        if (userId == null || !StringUtils.hasText(normalizedUserUuid)) {
+            return false;
+        }
+        SystemUserSnapshotDTO user = systemInternalApi.findUserById(userId);
+        return user != null
+                && normalizedUserUuid.equals(normalizeText(user.userUuid()))
+                && "ENABLED".equalsIgnoreCase(normalizeText(user.status()));
     }
 
     public double authLoginP95Millis() {
@@ -944,14 +1199,23 @@ public class AuthAppService {
     }
 
     private CurrentUserDTO getCachedCurrentUser(CurrentUser currentUser) {
-        if (currentUser != null && Boolean.TRUE.equals(currentUser.getRequiresPasswordChange())) {
+        if (!isTrustedCurrentUser(currentUser)
+                || Boolean.TRUE.equals(currentUser.getRequiresPasswordChange())) {
             return null;
         }
         String key = currentUserCacheKey(currentUser);
         if (!StringUtils.hasText(key)) {
             return null;
         }
-        return currentUserCache.getIfPresent(key);
+        CurrentUserDTO cached = currentUserCache.getIfPresent(key);
+        if (cached == null) {
+            return null;
+        }
+        if (!isTrustedActiveUser(currentUser.getUserId(), currentUser.getUserUuid())) {
+            currentUserCache.invalidate(key);
+            return null;
+        }
+        return cached;
     }
 
     private void putCachedCurrentUser(AuthSession session, CurrentUserDTO currentUser) {
@@ -962,12 +1226,105 @@ public class AuthAppService {
     }
 
     private String currentUserCacheKey(CurrentUser currentUser) {
-        if (currentUser == null
-                || !StringUtils.hasText(currentUser.getSessionId())
+        if (!isTrustedCurrentUser(currentUser)
                 || !StringUtils.hasText(currentUser.getPermissionsVersion())) {
             return null;
         }
-        return currentUser.getSessionId() + "#" + currentUser.getPermissionsVersion();
+        return currentUser.getSessionId()
+                + "#" + normalizeSimulatedRoleIdForCache(currentUser.getSimulatedRoleId())
+                + "#" + currentUser.getPermissionsVersion();
+    }
+
+    private Long currentUserId() {
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        return currentUser.getUserId();
+    }
+
+    private CurrentUser requireAuthenticatedCurrentUser() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        return currentUser;
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+    }
+
+    private Long normalizeSimulatedRoleId(Long roleId) {
+        if (roleId == null) {
+            return null;
+        }
+        if (roleId <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "roleId must be positive");
+        }
+        return roleId;
+    }
+
+    private String normalizeSimulatedRoleIdForCache(Long roleId) {
+        return roleId == null ? "self" : Long.toString(roleId);
+    }
+
+    private String requireSessionId(String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Session id is required");
+        }
+        String normalized = sessionId.trim();
+        if (normalized.length() > MAX_SESSION_ID_LENGTH
+                || !SAFE_SESSION_ID_PATTERN.matcher(normalized).matches()
+                || normalized.contains("..")
+                || normalized.contains("//")) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Session id is invalid");
+        }
+        return normalized;
+    }
+
+    private Long normalizeExpectedUserId(Long expectedUserId) {
+        if (expectedUserId == null) {
+            return null;
+        }
+        if (expectedUserId <= 0) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Expected user id is invalid");
+        }
+        return expectedUserId;
+    }
+
+    private Integer normalizeExpectedSessionVersion(Integer expectedSessionVersion) {
+        if (expectedSessionVersion == null) {
+            return null;
+        }
+        if (expectedSessionVersion <= 0) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Expected session version is invalid");
+        }
+        return expectedSessionVersion;
+    }
+
+    private Long requireExpectedUserId(Long expectedUserId) {
+        Long normalized = normalizeExpectedUserId(expectedUserId);
+        if (normalized == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Expected user id is required");
+        }
+        return normalized;
+    }
+
+    private Integer requireExpectedSessionVersion(Integer expectedSessionVersion) {
+        Integer normalized = normalizeExpectedSessionVersion(expectedSessionVersion);
+        if (normalized == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Expected session version is required");
+        }
+        return normalized;
+    }
+
+    private String requireExpectedText(String value, String message) {
+        if (!StringUtils.hasText(value)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, message);
+        }
+        return value.trim();
+    }
+
+    private String normalizeText(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     private String currentUserCacheKey(AuthSession session) {
@@ -976,7 +1333,9 @@ public class AuthAppService {
                 || !StringUtils.hasText(session.getPermissionsVersion())) {
             return null;
         }
-        return session.getSessionId() + "#" + session.getPermissionsVersion();
+        return session.getSessionId()
+                + "#" + normalizeSimulatedRoleIdForCache(session.getSimulatedRoleId())
+                + "#" + session.getPermissionsVersion();
     }
 
     private AuthBootstrapDTO getAuthBootstrap(AuthSession session, ResolvedAuthBootstrapCacheKey resolvedCacheKey) {
@@ -1031,7 +1390,7 @@ public class AuthAppService {
             return false;
         }
 
-        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(userId);
+        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(session);
         if (cachedVersion != null) {
             if (sessionPermissionsVersion.equals(cachedVersion.version)) {
                 return true;
@@ -1047,7 +1406,7 @@ public class AuthAppService {
             return true;
         }
         if (readModelVersion.equals(parsedSessionVersion)) {
-            cachePermissionSnapshotVersion(userId, sessionPermissionsVersion);
+            cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
             return true;
         }
         return false;
@@ -1118,6 +1477,7 @@ public class AuthAppService {
     ) {
         if (batchVersions != null) {
             return new AuthBootstrapCacheVersion(
+                    session.getSimulatedRoleId(),
                     session.getPermissionsVersion(),
                     batchVersions.publicBootstrapVersion(),
                     batchVersions.runtimeAppearanceVersion(),
@@ -1131,6 +1491,7 @@ public class AuthAppService {
         );
         if (authPostLoginBootstrapProvider == null) {
             return new AuthBootstrapCacheVersion(
+                    session.getSimulatedRoleId(),
                     session.getPermissionsVersion(),
                     publicBootstrapVersion,
                     null,
@@ -1139,6 +1500,7 @@ public class AuthAppService {
             );
         }
         return new AuthBootstrapCacheVersion(
+                session.getSimulatedRoleId(),
                 session.getPermissionsVersion(),
                 publicBootstrapVersion,
                 readReadModelVersion(READ_MODEL_CONTEXT_PLATFORM, READ_MODEL_SCOPE_PLATFORM_RUNTIME_APPEARANCE),
@@ -1181,8 +1543,14 @@ public class AuthAppService {
         if (session == null || !Boolean.TRUE.equals(session.getRequiresPasswordChange())) {
             return;
         }
+        String sessionUserUuid = normalizeText(session.getUserUuid());
+        if (session.getUserId() == null || !StringUtils.hasText(sessionUserUuid)) {
+            return;
+        }
         SystemUserSnapshotDTO user = systemInternalApi.findUserById(session.getUserId());
-        if (user == null || requiresInitialAdminPasswordChange(user)) {
+        if (user == null
+                || !sessionUserUuid.equals(normalizeText(user.userUuid()))
+                || requiresInitialAdminPasswordChange(user)) {
             return;
         }
         session.setRequiresPasswordChange(Boolean.FALSE);
@@ -1190,22 +1558,33 @@ public class AuthAppService {
         invalidateAuthBootstrapCache(session);
     }
 
-    private CurrentUserDTO currentUserFromSession(AuthSession session) {
+    private CurrentUserDTO currentUserFromProfileAndSession(SystemUserSnapshotDTO user, AuthSession session) {
+        requireTrustedSessionSnapshot(session);
+        if (user == null
+                || user.userId() == null
+                || !Objects.equals(user.userId(), session.getUserId())
+                || !normalizeText(session.getUserUuid()).equals(normalizeText(user.userUuid()))
+                || !StringUtils.hasText(user.username())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session user profile is invalid");
+        }
+        List<CurrentUserRoleOptionDTO> availableRoles = loadCurrentUserRoleOptions(user.userId(), user.userUuid());
         return new CurrentUserDTO(
-                session.getUserId(),
-                session.getUserUuid(),
-                session.getUsername(),
-                session.getNickname(),
-                session.getRealName(),
-                session.getAvatarUrl(),
-                session.getMobile(),
-                session.getEmail(),
-                session.getBirthMonth(),
-                session.getGender(),
-                session.getRegion(),
-                session.getAvailableTime(),
-                session.getIdCardNumber(),
-                session.getLocale(),
+                user.userId(),
+                user.userUuid(),
+                user.username(),
+                user.nickname(),
+                user.realName(),
+                user.avatarUrl(),
+                user.mobile(),
+                user.email(),
+                user.birthMonth(),
+                user.gender(),
+                user.region(),
+                user.availableTime(),
+                user.idCardNumber(),
+                user.locale(),
+                session.getSimulatedRoleId(),
+                availableRoles,
                 session.getSessionId(),
                 session.getPermissionsVersion(),
                 session.getSessionVersion(),
@@ -1234,7 +1613,7 @@ public class AuthAppService {
             return false;
         }
 
-        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(session.getUserId());
+        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(session);
         if (cachedVersion != null) {
             permissionSnapshotVersionCacheHits.increment();
             if (sessionPermissionsVersion.equals(cachedVersion.version)) {
@@ -1243,7 +1622,7 @@ public class AuthAppService {
             Long readModelVersion = getPermissionReadModelVersion();
             Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
             if (readModelVersion != null && readModelVersion > 0 && sessionVersion != null && readModelVersion.equals(sessionVersion)) {
-                cachePermissionSnapshotVersion(session.getUserId(), sessionPermissionsVersion);
+                cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
                 return true;
             }
             permissionSnapshotVersionCacheRefreshes.increment();
@@ -1255,7 +1634,7 @@ public class AuthAppService {
             Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
             if (sessionVersion != null && readModelVersion.equals(sessionVersion)) {
                 permissionSnapshotVersionCacheMisses.increment();
-                cachePermissionSnapshotVersion(session.getUserId(), sessionPermissionsVersion);
+                cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
                 return true;
             }
             if (sessionVersion == null || !readModelVersion.equals(sessionVersion)) {
@@ -1270,7 +1649,12 @@ public class AuthAppService {
     }
 
     private boolean ensurePermissionSnapshotFromSystem(AuthSession session, Long readModelVersion) {
-        PermissionSnapshotDTO snapshot = loadPermissionSnapshotFromSystemWithSingleFlight(session.getUserId(), readModelVersion);
+        PermissionSnapshotDTO snapshot = loadPermissionSnapshotFromSystemWithSingleFlight(
+                session.getUserId(),
+                session.getUserUuid(),
+                session.getSimulatedRoleId(),
+                readModelVersion
+        );
         if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
             permissionSnapshotVersionCacheFallbacks.increment();
             return false;
@@ -1278,22 +1662,29 @@ public class AuthAppService {
 
         if (!snapshot.version().equals(session.getPermissionsVersion())) {
             permissionSnapshotVersionCacheRefreshes.increment();
+            String previousCurrentUserCacheKey = currentUserCacheKey(session);
             hydrateSessionPermissionSnapshotOnly(session, snapshot);
             authSessionStore.save(session, false);
+            if (StringUtils.hasText(previousCurrentUserCacheKey)) {
+                currentUserCache.invalidate(previousCurrentUserCacheKey);
+            }
+            invalidateAuthBootstrapCache(session);
         }
-        cachePermissionSnapshotVersion(session.getUserId(), snapshot);
+        cachePermissionSnapshotVersion(session.getUserId(), session.getUserUuid(), session.getSimulatedRoleId(), snapshot);
         return true;
     }
 
     private PermissionSnapshotDTO loadPermissionSnapshotFromSystemWithSingleFlight(
             Long userId,
+            String userUuid,
+            Long simulatedRoleId,
             Long readModelVersion
     ) {
-        PermissionSnapshotLoadInFlightKey key = new PermissionSnapshotLoadInFlightKey(userId, readModelVersion);
+        PermissionSnapshotLoadInFlightKey key = new PermissionSnapshotLoadInFlightKey(userId, userUuid, simulatedRoleId, readModelVersion);
         try {
             CompletableFuture<PermissionSnapshotDTO> inFlight = permissionSnapshotLoadInFlight.get(
                     key,
-                    () -> CompletableFuture.completedFuture(loadPermissionSnapshotVersionFromSystemRemote(userId))
+                    () -> CompletableFuture.completedFuture(loadPermissionSnapshotFromSystemRemote(userId, userUuid, simulatedRoleId))
             );
             try {
                 return inFlight.join();
@@ -1313,9 +1704,12 @@ public class AuthAppService {
         }
     }
 
-    private PermissionSnapshotDTO loadPermissionSnapshotVersionFromSystemRemote(Long userId) {
+    private PermissionSnapshotDTO loadPermissionSnapshotFromSystemRemote(Long userId, String userUuid, Long simulatedRoleId) {
         try {
-            return systemInternalApi.permissionSnapshot(userId);
+            if (simulatedRoleId != null) {
+                return systemInternalApi.simulatedRolePermissionSnapshot(userId, userUuid, simulatedRoleId);
+            }
+            return systemInternalApi.permissionSnapshot(userId, userUuid);
         } catch (Exception exception) {
             log.warn("Failed to load permission snapshot for userId={} while checking cache", userId, exception);
             return null;
@@ -1471,36 +1865,79 @@ public class AuthAppService {
         session.setDefaultHomePath(snapshot.defaultHomePath());
     }
 
-    private void cachePermissionSnapshotVersion(Long userId, PermissionSnapshotDTO snapshot) {
-        if (userId == null || snapshot == null || !StringUtils.hasText(snapshot.version())) {
-            return;
-        }
-        permissionSnapshotVersionCache.put(userId, new PermissionSnapshotVersionCache(snapshot.version()));
+    private void cachePermissionSnapshotVersion(Long userId, String userUuid, PermissionSnapshotDTO snapshot) {
+        cachePermissionSnapshotVersion(userId, userUuid, null, snapshot);
     }
 
-    private void cachePermissionSnapshotVersion(Long userId, String version) {
-        if (userId == null || !StringUtils.hasText(version)) {
+    private void cachePermissionSnapshotVersion(Long userId, String userUuid, Long simulatedRoleId, PermissionSnapshotDTO snapshot) {
+        if (userId == null || !StringUtils.hasText(userUuid) || snapshot == null || !StringUtils.hasText(snapshot.version())) {
             return;
         }
-        permissionSnapshotVersionCache.put(userId, new PermissionSnapshotVersionCache(version));
+        permissionSnapshotVersionCache.put(
+                new PermissionSnapshotCacheKey(userId, userUuid, simulatedRoleId),
+                new PermissionSnapshotVersionCache(snapshot.version())
+        );
     }
 
-    private PermissionSnapshotVersionCache getPermissionSnapshotVersionCache(Long userId) {
-        if (userId == null) {
+    private void cachePermissionSnapshotVersion(AuthSession session, String version) {
+        if (session == null || session.getUserId() == null || !StringUtils.hasText(session.getUserUuid()) || !StringUtils.hasText(version)) {
+            return;
+        }
+        permissionSnapshotVersionCache.put(
+                new PermissionSnapshotCacheKey(session.getUserId(), session.getUserUuid(), session.getSimulatedRoleId()),
+                new PermissionSnapshotVersionCache(version)
+        );
+    }
+
+    private PermissionSnapshotVersionCache getPermissionSnapshotVersionCache(AuthSession session) {
+        if (session == null || session.getUserId() == null || !StringUtils.hasText(session.getUserUuid())) {
             return null;
         }
-        return permissionSnapshotVersionCache.getIfPresent(userId);
+        return permissionSnapshotVersionCache.getIfPresent(
+                new PermissionSnapshotCacheKey(session.getUserId(), session.getUserUuid(), session.getSimulatedRoleId())
+        );
     }
 
     private boolean hasCurrentUserSnapshot(AuthSession session) {
-        return session.getUserId() != null
-                && session.getUsername() != null
-                && session.getPermissionsVersion() != null
+        return isTrustedSessionIdentity(session)
+                && StringUtils.hasText(session.getPermissionsVersion())
                 && session.getPermissions() != null
                 && session.getRoleIds() != null
                 && session.getDeptIds() != null
                 && session.getDescendantDeptIds() != null
                 && session.getDataScopes() != null;
+    }
+
+    private void requireTrustedSessionSnapshot(AuthSession session) {
+        if (!hasCurrentUserSnapshot(session)) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session snapshot is invalid");
+        }
+    }
+
+    private boolean isTrustedSessionIdentity(AuthSession session) {
+        return session != null
+                && session.getUserId() != null
+                && session.getUserId() > 0
+                && StringUtils.hasText(session.getUserUuid())
+                && StringUtils.hasText(session.getUsername())
+                && StringUtils.hasText(session.getSessionId())
+                && session.getSessionVersion() != null
+                && session.getSessionVersion() > 0
+                && requireSafeSessionIdOrNull(session.getSessionId()) != null;
+    }
+
+    private String requireSafeSessionIdOrNull(String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            return null;
+        }
+        String normalized = sessionId.trim();
+        if (normalized.length() > MAX_SESSION_ID_LENGTH
+                || !SAFE_SESSION_ID_PATTERN.matcher(normalized).matches()
+                || normalized.contains("..")
+                || normalized.contains("//")) {
+            return null;
+        }
+        return normalized;
     }
 
     private static final class AuthBootstrapCache {
@@ -1563,6 +2000,7 @@ public class AuthAppService {
     }
 
     private record AuthBootstrapCacheVersion(
+            Long simulatedRoleId,
             String permissionsVersion,
             Long publicBootstrapVersion,
             Long runtimeAppearanceVersion,
@@ -1570,7 +2008,8 @@ public class AuthAppService {
             Long platformMenuTreeVersion
     ) {
         private String cacheKey() {
-            return normalize(permissionsVersion)
+            return "role=" + normalize(simulatedRoleId)
+                    + "#" + normalize(permissionsVersion)
                     + "#public=" + normalize(publicBootstrapVersion)
                     + "#appearance=" + normalize(runtimeAppearanceVersion)
                     + "#plugin=" + normalize(pluginBootstrapVersion)
@@ -1593,12 +2032,46 @@ public class AuthAppService {
     ) {
     }
 
+    private static final class PermissionSnapshotCacheKey {
+        private final Long userId;
+        private final String userUuid;
+        private final Long simulatedRoleId;
+
+        private PermissionSnapshotCacheKey(Long userId, String userUuid, Long simulatedRoleId) {
+            this.userId = userId;
+            this.userUuid = StringUtils.hasText(userUuid) ? userUuid.trim() : "";
+            this.simulatedRoleId = simulatedRoleId;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof PermissionSnapshotCacheKey otherKey)) {
+                return false;
+            }
+            return Objects.equals(userId, otherKey.userId)
+                    && Objects.equals(userUuid, otherKey.userUuid)
+                    && Objects.equals(simulatedRoleId, otherKey.simulatedRoleId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(userId, userUuid, simulatedRoleId);
+        }
+    }
+
     private static final class PermissionSnapshotLoadInFlightKey {
         private final Long userId;
+        private final String userUuid;
+        private final Long simulatedRoleId;
         private final Long readModelVersion;
 
-        private PermissionSnapshotLoadInFlightKey(Long userId, Long readModelVersion) {
+        private PermissionSnapshotLoadInFlightKey(Long userId, String userUuid, Long simulatedRoleId, Long readModelVersion) {
             this.userId = userId;
+            this.userUuid = StringUtils.hasText(userUuid) ? userUuid.trim() : "";
+            this.simulatedRoleId = simulatedRoleId;
             this.readModelVersion = readModelVersion;
         }
 
@@ -1611,12 +2084,14 @@ public class AuthAppService {
                 return false;
             }
             return Objects.equals(userId, otherKey.userId)
+                    && Objects.equals(userUuid, otherKey.userUuid)
+                    && Objects.equals(simulatedRoleId, otherKey.simulatedRoleId)
                     && Objects.equals(readModelVersion, otherKey.readModelVersion);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(userId, readModelVersion);
+            return Objects.hash(userId, userUuid, simulatedRoleId, readModelVersion);
         }
     }
 

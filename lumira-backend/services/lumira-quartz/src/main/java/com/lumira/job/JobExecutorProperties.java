@@ -10,7 +10,6 @@ public class JobExecutorProperties {
     private String fileServiceBaseUrl;
     private String paymentServiceBaseUrl;
     private String pluginServiceBaseUrl;
-    private String internalToken;
     private Internal internal = new Internal();
     private AdaptiveRelay adaptiveRelay = new AdaptiveRelay();
 
@@ -52,14 +51,6 @@ public class JobExecutorProperties {
 
     public void setPluginServiceBaseUrl(String pluginServiceBaseUrl) {
         this.pluginServiceBaseUrl = pluginServiceBaseUrl;
-    }
-
-    public String getInternalToken() {
-        return internalToken;
-    }
-
-    public void setInternalToken(String internalToken) {
-        this.internalToken = internalToken;
     }
 
     public Internal getInternal() {
@@ -173,29 +164,11 @@ public class JobExecutorProperties {
     }
 
     public static class Internal {
-        private String systemToken;
-        private String authToken;
         private String fileToken;
         private String messageToken;
         private String paymentToken;
         private String pluginToken;
         private String jobToken;
-
-        public String getSystemToken() {
-            return systemToken;
-        }
-
-        public void setSystemToken(String systemToken) {
-            this.systemToken = systemToken;
-        }
-
-        public String getAuthToken() {
-            return authToken;
-        }
-
-        public void setAuthToken(String authToken) {
-            this.authToken = authToken;
-        }
 
         public String getFileToken() {
             return fileToken;

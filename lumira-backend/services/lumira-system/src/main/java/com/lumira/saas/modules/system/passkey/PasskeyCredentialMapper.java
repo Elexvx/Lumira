@@ -10,5 +10,5 @@ import java.util.List;
 public interface PasskeyCredentialMapper extends BaseMapper<PasskeyCredentialEntity> {
     PasskeyCredentialEntity findByCredentialId(@Param("credentialId") String credentialId);
 
-    List<PasskeyCredentialEntity> listByUser(@Param("userId") Long userId);
+    List<PasskeyCredentialEntity> listByUser(@Param("userId") Long userId, @Param("userUuid") String userUuid);
 }

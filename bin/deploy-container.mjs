@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
-import readline from 'node:readline/promises';
+import readline from 'node:readline';
 
 import { parseEnvFile, randomSecret, randomBase64Secret } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
@@ -20,6 +20,8 @@ const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
 const alertRulesPath = path.join(repoRoot, 'deploy', 'observability', 'grafana', 'provisioning', 'alerting', 'rules.yml');
 const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafana-alerting');
 const generatedDatabaseVersionSqlPath = path.join(repoRoot, 'deploy', '.generated', 'database-version', '002-database-version.sql');
+const edgeTlsDir = path.join(repoRoot, 'deploy', 'data', 'tls');
+const edgeTlsFiles = ['fullchain.pem', 'privkey.pem'];
 
 const rawArgs = process.argv.slice(2);
 const args = new Set(rawArgs);
@@ -35,14 +37,19 @@ const skipReadiness = args.has('--skip-readiness');
 const observability = args.has('--observability');
 const localMysql = args.has('--local-mysql');
 const skipDockerPrune = args.has('--skip-docker-prune');
+const allowUnknownBuildIdentity = args.has('--allow-unknown-build-identity') || process.env.ALLOW_UNKNOWN_BUILD_IDENTITY === 'true';
+const allowDirtyBuildIdentity = args.has('--allow-dirty-build-identity') || process.env.ALLOW_DIRTY_BUILD_IDENTITY === 'true';
 const serviceNames = parseServiceNames(rawArgs);
 const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
 const allowedServices = new Set([
   'lumira-server',
+  'lumira-async',
+  'lumira-job-executor',
   'mysql',
   'redis',
   'xxl-job-admin',
   'api-proxy',
+  'edge-proxy',
   'lumira-ui',
   'prometheus',
   'loki',
@@ -196,16 +203,17 @@ function optionalOutput(command, commandArgs) {
 
 function configureBuildIdentity() {
   const env = parseEnvFile(envPath);
-  const gitCommit = firstDeployText(
+  const gitCommit = normalizeCommitIdentity(firstDeployText(
     process.env.GIT_COMMIT,
     optionalOutput('git', ['rev-parse', '--short=12', 'HEAD']),
     env.GIT_COMMIT
-  );
+  ));
   const gitBranch = firstDeployText(
     process.env.GIT_BRANCH,
     optionalOutput('git', ['rev-parse', '--abbrev-ref', 'HEAD']),
     env.GIT_BRANCH
   );
+  validateBuildIdentity({ gitCommit, gitBranch });
   const buildTime = firstDeployText(process.env.BUILD_TIME, new Date().toISOString());
   const buildStamp = formatBuildStamp(buildTime);
   const sourceRef = gitCommit || hashExistingFile(path.join(repoRoot, 'lumira-backend', 'pom.xml'));
@@ -232,6 +240,43 @@ function configureBuildIdentity() {
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://alloy:4318';
   }
   log(`Build identity: frontend=${frontendVersion}, backend=${backendVersion}, database=${databaseVersion}, commit=${gitCommit || 'unknown'}, branch=${gitBranch || 'unknown'}`);
+}
+
+function normalizeCommitIdentity(value) {
+  const text = String(value ?? '').trim();
+  return text.length > 12 && /^[0-9a-f]{40}$/i.test(text) ? text.slice(0, 12) : text;
+}
+
+function deploymentWillStartContainers() {
+  return !(help || stop || logs || ps || reset);
+}
+
+function validateBuildIdentity({ gitCommit, gitBranch }) {
+  if (!deploymentWillStartContainers()) {
+    return;
+  }
+  if (localMysql) {
+    return;
+  }
+
+  if (!gitCommit && !allowUnknownBuildIdentity) {
+    console.error('[deploy] Cannot determine GIT_COMMIT for this deployment.');
+    console.error('[deploy] Run from a Git checkout, set GIT_COMMIT=<sha>, or pass --allow-unknown-build-identity for non-production testing.');
+    process.exit(1);
+  }
+
+  if (!gitBranch && !allowUnknownBuildIdentity) {
+    console.error('[deploy] Cannot determine GIT_BRANCH for this deployment.');
+    console.error('[deploy] Run from a Git checkout, set GIT_BRANCH=<branch>, or pass --allow-unknown-build-identity for non-production testing.');
+    process.exit(1);
+  }
+
+  const dirtyStatus = optionalOutput('git', ['status', '--porcelain=v1', '--untracked-files=all']);
+  if (dirtyStatus.trim() && !allowDirtyBuildIdentity) {
+    console.error('[deploy] Refusing to deploy a dirty working tree because it cannot be traced to a single Git commit.');
+    console.error('[deploy] Commit/stash local changes first, or pass --allow-dirty-build-identity if you intentionally accept a non-reproducible deployment.');
+    process.exit(1);
+  }
 }
 
 function formatBuildStamp(value) {
@@ -342,11 +387,25 @@ Options:
   --skip-check Skip deployment health checks after startup.
   --skip-readiness Skip selected-service readiness waits.
   --skip-docker-prune Skip automatic Docker build cache cleanup before rebuilds.
+  --allow-unknown-build-identity Allow deployment when GIT_COMMIT/GIT_BRANCH cannot be determined.
+  --allow-dirty-build-identity Allow deployment from a dirty Git working tree.
   --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
   --local-mysql Start bundled MySQL and use local-friendly defaults.
-  --nacos     Start the bundled Nacos container. This is also enabled when Nacos config or discovery is enabled in deploy/.env.
+  --nacos     Unsupported in the current topology. Leave Nacos config and discovery disabled.
   -h, --help  Show this help message.
 `);
+}
+
+function assertNoUnsupportedNacosSelection() {
+  const env = parseEnvFile(envPath);
+  const nacosRequested = args.has('--nacos') || isEnabled(env.NACOS_CONFIG_ENABLED) || isEnabled(env.NACOS_DISCOVERY_ENABLED);
+  if (!nacosRequested) {
+    return;
+  }
+
+  console.error('[deploy] Bundled Nacos is not defined in deploy/docker-compose.prod.yml, and the current runtime apps pin Nacos integration off.');
+  console.error('[deploy] Leave NACOS_CONFIG_ENABLED=false and NACOS_DISCOVERY_ENABLED=false, and remove --nacos before deploying.');
+  process.exit(1);
 }
 
 async function confirmReset() {
@@ -377,7 +436,7 @@ async function confirmReset() {
   console.error(`Type ${resetConfirmPhrase} to continue.`);
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const answer = await rl.question('Reset confirmation: ');
+    const answer = await new Promise((resolve) => rl.question('Reset confirmation: ', resolve));
     if (answer.trim() !== resetConfirmPhrase) {
       console.error('Reset cancelled: confirmation phrase did not match.');
       process.exit(1);
@@ -438,7 +497,15 @@ function generatedEnvDefaults() {
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
-    SAAS_JOB_INTERNAL_TOKEN: randomSecret('job-token'),
+    SAAS_INTERNAL_SYSTEM_TOKEN: randomSecret('system-token'),
+    SAAS_INTERNAL_AUTH_TOKEN: randomSecret('auth-token'),
+    SAAS_INTERNAL_AUTH_SYSTEM_TOKEN: randomSecret('auth-system-token'),
+    SAAS_INTERNAL_FILE_TOKEN: randomSecret('file-token'),
+    SAAS_INTERNAL_MESSAGE_TOKEN: randomSecret('message-token'),
+    SAAS_INTERNAL_PAYMENT_TOKEN: randomSecret('payment-token'),
+    SAAS_INTERNAL_PLUGIN_TOKEN: randomSecret('plugin-token'),
+    SAAS_INTERNAL_TEAM_TOKEN: randomSecret('team-token'),
+    SAAS_INTERNAL_JOB_TOKEN: randomSecret('job-token'),
     XXL_JOB_ADMIN_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
@@ -563,6 +630,26 @@ function ensureHostMountedDirectories() {
   const xxlJobLogPath = env.XXL_JOB_EXECUTOR_LOG_HOST_PATH || '/opt/lumira/data/xxl-job/logs';
   const resolvedXxlJobLogPath = path.isAbsolute(xxlJobLogPath) ? xxlJobLogPath : path.resolve(repoRoot, xxlJobLogPath);
   ensureWritableDirectory(resolvedXxlJobLogPath, 'XXL-Job executor log directory');
+}
+
+function ensureEdgeTlsFiles() {
+  if (localMysql) {
+    return;
+  }
+
+  const missingFiles = edgeTlsFiles
+    .map((fileName) => path.join(edgeTlsDir, fileName))
+    .filter((filePath) => !existsSync(filePath));
+  if (missingFiles.length === 0) {
+    return;
+  }
+
+  console.error('[deploy] edge-proxy requires TLS files before startup.');
+  for (const filePath of missingFiles) {
+    console.error(`[deploy] Missing TLS file: ${filePath}`);
+  }
+  console.error('[deploy] Place fullchain.pem and privkey.pem under deploy/data/tls, or use --local-mysql for localhost-only startup.');
+  process.exit(1);
 }
 
 function shouldPrepareAppWritableVolumes() {
@@ -719,14 +806,14 @@ policies:
 
 function composeArgs(...extraArgs) {
   const env = parseEnvFile(envPath);
-  const useNacos = args.has('--nacos') || isEnabled(env.NACOS_CONFIG_ENABLED) || isEnabled(env.NACOS_DISCOVERY_ENABLED);
+  const useLocalFrontendPreview = serviceNames.includes('lumira-ui');
   const composeBuildIdentityPath = path.relative(repoRoot, buildIdentityPath).replaceAll(path.sep, '/');
   const composeFilePath = path.relative(repoRoot, composeFile).replaceAll(path.sep, '/');
   const profileArgs = [
     ...(!localMysql ? ['--profile', 'edge'] : []),
     ...(localMysql ? ['--profile', 'local-mysql'] : []),
+    ...(useLocalFrontendPreview ? ['--profile', 'local-lumira-ui'] : []),
     ...(observability ? ['--profile', 'observability'] : []),
-    ...(useNacos ? ['--profile', 'nacos'] : []),
   ];
   const envFileArgs = ['--env-file', 'deploy/.env', '--env-file', composeBuildIdentityPath];
   return ['compose', ...envFileArgs, '-f', composeFilePath, ...profileArgs, ...extraArgs];
@@ -736,13 +823,26 @@ function composeArgs(...extraArgs) {
 
 async function checkDeployment() {
   const baseUrl = resolvePublicBaseUrl();
+  const runtimeServices = [
+    'redis',
+    'xxl-job-admin',
+    'lumira-server',
+    'lumira-async',
+    'lumira-job-executor',
+    'api-proxy',
+    ...(!localMysql ? ['edge-proxy'] : []),
+    ...(localMysql ? ['mysql'] : []),
+    ...(observability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []),
+  ];
 
   log('Running deployment health checks...');
-  await waitForHttp(`${baseUrl}/health`, 'API proxy');
-  await waitForHttp(`${baseUrl}/api/health`, 'system API through API proxy');
-  await waitForHttp(`${baseUrl}/api/v1/system/version`, 'lumira-server version API');
-  await waitForHttp(`${baseUrl}/api/v1/public/login-capabilities`, 'public login capabilities API');
-  await waitForHttp(`${baseUrl}/api/v1/localization/languages`, 'protected localization management API is routed', { expectedStatus: 401 });
+  await waitForComposeServicesRunning(runtimeServices, 'default deployment services');
+  run('node', ['bin/check-deployment.mjs'], {
+    env: {
+      ...process.env,
+      DEPLOY_CHECK_BASE_URL: baseUrl,
+    },
+  });
   if (observability) {
     await checkObservability();
   }
@@ -765,15 +865,50 @@ async function checkSelectedServiceReadiness() {
 
   const selectedChecks = serviceNames.flatMap((serviceName) => checks[serviceName] ?? []);
   if (selectedChecks.length === 0) {
+    await waitForComposeServicesRunning(serviceNames, 'selected services');
     return;
   }
 
   log('Waiting for selected service readiness...');
+  await waitForComposeServicesRunning(serviceNames, 'selected services');
   for (const [url, label, options] of selectedChecks) {
     // eslint-disable-next-line no-await-in-loop
     await waitForHttp(url, label, options ?? {});
   }
   log('Selected service readiness checks passed.');
+}
+
+async function waitForComposeServicesRunning(expectedServices, label, options = {}) {
+  const uniqueServices = Array.from(new Set(expectedServices.filter(Boolean)));
+  if (uniqueServices.length === 0) {
+    return;
+  }
+
+  const timeoutMs = options.timeoutMs ?? 240_000;
+  const intervalMs = options.intervalMs ?? 3_000;
+  const startedAt = Date.now();
+  let lastMissing = uniqueServices;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    const result = output('docker', composeArgs('ps', '--services', '--status', 'running', ...uniqueServices));
+    const running = new Set(
+      String(result.stdout ?? '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+    );
+    const missing = uniqueServices.filter((serviceName) => !running.has(serviceName));
+    if (missing.length === 0) {
+      log(`${label} are running: ${uniqueServices.join(', ')}`);
+      return;
+    }
+
+    lastMissing = missing;
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(`${label} did not reach running state: ${lastMissing.join(', ')}`);
 }
 
 async function waitForPrometheusTargets() {
@@ -864,11 +999,13 @@ if (help) {
 }
 
 ensureEnvFile();
+assertNoUnsupportedNacosSelection();
 configureBuildIdentity();
 configureLocalDeploymentDefaults();
 await confirmReset();
 ensureDockerReady();
 ensureHostMountedDirectories();
+ensureEdgeTlsFiles();
 ensureObservabilityProvisioning();
 
 if (reset) {

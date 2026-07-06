@@ -10,7 +10,6 @@ public class VerificationProviderDTO {
     private String maskedContact;
     private Long expiresInSeconds;
     private String challengeId;
-    private String debugCode;
 
     public String getFactorCode() {
         return factorCode;
@@ -82,13 +81,5 @@ public class VerificationProviderDTO {
 
     public void setChallengeId(String challengeId) {
         this.challengeId = challengeId;
-    }
-
-    public String getDebugCode() {
-        return debugCode;
-    }
-
-    public void setDebugCode(String debugCode) {
-        this.debugCode = debugCode;
     }
 }

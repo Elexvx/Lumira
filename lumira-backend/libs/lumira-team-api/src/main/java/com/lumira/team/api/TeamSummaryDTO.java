@@ -7,6 +7,7 @@ public class TeamSummaryDTO {
     private String teamType;
     private String visibility;
     private Long ownerUserId;
+    private String ownerUserUuid;
     private String status;
 
     public Long getId() { return id; }
@@ -21,6 +22,8 @@ public class TeamSummaryDTO {
     public void setVisibility(String visibility) { this.visibility = visibility; }
     public Long getOwnerUserId() { return ownerUserId; }
     public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+    public String getOwnerUserUuid() { return ownerUserUuid; }
+    public void setOwnerUserUuid(String ownerUserUuid) { this.ownerUserUuid = ownerUserUuid; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 }

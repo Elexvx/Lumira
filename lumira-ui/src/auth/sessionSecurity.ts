@@ -34,12 +34,14 @@ export const loadSecuritySettings = async (
     const requestPromise = request<SecuritySettings>(primaryPath, {
       method: 'GET',
       timeoutMs: options.timeoutMs,
+      silent: true,
       ...requestOptions,
     })
       .catch(() =>
         request<SecuritySettings>(fallbackPath, {
           method: 'GET',
           timeoutMs: options.timeoutMs,
+          silent: true,
           ...requestOptions,
         }),
       )

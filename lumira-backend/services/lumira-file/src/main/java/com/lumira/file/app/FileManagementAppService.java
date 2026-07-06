@@ -3,16 +3,21 @@ package com.lumira.file.app;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
 import com.lumira.api.file.StorageSpaceDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.common.security.data.DataPermissionDecision;
+import com.lumira.common.security.data.DataPermissionRule;
 import com.lumira.common.security.data.DataPermissionResolver;
 import com.lumira.common.security.data.DataScopeType;
 import com.lumira.common.vo.PageResponse;
@@ -32,6 +37,7 @@ import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +58,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -69,6 +76,7 @@ public class FileManagementAppService {
     private static final long MAX_PAGE_SIZE = 100L;
     private static final long FILE_LIST_TOTAL_COUNT_CAP = 1000L;
     private static final long STORAGE_SPACE_LIST_TOTAL_COUNT_CAP = 1000L;
+    private static final long MAX_IN_MEMORY_FILE_CONTENT_BYTES = 10L * 1024L * 1024L;
     private static final Duration FILE_LIST_CACHE_TTL = Duration.ofSeconds(30);
     private static final String RESOURCE_FILE_OBJECT = "file:object";
     private static final String DEFAULT_SORT_COLUMN = "created_at";
@@ -79,6 +87,7 @@ public class FileManagementAppService {
     private static final String STORAGE_KEY_DOWNLOAD_CENTER = "download_center";
     private static final String LEGACY_STORAGE_KEY_SYSTEM_PUBLIC = "system_public";
     private static final Long SYSTEM_OPERATOR_ID = 1L;
+    private static final String SYSTEM_OPERATOR_UUID = "00000000-0000-0000-0000-000000000000";
     private static final String VISIBILITY_SCOPE_PERSONAL = "PERSONAL";
     private static final String VISIBILITY_SCOPE_DOWNLOAD_CENTER = "DOWNLOAD_CENTER";
     private static final String VISIBILITY_SCOPE_PUBLIC = "PUBLIC";
@@ -112,6 +121,7 @@ public class FileManagementAppService {
     private final FileStorageMetrics storageMetrics;
     private final SafeUrlValidator safeUrlValidator;
     private final SecurityAuditEventService securityAuditEventService;
+    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private final Map<String, CachedFilePage> localFileListCache = new ConcurrentHashMap<>();
 
     public FileManagementAppService(
@@ -129,7 +139,7 @@ public class FileManagementAppService {
     ) {
         this(fileObjectMapper, fileStorageSpaceMapper, jdbcTemplate, uploadProperties, documentUploadService,
                 imageUploadService, domainEventPublisher, fileProcessingTaskRequestService, fieldCryptoService,
-                storageMetrics, safeUrlValidator, null);
+                storageMetrics, safeUrlValidator, null, null);
     }
 
     @Autowired
@@ -145,7 +155,8 @@ public class FileManagementAppService {
             FieldCryptoService fieldCryptoService,
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator,
-            SecurityAuditEventService securityAuditEventService
+            SecurityAuditEventService securityAuditEventService,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
         this.fileObjectMapper = fileObjectMapper;
         this.fileStorageSpaceMapper = fileStorageSpaceMapper;
@@ -159,6 +170,7 @@ public class FileManagementAppService {
         this.storageMetrics = storageMetrics;
         this.safeUrlValidator = safeUrlValidator;
         this.securityAuditEventService = securityAuditEventService;
+        this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
     public PageResponse<FileObjectDTO> listFiles(
@@ -174,12 +186,12 @@ public class FileManagementAppService {
             String sortField,
             String sortOrder
     ) {
-        requireCurrentUser(currentUser);
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, sharedScope, downloadCenterScope);
+        applyFileDataPermission(queryWrapper, actor, sharedScope, downloadCenterScope);
         if (StringUtils.hasText(keyword)) {
             String normalizedKeyword = keyword.trim();
             queryWrapper.and(wrapper -> wrapper
@@ -211,7 +223,7 @@ public class FileManagementAppService {
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         boolean localCacheable = isDefaultListCacheable(keyword, category, fileExtension, previewMode, bucket, scope, sortField, sortOrder);
-        String localCacheKey = localCacheable ? buildFileListCacheKey(currentUser, safePageNo, safePageSize, sortColumn, ascending) : null;
+        String localCacheKey = localCacheable ? buildFileListCacheKey(actor, safePageNo, safePageSize, sortColumn, ascending) : null;
         if (localCacheable) {
             CachedFilePage cached = localFileListCache.get(localCacheKey);
             Instant now = Instant.now();
@@ -268,14 +280,14 @@ public class FileManagementAppService {
     }
 
     private String buildFileListCacheKey(
-            CurrentUser currentUser,
+            TrustedCurrentUser actor,
             long pageNo,
             long pageSize,
             String sortColumn,
             boolean ascending
     ) {
-        Long userId = currentUser == null ? null : currentUser.getUserId();
-        String permissionVersion = currentUser == null ? null : currentUser.getPermissionsVersion();
+        Long userId = actor.userId();
+        String permissionVersion = actor.permissionsVersion();
         return String.join(":",
                 "file:list",
                 String.valueOf(userId),
@@ -315,11 +327,14 @@ public class FileManagementAppService {
             boolean sharedScope,
             int limit
     ) {
-        requireCurrentUser(currentUser);
-        long safeLimit = Math.max(1L, Math.min(limit, MAX_PAGE_SIZE));
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        if (limit < 1 || limit > MAX_PAGE_SIZE) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Invalid internal file search limit");
+        }
+        long safeLimit = limit;
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, sharedScope, false);
+        applyFileDataPermission(queryWrapper, actor, sharedScope, false);
         if (StringUtils.hasText(keyword)) {
             String normalizedKeyword = keyword.trim();
             queryWrapper.and(wrapper -> wrapper
@@ -378,6 +393,9 @@ public class FileManagementAppService {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
         }
         String visibilityScope = resolveVisibilityScope(scope);
+        if (VISIBILITY_SCOPE_PUBLIC.equals(visibilityScope)) {
+            requirePermission(currentUser, "system:file:publish");
+        }
         String uploadBucket = resolveUploadBucket(bucket, scope);
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
@@ -416,6 +434,9 @@ public class FileManagementAppService {
             String bucket,
             String visibilityScope
     ) {
+        requireCurrentUser(currentUser);
+        Long actorUserId = trustedUserId(currentUser);
+        String actorUserUuid = trustedUserUuid(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(bucket);
         DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(
                 file,
@@ -444,8 +465,8 @@ public class FileManagementAppService {
         );
         FileObjectDTO uploaded = getInsertedFile(insertedId);
         localFileListCache.clear();
-        publishFileUploaded(uploaded);
-        fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser.getUserId());
+        publishFileUploaded(uploaded, currentUser);
+        fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser);
         return uploaded;
     }
 
@@ -470,6 +491,8 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket, String visibilityScope) {
+        requireCurrentUser(currentUser);
+        Long actorUserId = trustedUserId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(bucket);
         ImageUploadService.StoredImage storedImage = imageUploadService.upload(
                 file,
@@ -498,8 +521,8 @@ public class FileManagementAppService {
         );
         FileObjectDTO uploaded = getInsertedFile(insertedId);
         localFileListCache.clear();
-        publishFileUploaded(uploaded);
-        fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser.getUserId());
+        publishFileUploaded(uploaded, currentUser);
+        fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser);
         return uploaded;
     }
 
@@ -510,38 +533,50 @@ public class FileManagementAppService {
 
     @Transactional
     public void deleteFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        Long actorUserId = actor.userId();
+        String actorUserUuid = actor.userUuid();
         FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
         if (!shouldRetainStoredFile(file.bucket())) {
             deleteStoredFile(file);
         }
+        UpdateWrapper<FileObjectEntity> updateWrapper = new UpdateWrapper<FileObjectEntity>()
+                .set("deleted", 1)
+                .set("updated_by", actorUserId)
+                .set("updated_by_uuid", actorUserUuid)
+                .set("updated_at", LocalDateTime.now())
+                .eq("id", fileId)
+                .eq("deleted", 0);
+        if (!sharedScope && !downloadCenterScope) {
+            updateWrapper
+                    .eq("uploaded_by", actorUserId)
+                    .eq("uploaded_by_uuid", actorUserUuid);
+        }
         fileObjectMapper.update(
                 null,
-                new LambdaUpdateWrapper<FileObjectEntity>()
-                        .set(FileObjectEntity::getDeleted, 1)
-                        .set(FileObjectEntity::getUpdatedBy, currentUser.getUserId())
-                        .set(FileObjectEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileObjectEntity::getId, fileId)
-                        .eq(FileObjectEntity::getDeleted, 0)
+                updateWrapper
         );
         localFileListCache.clear();
-        publishFileDeleted(file);
+        publishFileDeleted(file, currentUser);
     }
 
-    private void publishFileUploaded(FileObjectDTO file) {
+    private void publishFileUploaded(FileObjectDTO file, CurrentUser currentUser) {
         if (file == null) {
             return;
         }
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
         FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), safeFileSize(file.fileSizeBytes()));
-        aggregate.recordUploaded(file.mimeType());
+        aggregate.recordUploaded(file.mimeType(), actor.userId(), actor.userUuid());
         domainEventPublisher.publishAll(aggregate.pullDomainEvents());
     }
 
-    private void publishFileDeleted(FileObjectDTO file) {
+    private void publishFileDeleted(FileObjectDTO file, CurrentUser currentUser) {
         if (file == null) {
             return;
         }
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
         FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), safeFileSize(file.fileSizeBytes()));
-        aggregate.delete();
+        aggregate.delete(actor.userId(), actor.userUuid());
         domainEventPublisher.publishAll(aggregate.pullDomainEvents());
     }
 
@@ -672,7 +707,9 @@ public class FileManagementAppService {
 
     @Transactional
     public StorageSpaceDTO createStorageSpace(CurrentUser currentUser, FileStorageSpaceRequest request) {
-        requireCurrentUser(currentUser);
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        Long actorUserId = actor.userId();
+        String actorUserUuid = actor.userUuid();
         String provider = normalizeProvider(request.getProvider());
         String storageKey = normalizeStorageKey(StringUtils.hasText(request.getStorageKey()) ? request.getStorageKey() : provider.toLowerCase(Locale.ROOT) + "_" + shortId());
         StoragePayload payload = normalizeStoragePayload(request, provider, storageKey, null);
@@ -680,7 +717,7 @@ public class FileManagementAppService {
             clearDefaultStorage();
         }
         try {
-            fileStorageSpaceMapper.insert(buildStorageSpaceEntity(payload, currentUser.getUserId()));
+            fileStorageSpaceMapper.insert(buildStorageSpaceEntity(payload, actorUserId, actorUserUuid));
         } catch (DuplicateKeyException exception) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间标识已存在");
         }
@@ -690,7 +727,9 @@ public class FileManagementAppService {
 
     @Transactional
     public StorageSpaceDTO updateStorageSpace(CurrentUser currentUser, Long id, FileStorageSpaceRequest request) {
-        requireCurrentUser(currentUser);
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        Long actorUserId = actor.userId();
+        String actorUserUuid = actor.userUuid();
         StorageSpaceDTO existing = queryStorageSpaceById(id);
         StoragePayload payload = normalizeStoragePayload(request, existing.provider(), existing.storageKey(), existing);
         if (payload.defaultStorage()) {
@@ -713,9 +752,14 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getRetainFileOnRecordDelete, payload.retainFileOnRecordDelete() ? 1 : 0)
                         .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, payload.anonymousAccessAllowed() ? 1 : 0)
                         .set(FileStorageSpaceEntity::getStatus, payload.status())
-                        .set(FileStorageSpaceEntity::getUpdatedBy, currentUser.getUserId())
+                        .set(FileStorageSpaceEntity::getUpdatedBy, actorUserId)
+                        .set(FileStorageSpaceEntity::getUpdatedByUuid, actorUserUuid)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getId, id)
+                        .eq(FileStorageSpaceEntity::getStorageKey, existing.storageKey())
+                        .eq(FileStorageSpaceEntity::getProvider, existing.provider())
+                        .eq(FileStorageSpaceEntity::getStatus, existing.status())
+                        .eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(existing.defaultStorage()) ? 1 : 0)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
         );
         ensureOneDefaultStorage();
@@ -724,7 +768,9 @@ public class FileManagementAppService {
 
     @Transactional
     public void deleteStorageSpace(CurrentUser currentUser, Long id) {
-        requireCurrentUser(currentUser);
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        Long actorUserId = actor.userId();
+        String actorUserUuid = actor.userUuid();
         StorageSpaceDTO existing = queryStorageSpaceById(id);
         if (hasFileRecordsInBucket(existing.storageKey())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间下仍有文件，不能删除");
@@ -736,9 +782,14 @@ public class FileManagementAppService {
                 null,
                 new LambdaUpdateWrapper<FileStorageSpaceEntity>()
                         .set(FileStorageSpaceEntity::getDeleted, 1)
-                        .set(FileStorageSpaceEntity::getUpdatedBy, currentUser.getUserId())
+                        .set(FileStorageSpaceEntity::getUpdatedBy, actorUserId)
+                        .set(FileStorageSpaceEntity::getUpdatedByUuid, actorUserUuid)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getId, id)
+                        .eq(FileStorageSpaceEntity::getStorageKey, existing.storageKey())
+                        .eq(FileStorageSpaceEntity::getProvider, existing.provider())
+                        .eq(FileStorageSpaceEntity::getStatus, existing.status())
+                        .eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(existing.defaultStorage()) ? 1 : 0)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
         );
     }
@@ -777,6 +828,11 @@ public class FileManagementAppService {
         }
         Instant readStartedAt = Instant.now();
         try {
+            long size = Files.size(target);
+            if (size > MAX_IN_MEMORY_FILE_CONTENT_BYTES) {
+                storageMetrics.recordFailed("read", file.storageType(), Duration.between(readStartedAt, Instant.now()));
+                throw new BizException(ErrorCode.BAD_REQUEST, "File is too large to read into memory");
+            }
             FileContentDTO content = new FileContentDTO(
                     file.id(),
                     file.originalFileName(),
@@ -836,11 +892,14 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
-        requireCurrentUser(currentUser);
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        if (fileId == null || fileId <= 0) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Valid file id is required");
+        }
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("id", fileId)
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, sharedScope, downloadCenterScope);
+        applyFileDataPermission(queryWrapper, actor, sharedScope, downloadCenterScope);
         FileObjectEntity entity = fileObjectMapper.selectOne(queryWrapper);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "文件不存在");
@@ -852,6 +911,7 @@ public class FileManagementAppService {
         return new FileObjectDTO(
                 file.id(),
                 file.uploadedBy(),
+                file.uploadedByUuid(),
                 file.uploadedByName(),
                 file.originalFileName(),
                 file.storedFileName(),
@@ -922,7 +982,7 @@ public class FileManagementAppService {
             return;
         }
         securityAuditEventService.record(SecurityAuditEvent.builder("STORAGE_SPACE_TEST_FAILED", "WARN", "DENIED")
-                .userId(currentUser == null ? null : currentUser.getUserId())
+                .userId(trustedUserIdOrNull(currentUser))
                 .requestId(TraceContext.getRequestId())
                 .traceId(TraceContext.getTraceId())
                 .resourceCode("file_storage_space")
@@ -935,6 +995,14 @@ public class FileManagementAppService {
                         "storageSpaceId", storageSpaceId == null ? "" : storageSpaceId
                 ))
                 .build());
+    }
+
+    private Long trustedUserIdOrNull(CurrentUser currentUser) {
+        try {
+            return resolveTrustedCurrentUser(currentUser).userId();
+        } catch (BizException exception) {
+            return null;
+        }
     }
 
     private Path resolveFilePath(FileObjectDTO file) {
@@ -1009,14 +1077,19 @@ public class FileManagementAppService {
             String tags,
             String remark
     ) {
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        Long actorUserId = actor.userId();
+        String actorUserUuid = actor.userUuid();
+        String actorUsername = actor.username();
         LocalDateTime now = LocalDateTime.now();
         FileObjectEntity entity = new FileObjectEntity();
         entity.setStorageType(storageType);
         entity.setBucket(bucket);
         entity.setObjectKey(objectKey);
-        entity.setUploadedBy(currentUser.getUserId());
-        entity.setUploadedByName(currentUser.getUsername());
-        entity.setDepartmentId(currentUser.getPrimaryDeptId());
+        entity.setUploadedBy(actorUserId);
+        entity.setUploadedByUuid(actorUserUuid);
+        entity.setUploadedByName(actorUsername);
+        entity.setDepartmentId(actor.primaryDeptId());
         entity.setVisibilityScope(resolveVisibilityScope(visibilityScope));
         entity.setOriginalFilename(originalFilename);
         entity.setFileExtension(fileExtension);
@@ -1029,9 +1102,11 @@ public class FileManagementAppService {
         entity.setTags(normalizeText(normalizeTags(tags)));
         entity.setRemark(normalizeText(remark));
         entity.setStatus("ENABLED");
-        entity.setCreatedBy(currentUser.getUserId());
+        entity.setCreatedBy(actorUserId);
+        entity.setCreatedByUuid(actorUserUuid);
         entity.setCreatedAt(now);
-        entity.setUpdatedBy(currentUser.getUserId());
+        entity.setUpdatedBy(actorUserId);
+        entity.setUpdatedByUuid(actorUserUuid);
         entity.setUpdatedAt(now);
         entity.setDeleted(0);
         fileObjectMapper.insert(entity);
@@ -1049,33 +1124,38 @@ public class FileManagementAppService {
         return enrich(mapFileObject(inserted));
     }
 
-    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, CurrentUser currentUser, boolean sharedScopeRequested, boolean downloadCenterScope) {
+    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, TrustedCurrentUser actor, boolean sharedScopeRequested, boolean downloadCenterScope) {
+        Long actorUserId = actor.userId();
+        String actorUserUuid = actor.userUuid();
         applyFileVisibilityScope(queryWrapper, downloadCenterScope);
         if (!sharedScopeRequested) {
-            queryWrapper.eq("uploaded_by", currentUser.getUserId());
+            queryWrapper.eq("uploaded_by", actorUserId);
+            queryWrapper.eq("uploaded_by_uuid", actorUserUuid);
             return;
         }
         if (downloadCenterScope) {
+            requirePermission(actor, "download:center:view");
             return;
         }
         DataPermissionDecision decision = DataPermissionResolver.resolve(
                 RESOURCE_FILE_OBJECT,
-                currentUser.getUserId(),
-                currentUser.getDeptIds(),
-                currentUser.getDescendantDeptIds(),
-                currentUser.getDataScopes(),
-                currentUser.getPermissions()
+                actorUserId,
+                actor.deptIds(),
+                actor.descendantDeptIds(),
+                actor.dataScopes(),
+                actor.permissions()
         );
         if (decision.scopeType() == DataScopeType.ALL) {
             return;
         }
         Set<Long> deptIds = new java.util.LinkedHashSet<>(decision.deptIds());
         Set<Long> userIds = new java.util.LinkedHashSet<>(decision.userIds());
-        if (decision.hasDeptRestriction() && currentUser.getUserId() != null) {
-            userIds.add(currentUser.getUserId());
+        if (decision.hasDeptRestriction()) {
+            userIds.add(actorUserId);
         }
         if (deptIds.isEmpty() && userIds.isEmpty()) {
-            queryWrapper.eq("uploaded_by", currentUser.getUserId());
+            queryWrapper.eq("uploaded_by", actorUserId);
+            queryWrapper.eq("uploaded_by_uuid", actorUserUuid);
             return;
         }
         queryWrapper.and(nested -> {
@@ -1090,6 +1170,36 @@ public class FileManagementAppService {
                 nested.in("uploaded_by", userIds);
             }
         });
+    }
+
+    private void requirePermission(CurrentUser currentUser, String permission) {
+        requirePermission(resolveTrustedCurrentUser(currentUser), permission);
+    }
+
+    private void requirePermission(TrustedCurrentUser actor, String permission) {
+        if (!hasPermission(actor, permission)) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "Permission denied");
+        }
+    }
+
+    private Long trustedUserId(CurrentUser currentUser) {
+        return resolveTrustedCurrentUser(currentUser).userId();
+    }
+
+    private String trustedUsername(CurrentUser currentUser) {
+        return resolveTrustedCurrentUser(currentUser).username();
+    }
+
+    private String trustedUserUuid(CurrentUser currentUser) {
+        return resolveTrustedCurrentUser(currentUser).userUuid();
+    }
+
+    private Set<String> trustedPermissions(CurrentUser currentUser) {
+        return resolveTrustedCurrentUser(currentUser).permissions();
+    }
+
+    private boolean hasPermission(TrustedCurrentUser actor, String permission) {
+        return actor.permissions().contains("*") || actor.permissions().contains(permission);
     }
 
     private void applyFileVisibilityScope(QueryWrapper<FileObjectEntity> queryWrapper, boolean downloadCenterScope) {
@@ -1306,7 +1416,7 @@ public class FileManagementAppService {
             if (payload.defaultStorage()) {
                 clearDefaultStorage();
             }
-            FileStorageSpaceEntity entity = buildStorageSpaceEntity(payload, SYSTEM_OPERATOR_ID);
+            FileStorageSpaceEntity entity = buildStorageSpaceEntity(payload, SYSTEM_OPERATOR_ID, SYSTEM_OPERATOR_UUID);
             try {
                 fileStorageSpaceMapper.insert(entity);
             } catch (DuplicateKeyException exception) {
@@ -1327,6 +1437,7 @@ public class FileManagementAppService {
                 new UpdateWrapper<FileObjectEntity>()
                         .set("bucket", STORAGE_KEY_LOCAL)
                         .set("updated_by", SYSTEM_OPERATOR_ID)
+                        .set("updated_by_uuid", SYSTEM_OPERATOR_UUID)
                         .set("updated_at", now)
                         .eq("bucket", LEGACY_STORAGE_KEY_SYSTEM_PUBLIC)
                         .eq("deleted", 0)
@@ -1336,6 +1447,7 @@ public class FileManagementAppService {
                 new UpdateWrapper<FileStorageSpaceEntity>()
                         .set("deleted", 1)
                         .set("updated_by", SYSTEM_OPERATOR_ID)
+                        .set("updated_by_uuid", SYSTEM_OPERATOR_UUID)
                         .set("updated_at", now)
                         .eq("storage_key", LEGACY_STORAGE_KEY_SYSTEM_PUBLIC)
         );
@@ -1348,6 +1460,7 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getDefaultFlag, 1)
                         .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, anonymousAccessAllowed ? 1 : 0)
                         .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
+                        .set(FileStorageSpaceEntity::getUpdatedByUuid, SYSTEM_OPERATOR_UUID)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getStorageKey, storageKey)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
@@ -1360,6 +1473,7 @@ public class FileManagementAppService {
                 new LambdaUpdateWrapper<FileStorageSpaceEntity>()
                         .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, 1)
                         .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
+                        .set(FileStorageSpaceEntity::getUpdatedByUuid, SYSTEM_OPERATOR_UUID)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getStorageKey, storageKey)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
@@ -1383,6 +1497,7 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getStatus, payload.status())
                         .set(FileStorageSpaceEntity::getDeleted, 0)
                         .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
+                        .set(FileStorageSpaceEntity::getUpdatedByUuid, SYSTEM_OPERATOR_UUID)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getStorageKey, payload.storageKey())
         );
@@ -1423,13 +1538,103 @@ public class FileManagementAppService {
     }
 
     private void requireCurrentUser(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw visibleBizException(ErrorCode.FORBIDDEN, "Login required");
-        }
+        resolveTrustedCurrentUser(currentUser);
     }
 
     private BizException visibleBizException(ErrorCode errorCode, String message) {
         return new BizException(errorCode, message, message);
+    }
+
+    private TrustedCurrentUser resolveTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "Login required");
+        }
+        if (systemInternalApiProvider == null) {
+            return fallbackTrustedCurrentUser(currentUser);
+        }
+        SystemInternalApi internalApi = systemInternalApiProvider.getIfAvailable();
+        if (internalApi == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
+        }
+        Long userId = currentUser.getUserId();
+        String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = internalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userSnapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user does not exist");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid()) || !userSnapshot.userUuid().trim().equals(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user identity mismatch");
+        }
+        if (!StringUtils.hasText(userSnapshot.status()) || !"ENABLED".equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user is disabled");
+        }
+        if (!StringUtils.hasText(userSnapshot.username())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user username is unavailable");
+        }
+        PermissionSnapshotDTO permissionSnapshot = internalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim());
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user permissions are unavailable");
+        }
+        return new TrustedCurrentUser(
+                userSnapshot.userId(),
+                userSnapshot.userUuid().trim(),
+                userSnapshot.username().trim(),
+                permissionSnapshot.version().trim(),
+                trustedStringSet(permissionSnapshot.permissions()),
+                permissionSnapshot.primaryDeptId(),
+                trustedLongSet(permissionSnapshot.deptIds()),
+                trustedLongSet(permissionSnapshot.descendantDeptIds()),
+                trustedDataScopes(permissionSnapshot)
+        );
+    }
+
+    private TrustedCurrentUser fallbackTrustedCurrentUser(CurrentUser currentUser) {
+        return new TrustedCurrentUser(
+                currentUser.getUserId(),
+                currentUser.getUserUuid().trim(),
+                currentUser.getUsername().trim(),
+                currentUser.getPermissionsVersion().trim(),
+                trustedStringSet(currentUser.getPermissions()),
+                currentUser.getPrimaryDeptId(),
+                trustedLongSet(currentUser.getDeptIds()),
+                trustedLongSet(currentUser.getDescendantDeptIds()),
+                currentUser.getDataScopes() == null ? List.of() : List.copyOf(currentUser.getDataScopes())
+        );
+    }
+
+    private Set<String> trustedStringSet(Iterable<String> values) {
+        if (values == null) {
+            return Set.of();
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                normalized.add(value.trim());
+            }
+        }
+        return normalized.isEmpty() ? Set.of() : Set.copyOf(normalized);
+    }
+
+    private Set<Long> trustedLongSet(Iterable<Long> values) {
+        if (values == null) {
+            return Set.of();
+        }
+        LinkedHashSet<Long> normalized = new LinkedHashSet<>();
+        for (Long value : values) {
+            if (value != null && value > 0) {
+                normalized.add(value);
+            }
+        }
+        return normalized.isEmpty() ? Set.of() : Set.copyOf(normalized);
+    }
+
+    private List<DataPermissionRule> trustedDataScopes(PermissionSnapshotDTO snapshot) {
+        return snapshot == null || snapshot.dataScopes() == null
+                ? List.of()
+                : List.copyOf(snapshot.dataScopes());
     }
 
     private StoragePayload normalizeStoragePayload(FileStorageSpaceRequest request, String providerFallback, String storageKeyFallback, StorageSpaceDTO existing) {
@@ -1521,6 +1726,7 @@ public class FileManagementAppService {
         return new FileObjectDTO(
                 entity.getId(),
                 entity.getUploadedBy(),
+                entity.getUploadedByUuid(),
                 entity.getUploadedByName(),
                 entity.getOriginalFilename(),
                 entity.getObjectKey(),
@@ -1545,7 +1751,7 @@ public class FileManagementAppService {
         );
     }
 
-    private FileStorageSpaceEntity buildStorageSpaceEntity(StoragePayload payload, Long operatorId) {
+    private FileStorageSpaceEntity buildStorageSpaceEntity(StoragePayload payload, Long operatorId, String operatorUuid) {
         LocalDateTime now = LocalDateTime.now();
         FileStorageSpaceEntity entity = new FileStorageSpaceEntity();
         entity.setTitle(payload.title());
@@ -1565,8 +1771,10 @@ public class FileManagementAppService {
         entity.setAnonymousAccessAllowed(payload.anonymousAccessAllowed() ? 1 : 0);
         entity.setStatus(payload.status());
         entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(operatorUuid);
         entity.setCreatedAt(now);
         entity.setUpdatedBy(operatorId);
+        entity.setUpdatedByUuid(operatorUuid);
         entity.setUpdatedAt(now);
         entity.setDeleted(0);
         return entity;
@@ -1638,6 +1846,19 @@ public class FileManagementAppService {
             Path storageRoot,
             String publicPath,
             long maxFileSizeBytes
+    ) {
+    }
+
+    private record TrustedCurrentUser(
+            Long userId,
+            String userUuid,
+            String username,
+            String permissionsVersion,
+            Set<String> permissions,
+            Long primaryDeptId,
+            Set<Long> deptIds,
+            Set<Long> descendantDeptIds,
+            List<DataPermissionRule> dataScopes
     ) {
     }
 

@@ -13,18 +13,22 @@ import java.util.List;
 public interface MessagePlatformEventOutboxMapper extends BaseMapper<PlatformEventOutboxEntity> {
 
     @Select("""
-            select id, user_id as userId, source_type as sourceType,
+            select id, user_id as userId, user_uuid as userUuid, source_type as sourceType,
                    event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
                    trace_id as traceId, request_id as requestId, created_by as createdBy,
-                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
+                   created_by_uuid as createdByUuid,
+                   claim_token as claimToken, claim_expires_at as claimExpiresAt,
+                   created_at as createdAt, updated_by as updatedBy,
+                   updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted
             from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)
             where deleted = 0
               and source_type = #{sourceType}
               and (
                     dispatch_status = #{recordedStatus}
                     or (dispatch_status = #{failedStatus} and (next_retry_at is null or next_retry_at <= #{now}))
+                    or (dispatch_status = 'DISPATCHING' and claim_expires_at is not null and claim_expires_at <= #{now})
               )
             order by created_at asc, id asc
             limit #{limit}
@@ -36,4 +40,23 @@ public interface MessagePlatformEventOutboxMapper extends BaseMapper<PlatformEve
             @Param("now") LocalDateTime now,
             @Param("limit") int limit
     );
+
+    @Select("""
+            select uuid
+            from sys_user
+            where id = #{userId}
+              and deleted = 0
+            limit 1
+            """)
+    String resolveUserUuid(@Param("userId") Long userId);
+
+    @Select("""
+            select uuid
+            from sys_user
+            where id = #{userId}
+              and deleted = 0
+              and status = 'ENABLED'
+            limit 1
+            """)
+    String resolveActiveUserUuid(@Param("userId") Long userId);
 }

@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemRoleSnapshotDTO;
-import com.lumira.api.system.SystemUserContactSnapshotDTO;
+import com.lumira.api.system.SystemUserEmailRecipientDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.SystemUserWechatRecipientDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.message.config.MessageProperties;
 import com.lumira.message.dto.MessageDTO;
@@ -57,6 +59,7 @@ public class MessageAppService {
     private static final String TARGET_SCOPE_ROLE = "ROLE";
     private static final String STATUS_PUBLISHED = "PUBLISHED";
     private static final String STATUS_RETRACTED = "RETRACTED";
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final String SOURCE_MANUAL = "MANUAL";
     private static final String CHANNEL_INBOX = "INBOX";
     private static final String CHANNEL_EMAIL = "EMAIL";
@@ -205,6 +208,9 @@ public class MessageAppService {
     public MessageVO.NoticePageResponse listMessages(CurrentUser currentUser, long pageNo, long pageSize) {
         long startedNanos = System.nanoTime();
         try {
+            if (AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+                requireAnyPermission(currentUser, "message:message:view", "system:notification:view");
+            }
             return listNotices(currentUser, pageNo, pageSize);
         } finally {
             recordDuration(messageListTimer, startedNanos);
@@ -214,6 +220,10 @@ public class MessageAppService {
     public MessageVO.NoticeArchivePageResponse listArchive(CurrentUser currentUser, MessageDTO.MessageArchiveQueryRequest request) {
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
+        if (!isAuthenticatedUser(currentUser)) {
+            return emptyArchivePage(normalizedPageNo, normalizedPageSize);
+        }
+        requireAnyPermission(currentUser, "message:message:view", "system:notification:view");
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
         RoleVisibility roleVisibility = visibleRoleVisibility(currentUser);
         NoticeArchiveQuery query = buildNoticeArchiveQuery(currentUser, request, roleVisibility, normalizedPageSize, offset);
@@ -240,6 +250,17 @@ public class MessageAppService {
         return response;
     }
 
+    private MessageVO.NoticeArchivePageResponse emptyArchivePage(long pageNo, long pageSize) {
+        MessageVO.NoticeArchivePageResponse response = new MessageVO.NoticeArchivePageResponse();
+        response.setPageNo(pageNo);
+        response.setPageSize(pageSize);
+        response.setTotal(0);
+        response.setHasMore(false);
+        response.setTotalCapped(Boolean.FALSE);
+        response.setRecords(List.of());
+        return response;
+    }
+
     private boolean isArchiveTotalCapped(Long total, NoticeArchiveQuery query) {
         if (query == null) {
             return false;
@@ -262,7 +283,10 @@ public class MessageAppService {
     }
 
     private boolean canManageArchive(CurrentUser currentUser) {
-        Set<String> permissions = currentUser.getPermissions();
+        if (!isAuthenticatedUser(currentUser)) {
+            return false;
+        }
+        Set<String> permissions = trustedPermissions(currentUser);
         if (permissions == null || permissions.isEmpty()) {
             return false;
         }
@@ -275,17 +299,20 @@ public class MessageAppService {
     public Long countUnread(CurrentUser currentUser) {
         long startedNanos = System.nanoTime();
         try {
-            if (currentUser == null || currentUser.getUserId() == null) {
+            if (!isAuthenticatedUser(currentUser)) {
                 return 0L;
             }
+            requireAnyPermission(currentUser, "message:message:view", "system:notification:view");
             UnreadContext unreadContext = resolveUnreadContext(currentUser);
             RoleVisibility roleVisibility = unreadContext.roleVisibility();
             long readModelVersion = unreadContext.readModelVersion();
-            Long cached = readCachedUnreadCount(currentUser.getUserId(), roleVisibility.version(), readModelVersion);
+            Long actorUserId = requireAuthenticatedUserId(currentUser);
+            String actorUserUuid = currentUser.getUserUuid();
+            Long cached = readCachedUnreadCount(actorUserId, actorUserUuid, roleVisibility.version(), readModelVersion);
             if (cached != null) {
                 return cached;
             }
-            Long count = countUnreadFromDb(currentUser.getUserId(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
+            Long count = countUnreadFromDb(actorUserId, actorUserUuid, roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
             return count == null ? 0L : count;
         } finally {
             recordDuration(messageUnreadCountTimer, startedNanos);
@@ -294,33 +321,40 @@ public class MessageAppService {
 
     @Transactional
     public MessageVO.NoticeVO createMessage(CurrentUser currentUser, MessageDTO.MessageCreateRequest request) {
+        requireAnyPermission(currentUser, "message:message:write", "system:notification:write");
+        Long actorUserId = requireAuthenticatedUserId(currentUser);
+        String actorUserUuid = currentUser.getUserUuid();
+        requireMessageCreateRequest(request);
         Set<String> channels = normalizeChannels(request.getChannels());
         if (channels.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请至少选择一个通知渠道");
         }
-        request.setTargetScope(normalizeTargetScope(request.getTargetScope()));
+        request.setTargetScope(validateTarget(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId()));
+        requirePlatformBroadcastPermission(currentUser, request.getTargetScope());
         MessageVO.NoticeVO notice = null;
         if (channels.contains(CHANNEL_INBOX)) {
             notice = insertInboxNotice(
-                    currentUser.getUserId(),
+                    actorUserId,
+                    actorUserUuid,
                     request.getTargetScope(),
                     request.getTargetUserId(),
                     request.getTargetRoleId(),
                     request.getTitle(),
                     request.getContent()
             );
-            insertDeliveryLog(notice.getId(), CHANNEL_INBOX, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+            insertDeliveryLog(notice.getId(), CHANNEL_INBOX, request.getTargetScope(), null, null, null, null, request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, actorUserId, actorUserUuid);
             messagePushService.publishCreated(notice);
         }
         if (channels.contains(CHANNEL_EMAIL)) {
-            sendEmailNotifications(currentUser, request, notice == null ? null : notice.getId());
+            sendEmailNotifications(actorUserId, actorUserUuid, request, notice == null ? null : notice.getId());
         }
         if (channels.contains(CHANNEL_WECHAT_OFFICIAL)) {
-            sendWechatOfficialNotifications(currentUser, request, notice == null ? null : notice.getId());
+            sendWechatOfficialNotifications(actorUserId, actorUserUuid, request, notice == null ? null : notice.getId());
         }
         operationAuditService.log(
-                currentUser.getUserId(),
-                currentUser.getUsername(),
+                actorUserId,
+                currentUser.getUserUuid(),
+                trustedUsername(currentUser),
                 "message",
                 "send-message",
                 "CREATE",
@@ -333,11 +367,56 @@ public class MessageAppService {
         return notice;
     }
 
+    private void requirePlatformBroadcastPermission(CurrentUser currentUser, String targetScope) {
+        if (!TARGET_SCOPE_PLATFORM.equals(targetScope)) {
+            return;
+        }
+        if (hasPermission(currentUser, "system:notification:write")) {
+            return;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "平台级通知需要系统通知写入权限");
+    }
+
+    private void requireMessageCreateRequest(MessageDTO.MessageCreateRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "message request is required");
+        }
+    }
+
+    private String validateTarget(String targetScope, Long targetUserId, Long targetRoleId) {
+        String normalizedTargetScope = normalizeTargetScope(targetScope);
+        if (!StringUtils.hasText(normalizedTargetScope)
+                || (!TARGET_SCOPE_PLATFORM.equals(normalizedTargetScope)
+                && !TARGET_SCOPE_USER.equals(normalizedTargetScope)
+                && !TARGET_SCOPE_ROLE.equals(normalizedTargetScope))) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "targetScope is invalid");
+        }
+        if (TARGET_SCOPE_USER.equals(normalizedTargetScope) && (targetUserId == null || targetUserId <= 0)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "targetUserId must be positive");
+        }
+        if (TARGET_SCOPE_ROLE.equals(normalizedTargetScope) && (targetRoleId == null || targetRoleId <= 0)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "targetRoleId must be positive");
+        }
+        return normalizedTargetScope;
+    }
+
+    private boolean hasPermission(CurrentUser currentUser, String permissionKey) {
+        if (!isAuthenticatedUser(currentUser)) {
+            return false;
+        }
+        Set<String> permissions = trustedPermissions(currentUser);
+        return permissions.contains("*") || permissions.contains(permissionKey);
+    }
+
     public MessageVO.DeliveryLogPageResponse listDeliveryLogs(CurrentUser currentUser, MessageDTO.MessageArchiveQueryRequest request) {
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
+        if (!isAuthenticatedUser(currentUser)) {
+            return emptyDeliveryLogPage(normalizedPageNo, normalizedPageSize);
+        }
+        requireAnyPermission(currentUser, "message:message:view", "system:notification:view");
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
-        DeliveryLogQuery query = buildDeliveryLogQuery(request, normalizedPageSize, offset);
+        DeliveryLogQuery query = buildDeliveryLogQuery(currentUser, request, normalizedPageSize, offset);
         Long total = readCachedDeliveryLogTotal(query);
         if (total == null) {
             total = messageDeliveryLogMapper.countDeliveryLogs(query);
@@ -359,13 +438,27 @@ public class MessageAppService {
         return response;
     }
 
+    private MessageVO.DeliveryLogPageResponse emptyDeliveryLogPage(long pageNo, long pageSize) {
+        MessageVO.DeliveryLogPageResponse response = new MessageVO.DeliveryLogPageResponse();
+        response.setPageNo(pageNo);
+        response.setPageSize(pageSize);
+        response.setTotal(0);
+        response.setHasMore(false);
+        response.setTotalCapped(Boolean.FALSE);
+        response.setRecords(List.of());
+        return response;
+    }
+
     @Transactional
     public MessageVO.NoticeVO retractMessage(CurrentUser currentUser, Long noticeId) {
+        requireAnyPermission(currentUser, "message:message:retract", "system:notification:write");
+        Long actorUserId = requireAuthenticatedUserId(currentUser);
         MessageVO.NoticeVO notice = retractNotice(currentUser, noticeId);
         messagePushService.publishRetracted(notice);
         operationAuditService.log(
-                currentUser.getUserId(),
-                currentUser.getUsername(),
+                actorUserId,
+                currentUser.getUserUuid(),
+                trustedUsername(currentUser),
                 "message",
                 "retract-message",
                 "RETRACT",
@@ -378,30 +471,35 @@ public class MessageAppService {
 
     @Transactional
     public MessageVO.NoticeVO markMessageRead(CurrentUser currentUser, Long noticeId) {
+        requireAnyPermission(currentUser, "message:message:read", "system:notification:view");
+        Long actorUserId = requireAuthenticatedUserId(currentUser);
         UnreadContext unreadContext = resolveUnreadContext(currentUser);
         RoleVisibility roleVisibility = unreadContext.roleVisibility();
         MessageVO.NoticeVO notice = markRead(currentUser, noticeId, roleVisibility.roleIds());
         long readModelVersion = unreadContext.readModelVersion();
-        Long unreadCount = countUnreadFromDb(currentUser.getUserId(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
-        messagePushService.publishRead(currentUser.getUserId(), notice, unreadCount.intValue());
+        Long unreadCount = countUnreadFromDb(actorUserId, currentUser.getUserUuid(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
+        messagePushService.publishRead(actorUserId, currentUser.getUserUuid(), notice, unreadCount.intValue());
         bumpUnreadReadModelVersion();
         return notice;
     }
 
     @Transactional
     public MessageVO.UnreadCountVO markAllRead(CurrentUser currentUser) {
+        requireAnyPermission(currentUser, "message:message:read", "system:notification:view");
+        Long userId = requireAuthenticatedUserId(currentUser);
         long startedNanos = System.nanoTime();
         try {
             LocalDateTime now = LocalDateTime.now();
             UnreadContext unreadContext = resolveUnreadContext(currentUser);
             RoleVisibility roleVisibility = unreadContext.roleVisibility();
             List<Long> roleIds = roleVisibility.roleIds();
-            messageNoticeMapper.markAllRead(currentUser.getUserId(), roleIds, now);
+            messageNoticeMapper.markAllRead(userId, currentUser.getUserUuid(), roleIds, now);
 
             long readModelVersion = unreadContext.readModelVersion();
-            Long unreadCount = countUnreadFromDb(currentUser.getUserId(), roleIds, roleVisibility.version(), readModelVersion);
+            Long unreadCount = countUnreadFromDb(userId, currentUser.getUserUuid(), roleIds, roleVisibility.version(), readModelVersion);
             messagePushService.publishUnreadCount(
-                    currentUser.getUserId(),
+                    userId,
+                    currentUser.getUserUuid(),
                     unreadCount.intValue()
             );
             bumpUnreadReadModelVersion();
@@ -417,11 +515,15 @@ public class MessageAppService {
     private MessageVO.NoticePageResponse listNotices(CurrentUser currentUser, long pageNo, long pageSize) {
         long normalizedPageNo = Math.max(pageNo, 1L);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, 100L));
+        if (!isAuthenticatedUser(currentUser)) {
+            return emptyNoticePage(normalizedPageNo, normalizedPageSize);
+        }
+        Long userId = requireAuthenticatedUserId(currentUser);
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
         RoleVisibility roleVisibility = visibleRoleVisibility(currentUser);
         List<Long> roleIds = roleVisibility.roleIds();
-        Long userId = currentUser == null ? null : currentUser.getUserId();
-        String localCacheKey = buildMessageListCacheKey(userId, roleVisibility.version(), roleIds, normalizedPageNo, normalizedPageSize);
+        long readModelVersion = readModelVersion();
+        String localCacheKey = buildMessageListCacheKey(userId, currentUser.getUserUuid(), roleVisibility.version(), readModelVersion, roleIds, normalizedPageNo, normalizedPageSize);
         CachedNoticePage cached = localMessageListCache.get(localCacheKey);
         Instant now = Instant.now();
         if (cached != null && cached.expireAt().isAfter(now)) {
@@ -431,7 +533,7 @@ public class MessageAppService {
             localMessageListCache.remove(localCacheKey);
         }
 
-        List<MessageVO.NoticeVO> records = messageNoticeMapper.listVisiblePublished(userId, roleIds, normalizedPageSize + 1, offset);
+        List<MessageVO.NoticeVO> records = messageNoticeMapper.listVisiblePublished(userId, currentUser.getUserUuid(), roleIds, normalizedPageSize + 1, offset);
         boolean hasMore = records.size() > normalizedPageSize;
         if (hasMore) {
             records = new ArrayList<>(records.subList(0, (int) normalizedPageSize));
@@ -449,14 +551,27 @@ public class MessageAppService {
         return response;
     }
 
+    private MessageVO.NoticePageResponse emptyNoticePage(long pageNo, long pageSize) {
+        MessageVO.NoticePageResponse response = new MessageVO.NoticePageResponse();
+        response.setPageNo(pageNo);
+        response.setPageSize(pageSize);
+        response.setTotal(0);
+        response.setHasMore(false);
+        response.setTotalCapped(Boolean.FALSE);
+        response.setRecords(List.of());
+        return response;
+    }
+
     private MessageVO.NoticeVO insertInboxNotice(
             Long operatorId,
+            String operatorUserUuid,
             String targetScope,
             Long targetUserId,
             Long targetRoleId,
             String title,
             String content
     ) {
+        String normalizedTargetScope = validateTarget(targetScope, targetUserId, targetRoleId);
         if (!StringUtils.hasText(targetScope)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "targetScope不能为空");
         }
@@ -468,7 +583,8 @@ public class MessageAppService {
         }
         return insertNotice(
                 operatorId,
-                targetScope,
+                operatorUserUuid,
+                normalizedTargetScope,
                 targetUserId,
                 targetRoleId,
                 title,
@@ -478,6 +594,7 @@ public class MessageAppService {
 
     private MessageVO.NoticeVO insertNotice(
             Long operatorId,
+            String operatorUserUuid,
             String targetScope,
             Long targetUserId,
             Long targetRoleId,
@@ -488,11 +605,14 @@ public class MessageAppService {
             throw new BizException(ErrorCode.BAD_REQUEST, "标题和内容不能为空");
         }
 
+        String targetUserUuid = TARGET_SCOPE_USER.equals(targetScope) ? requireTargetUserUuid(targetUserId) : null;
+
         MessageNoticeEntity entity = new MessageNoticeEntity();
         LocalDateTime now = LocalDateTime.now();
         entity.setNoticeType(TYPE_MESSAGE);
         entity.setTargetScope(targetScope);
         entity.setTargetUserId(targetUserId);
+        entity.setTargetUserUuid(targetUserUuid);
         entity.setTargetRoleId(targetRoleId);
         entity.setTitle(title);
         entity.setContent(content);
@@ -500,25 +620,40 @@ public class MessageAppService {
         entity.setPublishStatus(STATUS_PUBLISHED);
         entity.setPublishedAt(now);
         entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(operatorUserUuid);
         entity.setUpdatedBy(operatorId);
+        entity.setUpdatedByUuid(operatorUserUuid);
         entity.setDeleted(0);
         int updated = messageNoticeMapper.insert(entity);
         if (updated <= 0 || entity.getId() == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入失败");
         }
         Long noticeId = entity.getId();
-        MessageVO.NoticeVO notice = findNoticeById(noticeId, operatorId);
+        MessageVO.NoticeVO notice = findNoticeById(noticeId, operatorId, operatorUserUuid);
         if (notice == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入后读取失败");
         }
         return notice;
     }
 
+    private String requireTargetUserUuid(Long targetUserId) {
+        if (targetUserId == null || targetUserId <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "targetUserId must be positive");
+        }
+        String userUuid = systemInternalApi.findTargetUserUuidById(targetUserId);
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Target user not found");
+        }
+        return userUuid.trim();
+    }
+
     private MessageVO.NoticeVO retractNotice(CurrentUser currentUser, Long noticeId) {
+        Long actorUserId = requireAuthenticatedUserId(currentUser);
+        String actorUserUuid = currentUser.getUserUuid();
         if (noticeId == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "通知ID不能为空");
         }
-        MessageVO.NoticeVO notice = findNoticeById(noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO notice = findNoticeById(noticeId, actorUserId, actorUserUuid);
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
@@ -526,14 +661,16 @@ public class MessageAppService {
         noticeAggregate.retract();
         int updated = messageNoticeMapper.update(null, new UpdateWrapper<MessageNoticeEntity>()
                 .set("publish_status", STATUS_RETRACTED)
-                .set("updated_by", currentUser.getUserId())
+                .set("updated_by", actorUserId)
+                .set("updated_by_uuid", actorUserUuid)
                 .set("updated_at", LocalDateTime.now())
                 .eq("id", noticeId)
+                .eq("publish_status", notice.getPublishStatus())
                 .eq("deleted", 0));
         if (updated <= 0) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
-        MessageVO.NoticeVO retractedNotice = findNoticeById(noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO retractedNotice = findNoticeById(noticeId, actorUserId, actorUserUuid);
         if (retractedNotice == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "通知撤回后读取失败");
         }
@@ -541,28 +678,32 @@ public class MessageAppService {
     }
 
     private MessageVO.NoticeVO markRead(CurrentUser currentUser, Long noticeId, List<Long> roleIds) {
-        MessageVO.NoticeVO notice = findVisibleNoticeById(noticeId, currentUser.getUserId(), roleIds);
+        Long actorUserId = requireAuthenticatedUserId(currentUser);
+        MessageVO.NoticeVO notice = findVisibleNoticeById(noticeId, actorUserId, currentUser.getUserUuid(), roleIds);
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
         NoticeAggregate noticeAggregate = new NoticeAggregate(noticeId, notice.getPublishStatus());
-        noticeAggregate.markRead(currentUser.getUserId());
+        noticeAggregate.markRead(actorUserId, currentUser.getUserUuid());
 
         LocalDateTime now = LocalDateTime.now();
-        messageNoticeMapper.upsertRead(noticeId, currentUser.getUserId(), now);
+        int updated = messageNoticeMapper.upsertRead(noticeId, actorUserId, currentUser.getUserUuid(), roleIds, now);
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "閫氱煡涓嶅瓨鍦ㄦ垨鏃犳潈璁块棶");
+        }
         notice.setReadFlag(Boolean.TRUE);
         notice.setReadAt(now);
         return notice;
     }
 
-    private MessageVO.NoticeVO findVisibleNoticeById(Long noticeId, Long userId, List<Long> roleIds) {
-        MessageVO.NoticeVO notice = messageNoticeMapper.findVisibleNoticeById(noticeId, userId, roleIds);
+    private MessageVO.NoticeVO findVisibleNoticeById(Long noticeId, Long userId, String userUuid, List<Long> roleIds) {
+        MessageVO.NoticeVO notice = messageNoticeMapper.findVisibleNoticeById(noticeId, userId, userUuid, roleIds);
         enrichNoticeTarget(notice);
         return notice;
     }
 
-    private Long readCachedUnreadCount(Long userId, String version, long readModelVersion) {
-        String cacheKey = buildUnreadCountCacheKey(userId, version, readModelVersion);
+    private Long readCachedUnreadCount(Long userId, String userUuid, String version, long readModelVersion) {
+        String cacheKey = buildUnreadCountCacheKey(userId, userUuid, version, readModelVersion);
         Long localCached = readLocalUnreadCount(cacheKey);
         if (localCached != null) {
             unreadCountCacheHits.increment();
@@ -579,13 +720,13 @@ public class MessageAppService {
         return readCachedCount(buildDeliveryLogCountCacheKey(query), deliveryLogCountCacheHits, deliveryLogCountCacheMisses);
     }
 
-    private Long countUnreadFromDb(Long userId, List<Long> roleIds, String version, long readModelVersion) {
-        Long count = messageNoticeMapper.countUnread(userId, roleIds, UNREAD_COUNT_CAP);
+    private Long countUnreadFromDb(Long userId, String userUuid, List<Long> roleIds, String version, long readModelVersion) {
+        Long count = messageNoticeMapper.countUnread(userId, userUuid, roleIds, UNREAD_COUNT_CAP);
         Long normalizedCount = normalizeUnreadCount(count);
         if (shouldCacheUnreadCount()) {
-            cacheLocalUnreadCount(buildUnreadCountCacheKey(userId, version, readModelVersion), normalizedCount);
+            cacheLocalUnreadCount(buildUnreadCountCacheKey(userId, userUuid, version, readModelVersion), normalizedCount);
             cacheTemplate.put(
-                    buildUnreadCountCacheKey(userId, version, readModelVersion),
+                    buildUnreadCountCacheKey(userId, userUuid, version, readModelVersion),
                     String.valueOf(normalizedCount),
                     Duration.ofSeconds(messageProperties.getUnreadCountCacheTtlSeconds())
             );
@@ -769,15 +910,17 @@ public class MessageAppService {
         readModelVersionCache.remove(GLOBAL_VERSION_CACHE_KEY);
     }
 
-    private String buildUnreadCountCacheKey(Long userId, String version, long readModelVersion) {
-        return String.join(":", UNREAD_COUNT_CACHE_PREFIX, String.valueOf(userId), normalizeVersion(version), "v" + readModelVersion);
+    private String buildUnreadCountCacheKey(Long userId, String userUuid, String version, long readModelVersion) {
+        return String.join(":", UNREAD_COUNT_CACHE_PREFIX, String.valueOf(userId), cacheKeyPart(userUuid), normalizeVersion(version), "v" + readModelVersion);
     }
 
-    private String buildMessageListCacheKey(Long userId, String version, List<Long> roleIds, long pageNo, long pageSize) {
+    private String buildMessageListCacheKey(Long userId, String userUuid, String version, long readModelVersion, List<Long> roleIds, long pageNo, long pageSize) {
         return String.join(":",
                 "message:list",
                 cacheKeyPart(userId),
+                cacheKeyPart(userUuid),
                 normalizeVersion(version),
+                "v" + readModelVersion,
                 cacheKeyPart(roleIds),
                 String.valueOf(pageNo),
                 String.valueOf(pageSize));
@@ -790,6 +933,7 @@ public class MessageAppService {
         return String.join(":",
                 ARCHIVE_COUNT_CACHE_PREFIX,
                 cacheKeyPart(query.getUserId()),
+                cacheKeyPart(query.getUserUuid()),
                 cacheKeyPart(query.isManageArchive()),
                 cacheKeyPart(query.getKeyword()),
                 cacheKeyPart(query.getMessageType()),
@@ -811,6 +955,9 @@ public class MessageAppService {
         }
         return String.join(":",
                 DELIVERY_LOG_COUNT_CACHE_PREFIX,
+                cacheKeyPart(query.getUserId()),
+                cacheKeyPart(query.getUserUuid()),
+                cacheKeyPart(query.isManageDeliveryLogs()),
                 cacheKeyPart(query.getKeyword()),
                 cacheKeyPart(query.getChannel()),
                 cacheKeyPart(query.getTargetScope()),
@@ -871,8 +1018,7 @@ public class MessageAppService {
     }
 
     private UnreadContext resolveUnreadContext(CurrentUser currentUser) {
-        if (currentUser != null
-                && currentUser.getUserId() != null
+        if (isAuthenticatedUser(currentUser)
                 && isPermissionVersionAligned(currentUser)) {
             RoleVisibility roleVisibility = new RoleVisibility(currentUser.getPermissionsVersion(), normalizedRoleIds(currentUser.getRoleIds()));
             return new UnreadContext(roleVisibility, readModelVersion());
@@ -887,11 +1033,11 @@ public class MessageAppService {
     }
 
     private List<Long> visibleRoleIds(Long userId) {
-        return visibleRoleVisibilityFromSystem(userId).roleIds();
+        throw new BizException(ErrorCode.UNAUTHORIZED, "Full user identity is required");
     }
 
     private RoleVisibility visibleRoleVisibility(Long userId) {
-        return visibleRoleVisibilityFromSystem(userId);
+        throw new BizException(ErrorCode.UNAUTHORIZED, "Full user identity is required");
     }
 
     private List<Long> visibleRoleIds(CurrentUser currentUser) {
@@ -899,34 +1045,34 @@ public class MessageAppService {
     }
 
     private RoleVisibility visibleRoleVisibility(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getUserId() == null) {
+        if (!isAuthenticatedUser(currentUser)) {
             return new RoleVisibility(null, List.of());
         }
         if (isPermissionVersionAligned(currentUser)) {
             return new RoleVisibility(currentUser.getPermissionsVersion(), normalizedRoleIds(currentUser.getRoleIds()));
         }
-        return visibleRoleVisibilityFromSystem(currentUser.getUserId());
+        return visibleRoleVisibilityFromSystem(requireAuthenticatedUserId(currentUser), currentUser.getUserUuid());
     }
 
-    private RoleVisibility visibleRoleVisibilityFromSystem(Long userId) {
-        if (userId == null) {
+    private RoleVisibility visibleRoleVisibilityFromSystem(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
             return new RoleVisibility(null, List.of());
         }
-        String cacheKey = String.valueOf(userId);
+        String cacheKey = userId + ":" + userUuid.trim();
         CachedRoleVisibility cached = roleVisibilityCache.get(cacheKey);
         Instant now = Instant.now();
-        if (cached != null && cached.expireAt().isAfter(now)) {
+        if (isTrustedCachedRoleVisibility(cached, now)) {
             roleVisibilityCacheHits.incrementAndGet();
             return cached.roleVisibility();
         }
-        if (cached != null && cached.expireAt().isBefore(now)) {
+        if (cached != null) {
             roleVisibilityCache.remove(cacheKey);
         }
 
         try {
             CompletableFuture<RoleVisibility> inFlight = roleVisibilityLoadInFlight.computeIfAbsent(
                     cacheKey,
-                    key -> CompletableFuture.completedFuture(loadRoleVisibilityFromSystem(userId, now))
+                    key -> CompletableFuture.completedFuture(loadRoleVisibilityFromSystem(userId, userUuid, now))
             );
             return inFlight.join();
         } catch (java.util.concurrent.CompletionException exception) {
@@ -939,22 +1085,34 @@ public class MessageAppService {
         }
     }
 
-    private RoleVisibility loadRoleVisibilityFromSystem(Long userId, Instant now) {
+    private RoleVisibility loadRoleVisibilityFromSystem(Long userId, String userUuid, Instant now) {
         roleVisibilityCacheMisses.incrementAndGet();
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId);
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionRoleSnapshot(userId, userUuid);
         if (snapshot == null || snapshot.roleIds() == null || snapshot.roleIds().isEmpty()) {
             RoleVisibility roleVisibility = new RoleVisibility(snapshot == null ? null : snapshot.version(), List.of());
-            roleVisibilityCache.put(String.valueOf(userId), new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
+            roleVisibilityCache.put(userId + ":" + userUuid.trim(), new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
             return roleVisibility;
         }
         List<Long> roleIds = normalizedRoleIds(snapshot.roleIds());
         RoleVisibility roleVisibility = new RoleVisibility(snapshot.version(), roleIds);
-        roleVisibilityCache.put(String.valueOf(userId), new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
+        roleVisibilityCache.put(userId + ":" + userUuid.trim(), new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
         return roleVisibility;
     }
 
+    private boolean isTrustedCachedRoleVisibility(CachedRoleVisibility cached, Instant now) {
+        if (cached == null || !cached.expireAt().isAfter(now)) {
+            return false;
+        }
+        long currentVersion = permissionSnapshotVersion();
+        if (currentVersion <= 0L) {
+            return true;
+        }
+        Long cachedVersion = parsePermissionSnapshotVersion(cached.roleVisibility().version());
+        return cachedVersion != null && cachedVersion == currentVersion;
+    }
+
     private boolean isPermissionVersionAligned(CurrentUser currentUser) {
-        if (currentUser == null || !StringUtils.hasText(currentUser.getPermissionsVersion()) || currentUser.getUserId() == null) {
+        if (!isAuthenticatedUser(currentUser) || !StringUtils.hasText(currentUser.getPermissionsVersion())) {
             return false;
         }
         Long sessionVersion = parsePermissionSnapshotVersion(currentUser.getPermissionsVersion());
@@ -966,6 +1124,83 @@ public class MessageAppService {
             return true;
         }
         return sessionVersion == currentVersion;
+    }
+
+    private boolean isAuthenticatedUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+    }
+
+    private Long requireAuthenticatedUserId(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getUserId();
+    }
+
+    private String trustedUsername(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getUsername();
+    }
+
+    private Set<String> trustedPermissions(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+    }
+
+    private void requireAnyPermission(CurrentUser currentUser, String... permissionKeys) {
+        Set<String> permissions = trustedPermissions(currentUser);
+        if (permissions.contains("*")) {
+            return;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (permissions.contains(permissionKey)) {
+                return;
+            }
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + String.join(" or ", permissionKeys));
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(userId);
+        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(snapshot.userUuid()) || !snapshot.userUuid().trim().equals(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!STATUS_ENABLED.equalsIgnoreCase(snapshot.status())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(snapshot.userId());
+        currentUser.setUserUuid(snapshot.userUuid().trim());
+        currentUser.setUsername(snapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds()));
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
     }
 
     private long permissionSnapshotVersion() {
@@ -1040,8 +1275,8 @@ public class MessageAppService {
                 .toList();
     }
 
-    private MessageVO.NoticeVO findNoticeById(Long noticeId, Long userId) {
-        MessageVO.NoticeVO notice = messageNoticeMapper.findNoticeById(noticeId, userId);
+    private MessageVO.NoticeVO findNoticeById(Long noticeId, Long userId, String userUuid) {
+        MessageVO.NoticeVO notice = messageNoticeMapper.findNoticeById(noticeId, userId, userUuid);
         enrichNoticeTarget(notice);
         return notice;
     }
@@ -1057,27 +1292,27 @@ public class MessageAppService {
         if (notices == null || notices.isEmpty()) {
             return;
         }
-        Set<Long> userIds = new LinkedHashSet<>();
+        Set<UserIdentityKey> userKeys = new LinkedHashSet<>();
         Set<Long> roleIds = new LinkedHashSet<>();
         for (MessageVO.NoticeVO notice : notices) {
             if (notice == null) {
                 continue;
             }
             if (notice.getTargetUserId() != null) {
-                userIds.add(notice.getTargetUserId());
+                userKeys.add(new UserIdentityKey(notice.getTargetUserId(), notice.getTargetUserUuid()));
             }
             if (notice.getTargetRoleId() != null) {
                 roleIds.add(notice.getTargetRoleId());
             }
         }
-        Map<Long, String> userNames = loadUserNames(userIds);
+        Map<UserIdentityKey, String> userNames = loadUserNames(userKeys);
         Map<Long, String> roleNames = loadRoleNames(roleIds);
         for (MessageVO.NoticeVO notice : notices) {
             if (notice == null) {
                 continue;
             }
             if (notice.getTargetUserId() != null) {
-                notice.setTargetUserName(userNames.get(notice.getTargetUserId()));
+                notice.setTargetUserName(userNames.get(new UserIdentityKey(notice.getTargetUserId(), notice.getTargetUserUuid())));
             }
             if (notice.getTargetRoleId() != null) {
                 notice.setTargetRoleName(roleNames.get(notice.getTargetRoleId()));
@@ -1085,48 +1320,67 @@ public class MessageAppService {
         }
     }
 
-    private Map<Long, String> loadUserNames(Set<Long> userIds) {
-        if (userIds.isEmpty()) {
+    private Map<UserIdentityKey, String> loadUserNames(Set<UserIdentityKey> userKeys) {
+        if (userKeys.isEmpty()) {
             return Map.of();
         }
-        Map<Long, String> names = new LinkedHashMap<>();
-        List<Long> missingUserIds = new ArrayList<>();
-        for (Long userId : userIds) {
-            String cacheKey = userNameCacheKey(userId);
+        Map<UserIdentityKey, String> names = new LinkedHashMap<>();
+        List<UserIdentityKey> missingUserKeys = new ArrayList<>();
+        for (UserIdentityKey userKey : userKeys) {
+            String cacheKey = userNameCacheKey(userKey);
             String cachedName = cacheTemplate.get(cacheKey);
             if (!StringUtils.hasText(cachedName)) {
-                missingUserIds.add(userId);
+                missingUserKeys.add(userKey);
                 continue;
             }
             if (isCachedMiss(cachedName)) {
                 continue;
             }
-            names.put(userId, cachedName);
+            names.put(userKey, cachedName);
         }
 
-        if (missingUserIds.isEmpty()) {
+        if (missingUserKeys.isEmpty()) {
             return names.isEmpty() ? Collections.emptyMap() : names;
         }
 
-        List<SystemUserSnapshotDTO> users = systemInternalApi.usersByIds(missingUserIds);
+        List<Long> missingUserIds = missingUserKeys.stream()
+                .map(UserIdentityKey::userId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        List<SystemUserSnapshotDTO> users = systemInternalApi.userIdentitiesByIds(missingUserIds);
         if (users == null || users.isEmpty()) {
-            cacheUserNameMisses(missingUserIds, Set.of());
+            cacheUserNameMisses(missingUserKeys, Set.of());
             return Map.of();
         }
-        Set<Long> resolvedIds = new LinkedHashSet<>();
+        Map<Long, SystemUserSnapshotDTO> usersById = new LinkedHashMap<>();
         for (SystemUserSnapshotDTO user : users) {
             if (user != null && user.userId() != null) {
-                String name = user.username();
-                if (StringUtils.hasText(name)) {
-                    names.put(user.userId(), name);
-                    cacheName(userNameCacheKey(user.userId()), name, NOTICE_TARGET_NAME_CACHE_TTL);
-                    resolvedIds.add(user.userId());
-                }
+                usersById.put(user.userId(), user);
             }
         }
 
-        cacheUserNameMisses(missingUserIds, resolvedIds);
+        Set<UserIdentityKey> resolvedKeys = new LinkedHashSet<>();
+        for (UserIdentityKey userKey : missingUserKeys) {
+            SystemUserSnapshotDTO user = usersById.get(userKey.userId());
+            if (user == null
+                    || !userKey.matches(user)
+                    || !isEnabledUser(user)
+                    || !StringUtils.hasText(user.username())) {
+                continue;
+            }
+            names.put(userKey, user.username());
+            cacheName(userNameCacheKey(userKey), user.username(), NOTICE_TARGET_NAME_CACHE_TTL);
+            resolvedKeys.add(userKey);
+        }
+
+        cacheUserNameMisses(missingUserKeys, resolvedKeys);
         return names;
+    }
+
+    private boolean isEnabledUser(SystemUserSnapshotDTO user) {
+        return StringUtils.hasText(user.status())
+                && STATUS_ENABLED.equalsIgnoreCase(user.status().trim());
     }
 
     private Map<Long, String> loadRoleNames(Set<Long> roleIds) {
@@ -1152,7 +1406,7 @@ public class MessageAppService {
             return names.isEmpty() ? Collections.emptyMap() : names;
         }
 
-        List<SystemRoleSnapshotDTO> roles = systemInternalApi.rolesByIds(missingRoleIds);
+        List<SystemRoleSnapshotDTO> roles = systemInternalApi.roleNamesByIds(missingRoleIds);
         if (roles == null || roles.isEmpty()) {
             cacheMissRoleNames(missingRoleIds);
             return Map.of();
@@ -1173,12 +1427,12 @@ public class MessageAppService {
         return names;
     }
 
-    private void cacheUserNameMisses(List<Long> requestedUserIds, Set<Long> resolvedUserIds) {
-        for (Long userId : requestedUserIds) {
-            if (resolvedUserIds.contains(userId)) {
+    private void cacheUserNameMisses(List<UserIdentityKey> requestedUserKeys, Set<UserIdentityKey> resolvedUserKeys) {
+        for (UserIdentityKey userKey : requestedUserKeys) {
+            if (resolvedUserKeys.contains(userKey)) {
                 continue;
             }
-            cacheName(userNameCacheKey(userId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
+            cacheName(userNameCacheKey(userKey), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
         }
     }
 
@@ -1204,8 +1458,8 @@ public class MessageAppService {
         cacheTemplate.put(key, value, ttl);
     }
 
-    private String userNameCacheKey(Long userId) {
-        return NOTICE_TARGET_USER_NAME_CACHE_PREFIX + ":" + String.valueOf(userId);
+    private String userNameCacheKey(UserIdentityKey userKey) {
+        return NOTICE_TARGET_USER_NAME_CACHE_PREFIX + ":" + cacheKeyPart(userKey.userId()) + ":" + cacheKeyPart(userKey.userUuid());
     }
 
     private static Timer createTimerIfAvailable(MeterRegistry meterRegistry, String timerName) {
@@ -1261,71 +1515,82 @@ public class MessageAppService {
         return normalized;
     }
 
-    private void sendEmailNotifications(CurrentUser currentUser, MessageDTO.MessageCreateRequest request, Long noticeId) {
+    private void sendEmailNotifications(Long actorUserId, String actorUserUuid, MessageDTO.MessageCreateRequest request, Long noticeId) {
         if (!smtpNotificationMailService.isConfigured()) {
-            insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "SMTP 未配置或配置不完整", currentUser.getUserId());
+            insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "SMTP 未配置或配置不完整", actorUserId, actorUserUuid);
             return;
         }
-        List<Recipient> recipients = resolveEmailRecipients(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
+        List<EmailRecipient> recipients = resolveEmailRecipients(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
         if (recipients.isEmpty()) {
-            insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收邮箱通知的用户", currentUser.getUserId());
+            insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收邮箱通知的用户", actorUserId, actorUserUuid);
             return;
         }
-        for (Recipient recipient : recipients) {
+        for (EmailRecipient recipient : recipients) {
             if (!StringUtils.hasText(recipient.email())) {
-                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定邮箱", currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.userUuid(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定邮箱", actorUserId, actorUserUuid);
                 continue;
             }
             try {
                 smtpNotificationMailService.send(recipient.email(), request.getTitle(), request.getContent());
-                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.userUuid(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, actorUserId, actorUserUuid);
             } catch (Exception exception) {
-                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.userUuid(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), actorUserId, actorUserUuid);
             }
         }
     }
 
-    private void sendWechatOfficialNotifications(CurrentUser currentUser, MessageDTO.MessageCreateRequest request, Long noticeId) {
+    private void sendWechatOfficialNotifications(Long actorUserId, String actorUserUuid, MessageDTO.MessageCreateRequest request, Long noticeId) {
         if (!wechatOfficialAccountNotificationService.isConfigured()) {
-            insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "微信公众号通知未启用或配置不完整", currentUser.getUserId());
+            insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "微信公众号通知未启用或配置不完整", actorUserId, actorUserUuid);
             return;
         }
-        List<Recipient> recipients = resolveRecipients(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
+        List<WechatRecipient> recipients = resolveWechatRecipients(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
         if (recipients.isEmpty()) {
-            insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收微信公众号通知的用户", currentUser.getUserId());
+            insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收微信公众号通知的用户", actorUserId, actorUserUuid);
             return;
         }
-        for (Recipient recipient : recipients) {
+        for (WechatRecipient recipient : recipients) {
             if (!StringUtils.hasText(recipient.wechatOpenid())) {
-                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定微信 OpenID", currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.userUuid(), recipient.username(), null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定微信 OpenID", actorUserId, actorUserUuid);
                 continue;
             }
             try {
                 wechatOfficialAccountNotificationService.send(recipient.wechatOpenid(), request.getTitle(), request.getContent());
-                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.userUuid(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, actorUserId, actorUserUuid);
             } catch (Exception exception) {
-                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.userUuid(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), actorUserId, actorUserUuid);
             }
         }
     }
 
-    private List<Recipient> resolveEmailRecipients(String targetScope, Long targetUserId, Long targetRoleId) {
-        return resolveRecipients(targetScope, targetUserId, targetRoleId);
-    }
-
-    private List<Recipient> resolveRecipients(String targetScope, Long targetUserId, Long targetRoleId) {
-        List<SystemUserContactSnapshotDTO> contacts;
+    private List<EmailRecipient> resolveEmailRecipients(String targetScope, Long targetUserId, Long targetRoleId) {
+        List<SystemUserEmailRecipientDTO> recipients;
         String normalizedTargetScope = normalizeTargetScope(targetScope);
         if (TARGET_SCOPE_USER.equals(normalizedTargetScope)) {
-            contacts = targetUserId == null ? List.of() : systemInternalApi.userContactsByIds(List.of(targetUserId));
-            return toRecipients(contacts);
+            recipients = targetUserId == null ? List.of() : systemInternalApi.userEmailRecipientsByIds(List.of(targetUserId));
+            return toEmailRecipients(recipients);
         }
         if (TARGET_SCOPE_ROLE.equals(normalizedTargetScope)) {
-            contacts = targetRoleId == null ? List.of() : systemInternalApi.userContactsByRole(targetRoleId);
-            return toRecipients(contacts);
+            recipients = targetRoleId == null ? List.of() : systemInternalApi.userEmailRecipientsByRole(targetRoleId);
+            return toEmailRecipients(recipients);
         }
-        contacts = systemInternalApi.platformUserContacts();
-        return toRecipients(contacts);
+        recipients = systemInternalApi.platformUserEmailRecipients();
+        return toEmailRecipients(recipients);
+    }
+
+    private List<WechatRecipient> resolveWechatRecipients(String targetScope, Long targetUserId, Long targetRoleId) {
+        List<SystemUserWechatRecipientDTO> recipients;
+        String normalizedTargetScope = normalizeTargetScope(targetScope);
+        if (TARGET_SCOPE_USER.equals(normalizedTargetScope)) {
+            recipients = targetUserId == null ? List.of() : systemInternalApi.userWechatRecipientsByIds(List.of(targetUserId));
+            return toWechatRecipients(recipients);
+        }
+        if (TARGET_SCOPE_ROLE.equals(normalizedTargetScope)) {
+            recipients = targetRoleId == null ? List.of() : systemInternalApi.userWechatRecipientsByRole(targetRoleId);
+            return toWechatRecipients(recipients);
+        }
+        recipients = systemInternalApi.platformUserWechatRecipients();
+        return toWechatRecipients(recipients);
     }
 
     private String normalizeTargetScope(String targetScope) {
@@ -1335,18 +1600,40 @@ public class MessageAppService {
         return targetScope.trim().toUpperCase();
     }
 
-    private List<Recipient> toRecipients(List<SystemUserContactSnapshotDTO> contacts) {
-        if (contacts == null || contacts.isEmpty()) {
+    private List<EmailRecipient> toEmailRecipients(List<SystemUserEmailRecipientDTO> recipients) {
+        if (recipients == null || recipients.isEmpty()) {
             return List.of();
         }
-        return contacts.stream()
+        return recipients.stream()
                 .filter(java.util.Objects::nonNull)
-                .map(this::toRecipient)
+                .map(this::toEmailRecipient)
+                .filter(java.util.Objects::nonNull)
                 .toList();
     }
 
-    private Recipient toRecipient(SystemUserContactSnapshotDTO contact) {
-        return new Recipient(contact.userId(), contact.username(), contact.email(), contact.wechatOpenid());
+    private List<WechatRecipient> toWechatRecipients(List<SystemUserWechatRecipientDTO> recipients) {
+        if (recipients == null || recipients.isEmpty()) {
+            return List.of();
+        }
+        return recipients.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(this::toWechatRecipient)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
+    private EmailRecipient toEmailRecipient(SystemUserEmailRecipientDTO recipient) {
+        if (recipient.userId() == null || !StringUtils.hasText(recipient.userUuid())) {
+            return null;
+        }
+        return new EmailRecipient(recipient.userId(), recipient.userUuid().trim(), recipient.username(), recipient.email());
+    }
+
+    private WechatRecipient toWechatRecipient(SystemUserWechatRecipientDTO recipient) {
+        if (recipient.userId() == null || !StringUtils.hasText(recipient.userUuid())) {
+            return null;
+        }
+        return new WechatRecipient(recipient.userId(), recipient.userUuid().trim(), recipient.username(), recipient.wechatOpenid());
     }
 
     private void insertDeliveryLog(
@@ -1354,30 +1641,69 @@ public class MessageAppService {
             String channel,
             String targetScope,
             Long targetUserId,
+            String targetUserUuid,
             String targetUserName,
             String targetEmail,
             String title,
             String content,
             String sendStatus,
             String errorMessage,
-            Long operatorId
+            Long operatorId,
+            String operatorUserUuid
     ) {
         MessageDeliveryLogEntity entity = new MessageDeliveryLogEntity();
         entity.setNoticeId(noticeId);
         entity.setChannel(channel);
         entity.setTargetScope(targetScope);
         entity.setTargetUserId(targetUserId);
+        entity.setTargetUserUuid(targetUserUuid);
         entity.setTargetUserName(targetUserName);
-        entity.setTargetEmail(targetEmail);
+        entity.setTargetEmail(maskContactForDeliveryLog(channel, targetEmail));
         entity.setTitle(title);
         entity.setContent(content);
         entity.setSendStatus(sendStatus);
         entity.setErrorMessage(errorMessage);
         entity.setSentAt(DELIVERY_SUCCESS.equals(sendStatus) ? LocalDateTime.now() : null);
         entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(operatorUserUuid);
         entity.setUpdatedBy(operatorId);
+        entity.setUpdatedByUuid(operatorUserUuid);
         entity.setDeleted(0);
         messageDeliveryLogMapper.insert(entity);
+    }
+
+    private String maskContactForDeliveryLog(String channel, String contact) {
+        if (!StringUtils.hasText(contact)) {
+            return contact;
+        }
+        String normalized = contact.trim();
+        if (CHANNEL_EMAIL.equals(channel)) {
+            return maskEmail(normalized);
+        }
+        if (CHANNEL_WECHAT_OFFICIAL.equals(channel)) {
+            return maskToken(normalized);
+        }
+        return normalized;
+    }
+
+    private String maskEmail(String email) {
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0 || atIndex == email.length() - 1) {
+            return maskToken(email);
+        }
+        String localPart = email.substring(0, atIndex);
+        String domain = email.substring(atIndex);
+        if (localPart.length() <= 2) {
+            return localPart.charAt(0) + "***" + domain;
+        }
+        return localPart.charAt(0) + "***" + localPart.charAt(localPart.length() - 1) + domain;
+    }
+
+    private String maskToken(String value) {
+        if (value.length() <= 6) {
+            return value.charAt(0) + "***" + value.charAt(value.length() - 1);
+        }
+        return value.substring(0, 3) + "***" + value.substring(value.length() - 3);
     }
 
     private NoticeArchiveQuery buildNoticeArchiveQuery(
@@ -1388,7 +1714,8 @@ public class MessageAppService {
             long offset
     ) {
         NoticeArchiveQuery query = new NoticeArchiveQuery();
-        query.setUserId(currentUser.getUserId());
+        query.setUserId(requireAuthenticatedUserId(currentUser));
+        query.setUserUuid(currentUser.getUserUuid());
         query.setManageArchive(canManageArchive(currentUser));
         query.setKeyword(normalizeText(request.getKeyword()));
         query.setMessageType(normalizeText(request.getMessageType()));
@@ -1444,11 +1771,15 @@ public class MessageAppService {
     }
 
     private DeliveryLogQuery buildDeliveryLogQuery(
+            CurrentUser currentUser,
             MessageDTO.MessageArchiveQueryRequest request,
             long limit,
             long offset
     ) {
         DeliveryLogQuery query = new DeliveryLogQuery();
+        query.setUserId(requireAuthenticatedUserId(currentUser));
+        query.setUserUuid(currentUser.getUserUuid());
+        query.setManageDeliveryLogs(canManageArchive(currentUser));
         query.setKeyword(normalizeText(request.getKeyword()));
         query.setChannel(normalizeText(request.getChannel()));
         query.setTargetScope(normalizeText(request.getTargetScope()));
@@ -1493,6 +1824,23 @@ public class MessageAppService {
     private record RoleVisibility(String version, List<Long> roleIds) {
     }
 
+    private record UserIdentityKey(Long userId, String userUuid) {
+
+        private UserIdentityKey {
+            userUuid = StringUtils.hasText(userUuid) ? userUuid.trim() : null;
+        }
+
+        private boolean matches(SystemUserSnapshotDTO user) {
+            if (user == null || !java.util.Objects.equals(userId, user.userId())) {
+                return false;
+            }
+            if (!StringUtils.hasText(userUuid)) {
+                return !StringUtils.hasText(user.userUuid());
+            }
+            return StringUtils.hasText(user.userUuid()) && userUuid.equals(user.userUuid().trim());
+        }
+    }
+
     private record CachedReadModelVersion(long version, long expiresAtEpochMillis) {
     }
 
@@ -1529,6 +1877,9 @@ public class MessageAppService {
     ) {
     }
 
-    private record Recipient(Long userId, String username, String email, String wechatOpenid) {
+    private record EmailRecipient(Long userId, String userUuid, String username, String email) {
+    }
+
+    private record WechatRecipient(Long userId, String userUuid, String username, String wechatOpenid) {
     }
 }

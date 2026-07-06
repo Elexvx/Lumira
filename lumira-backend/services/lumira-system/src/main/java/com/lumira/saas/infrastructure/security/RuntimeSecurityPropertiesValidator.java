@@ -21,6 +21,10 @@ public class RuntimeSecurityPropertiesValidator implements ApplicationRunner {
             "saas_foundation_field_secret_for_dev_env_please_change_me_2026"
     );
     static final Set<String> UNSAFE_DATABASE_PASSWORDS = Set.of("123456", "root", "password");
+    static final Set<String> SENSITIVE_PUBLIC_PATHS = Set.of(
+            "/actuator/prometheus",
+            "/actuator/metrics"
+    );
 
     private final SecurityProperties securityProperties;
     private final Environment environment;
@@ -42,6 +46,7 @@ public class RuntimeSecurityPropertiesValidator implements ApplicationRunner {
         validateFieldSecret();
         validateDatabasePassword();
         validateCorsAllowedOrigins();
+        validatePermitPaths();
     }
 
     private void validateJwtSecret() {
@@ -78,6 +83,25 @@ public class RuntimeSecurityPropertiesValidator implements ApplicationRunner {
         }
         if (corsAllowedOrigins.contains("localhost") || corsAllowedOrigins.contains("127.0.0.1")) {
             throw new IllegalStateException("生产环境 CORS_ALLOWED_ORIGIN_PATTERNS 不能包含本地调试地址");
+        }
+    }
+
+    private void validatePermitPaths() {
+        for (String permitPath : securityProperties.getPermitPaths()) {
+            String normalized = normalize(permitPath);
+            if (!StringUtils.hasText(normalized)) {
+                continue;
+            }
+            if (normalized.equals("/**")
+                    || normalized.equals("/api/**")
+                    || SENSITIVE_PUBLIC_PATHS.contains(normalized)
+                    || normalized.endsWith("/metrics")
+                    || normalized.startsWith("/api/v1/system")
+                    || normalized.startsWith("/api/v2/system")
+                    || normalized.startsWith("/internal/")
+                    || normalized.contains("/internal/")) {
+                throw new IllegalStateException("Production permit paths must not expose protected or internal APIs: " + normalized);
+            }
         }
     }
 

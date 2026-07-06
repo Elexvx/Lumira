@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.assembly;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
+import com.lumira.saas.modules.system.app.SystemInternalApiService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.app.SystemPlatformSettingsAppService;
 import com.lumira.saas.modules.system.app.SystemProfileSettingsAppService;
@@ -104,6 +105,7 @@ import org.springframework.context.annotation.Import;
         SystemController.class,
         SystemDepartmentAppService.class,
         SystemDepartmentController.class,
+        SystemInternalApiService.class,
         SystemManagementAppService.class,
         SystemMonitorAppService.class,
         SystemMonitorController.class,

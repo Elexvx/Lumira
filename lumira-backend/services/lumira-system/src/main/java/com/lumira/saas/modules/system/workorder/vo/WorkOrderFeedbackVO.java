@@ -9,6 +9,7 @@ public class WorkOrderFeedbackVO {
         private String priority;
         private String status;
         private Long submitterId;
+        private String submitterUuid;
         private String submitterName;
         private String adminReply;
         private Long handledBy;
@@ -28,6 +29,8 @@ public class WorkOrderFeedbackVO {
         public void setStatus(String status) { this.status = status; }
         public Long getSubmitterId() { return submitterId; }
         public void setSubmitterId(Long submitterId) { this.submitterId = submitterId; }
+        public String getSubmitterUuid() { return submitterUuid; }
+        public void setSubmitterUuid(String submitterUuid) { this.submitterUuid = submitterUuid; }
         public String getSubmitterName() { return submitterName; }
         public void setSubmitterName(String submitterName) { this.submitterName = submitterName; }
         public String getAdminReply() { return adminReply; }

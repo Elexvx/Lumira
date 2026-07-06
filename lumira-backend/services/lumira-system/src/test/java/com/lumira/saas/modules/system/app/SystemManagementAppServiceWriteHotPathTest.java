@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -27,14 +29,109 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class SystemManagementAppServiceWriteHotPathTest {
+
+    @Test
+    void dictWritesShouldPersistTrustedUserUuid() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(source.contains("insert into sys_dict_type (dict_code, dict_name, status, is_system, remark, created_by, created_by_uuid, updated_by, updated_by_uuid"));
+        assertTrue(source.contains("insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, created_by_uuid, updated_by, updated_by_uuid"));
+        assertTrue(source.contains("update sys_dict_type"));
+        assertTrue(source.contains("updated_by_uuid = ?"));
+        assertTrue(source.contains("requireSystemWrite(updated, \"Dict type changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(updated, \"Dict item changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(inserted, \"Dict type changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(inserted, \"Dict item changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(typeDeleted, \"Dict type changed, please retry\")"));
+    }
+
+    @Test
+    void configUpdateShouldBindOriginalConfigKeyAndScope() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(source.contains("SystemVO.ConfigVO currentConfig = getConfig(currentUser, id)"));
+        assertTrue(source.contains("and config_key = ?"));
+        assertTrue(source.contains("and config_scope = 'PLATFORM'"));
+        assertTrue(source.contains("and is_system = 0"));
+        assertTrue(source.contains("and deleted = 0"));
+        assertTrue(source.contains("Config changed, please retry"));
+        assertTrue(source.contains("requireSystemWrite(inserted, \"Config changed, please retry\")"));
+        assertTrue(source.contains("resolveStoredConfigValue(id, currentConfig.getConfigKey(), request.getConfigKey(), request.getConfigValue())"));
+    }
+
+    @Test
+    void menuWritesShouldPersistTrustedUserUuid() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(source.contains("permission_key, status, created_by, created_by_uuid, updated_by, updated_by_uuid"));
+        assertTrue(source.contains("set parent_id = ?, sort_no = ?, updated_by = ?, updated_by_uuid = ?"));
+        assertTrue(source.contains("where id = ? and menu_code = ? and menu_type = ? and deleted = 0"));
+        assertTrue(source.contains("menu.getMenuCode()"));
+        assertTrue(source.contains("editableMenu.getMenuCode()"));
+        assertTrue(source.contains("requireSystemWrite(updated, \"Menu changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(inserted, \"Menu changed, please retry\")"));
+    }
+
+    @Test
+    void dictTypeWritesShouldBindOriginalCodeAndSystemFlag() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(source.contains("SystemVO.DictTypeVO existingType = getDictType(currentUser, id)"));
+        assertTrue(source.contains("int typeDeleted = jdbcTemplate.update("));
+        assertTrue(source.contains("requireSystemWrite(typeDeleted, \"Dict type changed, please retry\")"));
+        assertTrue(source.contains("where dict_type_id = ? and deleted = 0"));
+        assertTrue(source.contains("where id = ? and dict_code = ? and is_system = ? and deleted = 0"));
+        assertTrue(!source.contains("where t.id = sys_dict_item.dict_type_id"));
+    }
+
+    @Test
+    void dictItemWritesShouldBindOriginalValueAndStatus() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(source.contains("SystemVO.DictItemVO existingItem = getDictItem(currentUser, dictTypeId, itemId)"));
+        assertTrue(source.contains("int deleted = jdbcTemplate.update("));
+        assertTrue(source.contains("requireSystemWrite(deleted, \"Dict item changed, please retry\")"));
+        assertTrue(source.contains("where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0"));
+        assertTrue(source.contains("existingItem == null ? null : existingItem.getItemValue()"));
+        assertTrue(source.contains("item.getItemValue()"));
+    }
+
+    @Test
+    void currentUserProfileUpsertsShouldNotRewriteUserUuid() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(source.contains("locale = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(source.contains("extra_json = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(source.contains("requireSystemWrite(updated, \"User profile changed, please retry\")"));
+        assertTrue(!source.contains("user_uuid = values(user_uuid),"));
+    }
+
+    @Test
+    void userRoleReplacementShouldSoftDeleteAndBindTargetRoleContext() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+
+        assertTrue(!source.contains("delete from sys_user_role where user_id = ? and user_uuid = ?"));
+        assertTrue(source.contains("update sys_user_role"));
+        assertTrue(source.contains("updated_by_uuid = ?"));
+        assertTrue(source.contains("from sys_role r"));
+        assertTrue(source.contains("where r.id = ? and r.deleted = 0"));
+        assertTrue(source.contains("requireSystemWrite(inserted, \"Role changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(inserted, \"User changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(updated, \"User changed, please retry\")"));
+        assertTrue(source.contains("requireSystemWrite(passwordUpdated, \"User changed, please retry\")"));
+    }
 
     @Test
     void createMenuShouldUseLastInsertId() {
@@ -45,6 +142,21 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(901L, menu.getId());
         assertEquals("settings.menu", menu.getMenuCode());
         assertEquals(1, env.jdbcTemplate.lastInsertIdQueries);
+    }
+
+    @Test
+    void createMenuShouldRejectWhenInsertMissesBeforeLastInsertId() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.updateResult = 0;
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createMenu(buildCurrentUser(), menuRequest())
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Menu changed, please retry"));
+        assertEquals(0, env.jdbcTemplate.lastInsertIdQueries);
     }
 
     @Test
@@ -59,6 +171,69 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(13, env.service.countMenus());
 
         assertEquals(2, env.jdbcTemplate.menuCountQueries);
+    }
+
+    @Test
+    void createMenuShouldRequireCreatePermissionBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createMenu(buildCurrentUser("system:menu:view"), menuRequest())
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
+    @Test
+    void createMenuShouldRejectMissingSessionVersionBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setSessionVersion(null);
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createMenu(currentUser, menuRequest())
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
+    @Test
+    void menuWritesShouldRejectInvalidInputBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+
+        BizException createError = assertThrows(
+                BizException.class,
+                () -> env.service.createMenu(currentUser, null)
+        );
+        BizException updateRequestError = assertThrows(
+                BizException.class,
+                () -> env.service.updateMenu(currentUser, 901L, null)
+        );
+        BizException updateIdError = assertThrows(
+                BizException.class,
+                () -> env.service.updateMenu(currentUser, 0L, menuRequest())
+        );
+        BizException statusIdError = assertThrows(
+                BizException.class,
+                () -> env.service.updateMenuStatus(currentUser, 0L, "DISABLED")
+        );
+        BizException deleteIdError = assertThrows(
+                BizException.class,
+                () -> env.service.deleteMenu(currentUser, 0L)
+        );
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, createError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, updateRequestError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, updateIdError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, statusIdError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, deleteIdError.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+        assertEquals(0, env.jdbcTemplate.readModelVersionBumps);
     }
 
     @Test
@@ -117,6 +292,34 @@ class SystemManagementAppServiceWriteHotPathTest {
     }
 
     @Test
+    void createDictTypeShouldRejectWhenInsertMissesBeforeLastInsertId() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.updateResult = 0;
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createDictType(buildCurrentUser(), dictTypeRequest())
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Dict type changed, please retry"));
+        assertEquals(0, env.jdbcTemplate.lastInsertIdQueries);
+    }
+
+    @Test
+    void createDictTypeShouldRequireCreatePermissionBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createDictType(buildCurrentUser("system:dict:view"), dictTypeRequest())
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
+    @Test
     void createDictItemShouldUseLastInsertId() {
         TestEnvironment env = new TestEnvironment();
 
@@ -127,13 +330,177 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(1, env.jdbcTemplate.lastInsertIdQueries);
     }
 
+    @Test
+    void createDictItemShouldRejectWhenInsertMissesBeforeLastInsertId() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.updateResult = 0;
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createDictItem(buildCurrentUser(), 77L, dictItemRequest())
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Dict item changed, please retry"));
+        assertEquals(0, env.jdbcTemplate.lastInsertIdQueries);
+    }
+
+    @Test
+    void createDictItemShouldAcceptCreatePermissionWithoutSeparateViewPermission() {
+        TestEnvironment env = new TestEnvironment();
+
+        SystemVO.DictItemVO dictItem = env.service.createDictItem(buildCurrentUser("system:dict:create"), 77L, dictItemRequest());
+
+        assertEquals(901L, dictItem.getId());
+        assertEquals(1, env.jdbcTemplate.lastInsertIdQueries);
+    }
+
+    @Test
+    void deleteDictTypeShouldRejectWhenPrimaryDeleteMissesBeforeCleaningItems() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.updateResults.add(0);
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.deleteDictType(buildCurrentUser(), 77L)
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Dict type changed, please retry"));
+        assertTrue(env.jdbcTemplate.deletedDictType);
+        assertTrue(!env.jdbcTemplate.deletedDictItems);
+    }
+
+    @Test
+    void deleteDictItemShouldRejectWhenFinalWriteMisses() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.updateResult = 0;
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.deleteDictItem(buildCurrentUser(), 77L, 901L)
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Dict item changed, please retry"));
+    }
+
+    @Test
+    void createConfigShouldRequireUpdatePermissionBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createConfig(buildCurrentUser("system:config:view"), configRequest())
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
+    @Test
+    void createConfigShouldRejectWhenInsertMissesBeforeLookup() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.updateResult = 0;
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.createConfig(buildCurrentUser(), configRequest())
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Config changed, please retry"));
+    }
+
+    @Test
+    void dictAndConfigWritesShouldRejectInvalidInputBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+
+        BizException dictTypeCreateError = assertThrows(
+                BizException.class,
+                () -> env.service.createDictType(currentUser, null)
+        );
+        BizException dictTypeUpdateIdError = assertThrows(
+                BizException.class,
+                () -> env.service.updateDictType(currentUser, 0L, dictTypeRequest())
+        );
+        BizException dictTypeUpdateRequestError = assertThrows(
+                BizException.class,
+                () -> env.service.updateDictType(currentUser, 77L, null)
+        );
+        BizException dictTypeDeleteError = assertThrows(
+                BizException.class,
+                () -> env.service.deleteDictType(currentUser, 0L)
+        );
+        BizException dictItemCreateTypeError = assertThrows(
+                BizException.class,
+                () -> env.service.createDictItem(currentUser, 0L, dictItemRequest())
+        );
+        BizException dictItemCreateRequestError = assertThrows(
+                BizException.class,
+                () -> env.service.createDictItem(currentUser, 77L, null)
+        );
+        BizException dictItemUpdateItemError = assertThrows(
+                BizException.class,
+                () -> env.service.updateDictItem(currentUser, 77L, 0L, dictItemRequest())
+        );
+        BizException dictItemUpdateRequestError = assertThrows(
+                BizException.class,
+                () -> env.service.updateDictItem(currentUser, 77L, 901L, null)
+        );
+        BizException dictItemDeleteError = assertThrows(
+                BizException.class,
+                () -> env.service.deleteDictItem(currentUser, 77L, 0L)
+        );
+        BizException configCreateError = assertThrows(
+                BizException.class,
+                () -> env.service.createConfig(currentUser, null)
+        );
+        BizException configUpdateIdError = assertThrows(
+                BizException.class,
+                () -> env.service.updateConfig(currentUser, 0L, configRequest())
+        );
+        BizException configUpdateRequestError = assertThrows(
+                BizException.class,
+                () -> env.service.updateConfig(currentUser, 901L, null)
+        );
+
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictTypeCreateError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictTypeUpdateIdError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictTypeUpdateRequestError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictTypeDeleteError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictItemCreateTypeError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictItemCreateRequestError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictItemUpdateItemError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictItemUpdateRequestError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, dictItemDeleteError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, configCreateError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, configUpdateIdError.getErrorCode());
+        assertEquals(ErrorCode.VALIDATION_ERROR, configUpdateRequestError.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
     private static CurrentUser buildCurrentUser() {
+        return buildCurrentUser("*");
+    }
+
+    private static CurrentUser buildCurrentUser(String permission) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
+        currentUser.setUserUuid(userUuidForPermission(permission));
         currentUser.setUsername("admin");
         currentUser.setAuthenticated(true);
-        currentUser.setPermissions(Set.of("*"));
+        currentUser.setSessionId("session-1");
+        currentUser.setSessionVersion(1);
+        currentUser.setPermissionsVersion("permissions-1");
+        currentUser.setPermissions(Set.of(permission));
         return currentUser;
+    }
+
+    private static String userUuidForPermission(String permission) {
+        String normalized = permission == null ? "none" : permission.replace('*', 'A').replace(':', '_');
+        return "user-uuid-1001-" + normalized;
     }
 
     private static SystemDTO.MenuUpsertRequest menuRequest() {
@@ -169,6 +536,15 @@ class SystemManagementAppServiceWriteHotPathTest {
         return request;
     }
 
+    private static SystemDTO.ConfigUpsertRequest configRequest() {
+        SystemDTO.ConfigUpsertRequest request = new SystemDTO.ConfigUpsertRequest();
+        request.setConfigKey("site.name");
+        request.setConfigName("Site name");
+        request.setConfigValue("Lumira");
+        request.setRemark("display name");
+        return request;
+    }
+
     private static final class TestEnvironment {
         private final RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
         private final PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -195,6 +571,26 @@ class SystemManagementAppServiceWriteHotPathTest {
 
         private TestEnvironment() {
             when(permissionSnapshotService.currentPermissionSnapshotVersion()).thenReturn("v1");
+            when(permissionSnapshotService.isTrustedActiveUser(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+            when(permissionSnapshotService.loadSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                    .thenAnswer(invocation -> snapshotForPermission((String) invocation.getArgument(1)));
+        }
+
+        private PermissionSnapshotService.PermissionSnapshot snapshotForPermission(String userUuid) {
+            String permission = "*";
+            if (userUuid != null && userUuid.startsWith("user-uuid-1001-")) {
+                permission = userUuid.substring("user-uuid-1001-".length()).replace('A', '*').replace('_', ':');
+            }
+            return new PermissionSnapshotService.PermissionSnapshot(
+                    "permissions-2",
+                    Set.of(permission),
+                    Set.of(1L),
+                    null,
+                    Set.of(),
+                    Set.of(),
+                    List.of(),
+                    "/dashboard/home"
+            );
         }
     }
 
@@ -228,9 +624,22 @@ class SystemManagementAppServiceWriteHotPathTest {
         private Integer dictItemSortNo;
         private String dictItemStatus;
         private String dictItemRemark;
+        private int updateCalls;
+        private int updateResult = 1;
+        private final java.util.Deque<Integer> updateResults = new java.util.ArrayDeque<>();
+        private boolean deletedDictItems;
+        private boolean deletedDictType;
 
         @Override
         public int update(String sql, Object... args) {
+            updateCalls += 1;
+            String normalized = sql.toLowerCase();
+            if (normalized.contains("update sys_dict_item") && normalized.contains("set deleted = 1")) {
+                deletedDictItems = true;
+            }
+            if (normalized.contains("update sys_dict_type") && normalized.contains("set deleted = 1")) {
+                deletedDictType = true;
+            }
             if (sql.contains("insert into sys_menu")) {
                 menuCode = (String) args[1];
                 menuName = (String) args[2];
@@ -266,7 +675,7 @@ class SystemManagementAppServiceWriteHotPathTest {
                 dictItemRemark = (String) args[5];
                 dictItemId = 901L;
             }
-            return 1;
+            return updateResults.isEmpty() ? updateResult : updateResults.removeFirst();
         }
 
         @Override
@@ -334,6 +743,19 @@ class SystemManagementAppServiceWriteHotPathTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             String normalized = sql.toLowerCase();
+            if (normalized.contains("from sys_menu") && normalized.contains("status = 'enabled'")) {
+                menuCountQueries += 1;
+                List<T> menus = new java.util.ArrayList<>();
+                for (int i = 0; i < menuCount; i++) {
+                    SystemVO.MenuVO menu = new SystemVO.MenuVO();
+                    menu.setMenuCode("custom.menu." + i);
+                    menu.setPath("/custom/menu-" + i);
+                    menu.setComponent("CustomMenuPage");
+                    menu.setPermissionKey("system:menu:view");
+                    menus.add((T) menu);
+                }
+                return menus;
+            }
             if (normalized.contains("from sys_menu") && normalized.contains("order by sort_no asc, id asc")) {
                 menuTreeQueries += 1;
                 SystemVO.MenuVO menu = new SystemVO.MenuVO();

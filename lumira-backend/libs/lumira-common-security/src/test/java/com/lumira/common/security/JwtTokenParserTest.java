@@ -23,8 +23,11 @@ class JwtTokenParserTest {
 
         assertThat(claims.getSessionId()).isEqualTo("session-1");
         assertThat(claims.getUserId()).isEqualTo(100L);
+        assertThat(claims.getUserUuid()).isEqualTo("user-uuid-100");
         assertThat(claims.getUsername()).isEqualTo("alice");
+        assertThat(claims.getSimulatedRoleId()).isEqualTo(9L);
         assertThat(claims.getSessionVersion()).isEqualTo(3);
+        assertThat(claims.getPermissionsVersion()).isEqualTo("permissions-3");
         assertThat(claims.getTokenId()).isEqualTo("token-1");
         assertThat(claims.getTokenType()).isEqualTo(JwtTokenType.ACCESS);
     }
@@ -72,8 +75,11 @@ class JwtTokenParserTest {
                 .id("token-1")
                 .claim(JwtTokenParser.CLAIM_SESSION_ID, "session-1")
                 .claim(JwtTokenParser.CLAIM_USER_ID, 100L)
+                .claim(JwtTokenParser.CLAIM_USER_UUID, "user-uuid-100")
                 .claim(JwtTokenParser.CLAIM_USERNAME, "alice")
+                .claim(JwtTokenParser.CLAIM_SIMULATED_ROLE_ID, 9L)
                 .claim(JwtTokenParser.CLAIM_SESSION_VERSION, 3)
+                .claim(JwtTokenParser.CLAIM_PERMISSIONS_VERSION, "permissions-3")
                 .claim(JwtTokenParser.CLAIM_TOKEN_TYPE, JwtTokenType.ACCESS.name())
                 .signWith(JwtSecretKeyFactory.createHmacKey(secret))
                 .compact();

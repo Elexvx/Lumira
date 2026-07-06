@@ -3,6 +3,9 @@ package com.lumira.message.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.message.MessageEventDTO;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.message.infrastructure.security.MessageSessionAuthenticationService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,6 +16,9 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,24 +33,44 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MessageWebSocketRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageWebSocketRegistry.class);
+    private static final Duration DEFAULT_TRUST_REVALIDATION_INTERVAL = Duration.ofSeconds(30);
 
     private final ObjectMapper objectMapper;
     private final MessageEventFactory messageEventFactory;
+    private final MessageSessionAuthenticationService sessionAuthenticationService;
     private final Counter connectCounter;
     private final Counter disconnectCounter;
     private final Counter sendCounter;
     private final Counter sendFailureCounter;
     private final Counter heartbeatCounter;
+    private final Clock clock;
+    private final Duration trustRevalidationInterval;
     private final Map<String, Subscriber> subscribers = new ConcurrentHashMap<>();
     private final Map<Long, Set<String>> subscriberIdsByUserId = new ConcurrentHashMap<>();
+    private final Map<String, Instant> trustedAtBySubscriberId = new ConcurrentHashMap<>();
 
     public MessageWebSocketRegistry(
             ObjectMapper objectMapper,
             MessageEventFactory messageEventFactory,
-            MeterRegistry meterRegistry
+            MeterRegistry meterRegistry,
+            MessageSessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(objectMapper, messageEventFactory, meterRegistry, sessionAuthenticationService, Clock.systemUTC(), DEFAULT_TRUST_REVALIDATION_INTERVAL);
+    }
+
+    MessageWebSocketRegistry(
+            ObjectMapper objectMapper,
+            MessageEventFactory messageEventFactory,
+            MeterRegistry meterRegistry,
+            MessageSessionAuthenticationService sessionAuthenticationService,
+            Clock clock,
+            Duration trustRevalidationInterval
     ) {
         this.objectMapper = objectMapper;
         this.messageEventFactory = messageEventFactory;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+        this.clock = clock;
+        this.trustRevalidationInterval = trustRevalidationInterval == null ? DEFAULT_TRUST_REVALIDATION_INTERVAL : trustRevalidationInterval;
         this.connectCounter = Counter.builder("message.websocket.connect.total").register(meterRegistry);
         this.disconnectCounter = Counter.builder("message.websocket.disconnect.total").register(meterRegistry);
         this.sendCounter = Counter.builder("message.websocket.send.total").register(meterRegistry);
@@ -55,13 +81,31 @@ public class MessageWebSocketRegistry {
                 .register(meterRegistry);
     }
 
-    public void register(WebSocketSession session, Long userId) {
+    public void register(WebSocketSession session, CurrentUser currentUser) {
+        if (session == null || !AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        registerSubscriber(session, currentUser);
+    }
+
+    private void registerSubscriber(WebSocketSession session, CurrentUser currentUser) {
         String subscriberId = UUID.randomUUID().toString();
-        Subscriber subscriber = new Subscriber(subscriberId, session, userId, LocalDateTime.now());
+        Subscriber subscriber = new Subscriber(
+                subscriberId,
+                session,
+                currentUser.getUserId(),
+                normalizeText(currentUser.getUserUuid()),
+                normalizeText(currentUser.getSessionId()),
+                normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
+                currentUser.getSessionVersion(),
+                normalizeText(currentUser.getPermissionsVersion()),
+                LocalDateTime.now(clock)
+        );
         subscribers.put(subscriberId, subscriber);
-        subscriberIdsByUserId.computeIfAbsent(userId, key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
+        subscriberIdsByUserId.computeIfAbsent(currentUser.getUserId(), key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
+        trustedAtBySubscriberId.put(subscriberId, clock.instant());
         connectCounter.increment();
-        sendSafely(subscriber, messageEventFactory.toConnectedEvent(userId));
+        sendSafely(subscriber, messageEventFactory.toConnectedEvent(currentUser.getUserId(), subscriber.userUuid()), false);
     }
 
     public void unregister(WebSocketSession session) {
@@ -83,18 +127,21 @@ public class MessageWebSocketRegistry {
             return;
         }
         for (Subscriber subscriber : subscribers.values()) {
-            sendSafely(subscriber, event);
+            sendSafely(subscriber, event, true);
         }
     }
 
-    public void sendToUser(Long userId, MessageEventDTO event) {
-        dispatch(subscriberIdsByUserId.get(userId), event, userId);
+    public void sendToUser(Long userId, String userUuid, MessageEventDTO event) {
+        if (!isValidUserId(userId) || normalizeText(userUuid) == null) {
+            return;
+        }
+        dispatch(subscriberIdsByUserId.get(userId), event, userId, normalizeText(userUuid));
     }
 
     public void sendHeartbeat() {
         for (Subscriber subscriber : subscribers.values()) {
             heartbeatCounter.increment();
-            sendSafely(subscriber, messageEventFactory.createHeartbeatEvent(subscriber.userId()));
+            sendSafely(subscriber, messageEventFactory.createHeartbeatEvent(subscriber.userId(), subscriber.userUuid()), true);
         }
     }
 
@@ -123,7 +170,7 @@ public class MessageWebSocketRegistry {
         );
     }
 
-    private void dispatch(Set<String> subscriberIds, MessageEventDTO event, Long userId) {
+    private void dispatch(Set<String> subscriberIds, MessageEventDTO event, Long userId, String expectedUserUuid) {
         if (subscriberIds == null || subscriberIds.isEmpty() || event == null) {
             return;
         }
@@ -135,12 +182,30 @@ public class MessageWebSocketRegistry {
             if (userId != null && !subscriber.userId().equals(userId)) {
                 continue;
             }
-            sendSafely(subscriber, event);
+            if (expectedUserUuid != null && !expectedUserUuid.equals(subscriber.userUuid())) {
+                continue;
+            }
+            if (!eventMatchesSubscriberIdentity(event, subscriber)) {
+                continue;
+            }
+            sendSafely(subscriber, event, true);
         }
     }
 
-    private void sendSafely(Subscriber subscriber, MessageEventDTO event) {
+    private boolean eventMatchesSubscriberIdentity(MessageEventDTO event, Subscriber subscriber) {
+        String eventUserUuid = normalizeText(event.getUserUuid());
+        if (eventUserUuid == null) {
+            return true;
+        }
+        return eventUserUuid.equals(subscriber.userUuid());
+    }
+
+    private void sendSafely(Subscriber subscriber, MessageEventDTO event, boolean revalidateTrust) {
         try {
+            if (revalidateTrust && !isTrustedSubscriber(subscriber)) {
+                closeAndRemoveSubscriber(subscriber);
+                return;
+            }
             if (subscriber.session().isOpen()) {
                 subscriber.session().sendMessage(new TextMessage(serialize(event)));
                 sendCounter.increment();
@@ -168,6 +233,7 @@ public class MessageWebSocketRegistry {
             return;
         }
         disconnectCounter.increment();
+        trustedAtBySubscriberId.remove(subscriberId);
 
         Set<String> userSubscribers = subscriberIdsByUserId.get(subscriber.userId());
         if (userSubscribers != null) {
@@ -178,7 +244,73 @@ public class MessageWebSocketRegistry {
         }
     }
 
-    private record Subscriber(String subscriberId, WebSocketSession session, Long userId, LocalDateTime connectedAt) {
+    private boolean isValidUserId(Long userId) {
+        return userId != null && userId > 0;
+    }
+
+    private boolean isTrustedSubscriber(Subscriber subscriber) {
+        if (subscriber == null) {
+            return false;
+        }
+        Instant now = clock.instant();
+        Instant trustedAt = trustedAtBySubscriberId.get(subscriber.subscriberId());
+        if (trustedAt != null
+                && !trustRevalidationInterval.isNegative()
+                && !trustRevalidationInterval.isZero()
+                && trustedAt.plus(trustRevalidationInterval).isAfter(now)) {
+            return true;
+        }
+        boolean trusted = sessionAuthenticationService.isTrustedSession(
+                subscriber.sessionId(),
+                subscriber.userId(),
+                subscriber.userUuid(),
+                subscriber.simulatedRoleId(),
+                subscriber.sessionVersion(),
+                subscriber.permissionsVersion()
+        );
+        if (trusted) {
+            trustedAtBySubscriberId.put(subscriber.subscriberId(), now);
+        }
+        return trusted;
+    }
+
+    private void closeAndRemoveSubscriber(Subscriber subscriber) {
+        if (subscriber == null) {
+            return;
+        }
+        try {
+            if (subscriber.session().isOpen()) {
+                subscriber.session().close();
+            }
+        } catch (IOException | RuntimeException exception) {
+            logger.debug("Failed to close stale websocket session {}", subscriber.session().getId(), exception);
+        } finally {
+            removeSubscriber(subscriber.subscriberId());
+        }
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
+    private record Subscriber(
+            String subscriberId,
+            WebSocketSession session,
+            Long userId,
+            String userUuid,
+            String sessionId,
+            Long simulatedRoleId,
+            Integer sessionVersion,
+            String permissionsVersion,
+            LocalDateTime connectedAt
+    ) {
     }
 
     public record Snapshot(

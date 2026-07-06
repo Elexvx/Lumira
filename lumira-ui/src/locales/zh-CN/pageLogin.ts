@@ -45,7 +45,6 @@ export default {
   'page.login.code.countdown': '{seconds}s 后重发',
   'page.login.code.cooldown': '请等待 {seconds}s 后再发送',
   'page.login.code.to': '验证码将发送到 {contact}',
-  'page.login.code.debug': '调试验证码：{code}',
   'page.login.code.secondFactor': '请输入收到的验证码完成二次验证',
   'page.login.secondFactor.prompt': '{name} 需要完成二次验证',
   'page.login.submit.login': '登录',

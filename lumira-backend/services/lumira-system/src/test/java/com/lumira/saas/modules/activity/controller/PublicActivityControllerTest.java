@@ -16,12 +16,12 @@ class PublicActivityControllerTest {
     @Test
     void activitiesReadsPublishedActivityCardsWithoutCurrentUser() {
         ActivityManagementAppService activityManagementAppService = mock(ActivityManagementAppService.class);
-        PageResponse<ActivityVO.Activity> page = new PageResponse<>();
+        PageResponse<ActivityVO.PublicActivity> page = new PageResponse<>();
         PublicActivityController controller = new PublicActivityController(activityManagementAppService);
 
         when(activityManagementAppService.listPublishedActivities("roadshow", "zh", true, 1L, 12L)).thenReturn(page);
 
-        ApiResponse<PageResponse<ActivityVO.Activity>> response = controller.activities("roadshow", "zh", true, 1L, 12L);
+        ApiResponse<PageResponse<ActivityVO.PublicActivity>> response = controller.activities("roadshow", "zh", true, 1L, 12L);
 
         assertThat(response.getData()).isSameAs(page);
         verify(activityManagementAppService).listPublishedActivities("roadshow", "zh", true, 1L, 12L);

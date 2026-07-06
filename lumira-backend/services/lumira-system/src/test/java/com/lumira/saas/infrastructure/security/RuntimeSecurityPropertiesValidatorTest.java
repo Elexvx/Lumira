@@ -87,7 +87,63 @@ class RuntimeSecurityPropertiesValidatorTest {
         assertThrows(IllegalStateException.class, () -> validator.run(new DefaultApplicationArguments()));
     }
 
-    private RuntimeSecurityPropertiesValidator buildValidator(
+    @Test
+    void rejectsBroadPermitPathsInProd() {
+        TestRuntimeSecurityPropertiesValidator validator = buildValidator(
+                "prod-jwt-secret-with-at-least-32-characters",
+                "prod-field-secret-with-at-least-32-characters",
+                "prod-database-password",
+                "https://saas.elexvx.com",
+                "prod"
+        );
+        validator.securityProperties.setPermitPaths(java.util.List.of("/api/**"));
+
+        assertThrows(IllegalStateException.class, () -> validator.run(new DefaultApplicationArguments()));
+    }
+
+    @Test
+    void rejectsInternalPermitPathsInProd() {
+        TestRuntimeSecurityPropertiesValidator validator = buildValidator(
+                "prod-jwt-secret-with-at-least-32-characters",
+                "prod-field-secret-with-at-least-32-characters",
+                "prod-database-password",
+                "https://saas.elexvx.com",
+                "prod"
+        );
+        validator.securityProperties.setPermitPaths(java.util.List.of("/internal/**"));
+
+        assertThrows(IllegalStateException.class, () -> validator.run(new DefaultApplicationArguments()));
+    }
+
+    @Test
+    void rejectsPublicMetricsPermitPathsInProd() {
+        TestRuntimeSecurityPropertiesValidator validator = buildValidator(
+                "prod-jwt-secret-with-at-least-32-characters",
+                "prod-field-secret-with-at-least-32-characters",
+                "prod-database-password",
+                "https://saas.elexvx.com",
+                "prod"
+        );
+        validator.securityProperties.setPermitPaths(java.util.List.of("/actuator/prometheus"));
+
+        assertThrows(IllegalStateException.class, () -> validator.run(new DefaultApplicationArguments()));
+    }
+
+    @Test
+    void rejectsPublicMetricsAliasPermitPathsInProd() {
+        TestRuntimeSecurityPropertiesValidator validator = buildValidator(
+                "prod-jwt-secret-with-at-least-32-characters",
+                "prod-field-secret-with-at-least-32-characters",
+                "prod-database-password",
+                "https://saas.elexvx.com",
+                "prod"
+        );
+        validator.securityProperties.setPermitPaths(java.util.List.of("/api/v2/system/metrics"));
+
+        assertThrows(IllegalStateException.class, () -> validator.run(new DefaultApplicationArguments()));
+    }
+
+    private TestRuntimeSecurityPropertiesValidator buildValidator(
             String jwtSecret,
             String fieldSecret,
             String databasePassword,
@@ -101,6 +157,15 @@ class RuntimeSecurityPropertiesValidatorTest {
         environment.setActiveProfiles(profile);
         environment.setProperty("spring.datasource.password", databasePassword);
         environment.setProperty("saas.web.cors-allowed-origin-patterns", corsAllowedOrigins);
-        return new RuntimeSecurityPropertiesValidator(securityProperties, environment);
+        return new TestRuntimeSecurityPropertiesValidator(securityProperties, environment);
+    }
+
+    private static final class TestRuntimeSecurityPropertiesValidator extends RuntimeSecurityPropertiesValidator {
+        private final SecurityProperties securityProperties;
+
+        private TestRuntimeSecurityPropertiesValidator(SecurityProperties securityProperties, MockEnvironment environment) {
+            super(securityProperties, environment);
+            this.securityProperties = securityProperties;
+        }
     }
 }

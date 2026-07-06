@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.when;
 
 class AuthSessionStoreTest {
 
-    private static final String USER_ONLINE_SESSION_KEY = CacheKeyConstants.onlineSessionUserKey(1L);
+    private static final String USER_ONLINE_SESSION_KEY = CacheKeyConstants.onlineSessionUserKey(1L, "user-uuid-1");
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
@@ -80,7 +81,7 @@ class AuthSessionStoreTest {
 
         authSessionStore.save(session, false);
         assertThat(authSessionStore.findBySessionId("s-1")).isEmpty();
-        when(valueOperations.get("saas:session:s-1")).thenReturn("{\"sessionId\":\"s-1\",\"userId\":1,\"sessionVersion\":1}");
+        when(valueOperations.get("saas:session:s-1")).thenReturn(toPayload(session));
         assertThat(authSessionStore.findBySessionId("s-1")).isPresent();
         authSessionStore.remove(session, false);
 
@@ -101,7 +102,7 @@ class AuthSessionStoreTest {
         when(valueOperations.get("saas:session:stale")).thenReturn(null);
         when(valueOperations.get("saas:session:live")).thenReturn(toPayload(liveSession));
 
-        var latest = authSessionStore.findLatestActiveUserSessionId(1L);
+        var latest = authSessionStore.findLatestActiveUserSessionId(1L, "user-uuid-1");
 
         assertThat(latest).contains("live");
         verify(zSetOperations).remove(USER_ONLINE_SESSION_KEY, "stale");
@@ -109,9 +110,15 @@ class AuthSessionStoreTest {
 
     @Test
     void listActiveUserSessionIdsShouldCleanExpiredSessions() {
+        AuthSession first = buildSession(Instant.now().plusSeconds(3600));
+        first.setSessionId("s1");
+        AuthSession second = buildSession(Instant.now().plusSeconds(3600));
+        second.setSessionId("s2");
         when(zSetOperations.reverseRange(USER_ONLINE_SESSION_KEY, 0, -1)).thenReturn(Set.of("s1", "s2"));
+        when(valueOperations.get(CacheKeyConstants.sessionKey("s1"))).thenReturn(toPayload(first));
+        when(valueOperations.get(CacheKeyConstants.sessionKey("s2"))).thenReturn(toPayload(second));
 
-        assertThat(authSessionStore.listActiveUserSessionIds(1L)).containsExactlyInAnyOrder("s1", "s2");
+        assertThat(authSessionStore.listActiveUserSessionIds(1L, "user-uuid-1")).containsExactlyInAnyOrder("s1", "s2");
 
         verify(zSetOperations).removeRangeByScore(eq(USER_ONLINE_SESSION_KEY), eq(Double.NEGATIVE_INFINITY), anyDouble());
     }
@@ -126,7 +133,7 @@ class AuthSessionStoreTest {
         when(valueOperations.get("saas:session:stale")).thenReturn(null);
         when(valueOperations.get("saas:session:live")).thenReturn(toPayload(liveSession));
 
-        assertThat(authSessionStore.findLatestActiveUserSessionId(1L)).contains("live");
+        assertThat(authSessionStore.findLatestActiveUserSessionId(1L, "user-uuid-1")).contains("live");
 
         verify(zSetOperations).removeRangeByScore(eq(USER_ONLINE_SESSION_KEY), eq(Double.NEGATIVE_INFINITY), anyDouble());
     }
@@ -138,25 +145,62 @@ class AuthSessionStoreTest {
                 .thenReturn(Set.of());
         when(valueOperations.get("saas:session:")).thenReturn(null);
 
-        assertThat(authSessionStore.findLatestActiveUserSessionId(1L)).isEmpty();
+        assertThat(authSessionStore.findLatestActiveUserSessionId(1L, "user-uuid-1")).isEmpty();
         verify(zSetOperations).remove(USER_ONLINE_SESSION_KEY, "");
     }
 
     @Test
     void findLatestActiveUserSessionIdShouldReturnEmptyWhenUserIdIsNull() {
-        assertThat(authSessionStore.findLatestActiveUserSessionId(null)).isEmpty();
+        assertThat(authSessionStore.findLatestActiveUserSessionId(null, "user-uuid-1")).isEmpty();
+    }
+
+    @Test
+    void blankUuidUserSessionMethodsShouldFailClosedBeforeRedisAccess() {
+        assertThat(authSessionStore.listActiveUserSessionIds(1L, " ")).isEmpty();
+        assertThat(authSessionStore.findLatestActiveUserSessionId(1L, " ")).isEmpty();
+        authSessionStore.revokeUserSessions(1L, " ", false);
+
+        verify(zSetOperations, never()).reverseRange(anyString(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong());
+        verify(zSetOperations, never()).removeRangeByScore(anyString(), anyDouble(), anyDouble());
+        verify(valueOperations, never()).get(anyString());
+    }
+
+    @Test
+    void saveShouldRejectIncompleteTrustedSessionBeforeRedisAccess() {
+        AuthSession missingUserUuid = buildSession(Instant.now().plusSeconds(3600));
+        missingUserUuid.setUserUuid(null);
+        assertThrows(IllegalArgumentException.class, () -> authSessionStore.save(missingUserUuid, false));
+
+        AuthSession missingPermissionsVersion = buildSession(Instant.now().plusSeconds(3600));
+        missingPermissionsVersion.setPermissionsVersion(null);
+        assertThrows(IllegalArgumentException.class, () -> authSessionStore.save(missingPermissionsVersion, false));
+
+        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));
+    }
+
+    @Test
+    void findBySessionIdShouldRemoveIncompleteSessionPayload() {
+        AuthSession session = buildSession(Instant.now().plusSeconds(3600));
+        session.setPermissionsVersion(null);
+        when(valueOperations.get(CacheKeyConstants.sessionKey(session.getSessionId()))).thenReturn(toPayload(session));
+        when(valueOperations.get(CacheKeyConstants.sessionOwnerKey(session.getSessionId()))).thenReturn("1|user-uuid-1");
+
+        assertThat(authSessionStore.findBySessionId(session.getSessionId())).isEmpty();
+
+        assertThat(authSessionStore.corruptPayloads()).isEqualTo(1L);
+        verify(redisTemplate).delete(CacheKeyConstants.sessionKey(session.getSessionId()));
     }
 
     @Test
     void removeSessionReferencesShouldUseOwnerIndexWithoutKeyScan() {
-        when(valueOperations.get(CacheKeyConstants.sessionOwnerKey("s-1"))).thenReturn("1|1001");
+        when(valueOperations.get(CacheKeyConstants.sessionOwnerKey("s-1"))).thenReturn("1|user-uuid-1");
 
         authSessionStore.removeSessionReferences("s-1");
 
         verify(redisTemplate, never()).keys(anyString());
         verify(redisTemplate).delete(CacheKeyConstants.sessionOwnerKey("s-1"));
-        verify(redisTemplate).delete(CacheKeyConstants.userSessionKey(1L, "s-1"));
-        verify(zSetOperations).remove(CacheKeyConstants.onlineSessionUserKey(1L), "s-1");
+        verify(redisTemplate).delete(CacheKeyConstants.userSessionKey(1L, "user-uuid-1", "s-1"));
+        verify(zSetOperations).remove(CacheKeyConstants.onlineSessionUserKey(1L, "user-uuid-1"), "s-1");
         verify(zSetOperations).remove(CacheKeyConstants.onlineSessionKey(), "s-1");
     }
 
@@ -164,11 +208,13 @@ class AuthSessionStoreTest {
         AuthSession session = new AuthSession();
         session.setSessionId("s-1");
         session.setUserId(1L);
+        session.setUserUuid("user-uuid-1");
         session.setUsername("admin");
         session.setLoginTime(Instant.parse("2026-05-06T00:00:00Z"));
         session.setLastActivityAt(Instant.parse("2026-05-06T00:01:00Z"));
         session.setExpireTime(expireTime);
         session.setSessionVersion(1);
+        session.setPermissionsVersion("permissions-1");
         session.setClientType("WEB");
         session.setLoginIp("127.0.0.1");
         session.setUserAgent("Mozilla/5.0");

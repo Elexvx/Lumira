@@ -18,6 +18,7 @@ public final class ExpertVO {
         private String mobile;
         private String idCardNumber;
         private Long userId;
+        private String userUuid;
         private String accountStatus;
         private Boolean initialPasswordResetRequired;
         private String initialPassword;
@@ -54,6 +55,8 @@ public final class ExpertVO {
         public void setIdCardNumber(String idCardNumber) { this.idCardNumber = idCardNumber; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public String getAccountStatus() { return accountStatus; }
         public void setAccountStatus(String accountStatus) { this.accountStatus = accountStatus; }
         public Boolean getInitialPasswordResetRequired() { return initialPasswordResetRequired; }

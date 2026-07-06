@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,21 +43,68 @@ class MessageEventDeliveryServiceTest {
     @Test
     void deliverShouldRouteUserMessageToTheTargetUser() {
         MessageEventDTO event = buildEvent("USER", 2001L, null);
+        when(recipientResolver.resolveRecipients(event.getNotice()))
+                .thenReturn(List.of(new MessageRecipientResolver.Recipient(2001L, "user-uuid-2001")));
 
         deliveryService.deliver(event);
 
-        verify(registry).sendToUser(2001L, event);
+        verify(registry).sendToUser(2001L, "user-uuid-2001", event);
+    }
+
+    @Test
+    void deliverShouldDropUserMessageWhenResolverRejectsTargetIdentity() {
+        MessageEventDTO event = buildEvent("USER", 2001L, null);
+        when(recipientResolver.resolveRecipients(event.getNotice())).thenReturn(List.of());
+
+        deliveryService.deliver(event);
+
+        verify(registry, never()).sendToUser(eq(2001L), org.mockito.ArgumentMatchers.any(), eq(event));
+        verify(registry, never()).sendToAll(event);
     }
 
     @Test
     void deliverShouldRouteRoleMessageToResolvedUsers() {
         MessageEventDTO event = buildEvent("ROLE", null, 3001L);
-        when(recipientResolver.resolveRecipientUserIds(event.getNotice())).thenReturn(List.of(2001L, 2002L));
+        when(recipientResolver.resolveRecipients(event.getNotice())).thenReturn(List.of(
+                new MessageRecipientResolver.Recipient(2001L, "user-uuid-2001"),
+                new MessageRecipientResolver.Recipient(2002L, "user-uuid-2002")
+        ));
 
         deliveryService.deliver(event);
 
-        verify(registry).sendToUser(eq(2001L), eq(event));
-        verify(registry).sendToUser(eq(2002L), eq(event));
+        verify(registry).sendToUser(eq(2001L), eq("user-uuid-2001"), eq(event));
+        verify(registry).sendToUser(eq(2002L), eq("user-uuid-2002"), eq(event));
+    }
+
+    @Test
+    void deliverShouldRouteDirectUserEventOnlyWhenUserUuidIsPresent() {
+        MessageEventDTO event = new MessageEventDTO();
+        event.setUserId(2001L);
+        event.setUserUuid("user-uuid-2001");
+
+        deliveryService.deliver(event);
+
+        verify(registry).sendToUser(2001L, "user-uuid-2001", event);
+    }
+
+    @Test
+    void deliverShouldDropDirectUserEventWhenUserUuidIsMissing() {
+        MessageEventDTO event = new MessageEventDTO();
+        event.setUserId(2001L);
+
+        deliveryService.deliver(event);
+
+        verify(registry, never()).sendToUser(eq(2001L), org.mockito.ArgumentMatchers.any(), eq(event));
+        verify(registry, never()).sendToAll(event);
+    }
+
+    @Test
+    void deliverShouldDropNoticeWhenTargetScopeIsUnknown() {
+        MessageEventDTO event = buildEvent("UNKNOWN", null, null);
+
+        deliveryService.deliver(event);
+
+        verify(registry, never()).sendToAll(event);
     }
 
     private MessageEventDTO buildEvent(String targetScope, Long targetUserId, Long targetRoleId) {

@@ -1,6 +1,7 @@
 package com.lumira.message.service;
 
 import com.lumira.api.message.MessageEventDTO;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.message.app.MessageAppService;
 import com.lumira.message.app.PlatformEventOutboxService;
@@ -27,17 +28,20 @@ public class MessageConnectionSnapshotService {
     }
 
     public void emitSnapshot(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getUserId() == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return;
         }
 
+        Long trustedUserId = currentUser.getUserId();
+        Integer trustedSessionVersion = currentUser.getSessionVersion();
         Integer unreadCount = messageAppService.countUnread(currentUser).intValue();
         Long latestVersion = latestVersion();
         MessageEventDTO event = messageEventFactory.createSyncStateEvent(
-                currentUser.getUserId(),
+                trustedUserId,
+                currentUser.getUserUuid(),
                 unreadCount,
                 latestVersion,
-                currentUser.getSessionVersion()
+                trustedSessionVersion
         );
         messageEventDeliveryService.deliver(event);
     }

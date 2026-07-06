@@ -1,13 +1,18 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -31,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -40,6 +46,7 @@ import java.util.stream.Collectors;
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
 public class SystemPlatformSettingsAppService {
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private static final String CONTEXT_PLATFORM = "platform";
     private static final String SCOPE_RUNTIME_APPEARANCE = "runtime-appearance";
@@ -167,6 +174,9 @@ public class SystemPlatformSettingsAppService {
     private final ReadModelVersionService readModelVersionService;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
     private final SmtpMailService smtpMailService;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final Cache<String, Map<String, String>> configSnapshotCache;
     private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
     private final Cache<String, Long> runtimeAppearanceVersionCache;
@@ -179,7 +189,10 @@ public class SystemPlatformSettingsAppService {
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
             OwnerRuntimeMetrics ownerRuntimeMetrics,
-            SmtpMailService smtpMailService
+            SmtpMailService smtpMailService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
@@ -187,6 +200,9 @@ public class SystemPlatformSettingsAppService {
         this.readModelVersionService = readModelVersionService;
         this.ownerRuntimeMetrics = ownerRuntimeMetrics;
         this.smtpMailService = smtpMailService;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.configSnapshotCache = CacheBuilder.newBuilder()
                 .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
                 .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -205,8 +221,47 @@ public class SystemPlatformSettingsAppService {
                 .build();
     }
 
+    public SystemPlatformSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            SmtpMailService smtpMailService
+    ) {
+        this(jdbcTemplate,
+                operationAuditService,
+                fieldCryptoService,
+                readModelVersionService,
+                ownerRuntimeMetrics,
+                smtpMailService,
+                null,
+                null,
+                null);
+    }
+
+    public SystemPlatformSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            SmtpMailService smtpMailService,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(jdbcTemplate,
+                operationAuditService,
+                fieldCryptoService,
+                readModelVersionService,
+                ownerRuntimeMetrics,
+                smtpMailService,
+                permissionSnapshotService,
+                null,
+                null);
+    }
+
     public SystemVO.BrandingSettingsVO getBrandingSettings(CurrentUser currentUser) {
-        requireAuthenticated(currentUser);
+        requirePermission(currentUser, "system:config:view");
         return loadBrandingSettings();
     }
 
@@ -224,8 +279,8 @@ public class SystemPlatformSettingsAppService {
 
     @Transactional
     public SystemVO.BrandingSettingsVO updateBrandingSettings(CurrentUser currentUser, SystemDTO.BrandingSettingsRequest request) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Branding settings request is required");
         String websiteName = sanitizeBrandingText(request.getWebsiteName(), "宏翔商道");
         String companyName = sanitizeBrandingText(request.getCompanyName(), websiteName);
         Integer copyrightStartYear = request.getCopyrightStartYear() == null ? LocalDate.now().getYear() : request.getCopyrightStartYear();
@@ -247,7 +302,8 @@ public class SystemPlatformSettingsAppService {
         );
         upsertBrandingConfig(BRANDING_FOOTER_COPYRIGHT_KEY, "页脚版权声明", footerCopyright, "页脚版权声明", operatorId);
         operationAuditService.log(
-                currentUser.getUserId(),
+                operatorId,
+                currentUser.getUserUuid(),
                 currentUser.getUsername(),
                 "system",
                 "branding-update",
@@ -262,12 +318,13 @@ public class SystemPlatformSettingsAppService {
 
     @Transactional
     public SystemVO.AgreementSettingsVO updateAgreementSettings(CurrentUser currentUser, SystemDTO.AgreementSettingsRequest request) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Agreement settings request is required");
         upsertConfigValue(AGREEMENT_USER_MARKDOWN_KEY, "用户协议", normalizeMarkdownText(request.getUserAgreementMarkdown()), "用户协议 Markdown", operatorId);
         upsertConfigValue(AGREEMENT_PRIVACY_MARKDOWN_KEY, "隐私协议", normalizeMarkdownText(request.getPrivacyAgreementMarkdown()), "隐私协议 Markdown", operatorId);
         operationAuditService.log(
-                currentUser.getUserId(),
+                operatorId,
+                currentUser.getUserUuid(),
                 currentUser.getUsername(),
                 "system",
                 "agreement-update",
@@ -281,19 +338,27 @@ public class SystemPlatformSettingsAppService {
     }
 
     public SystemVO.WatermarkSettingsVO getWatermarkSettings(CurrentUser currentUser) {
-        requireAuthenticated(currentUser);
+        requirePermission(currentUser, "system:config:view");
+        return loadWatermarkSettings();
+    }
+
+    public SystemVO.WatermarkSettingsVO getPublicWatermarkSettings() {
         return loadWatermarkSettings();
     }
 
     public SystemVO.FloatingWindowSettingsVO getFloatingWindowSettings(CurrentUser currentUser) {
-        requireAuthenticated(currentUser);
+        requirePermission(currentUser, "system:config:view");
+        return loadFloatingWindowSettings();
+    }
+
+    public SystemVO.FloatingWindowSettingsVO getPublicFloatingWindowSettings() {
         return loadFloatingWindowSettings();
     }
 
     @Transactional
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Watermark settings request is required");
         upsertBrandingConfig(WATERMARK_ENABLED_KEY, "水印开关", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "全局水印开关", operatorId);
         upsertBrandingConfig(WATERMARK_MODE_KEY, "水印模式", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
         upsertBrandingConfig(WATERMARK_TEXT_LINES_KEY, "水印文本", String.join("\n", request.getTextLines() == null ? List.of() : request.getTextLines()), "多行文本水印", operatorId);
@@ -314,13 +379,14 @@ public class SystemPlatformSettingsAppService {
 
     @Transactional
     public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Floating window settings request is required");
         upsertBrandingConfig(FLOATING_API_DOCS_QR_ENABLED_KEY, "接口文档二维码开关", String.valueOf(Boolean.TRUE.equals(request.getApiDocsQrEnabled())), "是否在全局悬浮窗展示接口文档二维码入口", operatorId);
         upsertBrandingConfig(FLOATING_API_DOCS_QR_TITLE_KEY, "接口文档二维码标题", defaultIfBlank(request.getApiDocsQrTitle(), ""), "接口文档二维码弹层标题", operatorId);
         upsertBrandingConfig(FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "接口文档二维码图片", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "接口文档悬浮入口展开后展示的二维码图片", operatorId);
         operationAuditService.log(
-                currentUser.getUserId(),
+                operatorId,
+                currentUser.getUserUuid(),
                 currentUser.getUsername(),
                 "system",
                 "floating-window-update",
@@ -333,19 +399,19 @@ public class SystemPlatformSettingsAppService {
     }
 
     public SystemVO.SmtpSettingsVO getSmtpSettings(CurrentUser currentUser) {
-        requireAuthenticated(currentUser);
+        requirePermission(currentUser, "system:config:view");
         return loadSmtpSettings();
     }
 
     public SystemVO.WechatOfficialAccountSettingsVO getWechatOfficialAccountSettings(CurrentUser currentUser) {
-        requireAuthenticated(currentUser);
+        requirePermission(currentUser, "system:config:view");
         return loadWechatOfficialAccountSettings();
     }
 
     @Transactional
     public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "SMTP settings request is required");
         Map<String, String> currentValues = loadConfigValuesByKeys(SMTP_CONFIG_KEYS);
         SystemVO.SmtpSettingsVO current = buildSmtpSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? !Boolean.FALSE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
@@ -369,7 +435,7 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "是否启用 STARTTLS", operatorId);
         upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "是否启用 SSL", operatorId);
         smtpMailService.invalidate();
-        operationAuditService.log(operatorId, currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
         currentValues.put(SMTP_ENABLED_KEY, String.valueOf(enabled));
         currentValues.put(SMTP_HOST_KEY, host);
         currentValues.put(SMTP_PORT_KEY, String.valueOf(port == null ? 25 : port));
@@ -385,8 +451,7 @@ public class SystemPlatformSettingsAppService {
 
     @Transactional
     public SystemVO.SmtpSettingsVO resetSmtpSettings(CurrentUser currentUser) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
         upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP 邮箱通知启用", "false", "是否启用邮箱通知渠道", operatorId);
         upsertPlatformConfig(SMTP_HOST_KEY, "SMTP 主机", "", "邮件服务器地址", operatorId);
         upsertPlatformConfig(SMTP_PORT_KEY, "SMTP 端口", "25", "邮件服务器端口", operatorId);
@@ -397,7 +462,7 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", "true", "是否启用 STARTTLS", operatorId);
         upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "是否启用 SSL", operatorId);
         smtpMailService.invalidate();
-        operationAuditService.log(operatorId, currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "重置 SMTP 配置");
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "重置 SMTP 配置");
         markRuntimeAppearanceChanged("smtp-reset");
         return buildSmtpSettings(Map.of(
                 SMTP_ENABLED_KEY, "false",
@@ -414,8 +479,8 @@ public class SystemPlatformSettingsAppService {
 
     @Transactional
     public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
-        requireAuthenticated(currentUser);
-        Long operatorId = currentUser.getUserId();
+        Long operatorId = requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Wechat official account settings request is required");
         Map<String, String> currentValues = loadConfigValuesByKeys(WECHAT_OFFICIAL_CONFIG_KEYS);
         SystemVO.WechatOfficialAccountSettingsVO current = buildWechatOfficialAccountSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
@@ -430,7 +495,7 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(WECHAT_OFFICIAL_APP_SECRET_KEY, "微信公众号 AppSecret", appSecret, "微信公众号或服务号 AppSecret", operatorId);
         upsertPlatformConfig(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, "微信公众号模板 ID", templateId, "用于系统通知的公众号模板消息 ID", operatorId);
         upsertPlatformConfig(WECHAT_OFFICIAL_DETAIL_URL_KEY, "微信公众号通知详情链接", detailUrl, "模板消息点击后打开的系统链接，可留空", operatorId);
-        operationAuditService.log(operatorId, currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "更新微信公众号通知配置");
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "更新微信公众号通知配置");
         currentValues.put(WECHAT_OFFICIAL_ENABLED_KEY, String.valueOf(enabled));
         currentValues.put(WECHAT_OFFICIAL_APP_ID_KEY, appId);
         currentValues.put(WECHAT_OFFICIAL_APP_SECRET_KEY, appSecret);
@@ -442,7 +507,8 @@ public class SystemPlatformSettingsAppService {
 
     @Transactional
     public SystemVO.SmtpTestVO testSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpTestRequest request) {
-        requireAuthenticated(currentUser);
+        requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "SMTP test request is required");
         Map<String, String> values = loadConfigValuesByKeys(SMTP_CONFIG_KEYS);
         JavaMailSenderImpl mailSender = buildSmtpSender(values);
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY));
@@ -463,7 +529,7 @@ public class SystemPlatformSettingsAppService {
         result.setSuccess(Boolean.TRUE);
         result.setMessage("SMTP 测试邮件已发送");
         result.setToEmail(request.getToEmail());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "smtp", "test", "CREATE", "SUCCESS", "SMTP 测试发送至 " + request.getToEmail());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "test", "CREATE", "SUCCESS", "SMTP 测试发送至 " + request.getToEmail());
         return result;
     }
 
@@ -763,37 +829,69 @@ public class SystemPlatformSettingsAppService {
             String remark,
             Long operatorId
     ) {
+        String operatorUuid = resolveOperatorUuid(operatorId);
         if (existingId == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into sys_config (
                                 config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
                             """,
                     configKey,
                     configName,
                     encryptConfigValue(configKey, configValue),
                     remark,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            if (inserted != 1) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "Platform config changed, please retry");
+            }
             return;
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_config
                         set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_at = ?, deleted = 0
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ?
+                          and config_key = ?
+                          and config_scope = 'PLATFORM'
+                          and is_system = 0
+                          and deleted = 0
                         """,
                 configName,
                 encryptConfigValue(configKey, configValue),
                 remark,
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                existingId
+                existingId,
+                configKey
         );
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Platform config changed, please retry");
+        }
+    }
+
+    private String resolveOperatorUuid(Long operatorId) {
+        String operatorUuid;
+        try {
+            operatorUuid = jdbcTemplate.queryForObject(
+                    "select uuid from sys_user where id = ? and status = 'ENABLED' and deleted = 0 limit 1",
+                    String.class,
+                    operatorId
+            );
+        } catch (EmptyResultDataAccessException exception) {
+            operatorUuid = null;
+        }
+        if (!StringUtils.hasText(operatorUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator identity is required");
+        }
+        return operatorUuid.trim();
     }
 
     private Long queryConfigId(String configKey) {
@@ -803,6 +901,9 @@ public class SystemPlatformSettingsAppService {
                             select id
                             from sys_config
                             where config_key = ?
+                              and config_scope = 'PLATFORM'
+                              and is_system = 0
+                              and deleted = 0
                             order by id desc
                             limit 1
                             """,
@@ -887,9 +988,114 @@ public class SystemPlatformSettingsAppService {
         return value == null ? "" : String.valueOf(value);
     }
 
-    private void requireAuthenticated(CurrentUser currentUser) {
-        if (currentUser == null) {
+    private Long requireAuthenticated(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "用户上下文缺失");
+        }
+        return currentUser.getUserId();
+    }
+
+    private Long requirePermission(CurrentUser currentUser, String permission) {
+        CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
+        Long userId = requireAuthenticated(runtimeUser);
+        if (runtimeUser.getPermissions() == null
+                || (!runtimeUser.getPermissions().contains("*") && !runtimeUser.getPermissions().contains(permission))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "缺少权限: " + permission);
+        }
+        return userId;
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return currentUser;
+        }
+        if (permissionSnapshotService == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            currentUser.setUserId(userSnapshot.userId());
+            currentUser.setUserUuid(userSnapshot.userUuid().trim());
+            currentUser.setUsername(userSnapshot.username());
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+        return currentUser;
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+    private void requireRequest(Object request, String message) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message);
         }
     }
 

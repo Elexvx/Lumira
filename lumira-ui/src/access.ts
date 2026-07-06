@@ -1,11 +1,11 @@
 import type { CurrentUser, PluginAvailability } from '@/types/api';
-import { tokenManager } from '@/auth/token';
 import { isSuperAdminUser } from '@/auth/adminAccess';
+import { isTrustedCurrentUser } from '@/auth/sessionState';
 
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
 const hasAnyPermission = (permissions: Set<string>, keys: string[]) => keys.some((key) => hasPermission(permissions, key));
-const COMMON_USER_ROLE_CODE = 'commonuser';
-const COMMON_USER_ROLE_ID = 1002;
+const hasPluginRuntimePermission = (permissions: Set<string>) =>
+  Array.from(permissions).some((permission) => permission === '*' || /^plugin:[^:]+:(view|create|manage|import)$/.test(permission));
 
 const AI_ASSISTANT_PERMISSIONS = ['ai:assistant:view', 'ai:chat:send'];
 const AI_PERMISSIONS = [...AI_ASSISTANT_PERMISSIONS, 'ai:knowledge:view'];
@@ -24,16 +24,25 @@ const SYSTEM_FILE_MANAGEMENT_PERMISSIONS = ['system:file:manage', 'system:file:m
 const SYSTEM_PLUGIN_PERMISSIONS = ['plugin:management:view'];
 const AUDIT_PERMISSIONS = ['audit:view', 'audit:login:view', 'audit:operation:view'];
 const LOCALIZATION_PERMISSIONS = ['localization:view'];
+const COMPETITION_REGISTER_PERMISSIONS = [
+  'aiadc:registration:view',
+  'aiadc:registration:create',
+  'aiadc:registration:update',
+  'aiadc:registration:pay',
+  'aiadc:material:view',
+  'aiadc:material:submit',
+  'aiadc:stage:view',
+  'aiadc:stage:manage',
+  'payment:order:view',
+];
 
 export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: PluginAvailability[] }) {
-  const permissions = new Set(initialState?.currentUser?.permissions ?? []);
-  const roleCodes = new Set((initialState?.currentUser?.availableRoles ?? []).map((role) => role.roleCode?.trim().toLowerCase()).filter(Boolean));
-  const roleIds = new Set(initialState?.currentUser?.roleIds ?? []);
-  const isLogin = Boolean(initialState?.currentUser?.sessionId) || tokenManager.hasToken();
-  const isCommonUserOnly =
-    (roleCodes.size > 0 && Array.from(roleCodes).every((roleCode) => roleCode === COMMON_USER_ROLE_CODE))
-    || (roleIds.size > 0 && Array.from(roleIds).every((roleId) => roleId === COMMON_USER_ROLE_ID));
-  const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
+  const trustedUser = isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser : undefined;
+  const permissions = new Set(trustedUser?.permissions ?? []);
+  const availablePlugins = initialState?.availablePlugins ?? [];
+  const isLogin = Boolean(trustedUser);
+  const isSettingsAdmin = isSuperAdminUser(trustedUser);
+  const canVisitPluginRuntime = isLogin && (isSettingsAdmin || availablePlugins.length > 0 || hasPluginRuntimePermission(permissions));
   const canAccessSettings = (keys: string[]) => isLogin && (isSettingsAdmin || hasAnyPermission(permissions, keys));
   const canVisitSystemConfig = canAccessSettings(SYSTEM_CONFIG_PERMISSIONS);
   const canVisitSystemMenus = canAccessSettings(SYSTEM_MENU_PERMISSIONS);
@@ -53,16 +62,15 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitSystemPlugins = canAccessSettings(SYSTEM_PLUGIN_PERMISSIONS);
   const canVisitAudit = canAccessSettings(AUDIT_PERMISSIONS);
   const canVisitLocalization = canAccessSettings(LOCALIZATION_PERMISSIONS);
-  const canVisitDownloadCenter = isLogin && !isCommonUserOnly && hasPermission(permissions, 'download:center:view');
-  const canVisitTeam = isLogin && !isCommonUserOnly && hasPermission(permissions, 'team:view');
-  const canVisitProjects = isLogin && !isCommonUserOnly && hasPermission(permissions, 'aiadc:project:view');
-  const canVisitActivities = isLogin && !isCommonUserOnly && hasPermission(permissions, 'aiadc:activity:view');
-  const canVisitCompetitions = isLogin && !isCommonUserOnly && hasPermission(permissions, 'aiadc:competition:view');
-  const canVisitPaymentOrders = isLogin && !isCommonUserOnly && hasPermission(permissions, 'payment:order:view');
-  const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, ['aiadc:registration:view', 'aiadc:registration:create']);
-  const canVisitActivityRegister = isLogin;
+  const canVisitDownloadCenter = isLogin && hasPermission(permissions, 'download:center:view');
+  const canVisitTeam = isLogin && hasPermission(permissions, 'team:view');
+  const canVisitProjects = isLogin && hasPermission(permissions, 'aiadc:project:view');
+  const canVisitActivities = isLogin && hasPermission(permissions, 'aiadc:activity:view');
+  const canVisitCompetitions = isLogin && hasPermission(permissions, 'aiadc:competition:view');
+  const canVisitPaymentOrders = isLogin && hasPermission(permissions, 'payment:order:view');
+  const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
+  const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
   const canVisitDataManagement =
-    !isCommonUserOnly &&
     [canVisitCompetitions, canVisitActivities, canVisitProjects, canVisitTeam, canVisitPaymentOrders, canVisitDownloadCenter].some(Boolean);
   const canVisitSystemSettings =
     isLogin &&
@@ -87,7 +95,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
       ].some(Boolean));
   const canVisitAnyUserCenter =
     isLogin &&
-    !isCommonUserOnly &&
     (
       ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'].some((item) =>
         hasPermission(permissions, item),
@@ -99,13 +106,12 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   return {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
     isLogin,
-    canVisitDashboard: isLogin && !isCommonUserOnly && (isSettingsAdmin || hasPermission(permissions, 'dashboard:view')),
-    canVisitProfile: isLogin && !isCommonUserOnly && hasPermission(permissions, 'profile:view'),
-    canVisitPersonalCenter: isLogin && !isCommonUserOnly && (hasPermission(permissions, 'profile:view') || hasPermission(permissions, 'system:file:view')),
+    canVisitDashboard: isLogin && (isSettingsAdmin || hasPermission(permissions, 'dashboard:view')),
+    canVisitProfile: isLogin && hasPermission(permissions, 'profile:view'),
+    canVisitPersonalCenter: isLogin && (hasPermission(permissions, 'profile:view') || hasPermission(permissions, 'system:file:view')),
     canVisitAnyUserCenter,
     canVisitUserCenter:
       isLogin &&
-      !isCommonUserOnly &&
       ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'].some((item) =>
         hasPermission(permissions, item),
       ),
@@ -128,7 +134,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemPayment,
     canVisitSystemNotifications,
     canVisitSystemFiles: canVisitSystemAllFiles,
-    canVisitSystemMyFiles: isLogin && !isCommonUserOnly && hasPermission(permissions, 'system:file:view'),
+    canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
     canVisitDownloadCenter,
     canVisitTeam,
     canVisitProjects,
@@ -149,7 +155,9 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitCertificateTemplates: isLogin && hasPermission(permissions, 'aiadc:certificate-template:view'),
     canVisitCertificateGenerate: isLogin && hasPermission(permissions, 'aiadc:certificate-batch:create'),
     canVisitCertificateRecords: isLogin && hasPermission(permissions, 'aiadc:certificate:view'),
-    canVisitExperts: isLogin && !isCommonUserOnly && hasPermission(permissions, 'expert:view'),
+    canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),
+    canVisitExpertReview:
+      isLogin && hasAnyPermission(permissions, ['expert:view', 'workflow:approve']),
     canVisitWorkflow: isLogin && hasAnyPermission(permissions, ['workflow:view', 'workflow:config', 'workflow:approve']),
     canVisitWorkflowConfig: isLogin && hasPermission(permissions, 'workflow:config'),
     canVisitWorkflowTasks: isLogin && hasPermission(permissions, 'workflow:approve'),
@@ -165,6 +173,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitAiEmployees: isLogin && isSettingsAdmin,
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),
     canVisitAiAssistant: isLogin && hasAnyPermission(permissions, AI_ASSISTANT_PERMISSIONS),
-    canVisitPluginRuntime: isLogin,
+    canVisitPluginRuntime,
   };
 }

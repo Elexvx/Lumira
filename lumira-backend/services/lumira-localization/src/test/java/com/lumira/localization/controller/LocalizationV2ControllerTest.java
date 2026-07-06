@@ -120,14 +120,14 @@ class LocalizationV2ControllerTest {
         LocalizationDTO.EntryUpsertRequest request = new LocalizationDTO.EntryUpsertRequest();
         LocalizationVO.EntryVO entry = new LocalizationVO.EntryVO();
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(localizationManagementAppService.saveEntry(request)).thenReturn(entry);
+        when(localizationManagementAppService.saveEntry(currentUser, request)).thenReturn(entry);
 
         var response = controller.updateEntry(33L, request);
 
         assertThat(response.getData()).isSameAs(entry);
         assertThat(request.getId()).isEqualTo(33L);
         verify(permissionGuard).requirePermission(currentUser, "localization:update");
-        verify(localizationManagementAppService).saveEntry(request);
+        verify(localizationManagementAppService).saveEntry(currentUser, request);
     }
 
     @Test
@@ -143,6 +143,9 @@ class LocalizationV2ControllerTest {
     }
 
     private CurrentUser currentUser(String permission) {
-        return new CurrentUser(100L, "alice", 1001L, "session-1", 1, true, Set.of(permission));
+        CurrentUser currentUser = new CurrentUser(100L, "alice", 1001L, "session-1", 1, true, Set.of(permission));
+        currentUser.setUserUuid("user-uuid-100");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
     }
 }

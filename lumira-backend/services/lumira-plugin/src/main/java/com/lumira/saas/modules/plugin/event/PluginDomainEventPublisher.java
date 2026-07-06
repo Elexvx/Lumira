@@ -30,11 +30,20 @@ public class PluginDomainEventPublisher implements DomainEventPublisher {
     }
 
     private Long resolveUserId(Map<String, Object> attributes) {
+        if (!hasUserUuid(attributes)) {
+            return null;
+        }
         Object value = attributes == null ? null : attributes.get("userId");
         if (value instanceof Number number) {
-            return number.longValue();
+            long userId = number.longValue();
+            return userId > 0 ? userId : null;
         }
-        return 0L;
+        return null;
+    }
+
+    private boolean hasUserUuid(Map<String, Object> attributes) {
+        Object value = attributes == null ? null : attributes.get("userUuid");
+        return value instanceof String text && !text.isBlank();
     }
 
     private Map<String, Object> envelope(DomainEvent event) {

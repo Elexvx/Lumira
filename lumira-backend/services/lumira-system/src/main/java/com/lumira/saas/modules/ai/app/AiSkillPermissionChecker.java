@@ -20,7 +20,7 @@ public interface AiSkillPermissionChecker {
 
     void verifyAllowed(Long employeeId, List<String> skillCodes, boolean confirmed);
 
-    void verifyToolAllowed(Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed);
+    void verifyToolAllowed(Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean readOnly, boolean confirmed);
 }
 
 @Service
@@ -86,33 +86,28 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
     }
 
     @Override
-    public void verifyToolAllowed(Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed) {
+    public void verifyToolAllowed(Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean readOnly, boolean confirmed) {
         if (employeeId == null || employeeId <= 0 || !StringUtils.hasText(toolCode)) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
         }
-        AgentToolGrantDecision grant = agentToolGrantEvaluator.evaluate(new AuthorizationRequest(
-                null,
-                com.lumira.common.security.authorization.SubjectRef.digitalEmployee(employeeId),
+        AgentToolGrantDecision grant = agentToolGrantEvaluator.evaluate(AuthorizationRequest.aiToolAction(
                 null,
                 employeeId,
-                "ai_tool",
-                "execute",
-                permissionKey,
                 toolCode,
+                permissionKey,
                 riskLevel,
-                null,
-                Map.of(),
+                readOnly ? "view" : "execute",
                 confirmed,
                 false,
-                "AI_AGENT",
-                null,
-                null,
-                null
+                Map.of()
         ));
         if (grant == null || !grant.allowed()) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool grant denied");
         }
-        if (!List.of("invoke", "execute").contains(normalizePermissionMode(grant.permissionMode()))) {
+        List<String> allowedModes = readOnly
+                ? List.of("view", "visit", "invoke", "execute")
+                : List.of("invoke", "execute");
+        if (!allowedModes.contains(normalizePermissionMode(grant.permissionMode()))) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool grant does not allow execution: " + toolCode);
         }
         if (riskExceeds(riskLevel, grant.maxRiskLevel())) {

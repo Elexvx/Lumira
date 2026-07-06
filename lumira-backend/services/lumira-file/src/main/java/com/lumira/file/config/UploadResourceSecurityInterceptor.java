@@ -88,9 +88,21 @@ public class UploadResourceSecurityInterceptor implements HandlerInterceptor {
     }
 
     private String normalizePublicUrl(String requestUri) {
-        String decoded = UriUtils.decode(requestUri, StandardCharsets.UTF_8);
+        String decoded = decodeRepeatedly(requestUri);
         if (!decoded.startsWith(PUBLIC_UPLOAD_PREFIX) || decoded.contains("..") || decoded.contains("\\")) {
             return null;
+        }
+        return decoded;
+    }
+
+    private String decodeRepeatedly(String requestUri) {
+        String decoded = requestUri;
+        for (int i = 0; i < 3; i++) {
+            String next = UriUtils.decode(decoded, StandardCharsets.UTF_8);
+            if (next.equals(decoded)) {
+                return decoded;
+            }
+            decoded = next;
         }
         return decoded;
     }

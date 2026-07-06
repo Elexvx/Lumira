@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,7 +41,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create"));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -54,13 +56,160 @@ class PaymentControllerTest {
         );
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "subscription", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(paymentTransactionService.createOrder(42L, request)).thenReturn(order);
+        when(paymentTransactionService.createOrder(currentUser, request)).thenReturn(order);
 
         var response = controller.createOrder(request);
 
         assertThat(response.getData()).isSameAs(order);
         verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService).createOrder(42L, request);
+        verify(paymentTransactionService).createOrder(currentUser, request);
+    }
+
+    @Test
+    void providers_shouldRejectAdminUsernameWithoutProtectedAdminId() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "admin", 0L, "session-1", 1, true, Set.of("payment:settings:view")));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(controller::providers)
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verify(paymentManagementAppService, never()).listProviderSettings();
+    }
+
+    @Test
+    void createOrder_shouldRejectBlankUsernameBeforePermissionAndService() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = new CurrentUser(42L, " ", 0L, "session-1", 1, true, Set.of("payment:order:create"));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subscription",
+                9900L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void createOrder_shouldRejectMissingSessionIdBeforePermissionAndService() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = new CurrentUser(42L, "alice", 0L, null, 1, true, Set.of("payment:order:create"));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subscription",
+                9900L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void order_shouldUseCurrentUserScope() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:view")));
+        PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "subscription", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentTransactionService.getOrderForUser(currentUser, "ORD-1")).thenReturn(order);
+
+        var response = controller.order("ORD-1");
+
+        assertThat(response.getData()).isSameAs(order);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:view");
+        verify(paymentTransactionService).getOrderForUser(currentUser, "ORD-1");
+    }
+
+    @Test
+    void refund_shouldUseCurrentUserScope() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:refund:view")));
+        var refund = new com.lumira.api.payment.PaymentRefundDTO("REF-1", "ORD-1", "stripe", "pr_1", 100L, "CNY", "PENDING", "duplicate", Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentTransactionService.getRefundForUser(currentUser, "REF-1")).thenReturn(refund);
+
+        var response = controller.refund("REF-1");
+
+        assertThat(response.getData()).isSameAs(refund);
+        verify(permissionGuard).requirePermission(currentUser, "payment:refund:view");
+        verify(paymentTransactionService).getRefundForUser(currentUser, "REF-1");
     }
 
     @Test
@@ -106,5 +255,11 @@ class PaymentControllerTest {
 
     private Enumeration<String> enumeration(Set<String> values) {
         return Collections.enumeration(values);
+    }
+
+    private CurrentUser trusted(CurrentUser currentUser) {
+        currentUser.setUserUuid("user-uuid-" + currentUser.getUserId());
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
     }
 }

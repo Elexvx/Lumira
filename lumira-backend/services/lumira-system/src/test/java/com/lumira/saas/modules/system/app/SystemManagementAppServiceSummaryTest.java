@@ -1,17 +1,23 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
@@ -19,6 +25,8 @@ import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
+import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.dto.ProfileDTO;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
@@ -27,6 +35,7 @@ import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -76,10 +85,474 @@ class SystemManagementAppServiceSummaryTest {
         verify(env.systemVerificationAppService, times(1)).isContactBindAvailable("email");
     }
 
+    @Test
+    void dashboardSummaryShouldRejectUnauthenticatedUserBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setAuthenticated(false);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.dashboardSummary(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    @Test
+    void profileSummaryShouldRejectInvalidUserBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setUserId(0L);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.profileSummary(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemProfileSettingsAppService, never()).getProfileFieldSettings(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void profileSummaryShouldRejectUserWithoutSessionBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setSessionId(null);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.profileSummary(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemProfileSettingsAppService, never()).getProfileFieldSettings(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void dashboardSummaryShouldRejectDisabledTrustedUserBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        when(env.permissionSnapshotService.isTrustedActiveUser(42L, "user-uuid-42")).thenReturn(false);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.dashboardSummary(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    @Test
+    void dashboardSummaryShouldRejectDisabledTrustedUserIdentityBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(42L))
+                .thenReturn(userSnapshot(42L, "user-uuid-42", "jane-live", "DISABLED"));
+        SystemManagementAppService service = new SystemManagementAppService(
+                env.jdbcTemplate,
+                env.userDomainService,
+                env.permissionSnapshotService,
+                systemInternalApi,
+                null,
+                env.systemPluginViewService,
+                env.onlineSessionManagementAppService,
+                env.systemVerificationAppService,
+                env.systemPlatformSettingsAppService,
+                env.systemProfileSettingsAppService,
+                env.passwordEncoder,
+                env.authSessionStore,
+                env.loginAuditService,
+                env.operationAuditService,
+                env.securitySettingsService,
+                env.passwordPolicyService,
+                env.iamUserService,
+                env.systemUserManagementAppService,
+                env.systemRoleManagementAppService,
+                env.fieldCryptoService
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.dashboardSummary(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.permissionSnapshotService, never()).isTrustedActiveUser(42L, "user-uuid-42");
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    @Test
+    void dashboardSummaryShouldRejectRevokedSessionTicketBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        when(sessionAuthenticationService.authenticateSessionTicket("session-42", 42L, "user-uuid-42", null, 1, "v1"))
+                .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
+        SystemManagementAppService service = new SystemManagementAppService(
+                env.jdbcTemplate,
+                env.userDomainService,
+                env.permissionSnapshotService,
+                sessionAuthenticationService,
+                env.systemPluginViewService,
+                env.onlineSessionManagementAppService,
+                env.systemVerificationAppService,
+                env.systemPlatformSettingsAppService,
+                env.systemProfileSettingsAppService,
+                env.passwordEncoder,
+                env.authSessionStore,
+                env.loginAuditService,
+                env.operationAuditService,
+                env.securitySettingsService,
+                env.passwordPolicyService,
+                env.iamUserService,
+                env.systemUserManagementAppService,
+                env.systemRoleManagementAppService,
+                env.fieldCryptoService
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.dashboardSummary(buildCurrentUser()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    @Test
+    void sensitiveUserInfoPermissionShouldRequireTrustedSession() throws Exception {
+        TestEnvironment env = new TestEnvironment();
+        Method method = SystemManagementAppService.class.getDeclaredMethod("canViewSensitiveUserInfo", CurrentUser.class);
+        method.setAccessible(true);
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setPermissions(Set.of("system:user:sensitive:view"));
+        currentUser.setSessionVersion(null);
+
+        assertThat(method.invoke(env.service, currentUser)).isEqualTo(false);
+
+        currentUser.setSessionVersion(1);
+        assertThat(method.invoke(env.service, currentUser)).isEqualTo(true);
+    }
+
+    @Test
+    void permissionSnapshotFromCurrentUserShouldRequireTrustedSession() throws Exception {
+        TestEnvironment env = new TestEnvironment();
+        Method method = SystemManagementAppService.class.getDeclaredMethod("snapshotFromCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setPermissionsVersion("pv-1");
+        currentUser.setSessionId(null);
+
+        assertThat(method.invoke(env.service, currentUser)).isNull();
+    }
+
+    @Test
+    void publicSecuritySettingsShouldOnlyExposeClientNeededPolicy() {
+        TestEnvironment env = new TestEnvironment();
+
+        SystemVO.SecuritySettingsVO settings = env.service.getPublicSecuritySettings();
+
+        assertThat(settings.getIdleTimeoutSeconds()).isNull();
+        assertThat(settings.getAccessTokenExpireSeconds()).isNull();
+        assertThat(settings.getRefreshTokenExpireSeconds()).isNull();
+        assertThat(settings.getAllowMultiDeviceLogin()).isNull();
+        assertThat(settings.getLoginDefenseWindowMinutes()).isNull();
+        assertThat(settings.getLoginMaxValidationAttempts()).isNull();
+        assertThat(settings.getLoginMaxFailureCount()).isNull();
+        assertThat(settings.getCaptchaEnabled()).isTrue();
+        assertThat(settings.getCaptchaType()).isEqualTo("IMAGE");
+        assertThat(settings.getVerificationCodeExpireSeconds()).isEqualTo(300L);
+        assertThat(settings.getVerificationCodeCooldownSeconds()).isEqualTo(60L);
+        assertThat(settings.getPasswordMinLength()).isEqualTo(12L);
+        assertThat(settings.getPasswordRequireUppercase()).isTrue();
+        assertThat(settings.getPasswordRequireLowercase()).isTrue();
+        assertThat(settings.getPasswordRequireSpecialCharacter()).isTrue();
+        assertThat(settings.getPasswordAllowConsecutiveCharacters()).isFalse();
+    }
+
+    @Test
+    void securitySettingsShouldRequireConfigViewBeforeLoadingSettings() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.getSecuritySettings(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        verify(env.securitySettingsService, never()).loadSettings();
+    }
+
+    @Test
+    void updateSecuritySettingsShouldRejectNullRequestBeforeLoadingSettings() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setPermissions(Set.of("system:config:update"));
+        when(env.permissionSnapshotService.loadSnapshot(42L, "user-uuid-42"))
+                .thenReturn(env.snapshot(Set.of("system:config:update")));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateSecuritySettings(currentUser, null))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        verify(env.securitySettingsService, never()).loadSettings();
+        verify(env.securitySettingsService, never()).updateSettings(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(CurrentUser.class)
+        );
+    }
+
+    @Test
+    void updateSecuritySettingsShouldRejectWhenLiveSnapshotRevokesConfigUpdatePermissionBeforeLoadingSettings() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setPermissions(Set.of("system:config:update"));
+        when(env.permissionSnapshotService.loadSnapshot(42L, "user-uuid-42"))
+                .thenReturn(env.snapshot(Set.of("system:config:view")));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateSecuritySettings(currentUser, new SystemDTO.SecuritySettingsRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(env.securitySettingsService, never()).loadSettings();
+        verify(env.securitySettingsService, never()).updateSettings(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(CurrentUser.class)
+        );
+    }
+
+    @Test
+    void updateCurrentUserProfileShouldRejectUnsafeAvatarUrlBeforeWrite() {
+        TestEnvironment env = new TestEnvironment();
+        ProfileDTO.BasicInfoUpdateRequest request = new ProfileDTO.BasicInfoUpdateRequest();
+        request.setAvatarUrl("javascript:alert(1)");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateCurrentUserProfile(buildCurrentUser(), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
+    void updateCurrentUserProfileShouldIgnoreOmittedContactFields() {
+        TestEnvironment env = new TestEnvironment();
+        ProfileDTO.BasicInfoUpdateRequest request = new ProfileDTO.BasicInfoUpdateRequest();
+        request.setNickname("Jane Updated");
+
+        CurrentUserVO updated = env.service.updateCurrentUserProfile(buildCurrentUser(), request);
+
+        assertThat(updated).isNotNull();
+        verify(env.systemVerificationAppService, never()).isContactBindAvailable("mobile");
+        verify(env.systemVerificationAppService, never()).isContactBindAvailable("email");
+    }
+
+    @Test
+    void updateCurrentUserProfileShouldRejectExplicitMobileChange() {
+        TestEnvironment env = new TestEnvironment();
+        ProfileDTO.BasicInfoUpdateRequest request = new ProfileDTO.BasicInfoUpdateRequest();
+        request.setMobile("13900000000");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateCurrentUserProfile(buildCurrentUser(), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(env.systemVerificationAppService, times(1)).isContactBindAvailable("mobile");
+    }
+
+    @Test
+    void updateCurrentUserEmailShouldReuseContactBindFlow() {
+        TestEnvironment env = new TestEnvironment();
+        when(env.systemVerificationAppService.isContactBindAvailable("email")).thenReturn(true);
+        ProfileDTO.EmailUpdateRequest request = new ProfileDTO.EmailUpdateRequest();
+        request.setEmail("jane+new@example.com");
+        request.setChallengeId("challenge-email-1");
+        request.setVerificationCode("123456");
+
+        CurrentUserVO updated = env.service.updateCurrentUserEmail(buildCurrentUser(), request);
+
+        assertThat(updated).isNotNull();
+        verify(env.systemVerificationAppService).completeContactBind(
+                42L,
+                "user-uuid-42",
+                "email",
+                "challenge-email-1",
+                "123456",
+                "jane+new@example.com"
+        );
+        verify(env.operationAuditService).log(
+                org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.eq("user-uuid-42"),
+                org.mockito.ArgumentMatchers.eq("jane"),
+                org.mockito.ArgumentMatchers.eq("profile"),
+                org.mockito.ArgumentMatchers.eq("bind"),
+                org.mockito.ArgumentMatchers.eq("UPDATE"),
+                org.mockito.ArgumentMatchers.eq("SUCCESS"),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
+    void updateCurrentUserEmailShouldLogRefreshedLiveUsername() {
+        TestEnvironment env = new TestEnvironment();
+        when(env.systemVerificationAppService.isContactBindAvailable("email")).thenReturn(true);
+        ProfileDTO.EmailUpdateRequest request = new ProfileDTO.EmailUpdateRequest();
+        request.setEmail("jane+new@example.com");
+        request.setChallengeId("challenge-email-1");
+        request.setVerificationCode("123456");
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setUsername("stale-jane");
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(42L))
+                .thenReturn(userSnapshot(42L, "user-uuid-42", "jane-live", "ENABLED"));
+        when(env.permissionSnapshotService.loadSnapshot(42L, "user-uuid-42"))
+                .thenReturn(env.snapshot(Set.of("dashboard:view", "project:view")));
+        SystemManagementAppService service = new SystemManagementAppService(
+                env.jdbcTemplate,
+                env.userDomainService,
+                env.permissionSnapshotService,
+                systemInternalApi,
+                null,
+                env.systemPluginViewService,
+                env.onlineSessionManagementAppService,
+                env.systemVerificationAppService,
+                env.systemPlatformSettingsAppService,
+                env.systemProfileSettingsAppService,
+                env.passwordEncoder,
+                env.authSessionStore,
+                env.loginAuditService,
+                env.operationAuditService,
+                env.securitySettingsService,
+                env.passwordPolicyService,
+                env.iamUserService,
+                env.systemUserManagementAppService,
+                env.systemRoleManagementAppService,
+                env.fieldCryptoService
+        );
+
+        CurrentUserVO updated = service.updateCurrentUserEmail(currentUser, request);
+
+        assertThat(updated).isNotNull();
+        assertThat(currentUser.getUsername()).isEqualTo("jane-live");
+        verify(env.operationAuditService).log(
+                org.mockito.ArgumentMatchers.eq(42L),
+                org.mockito.ArgumentMatchers.eq("user-uuid-42"),
+                org.mockito.ArgumentMatchers.eq("jane-live"),
+                org.mockito.ArgumentMatchers.eq("profile"),
+                org.mockito.ArgumentMatchers.eq("bind"),
+                org.mockito.ArgumentMatchers.eq("UPDATE"),
+                org.mockito.ArgumentMatchers.eq("SUCCESS"),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
+    void profileRequestEndpointsShouldRejectNullRequestBeforeLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateCurrentUserProfile(currentUser, null))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateCurrentUserEmail(currentUser, null))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.startCurrentUserContactBindChallenge(currentUser, null))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateCurrentUserContactBinding(currentUser, null))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.updateCurrentUserLocale(currentUser, null))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        verify(env.systemVerificationAppService, never()).isContactBindAvailable(org.mockito.ArgumentMatchers.anyString());
+        verify(env.systemVerificationAppService, never()).startContactBindChallenge(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+        verify(env.systemVerificationAppService, never()).completeContactBind(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
+    void contactBindChallengeShouldUseTrustedUserUuidBoundary() {
+        TestEnvironment env = new TestEnvironment();
+        ProfileDTO.ContactBindChallengeRequest request = new ProfileDTO.ContactBindChallengeRequest();
+        request.setContactType("mobile");
+        request.setValue("13800000000");
+        request.setCurrentFactorCode("totp");
+        request.setCurrentChallengeId("login-challenge-1");
+        request.setCurrentVerificationCode("123456");
+        SystemVO.VerificationChallengeVO expected = new SystemVO.VerificationChallengeVO();
+        expected.setChallengeId("challenge-1");
+        when(env.systemVerificationAppService.startContactBindChallenge(42L, "user-uuid-42", "mobile", "13800000000", "totp", "login-challenge-1", "123456"))
+                .thenReturn(expected);
+
+        SystemVO.VerificationChallengeVO result = env.service.startCurrentUserContactBindChallenge(buildCurrentUser(), request);
+
+        assertThat(result).isSameAs(expected);
+        verify(env.systemVerificationAppService).startContactBindChallenge(42L, "user-uuid-42", "mobile", "13800000000", "totp", "login-challenge-1", "123456");
+    }
+
+    @Test
+    void contactBindChallengeShouldRequireCurrentPasswordWhenNoBoundVerificationFactorExists() {
+        TestEnvironment env = new TestEnvironment();
+        SysUserEntity user = new SysUserEntity();
+        user.setId(42L);
+        user.setUuid("user-uuid-42");
+        user.setUsername("jane");
+        user.setMobile(null);
+        user.setEmail(null);
+        when(env.userDomainService.findById(42L)).thenReturn(Optional.of(user));
+        ProfileDTO.ContactBindChallengeRequest request = new ProfileDTO.ContactBindChallengeRequest();
+        request.setContactType("email");
+        request.setValue("jane+new@example.com");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.startCurrentUserContactBindChallenge(buildCurrentUser(), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verify(env.systemVerificationAppService, never()).startContactBindChallenge(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
+    void contactBindChallengeShouldAllowWechatFirstContactBindWithoutCurrentPassword() {
+        TestEnvironment env = new TestEnvironment();
+        SysUserEntity user = new SysUserEntity();
+        user.setId(42L);
+        user.setUuid("user-uuid-42");
+        user.setUsername("jane");
+        user.setMobile(null);
+        user.setEmail(null);
+        when(env.userDomainService.findById(42L)).thenReturn(Optional.of(user));
+        ProfileDTO.ContactBindChallengeRequest request = new ProfileDTO.ContactBindChallengeRequest();
+        request.setContactType("email");
+        request.setValue("jane+new@example.com");
+        SystemVO.VerificationChallengeVO expected = new SystemVO.VerificationChallengeVO();
+        expected.setChallengeId("challenge-2");
+        when(env.systemVerificationAppService.startContactBindChallenge(42L, "user-uuid-42", "email", "jane+new@example.com", null, null, null))
+                .thenReturn(expected);
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setLoginType("WECHAT");
+
+        SystemVO.VerificationChallengeVO result = env.service.startCurrentUserContactBindChallenge(currentUser, request);
+
+        assertThat(result).isSameAs(expected);
+        verify(env.systemVerificationAppService).startContactBindChallenge(42L, "user-uuid-42", "email", "jane+new@example.com", null, null, null);
+    }
+
     private static CurrentUser buildCurrentUser() {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(42L);
+        currentUser.setUserUuid("user-uuid-42");
         currentUser.setUsername("jane");
+        currentUser.setAuthenticated(true);
         currentUser.setSessionId("session-42");
         currentUser.setSessionVersion(1);
         currentUser.setPermissionsVersion("v1");
@@ -92,13 +565,45 @@ class SystemManagementAppServiceSummaryTest {
         return currentUser;
     }
 
+    private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
     private static final class TestEnvironment {
         private final MyBatisQueryOperations jdbcTemplate = new MyBatisQueryOperations() {
+            @Override
+            public int update(String sql, Object... args) {
+                return 1;
+            }
+
             @Override
             public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
                 String normalized = sql.toLowerCase();
                 if (normalized.contains("from sys_menu")) {
                     return requiredType.cast(Long.valueOf(12L));
+                }
+                if (normalized.contains("select uuid from sys_user")) {
+                    return requiredType.cast("user-uuid-42");
+                }
+                if (normalized.contains("from sys_user_wechat_binding")) {
+                    return requiredType.cast(Long.valueOf(1L));
                 }
                 if (normalized.contains("select locale") && normalized.contains("from iam_user_profile")) {
                     return requiredType.cast("zh-CN");
@@ -121,6 +626,16 @@ class SystemManagementAppServiceSummaryTest {
             @Override
             public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
                 String normalized = sql.toLowerCase();
+                if (normalized.contains("from sys_menu")) {
+                    return java.util.stream.IntStream.range(0, 12)
+                            .mapToObj(index -> {
+                                SystemVO.MenuVO row = new SystemVO.MenuVO();
+                                row.setMenuCode("menu-" + index);
+                                row.setPath("/menu-" + index);
+                                return (T) row;
+                            })
+                            .toList();
+                }
                 if (normalized.contains("audit_login_log")) {
                     SystemVO.AuditLogVO row = new SystemVO.AuditLogVO();
                     row.setId(1L);
@@ -177,8 +692,12 @@ class SystemManagementAppServiceSummaryTest {
         );
 
         private TestEnvironment() {
+            when(permissionSnapshotService.isTrustedActiveUser(42L, "user-uuid-42")).thenReturn(true);
+            when(permissionSnapshotService.loadSnapshot(42L, "user-uuid-42"))
+                    .thenReturn(snapshot(Set.of("dashboard:view", "project:view")));
             SysUserEntity user = new SysUserEntity();
             user.setId(42L);
+            user.setUuid("user-uuid-42");
             user.setUsername("jane");
             user.setNickname("Jane");
             user.setRealName("Jane Doe");
@@ -211,6 +730,37 @@ class SystemManagementAppServiceSummaryTest {
 
             when(systemVerificationAppService.isContactBindAvailable("mobile")).thenReturn(true);
             when(systemVerificationAppService.isContactBindAvailable("email")).thenReturn(false);
+            when(securitySettingsService.loadSettingsFresh()).thenReturn(new SecuritySettingsService.SecuritySettingsSnapshot(
+                    1800L,
+                    3600L,
+                    604800L,
+                    true,
+                    true,
+                    "image",
+                    10L,
+                    5L,
+                    3L,
+                    300L,
+                    60L,
+                    12L,
+                    true,
+                    true,
+                    true,
+                    false
+            ));
+        }
+
+        private PermissionSnapshotService.PermissionSnapshot snapshot(Set<String> permissions) {
+            return new PermissionSnapshotService.PermissionSnapshot(
+                    "permissions-2",
+                    permissions,
+                    Set.of(3L),
+                    null,
+                    Set.of(),
+                    Set.of(),
+                    List.of(),
+                    "/dashboard/home"
+            );
         }
     }
 }

@@ -25,8 +25,10 @@ public class PlatformEventOutboxEntity {
     private String traceId;
     private String requestId;
     private Long createdBy;
+    private String createdByUuid;
     private LocalDateTime createdAt;
     private Long updatedBy;
+    private String updatedByUuid;
     private LocalDateTime updatedAt;
     private Integer deleted;
     private String claimedBy;
@@ -153,6 +155,14 @@ public class PlatformEventOutboxEntity {
         this.createdBy = createdBy;
     }
 
+    public String getCreatedByUuid() {
+        return createdByUuid;
+    }
+
+    public void setCreatedByUuid(String createdByUuid) {
+        this.createdByUuid = createdByUuid;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -167,6 +177,14 @@ public class PlatformEventOutboxEntity {
 
     public void setUpdatedBy(Long updatedBy) {
         this.updatedBy = updatedBy;
+    }
+
+    public String getUpdatedByUuid() {
+        return updatedByUuid;
+    }
+
+    public void setUpdatedByUuid(String updatedByUuid) {
+        this.updatedByUuid = updatedByUuid;
     }
 
     public LocalDateTime getUpdatedAt() {

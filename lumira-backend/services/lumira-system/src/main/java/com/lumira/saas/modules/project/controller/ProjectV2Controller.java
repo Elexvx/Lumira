@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.project.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -19,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/aiadc/projects")
@@ -56,10 +61,10 @@ public class ProjectV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "12") long pageSize
     ) {
-        requireAny(VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
+        CurrentUser currentUser = requireAny(VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
         return ApiResponse.success(
                 projectManagementAppService.listProjects(
-                        securityContextFacade.getCurrentUser(),
+                        currentUser,
                         keyword,
                         category,
                         ownerName,
@@ -76,41 +81,42 @@ public class ProjectV2Controller {
 
     @GetMapping("/{id}")
     public ApiResponse<ProjectVO.Project> project(@PathVariable("id") Long id) {
-        requireAny(VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
-        return ApiResponse.success(projectManagementAppService.getProject(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = requireAny(VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
+        return ApiResponse.success(projectManagementAppService.getProject(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping
     @RepeatSubmit
     public ApiResponse<ProjectVO.Project> createProject(@Valid @RequestBody ProjectDTO.ProjectUpsertRequest request) {
-        requireAny(CREATE, REGISTRATION_CREATE);
-        return ApiResponse.success(projectManagementAppService.createProject(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = requireAny(CREATE, REGISTRATION_CREATE);
+        return ApiResponse.success(projectManagementAppService.createProject(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<ProjectVO.Project> updateProject(@PathVariable("id") Long id, @Valid @RequestBody ProjectDTO.ProjectUpsertRequest request) {
-        require(UPDATE);
-        return ApiResponse.success(projectManagementAppService.updateProject(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(UPDATE);
+        return ApiResponse.success(projectManagementAppService.updateProject(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<Boolean> deleteProject(@PathVariable("id") Long id) {
-        require(DELETE);
-        return ApiResponse.success(projectManagementAppService.deleteProject(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require(DELETE);
+        return ApiResponse.success(projectManagementAppService.deleteProject(currentUser, id), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
     }
 
-    private void requireAny(String... permissionKeys) {
+    private CurrentUser requireAny(String... permissionKeys) {
         RuntimeException lastError = null;
         for (String permissionKey : permissionKeys) {
             try {
-                require(permissionKey);
-                return;
+                return require(permissionKey);
             } catch (RuntimeException error) {
                 lastError = error;
             }
@@ -118,6 +124,13 @@ public class ProjectV2Controller {
         if (lastError != null) {
             throw lastError;
         }
-        require(permissionKeys.length == 0 ? null : permissionKeys[0]);
+        return require(permissionKeys.length == 0 ? null : permissionKeys[0]);
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
     }
 }

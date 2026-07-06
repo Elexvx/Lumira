@@ -1,8 +1,14 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.profile.dto.ProfileFieldSettingItem;
@@ -11,20 +17,42 @@ import com.lumira.saas.modules.system.profile.vo.ProfileCompletionItemVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionSummaryVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SystemProfileSettingsAppServiceTest {
+
+    @Test
+    void profileFieldConfigWritesShouldPersistTrustedUserUuid() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemProfileSettingsAppService.java"));
+
+        assertTrue(source.contains("created_by, created_by_uuid, updated_by, updated_by_uuid"));
+        assertTrue(source.contains("updated_by = ?, updated_by_uuid = ?"));
+        assertTrue(source.contains("operatorUuid = currentUser.getUserUuid()"));
+        assertTrue(source.contains("and config_key = ?"));
+        assertTrue(source.contains("and config_scope = 'PLATFORM'"));
+        assertTrue(source.contains("and is_system = 0"));
+        assertTrue(source.contains("and deleted = 0"));
+        assertFalse(source.contains("updated_at = ?, deleted = 0"));
+        assertTrue(source.contains("Profile config changed, please retry"));
+    }
 
     @Test
     void getProfileFieldSettingsShouldReuseCachedSnapshot() {
@@ -38,8 +66,8 @@ class SystemProfileSettingsAppServiceTest {
         List<ProfileFieldSettingVO> first = service.getProfileFieldSettings(buildCurrentUser());
         List<ProfileFieldSettingVO> second = service.getProfileFieldSettings(buildCurrentUser());
 
-        assertEquals("联系方式", findSetting(first, "mobile").getGroupLabel());
-        assertEquals("联系方式", findSetting(second, "mobile").getGroupLabel());
+        assertEquals("contact", findSetting(first, "mobile").getGroupKey());
+        assertEquals("contact", findSetting(second, "mobile").getGroupKey());
         assertEquals(1, jdbcTemplate.queryForListCount());
     }
 
@@ -68,7 +96,7 @@ class SystemProfileSettingsAppServiceTest {
         assertEquals("Contact phone", mobile.getFieldLabel());
         assertEquals("Editable phone label", mobile.getFieldDescription());
         assertEquals("Enter contact phone", mobile.getPlaceholder());
-        assertEquals("联系方式", mobile.getGroupLabel());
+        assertEquals("contact", mobile.getGroupKey());
         assertTrue(avatar.getVisible());
         assertEquals(10, avatar.getWeight());
         assertFalse(email.getVisible());
@@ -110,6 +138,159 @@ class SystemProfileSettingsAppServiceTest {
     }
 
     @Test
+    void updateProfileFieldSettingsShouldRequireUpdatePermissionBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser("system:config:view"), request)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectWhenLiveSnapshotRevokesUpdatePermissionBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        org.mockito.Mockito.when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        org.mockito.Mockito.when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:view")));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate, permissionSnapshotService);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectRevokedSessionTicketBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SessionAuthenticationService sessionAuthenticationService = org.mockito.Mockito.mock(SessionAuthenticationService.class);
+        org.mockito.Mockito.when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", null, 1, "permissions-1"))
+                .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate, null, sessionAuthenticationService);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectDisabledTrustedUserIdentityBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "DISABLED"));
+        SystemProfileSettingsAppService service = newService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectBlankUsernameBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setUsername(" ");
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(currentUser, request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectMissingSessionVersionBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setSessionVersion(null);
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(currentUser, request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldLogRefreshedLiveUsername() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        org.mockito.Mockito.when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        org.mockito.Mockito.when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        RecordingOperationAuditService auditService = new RecordingOperationAuditService();
+        SystemProfileSettingsAppService service = newService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                auditService
+        );
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setUsername("admin-stale");
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        service.updateProfileFieldSettings(currentUser, request);
+
+        assertEquals("admin-live", currentUser.getUsername());
+        assertEquals("admin-live", auditService.username);
+    }
+
+    @Test
     void updateProfileFieldSettingsShouldInvalidateCachedSnapshot() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.mobile.visible", "true",
@@ -146,7 +327,7 @@ class SystemProfileSettingsAppServiceTest {
     void profileFieldSettingsSupportCustomDefinitions() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.custom.definitions",
-                "[{\"fieldKey\":\"school\",\"fieldLabel\":\"学校\",\"fieldDescription\":\"就读学校\",\"fieldType\":\"TEXT\",\"visible\":true,\"required\":true,\"weight\":8,\"groupLabel\":\"教育信息\",\"sortNo\":120,\"custom\":true}]"
+                "[{\"fieldKey\":\"school\",\"fieldLabel\":\"瀛︽牎\",\"fieldDescription\":\"灏辫瀛︽牎\",\"fieldType\":\"TEXT\",\"visible\":true,\"required\":true,\"weight\":8,\"groupLabel\":\"鏁欒偛淇℃伅\",\"sortNo\":120,\"custom\":true}]"
         ));
         SystemProfileSettingsAppService service = newService(jdbcTemplate);
 
@@ -154,9 +335,9 @@ class SystemProfileSettingsAppServiceTest {
 
         ProfileFieldSettingVO school = findSetting(settings, "school");
         assertTrue(school.getCustom());
-        assertEquals("学校", school.getFieldLabel());
+        assertEquals("瀛︽牎", school.getFieldLabel());
         assertEquals("TEXT", school.getFieldType());
-        assertEquals("教育信息", school.getGroupLabel());
+        assertEquals("鏁欒偛淇℃伅", school.getGroupLabel());
         assertTrue(school.getRequired());
         assertEquals(8, school.getWeight());
     }
@@ -191,10 +372,10 @@ class SystemProfileSettingsAppServiceTest {
         items.add(profileFieldSetting("avatarUrl", true, 12));
         ProfileFieldSettingItem school = profileFieldSetting("school", true, 8);
         school.setCustom(true);
-        school.setFieldLabel("学校");
+        school.setFieldLabel("瀛︽牎");
         school.setFieldType("TEXT");
         school.setRequired(true);
-        school.setGroupLabel("教育信息");
+        school.setGroupLabel("鏁欒偛淇℃伅");
         school.setSortNo(120);
         items.add(school);
         request.setItems(items);
@@ -203,7 +384,31 @@ class SystemProfileSettingsAppServiceTest {
 
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.custom.definitions"));
         assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldKey\":\"school\""));
-        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldLabel\":\"学校\""));
+        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldLabel\":\"瀛︽牎\""));
+    }
+
+    @Test
+    void updateProfileFieldSettingsRejectsWhenConfigInsertMisses() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        jdbcTemplate.updateResult = 0;
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        ProfileFieldSettingItem school = profileFieldSetting("school", true, 8);
+        school.setCustom(true);
+        school.setFieldLabel("School");
+        school.setFieldType("TEXT");
+        school.setSortNo(120);
+        request.setItems(List.of(school));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.BIZ_ERROR, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Profile config changed, please retry"));
+        assertEquals(1, jdbcTemplate.updateCount());
     }
 
     @Test
@@ -219,11 +424,11 @@ class SystemProfileSettingsAppServiceTest {
         currentUser.setEmail("admin@example.com");
 
         List<ProfileFieldSettingVO> settings = List.of(
-                profileFieldSettingVO("avatarUrl", true, 10, "基础资料"),
-                profileFieldSettingVO("realName", true, 15, "基础资料"),
-                profileFieldSettingVO("mobile", true, 20, "联系方式"),
-                profileFieldSettingVO("email", false, 15, "联系方式"),
-                profileFieldSettingVO("idCardNumber", true, 55, "证件信息")
+                profileFieldSettingVO("avatarUrl", true, 10, "鍩虹璧勬枡"),
+                profileFieldSettingVO("realName", true, 15, "鍩虹璧勬枡"),
+                profileFieldSettingVO("mobile", true, 20, "鑱旂郴鏂瑰紡"),
+                profileFieldSettingVO("email", false, 15, "鑱旂郴鏂瑰紡"),
+                profileFieldSettingVO("idCardNumber", true, 55, "璇佷欢淇℃伅")
         );
 
         ProfileCompletionSummaryVO summary = service.buildProfileCompletionSummary(currentUser, settings, false, true);
@@ -248,13 +453,51 @@ class SystemProfileSettingsAppServiceTest {
     }
 
     private static SystemProfileSettingsAppService newService(JdbcTemplate jdbcTemplate) {
-        return new SystemProfileSettingsAppService(new MyBatisQueryOperations(jdbcTemplate), new RecordingOperationAuditService());
+        return newService(jdbcTemplate, null);
+    }
+
+    private static SystemProfileSettingsAppService newService(JdbcTemplate jdbcTemplate, PermissionSnapshotService permissionSnapshotService) {
+        return newService(jdbcTemplate, permissionSnapshotService, null);
+    }
+
+    private static SystemProfileSettingsAppService newService(
+            JdbcTemplate jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        return newService(jdbcTemplate, permissionSnapshotService, sessionAuthenticationService, null, new RecordingOperationAuditService());
+    }
+
+    private static SystemProfileSettingsAppService newService(
+            JdbcTemplate jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemInternalApi systemInternalApi,
+            RecordingOperationAuditService auditService
+    ) {
+        return new SystemProfileSettingsAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                auditService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService
+        );
     }
 
     private static CurrentUser buildCurrentUser() {
+        return buildCurrentUser("system:config:update");
+    }
+
+    private static CurrentUser buildCurrentUser(String permission) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
+        currentUser.setUserUuid("user-uuid-1001");
         currentUser.setUsername("admin");
+        currentUser.setSessionId("session-1");
+        currentUser.setSessionVersion(1);
+        currentUser.setPermissionsVersion("permissions-1");
+        currentUser.setAuthenticated(true);
+        currentUser.setPermissions(Set.of(permission));
         return currentUser;
     }
 
@@ -279,14 +522,77 @@ class SystemProfileSettingsAppServiceTest {
         return settings.stream().filter(item -> fieldKey.equals(item.getFieldKey())).findFirst().orElseThrow();
     }
 
+    private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
     private static final class RecordingOperationAuditService extends OperationAuditService {
+        private String username;
+
         private RecordingOperationAuditService() {
-            super(null);
+            super(null, objectProvider(null));
         }
 
         @Override
-        public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+        public void log(Long userId, String userUuid, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+            this.username = username;
         }
+    }
+
+    private static <T> ObjectProvider<T> objectProvider(T value) {
+        return new ObjectProvider<>() {
+            @Override
+            public T getObject(Object... args) {
+                return value;
+            }
+
+            @Override
+            public T getIfAvailable() {
+                return value;
+            }
+
+            @Override
+            public T getIfUnique() {
+                return value;
+            }
+
+            @Override
+            public T getObject() {
+                return value;
+            }
+
+            @Override
+            public Iterator<T> iterator() {
+                return value == null ? List.<T>of().iterator() : List.of(value).iterator();
+            }
+
+            @Override
+            public Stream<T> stream() {
+                return value == null ? Stream.empty() : Stream.of(value);
+            }
+
+            @Override
+            public Stream<T> orderedStream() {
+                return stream();
+            }
+        };
     }
 
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
@@ -294,6 +600,8 @@ class SystemProfileSettingsAppServiceTest {
         private final List<Object[]> insertedRows = new ArrayList<>();
         private final List<String> insertSqls = new ArrayList<>();
         private int queryForListCount;
+        private int updateCount;
+        private int updateResult = 1;
 
         private RecordingJdbcTemplate(Map<String, String> configValues) {
             this.configValues = new LinkedHashMap<>(configValues);
@@ -301,12 +609,13 @@ class SystemProfileSettingsAppServiceTest {
 
         @Override
         public int update(String sql, Object... args) {
+            updateCount++;
             insertSqls.add(sql);
             insertedRows.add(args);
             if (args.length >= 3 && args[0] instanceof String configKey) {
                 configValues.put(configKey, String.valueOf(args[2]));
             }
-            return 1;
+            return updateResult;
         }
 
         @Override
@@ -334,6 +643,10 @@ class SystemProfileSettingsAppServiceTest {
 
         private int queryForListCount() {
             return queryForListCount;
+        }
+
+        private int updateCount() {
+            return updateCount;
         }
 
         private List<String> insertedConfigKeys() {

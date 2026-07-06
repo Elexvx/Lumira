@@ -86,6 +86,21 @@ class DocumentUploadServiceTest {
         assertThrows(BizException.class, () -> service.upload(file));
     }
 
+    @Test
+    void rejectsEscapingStorageSubPath() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
+        DocumentUploadService service = service(properties);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "notes.txt",
+                "text/plain",
+                "hello knowledge base".getBytes()
+        );
+
+        assertThrows(BizException.class, () -> service.upload(file, "..\\outside"));
+    }
+
     private byte[] openXmlBytes(String entryName) throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {

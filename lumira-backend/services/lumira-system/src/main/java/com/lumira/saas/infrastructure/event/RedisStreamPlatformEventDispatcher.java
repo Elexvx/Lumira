@@ -29,8 +29,10 @@ public class RedisStreamPlatformEventDispatcher implements PlatformEventDispatch
 
     @Override
     public void dispatch(PlatformEventOutboxEntity event) {
+        PlatformEventTrustValidator.requireTrustedSystemEvent(event);
+        String streamKey = PlatformEventTrustValidator.requireTrustedRedisStreamKey(platformEventProperties.getOutbox().getRedisStreamKey());
         stringRedisTemplate.opsForStream().add(MapRecord.create(
-                platformEventProperties.getOutbox().getRedisStreamKey(),
+                streamKey,
                 toRecord(event)
         ));
         for (PlatformEventConsumer consumer : consumers) {
@@ -44,6 +46,7 @@ public class RedisStreamPlatformEventDispatcher implements PlatformEventDispatch
         Map<String, String> record = new LinkedHashMap<>();
         put(record, "id", event.getId());
         put(record, "userId", event.getUserId());
+        put(record, "userUuid", event.getUserUuid());
         put(record, "sourceType", event.getSourceType());
         put(record, "eventType", event.getEventType());
         put(record, "eventKey", event.getEventKey());
@@ -59,4 +62,5 @@ public class RedisStreamPlatformEventDispatcher implements PlatformEventDispatch
             record.put(key, String.valueOf(value));
         }
     }
+
 }

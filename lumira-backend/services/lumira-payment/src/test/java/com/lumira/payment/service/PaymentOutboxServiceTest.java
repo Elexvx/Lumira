@@ -6,6 +6,8 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +32,153 @@ class PaymentOutboxServiceTest {
         PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
 
         assertThrows(IllegalArgumentException.class, () ->
-                service.record(9L, "plugin", "payment.order.created", "order:ORD-1", List.of())
+                service.record(9L, "plugin", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
         );
+    }
+
+    @Test
+    void recordShouldRejectInvalidUserIdBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(0L, "payment", "payment.order.created", "order:ORD-1", List.of())
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectBlankEventTypeBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", " ", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectOversizedEventKeyBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created", "k".repeat(129), Map.of("userUuid", "user-uuid-9"))
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectUntrustedEventTypeBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created\nspoofed", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectOversizedPayloadBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("body", "x".repeat(256 * 1024)))
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldNotInventAuditUserForAnonymousPaymentEvent() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        service.record(null, "payment", "payment.order.created", "order:ORD-1", List.of());
+
+        verify(jdbcTemplate).update(
+                anyString(),
+                eq(null),
+                eq(null),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                anyString(),
+                any(),
+                eq(null),
+                eq(null),
+                eq(null),
+                eq(null)
+        );
+    }
+
+    @Test
+    void recordShouldRejectWhenInsertMisses() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalStateException.class, () ->
+                service.record(null, "payment", "payment.order.created", "order:ORD-1", List.of())
+        );
+    }
+
+    @Test
+    void recordShouldRejectMissingUserUuidWhenUserIdIsPresent() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created", "order:ORD-1", List.of())
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-other"))
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
+        );
+
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
+        );
+
+        verify(jdbcTemplate).queryForObject(contains("status = 'ENABLED'"), eq(String.class), eq(9L));
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
     }
 
     @Test
@@ -46,6 +193,7 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
         PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
@@ -55,7 +203,65 @@ class PaymentOutboxServiceTest {
         assertThat(delivered).isEqualTo(1);
         verify(dispatcher).dispatch(row);
         verify(jdbcTemplate).update(contains("set t.status = ?,"), eq("payment"), eq("PENDING"), eq("FAILED"), any(), eq("DISPATCHING"), any(), eq(50), eq("DISPATCHING"), anyString(), anyString(), any(), any(), eq("payment"));
-        verify(jdbcTemplate).update(contains("claim_token = ?"), eq("DELIVERED"), any(), eq(9L), eq(10L), eq("payment"), eq("DISPATCHING"), anyString());
+        verify(jdbcTemplate).update(contains("claim_token = ?"), eq("DELIVERED"), any(), eq(9L), eq("user-uuid-9"), eq(10L), eq("payment"),
+                eq("payment.order.created"), eq("order:ORD-1"), eq("DISPATCHING"), anyString(), eq(9L), eq(9L), eq("user-uuid-9"),
+                eq(0), eq(0));
+    }
+
+    @Test
+    void dispatchPendingShouldRejectDeliveredWhenClaimWriteMisses() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow row = outboxRow(17L, "PENDING", 0);
+        row.setClaimToken("claim-17");
+        row.setStatus("DISPATCHING");
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq("payment"),
+                anyString()
+        );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1, 0, 1);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        int delivered = service.dispatchPending(dispatcher, 50);
+
+        assertThat(delivered).isZero();
+        verify(dispatcher).dispatch(row);
+        verify(jdbcTemplate).update(
+                contains("claim_token = ?"),
+                eq("FAILED"),
+                eq(1),
+                any(),
+                eq("Payment outbox changed, please retry"),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(17L),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                eq("DISPATCHING"),
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(0),
+                eq(0)
+        );
+    }
+
+    @Test
+    void dispatchPendingShouldRejectInvalidLimitBeforeClaiming() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        assertThrows(IllegalArgumentException.class, () -> service.dispatchPending(dispatcher, 201));
+
+        verify(dispatcher, never()).dispatch(any());
+        verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
     }
 
     @Test
@@ -70,6 +276,7 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
 
@@ -86,13 +293,206 @@ class PaymentOutboxServiceTest {
                 eq("boom"),
                 any(),
                 eq(9L),
+                eq("user-uuid-9"),
                 eq(11L),
-                eq("payment")
-                ,
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
                 eq("DISPATCHING"),
-                anyString()
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(7),
+                eq(7)
         );
     }
+
+    @Test
+    void dispatchPendingShouldRejectUntrustedClaimedRowBeforeDispatcher() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow row = outboxRow(13L, "DISPATCHING", 0);
+        row.setClaimToken("claim-13");
+        row.setPayloadJson("x".repeat(256 * 1024 + 1));
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq("payment"),
+                anyString()
+        );
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        int delivered = service.dispatchPending(dispatcher, 50);
+
+        assertThat(delivered).isZero();
+        verify(dispatcher, never()).dispatch(any());
+        verify(jdbcTemplate).update(
+                contains("claim_token = ?"),
+                eq("FAILED"),
+                eq(1),
+                any(),
+                eq("Payment outbox row is invalid"),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(13L),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                eq("DISPATCHING"),
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(0),
+                eq(0)
+        );
+    }
+
+    @Test
+    void dispatchPendingShouldRejectHumanRowMissingUserUuidBeforeDispatcher() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow row = outboxRow(14L, "DISPATCHING", 0);
+        row.setClaimToken("claim-14");
+        row.setPayloadJson("{}");
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq("payment"),
+                anyString()
+        );
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        int delivered = service.dispatchPending(dispatcher, 50);
+
+        assertThat(delivered).isZero();
+        verify(dispatcher, never()).dispatch(any());
+        verify(jdbcTemplate).update(
+                contains("claim_token = ?"),
+                eq("FAILED"),
+                eq(1),
+                any(),
+                eq("Payment outbox row is invalid"),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(14L),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                eq("DISPATCHING"),
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(0),
+                eq(0)
+        );
+    }
+
+    @Test
+    void dispatchPendingShouldRejectPayloadUserUuidMismatchBeforeDispatcher() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow row = outboxRow(15L, "DISPATCHING", 0);
+        row.setClaimToken("claim-15");
+        row.setPayloadJson("{\"userUuid\":\"user-uuid-other\"}");
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq("payment"),
+                anyString()
+        );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        int delivered = service.dispatchPending(dispatcher, 50);
+
+        assertThat(delivered).isZero();
+        verify(dispatcher, never()).dispatch(any());
+        verify(jdbcTemplate).update(
+                contains("claim_token = ?"),
+                eq("FAILED"),
+                eq(1),
+                any(),
+                eq("Payment outbox row is invalid"),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(15L),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                eq("DISPATCHING"),
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(0),
+                eq(0)
+        );
+    }
+
+    @Test
+    void dispatchPendingShouldRejectRowUserUuidMismatchBeforeDispatcher() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow row = outboxRow(16L, "DISPATCHING", 0);
+        row.setClaimToken("claim-16");
+        row.setUserUuid("user-uuid-other");
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq("payment"),
+                anyString()
+        );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        int delivered = service.dispatchPending(dispatcher, 50);
+
+        assertThat(delivered).isZero();
+        verify(dispatcher, never()).dispatch(any());
+        verify(jdbcTemplate).update(
+                contains("claim_token = ?"),
+                eq("FAILED"),
+                eq(1),
+                any(),
+                eq("Payment outbox row is invalid"),
+                any(),
+                eq(9L),
+                eq("user-uuid-other"),
+                eq(16L),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                eq("DISPATCHING"),
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-other"),
+                eq(0),
+                eq(0)
+        );
+    }
+
+    @Test
+    void dispatchStateWritesShouldBindEventAndUserIdentity() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/payment/service/PaymentOutboxService.java"));
+
+        assertThat(source)
+                .contains("and event_type = ?")
+                .contains("and event_key = ?")
+                .contains("((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))")
+                .contains("normalizeUserUuidOrNull(row.getUserUuid())");
+    }
+
 
     @Test
     void replayResetsDeadLetterBeforeDispatchingAgain() {
@@ -104,6 +504,7 @@ class PaymentOutboxServiceTest {
                 eq(12L),
                 eq("payment")
         );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
         PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
@@ -111,11 +512,62 @@ class PaymentOutboxServiceTest {
         boolean replayed = service.replay(12L, dispatcher);
 
         assertThat(replayed).isTrue();
-        verify(jdbcTemplate).update(contains("source_type = ?"), eq("PENDING"), any(), eq(9L), eq(12L), eq("payment"));
+        verify(jdbcTemplate).update(
+                contains("event_key = ?"),
+                eq("PENDING"),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(12L),
+                eq("payment"),
+                eq("payment.order.created"),
+                eq("order:ORD-1"),
+                eq("DEAD_LETTER"),
+                eq(8),
+                eq(8),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9")
+        );
         verify(dispatcher).dispatch(deadLetter);
         assertThat(deadLetter.getStatus()).isEqualTo("DISPATCHING");
         assertThat(deadLetter.getClaimToken()).isNotBlank();
     }
+
+    @Test
+    void replayShouldNotDispatchWhenResetBoundaryMisses() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxRow deadLetter = outboxRow(12L, "DEAD_LETTER", 8);
+        doReturn(deadLetter).when(jdbcTemplate).queryForObject(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq(12L),
+                eq("payment")
+        );
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        boolean replayed = service.replay(12L, dispatcher);
+
+        assertThat(replayed).isFalse();
+        verify(dispatcher, never()).dispatch(any());
+    }
+
+    @Test
+    void replayShouldRejectInvalidIdBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+
+        boolean replayed = service.replay(0L, dispatcher);
+
+        assertThat(replayed).isFalse();
+        verify(jdbcTemplate, never()).queryForObject(anyString(), any(BeanPropertyRowMapper.class), any(), any());
+        verify(dispatcher, never()).dispatch(any());
+    }
+
 
     @Test
     void backlogMetrics_shouldReuseAggregatedSnapshot() {
@@ -180,10 +632,11 @@ class PaymentOutboxServiceTest {
         PaymentOutboxRow row = new PaymentOutboxRow();
         row.setId(id);
         row.setUserId(9L);
+        row.setUserUuid("user-uuid-9");
         row.setSourceType("payment");
         row.setEventType("payment.order.created");
         row.setEventKey("order:ORD-1");
-        row.setPayloadJson("{}");
+        row.setPayloadJson("{\"userUuid\":\"user-uuid-9\"}");
         row.setStatus(status);
         row.setRetryCount(retryCount);
         row.setCreatedAt(LocalDateTime.now().minusMinutes(1));

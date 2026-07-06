@@ -51,6 +51,7 @@ class AuthAppServiceWechatSecondFactorTest {
         );
         SystemUserSnapshotDTO user = new SystemUserSnapshotDTO(
                 42L,
+                "user-uuid-42",
                 "wechat-user",
                 "hash",
                 "ENABLED",
@@ -77,8 +78,8 @@ class AuthAppServiceWechatSecondFactorTest {
         when(wechatLoginService.exchangeCode("code", "state"))
                 .thenReturn(new WechatLoginService.WechatOAuthUser("openid", "unionid", "snsapi_login"));
         when(systemInternalApi.resolveWechatLoginUser(any())).thenReturn(user);
-        when(systemInternalApi.permissionSnapshot(user.userId())).thenReturn(snapshot);
-        when(systemInternalApi.listLoginSecondFactorOptions(user.userId())).thenReturn(List.of(option));
+        when(systemInternalApi.permissionSnapshot(user.userId(), user.userUuid())).thenReturn(snapshot);
+        when(systemInternalApi.listLoginSecondFactorOptions(user.userId(), user.userUuid())).thenReturn(List.of(option));
         when(clientIpResolver.resolve(request)).thenReturn("127.0.0.1");
         when(request.getHeader("User-Agent")).thenReturn("JUnit");
 

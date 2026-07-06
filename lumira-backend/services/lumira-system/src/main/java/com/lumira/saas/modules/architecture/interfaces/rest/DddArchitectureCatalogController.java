@@ -1,8 +1,20 @@
 package com.lumira.saas.modules.architecture.interfaces.rest;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import java.util.List;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,9 +23,89 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v2/architecture")
 public class DddArchitectureCatalogController {
 
+    private static final String VIEW_ARCHITECTURE_PERMISSION = "system:config:view";
+    private static final String STATUS_ENABLED = "ENABLED";
+
+    private final SecurityContextFacade securityContextFacade;
+    private final PermissionGuard permissionGuard;
+    private final SystemInternalApi systemInternalApi;
+
+    public DddArchitectureCatalogController(SecurityContextFacade securityContextFacade, PermissionGuard permissionGuard) {
+        this(securityContextFacade, permissionGuard, null);
+    }
+
+    @Autowired
+    public DddArchitectureCatalogController(
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi
+    ) {
+        this.securityContextFacade = securityContextFacade;
+        this.permissionGuard = permissionGuard;
+        this.systemInternalApi = systemInternalApi;
+    }
+
     @GetMapping("/contexts")
     public ApiResponse<ArchitectureCatalogResponse> contexts() {
+        require(VIEW_ARCHITECTURE_PERMISSION);
         return ApiResponse.success(ArchitectureCatalogResponse.defaultCatalog(), TraceContext.getRequestId());
+    }
+
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return currentUser;
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return refreshTrustedCurrentUser(currentUser);
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.status())
+                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
+                userId,
+                userSnapshot.userUuid().trim()
+        );
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(userSnapshot.userId());
+        currentUser.setUserUuid(userSnapshot.userUuid().trim());
+        currentUser.setUsername(userSnapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(
+                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
+        );
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        return currentUser;
     }
 
     public record ArchitectureCatalogResponse(

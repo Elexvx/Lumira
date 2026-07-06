@@ -3,7 +3,6 @@ import type { CurrentUser, LoginResponse } from '@/types/api';
 
 const USER_PROFILE_KEY = 'current_user_profile';
 const SESSION_META_KEY = 'current_session_meta';
-const LOCAL_SESSION_ID_PREFIX = 'local-session';
 
 export interface SessionMetaState {
   sessionId?: string;
@@ -27,8 +26,26 @@ export const persistSessionMeta = (meta: SessionMetaState) => {
   });
 };
 
+export const isTrustedCurrentUser = (currentUser?: CurrentUser | null): currentUser is CurrentUser =>
+  Boolean(
+      currentUser &&
+      currentUser.userId > 0 &&
+      currentUser.username?.trim() &&
+      currentUser.sessionId?.trim() &&
+      currentUser.permissionsVersion?.trim() &&
+      typeof currentUser.sessionVersion === 'number' &&
+      currentUser.sessionVersion > 0,
+  );
+
+const assertTrustedCurrentUser = (currentUser: CurrentUser): CurrentUser => {
+  if (!isTrustedCurrentUser(currentUser)) {
+    throw new Error('Current user is missing trusted session identity fields');
+  }
+  return currentUser;
+};
+
 export const persistCurrentUser = (currentUser: CurrentUser): CurrentUser => {
-  const normalizedCurrentUser = normalizeCurrentUserSession(currentUser);
+  const normalizedCurrentUser = assertTrustedCurrentUser(currentUser);
   storage.set(USER_PROFILE_KEY, normalizedCurrentUser);
   persistSessionMeta({
     sessionId: normalizedCurrentUser.sessionId,
@@ -38,12 +55,33 @@ export const persistCurrentUser = (currentUser: CurrentUser): CurrentUser => {
   return normalizedCurrentUser;
 };
 
+export const mergeTrustedCurrentUser = (previous: CurrentUser | undefined, next: CurrentUser): CurrentUser => {
+  if (!previous) {
+    return assertTrustedCurrentUser(next);
+  }
+  const nextIsTrusted: boolean = isTrustedCurrentUser(next);
+  if (nextIsTrusted) {
+    return assertTrustedCurrentUser(next);
+  }
+  const candidate: CurrentUser = {
+    ...previous,
+    ...next,
+    userId: previous.userId,
+    userUuid: previous.userUuid,
+    username: previous.username,
+    sessionId: previous.sessionId,
+    sessionVersion: previous.sessionVersion,
+    permissionsVersion: previous.permissionsVersion,
+    permissions: next.permissions ?? previous.permissions,
+    roleIds: next.roleIds ?? previous.roleIds,
+  };
+  return assertTrustedCurrentUser(candidate);
+};
+
 export const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => {
-  const storedCurrentUser = getStoredCurrentUser();
-  const storedSessionMeta = getStoredSessionMeta();
-  const sessionId = loginResponse.user.sessionId?.trim() || storedSessionMeta?.sessionId?.trim() || createLocalSessionId();
-  return {
+  return assertTrustedCurrentUser({
     userId: loginResponse.user.userId,
+    userUuid: loginResponse.user.userUuid,
     username: loginResponse.user.username,
     nickname: loginResponse.user.nickname,
     realName: loginResponse.user.realName,
@@ -58,31 +96,12 @@ export const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentU
     locale: loginResponse.user.locale ?? null,
     simulatedRoleId: null,
     availableRoles: [],
-    sessionId,
-    permissionsVersion: loginResponse.user.permissionsVersion ?? storedSessionMeta?.permissionsVersion,
-    sessionVersion: loginResponse.user.sessionVersion ?? storedSessionMeta?.sessionVersion,
-    permissions: loginResponse.user.permissions || storedCurrentUser?.permissions || [],
+    sessionId: loginResponse.user.sessionId?.trim() || '',
+    permissionsVersion: loginResponse.user.permissionsVersion,
+    sessionVersion: loginResponse.user.sessionVersion,
+    permissions: loginResponse.user.permissions || [],
+    roleIds: loginResponse.user.roleIds || [],
     requiresPasswordChange: loginResponse.requiresPasswordChange ?? null,
-    defaultHomePath: storedCurrentUser?.defaultHomePath || '/dashboard/home',
-  };
-};
-
-const normalizeCurrentUserSession = (currentUser: CurrentUser): CurrentUser => {
-  if (currentUser.sessionId?.trim()) {
-    return currentUser;
-  }
-
-  const storedSessionMeta = getStoredSessionMeta();
-  return {
-    ...currentUser,
-    sessionId: storedSessionMeta?.sessionId?.trim() || createLocalSessionId(),
-  };
-};
-
-const createLocalSessionId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${LOCAL_SESSION_ID_PREFIX}-${crypto.randomUUID()}`;
-  }
-
-  return `${LOCAL_SESSION_ID_PREFIX}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    defaultHomePath: '/dashboard/home',
+  });
 };

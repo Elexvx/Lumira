@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalJobController {
 
     private final PaymentOutboxRelay paymentOutboxRelay;
-    private final String internalToken;
+    private final String paymentInternalToken;
 
     public InternalJobController(
             PaymentOutboxRelay paymentOutboxRelay,
-            @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken
+            @Value("${saas.internal.payment-token:${SAAS_INTERNAL_PAYMENT_TOKEN:}}") String paymentInternalToken
     ) {
         this.paymentOutboxRelay = paymentOutboxRelay;
-        this.internalToken = internalToken;
+        this.paymentInternalToken = paymentInternalToken;
     }
 
     @PostMapping("/outbox/relay")
@@ -41,15 +41,23 @@ public class InternalJobController {
             @RequestHeader(name = "X-Job-Token", required = false) String token
     ) {
         ensureAuthorized(token);
+        requirePositiveId(id);
         return ApiResponse.success(paymentOutboxRelay.replay(id), null);
     }
 
     private void ensureAuthorized(String token) {
-        if (!InternalJobTokenValidator.isConfigured(internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内部任务令牌未配置");
+        String requiredToken = paymentInternalToken;
+        if (!InternalJobTokenValidator.isConfigured(requiredToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Internal job token is not configured");
         }
-        if (!InternalJobTokenValidator.isAuthorized(token, internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权访问内部任务接口");
+        if (!InternalJobTokenValidator.isAuthorized(token, requiredToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Unauthorized internal job access");
+        }
+    }
+
+    private void requirePositiveId(Long id) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Valid outbox event id is required");
         }
     }
 }

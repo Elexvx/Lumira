@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.workflow.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/workflows")
@@ -44,8 +49,8 @@ public class WorkflowV2Controller {
 
     @GetMapping("/definitions/{businessType}")
     public ApiResponse<WorkflowVO.Definition> definition(@PathVariable("businessType") String businessType) {
-        require(VIEW);
-        return ApiResponse.success(workflowAppService.getDefinition(securityContextFacade.getCurrentUser(), businessType), TraceContext.getRequestId());
+        CurrentUser currentUser = require(VIEW);
+        return ApiResponse.success(workflowAppService.getDefinition(currentUser, businessType), TraceContext.getRequestId());
     }
 
     @PutMapping("/definitions/{businessType}/draft")
@@ -54,15 +59,15 @@ public class WorkflowV2Controller {
             @PathVariable("businessType") String businessType,
             @Valid @RequestBody WorkflowDTO.DefinitionSaveRequest request
     ) {
-        require(CONFIG);
-        return ApiResponse.success(workflowAppService.saveDraft(securityContextFacade.getCurrentUser(), businessType, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CONFIG);
+        return ApiResponse.success(workflowAppService.saveDraft(currentUser, businessType, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/definitions/{businessType}/publish")
     @RepeatSubmit
     public ApiResponse<WorkflowVO.Definition> publish(@PathVariable("businessType") String businessType) {
-        require(CONFIG);
-        return ApiResponse.success(workflowAppService.publish(securityContextFacade.getCurrentUser(), businessType), TraceContext.getRequestId());
+        CurrentUser currentUser = require(CONFIG);
+        return ApiResponse.success(workflowAppService.publish(currentUser, businessType), TraceContext.getRequestId());
     }
 
     @GetMapping("/tasks/my")
@@ -71,16 +76,16 @@ public class WorkflowV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(APPROVE);
-        return ApiResponse.success(workflowAppService.listMyTasks(securityContextFacade.getCurrentUser(), status, pageNo, pageSize), TraceContext.getRequestId());
+        CurrentUser currentUser = require(APPROVE);
+        return ApiResponse.success(workflowAppService.listMyTasks(currentUser, status, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @PostMapping("/tasks/{taskId}/approve")
     @RepeatSubmit
     public ApiResponse<Boolean> approve(@PathVariable("taskId") Long taskId, @RequestBody(required = false) WorkflowDTO.WorkflowActionRequest request) {
-        require(APPROVE);
+        CurrentUser currentUser = require(APPROVE);
         return ApiResponse.success(
-                workflowAppService.approveTask(securityContextFacade.getCurrentUser(), taskId, request == null ? null : request.getComment()),
+                workflowAppService.approveTask(currentUser, taskId, request == null ? null : request.getComment()),
                 TraceContext.getRequestId()
         );
     }
@@ -88,20 +93,29 @@ public class WorkflowV2Controller {
     @PostMapping("/tasks/{taskId}/reject")
     @RepeatSubmit
     public ApiResponse<Boolean> reject(@PathVariable("taskId") Long taskId, @RequestBody(required = false) WorkflowDTO.WorkflowActionRequest request) {
-        require(APPROVE);
+        CurrentUser currentUser = require(APPROVE);
         return ApiResponse.success(
-                workflowAppService.rejectTask(securityContextFacade.getCurrentUser(), taskId, request == null ? null : request.getComment()),
+                workflowAppService.rejectTask(currentUser, taskId, request == null ? null : request.getComment()),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/instances/{instanceId}/logs")
     public ApiResponse<List<WorkflowVO.ActionLog>> logs(@PathVariable("instanceId") Long instanceId) {
-        require(VIEW);
-        return ApiResponse.success(workflowAppService.listLogs(securityContextFacade.getCurrentUser(), instanceId), TraceContext.getRequestId());
+        CurrentUser currentUser = require(VIEW);
+        return ApiResponse.success(workflowAppService.listLogs(currentUser, instanceId), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
     }
 }

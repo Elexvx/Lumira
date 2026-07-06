@@ -1,11 +1,13 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -13,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.StringUtils;
 
 @Service
 public class PaymentOutboxService {
@@ -21,7 +24,10 @@ public class PaymentOutboxService {
     private static final String SOURCE_TYPE_PAYMENT = "payment";
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_ERROR_LENGTH = 512;
-    private static final int MAX_DISPATCH_LIMIT = 200;
+    public static final int MAX_DISPATCH_LIMIT = 200;
+    private static final int MAX_EVENT_TYPE_LENGTH = 128;
+    private static final int MAX_EVENT_KEY_LENGTH = 128;
+    private static final int MAX_PAYLOAD_JSON_LENGTH = 256 * 1024;
     private static final int MAX_RETRY_COUNT = 8;
     private static final long SNAPSHOT_CACHE_TTL_MS = 15_000L;
     private static final long CLAIM_LEASE_MINUTES = 5L;
@@ -31,6 +37,8 @@ public class PaymentOutboxService {
     private static final String STATUS_FAILED = "FAILED";
     private static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
     private static final String WORKER_ID = "payment-outbox@" + ManagementFactory.getRuntimeMXBean().getName();
+    private static final Pattern EVENT_TYPE_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_.-]{1,127}$");
+    private static final Pattern EVENT_KEY_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -59,32 +67,148 @@ public class PaymentOutboxService {
 
     public void record(Long userId, String sourceType, String eventType, String eventKey, Object payload) {
         ensurePaymentSource(sourceType);
-        jdbcTemplate.update(
+        Long normalizedUserId = normalizeUserId(userId);
+        String normalizedEventType = requireBoundedText(eventType, "eventType", MAX_EVENT_TYPE_LENGTH);
+        String normalizedEventKey = requireBoundedText(eventKey, "eventKey", MAX_EVENT_KEY_LENGTH);
+        String normalizedUserUuid = requireUserUuidWhenUserPresent(normalizedUserId, payload);
+        String payloadJson = serialize(payload);
+        if (payloadJson.length() > MAX_PAYLOAD_JSON_LENGTH) {
+            throw new IllegalArgumentException("Payment outbox payload_json is too large");
+        }
+        int inserted = jdbcTemplate.update(
                 """
                         insert into payment_event_outbox (
-                            user_id, source_type, event_type, event_key, payload_json,
-                            status, retry_count, next_retry_at, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, 0)
-                        """,
-                userId,
+                            user_id, user_uuid, source_type, event_type, event_key, payload_json,
+                            status, retry_count, next_retry_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
+                """,
+                normalizedUserId,
+                normalizedUserUuid,
                 sourceType,
-                eventType,
-                eventKey,
-                serialize(payload),
+                normalizedEventType,
+                normalizedEventKey,
+                payloadJson,
                 LocalDateTime.now(),
-                userId == null ? 0L : userId,
-                userId == null ? 0L : userId
+                normalizedUserId,
+                normalizedUserUuid,
+                normalizedUserId,
+                normalizedUserUuid
         );
+        if (inserted != 1) {
+            throw new IllegalStateException("Payment outbox changed, please retry");
+        }
+    }
+
+    private Long normalizeUserId(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        if (userId <= 0) {
+            throw new IllegalArgumentException("userId must be positive when present");
+        }
+        return userId;
+    }
+
+    private String requireUserUuidWhenUserPresent(Long userId, Object payload) {
+        if (userId == null) {
+            return null;
+        }
+        String payloadUserUuid = extractPayloadUserUuid(payload);
+        if (!StringUtils.hasText(payloadUserUuid)) {
+            throw new IllegalArgumentException("userUuid must be present when userId is present");
+        }
+        return requireMatchingResolvedUserUuid(userId, payloadUserUuid);
+    }
+
+    private String extractPayloadUserUuid(Object payload) {
+        JsonNode node = objectMapper.valueToTree(payload);
+        String topLevel = textOrNull(node.path("userUuid"));
+        if (topLevel != null) {
+            return topLevel;
+        }
+        return textOrNull(node.path("attributes").path("userUuid"));
+    }
+
+    private String requireMatchingResolvedUserUuid(Long userId, String payloadUserUuid) {
+        String resolvedUserUuid = resolveActiveUserUuid(userId);
+        if (!StringUtils.hasText(resolvedUserUuid)) {
+            throw new IllegalArgumentException("Payment outbox userUuid cannot be verified");
+        }
+        if (!resolvedUserUuid.trim().equals(payloadUserUuid.trim())) {
+            throw new IllegalArgumentException("Payment outbox userUuid does not match userId");
+        }
+        return resolvedUserUuid.trim();
+    }
+
+    private String resolveUserUuid(Long userId) {
+        if (userId == null || userId <= 0) {
+            return null;
+        }
+        try {
+            return jdbcTemplate.queryForObject(
+                    "select uuid from sys_user where id = ? and deleted = 0 limit 1",
+                    String.class,
+                    userId
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private String resolveActiveUserUuid(Long userId) {
+        if (userId == null || userId <= 0) {
+            return null;
+        }
+        try {
+            return jdbcTemplate.queryForObject(
+                    "select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1",
+                    String.class,
+                    userId
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private boolean hasText(JsonNode node) {
+        return node != null && node.isTextual() && StringUtils.hasText(node.asText());
+    }
+
+    private String textOrNull(JsonNode node) {
+        if (!hasText(node)) {
+            return null;
+        }
+        return node.asText().trim();
+    }
+
+    private Long trustedUserIdOrNull(Long userId) {
+        return userId == null || userId <= 0 ? null : userId;
+    }
+
+    private String trustedUserUuidOrNull(PaymentOutboxRow row) {
+        if (row == null || trustedUserIdOrNull(row.getUpdatedBy()) == null) {
+            return null;
+        }
+        if (StringUtils.hasText(row.getUpdatedByUuid())) {
+            return row.getUpdatedByUuid().trim();
+        }
+        return StringUtils.hasText(row.getUserUuid()) ? row.getUserUuid().trim() : null;
+    }
+
+    private String normalizeUserUuidOrNull(String userUuid) {
+        return StringUtils.hasText(userUuid) ? userUuid.trim() : null;
     }
 
     public int dispatchPending(PaymentOutboxDispatcher dispatcher, int limit) {
         if (dispatcher == null) {
             return 0;
         }
+        validateDispatchLimit(limit);
 
         int delivered = 0;
         for (PaymentOutboxRow row : claimForDispatchBatch(limit)) {
             try {
+                requireTrustedDispatchRow(row);
                 dispatcher.dispatch(row);
                 markDelivered(row);
                 delivered++;
@@ -97,11 +221,16 @@ public class PaymentOutboxService {
     }
 
     public boolean replay(Long id, PaymentOutboxDispatcher dispatcher) {
+        if (id == null || id <= 0) {
+            return false;
+        }
         PaymentOutboxRow row = findById(id);
         if (row == null || dispatcher == null) {
             return false;
         }
-        resetForReplay(row);
+        if (!resetForReplay(row)) {
+            return false;
+        }
         return dispatchSingle(row, dispatcher);
     }
 
@@ -179,7 +308,6 @@ public class PaymentOutboxService {
     }
 
     private List<PaymentOutboxRow> claimForDispatchBatch(int limit) {
-        int normalizedLimit = Math.max(1, Math.min(limit, MAX_DISPATCH_LIMIT));
         LocalDateTime now = LocalDateTime.now();
         String claimToken = UUID.randomUUID().toString();
         LocalDateTime claimExpiresAt = now.plusMinutes(CLAIM_LEASE_MINUTES);
@@ -213,7 +341,7 @@ public class PaymentOutboxService {
                 now,
                 STATUS_DISPATCHING,
                 now,
-                normalizedLimit,
+                limit,
                 STATUS_DISPATCHING,
                 workerId(),
                 claimToken,
@@ -226,10 +354,11 @@ public class PaymentOutboxService {
         }
         return jdbcTemplate.query(
                 """
-                        select id, user_id as userId, source_type as sourceType, event_type as eventType,
+                        select id, user_id as userId, user_uuid as userUuid, source_type as sourceType, event_type as eventType,
                                event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
                                next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
-                               created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted,
+                               created_by_uuid as createdByUuid, created_at as createdAt, updated_by as updatedBy,
+                               updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted,
                                claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
                         from payment_event_outbox
                         where deleted = 0 and source_type = ? and claim_token = ?
@@ -245,10 +374,11 @@ public class PaymentOutboxService {
         try {
             return jdbcTemplate.queryForObject(
                     """
-                            select id, user_id as userId, source_type as sourceType, event_type as eventType,
+                            select id, user_id as userId, user_uuid as userUuid, source_type as sourceType, event_type as eventType,
                                    event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
                                    next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
-                                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted,
+                                   created_by_uuid as createdByUuid, created_at as createdAt, updated_by as updatedBy,
+                                   updated_by_uuid as updatedByUuid, updated_at as updatedAt, deleted,
                                    claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
                             from payment_event_outbox
                             where id = ? and deleted = 0 and source_type = ?
@@ -275,6 +405,9 @@ public class PaymentOutboxService {
                         update payment_event_outbox
                         set status = ?, claimed_by = ?, claim_token = ?, claim_expires_at = ?, updated_at = ?
                         where id = ? and deleted = 0 and source_type = ?
+                          and event_type = ?
+                          and event_key = ?
+                          and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
                           and (
                                 status = ?
                                 or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)
@@ -287,6 +420,11 @@ public class PaymentOutboxService {
                 now,
                 row.getId(),
                 SOURCE_TYPE_PAYMENT,
+                row.getEventType(),
+                row.getEventKey(),
+                row.getUserId(),
+                row.getUserId(),
+                normalizeUserUuidOrNull(row.getUserUuid()),
                 row.getStatus(),
                 STATUS_DISPATCHING,
                 now
@@ -305,18 +443,29 @@ public class PaymentOutboxService {
                 """
                         update payment_event_outbox
                         set status = ?, claimed_by = null, claim_token = null, claim_expires_at = null,
-                            next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and source_type = ? and status = ? and claim_token = ?
+                            next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?, updated_by_uuid = ?
+                        where id = ? and deleted = 0 and source_type = ? and event_type = ? and event_key = ? and status = ? and claim_token = ?
+                          and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
+                          and ((retry_count is null and ? is null) or retry_count = ?)
                         """,
                 STATUS_DELIVERED,
                 LocalDateTime.now(),
-                row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
+                trustedUserIdOrNull(row.getUpdatedBy()),
+                trustedUserUuidOrNull(row),
                 row.getId(),
                 SOURCE_TYPE_PAYMENT,
+                row.getEventType(),
+                row.getEventKey(),
                 STATUS_DISPATCHING,
-                row.getClaimToken()
+                row.getClaimToken(),
+                row.getUserId(),
+                row.getUserId(),
+                normalizeUserUuidOrNull(row.getUserUuid()),
+                row.getRetryCount(),
+                row.getRetryCount()
         );
         logClaimMismatchIfNeeded(updated, row, "markDelivered");
+        requireOutboxWrite(updated, "Payment outbox changed, please retry");
     }
 
     private void markFailed(PaymentOutboxRow row, RuntimeException exception) {
@@ -329,38 +478,67 @@ public class PaymentOutboxService {
                         update payment_event_outbox
                         set status = ?, retry_count = ?, next_retry_at = ?, last_error_message = ?,
                             claimed_by = null, claim_token = null, claim_expires_at = null,
-                            updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and source_type = ? and status = ? and claim_token = ?
+                            updated_at = ?, updated_by = ?, updated_by_uuid = ?
+                        where id = ? and deleted = 0 and source_type = ? and event_type = ? and event_key = ? and status = ? and claim_token = ?
+                          and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
+                          and ((retry_count is null and ? is null) or retry_count = ?)
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
                 deadLetter ? null : now.plusSeconds(calculateRetryDelaySeconds(nextRetryCount)),
                 truncate(exception == null ? "unknown error" : exception.getMessage()),
                 now,
-                row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
+                trustedUserIdOrNull(row.getUpdatedBy()),
+                trustedUserUuidOrNull(row),
                 row.getId(),
                 SOURCE_TYPE_PAYMENT,
+                row.getEventType(),
+                row.getEventKey(),
                 STATUS_DISPATCHING,
-                row.getClaimToken()
+                row.getClaimToken(),
+                row.getUserId(),
+                row.getUserId(),
+                normalizeUserUuidOrNull(row.getUserUuid()),
+                row.getRetryCount(),
+                row.getRetryCount()
         );
         logClaimMismatchIfNeeded(updated, row, "markFailed");
+        requireOutboxWrite(updated, "Payment outbox changed, please retry");
     }
 
-    private void resetForReplay(PaymentOutboxRow row) {
-        jdbcTemplate.update(
+    private boolean resetForReplay(PaymentOutboxRow row) {
+        int updated = jdbcTemplate.update(
                 """
                         update payment_event_outbox
                         set status = ?, retry_count = 0, next_retry_at = null, last_error_message = null,
                             claimed_by = null, claim_token = null, claim_expires_at = null,
-                            updated_at = ?, updated_by = ?
+                            updated_at = ?, updated_by = ?, updated_by_uuid = ?
                         where id = ? and deleted = 0 and source_type = ?
+                          and event_type = ?
+                          and event_key = ?
+                          and status = ?
+                          and ((retry_count is null and ? is null) or retry_count = ?)
+                          and ((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))
                         """,
                 STATUS_PENDING,
                 LocalDateTime.now(),
-                row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
+                trustedUserIdOrNull(row.getUpdatedBy()),
+                trustedUserUuidOrNull(row),
                 row.getId(),
-                SOURCE_TYPE_PAYMENT
+                SOURCE_TYPE_PAYMENT,
+                row.getEventType(),
+                row.getEventKey(),
+                row.getStatus(),
+                row.getRetryCount(),
+                row.getRetryCount(),
+                row.getUserId(),
+                row.getUserId(),
+                normalizeUserUuidOrNull(row.getUserUuid())
         );
+        if (updated <= 0) {
+            logClaimMismatchIfNeeded(updated, row, "resetForReplay");
+            return false;
+        }
         row.setStatus(STATUS_PENDING);
         row.setRetryCount(0);
         row.setNextRetryAt(null);
@@ -368,6 +546,7 @@ public class PaymentOutboxService {
         row.setClaimedBy(null);
         row.setClaimToken(null);
         row.setClaimExpiresAt(null);
+        return true;
     }
 
     private boolean dispatchSingle(PaymentOutboxRow row, PaymentOutboxDispatcher dispatcher) {
@@ -379,6 +558,7 @@ public class PaymentOutboxService {
         }
 
         try {
+            requireTrustedDispatchRow(row);
             dispatcher.dispatch(row);
             markDelivered(row);
             return true;
@@ -415,11 +595,99 @@ public class PaymentOutboxService {
         }
     }
 
+    private String requireBoundedText(String value, String fieldName, int maxLength) {
+        if (!StringUtils.hasText(value)) {
+            throw new IllegalArgumentException("Payment outbox " + fieldName + " is required");
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException("Payment outbox " + fieldName + " is too long");
+        }
+        if ("eventType".equals(fieldName) && !EVENT_TYPE_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Payment outbox eventType is invalid");
+        }
+        if ("eventKey".equals(fieldName)
+                && (!EVENT_KEY_PATTERN.matcher(normalized).matches()
+                || normalized.contains("..")
+                || normalized.contains("//"))) {
+            throw new IllegalArgumentException("Payment outbox eventKey is invalid");
+        }
+        return normalized;
+    }
+
+    private void requireTrustedDispatchRow(PaymentOutboxRow row) {
+        if (!isTrustedDispatchRow(row)) {
+            throw new IllegalArgumentException("Payment outbox row is invalid");
+        }
+    }
+
+    private boolean isTrustedDispatchRow(PaymentOutboxRow row) {
+        if (row == null
+                || row.getId() == null
+                || row.getId() <= 0
+                || !SOURCE_TYPE_PAYMENT.equals(row.getSourceType())
+                || !STATUS_DISPATCHING.equals(row.getStatus())
+                || !StringUtils.hasText(row.getClaimToken())) {
+            return false;
+        }
+        try {
+            requireBoundedText(row.getEventType(), "eventType", MAX_EVENT_TYPE_LENGTH);
+            requireBoundedText(row.getEventKey(), "eventKey", MAX_EVENT_KEY_LENGTH);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        if (!StringUtils.hasText(row.getPayloadJson()) || row.getPayloadJson().length() > MAX_PAYLOAD_JSON_LENGTH) {
+            return false;
+        }
+        if (row.getUserId() != null) {
+            if (row.getUserId() <= 0 || !payloadJsonHasTrustedUserUuid(row.getUserId(), row.getUserUuid(), row.getPayloadJson())) {
+                return false;
+            }
+        }
+        Integer retryCount = row.getRetryCount();
+        return retryCount == null || (retryCount >= 0 && retryCount <= MAX_RETRY_COUNT);
+    }
+
+    private boolean payloadJsonHasTrustedUserUuid(Long userId, String rowUserUuid, String payloadJson) {
+        if (!StringUtils.hasText(rowUserUuid)) {
+            return false;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(payloadJson);
+            String payloadUserUuid = textOrNull(node.path("userUuid"));
+            if (payloadUserUuid == null) {
+                payloadUserUuid = textOrNull(node.path("attributes").path("userUuid"));
+            }
+            if (payloadUserUuid == null) {
+                return false;
+            }
+            if (!rowUserUuid.trim().equals(payloadUserUuid.trim())) {
+                return false;
+            }
+            String resolvedUserUuid = resolveUserUuid(userId);
+            return StringUtils.hasText(resolvedUserUuid) && resolvedUserUuid.trim().equals(rowUserUuid.trim());
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
+    private void validateDispatchLimit(int limit) {
+        if (limit < 1 || limit > MAX_DISPATCH_LIMIT) {
+            throw new IllegalArgumentException("Payment outbox dispatch limit must be between 1 and " + MAX_DISPATCH_LIMIT);
+        }
+    }
+
     private void logClaimMismatchIfNeeded(int updated, PaymentOutboxRow row, String operation) {
         if (updated > 0) {
             return;
         }
         logger.warn("Payment outbox claim mismatch operation={} id={} eventType={}", operation, row.getId(), row.getEventType());
+    }
+
+    private void requireOutboxWrite(int updated, String message) {
+        if (updated <= 0) {
+            throw new IllegalStateException(message);
+        }
     }
 
     private String workerId() {

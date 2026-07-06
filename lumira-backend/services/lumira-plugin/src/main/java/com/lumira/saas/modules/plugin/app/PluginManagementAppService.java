@@ -4,10 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ReadModelVersionCache;
 import com.lumira.common.web.TraceContext;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.domain.event.DomainEvent;
 import com.lumira.domain.event.DomainEventPublisher;
@@ -156,6 +159,7 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginUploadVO upload(MultipartFile file, CurrentUser currentUser) {
+        TrustedOperator operator = requireTrustedOperator(currentUser);
         PluginArtifactLoader.UploadedArtifact artifact = pluginArtifactLoader.stage(file);
         PluginVersionEntity versionEntity = pluginPersistenceService.saveUploadedPackage(
                 artifact.metadata(),
@@ -164,26 +168,30 @@ public class PluginManagementAppService {
                 artifact.validationReportJson(),
                 artifact.packageChecksum(),
                 artifact.signaturePath().toString(),
-                currentUser.getUserId()
+                operator.userId(),
+                operator.userUuid()
         );
         pluginPersistenceService.replaceDependencies(
                 artifact.metadata().getPluginCode(),
                 artifact.metadata().getDependencyPlugins(),
-                currentUser.getUserId()
+                operator.userId(),
+                operator.userUuid()
         );
         pluginPersistenceService.replacePermissionRelations(
                 artifact.metadata().getPluginCode(),
                 artifact.metadata().getVersion(),
                 artifact.metadata().getRequiredPermissions(),
-                currentUser.getUserId()
+                operator.userId(),
+                operator.userUuid()
         );
         pluginPersistenceService.replaceMenuRelations(
                 artifact.metadata().getPluginCode(),
                 artifact.metadata().getVersion(),
                 artifact.metadata().getMenuDeclarations(),
-                currentUser.getUserId()
+                operator.userId(),
+                operator.userUuid()
         );
-        log(artifact.metadata().getPluginCode(), artifact.metadata().getVersion(), "UPLOAD", "VERIFIED", "SUCCESS", "Plugin package uploaded and verified", null, currentUser.getUserId());
+        log(artifact.metadata().getPluginCode(), artifact.metadata().getVersion(), "UPLOAD", "VERIFIED", "SUCCESS", "Plugin package uploaded and verified", null, operator);
         PluginVO.PluginUploadVO vo = new PluginVO.PluginUploadVO();
         vo.setPluginCode(versionEntity.getPluginCode());
         vo.setPluginName(artifact.metadata().getPluginName());
@@ -195,13 +203,14 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginVersionVO install(String pluginCode, String version, CurrentUser currentUser) {
+        TrustedOperator operator = requireTrustedOperator(currentUser);
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
         PluginDTO.PluginPackageMetadata metadata = parseMetadata(versionEntity);
         validateDependencies(metadata);
         Path versionHome = pluginArtifactLoader.installToVersionHome(pluginCode, version, Path.of(versionEntity.getStagedPath()));
-        log(pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "Plugin files installed", null, currentUser.getUserId());
-        pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, currentUser.getUserId());
-        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin private migrations completed", null, currentUser.getUserId());
+        log(pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "Plugin files installed", null, operator);
+        pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, operator.userId(), operator.userUuid());
+        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin private migrations completed", null, operator);
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(metadata, versionHome);
         pluginRegistry.register(descriptor);
         pluginPersistenceService.markInstalled(
@@ -213,14 +222,16 @@ public class PluginManagementAppService {
                 "LOADED",
                 "LOADED",
                 descriptor.getHealthIndicator() == null ? "HEALTHY" : "HEALTHY",
-                1
+                1,
+                operator.userId(),
+                operator.userUuid()
         );
         if (pluginPersistenceService.listInstalledVersions(pluginCode).stream().noneMatch(item -> item.getIsActive() != null && item.getIsActive() == 1)) {
             pluginRegistry.activate(pluginCode, version);
-            pluginPersistenceService.activateVersion(pluginCode, version);
+            pluginPersistenceService.activateVersion(pluginCode, version, operator.userId(), operator.userUuid());
             bumpBootstrapVersions(pluginCode, "plugin.version.auto-activated");
         }
-        log(pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "Plugin runtime loaded", null, currentUser.getUserId());
+        log(pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "Plugin runtime loaded", null, operator);
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
                 .findFirst()
@@ -229,11 +240,12 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginVersionVO upgrade(String pluginCode, String version, CurrentUser currentUser) {
-        ensureLoaded(pluginCode, version);
+        TrustedOperator operator = requireTrustedOperator(currentUser);
+        ensureLoaded(pluginCode, version, currentUser);
         pluginRegistry.activate(pluginCode, version);
-        pluginPersistenceService.activateVersion(pluginCode, version);
+        pluginPersistenceService.activateVersion(pluginCode, version, operator.userId(), operator.userUuid());
         bumpBootstrapVersions(pluginCode, "plugin.version.upgraded");
-        log(pluginCode, version, "UPGRADE", "ENABLED", "SUCCESS", "Plugin active version switched", null, currentUser.getUserId());
+        log(pluginCode, version, "UPGRADE", "ENABLED", "SUCCESS", "Plugin active version switched", null, operator);
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
                 .findFirst()
@@ -242,11 +254,12 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginVersionVO rollback(String pluginCode, String targetVersion, CurrentUser currentUser) {
-        ensureLoaded(pluginCode, targetVersion);
+        TrustedOperator operator = requireTrustedOperator(currentUser);
+        ensureLoaded(pluginCode, targetVersion, currentUser);
         pluginRegistry.activate(pluginCode, targetVersion);
-        pluginPersistenceService.activateVersion(pluginCode, targetVersion);
+        pluginPersistenceService.activateVersion(pluginCode, targetVersion, operator.userId(), operator.userUuid());
         bumpBootstrapVersions(pluginCode, "plugin.version.rolled-back");
-        log(pluginCode, targetVersion, "ROLLBACK", "ROLLED_BACK", "SUCCESS", "Plugin rolled back to target version", null, currentUser.getUserId());
+        log(pluginCode, targetVersion, "ROLLBACK", "ROLLED_BACK", "SUCCESS", "Plugin rolled back to target version", null, operator);
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> targetVersion.equals(item.getVersion()))
                 .findFirst()
@@ -255,6 +268,7 @@ public class PluginManagementAppService {
 
     public void enable(PluginDTO.EnableRequest request, CurrentUser currentUser) {
         try {
+            TrustedOperator operator = requireTrustedOperator(currentUser);
             String resolvedVersion = request.getVersion();
             if (resolvedVersion == null || resolvedVersion.isBlank()) {
                 resolvedVersion = pluginRegistry.findActiveVersion(request.getPluginCode())
@@ -264,25 +278,26 @@ public class PluginManagementAppService {
                                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "No active plugin version found")));
             }
             final String version = resolvedVersion;
-            ensureLoaded(request.getPluginCode(), version);
-            pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), currentUser.getUserId());
+            ensureLoaded(request.getPluginCode(), version, currentUser);
             enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
+            pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), operator.userId(), operator.userUuid());
             transactionTemplate.executeWithoutResult(status -> {
                 PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), false);
-                pluginActivation.enable(version);
+                pluginActivation.enable(version, operator.userId(), operator.userUuid());
                 pluginPersistenceService.enablePlugin(
                         request.getPluginCode(),
                         version,
                         request.getConfigJson(),
-                        currentUser.getUserId()
+                        operator.userId(),
+                        operator.userUuid()
                 );
                 pluginPersistenceService.registerPluginPermissions(request.getPluginCode(), version);
-                pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY");
+                pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY", operator.userId(), operator.userUuid());
                 pluginPersistenceService.bumpBootstrapVersion("plugin.enabled");
                 invalidatePluginBootstrapCaches();
-                logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), version, currentUser.getUserId());
+                logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), version, operator);
             });
-            safeLog(request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "Platform plugin enabled", null, currentUser.getUserId());
+            safeLog(request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "Platform plugin enabled", null, operator);
         } catch (BizException exception) {
             throw exception;
         } catch (Throwable throwable) {
@@ -292,6 +307,7 @@ public class PluginManagementAppService {
 
     @Transactional
     public void disable(PluginDTO.DisableRequest request, CurrentUser currentUser) {
+        TrustedOperator operator = requireTrustedOperator(currentUser);
         PluginVersionEntity enabledVersion = pluginPersistenceService.findEnabledVersion(request.getPluginCode())
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "Plugin is not enabled"));
         PluginVO.PluginStatusVO pluginStatus = pluginPersistenceService.pluginStatus(request.getPluginCode()).orElse(null);
@@ -300,8 +316,8 @@ public class PluginManagementAppService {
             throw new BizException(ErrorCode.BIZ_ERROR, "Plugin does not support data purge on disable");
         }
         PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), true);
-        pluginActivation.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable");
-        pluginPersistenceService.disablePlugin(request.getPluginCode(), currentUser.getUserId());
+        pluginActivation.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable", operator.userId(), operator.userUuid());
+        pluginPersistenceService.disablePlugin(request.getPluginCode(), operator.userId(), operator.userUuid());
         pluginPersistenceService.bumpBootstrapVersion("plugin.disabled");
         invalidatePluginBootstrapCaches();
         boolean purgeData = Boolean.TRUE.equals(request.getPurgeData());
@@ -310,7 +326,8 @@ public class PluginManagementAppService {
                     request.getPluginCode(),
                     enabledVersion.getVersion(),
                     resolveVersionHome(request.getPluginCode(), enabledVersion.getVersion()),
-                    currentUser.getUserId()
+                    operator.userId(),
+                    operator.userUuid()
             );
         }
         pluginPersistenceService.updateVersionStatus(
@@ -320,9 +337,11 @@ public class PluginManagementAppService {
                 purgeData ? "UNLOADED" : "LOADED",
                 "HEALTHY",
                 "DISABLED",
-                purgeData ? "REMOVED" : "READY"
+                purgeData ? "REMOVED" : "READY",
+                operator.userId(),
+                operator.userUuid()
         );
-        logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), enabledVersion.getVersion(), currentUser.getUserId());
+        logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), enabledVersion.getVersion(), operator);
         systemInternalApi.invalidatePermissionSnapshot();
         safeLog(
                 request.getPluginCode(),
@@ -332,7 +351,7 @@ public class PluginManagementAppService {
                 "SUCCESS",
                 purgeData ? "Platform plugin disabled and data purged" : "Platform plugin disabled",
                 null,
-                currentUser.getUserId()
+                operator
         );
     }
 
@@ -359,6 +378,10 @@ public class PluginManagementAppService {
     public List<PluginVO.PluginAvailabilityVO> availablePlugins() {
         long bootstrapVersion = readPluginBootstrapVersion();
         return availablePlugins(bootstrapVersion);
+    }
+
+    public List<PluginVO.PluginAvailabilityVO> currentAvailablePlugins(List<String> permissions) {
+        return filterAvailablePluginMenus(availablePlugins(), normalizePermissionSet(permissions));
     }
 
     private List<PluginVO.PluginAvailabilityVO> availablePlugins(long bootstrapVersion) {
@@ -402,13 +425,20 @@ public class PluginManagementAppService {
 
     @Transactional
     public void uninstall(String pluginCode, boolean removeData, CurrentUser currentUser) {
+        TrustedOperator operator = requireTrustedOperator(currentUser);
         if (isBuiltinCorePlugin(pluginCode)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Built-in plugins cannot be uninstalled; disable the plugin instead");
         }
         List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
         for (PluginVersionEntity versionEntity : versions) {
             if (removeData) {
-                pluginMigrationService.executeDownMigrations(pluginCode, versionEntity.getVersion(), resolveVersionHome(pluginCode, versionEntity.getVersion()), currentUser.getUserId());
+                pluginMigrationService.executeDownMigrations(
+                        pluginCode,
+                        versionEntity.getVersion(),
+                        resolveVersionHome(pluginCode, versionEntity.getVersion()),
+                        operator.userId(),
+                        operator.userUuid()
+                );
             }
             removePluginVersionArtifacts(versionEntity);
             try {
@@ -418,9 +448,9 @@ public class PluginManagementAppService {
             }
         }
         if (removeData) {
-            pluginPersistenceService.purgePluginData(pluginCode, currentUser.getUserId());
+            pluginPersistenceService.purgePluginData(pluginCode, operator.userId(), operator.userUuid());
         } else {
-            pluginPersistenceService.uninstallPlugin(pluginCode, currentUser.getUserId());
+            pluginPersistenceService.uninstallPlugin(pluginCode, operator.userId(), operator.userUuid());
         }
         systemInternalApi.invalidatePermissionSnapshot();
         pluginPersistenceService.bumpBootstrapVersion("plugin.uninstalled");
@@ -433,7 +463,7 @@ public class PluginManagementAppService {
                 "SUCCESS",
                 removeData ? "Plugin uninstalled and data purged" : "Plugin uninstalled",
                 null,
-                currentUser.getUserId()
+                operator
         );
     }
 
@@ -484,8 +514,8 @@ public class PluginManagementAppService {
         if (!provider.requiresEmail()) {
             return;
         }
-        var user = systemInternalApi.findUserById(currentUser.getUserId());
-        if (user == null || !org.springframework.util.StringUtils.hasText(user.email())) {
+        TrustedOperator operator = requireTrustedOperator(currentUser);
+        if (!Boolean.TRUE.equals(systemInternalApi.userHasEmail(operator.userId(), operator.userUuid()))) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Please provide an email before enabling this verification method");
         }
     }
@@ -535,9 +565,10 @@ public class PluginManagementAppService {
                 cacheKey,
                 ignored -> {
                     List<PluginVO.PluginAvailabilityVO> availablePlugins = availablePlugins(resolvedPluginBootstrapVersion);
+                    List<PluginVO.PluginAvailabilityVO> visiblePlugins = filterAvailablePluginMenus(availablePlugins, permissionSet);
                     Map<String, Object> payload = Map.of(
                             "menuTree", currentMenus(menuCompilationVersion, availablePlugins, permissionSet, permissionCacheKey),
-                            "availablePlugins", availablePlugins
+                            "availablePlugins", visiblePlugins
                     );
                     return new CachedCurrentBootstrap(menuCompilationVersion, payload);
                 }
@@ -561,6 +592,43 @@ public class PluginManagementAppService {
             }
         }
         return menus;
+    }
+
+    private List<PluginVO.PluginAvailabilityVO> filterAvailablePluginMenus(
+            List<PluginVO.PluginAvailabilityVO> availablePlugins,
+            Set<String> permissions
+    ) {
+        if (availablePlugins == null || availablePlugins.isEmpty()) {
+            return List.of();
+        }
+        List<PluginVO.PluginAvailabilityVO> result = new ArrayList<>(availablePlugins.size());
+        for (PluginVO.PluginAvailabilityVO plugin : availablePlugins) {
+            PluginVO.PluginAvailabilityVO copy = copyAvailability(plugin);
+            copy.setMenus(pluginMenuSnapshot(plugin).stream()
+                    .filter(menu -> isMenuAllowed(menu, permissions))
+                    .map(menu -> new LinkedHashMap<>(menu))
+                    .map(item -> (Map<String, Object>) item)
+                    .toList());
+            result.add(copy);
+        }
+        return result;
+    }
+
+    private PluginVO.PluginAvailabilityVO copyAvailability(PluginVO.PluginAvailabilityVO plugin) {
+        PluginVO.PluginAvailabilityVO copy = new PluginVO.PluginAvailabilityVO();
+        copy.setPluginCode(plugin.getPluginCode());
+        copy.setPluginName(plugin.getPluginName());
+        copy.setVersion(plugin.getVersion());
+        copy.setManifestPath(plugin.getManifestPath());
+        copy.setSharedDeps(plugin.getSharedDeps() == null ? List.of() : List.copyOf(plugin.getSharedDeps()));
+        copy.setRoutes(plugin.getRoutes() == null ? List.of() : List.copyOf(plugin.getRoutes()));
+        copy.setMenus(plugin.getMenus() == null ? List.of() : copyMenus(plugin.getMenus()));
+        copy.setLifecycleStatus(plugin.getLifecycleStatus());
+        copy.setSchemaStatus(plugin.getSchemaStatus());
+        copy.setSupportsHotDisable(plugin.getSupportsHotDisable());
+        copy.setSupportsDataPurge(plugin.getSupportsDataPurge());
+        copy.setRuntimeContributions(plugin.getRuntimeContributions() == null ? List.of() : List.copyOf(plugin.getRuntimeContributions()));
+        return copy;
     }
 
     private List<Map<String, Object>> pluginActivationMenus(List<PluginVO.PluginAvailabilityVO> availablePlugins) {
@@ -644,6 +712,10 @@ public class PluginManagementAppService {
     }
 
     private void ensureLoaded(String pluginCode, String version) {
+        ensureLoaded(pluginCode, version, null);
+    }
+
+    private void ensureLoaded(String pluginCode, String version, CurrentUser currentUser) {
         if (isBuiltinCorePlugin(pluginCode)) {
             return;
         }
@@ -655,11 +727,43 @@ public class PluginManagementAppService {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin version is not installed; install it before enabling");
         }
         if (!Files.exists(Path.of(versionEntity.getArtifactPath()))) {
-            install(pluginCode, version, new CurrentUser(0L, "system", null, null, 0, true, java.util.Set.of()));
+            if (currentUser == null) {
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime files are missing; reinstall the plugin before use");
+            }
+            install(pluginCode, version, currentUser);
             return;
         }
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(parseMetadata(versionEntity), Path.of(versionEntity.getArtifactPath()));
         pluginRegistry.register(descriptor);
+    }
+
+    private TrustedOperator requireTrustedOperator(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator is required");
+        }
+        Long userId = currentUser.getUserId();
+        String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator is required");
+        }
+        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(userId);
+        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
+        }
+        if (!StringUtils.hasText(snapshot.userUuid()) || !snapshot.userUuid().trim().equals(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator identity mismatch");
+        }
+        if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim());
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
+        }
+        return new TrustedOperator(snapshot.userId(), snapshot.userUuid().trim());
+    }
+
+    private record TrustedOperator(Long userId, String userUuid) {
     }
 
     private void validateDependencies(PluginDTO.PluginPackageMetadata metadata) {
@@ -895,7 +999,10 @@ public class PluginManagementAppService {
 
     private boolean isMenuAllowed(Map<String, Object> menu, java.util.Set<String> permissions) {
         String permissionKey = (String) menu.get("permissionKey");
-        return permissionKey == null || permissionKey.isBlank() || permissions.contains("*") || permissions.contains(permissionKey);
+        if (StringUtils.hasText(permissionKey)) {
+            return permissions.contains("*") || permissions.contains(permissionKey.trim());
+        }
+        return false;
     }
 
     private boolean isBuiltinCorePlugin(String pluginCode) {
@@ -1094,7 +1201,7 @@ public class PluginManagementAppService {
             String resultStatus,
             String detailMessage,
             String failureStack,
-            Long operatorId
+            TrustedOperator operator
     ) {
         pluginPersistenceService.insertRuntimeLog(
                 pluginCode,
@@ -1106,7 +1213,8 @@ public class PluginManagementAppService {
                 TraceContext.getRequestId(),
                 TraceContext.getTraceId(),
                 failureStack,
-                operatorId
+                operator.userId(),
+                operator.userUuid()
         );
     }
 
@@ -1118,7 +1226,7 @@ public class PluginManagementAppService {
             String resultStatus,
             String detailMessage,
             String failureStack,
-            Long operatorId
+            TrustedOperator operator
     ) {
         try {
             log(
@@ -1129,14 +1237,14 @@ public class PluginManagementAppService {
                     resultStatus,
                     detailMessage,
                     failureStack,
-                    operatorId
+                    operator
             );
         } catch (Throwable throwable) {
             log.warn("Failed to write plugin runtime log pluginCode={} version={} operationType={}", pluginCode, version, operationType, throwable);
         }
     }
 
-    private void logPluginActivationDomainEvents(List<DomainEvent> events, String version, Long operatorId) {
+    private void logPluginActivationDomainEvents(List<DomainEvent> events, String version, TrustedOperator operator) {
         if (events == null || events.isEmpty()) {
             return;
         }
@@ -1150,7 +1258,7 @@ public class PluginManagementAppService {
                     "SUCCESS",
                     event.attributes() == null ? "{}" : event.attributes().toString(),
                     null,
-                    operatorId
+                    operator
             );
         }
     }

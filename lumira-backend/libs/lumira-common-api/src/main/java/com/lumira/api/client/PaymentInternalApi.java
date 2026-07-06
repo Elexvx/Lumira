@@ -1,23 +1,29 @@
 package com.lumira.api.client;
 
-import com.lumira.api.payment.PaymentProviderSettingsDTO;
-import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
 
-import java.util.List;
-
+@HttpExchange(accept = MediaType.APPLICATION_JSON_VALUE)
 public interface PaymentInternalApi {
 
-    List<PaymentProviderSettingsDTO> listPaymentProviderSettings();
+    @PostExchange("/internal/payment/orders")
+    PaymentOrderDTO createOrder(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @RequestBody PaymentCreateOrderRequestDTO request
+    );
 
-    PaymentProviderSettingsDTO paymentProviderSettings(String providerCode);
-
-    PaymentProviderSettingsDTO updatePaymentProviderSettings(Long operatorId, String providerCode, PaymentProviderSettingsDTO request);
-
-    PaymentProviderTestResultDTO testPaymentProvider(Long operatorId, String providerCode);
-
-    PaymentOrderDTO createOrder(Long operatorId, PaymentCreateOrderRequestDTO request);
-
-    PaymentOrderDTO getOrder(String orderNo);
+    @GetExchange("/internal/payment/orders/{orderNo}")
+    PaymentOrderDTO getOrder(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @PathVariable("orderNo") String orderNo
+    );
 }

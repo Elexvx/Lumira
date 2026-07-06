@@ -42,7 +42,7 @@ public final class SystemPermissionTreeAssembler {
             Map.entry("audit:view", List.of("audit:")),
             Map.entry("download:center:view", List.of("download:center:")),
             Map.entry("plugin:management:view", List.of("plugin:management:")),
-            Map.entry("system:file:view", List.of("system:file:upload", "system:file:delete")),
+            Map.entry("system:file:view", List.of("system:file:upload", "system:file:publish", "system:file:delete")),
             Map.entry("system:file:manage", List.of("system:file:manage:")),
             Map.entry("system:department:view", List.of("system:department:")),
             Map.entry("system:monitor:view", List.of("system:monitor:")),

@@ -23,8 +23,10 @@ import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Component
 public class SessionAuthenticationService {
@@ -34,6 +36,8 @@ public class SessionAuthenticationService {
     private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
     private static final long AUTHENTICATED_ACCESS_CACHE_TTL_MILLIS = 60_000L;
     private static final long AUTHENTICATED_ACCESS_CACHE_MAX_ENTRIES = 10_000L;
+    private static final int MAX_ACCESS_TOKEN_LENGTH = 8 * 1024;
+    private static final Pattern SAFE_ACCESS_TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9._~+/=-]+$");
     private static final HexFormat HEX = HexFormat.of();
     private static final ThreadLocal<MessageDigest> SHA_256_DIGEST = ThreadLocal.withInitial(() -> {
         try {
@@ -81,13 +85,20 @@ public class SessionAuthenticationService {
     public AuthenticatedAccess authenticateAccessToken(String token) {
         long started = System.nanoTime();
         try {
-            AuthenticatedAccess cached = authenticatedAccessCache.getIfPresent(tokenCacheKey(token));
+            String trustedToken = requireTrustedAccessToken(token);
+            String cacheKey = tokenCacheKey(trustedToken);
+            AuthenticatedAccess cached = authenticatedAccessCache.getIfPresent(cacheKey);
             if (cached != null) {
-                recordAuthSessionAuthResult(started, true);
-                return cached;
+                AuthenticatedAccess revalidated = revalidateCachedAuthenticatedAccess(cached, Instant.now());
+                if (revalidated != null) {
+                    recordAuthSessionAuthResult(started, true);
+                    return revalidated;
+                }
+                authenticatedAccessCache.invalidate(cacheKey);
             }
 
-            TokenClaims claims = jwtTokenService.parseToken(token);
+            TokenClaims claims = jwtTokenService.parseToken(trustedToken);
+            validateAccessClaims(claims);
             if (claims.getTokenType() != TokenType.ACCESS) {
                 throw new BizException(ErrorCode.SESSION_EXPIRED, "accessToken类型非法");
             }
@@ -100,14 +111,16 @@ public class SessionAuthenticationService {
                     ));
 
             validateSession(claims, session, Instant.now());
+            requireTrustedActiveSessionUser(session);
             PermissionSnapshotResolution snapshotResolution = resolvePermissionSnapshot(claims, session);
+            validateAccessSnapshot(claims, snapshotResolution.snapshot());
             AuthenticatedAccess authenticatedAccess = new AuthenticatedAccess(
                     buildCurrentUser(claims, session, snapshotResolution.snapshot()),
                     session,
                     snapshotResolution.sessionStateUpdated()
             );
-            if (!authenticatedAccess.sessionStateUpdated()) {
-                authenticatedAccessCache.put(tokenCacheKey(token), authenticatedAccess);
+            if (isCacheableAuthenticatedAccess(authenticatedAccess)) {
+                authenticatedAccessCache.put(cacheKey, authenticatedAccess);
             }
             recordAuthSessionAuthResult(started, true);
             return authenticatedAccess;
@@ -121,19 +134,23 @@ public class SessionAuthenticationService {
     }
 
     public AuthenticatedAccess authenticateSessionTicket(String sessionId, Long userId, Integer sessionVersion) {
+        if (true) {
+            throw expiredCredentials();
+        }
         long started = System.nanoTime();
         try {
-            if (sessionId == null || sessionId.isBlank() || userId == null || sessionVersion == null) {
+            if (userId == null || userId <= 0 || sessionVersion == null || sessionVersion <= 0) {
                 throw new BizException(ErrorCode.SESSION_EXPIRED, "WebSocket凭证已失效");
             }
-            AuthSession session = authSessionStore.findBySessionId(sessionId)
+            String trustedSessionId = requireTrustedSessionTicketId(sessionId);
+            AuthSession session = authSessionStore.findBySessionId(trustedSessionId)
                     .orElseThrow(() -> new BizException(
                             ErrorCode.SESSION_EXPIRED,
                             "会话不存在或已失效",
                             ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                     ));
             TokenClaims claims = new TokenClaims();
-            claims.setSessionId(sessionId);
+            claims.setSessionId(trustedSessionId);
             claims.setUserId(userId);
             claims.setUsername(session.getUsername());
             claims.setSessionVersion(sessionVersion);
@@ -170,15 +187,86 @@ public class SessionAuthenticationService {
         return elapsed.compareTo(Duration.ofSeconds(throttleSeconds)) >= 0;
     }
 
+    public AuthenticatedAccess authenticateSessionTicket(
+            String sessionId,
+            Long userId,
+            String userUuid,
+            Long simulatedRoleId,
+            Integer sessionVersion,
+            String permissionsVersion
+    ) {
+        long started = System.nanoTime();
+        try {
+            if (userId == null
+                    || userId <= 0
+                    || !StringUtils.hasText(userUuid)
+                    || sessionVersion == null
+                    || sessionVersion <= 0
+                    || !StringUtils.hasText(permissionsVersion)) {
+                throw expiredCredentials();
+            }
+            String trustedSessionId = requireTrustedSessionTicketId(sessionId);
+            String trustedUserUuid = userUuid.trim();
+            String trustedPermissionsVersion = permissionsVersion.trim();
+            Long trustedSimulatedRoleId = normalizeSimulatedRoleId(simulatedRoleId);
+            AuthSession session = authSessionStore.findBySessionId(trustedSessionId)
+                    .orElseThrow(this::expiredCredentials);
+            TokenClaims claims = new TokenClaims();
+            claims.setSessionId(trustedSessionId);
+            claims.setUserId(userId);
+            claims.setUserUuid(trustedUserUuid);
+            claims.setUsername(session.getUsername());
+            claims.setSimulatedRoleId(trustedSimulatedRoleId);
+            claims.setSessionVersion(sessionVersion);
+            claims.setPermissionsVersion(trustedPermissionsVersion);
+            claims.setTokenType(TokenType.ACCESS);
+            validateSession(claims, session, Instant.now());
+            requireTrustedActiveSessionUser(session);
+            PermissionSnapshotResolution snapshotResolution = resolvePermissionSnapshot(claims, session);
+            validateSessionTicketSnapshot(
+                    session,
+                    snapshotResolution.snapshot(),
+                    trustedUserUuid,
+                    trustedSimulatedRoleId,
+                    trustedPermissionsVersion
+            );
+            AuthenticatedAccess authenticatedAccess = new AuthenticatedAccess(
+                    buildCurrentUser(claims, session, snapshotResolution.snapshot()),
+                    session,
+                    snapshotResolution.sessionStateUpdated()
+            );
+            recordAuthSessionAuthResult(started, true);
+            return authenticatedAccess;
+        } catch (BizException ex) {
+            recordAuthSessionAuthResult(started, false);
+            throw ex;
+        } catch (RuntimeException ex) {
+            recordAuthSessionAuthResult(started, false);
+            throw ex;
+        }
+    }
+
     private void validateSession(TokenClaims claims, AuthSession session, Instant now) {
         if (!session.getUserId().equals(claims.getUserId())) {
             invalidateSession(session, "token与会话不匹配");
+        }
+        if (!StringUtils.hasText(session.getUserUuid())) {
+            invalidateSession(session, "session identity snapshot is incomplete");
+        }
+        if (!StringUtils.hasText(claims.getUserUuid()) || !session.getUserUuid().trim().equals(claims.getUserUuid().trim())) {
+            invalidateSession(session, "token and session user identity mismatch");
+        }
+        if (!StringUtils.hasText(session.getUsername()) || !session.getUsername().trim().equals(claims.getUsername().trim())) {
+            invalidateSession(session, "token and session identity mismatch");
+        }
+        if (!Objects.equals(normalizeSimulatedRoleId(session.getSimulatedRoleId()), normalizeSimulatedRoleId(claims.getSimulatedRoleId()))) {
+            invalidateSession(session, "token and session role identity mismatch");
         }
         if (session.getSessionVersion() == null || !session.getSessionVersion().equals(claims.getSessionVersion())) {
             invalidateSession(session, "会话版本已变更，请重新登录");
         }
         if (!securitySettingsService.isAllowMultiDeviceLogin()) {
-            String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId()).orElse(null);
+            String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId(), session.getUserUuid()).orElse(null);
             if (latestSessionId == null || !session.getSessionId().equals(latestSessionId)) {
                 invalidateSession(session, "当前账号已在其他设备登录，请重新登录");
             }
@@ -195,6 +283,90 @@ public class SessionAuthenticationService {
                 invalidateSession(session, "会话空闲超时，请重新登录");
             }
         }
+    }
+
+    private void requireTrustedActiveSessionUser(AuthSession session) {
+        if (session == null
+                || session.getUserId() == null
+                || !StringUtils.hasText(session.getUserUuid())
+                || !permissionSnapshotService.isTrustedActiveUser(session.getUserId(), session.getUserUuid())) {
+            invalidateSession(session, "Session user is disabled or no longer trusted");
+        }
+    }
+
+    private void validateSessionTicketSnapshot(
+            AuthSession session,
+            PermissionSnapshotService.PermissionSnapshot snapshot,
+            String userUuid,
+            Long simulatedRoleId,
+            String permissionsVersion
+    ) {
+        if (session == null
+                || snapshot == null
+                || !StringUtils.hasText(session.getUserUuid())
+                || !session.getUserUuid().trim().equals(userUuid)
+                || !Objects.equals(normalizeSimulatedRoleId(session.getSimulatedRoleId()), normalizeSimulatedRoleId(simulatedRoleId))
+                || !StringUtils.hasText(snapshot.getVersion())
+                || !snapshot.getVersion().trim().equals(permissionsVersion)) {
+            throw expiredCredentials();
+        }
+    }
+
+    private void validateAccessClaims(TokenClaims claims) {
+        if (claims == null
+                || !StringUtils.hasText(claims.getSessionId())
+                || claims.getUserId() == null
+                || claims.getUserId() <= 0
+                || !StringUtils.hasText(claims.getUserUuid())
+                || !StringUtils.hasText(claims.getUsername())
+                || !isTrustedSimulatedRoleId(claims.getSimulatedRoleId())
+                || claims.getSessionVersion() == null
+                || claims.getSessionVersion() <= 0
+                || !StringUtils.hasText(claims.getPermissionsVersion())) {
+            throw new BizException(
+                    ErrorCode.SESSION_EXPIRED,
+                    "accessToken凭据已失效",
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+            );
+        }
+    }
+
+    private void validateAccessSnapshot(TokenClaims claims, PermissionSnapshotService.PermissionSnapshot snapshot) {
+        if (claims == null
+                || snapshot == null
+                || !StringUtils.hasText(claims.getPermissionsVersion())
+                || !StringUtils.hasText(snapshot.getVersion())
+                || !snapshot.getVersion().trim().equals(claims.getPermissionsVersion().trim())) {
+            throw expiredCredentials();
+        }
+    }
+
+    private String requireTrustedAccessToken(String token) {
+        if (!StringUtils.hasText(token)) {
+            throw expiredCredentials();
+        }
+        String normalized = token.trim();
+        if (normalized.length() > MAX_ACCESS_TOKEN_LENGTH
+                || !SAFE_ACCESS_TOKEN_PATTERN.matcher(normalized).matches()) {
+            throw expiredCredentials();
+        }
+        return normalized;
+    }
+
+    private String requireTrustedSessionTicketId(String sessionId) {
+        try {
+            return AuthSessionTrustValidator.requireTrustedSessionId(sessionId);
+        } catch (IllegalArgumentException exception) {
+            throw expiredCredentials();
+        }
+    }
+
+    private BizException expiredCredentials() {
+        return new BizException(
+                ErrorCode.SESSION_EXPIRED,
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage(),
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+        );
     }
 
     private void invalidateSession(AuthSession session, String message) {
@@ -215,14 +387,15 @@ public class SessionAuthenticationService {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(claims.getUserId());
         currentUser.setUserUuid(session.getUserUuid());
-        currentUser.setUsername(claims.getUsername());
+        currentUser.setUsername(session.getUsername());
         currentUser.setSimulatedRoleId(session.getSimulatedRoleId());
         currentUser.setSessionId(claims.getSessionId());
+        currentUser.setLoginType(session.getLoginType());
         currentUser.setSessionVersion(session.getSessionVersion());
         currentUser.setPermissionsVersion(snapshot.getVersion());
         currentUser.setRequiresPasswordChange(session.getRequiresPasswordChange());
         currentUser.setAuthenticated(true);
-        currentUser.setPermissions(resolveEffectivePermissions(claims, snapshot));
+        currentUser.setPermissions(resolveEffectivePermissions(session, snapshot));
         currentUser.setRoleIds(snapshot.getRoleIds());
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
         currentUser.setDeptIds(snapshot.getDeptIds());
@@ -233,11 +406,11 @@ public class SessionAuthenticationService {
     }
 
     private Set<String> resolveEffectivePermissions(
-            TokenClaims claims,
+            AuthSession session,
             PermissionSnapshotService.PermissionSnapshot snapshot
     ) {
         Set<String> permissions = snapshot.getPermissions() == null ? Collections.emptySet() : snapshot.getPermissions();
-        if (!isProtectedAdminAccount(claims)) {
+        if (!isProtectedAdminAccount(session)) {
             return permissions;
         }
         LinkedHashSet<String> effectivePermissions = new LinkedHashSet<>(permissions);
@@ -245,10 +418,11 @@ public class SessionAuthenticationService {
         return Collections.unmodifiableSet(effectivePermissions);
     }
 
-    private boolean isProtectedAdminAccount(TokenClaims claims) {
-        return claims != null
-                && (PROTECTED_ADMIN_ID == claims.getUserId()
-                || (StringUtils.hasText(claims.getUsername()) && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(claims.getUsername().trim())));
+    private boolean isProtectedAdminAccount(AuthSession session) {
+        return session != null
+                && PROTECTED_ADMIN_ID == session.getUserId()
+                && StringUtils.hasText(session.getUsername())
+                && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(session.getUsername().trim());
     }
 
     private PermissionSnapshotResolution resolvePermissionSnapshot(TokenClaims claims, AuthSession session) {
@@ -267,12 +441,51 @@ public class SessionAuthenticationService {
                 return new PermissionSnapshotResolution(fromSession(session), false);
             }
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(claims.getUserId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(claims.getUserId(), claims.getUserUuid());
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordAuthPermissionSnapshotFromUser();
         }
         hydrateSessionPermissionSnapshot(session, snapshot);
         return new PermissionSnapshotResolution(snapshot, true);
+    }
+
+    private AuthenticatedAccess revalidateCachedAuthenticatedAccess(AuthenticatedAccess cached, Instant now) {
+        if (cached == null || cached.currentUser() == null || cached.session() == null) {
+            return null;
+        }
+        AuthSession currentSession = authSessionStore.findBySessionId(cached.session().getSessionId()).orElse(null);
+        if (currentSession == null) {
+            return null;
+        }
+        TokenClaims claims = buildCachedClaims(cached.currentUser());
+        validateAccessClaims(claims);
+        validateSession(claims, currentSession, now);
+        requireTrustedActiveSessionUser(currentSession);
+        if (currentSession.getSimulatedRoleId() != null || !hasPermissionSnapshot(currentSession)) {
+            return null;
+        }
+        String trustedPermissionsVersion = normalizePermissionsVersion(currentSession.getPermissionsVersion());
+        String cachedPermissionsVersion = normalizePermissionsVersion(cached.currentUser().getPermissionsVersion());
+        if (trustedPermissionsVersion == null
+                || cachedPermissionsVersion == null
+                || !trustedPermissionsVersion.equals(cachedPermissionsVersion)
+                || !permissionSnapshotService.isSessionPermissionSnapshotCurrent(trustedPermissionsVersion)) {
+            return null;
+        }
+        return new AuthenticatedAccess(
+                buildCurrentUser(claims, currentSession, fromSession(currentSession)),
+                currentSession,
+                false
+        );
+    }
+
+    private boolean isCacheableAuthenticatedAccess(AuthenticatedAccess authenticatedAccess) {
+        return authenticatedAccess != null
+                && !authenticatedAccess.sessionStateUpdated()
+                && authenticatedAccess.session() != null
+                && authenticatedAccess.session().getSimulatedRoleId() == null
+                && hasPermissionSnapshot(authenticatedAccess.session())
+                && StringUtils.hasText(authenticatedAccess.currentUser() == null ? null : authenticatedAccess.currentUser().getPermissionsVersion());
     }
 
     private boolean hasPermissionSnapshot(AuthSession session) {
@@ -303,6 +516,34 @@ public class SessionAuthenticationService {
                 session.getDataScopes(),
                 session.getDefaultHomePath()
         );
+    }
+
+    private TokenClaims buildCachedClaims(CurrentUser currentUser) {
+        if (currentUser == null) {
+            return null;
+        }
+        TokenClaims claims = new TokenClaims();
+        claims.setSessionId(currentUser.getSessionId());
+        claims.setUserId(currentUser.getUserId());
+        claims.setUserUuid(currentUser.getUserUuid());
+        claims.setUsername(currentUser.getUsername());
+        claims.setSimulatedRoleId(normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()));
+        claims.setSessionVersion(currentUser.getSessionVersion());
+        claims.setPermissionsVersion(currentUser.getPermissionsVersion());
+        claims.setTokenType(TokenType.ACCESS);
+        return claims;
+    }
+
+    private String normalizePermissionsVersion(String permissionsVersion) {
+        return StringUtils.hasText(permissionsVersion) ? permissionsVersion.trim() : null;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
+    private boolean isTrustedSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId > 0;
     }
 
     private void hydrateSessionPermissionSnapshot(AuthSession session, PermissionSnapshotService.PermissionSnapshot snapshot) {

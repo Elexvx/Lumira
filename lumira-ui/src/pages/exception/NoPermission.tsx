@@ -1,6 +1,7 @@
 import { formatMessage } from '@umijs/max';
 import { history } from '@umijs/max';
 import { Button, Space } from 'antd';
+import { getConfiguredDefaultHomePath } from '@/auth/defaultHomePath';
 import ExceptionResult from './ExceptionResult';
 
 export default () => (
@@ -11,7 +12,7 @@ export default () => (
     extra={
       <Space>
         <Button onClick={() => history.back()}>{formatMessage({ id: 'page.exception.noPermission.back', defaultMessage: '返回上一页' })}</Button>
-        <Button type="primary" onClick={() => history.push('/dashboard/home')}>
+        <Button type="primary" onClick={() => history.push(getConfiguredDefaultHomePath())}>
           {formatMessage({ id: 'page.exception.noPermission.home', defaultMessage: '回到首页' })}
         </Button>
       </Space>

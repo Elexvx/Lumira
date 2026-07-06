@@ -38,28 +38,10 @@ lumira:
       tesseract-command: ${LUMIRA_FILE_OCR_TESSERACT_COMMAND:tesseract}
       languages: ${LUMIRA_FILE_OCR_LANGUAGES:eng+chi_sim}
       timeout-millis: ${LUMIRA_FILE_OCR_TIMEOUT_MILLIS:5000}
-  ai:
-    owner-integrations:
-      internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
-    totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
-    totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
-    bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
-    login-challenge-expire-minutes: ${VERIFICATION_LOGIN_CHALLENGE_EXPIRE_MINUTES:5}
-    recovery-code-count: ${VERIFICATION_RECOVERY_CODE_COUNT:8}
-    recovery-code-length: ${VERIFICATION_RECOVERY_CODE_LENGTH:8}
-    expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
-    email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
 
 server:
   port: 8080
 
-# Configure Feign clients to point to localhost (Monolith Mode)
-SYSTEM_SERVICE_BASE_URL: http://localhost:${server.port}
-AUTH_SERVICE_BASE_URL: http://localhost:${server.port}
-FILE_SERVICE_BASE_URL: http://localhost:${server.port}
-MESSAGE_SERVICE_BASE_URL: http://localhost:${server.port}
-PLUGIN_SERVICE_BASE_URL: http://localhost:${server.port}
-LOCALIZATION_SERVICE_BASE_URL: http://localhost:${server.port}
 # Disable Nacos / Sentinel
 spring.cloud.nacos.discovery.enabled: false
 spring.cloud.nacos.config.enabled: false
@@ -122,49 +104,6 @@ saas:
     allow-plaintext-login-password: ${ALLOW_PLAINTEXT_LOGIN_PASSWORD:false}
     register-ip-max-count: ${REGISTER_IP_MAX_COUNT:20}
     register-ip-window-minutes: ${REGISTER_IP_WINDOW_MINUTES:10}
-    permit-paths:
-      - /api/v1/auth/login
-      - /api/v1/auth/login/code/challenge
-      - /api/v1/auth/login/code/complete
-      - /api/v1/auth/login-encryption-key
-      - /api/v2/auth/login
-      - /api/v2/auth/login/code/challenge
-      - /api/v2/auth/login/code/complete
-      - /api/v2/auth/login-encryption-key
-      - /api/v2/account-activation/**
-      - /api/v1/auth/wechat/authorize-url
-      - /api/v1/auth/wechat/login
-      - /api/v1/auth/passkeys/authentication/options
-      - /api/v1/auth/passkeys/authentication/complete
-      - /api/v1/auth/second-factor/complete
-      - /api/v1/auth/refresh-token
-      - /api/v2/auth/refresh-token
-      - /ws/message
-      - /api/v1/public/bootstrap
-      - /api/v1/public/branding-settings
-      - /api/v1/public/agreement-settings
-      - /api/v1/public/login-capabilities
-      - /api/v1/public/security-settings
-      - /api/v1/public/aiadc/activities
-      - /api/v1/public/captcha/**
-      - /api/public/certificates/**
-      - /api/v2/platform/public/bootstrap
-      - /api/v2/team-invites/preview
-      - /api/v2/localization/bundles
-      - /api/v1/payment/webhooks/**
-      - /api/v2/payment/webhook/**
-      - /api/v2/payment/webhooks/**
-      - /api/uploads/**
-      - /api/version
-      - /api/v1/version
-      - /api/v1/*/version
-      - /actuator/health
-      - /actuator/info
-      - /actuator/prometheus
-      - /api/health
-      - /api/v2/*/readiness
-      - /api/v2/*/health
-      - /api/v2/*/metrics
   web:
     cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.16.*:*,http://172.17.*:*,http://172.18.*:*,http://172.19.*:*,http://172.20.*:*,http://172.21.*:*,http://172.22.*:*,http://172.23.*:*,http://172.24.*:*,http://172.25.*:*,http://172.26.*:*,http://172.27.*:*,http://172.28.*:*,http://172.29.*:*,http://172.30.*:*,http://172.31.*:*,https://localhost:*,https://127.0.0.1:*,https://192.168.*:*,https://10.*:*,https://172.16.*:*,https://172.17.*:*,https://172.18.*:*,https://172.19.*:*,https://172.20.*:*,https://172.21.*:*,https://172.22.*:*,https://172.23.*:*,https://172.24.*:*,https://172.25.*:*,https://172.26.*:*,https://172.27.*:*,https://172.28.*:*,https://172.29.*:*,https://172.30.*:*,https://172.31.*:*}
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
@@ -186,10 +125,7 @@ saas:
     max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
     max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}
   job:
-    internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
   internal:
-    system-token: ${SAAS_INTERNAL_SYSTEM_TOKEN:}
-    auth-token: ${SAAS_INTERNAL_AUTH_TOKEN:}
     file-token: ${SAAS_INTERNAL_FILE_TOKEN:}
     message-token: ${SAAS_INTERNAL_MESSAGE_TOKEN:}
     payment-token: ${SAAS_INTERNAL_PAYMENT_TOKEN:}
@@ -217,11 +153,16 @@ saas:
   message:
     ws-ticket-expires-in-seconds: ${MESSAGE_WS_TICKET_EXPIRES_IN_SECONDS:30}
     outbox-relay-batch-size: ${MESSAGE_OUTBOX_RELAY_BATCH_SIZE:100}
-  payment:
-    public-base-url: ${PAYMENT_PUBLIC_BASE_URL:http://localhost:${server.port}}
-    auth-service-base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:${server.port}}
   verification:
     issuer: ${VERIFICATION_ISSUER:lumira}
+    totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
+    totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
+    bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
+    login-challenge-expire-minutes: ${VERIFICATION_LOGIN_CHALLENGE_EXPIRE_MINUTES:5}
+    recovery-code-count: ${VERIFICATION_RECOVERY_CODE_COUNT:8}
+    recovery-code-length: ${VERIFICATION_RECOVERY_CODE_LENGTH:8}
+    expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
+    email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
 
 ---
 spring:

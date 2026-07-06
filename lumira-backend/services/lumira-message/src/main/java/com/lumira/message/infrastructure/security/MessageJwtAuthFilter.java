@@ -4,9 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.JwtTokenClaims;
-import com.lumira.common.security.JwtTokenType;
 import com.lumira.common.web.TraceContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,6 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Component
 @ConditionalOnProperty(name = "lumira.monolith", havingValue = "false", matchIfMissing = true)
@@ -35,9 +35,11 @@ public class MessageJwtAuthFilter extends OncePerRequestFilter {
             "/api/v1/version",
             "/api/v1/*/version",
             "/actuator/health",
-            "/actuator/info",
-            "/actuator/prometheus"
+            "/actuator/info"
     );
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final int MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
+    private static final Pattern SAFE_BEARER_TOKEN_PATTERN = Pattern.compile("^[A-Za-z0-9._~+/=-]+$");
 
     private final JwtTokenService jwtTokenService;
     private final MessageSessionAuthenticationService sessionAuthenticationService;
@@ -62,18 +64,30 @@ public class MessageJwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        var existingAuthentication = SecurityContextHolder.getContext().getAuthentication();
+        if (AuthenticationTrustSupport.canReuse(existingAuthentication)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        if (existingAuthentication != null) {
+            SecurityContextHolder.clearContext();
+        }
+
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
+        if (StringUtils.hasText(authorization) && authorization.startsWith(BEARER_PREFIX)) {
+            String token = authorization.substring(BEARER_PREFIX.length()).trim();
+            if (!isTrustedBearerToken(token)) {
+                SecurityContextHolder.clearContext();
+                writeUnauthorizedResponse(request, response, expiredCredentials());
+                return;
+            }
             try {
-                JwtTokenClaims claims = jwtTokenService.parseToken(authorization.substring(7));
-                if (claims.getTokenType() == JwtTokenType.ACCESS) {
-                    MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
-                            sessionAuthenticationService.authenticateAccessToken(authorization.substring(7));
-                    CurrentUser currentUser = authenticatedAccess.currentUser();
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(currentUser, authorization, Collections.emptyList());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
+                MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
+                        sessionAuthenticationService.authenticateAccessToken(token);
+                CurrentUser currentUser = authenticatedAccess.currentUser();
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(currentUser, authorization, Collections.emptyList());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (BizException ex) {
                 SecurityContextHolder.clearContext();
                 writeUnauthorizedResponse(request, response, ex);
@@ -110,5 +124,19 @@ public class MessageJwtAuthFilter extends OncePerRequestFilter {
                 request.getRequestURI()
         );
         response.getWriter().write(objectMapper.writeValueAsString(body));
+    }
+
+    private boolean isTrustedBearerToken(String token) {
+        return StringUtils.hasText(token)
+                && token.length() <= MAX_BEARER_TOKEN_LENGTH
+                && SAFE_BEARER_TOKEN_PATTERN.matcher(token).matches();
+    }
+
+    private BizException expiredCredentials() {
+        return new BizException(
+                ErrorCode.SESSION_EXPIRED,
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage(),
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+        );
     }
 }

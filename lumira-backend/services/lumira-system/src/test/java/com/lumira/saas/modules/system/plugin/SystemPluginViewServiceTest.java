@@ -141,6 +141,62 @@ class SystemPluginViewServiceTest {
         assertThat(menuQueryCount.get()).isEqualTo(2);
     }
 
+    @Test
+    void availablePluginsShouldFilterUntrustedManifestEntries() throws Exception {
+        Path alphaManifest = writeManifest(
+                "alpha-untrusted.json",
+                List.of("shared-a", " http://evil.example/script.js ", "../escape"),
+                List.of("/alpha", "javascript:alert(1)", "../escape")
+        );
+
+        MyBatisQueryOperations jdbcTemplate = new MyBatisQueryOperations() {
+            @Override
+            public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+                String normalized = sql.toLowerCase();
+                if (normalized.contains("from sys_plugin_definition")) {
+                    List<PluginVO.PluginAvailabilityVO> plugins = new ArrayList<>();
+                    plugins.add(plugin("alpha", "Alpha", "1.0.0", alphaManifest));
+                    return (List<T>) plugins;
+                }
+                return List.of();
+            }
+        };
+
+        SystemPluginViewService service = new SystemPluginViewService(jdbcTemplate, new ObjectMapper());
+
+        List<PluginVO.PluginAvailabilityVO> plugins = service.availablePlugins();
+
+        assertThat(plugins).hasSize(1);
+        assertThat(plugins.get(0).getSharedDeps()).containsExactly("shared-a");
+        assertThat(plugins.get(0).getRoutes()).containsExactly("/alpha");
+    }
+
+    @Test
+    void availablePluginsShouldIgnoreInvalidManifestPath() throws Exception {
+        Path invalidManifest = writeManifest("alpha.txt", List.of("shared-a"), List.of("/alpha"));
+
+        MyBatisQueryOperations jdbcTemplate = new MyBatisQueryOperations() {
+            @Override
+            public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+                String normalized = sql.toLowerCase();
+                if (normalized.contains("from sys_plugin_definition")) {
+                    List<PluginVO.PluginAvailabilityVO> plugins = new ArrayList<>();
+                    plugins.add(plugin("alpha", "Alpha", "1.0.0", invalidManifest));
+                    return (List<T>) plugins;
+                }
+                return List.of();
+            }
+        };
+
+        SystemPluginViewService service = new SystemPluginViewService(jdbcTemplate, new ObjectMapper());
+
+        List<PluginVO.PluginAvailabilityVO> plugins = service.availablePlugins();
+
+        assertThat(plugins).hasSize(1);
+        assertThat(plugins.get(0).getSharedDeps()).isEmpty();
+        assertThat(plugins.get(0).getRoutes()).isEmpty();
+    }
+
     private Path writeManifest(String name, List<String> sharedDeps, List<String> routes) throws Exception {
         Path path = tempDir.resolve(name);
         PluginDTO.FrontendPluginManifest manifest = new PluginDTO.FrontendPluginManifest();

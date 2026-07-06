@@ -1069,6 +1069,7 @@ public Long getEmployeeId() {
         private String status;
         private String visibilityScope;
         private Long ownerUserId;
+        private String ownerUserUuid;
         private Long documentCount;
         private Long chunkCount;
         private Long createdBy;
@@ -1089,6 +1090,8 @@ public String getKbCode() { return kbCode; }
         public void setVisibilityScope(String visibilityScope) { this.visibilityScope = visibilityScope; }
         public Long getOwnerUserId() { return ownerUserId; }
         public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
+        public String getOwnerUserUuid() { return ownerUserUuid; }
+        public void setOwnerUserUuid(String ownerUserUuid) { this.ownerUserUuid = ownerUserUuid; }
         public Long getDocumentCount() { return documentCount; }
         public void setDocumentCount(Long documentCount) { this.documentCount = documentCount; }
         public Long getChunkCount() { return chunkCount; }
@@ -1115,6 +1118,7 @@ public String getKbCode() { return kbCode; }
         private Integer extractedCharCount;
         private Integer chunkCount;
         private Long createdBy;
+        private String createdByUuid;
         private LocalDateTime createTime;
         private LocalDateTime updateTime;
 
@@ -1144,6 +1148,8 @@ public Long getKnowledgeBaseId() { return knowledgeBaseId; }
         public void setChunkCount(Integer chunkCount) { this.chunkCount = chunkCount; }
         public Long getCreatedBy() { return createdBy; }
         public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+        public String getCreatedByUuid() { return createdByUuid; }
+        public void setCreatedByUuid(String createdByUuid) { this.createdByUuid = createdByUuid; }
         public LocalDateTime getCreateTime() { return createTime; }
         public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
         public LocalDateTime getUpdateTime() { return updateTime; }

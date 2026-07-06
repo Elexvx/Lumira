@@ -215,7 +215,7 @@ const collectAssignablePermissionKeys = (
   return result;
 };
 
-const normalizePermissionKeysByPages = (
+export const normalizePermissionKeysByPages = (
   currentPermissionKeys: string[],
   nextPageKeys: string[],
   allPageKeys: Set<string>,
@@ -951,6 +951,10 @@ export const useRoleManagementPageData = () => {
     [],
   );
   const saveRole = useCallback(async () => {
+    if (!canSaveRole) {
+      message.warning(t('当前账号没有保存该角色配置的权限', 'You do not have permission to save this role configuration'));
+      return;
+    }
     setSaving(true);
     try {
       const values = await editorForm.validateFields();
@@ -990,7 +994,7 @@ export const useRoleManagementPageData = () => {
     } finally {
       setSaving(false);
     }
-  }, [buildRoleEditorPayload, closeEditorDrawer, editorForm, permissionEditor, roleCrud, roleEditorMode]);
+  }, [buildRoleEditorPayload, canSaveRole, closeEditorDrawer, editorForm, permissionEditor, roleCrud, roleEditorMode]);
   const deleteRole = useCallback(
     (record: RoleRecord) => {
       confirmAction({

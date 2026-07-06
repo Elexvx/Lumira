@@ -20,7 +20,7 @@ public class PublicActivityController {
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<ActivityVO.Activity>> activities(
+    public ApiResponse<PageResponse<ActivityVO.PublicActivity>> activities(
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "locale", required = false) String locale,
             @RequestParam(name = "featured", required = false) Boolean featured,

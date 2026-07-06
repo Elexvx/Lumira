@@ -6,9 +6,14 @@ import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.ProductionSecurityPropertiesValidator;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.authorization.DefaultAuthorizationService;
+import com.lumira.common.web.AuthInternalClientConfiguration;
+import com.lumira.common.web.FileInternalClientConfiguration;
 import com.lumira.common.web.FeignHeaderForwardingConfig;
+import com.lumira.common.web.PaymentInternalClientConfiguration;
 import com.lumira.common.web.ServiceVersionController;
 import com.lumira.common.web.ServiceVersionProvider;
+import com.lumira.common.web.SystemInternalClientConfiguration;
+import com.lumira.common.web.TeamInternalClientConfiguration;
 import com.lumira.common.web.WebProperties;
 import com.lumira.common.web.config.CommonJacksonConfiguration;
 import com.lumira.common.web.exception.GlobalExceptionHandler;
@@ -34,7 +39,12 @@ import org.springframework.context.annotation.Import;
 })
 @Import({
         CommonJacksonConfiguration.class,
+        AuthInternalClientConfiguration.class,
         FeignHeaderForwardingConfig.class,
+        FileInternalClientConfiguration.class,
+        PaymentInternalClientConfiguration.class,
+        SystemInternalClientConfiguration.class,
+        TeamInternalClientConfiguration.class,
         ServiceVersionController.class,
         ServiceVersionProvider.class,
         ReadModelVersionCache.class,

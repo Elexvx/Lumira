@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.lumira.common.constant.CacheKeyConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.RequestContextUtils;
@@ -111,8 +112,15 @@ public class RepeatSubmitAspect {
     private String resolveScope(HttpServletRequest request) {
         SecurityContextFacade securityContextFacade = securityContextFacadeProvider.getIfAvailable();
         CurrentUser currentUser = securityContextFacade == null ? null : securityContextFacade.getCurrentUserOrNull();
-        if (currentUser != null && currentUser.isAuthenticated() && currentUser.getUserId() != null) {
-            return String.join(":", "user", String.valueOf(currentUser.getUserId()));
+        if (AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return String.join(":", "user-session", sha256Hex(String.join(
+                    ":",
+                    String.valueOf(currentUser.getUserId()),
+                    currentUser.getUserUuid().trim(),
+                    currentUser.getSessionId().trim(),
+                    String.valueOf(currentUser.getSessionVersion()),
+                    currentUser.getPermissionsVersion().trim()
+            )));
         }
         return String.join(":", "ip", clientIpResolver.resolve(request));
     }

@@ -14,7 +14,6 @@ import {
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { LoginEncryptionKey, LoginResponse } from '@/types/api';
-import { showErrorMessage } from '@/utils/errorMessage';
 import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { useLoginFlowRuntime } from './useLoginFlowRuntime';
 import { request } from '@/services/common/request';
@@ -39,7 +38,7 @@ const DEFAULT_LOGIN_CAPABILITIES: LoginCapabilitiesState = {
   wechatLoginAvailable: false,
   passkeyLoginAvailable: false,
   passkeyPasswordlessAvailable: false,
-  loginModeOrder: ['passkey', 'sms', 'email', 'password'],
+  loginModeOrder: ['passkey', 'sms', 'email', 'wechat', 'password'],
 };
 
 const getAvailableLoginModes = (capabilities: LoginCapabilitiesState): LoginMode[] => {
@@ -47,12 +46,13 @@ const getAvailableLoginModes = (capabilities: LoginCapabilitiesState): LoginMode
     passkey: Boolean(capabilities.passkeyLoginAvailable && capabilities.passkeyPasswordlessAvailable),
     sms: Boolean(capabilities.smsLoginAvailable),
     email: Boolean(capabilities.emailLoginAvailable),
+    wechat: Boolean(capabilities.wechatLoginAvailable),
     password: Boolean(capabilities.passwordLoginAvailable),
   };
   const configuredOrder = capabilities.loginModeOrder?.filter((mode): mode is LoginMode =>
-    mode === 'passkey' || mode === 'sms' || mode === 'email' || mode === 'password',
+    mode === 'passkey' || mode === 'sms' || mode === 'email' || mode === 'wechat' || mode === 'password',
   ) || [];
-  const defaultOrder: LoginMode[] = ['passkey', 'sms', 'email', 'password'];
+  const defaultOrder: LoginMode[] = ['passkey', 'sms', 'email', 'wechat', 'password'];
   const order = [...configuredOrder, ...defaultOrder.filter((mode) => !configuredOrder.includes(mode))];
   const modes = order.filter((mode) => enabled[mode]);
   return modes.length ? modes : ['password'];
@@ -358,10 +358,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
           setLoginEncryptionKey(key);
           return key;
         })
-        .catch((error) => {
-          showErrorMessage(error, formatMessage({ id: 'page.login.error.loginEncryption', defaultMessage: 'Failed to load login encryption info, please refresh and try again' }));
-          return null;
-        })
+        .catch(() => null)
         .finally(() => {
           setLoginEncryptionLoading(false);
           loginEncryptionLoadPromiseRef.current = null;

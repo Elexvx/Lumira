@@ -40,6 +40,9 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/competitions/activity-register': '/activities/register',
   '/competitions/activity-register/': '/activities/register',
   '/competitions/expert-apply/': '/competitions/expert-apply',
+  '/expert-review': '/expert-review/reviews',
+  '/expert-review/': '/expert-review/reviews',
+  '/expert-review/reviews/': '/expert-review/reviews',
   '/projects': '/projects/management',
   '/projects/': '/projects/management',
   '/projects/management/': '/projects/management',
@@ -208,7 +211,7 @@ const dashboardRouteMeta: BackendRouteMeta[] = [
 ];
 
 const dashboardRoutes: BackendRouteRecord[] = [
-  { path: '/', redirect: '/dashboard/home' },
+  { path: '/', component: '@/pages/RootRedirect', hideInMenu: true },
   {
     path: '/dashboard',
     name: 'nav.dashboard.root',
@@ -375,13 +378,25 @@ const certificateRoutes: BackendRouteRecord[] = [
 ];
 
 const expertRouteMeta: BackendRouteMeta[] = [
-  { path: '/expert-review', name: 'nav.expertReview.root', icon: 'SolutionOutlined', access: 'canVisitExperts' },
+  { path: '/expert-review', name: 'nav.expertReview.root', icon: 'SolutionOutlined', access: 'canVisitExpertReview' },
+  { path: '/expert-review/reviews', name: '\u8bc4\u5ba1\u5217\u8868', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
   { path: '/experts', name: 'nav.experts.root', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/management', name: 'nav.experts.management', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/query', name: 'nav.experts.query', icon: 'SearchOutlined', access: 'canVisitExperts' },
 ];
 
 const expertRoutes: BackendRouteRecord[] = [
+  {
+    path: '/expert-review',
+    component: '@/layouts/SettingsLayout/SettingsLayout',
+    name: 'nav.expertReview.root',
+    icon: 'SolutionOutlined',
+    access: 'canVisitExpertReview',
+    routes: [
+      { path: '/expert-review', redirect: '/expert-review/reviews', hideInMenu: true },
+      { path: '/expert-review/reviews', component: '@/pages/workflow/WorkflowTasksPage', name: '\u8bc4\u5ba1\u5217\u8868', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+    ],
+  },
   {
     path: '/experts',
     component: '@/layouts/SettingsLayout/SettingsLayout',

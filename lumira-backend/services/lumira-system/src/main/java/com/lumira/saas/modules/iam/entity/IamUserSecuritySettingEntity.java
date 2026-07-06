@@ -9,6 +9,7 @@ public class IamUserSecuritySettingEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private Integer mfaEnabled;
     private Integer passwordLoginEnabled;
     private Integer smsLoginEnabled;

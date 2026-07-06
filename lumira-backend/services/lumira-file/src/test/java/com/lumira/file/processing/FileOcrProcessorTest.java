@@ -1,6 +1,7 @@
 package com.lumira.file.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -28,12 +29,14 @@ class FileOcrProcessorTest {
         Path source = writeImagePlaceholder("2026/06/image.png");
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         mockLocation(jdbcTemplate, source, "image/png", "png");
+        when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
         FileOcrProcessor processor = processor(jdbcTemplate, new DisabledFileOcrEngine());
 
-        FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L);
+        FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L, "user-uuid-2001");
 
         assertThat(result.engine()).isEqualTo(DisabledFileOcrEngine.ENGINE_NAME);
         assertThat(result.status()).isEqualTo(FileOcrProcessor.STATUS_SKIPPED);
+        verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, FileOcrProcessor.ARTIFACT_OCR_RESULT, "\"status\":\"SKIPPED\"");
     }
 
@@ -42,6 +45,7 @@ class FileOcrProcessorTest {
         Path source = writeImagePlaceholder("2026/06/invoice.jpg");
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         mockLocation(jdbcTemplate, source, "image/jpeg", "jpg");
+        when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
         FileOcrEngine engine = new FileOcrEngine() {
             @Override
             public String engineName() {
@@ -55,11 +59,12 @@ class FileOcrProcessorTest {
         };
         FileOcrProcessor processor = processor(jdbcTemplate, engine);
 
-        FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L);
+        FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L, "user-uuid-2001");
 
         assertThat(result.engine()).isEqualTo("FAKE_OCR");
         assertThat(result.status()).isEqualTo(FileOcrProcessor.STATUS_EXTRACTED);
         assertThat(result.storedCharacters()).isEqualTo("hello\n\nLumira OCR".length());
+        verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, FileOcrProcessor.ARTIFACT_OCR_RESULT, "\"engine\":\"FAKE_OCR\"");
         verifyArtifact(jdbcTemplate, FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT, "hello\n\nLumira OCR");
     }
@@ -90,22 +95,65 @@ class FileOcrProcessorTest {
                     when(resultSet.getString("rootPath")).thenReturn(tempDir.toString());
                     when(resultSet.getString("contentType")).thenReturn(contentType);
                     when(resultSet.getString("fileExtension")).thenReturn(extension);
+                    when(resultSet.getLong("uploadedBy")).thenReturn(2001L);
+                    when(resultSet.getString("uploadedByUserUuid")).thenReturn("user-uuid-2001");
                     return mapper.mapRow(resultSet, 0);
                 });
     }
 
+    @Test
+    void extractImageText_shouldRejectMissingOwnerUuid() {
+        FileOcrProcessor processor = processor(mock(JdbcTemplate.class), new DisabledFileOcrEngine());
+
+        assertThatThrownBy(() -> processor.extractImageText(3001L, 2001L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("owner UUID is required");
+    }
+
+    @Test
+    void extractImageText_shouldRejectWhenArtifactWriteMissesTrustedSnapshot() throws Exception {
+        Path source = writeImagePlaceholder("2026/06/image.png");
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        mockLocation(jdbcTemplate, source, "image/png", "png");
+        when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(0);
+        FileOcrProcessor processor = processor(jdbcTemplate, new DisabledFileOcrEngine());
+
+        assertThatThrownBy(() -> processor.extractImageText(3001L, 2001L, "user-uuid-2001"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("artifact state changed");
+    }
+
     private void verifyArtifact(JdbcTemplate jdbcTemplate, String artifactType, String expectedSnippet) {
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object> contentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
-                anyString(),
+                sqlCaptor.capture(),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_OCR),
                 eq(artifactType),
                 contentCaptor.capture(),
                 Mockito.anyInt(),
                 eq(2001L),
-                eq(2001L)
+                eq("user-uuid-2001"),
+                eq(2001L),
+                eq("user-uuid-2001"),
+                eq(3001L),
+                eq(2001L),
+                eq("user-uuid-2001")
         );
+        assertThat(sqlCaptor.getValue())
+                .contains("from file_object fo")
+                .contains("fo.uploaded_by_uuid = ?")
+                .contains("fo.status = 'ENABLED'")
+                .contains("u.status = 'ENABLED'");
         assertThat(contentCaptor.getValue()).asString().contains(expectedSnippet);
+    }
+
+    private void verifyLocationLookup(JdbcTemplate jdbcTemplate) {
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
+        assertThat(sqlCaptor.getValue())
+                .contains("where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'")
+                .contains("u.status = 'ENABLED'");
     }
 }

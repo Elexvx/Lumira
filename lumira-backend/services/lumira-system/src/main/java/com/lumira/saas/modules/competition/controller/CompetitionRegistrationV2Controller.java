@@ -1,6 +1,9 @@
 package com.lumira.saas.modules.competition.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -21,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Optional;
+
+import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCurrentUser;
 
 @RestController
 @RequestMapping("/api/v2/aiadc")
@@ -54,9 +59,9 @@ public class CompetitionRegistrationV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        require(REGISTRATION_VIEW);
+        CurrentUser currentUser = requireRegistrationReadAccess();
         return ApiResponse.success(
-                registrationAppService.listRegistrations(securityContextFacade.getCurrentUser(), pageNo, pageSize),
+                registrationAppService.listRegistrations(currentUser, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
@@ -70,10 +75,10 @@ public class CompetitionRegistrationV2Controller {
             @RequestParam(name = "registrationStatus", required = false) String registrationStatus,
             @RequestParam(name = "providerCode", required = false) String providerCode
     ) {
-        require(PAYMENT_ORDER_VIEW);
+        CurrentUser currentUser = require(PAYMENT_ORDER_VIEW);
         return ApiResponse.success(
                 registrationAppService.listPaymentRecords(
-                        securityContextFacade.getCurrentUser(),
+                        currentUser,
                         pageNo,
                         pageSize,
                         keyword,
@@ -87,15 +92,15 @@ public class CompetitionRegistrationV2Controller {
 
     @GetMapping("/registrations/{id}")
     public ApiResponse<CompetitionRegistrationVO.Registration> registration(@PathVariable("id") Long id) {
-        require(REGISTRATION_VIEW);
-        return ApiResponse.success(registrationAppService.getRegistration(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = requireRegistrationReadAccess();
+        return ApiResponse.success(registrationAppService.getRegistration(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/registrations")
     @RepeatSubmit
     public ApiResponse<CompetitionRegistrationVO.Registration> createRegistration(@Valid @RequestBody CompetitionRegistrationDTO.RegistrationCreateRequest request) {
-        require(REGISTRATION_CREATE);
-        return ApiResponse.success(registrationAppService.createRegistration(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(REGISTRATION_CREATE);
+        return ApiResponse.success(registrationAppService.createRegistration(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/registrations/{id}")
@@ -104,8 +109,8 @@ public class CompetitionRegistrationV2Controller {
             @PathVariable("id") Long id,
             @Valid @RequestBody CompetitionRegistrationDTO.RegistrationCreateRequest request
     ) {
-        require(REGISTRATION_UPDATE);
-        return ApiResponse.success(registrationAppService.updateRegistration(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(REGISTRATION_UPDATE);
+        return ApiResponse.success(registrationAppService.updateRegistration(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/registrations/{id}/materials")
@@ -114,14 +119,14 @@ public class CompetitionRegistrationV2Controller {
             @PathVariable("id") Long id,
             @Valid @RequestBody CompetitionRegistrationDTO.MaterialSubmitRequest request
     ) {
-        require(MATERIAL_SUBMIT);
-        return ApiResponse.success(registrationAppService.submitMaterials(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(MATERIAL_SUBMIT);
+        return ApiResponse.success(registrationAppService.submitMaterials(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/registrations/{id}/materials")
     public ApiResponse<List<CompetitionRegistrationVO.MaterialSubmission>> materials(@PathVariable("id") Long id) {
-        require(MATERIAL_VIEW);
-        return ApiResponse.success(registrationAppService.listMaterials(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = requireRegistrationReadAccess();
+        return ApiResponse.success(registrationAppService.listMaterials(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/registrations/{id}/payment-order")
@@ -130,10 +135,10 @@ public class CompetitionRegistrationV2Controller {
             @PathVariable("id") Long id,
             @Valid @RequestBody(required = false) CompetitionRegistrationDTO.PaymentOrderRequest request
     ) {
-        require(REGISTRATION_PAY);
+        CurrentUser currentUser = require(REGISTRATION_PAY);
         return ApiResponse.success(
                 registrationAppService.createPaymentOrder(
-                        securityContextFacade.getCurrentUser(),
+                        currentUser,
                         id,
                         Optional.ofNullable(request).orElseGet(CompetitionRegistrationDTO.PaymentOrderRequest::new)
                 ),
@@ -143,14 +148,14 @@ public class CompetitionRegistrationV2Controller {
 
     @GetMapping("/registrations/{id}/payment-status")
     public ApiResponse<CompetitionRegistrationVO.PaymentOrder> paymentStatus(@PathVariable("id") Long id) {
-        require(REGISTRATION_VIEW);
-        return ApiResponse.success(registrationAppService.getPaymentStatus(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = requireRegistrationReadAccess();
+        return ApiResponse.success(registrationAppService.getPaymentStatus(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/competitions/{competitionId}/stages")
     public ApiResponse<List<CompetitionRegistrationVO.Stage>> stages(@PathVariable("competitionId") Long competitionId) {
-        require(STAGE_VIEW);
-        return ApiResponse.success(registrationAppService.listStages(securityContextFacade.getCurrentUser(), competitionId), TraceContext.getRequestId());
+        CurrentUser currentUser = requireStageReadAccess();
+        return ApiResponse.success(registrationAppService.listStages(currentUser, competitionId), TraceContext.getRequestId());
     }
 
     @PostMapping("/competitions/{competitionId}/stages")
@@ -159,14 +164,14 @@ public class CompetitionRegistrationV2Controller {
             @PathVariable("competitionId") Long competitionId,
             @Valid @RequestBody CompetitionRegistrationDTO.StageUpsertRequest request
     ) {
-        require(STAGE_MANAGE);
-        return ApiResponse.success(registrationAppService.createStage(securityContextFacade.getCurrentUser(), competitionId, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(STAGE_MANAGE);
+        return ApiResponse.success(registrationAppService.createStage(currentUser, competitionId, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/stages/{stageId}/form")
     public ApiResponse<CompetitionRegistrationVO.StageForm> stageForm(@PathVariable("stageId") Long stageId) {
-        require(STAGE_VIEW);
-        return ApiResponse.success(registrationAppService.getStageForm(securityContextFacade.getCurrentUser(), stageId), TraceContext.getRequestId());
+        CurrentUser currentUser = requireStageReadAccess();
+        return ApiResponse.success(registrationAppService.getStageForm(currentUser, stageId), TraceContext.getRequestId());
     }
 
     @PutMapping("/stages/{stageId}/form")
@@ -175,11 +180,55 @@ public class CompetitionRegistrationV2Controller {
             @PathVariable("stageId") Long stageId,
             @Valid @RequestBody CompetitionRegistrationDTO.StageFormUpsertRequest request
     ) {
-        require(STAGE_MANAGE);
-        return ApiResponse.success(registrationAppService.upsertStageForm(securityContextFacade.getCurrentUser(), stageId, request), TraceContext.getRequestId());
+        CurrentUser currentUser = require(STAGE_MANAGE);
+        return ApiResponse.success(registrationAppService.upsertStageForm(currentUser, stageId, request), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return requireTrustedUser(currentUser);
+    }
+
+    private CurrentUser requireRegistrationReadAccess() {
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
+        if (
+                permissionGuard.hasPermission(currentUser, REGISTRATION_VIEW)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_CREATE)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_UPDATE)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_PAY)
+                        || permissionGuard.hasPermission(currentUser, MATERIAL_VIEW)
+                        || permissionGuard.hasPermission(currentUser, MATERIAL_SUBMIT)
+                        || permissionGuard.hasPermission(currentUser, PAYMENT_ORDER_VIEW)
+                        || permissionGuard.hasPermission(currentUser, STAGE_MANAGE)
+        ) {
+            return currentUser;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "褰撳墠璐﹀彿娌℃湁璁块棶鏉冮檺");
+    }
+
+    private CurrentUser requireStageReadAccess() {
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
+        if (
+                permissionGuard.hasPermission(currentUser, STAGE_VIEW)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_VIEW)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_CREATE)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_UPDATE)
+                        || permissionGuard.hasPermission(currentUser, REGISTRATION_PAY)
+                        || permissionGuard.hasPermission(currentUser, MATERIAL_VIEW)
+                        || permissionGuard.hasPermission(currentUser, MATERIAL_SUBMIT)
+                        || permissionGuard.hasPermission(currentUser, PAYMENT_ORDER_VIEW)
+                        || permissionGuard.hasPermission(currentUser, STAGE_MANAGE)
+        ) {
+            return currentUser;
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "当前账号没有访问权限");
+    }
+
+    private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
     }
 }

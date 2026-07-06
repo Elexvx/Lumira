@@ -2,6 +2,9 @@ package com.lumira.saas.modules.plugin.service;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDefinitionEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDependencyEntity;
@@ -14,6 +17,7 @@ import com.lumira.saas.modules.plugin.mapper.PluginPersistenceMapper;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -41,9 +45,11 @@ public class PluginPersistenceService {
             String validationReportJson,
             String packageChecksum,
             String signaturePath,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
-        upsertDefinition(metadata, operatorId);
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        upsertDefinition(metadata, operatorId, trustedOperatorUuid);
         PluginVersionEntity version = new PluginVersionEntity();
         version.setPluginCode(metadata.getPluginCode());
         version.setVersion(metadata.getVersion());
@@ -55,7 +61,9 @@ public class PluginPersistenceService {
         version.setValidationReportJson(validationReportJson);
         version.setStagedPath(stagedPackageRoot.toString());
         version.setCreatedBy(operatorId);
+        version.setCreatedByUuid(trustedOperatorUuid);
         version.setUpdatedBy(operatorId);
+        version.setUpdatedByUuid(trustedOperatorUuid);
         pluginPersistenceMapper.upsertVersion(version);
         return findVersion(metadata.getPluginCode(), metadata.getVersion()).orElseThrow();
     }
@@ -112,9 +120,12 @@ public class PluginPersistenceService {
             String installStatus,
             String loadStatus,
             String healthStatus,
-            Integer rollbackable
+            Integer rollbackable,
+            Long operatorId,
+            String operatorUuid
     ) {
-        pluginPersistenceMapper.markInstalled(
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        int updated = pluginPersistenceMapper.markInstalled(
                 pluginCode,
                 version,
                 artifactPath.toString(),
@@ -123,8 +134,11 @@ public class PluginPersistenceService {
                 installStatus,
                 loadStatus,
                 healthStatus,
-                rollbackable
+                rollbackable,
+                operatorId,
+                trustedOperatorUuid
         );
+        ensureUpdated(updated);
     }
 
     @Transactional
@@ -135,19 +149,31 @@ public class PluginPersistenceService {
             String loadStatus,
             String healthStatus,
             String lifecycleStatus,
-            String schemaStatus
+            String schemaStatus,
+            Long operatorId,
+            String operatorUuid
     ) {
-        pluginPersistenceMapper.updateVersionStatus(pluginCode, version, installStatus, loadStatus, healthStatus, lifecycleStatus, schemaStatus);
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        int updated = pluginPersistenceMapper.updateVersionStatus(pluginCode, version, installStatus, loadStatus, healthStatus, lifecycleStatus, schemaStatus, operatorId, trustedOperatorUuid);
+        ensureUpdated(updated);
     }
 
     @Transactional
-    public void activateVersion(String pluginCode, String version) {
-        pluginPersistenceMapper.deactivateOtherVersions(pluginCode, version);
-        pluginPersistenceMapper.activateVersion(pluginCode, version);
+    public void activateVersion(String pluginCode, String version, Long operatorId, String operatorUuid) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        pluginPersistenceMapper.deactivateOtherVersions(pluginCode, version, operatorId, trustedOperatorUuid);
+        int updated = pluginPersistenceMapper.activateVersion(pluginCode, version, operatorId, trustedOperatorUuid);
+        ensureUpdated(updated);
     }
 
     @Transactional
-    public void replaceDependencies(String pluginCode, List<PluginDTO.PluginDependencyDeclaration> dependencies, Long operatorId) {
+    public void replaceDependencies(
+            String pluginCode,
+            List<PluginDTO.PluginDependencyDeclaration> dependencies,
+            Long operatorId,
+            String operatorUuid
+    ) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
         pluginPersistenceMapper.deleteDependencies(pluginCode);
         if (dependencies == null || dependencies.isEmpty()) {
             return;
@@ -158,7 +184,9 @@ public class PluginPersistenceService {
             entity.setDependsOnPluginCode(dependency.getPluginCode());
             entity.setMinVersion(dependency.getMinVersion());
             entity.setCreatedBy(operatorId);
+            entity.setCreatedByUuid(trustedOperatorUuid);
             entity.setUpdatedBy(operatorId);
+            entity.setUpdatedByUuid(trustedOperatorUuid);
             pluginPersistenceMapper.insertDependency(entity);
         }
     }
@@ -168,8 +196,10 @@ public class PluginPersistenceService {
             String pluginCode,
             String version,
             List<PluginDTO.PluginPermissionDeclaration> permissions,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
         pluginPersistenceMapper.deletePermissionRelations(pluginCode, version);
         if (permissions == null || permissions.isEmpty()) {
             return;
@@ -182,7 +212,9 @@ public class PluginPersistenceService {
             entity.setPermissionName(permission.getPermissionName());
             entity.setPermissionGroup(permission.getPermissionGroup());
             entity.setCreatedBy(operatorId);
+            entity.setCreatedByUuid(trustedOperatorUuid);
             entity.setUpdatedBy(operatorId);
+            entity.setUpdatedByUuid(trustedOperatorUuid);
             pluginPersistenceMapper.insertPermissionRelation(entity);
         }
     }
@@ -192,8 +224,10 @@ public class PluginPersistenceService {
             String pluginCode,
             String version,
             List<PluginDTO.PluginMenuDeclaration> menus,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
         pluginPersistenceMapper.deleteMenuRelations(pluginCode, version);
         if (menus == null || menus.isEmpty()) {
             return;
@@ -210,7 +244,9 @@ public class PluginPersistenceService {
             entity.setParentMenuCode(menu.getParentMenuCode());
             entity.setSortNo(menu.getSortNo() == null ? 0 : menu.getSortNo());
             entity.setCreatedBy(operatorId);
+            entity.setCreatedByUuid(trustedOperatorUuid);
             entity.setUpdatedBy(operatorId);
+            entity.setUpdatedByUuid(trustedOperatorUuid);
             pluginPersistenceMapper.insertMenuRelation(entity);
         }
     }
@@ -224,35 +260,39 @@ public class PluginPersistenceService {
     }
 
     @Transactional
-    public void enablePlugin(String pluginCode, String version, String configJson, Long operatorId) {
-        pluginPersistenceMapper.setPluginDefinitionStatus(pluginCode, "ENABLED", operatorId);
-        pluginPersistenceMapper.deactivateOtherVersions(pluginCode, version);
-        pluginPersistenceMapper.activateVersion(pluginCode, version);
+    public void enablePlugin(String pluginCode, String version, String configJson, Long operatorId, String operatorUuid) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        ensureUpdated(pluginPersistenceMapper.setPluginDefinitionStatus(pluginCode, "ENABLED", operatorId, trustedOperatorUuid));
+        pluginPersistenceMapper.deactivateOtherVersions(pluginCode, version, operatorId, trustedOperatorUuid);
+        ensureUpdated(pluginPersistenceMapper.activateVersion(pluginCode, version, operatorId, trustedOperatorUuid));
     }
 
     @Transactional
-    public void disablePlugin(String pluginCode, Long operatorId) {
-        pluginPersistenceMapper.setPluginDefinitionStatus(pluginCode, "DISABLED", operatorId);
+    public void disablePlugin(String pluginCode, Long operatorId, String operatorUuid) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        ensureUpdated(pluginPersistenceMapper.setPluginDefinitionStatus(pluginCode, "DISABLED", operatorId, trustedOperatorUuid));
     }
 
     @Transactional
-    public void uninstallPlugin(String pluginCode, Long operatorId) {
-        pluginPersistenceMapper.uninstallVersionsByPlugin(pluginCode, operatorId);
-        pluginPersistenceMapper.markMenuRelationsDeletedByPlugin(pluginCode, operatorId);
-        pluginPersistenceMapper.markPermissionRelationsDeletedByPlugin(pluginCode, operatorId);
-        pluginPersistenceMapper.markDependenciesDeletedByPlugin(pluginCode, operatorId);
-        pluginPersistenceMapper.markDefinitionDeletedByPlugin(pluginCode, operatorId);
+    public void uninstallPlugin(String pluginCode, Long operatorId, String operatorUuid) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
+        pluginPersistenceMapper.uninstallVersionsByPlugin(pluginCode, operatorId, trustedOperatorUuid);
+        pluginPersistenceMapper.markMenuRelationsDeletedByPlugin(pluginCode, operatorId, trustedOperatorUuid);
+        pluginPersistenceMapper.markPermissionRelationsDeletedByPlugin(pluginCode, operatorId, trustedOperatorUuid);
+        pluginPersistenceMapper.markDependenciesDeletedByPlugin(pluginCode, operatorId, trustedOperatorUuid);
+        ensureUpdated(pluginPersistenceMapper.markDefinitionDeletedByPlugin(pluginCode, operatorId, trustedOperatorUuid));
     }
 
     @Transactional
-    public void purgePluginData(String pluginCode, Long operatorId) {
+    public void purgePluginData(String pluginCode, Long operatorId, String operatorUuid) {
+        normalizeTrustedOperator(operatorId, operatorUuid);
         pluginPersistenceMapper.deleteRuntimeLogsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteSchemaHistoryByPlugin(pluginCode);
         pluginPersistenceMapper.deleteVersionsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteMenuRelationsByPlugin(pluginCode);
         pluginPersistenceMapper.deletePermissionRelationsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteDependenciesByPlugin(pluginCode);
-        pluginPersistenceMapper.deleteDefinitionByPlugin(pluginCode);
+        ensureUpdated(pluginPersistenceMapper.deleteDefinitionByPlugin(pluginCode));
     }
 
     public Optional<PluginVersionEntity> findEnabledVersion(String pluginCode) {
@@ -277,7 +317,18 @@ public class PluginPersistenceService {
     }
 
     @Transactional
-    public void insertSchemaHistory(String pluginCode, String pluginVersion, String stepName, String direction, String scriptPath, String executionStatus, String detailMessage, Long operatorId) {
+    public void insertSchemaHistory(
+            String pluginCode,
+            String pluginVersion,
+            String stepName,
+            String direction,
+            String scriptPath,
+            String executionStatus,
+            String detailMessage,
+            Long operatorId,
+            String operatorUuid
+    ) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
         PluginSchemaHistoryEntity entity = new PluginSchemaHistoryEntity();
         entity.setPluginCode(pluginCode);
         entity.setPluginVersion(pluginVersion);
@@ -287,6 +338,7 @@ public class PluginPersistenceService {
         entity.setExecutionStatus(executionStatus);
         entity.setDetailMessage(detailMessage);
         entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(trustedOperatorUuid);
         pluginPersistenceMapper.insertSchemaHistory(entity);
     }
 
@@ -301,8 +353,10 @@ public class PluginPersistenceService {
             String requestId,
             String traceId,
             String failureStack,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
+        String trustedOperatorUuid = normalizeTrustedOperator(operatorId, operatorUuid);
         PluginRuntimeLogEntity entity = new PluginRuntimeLogEntity();
         entity.setPluginCode(pluginCode);
         entity.setPluginVersion(version);
@@ -314,6 +368,7 @@ public class PluginPersistenceService {
         entity.setTraceId(traceId);
         entity.setFailureStack(failureStack);
         entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(trustedOperatorUuid);
         pluginPersistenceMapper.insertRuntimeLog(entity);
     }
 
@@ -334,7 +389,7 @@ public class PluginPersistenceService {
         ));
     }
 
-    private void upsertDefinition(PluginDTO.PluginPackageMetadata metadata, Long operatorId) {
+    private void upsertDefinition(PluginDTO.PluginPackageMetadata metadata, Long operatorId, String operatorUuid) {
         PluginDefinitionEntity entity = new PluginDefinitionEntity();
         entity.setPluginCode(metadata.getPluginCode());
         entity.setPluginName(metadata.getPluginName());
@@ -347,8 +402,31 @@ public class PluginPersistenceService {
         entity.setSupportsDataPurge(Boolean.TRUE.equals(metadata.getSupportsDataPurge()) ? 1 : 0);
         entity.setRuntimeContributionsJson(JsonUtils.toJson(metadata.getRuntimeContributions() == null ? List.of() : metadata.getRuntimeContributions()));
         entity.setCreatedBy(operatorId);
+        entity.setCreatedByUuid(operatorUuid);
         entity.setUpdatedBy(operatorId);
+        entity.setUpdatedByUuid(operatorUuid);
         pluginPersistenceMapper.upsertDefinition(entity);
+    }
+
+    private String normalizeTrustedOperator(Long operatorId, String operatorUuid) {
+        if (operatorId == null || operatorId <= 0 || !StringUtils.hasText(operatorUuid)) {
+            throw new IllegalArgumentException("trusted plugin operator identity is required");
+        }
+        String normalizedOperatorUuid = operatorUuid.trim();
+        SystemUserSnapshotDTO operator = systemInternalApi.findUserById(operatorId);
+        if (operator == null
+                || !StringUtils.hasText(operator.userUuid())
+                || !normalizedOperatorUuid.equals(operator.userUuid().trim())
+                || !"ENABLED".equalsIgnoreCase(operator.status())) {
+            throw new IllegalArgumentException("trusted plugin operator identity is required");
+        }
+        return normalizedOperatorUuid;
+    }
+
+    private void ensureUpdated(int updated) {
+        if (updated == 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Plugin state changed, please retry");
+        }
     }
 
     private static final class JsonUtils {

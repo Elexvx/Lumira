@@ -1,14 +1,24 @@
 package com.lumira.saas.modules.system.monitor.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.management.OperatingSystemMXBean;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.monitor.vo.SystemMonitorVO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.types.RedisClientInfo;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
@@ -37,6 +47,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -46,20 +57,59 @@ public class SystemMonitorAppService {
 
     private static final Pattern CMD_STAT_PATTERN = Pattern.compile("^cmdstat_(.+)$");
     private static final Pattern KEYSPACE_PATTERN = Pattern.compile("^(db\\d+)$");
+    private static final String STATUS_ENABLED = "ENABLED";
+    private static final String PERMISSION_SERVICE_VIEW = "system:monitor:service:view";
+    private static final String PERMISSION_REDIS_VIEW = "system:monitor:redis:view";
     private static final List<ServiceEndpoint> SERVICE_ENDPOINTS = List.of(
             new ServiceEndpoint("lumira-server", "http://localhost:8080")
     );
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
     private final Instant applicationStartInstant = Instant.now();
 
-    public SystemMonitorAppService(StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
-        this.stringRedisTemplate = stringRedisTemplate;
-        this.objectMapper = objectMapper;
+    @Autowired
+    public SystemMonitorAppService(
+            StringRedisTemplate stringRedisTemplate,
+            ObjectMapper objectMapper,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(stringRedisTemplate, objectMapper, permissionSnapshotService, null, null);
     }
 
-    public SystemMonitorVO.ServiceMonitorVO getServiceMonitor() {
+    @Autowired
+    public SystemMonitorAppService(
+            StringRedisTemplate stringRedisTemplate,
+            ObjectMapper objectMapper,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this.stringRedisTemplate = stringRedisTemplate;
+        this.objectMapper = objectMapper;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+    }
+
+    public SystemMonitorAppService(
+            StringRedisTemplate stringRedisTemplate,
+            ObjectMapper objectMapper,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(stringRedisTemplate, objectMapper, permissionSnapshotService, null, sessionAuthenticationService);
+    }
+
+    public SystemMonitorAppService(StringRedisTemplate stringRedisTemplate, ObjectMapper objectMapper) {
+        this(stringRedisTemplate, objectMapper, null);
+    }
+
+    public SystemMonitorVO.ServiceMonitorVO getServiceMonitor(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_SERVICE_VIEW);
         java.lang.management.OperatingSystemMXBean rawOsBean = ManagementFactory.getOperatingSystemMXBean();
         OperatingSystemMXBean osBean = rawOsBean instanceof OperatingSystemMXBean sunOsBean ? sunOsBean : null;
         Runtime runtime = Runtime.getRuntime();
@@ -248,7 +298,8 @@ public class SystemMonitorAppService {
         return doc;
     }
 
-    public SystemMonitorVO.RedisMonitorVO getRedisMonitor() {
+    public SystemMonitorVO.RedisMonitorVO getRedisMonitor(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_REDIS_VIEW);
         return stringRedisTemplate.execute((RedisConnection connection) -> {
             RedisServerCommands serverCommands = connection.serverCommands();
             Properties info = serverCommands.info();
@@ -284,6 +335,105 @@ public class SystemMonitorAppService {
             redisMonitorVO.setSampleTime(LocalDateTime.now());
             return redisMonitorVO;
         });
+    }
+
+    private void requirePermission(CurrentUser currentUser, String permissionKey) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        Set<String> permissions = currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+        if (!permissions.contains("*") && !permissions.contains(permissionKey)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
+        }
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        if (authenticatedAccess == null || !AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedAccess.currentUser())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return authenticatedAccess.currentUser();
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
     }
 
     static List<SystemMonitorVO.CommandStatVO> parseCommandStats(Properties info) {

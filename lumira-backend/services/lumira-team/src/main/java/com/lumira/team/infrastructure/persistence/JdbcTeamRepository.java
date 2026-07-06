@@ -51,14 +51,14 @@ public class JdbcTeamRepository implements TeamRepository {
     }
 
     @Override
-    public Long createTeam(String teamCode, Long ownerUserId, TeamDTO.TeamCreateRequest request) {
-        jdbcTemplate.update(
+    public Long createTeam(String teamCode, Long ownerUserId, String ownerUserUuid, TeamDTO.TeamCreateRequest request) {
+        int inserted = jdbcTemplate.update(
                 """
                         insert into team (
                             team_code, team_name, team_type, avatar_url, description,
-                            visibility, join_mode, owner_user_id, member_count, status,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 1, 'ACTIVE', ?, ?, 0)
+                            visibility, join_mode, owner_user_id, owner_user_uuid, member_count, status,
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'ACTIVE', ?, ?, ?, ?, 0)
                         """,
                 teamCode,
                 request.getTeamName(),
@@ -68,18 +68,25 @@ public class JdbcTeamRepository implements TeamRepository {
                 request.getVisibility(),
                 request.getJoinMode(),
                 ownerUserId,
+                requireUserUuid(ownerUserUuid),
                 ownerUserId,
-                ownerUserId
+                requireUserUuid(ownerUserUuid),
+                ownerUserId,
+                requireUserUuid(ownerUserUuid)
         );
+        if (inserted != 1) {
+            throw new IllegalStateException("Team changed, please retry");
+        }
         return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
     }
 
     @Override
-    public List<TeamVO.Team> listMyTeams(Long userId) {
+    public List<TeamVO.Team> listMyTeams(Long userId, String userUuid) {
         return jdbcTemplate.query(
                 teamSelect("""
                         join team_member m on m.team_id = t.id
                          and m.user_id = ?
+                         and m.user_uuid = ?
                          and m.status = 'ACTIVE'
                          and m.deleted = 0
                         where t.deleted = 0
@@ -87,32 +94,36 @@ public class JdbcTeamRepository implements TeamRepository {
                         order by t.updated_at desc, t.id desc
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                userId
+                userId,
+                userUuid
         );
     }
 
     @Override
-    public List<TeamVO.Team> listTeamsForAdmin(Long userId) {
+    public List<TeamVO.Team> listTeamsForAdmin(Long userId, String userUuid) {
         return jdbcTemplate.query(
                 teamSelect("""
                         left join team_member m on m.team_id = t.id
                          and m.user_id = ?
+                         and m.user_uuid = ?
                          and m.status = 'ACTIVE'
                          and m.deleted = 0
                         where t.deleted = 0
                         order by t.updated_at desc, t.id desc
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                userId
+                userId,
+                userUuid
         );
     }
 
     @Override
-    public TeamVO.Team findTeam(Long teamId, Long currentUserId) {
+    public TeamVO.Team findTeam(Long teamId, Long currentUserId, String currentUserUuid) {
         List<TeamVO.Team> teams = jdbcTemplate.query(
                 teamSelect("""
                         left join team_member m on m.team_id = t.id
                          and m.user_id = ?
+                         and m.user_uuid = ?
                          and m.status = 'ACTIVE'
                          and m.deleted = 0
                         where t.id = ?
@@ -121,13 +132,14 @@ public class JdbcTeamRepository implements TeamRepository {
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Team.class),
                 currentUserId,
+                currentUserUuid,
                 teamId
         );
         return teams.isEmpty() ? null : teams.get(0);
     }
 
     @Override
-    public int updateTeamProfile(Long teamId, Long updatedBy, TeamDTO.TeamUpdateRequest request) {
+    public int updateTeamProfile(Long teamId, TeamVO.Team expectedTeam, Long updatedBy, String updatedByUuid, TeamDTO.TeamUpdateRequest request) {
         return jdbcTemplate.update(
                 """
                         update team
@@ -138,10 +150,13 @@ public class JdbcTeamRepository implements TeamRepository {
                             visibility = ?,
                             join_mode = ?,
                             updated_by = ?,
+                            updated_by_uuid = ?,
                             updated_at = ?
                         where id = ?
+                          and owner_user_id = ?
+                          and owner_user_uuid = ?
                           and deleted = 0
-                          and status = 'ACTIVE'
+                          and status = ?
                         """,
                 request.getTeamName(),
                 request.getTeamType(),
@@ -150,29 +165,57 @@ public class JdbcTeamRepository implements TeamRepository {
                 request.getVisibility(),
                 request.getJoinMode(),
                 updatedBy,
+                requireUserUuid(updatedByUuid),
                 LocalDateTime.now(),
-                teamId
+                teamId,
+                expectedTeam == null ? null : expectedTeam.getOwnerUserId(),
+                expectedTeam == null ? null : requireUserUuid(expectedTeam.getOwnerUserUuid()),
+                expectedTeam == null ? null : expectedTeam.getStatus()
         );
     }
 
     @Override
-    public int softDeleteTeam(Long teamId, Long updatedBy) {
+    public int softDeleteTeam(Long teamId, TeamVO.Team expectedTeam, Long updatedBy, String updatedByUuid) {
         return jdbcTemplate.update(
-                "update team set deleted = 1, status = 'DELETED', updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                """
+                        update team
+                        set deleted = 1, status = 'DELETED', updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ?
+                          and owner_user_id = ?
+                          and owner_user_uuid = ?
+                          and deleted = 0
+                          and status = ?
+                        """,
                 updatedBy,
+                requireUserUuid(updatedByUuid),
                 LocalDateTime.now(),
-                teamId
+                teamId,
+                expectedTeam == null ? null : expectedTeam.getOwnerUserId(),
+                expectedTeam == null ? null : requireUserUuid(expectedTeam.getOwnerUserUuid()),
+                expectedTeam == null ? null : expectedTeam.getStatus()
         );
     }
 
     @Override
-    public int transferOwner(Long teamId, Long newOwnerUserId, Long updatedBy) {
+    public int transferOwner(Long teamId, Long currentOwnerUserId, String currentOwnerUserUuid, Long newOwnerUserId, String newOwnerUserUuid, Long updatedBy, String updatedByUuid) {
         return jdbcTemplate.update(
-                "update team set owner_user_id = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                """
+                        update team
+                        set owner_user_id = ?, owner_user_uuid = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ?
+                          and owner_user_id = ?
+                          and owner_user_uuid = ?
+                          and deleted = 0
+                          and status = 'ACTIVE'
+                        """,
                 newOwnerUserId,
+                requireUserUuid(newOwnerUserUuid),
                 updatedBy,
+                requireUserUuid(updatedByUuid),
                 LocalDateTime.now(),
-                teamId
+                teamId,
+                currentOwnerUserId,
+                requireUserUuid(currentOwnerUserUuid)
         );
     }
 
@@ -211,10 +254,17 @@ public class JdbcTeamRepository implements TeamRepository {
         return """
                 select t.id, t.team_code as teamCode, t.team_name as teamName,
                        t.team_type as teamType, t.avatar_url as avatarUrl, t.description,
-                       t.visibility, t.join_mode as joinMode, t.owner_user_id as ownerUserId,
+                       t.visibility, t.join_mode as joinMode, t.owner_user_id as ownerUserId, t.owner_user_uuid as ownerUserUuid,
                        t.member_count as memberCount, t.status, m.role as myRole,
                        t.created_at as createdAt, t.updated_at as updatedAt
                 from team t
                 """ + tail;
+    }
+
+    private String requireUserUuid(String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User uuid is required", "User uuid is required");
+        }
+        return userUuid.trim();
     }
 }

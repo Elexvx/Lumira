@@ -4,15 +4,18 @@ import type { CurrentUser } from './types/api';
 
 vi.mock('@/auth/token', () => ({
   tokenManager: {
-    hasToken: () => false,
+    hasToken: vi.fn(() => false),
   },
 }));
 
 const userWithPermissions = (permissions: string[]): CurrentUser =>
   ({
     userId: 2002,
+    userUuid: 'user-uuid-2002',
     username: 'operator',
     sessionId: 'session-1',
+    sessionVersion: 1,
+    permissionsVersion: 'permissions-1',
     permissions,
     availableRoles: [{ roleCode: 'operator', roleName: 'Operator' }],
   }) as CurrentUser;
@@ -20,8 +23,11 @@ const userWithPermissions = (permissions: string[]): CurrentUser =>
 const commonUserWithPermissions = (permissions: string[]): CurrentUser =>
   ({
     userId: 1002,
+    userUuid: 'user-uuid-1002',
     username: 'user',
     sessionId: 'session-2',
+    sessionVersion: 1,
+    permissionsVersion: 'permissions-2',
     permissions,
     availableRoles: [{ roleCode: 'commonuser', roleName: 'Common User' }],
   }) as CurrentUser;
@@ -88,14 +94,20 @@ describe('access', () => {
     expect(result.canVisitSystemSettings).toBe(true);
   });
 
-  it('limits common users to registration-facing entry points', () => {
+  it('uses role-derived permissions instead of hard-coded common user blocks', () => {
     const result = access({
       currentUser: commonUserWithPermissions([
         'dashboard:view',
         'profile:view',
+        'system:user:view',
+        'system:role:view',
+        'system:online-user:view',
+        'system:config:view',
         'team:view',
         'aiadc:project:view',
         'expert:view',
+        'workflow:view',
+        'plugin:sensitive-words:view',
         'aiadc:activity:view',
         'aiadc:competition:view',
         'aiadc:registration:view',
@@ -103,11 +115,93 @@ describe('access', () => {
       ]),
     });
 
-    expect(result.canVisitDashboard).toBe(false);
-    expect(result.canVisitPersonalCenter).toBe(false);
-    expect(result.canVisitDataManagement).toBe(false);
-    expect(result.canVisitExperts).toBe(false);
+    expect(result.canVisitDashboard).toBe(true);
+    expect(result.canVisitPersonalCenter).toBe(true);
+    expect(result.canVisitDataManagement).toBe(true);
+    expect(result.canVisitExperts).toBe(true);
+    expect(result.canVisitSystemSettings).toBe(true);
+    expect(result.canVisitSystemUsers).toBe(true);
+    expect(result.canVisitSystemRoles).toBe(true);
+    expect(result.canVisitSystemOnlineUsers).toBe(true);
+    expect(result.canVisitWorkflow).toBe(true);
+    expect(result.canVisitSensitiveWordsPlugin).toBe(true);
     expect(result.canVisitCompetitionRegister).toBe(true);
     expect(result.canVisitActivityRegister).toBe(true);
+    expect(result.canVisitPluginRuntime).toBe(true);
+  });
+
+  it('does not expose activity registration without role permissions', () => {
+    const result = access({ currentUser: commonUserWithPermissions([]) });
+
+    expect(result.canVisitCompetitionRegister).toBe(false);
+    expect(result.canVisitActivityRegister).toBe(false);
+  });
+
+  it('updates visible settings pages when role permissions are adjusted', () => {
+    const beforeAdjustment = access({ currentUser: userWithPermissions(['system:menu:view']) });
+    const afterAdjustment = access({
+      currentUser: {
+        ...userWithPermissions(['system:dict:view']),
+        permissionsVersion: 'permissions-2',
+      },
+    });
+
+    expect(beforeAdjustment.canVisitSystemMenus).toBe(true);
+    expect(beforeAdjustment.canVisitSystemDicts).toBe(false);
+    expect(afterAdjustment.canVisitSystemMenus).toBe(false);
+    expect(afterAdjustment.canVisitSystemDicts).toBe(true);
+  });
+
+  it('does not expose generic plugin runtime to users who only have a session', () => {
+    const result = access({ currentUser: userWithPermissions([]) });
+
+    expect(result.canVisitPluginRuntime).toBe(false);
+  });
+
+  it('does not trust token-only state without a complete current user tuple', async () => {
+    const { tokenManager } = await import('@/auth/token');
+    vi.mocked(tokenManager.hasToken).mockReturnValueOnce(true);
+
+    const result = access({
+      currentUser: {
+        userId: 2002,
+        username: 'operator',
+        sessionId: 'session-1',
+        permissions: ['dashboard:view', 'system:config:view'],
+      } as CurrentUser,
+    });
+
+    expect(result.isLogin).toBe(false);
+    expect(result.canVisitDashboard).toBe(false);
+    expect(result.canVisitSystemSettings).toBe(false);
+  });
+
+  it('does not trust users missing permissions version', () => {
+    const result = access({
+      currentUser: {
+        ...userWithPermissions(['dashboard:view', 'system:config:view']),
+        permissionsVersion: undefined,
+      },
+    });
+
+    expect(result.isLogin).toBe(false);
+    expect(result.canVisitDashboard).toBe(false);
+    expect(result.canVisitSystemSettings).toBe(false);
+  });
+
+  it('allows generic plugin runtime when a user has plugin runtime resources', () => {
+    const result = access({
+      currentUser: userWithPermissions(['plugin:custom-widget:view']),
+      availablePlugins: [
+        {
+          pluginCode: 'custom-widget',
+          pluginName: 'Custom Widget',
+          version: '1.0.0',
+          manifestPath: '/plugins/custom-widget/manifest.json',
+        },
+      ],
+    });
+
+    expect(result.canVisitPluginRuntime).toBe(true);
   });
 });

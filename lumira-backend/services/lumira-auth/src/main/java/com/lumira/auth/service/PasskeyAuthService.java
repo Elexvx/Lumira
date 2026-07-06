@@ -5,16 +5,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.PasskeyAuthenticationCompleteRequest;
-import com.lumira.api.auth.PasskeyCredentialLabelRequest;
+import com.lumira.api.auth.PasskeyCredentialRenameRequest;
+import com.lumira.api.auth.PasskeyOperationVerificationRequest;
 import com.lumira.api.auth.PasskeyOptionsDTO;
 import com.lumira.api.auth.PasskeyRegistrationCompleteRequest;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.LoginCapabilitiesDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.PasskeyCredentialAssertionDTO;
 import com.lumira.api.system.PasskeyCredentialDTO;
 import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PasskeySettingsDTO;
+import com.lumira.api.system.PasswordLoginVerificationDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,11 +45,14 @@ import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class PasskeyAuthService {
@@ -75,17 +86,29 @@ public class PasskeyAuthService {
         this.objectMapper = objectMapper;
     }
 
-    public PasskeyOptionsDTO registrationOptions() {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+    public PasskeyOptionsDTO registrationOptions(PasskeyOperationVerificationRequest request) {
+        CurrentUser currentUser = requireCurrentUser();
+        Long actorUserId = currentUser.getUserId();
+        String actorUsername = currentUser.getUsername();
+        verifyCurrentUserForSensitivePasskeyChange(currentUser, request);
         PasskeySettingsDTO settings = enabledSettings();
         if (!Boolean.TRUE.equals(settings.selfBindingEnabled())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "当前不允许自助绑定通行密钥", "当前不允许自助绑定通行密钥");
         }
         String challenge = randomBase64Url(32);
         String userHandle = randomBase64Url(32);
-        saveChallenge(new ChallengeRecord(TYPE_REGISTRATION, challenge, currentUser.getUserId(), userHandle), settings.challengeTtlSeconds());
+        saveChallenge(new ChallengeRecord(
+                TYPE_REGISTRATION,
+                challenge,
+                actorUserId,
+                userHandle,
+                currentUser.getUserUuid(),
+                currentUser.getSessionId(),
+                currentUser.getSessionVersion(),
+                currentUser.getPermissionsVersion()
+        ), settings.challengeTtlSeconds());
 
-        List<Map<String, Object>> excludeCredentials = systemInternalApi.passkeyCredentials(currentUser.getUserId()).stream()
+        List<Map<String, Object>> excludeCredentials = systemInternalApi.passkeyCredentialDescriptors(actorUserId, currentUser.getUserUuid()).stream()
                 .map(item -> credentialDescriptor(item.credentialId(), item.transports()))
                 .toList();
         Map<String, Object> publicKey = new LinkedHashMap<>();
@@ -93,8 +116,8 @@ public class PasskeyAuthService {
         publicKey.put("rp", Map.of("id", settings.rpId(), "name", settings.rpName()));
         publicKey.put("user", Map.of(
                 "id", userHandle,
-                "name", currentUser.getUsername(),
-                "displayName", currentUser.getUsername()
+                "name", actorUsername,
+                "displayName", actorUsername
         ));
         publicKey.put("pubKeyCredParams", List.of(Map.of("type", "public-key", "alg", -7), Map.of("type", "public-key", "alg", -257)));
         publicKey.put("timeout", settings.challengeTtlSeconds() * 1000);
@@ -110,6 +133,7 @@ public class PasskeyAuthService {
 
     public PasskeyCredentialDTO completeRegistration(PasskeyRegistrationCompleteRequest request, HttpServletRequest httpServletRequest) {
         ChallengeRecord challenge = consumeChallenge(request.challengeId(), TYPE_REGISTRATION);
+        requireCurrentUserIdMatchesChallenge(challenge);
         PasskeySettingsDTO settings = enabledSettings();
         ClientData clientData = parseClientData(request.response().clientDataJSON(), "webauthn.create", challenge.challenge(), settings);
         AttestationData attestation = parseAttestationObject(request.response().attestationObject(), settings);
@@ -120,12 +144,13 @@ public class PasskeyAuthService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "通行密钥 RP ID 不匹配");
         }
         ensureUserVerified(attestation.flags());
-        if (systemInternalApi.passkeyCredentialByCredentialId(attestation.credentialId()) != null) {
+        if (systemInternalApi.passkeyCredentialAssertion(attestation.credentialId()) != null) {
             throw new BizException(ErrorCode.BIZ_ERROR, "该通行密钥已绑定");
         }
         String label = StringUtils.hasText(request.label()) ? request.label() : browserLabel(httpServletRequest);
         return systemInternalApi.savePasskeyCredential(new PasskeyCredentialSaveRequestDTO(
                 challenge.userId(),
+                challenge.userUuid(),
                 challenge.userHandle(),
                 attestation.credentialId(),
                 base64Url(attestation.publicKeyCose()),
@@ -143,7 +168,7 @@ public class PasskeyAuthService {
             throw new BizException(ErrorCode.FORBIDDEN, "当前未开启通行密钥无账号登录");
         }
         String challenge = randomBase64Url(32);
-        saveChallenge(new ChallengeRecord(TYPE_AUTHENTICATION, challenge, null, null), settings.challengeTtlSeconds());
+        saveChallenge(new ChallengeRecord(TYPE_AUTHENTICATION, challenge, null, null, null, null, null, null), settings.challengeTtlSeconds());
         Map<String, Object> publicKey = new LinkedHashMap<>();
         publicKey.put("challenge", challenge);
         publicKey.put("rpId", settings.rpId());
@@ -165,10 +190,11 @@ public class PasskeyAuthService {
         }
         int flags = authenticatorData[32] & 0xff;
         ensureUserVerified(flags);
-        PasskeyCredentialDTO credential = systemInternalApi.passkeyCredentialByCredentialId(request.rawId());
+        PasskeyCredentialAssertionDTO credential = systemInternalApi.passkeyCredentialAssertion(request.rawId());
         if (credential == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "未找到通行密钥");
         }
+        ensureUserHandleMatches(request.response().userHandle(), credential.userHandle());
         verifySignature(credential.publicKeyCose(), authenticatorData, base64UrlDecode(request.response().clientDataJSON()), base64UrlDecode(request.response().signature()));
         long signCount = readSignCount(authenticatorData);
         if (credential.signCount() != null && credential.signCount() > 0 && signCount > 0 && signCount <= credential.signCount()) {
@@ -176,26 +202,186 @@ public class PasskeyAuthService {
         }
         systemInternalApi.updatePasskeyCredentialUsage(new PasskeyCredentialUsageRequestDTO(
                 credential.id(),
+                credential.userId(),
+                credential.userUuid(),
                 signCount,
                 (flags & FLAG_BE) != 0,
                 (flags & FLAG_BS) != 0
         ));
-        return authAppService.loginVerifiedUser(credential.userId(), httpServletRequest);
+        return authAppService.loginVerifiedUser(credential.userId(), credential.userUuid(), httpServletRequest);
     }
 
     public List<PasskeyCredentialDTO> listCredentials() {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.passkeyCredentials(currentUser.getUserId());
+        CurrentUser currentUser = requireCurrentUser();
+        return systemInternalApi.passkeyCredentials(currentUser.getUserId(), currentUser.getUserUuid());
     }
 
-    public PasskeyCredentialDTO renameCredential(Long id, PasskeyCredentialLabelRequest request) {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.renamePasskeyCredential(id, currentUser.getUserId(), request.label());
+    public PasskeyCredentialDTO renameCredential(Long id, PasskeyCredentialRenameRequest request) {
+        requirePositiveId(id, "Passkey credential id is required");
+        CurrentUser currentUser = requireCurrentUser();
+        verifyCurrentUserForSensitivePasskeyChange(
+                currentUser,
+                new PasskeyOperationVerificationRequest(
+                        request.currentPassword(),
+                        request.currentFactorCode(),
+                        request.currentChallengeId(),
+                        request.currentVerificationCode()
+                )
+        );
+        return systemInternalApi.renamePasskeyCredential(id, currentUser.getUserId(), currentUser.getUserUuid(), request.label());
     }
 
-    public Boolean deleteCredential(Long id) {
+    public Boolean deleteCredential(Long id, PasskeyOperationVerificationRequest request) {
+        requirePositiveId(id, "Passkey credential id is required");
+        CurrentUser currentUser = requireCurrentUser();
+        verifyCurrentUserForSensitivePasskeyChange(currentUser, request);
+        return systemInternalApi.deletePasskeyCredential(id, currentUser.getUserId(), currentUser.getUserUuid());
+    }
+
+    private void verifyCurrentUserForSensitivePasskeyChange(CurrentUser currentUser, PasskeyOperationVerificationRequest request) {
+        SystemUserSnapshotDTO user = systemInternalApi.findUserProfileById(currentUser.getUserId());
+        if (user == null || !normalizedEquals(user.userUuid(), currentUser.getUserUuid())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Current user context is invalid");
+        }
+        String currentPassword = request == null ? null : normalizeOptionalText(request.currentPassword());
+        if (StringUtils.hasText(currentPassword)) {
+            verifyCurrentPassword(currentUser, currentPassword);
+            return;
+        }
+        List<String> availableFactors = availableSensitivePasskeyVerificationFactors(currentUser, user);
+        if (!availableFactors.isEmpty()) {
+            requireCurrentFactorVerification(currentUser, request, availableFactors);
+            return;
+        }
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "Please enter your current password before changing passkeys");
+    }
+
+    private void verifyCurrentPassword(CurrentUser currentUser, String currentPassword) {
+        PasswordLoginVerificationDTO verification = systemInternalApi.verifyPasswordLogin(currentUser.getUsername(), currentPassword);
+        if (verification == null
+                || verification.user() == null
+                || !Boolean.TRUE.equals(verification.passwordMatched())
+                || !currentUser.getUserId().equals(verification.user().userId())
+                || !normalizedEquals(currentUser.getUserUuid(), verification.user().userUuid())) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Current password is incorrect");
+        }
+    }
+
+    private List<String> availableSensitivePasskeyVerificationFactors(CurrentUser currentUser, SystemUserSnapshotDTO user) {
+        List<String> factors = new ArrayList<>();
+        List<VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentUser.getUserId(), currentUser.getUserUuid());
+        if (providers != null && providers.stream().anyMatch(provider ->
+                "totp".equalsIgnoreCase(provider.getFactorCode())
+                        && provider.isBound()
+                        && provider.isEnabled())) {
+            factors.add("totp");
+        }
+        LoginCapabilitiesDTO loginCapabilities = systemInternalApi.loginCapabilities();
+        if (loginCapabilities != null && loginCapabilities.smsLoginAvailable() && StringUtils.hasText(user.mobile())) {
+            factors.add("sms");
+        }
+        if (loginCapabilities != null && loginCapabilities.emailLoginAvailable() && StringUtils.hasText(user.email())) {
+            factors.add("email");
+        }
+        return factors;
+    }
+
+    private void requireCurrentFactorVerification(CurrentUser currentUser, PasskeyOperationVerificationRequest request, List<String> availableFactors) {
+        String currentFactorCode = request == null ? null : normalizeOptionalText(request.currentFactorCode());
+        String currentChallengeId = request == null ? null : normalizeOptionalText(request.currentChallengeId());
+        String currentVerificationCode = request == null ? null : normalizeOptionalText(request.currentVerificationCode());
+        if (!StringUtils.hasText(currentFactorCode) || !StringUtils.hasText(currentChallengeId) || !StringUtils.hasText(currentVerificationCode)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Please verify your current sign-in method before changing passkeys");
+        }
+        String normalizedFactorCode = currentFactorCode.toLowerCase(Locale.ROOT);
+        if (!availableFactors.contains(normalizedFactorCode)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Current verification method is not available");
+        }
+        systemInternalApi.verificationVerify(
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                normalizedFactorCode,
+                currentChallengeId,
+                currentVerificationCode
+        );
+    }
+
+    private String normalizeOptionalText(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private Long requireCurrentUserId() {
+        return requireCurrentUser().getUserId();
+    }
+
+    private CurrentUser requireCurrentUser() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.deletePasskeyCredential(id, currentUser.getUserId());
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        refreshTrustedCurrentUser(currentUser);
+        return currentUser;
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        SystemUserSnapshotDTO user = systemInternalApi.findUserIdentityById(userId);
+        if (user == null || user.userId() == null || !user.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!normalizedEquals(user.userUuid(), normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!"ENABLED".equalsIgnoreCase(user.status())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(user.userId());
+        currentUser.setUserUuid(user.userUuid().trim());
+        currentUser.setUsername(user.username());
+        currentUser.setPermissions(snapshot.permissions() == null ? Set.of() : Set.copyOf(snapshot.permissions()));
+        currentUser.setRoleIds(snapshot.roleIds() == null ? Set.of() : Set.copyOf(snapshot.roleIds()));
+        currentUser.setPrimaryDeptId(snapshot.primaryDeptId());
+        currentUser.setDeptIds(snapshot.deptIds() == null ? Set.of() : Set.copyOf(snapshot.deptIds()));
+        currentUser.setDescendantDeptIds(snapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.descendantDeptIds()));
+        currentUser.setDataScopes(snapshot.dataScopes() == null ? List.of() : List.copyOf(snapshot.dataScopes()));
+        currentUser.setPermissionsVersion(snapshot.version().trim());
+        currentUser.setDefaultHomePath(snapshot.defaultHomePath());
+    }
+
+    private void requireCurrentUserIdMatchesChallenge(ChallengeRecord challenge) {
+        CurrentUser currentUser = requireCurrentUser();
+        if (challenge.userId() == null
+                || !challenge.userId().equals(currentUser.getUserId())
+                || !normalizedEquals(challenge.userUuid(), currentUser.getUserUuid())
+                || !normalizedEquals(challenge.sessionId(), currentUser.getSessionId())
+                || challenge.sessionVersion() == null
+                || !challenge.sessionVersion().equals(currentUser.getSessionVersion())
+                || !normalizedEquals(challenge.permissionsVersion(), currentUser.getPermissionsVersion())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Passkey registration challenge does not belong to current user");
+        }
+    }
+
+    private boolean normalizedEquals(String expected, String actual) {
+        return StringUtils.hasText(expected)
+                && StringUtils.hasText(actual)
+                && expected.trim().equals(actual.trim());
+    }
+
+    private void requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message);
+        }
     }
 
     private PasskeySettingsDTO enabledSettings() {
@@ -205,6 +391,9 @@ public class PasskeyAuthService {
         }
         if (!StringUtils.hasText(settings.rpId()) || settings.allowedOrigins() == null || settings.allowedOrigins().isEmpty()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "通行密钥 RP ID 或 Origin 未配置");
+        }
+        if (settings.challengeTtlSeconds() <= 0 || settings.challengeTtlSeconds() > 300) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Passkey challenge TTL is invalid");
         }
         return settings;
     }
@@ -218,7 +407,10 @@ public class PasskeyAuthService {
     }
 
     private ChallengeRecord consumeChallenge(String challengeId, String expectedType) {
-        String key = CHALLENGE_PREFIX + challengeId;
+        if (!StringUtils.hasText(challengeId)) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Passkey challenge is required");
+        }
+        String key = CHALLENGE_PREFIX + challengeId.trim();
         String value = redisTemplate.opsForValue().get(key);
         redisTemplate.delete(key);
         if (!StringUtils.hasText(value)) {
@@ -328,6 +520,13 @@ public class PasskeyAuthService {
         }
     }
 
+    private void ensureUserHandleMatches(String responseUserHandle, String credentialUserHandle) {
+        if (StringUtils.hasText(responseUserHandle)
+                && (!StringUtils.hasText(credentialUserHandle) || !responseUserHandle.trim().equals(credentialUserHandle.trim()))) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Passkey user handle does not match");
+        }
+    }
+
     private Map<String, Object> credentialDescriptor(String credentialId, String transports) {
         Map<String, Object> descriptor = new LinkedHashMap<>();
         descriptor.put("type", "public-key");
@@ -382,7 +581,16 @@ public class PasskeyAuthService {
         return Base64.getUrlDecoder().decode(value);
     }
 
-    private record ChallengeRecord(String type, String challenge, Long userId, String userHandle) {
+    private record ChallengeRecord(
+            String type,
+            String challenge,
+            Long userId,
+            String userHandle,
+            String userUuid,
+            String sessionId,
+            Integer sessionVersion,
+            String permissionsVersion
+    ) {
     }
 
     private record ClientData(String type, String challenge, String origin) {

@@ -105,7 +105,7 @@ class JwtAuthFilterTest {
     void shouldNotUpdateActivityRefreshMetricWhenWithinThrottleWindow() throws Exception {
         Fixture fixture = buildFixture();
         AuthSession session = buildSession("session-5", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
-        session.setPermissionsVersion("v0:data-scope-cache-v4");
+        session.setPermissionsVersion("test");
         session.setPermissions(java.util.List.of("session:read"));
         session.setRoleIds(java.util.List.of(3L));
         session.setPrimaryDeptId(9L);
@@ -136,7 +136,7 @@ class JwtAuthFilterTest {
         fixture.request.setMethod("GET");
         fixture.request.setRequestURI(path);
         AuthSession session = buildSession("session-6", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
-        session.setPermissionsVersion("v0:data-scope-cache-v4");
+        session.setPermissionsVersion("test");
         session.setPermissions(java.util.List.of("session:read"));
         session.setRoleIds(java.util.List.of(3L));
         session.setPrimaryDeptId(9L);
@@ -163,7 +163,7 @@ class JwtAuthFilterTest {
         fixture.request.setMethod(method);
         fixture.request.setRequestURI(path);
         AuthSession session = buildSession("session-passkey", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
-        session.setPermissionsVersion("v0:data-scope-cache-v4");
+        session.setPermissionsVersion("test");
         session.setPermissions(java.util.List.of("session:read"));
         session.setRoleIds(java.util.List.of(3L));
         TokenClaims claims = buildClaims(session, "token-passkey");
@@ -173,6 +173,26 @@ class JwtAuthFilterTest {
         executeFilter(fixture, "access-token");
 
         assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+    }
+
+    @Test
+    void shouldRejectOversizedBearerTokenBeforeParsing() throws Exception {
+        Fixture fixture = buildFixture();
+
+        executeFilter(fixture, "a".repeat(8 * 1024 + 1));
+
+        assertEquals(0, fixture.jwtTokenService.parseCount);
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, fixture.response.getStatus());
+    }
+
+    @Test
+    void shouldRejectUnsafeBearerTokenBeforeParsing() throws Exception {
+        Fixture fixture = buildFixture();
+
+        executeFilter(fixture, "token with spaces");
+
+        assertEquals(0, fixture.jwtTokenService.parseCount);
+        assertEquals(HttpServletResponse.SC_UNAUTHORIZED, fixture.response.getStatus());
     }
 
     private void executeFilter(Fixture fixture, String accessToken) throws Exception {
@@ -230,11 +250,13 @@ class JwtAuthFilterTest {
         AuthSession session = new AuthSession();
         session.setSessionId(sessionId);
         session.setUserId(userId);
+        session.setUserUuid("user-uuid-" + userId);
         session.setUsername("admin");
         session.setLoginTime(lastActivityAt);
         session.setLastActivityAt(lastActivityAt);
         session.setExpireTime(expireTime);
         session.setSessionVersion(1);
+        session.setPermissionsVersion("test");
         session.setClientType("WEB");
         return session;
     }
@@ -243,8 +265,10 @@ class JwtAuthFilterTest {
         TokenClaims claims = new TokenClaims();
         claims.setSessionId(session.getSessionId());
         claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
         claims.setUsername(session.getUsername());
         claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getPermissionsVersion());
         claims.setTokenId(tokenId);
         claims.setTokenType(TokenType.ACCESS);
         return claims;
@@ -304,13 +328,18 @@ class JwtAuthFilterTest {
         }
 
         @Override
-        public PermissionSnapshot loadSnapshot(Long userId) {
+        public PermissionSnapshot loadSnapshot(Long userId, String userUuid) {
             return new PermissionSnapshot("test", Set.of());
         }
 
         @Override
         public boolean isSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
             return true;
+        }
+
+        @Override
+        public boolean isTrustedActiveUser(Long userId, String userUuid) {
+            return userId != null && userId > 0 && userUuid != null && !userUuid.isBlank();
         }
     }
 
@@ -346,6 +375,7 @@ class JwtAuthFilterTest {
 
     private static final class StubJwtTokenService extends JwtTokenService {
         private TokenClaims tokenClaims;
+        private int parseCount;
 
         private StubJwtTokenService(SecuritySettingsService securitySettingsService) {
             super(buildSecurityPropertiesStatic(), securitySettingsService);
@@ -353,6 +383,7 @@ class JwtAuthFilterTest {
 
         @Override
         public TokenClaims parseToken(String token) {
+            parseCount += 1;
             return tokenClaims;
         }
 

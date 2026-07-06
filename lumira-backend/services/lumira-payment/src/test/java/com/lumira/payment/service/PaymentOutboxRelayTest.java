@@ -3,6 +3,7 @@ package com.lumira.payment.service;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,6 +34,18 @@ class PaymentOutboxRelayTest {
 
         assertThat(delivered).isEqualTo(7);
         verify(service).dispatchPending(dispatcher, 25);
+    }
+
+    @Test
+    void dispatchPendingEventsShouldRejectInvalidBatchSizeBeforeDispatching() {
+        PaymentOutboxService service = mock(PaymentOutboxService.class);
+        PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
+        PaymentOutboxRelay relay = new PaymentOutboxRelay(service, dispatcher, true, 201, 4);
+
+        assertThrows(IllegalStateException.class, relay::dispatchPendingEvents);
+
+        verify(service, never()).dispatchableBacklog();
+        verify(service, never()).dispatchPending(dispatcher, 201);
     }
 
     @Test

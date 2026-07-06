@@ -19,7 +19,9 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +38,7 @@ class TeamInviteServiceTest {
         assertThat(invite.getInviteUrl()).contains(invite.getRawToken());
         verify(fixtures.teamInviteRepository).createInvite(
                 org.mockito.ArgumentMatchers.eq(2001L), anyString(), org.mockito.ArgumentMatchers.matches("[0-9a-f]{64}"),
-                anyString(), anyString(), any(), any(), anyBoolean(), anyLong()
+                anyString(), anyString(), any(), any(), anyBoolean(), anyLong(), org.mockito.ArgumentMatchers.eq("user-uuid-3001")
         );
     }
 
@@ -44,7 +46,7 @@ class TeamInviteServiceTest {
     void blankInviteCodeShouldBeGeneratedAndJoinable() {
         Fixtures fixtures = fixtures();
         TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
-        when(fixtures.permissionService.activeMember(2001L, 3002L)).thenReturn(null);
+        when(fixtures.permissionService.activeMember(2001L, 3002L, "user-uuid-3002")).thenReturn(null);
 
         TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L), 2001L, request);
         when(fixtures.teamInviteRepository.findByCode(invite.getInviteCode())).thenReturn(invite);
@@ -52,7 +54,7 @@ class TeamInviteServiceTest {
 
         assertThat(invite.getInviteCode()).matches("[A-Z0-9]{8,}");
         assertThat(result.getStatus()).isEqualTo("JOINED");
-        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, null, "MEMBER");
+        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, "user-uuid-3002", null, null, "MEMBER");
     }
 
     @Test
@@ -73,15 +75,15 @@ class TeamInviteServiceTest {
     @Test
     void inviteWithoutApprovalShouldJoinDirectlyAndRepeatJoinIsIdempotent() {
         Fixtures fixtures = fixtures();
-        when(fixtures.permissionService.activeMember(2001L, 3002L)).thenReturn(null);
+        when(fixtures.permissionService.activeMember(2001L, 3002L, "user-uuid-3002")).thenReturn(null);
 
         TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("JOINED");
-        verify(fixtures.teamInviteRepository).consumeInviteQuota(any());
-        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, null, "MEMBER");
+        verify(fixtures.teamInviteRepository).consumeInviteQuota(any(), anyLong(), anyString());
+        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, "user-uuid-3002", null, null, "MEMBER");
 
-        when(fixtures.permissionService.activeMember(2001L, 3002L)).thenReturn(member());
+        when(fixtures.permissionService.activeMember(2001L, 3002L, "user-uuid-3002")).thenReturn(member());
         TeamVO.JoinResult repeat = fixtures.service.joinByToken(currentUser(3002L), "raw");
         assertThat(repeat.getStatus()).isEqualTo("JOINED");
     }
@@ -91,13 +93,13 @@ class TeamInviteServiceTest {
         Fixtures fixtures = fixtures();
         TeamVO.Invite approvalInvite = invite(false, false, true);
         when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(approvalInvite);
-        when(fixtures.teamJoinRequestRepository.findPending(2001L, 3002L)).thenReturn(null);
+        when(fixtures.teamJoinRequestRepository.findPending(2001L, 3002L, "user-uuid-3002")).thenReturn(null);
 
         TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("PENDING");
-        verify(fixtures.teamJoinRequestRepository).createPending(2001L, 3002L, 5001L, null);
-        verify(fixtures.teamInviteRepository).consumeInviteQuota(approvalInvite);
+        verify(fixtures.teamJoinRequestRepository).createPending(2001L, 3002L, "user-uuid-3002", 5001L, null);
+        verify(fixtures.teamInviteRepository).consumeInviteQuota(approvalInvite, 3002L, "user-uuid-3002");
     }
 
     @Test
@@ -106,7 +108,7 @@ class TeamInviteServiceTest {
         TeamVO.Invite approvalInvite = invite(false, false, true);
         TeamVO.JoinRequest pending = joinRequest();
         when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(approvalInvite);
-        when(fixtures.teamJoinRequestRepository.findPending(2001L, 3002L)).thenReturn(pending);
+        when(fixtures.teamJoinRequestRepository.findPending(2001L, 3002L, "user-uuid-3002")).thenReturn(pending);
 
         TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
@@ -127,15 +129,123 @@ class TeamInviteServiceTest {
         assertThat(preview.getNeedApproval()).isTrue();
     }
 
+    @Test
+    void joinByTokenShouldRejectUnauthenticatedUserBeforeConsumingInvite() {
+        Fixtures fixtures = fixtures();
+
+        assertThatThrownBy(() -> fixtures.service.joinByToken(unauthenticatedUser(3002L), "raw"))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamInviteRepository, never()).consumeInviteQuota(any(), anyLong(), anyString());
+        verify(fixtures.teamAppService, never()).ensureDirectMember(anyLong(), anyLong(), any(), any(), any(), anyString());
+    }
+
+    @Test
+    void joinByTokenShouldRejectUserWithoutUuidBeforeConsumingInvite() {
+        Fixtures fixtures = fixtures();
+        CurrentUser user = currentUser(3002L);
+        user.setUserUuid(" ");
+
+        assertThatThrownBy(() -> fixtures.service.joinByToken(user, "raw"))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamInviteRepository, never()).consumeInviteQuota(any(), anyLong(), anyString());
+        verify(fixtures.teamAppService, never()).ensureDirectMember(anyLong(), anyLong(), any(), any(), any(), anyString());
+    }
+
+    @Test
+    void joinByCodeShouldRejectUserWithoutPermissionsVersionBeforeLookup() {
+        Fixtures fixtures = fixtures();
+        CurrentUser user = currentUser(3002L);
+        user.setPermissionsVersion(null);
+
+        assertThatThrownBy(() -> fixtures.service.joinByCode(user, "JOIN2026"))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamInviteRepository, never()).findByCode(anyString());
+        verify(fixtures.teamInviteRepository, never()).consumeInviteQuota(any(), anyLong(), anyString());
+    }
+
+    @Test
+    void createInviteShouldRejectInvalidRequestBeforePermissionLookup() {
+        Fixtures fixtures = fixtures();
+
+        assertThatThrownBy(() -> fixtures.service.createInvite(currentUser(3001L), 2001L, null))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
+        verify(fixtures.teamInviteRepository, never()).createInvite(anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong(), anyString());
+    }
+
+    @Test
+    void disableInviteShouldRejectInvalidInviteIdBeforeRepositoryAccess() {
+        Fixtures fixtures = fixtures();
+
+        assertThatThrownBy(() -> fixtures.service.disableInvite(currentUser(3001L), 2001L, 0L))
+                .isInstanceOf(BizException.class);
+
+        verify(fixtures.teamInviteRepository, never()).disableInvite(anyLong(), anyLong(), anyLong(), anyString());
+    }
+
+    @Test
+    void joinByTokenShouldRejectOverlongTokenBeforeHashLookup() {
+        Fixtures fixtures = fixtures();
+
+        assertThatThrownBy(() -> fixtures.service.joinByToken(currentUser(3002L), "a".repeat(257)))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("too long");
+
+        verify(fixtures.teamInviteRepository, never()).findByTokenHash(anyString());
+        verify(fixtures.teamInviteRepository, never()).consumeInviteQuota(any(), anyLong(), anyString());
+    }
+
+    @Test
+    void createJoinRequestShouldRejectOversizedMessageBeforeTeamLookup() {
+        Fixtures fixtures = fixtures();
+        TeamDTO.JoinRequestCreateRequest request = new TeamDTO.JoinRequestCreateRequest();
+        request.setApplyMessage("a".repeat(1001));
+
+        assertThatThrownBy(() -> fixtures.service.createJoinRequest(currentUser(3002L), 2001L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("too long");
+
+        verify(fixtures.teamAppService, never()).queryTeam(anyLong(), any(), any());
+        verify(fixtures.teamJoinRequestRepository, never()).createPending(anyLong(), anyLong(), any(), any(), any());
+    }
+
+    @Test
+    void approveJoinRequestShouldBindReviewedRequestToUserIdentity() {
+        Fixtures fixtures = fixtures();
+        when(fixtures.teamJoinRequestRepository.findById(2001L, 6001L)).thenReturn(joinRequest());
+        when(fixtures.teamJoinRequestRepository.approve(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null)).thenReturn(true);
+
+        TeamVO.JoinRequest reviewed = fixtures.service.approveJoinRequest(currentUser(3001L), 2001L, 6001L, null);
+
+        assertThat(reviewed.getStatus()).isEqualTo("PENDING");
+        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", "MEMBER");
+        verify(fixtures.teamJoinRequestRepository).approve(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null);
+    }
+
+    @Test
+    void rejectJoinRequestShouldBindReviewedRequestToUserIdentity() {
+        Fixtures fixtures = fixtures();
+        when(fixtures.teamJoinRequestRepository.findById(2001L, 6001L)).thenReturn(joinRequest());
+        when(fixtures.teamJoinRequestRepository.reject(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null)).thenReturn(true);
+
+        fixtures.service.rejectJoinRequest(currentUser(3001L), 2001L, 6001L, null);
+
+        verify(fixtures.teamJoinRequestRepository).reject(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null);
+    }
+
     private Fixtures fixtures() {
         TeamAppService teamAppService = teamService();
         TeamPermissionService permissionService = mock(TeamPermissionService.class);
         TeamInviteRepository teamInviteRepository = mock(TeamInviteRepository.class);
         TeamJoinRequestRepository teamJoinRequestRepository = mock(TeamJoinRequestRepository.class);
-        when(permissionService.activeRole(2001L, 3001L)).thenReturn("OWNER");
+        when(permissionService.activeRole(2001L, 3001L, "user-uuid-3001")).thenReturn("OWNER");
         when(permissionService.canInvite("OWNER")).thenReturn(true);
         TeamVO.Invite invite = invite(false, false, false);
-        when(teamInviteRepository.createInvite(anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong()))
+        when(teamInviteRepository.createInvite(anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong(), anyString()))
                 .thenAnswer(invocation -> {
                     invite.setInviteCode(invocation.getArgument(1));
                     return 5001L;
@@ -143,15 +253,15 @@ class TeamInviteServiceTest {
         when(teamInviteRepository.findById(2001L, 5001L)).thenReturn(invite);
         when(teamInviteRepository.findByTokenHash(anyString())).thenReturn(invite);
         when(teamInviteRepository.findByCode("JOIN2026")).thenReturn(invite);
-        when(teamInviteRepository.consumeInviteQuota(any())).thenReturn(true);
-        when(teamJoinRequestRepository.createPending(anyLong(), anyLong(), any(), any())).thenReturn(6001L);
+        when(teamInviteRepository.consumeInviteQuota(any(), anyLong(), anyString())).thenReturn(true);
+        when(teamJoinRequestRepository.createPending(anyLong(), anyLong(), any(), any(), any())).thenReturn(6001L);
         when(teamJoinRequestRepository.findById(2001L, 6001L)).thenReturn(joinRequest());
         TeamInviteService service = new TeamInviteService(
                 teamAppService,
                 permissionService,
                 teamInviteRepository,
                 teamJoinRequestRepository,
-                (userId, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
+                (userId, userUuid, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
         );
         return new Fixtures(service, teamAppService, permissionService, teamInviteRepository, teamJoinRequestRepository);
     }
@@ -159,12 +269,15 @@ class TeamInviteServiceTest {
     private TeamAppService teamService() {
         TeamAppService service = mock(TeamAppService.class);
         when(service.requireUserId(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
+        when(service.requireUserUuid(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
+        doCallRealMethod().when(service).requirePositiveId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         when(service.normalizeEnum(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(Set.class), org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
         when(service.trimToNull(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
-        when(service.queryTeam(2001L, 3001L)).thenReturn(team("OWNER", "INVITE_ONLY"));
-        when(service.queryTeam(2001L, 3002L)).thenReturn(team("MEMBER", "INVITE_ONLY"));
-        when(service.queryTeam(2001L, null)).thenReturn(team(null, "INVITE_ONLY"));
-        doNothing().when(service).ensureDirectMember(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
+        when(service.requireText(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
+        when(service.queryTeam(2001L, 3001L, "user-uuid-3001")).thenReturn(team("OWNER", "INVITE_ONLY"));
+        when(service.queryTeam(2001L, 3002L, "user-uuid-3002")).thenReturn(team("MEMBER", "INVITE_ONLY"));
+        when(service.queryTeam(2001L, null, null)).thenReturn(team(null, "INVITE_ONLY"));
+        doNothing().when(service).ensureDirectMember(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
         return service;
     }
 
@@ -172,6 +285,17 @@ class TeamInviteServiceTest {
         CurrentUser user = new CurrentUser();
         user.setUserId(userId);
         user.setUsername("user" + userId);
+        user.setUserUuid("user-uuid-" + userId);
+        user.setSessionId("session-" + userId);
+        user.setSessionVersion(1);
+        user.setPermissionsVersion("permissions-1");
+        user.setAuthenticated(true);
+        return user;
+    }
+
+    private static CurrentUser unauthenticatedUser(Long userId) {
+        CurrentUser user = currentUser(userId);
+        user.setAuthenticated(false);
         return user;
     }
 
@@ -191,6 +315,7 @@ class TeamInviteServiceTest {
         TeamVO.Member member = new TeamVO.Member();
         member.setId(1L);
         member.setUserId(3002L);
+        member.setUserUuid("user-uuid-3002");
         member.setRole("MEMBER");
         member.setStatus("ACTIVE");
         return member;
@@ -215,6 +340,7 @@ class TeamInviteServiceTest {
         request.setId(6001L);
         request.setTeamId(2001L);
         request.setUserId(3002L);
+        request.setUserUuid("user-uuid-3002");
         request.setStatus("PENDING");
         return request;
     }

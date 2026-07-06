@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public record FileObjectDTO(
         Long id,
         Long uploadedBy,
+        String uploadedByUuid,
         String uploadedByName,
         String originalFileName,
         String storedFileName,

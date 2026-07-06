@@ -8,7 +8,6 @@ public class LoginCodeChallengeDTO {
     private String promptMessage;
     private Long expiresInSeconds;
     private Long cooldownSeconds;
-    private String debugCode;
 
     public String getLoginType() {
         return loginType;
@@ -64,13 +63,5 @@ public class LoginCodeChallengeDTO {
 
     public void setCooldownSeconds(Long cooldownSeconds) {
         this.cooldownSeconds = cooldownSeconds;
-    }
-
-    public String getDebugCode() {
-        return debugCode;
-    }
-
-    public void setDebugCode(String debugCode) {
-        this.debugCode = debugCode;
     }
 }

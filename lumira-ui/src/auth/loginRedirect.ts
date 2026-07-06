@@ -5,6 +5,20 @@ import { AUTH_SESSION_BROADCAST_CHANNEL } from '@/auth/token';
 import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
 import type { CurrentUser, MenuNode } from '@/types/api';
 
+const STABLE_ACCESSIBLE_FALLBACK_PATHS = [
+  '/competitions/register',
+  '/activities/register',
+  '/dashboard/home',
+  '/data-management',
+  '/certificates/templates',
+  '/certificates/generate',
+  '/certificates/records',
+  '/experts/management',
+  '/workflows/tasks',
+  '/user-center/personal-center/profile',
+  '/user-center/personal-center/files',
+] as const;
+
 export const resolveLoginRedirectTarget = (search: string, fallback = DEFAULT_HOME_PATH) => {
   const redirect = new URLSearchParams(search).get('redirect')?.trim();
   if (!redirect || redirect === LOGIN_PATH || !redirect.startsWith('/')) {
@@ -12,6 +26,24 @@ export const resolveLoginRedirectTarget = (search: string, fallback = DEFAULT_HO
   }
 
   return redirect;
+};
+
+export const resolveLoginPageRuntimeRedirectTarget = ({
+  pathname,
+  search,
+  isAuthenticated,
+  forcePasswordChangeRequested = false,
+}: {
+  pathname: string;
+  search: string;
+  isAuthenticated: boolean;
+  forcePasswordChangeRequested?: boolean;
+}) => {
+  if (pathname === LOGIN_PATH && !isAuthenticated && !forcePasswordChangeRequested) {
+    return DEFAULT_HOME_PATH;
+  }
+
+  return resolveLoginRedirectTarget(search);
 };
 
 const normalizePathname = (target: string) => {
@@ -77,6 +109,29 @@ const findFirstAccessibleMenuPath = (menuTree: MenuNode[] | undefined, currentUs
   return walk(menuTree);
 };
 
+const findFirstAccessibleStableFallbackPath = (currentUser: CurrentUser): string | null => {
+  for (const candidatePath of STABLE_ACCESSIBLE_FALLBACK_PATHS) {
+    if (canVisitPath(candidatePath, currentUser)) {
+      return candidatePath;
+    }
+  }
+
+  return null;
+};
+
+const findFirstAccessibleRoutePath = (currentUser: CurrentUser): string | null => {
+  for (const routeMeta of realPageRouteMetaList) {
+    if (!routeMeta.access || routeMeta.hideInMenu || routeMeta.path === LOGIN_PATH || routeMeta.path.includes('/:')) {
+      continue;
+    }
+    if (canVisitPath(routeMeta.path, currentUser)) {
+      return routeMeta.path;
+    }
+  }
+
+  return null;
+};
+
 export const resolveAuthorizedLoginRedirectTarget = (
   search: string,
   currentUser: CurrentUser,
@@ -97,6 +152,16 @@ export const resolveAuthorizedLoginRedirectTarget = (
   const menuTarget = findFirstAccessibleMenuPath(menuTree, currentUser);
   if (menuTarget) {
     return resolveCanonicalRoutePath(menuTarget);
+  }
+
+  const stableFallbackTarget = findFirstAccessibleStableFallbackPath(currentUser);
+  if (stableFallbackTarget) {
+    return resolveCanonicalRoutePath(stableFallbackTarget);
+  }
+
+  const routeTarget = findFirstAccessibleRoutePath(currentUser);
+  if (routeTarget) {
+    return resolveCanonicalRoutePath(routeTarget);
   }
 
   const canonicalFallback = resolveCanonicalRoutePath(fallback);

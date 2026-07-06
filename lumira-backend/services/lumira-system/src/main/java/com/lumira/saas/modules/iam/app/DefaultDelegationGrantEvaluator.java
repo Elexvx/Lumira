@@ -1,10 +1,14 @@
 package com.lumira.saas.modules.iam.app;
 
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationVerdict;
 import com.lumira.common.security.authorization.DelegationGrantDecision;
 import com.lumira.common.security.authorization.DelegationGrantEvaluator;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -17,9 +21,18 @@ import java.util.Map;
 public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator {
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private final SessionAuthenticationService sessionAuthenticationService;
 
     public DefaultDelegationGrantEvaluator(MyBatisQueryOperations jdbcTemplate) {
+        this(jdbcTemplate, null);
+    }
+
+    public DefaultDelegationGrantEvaluator(
+            MyBatisQueryOperations jdbcTemplate,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
+        this.sessionAuthenticationService = sessionAuthenticationService;
     }
 
     @Override
@@ -27,12 +40,20 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
         if (request == null || (!"AI_AGENT".equals(normalize(request.channel())) && request.employeeId() == null)) {
             return DelegationGrantDecision.notInScope();
         }
-        Long humanUserId = request.humanUserId() == null && request.currentUser() != null
-                ? request.currentUser().getUserId()
-                : request.humanUserId();
+        Long trustedCurrentUserId = trustedUserIdOrNull(request.currentUser());
+        String trustedCurrentUserUuid = trustedUserUuidOrNull(request.currentUser());
+        Long humanUserId = request.humanUserId() == null ? trustedCurrentUserId : request.humanUserId();
+        String humanUserUuid = StringUtils.hasText(request.humanUserUuid())
+                ? request.humanUserUuid().trim()
+                : trustedCurrentUserUuid;
         Long employeeId = request.employeeId();
-        if (humanUserId == null || humanUserId <= 0 || employeeId == null || employeeId <= 0) {
+        if (humanUserId == null || humanUserId <= 0 || !StringUtils.hasText(humanUserUuid)
+                || employeeId == null || employeeId <= 0) {
             return DelegationGrantDecision.deny("DELEGATION_CONTEXT_INCOMPLETE", "Delegation subject context is incomplete");
+        }
+        if (trustedCurrentUserId == null || !humanUserId.equals(trustedCurrentUserId)
+                || !humanUserUuid.equals(trustedCurrentUserUuid)) {
+            return DelegationGrantDecision.deny("DELEGATION_HUMAN_SUBJECT_UNTRUSTED", "Delegating human subject is not trusted");
         }
         Long humanSubjectId = subjectId("HUMAN_USER", humanUserId);
         if (humanSubjectId == null) {
@@ -103,6 +124,43 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
                 subjectType,
                 refId
         );
+    }
+
+    private Long trustedUserIdOrNull(CurrentUser currentUser) {
+        CurrentUser trustedCurrentUser = trustedCurrentUserOrNull(currentUser);
+        return trustedCurrentUser == null ? null : trustedCurrentUser.getUserId();
+    }
+
+    private String trustedUserUuidOrNull(CurrentUser currentUser) {
+        CurrentUser trustedCurrentUser = trustedCurrentUserOrNull(currentUser);
+        if (trustedCurrentUser == null) {
+            return null;
+        }
+        return trustedCurrentUser.getUserUuid().trim();
+    }
+
+    private CurrentUser trustedCurrentUserOrNull(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return null;
+        }
+        if (sessionAuthenticationService == null) {
+            return currentUser;
+        }
+        try {
+            SessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    );
+            CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+            return AuthenticationTrustSupport.isTrustedCurrentUser(refreshedUser) ? refreshedUser : null;
+        } catch (BizException exception) {
+            return null;
+        }
     }
 
     private int specificity(Map<String, Object> row, AuthorizationRequest request) {

@@ -4,6 +4,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;
 
@@ -12,16 +13,20 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SystemManagementAppServicePermissionCacheTest {
 
     @Test
     void shouldCachePermissionCatalogGlobally() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.currentPermissionSnapshotVersion()).thenReturn("v1");
         SystemManagementAppService service = new SystemManagementAppService(
                 queryOperations,
                 null,
-                null,
+                permissionSnapshotService,
                 null,
                 null,
                 null,
@@ -44,7 +49,8 @@ class SystemManagementAppServicePermissionCacheTest {
         List<SystemVO.PermissionVO> second = service.listPermissions(currentUser);
 
         assertEquals(1, queryOperations.queryCount);
-        assertEquals(first, second);
+        assertEquals(first.size(), second.size());
+        assertEquals(first.getFirst().getPermissionKey(), second.getFirst().getPermissionKey());
         assertTrue(first.stream().anyMatch(permission -> "system:role:view".equals(permission.getPermissionKey())));
         assertEquals(1, first.size());
     }

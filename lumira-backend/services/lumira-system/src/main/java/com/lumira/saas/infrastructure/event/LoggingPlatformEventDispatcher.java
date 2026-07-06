@@ -22,6 +22,7 @@ public class LoggingPlatformEventDispatcher implements PlatformEventDispatcher {
 
     @Override
     public void dispatch(PlatformEventOutboxEntity event) {
+        PlatformEventTrustValidator.requireTrustedSystemEvent(event);
         logger.info(
                 "Platform event dispatched: id={}, sourceType={}, eventType={}, eventKey={}",
                 event.getId(),

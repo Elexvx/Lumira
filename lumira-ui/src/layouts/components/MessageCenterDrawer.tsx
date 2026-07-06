@@ -5,6 +5,7 @@ import { getLocale, useIntl } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { isTrustedCurrentUser } from '@/auth/sessionState';
 import { useResponsive } from '@/hooks/useResponsive';
 import { getApiOrigin } from '@/constants/http';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
@@ -279,7 +280,8 @@ const subscribeMessageCenterRealtimeClient = (listener: MessageCenterRealtimeLis
 
 const useMessageCenterRealtime = (enabled: boolean, onEvent: (event: MessageCenterRealtimeEvent) => void) => {
   const { initialState } = useInitialStateModel();
-  const sessionId = initialState?.currentUser?.sessionId;
+  const trustedUser = isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser : undefined;
+  const sessionId = trustedUser?.sessionId;
 
   useEffect(() => {
     if (!enabled || !sessionId) {
@@ -312,7 +314,10 @@ const useMessageCenterContentModel = (enabled: boolean) => {
     [],
   );
 
-  const permissions = useMemo(() => new Set(initialState?.currentUser?.permissions || []), [initialState?.currentUser?.permissions]);
+  const permissions = useMemo(
+    () => new Set(isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser.permissions || [] : []),
+    [initialState?.currentUser],
+  );
   const canOpenMessageCenter =
     permissions.has('*') ||
     permissions.has('message:message:view') ||
@@ -647,7 +652,10 @@ export const MessageCenterDrawer = () => {
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
 
-  const permissions = useMemo(() => new Set(initialState?.currentUser?.permissions || []), [initialState?.currentUser?.permissions]);
+  const permissions = useMemo(
+    () => new Set(isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser.permissions || [] : []),
+    [initialState?.currentUser],
+  );
   const canOpenMessageCenter =
     permissions.has('*') ||
     permissions.has('message:message:view') ||

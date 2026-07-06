@@ -14,6 +14,7 @@ public class AuthSession {
     private String userUuid;
     private String username;
     private Long simulatedRoleId;
+    private String loginType;
     private Instant loginTime;
     private Instant lastActivityAt;
     private Instant expireTime;
@@ -62,6 +63,14 @@ public class AuthSession {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getLoginType() {
+        return loginType;
+    }
+
+    public void setLoginType(String loginType) {
+        this.loginType = loginType;
     }
 
     public Long getSimulatedRoleId() {

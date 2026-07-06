@@ -1,20 +1,27 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.common.vo.PageResponse;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -29,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,12 +44,88 @@ import java.util.stream.Collectors;
 public class OnlineSessionManagementAppService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final long MAX_PAGE_NO = 100_000L;
+    private static final int MAX_SESSION_SCAN_SIZE = 10_000;
+    private static final int MAX_SESSION_ID_LENGTH = 128;
+    private static final long PROTECTED_ADMIN_ID = 1001L;
+    private static final String PROTECTED_ADMIN_USERNAME = "admin";
+    private static final Pattern SAFE_SESSION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
+    private static final String PERMISSION_VIEW = "system:online-user:view";
+    private static final String PERMISSION_KICK = "system:online-user:kick";
+    private static final String PERMISSION_BAN = "system:online-user:ban";
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final AuthSessionStore authSessionStore;
     private final SecuritySettingsService securitySettingsService;
     private final OperationAuditService operationAuditService;
     private final OnlineSessionStreamService onlineSessionStreamService;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
+
+    @Autowired
+    public OnlineSessionManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            AuthSessionStore authSessionStore,
+            SecuritySettingsService securitySettingsService,
+            OperationAuditService operationAuditService,
+            OnlineSessionStreamService onlineSessionStreamService,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(
+                jdbcTemplate,
+                authSessionStore,
+                securitySettingsService,
+                operationAuditService,
+                onlineSessionStreamService,
+                permissionSnapshotService,
+                null,
+                null
+        );
+    }
+
+    @Autowired
+    public OnlineSessionManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            AuthSessionStore authSessionStore,
+            SecuritySettingsService securitySettingsService,
+            OperationAuditService operationAuditService,
+            OnlineSessionStreamService onlineSessionStreamService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.authSessionStore = authSessionStore;
+        this.securitySettingsService = securitySettingsService;
+        this.operationAuditService = operationAuditService;
+        this.onlineSessionStreamService = onlineSessionStreamService;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+    }
+
+    public OnlineSessionManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            AuthSessionStore authSessionStore,
+            SecuritySettingsService securitySettingsService,
+            OperationAuditService operationAuditService,
+            OnlineSessionStreamService onlineSessionStreamService,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(
+                jdbcTemplate,
+                authSessionStore,
+                securitySettingsService,
+                operationAuditService,
+                onlineSessionStreamService,
+                permissionSnapshotService,
+                null,
+                sessionAuthenticationService
+        );
+    }
 
     public OnlineSessionManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -50,17 +134,13 @@ public class OnlineSessionManagementAppService {
             OperationAuditService operationAuditService,
             OnlineSessionStreamService onlineSessionStreamService
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.authSessionStore = authSessionStore;
-        this.securitySettingsService = securitySettingsService;
-        this.operationAuditService = operationAuditService;
-        this.onlineSessionStreamService = onlineSessionStreamService;
+        this(jdbcTemplate, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, null, null, null);
     }
 
     public PageResponse<SystemVO.OnlineSessionVO> listOnlineSessions(CurrentUser currentUser, long pageNo, long pageSize) {
-        ensureUserContext(currentUser);
-        long normalizedPageNo = Math.max(pageNo, 1L);
-        long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        requirePermission(currentUser, PERMISSION_VIEW);
+        long normalizedPageNo = normalizePageNo(pageNo);
+        long normalizedPageSize = normalizePageSize(pageSize);
         long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
 
         List<AuthSession> sessions = fetchOnlineSessions(idleTimeoutSeconds);
@@ -83,59 +163,83 @@ public class OnlineSessionManagementAppService {
     }
 
     public boolean kickSession(CurrentUser currentUser, String sessionId) {
-        ensureUserContext(currentUser);
-        AuthSession session = authSessionStore.findBySessionId(sessionId)
-                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "在线会话不存在或已失效"));
+        Long operatorId = requirePermission(currentUser, PERMISSION_KICK);
+        String normalizedSessionId = requireText(sessionId, "Session id", MAX_SESSION_ID_LENGTH);
+        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
+                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Online session does not exist or has expired"));
 
-        if (sessionId.equals(currentUser.getSessionId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不能踢出当前登录会话");
+        if (normalizedSessionId.equals(currentUser.getSessionId())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "涓嶈兘韪㈠嚭褰撳墠鐧诲綍浼氳瘽");
         }
 
         authSessionStore.remove(session, true);
-        operationAuditService.log(currentUser.getUserId(),
-                currentUser.getUsername(),
+        operationAuditService.log(operatorId,
+                currentUser.getUserUuid(),
+                trustedUsername(currentUser),
                 "online-user",
                 "kick",
                 "KICK",
                 "SUCCESS",
-                "踢出在线会话: " + session.getUsername() + " / " + sessionId
+                "韪㈠嚭鍦ㄧ嚎浼氳瘽: " + session.getUsername() + " / " + normalizedSessionId
         );
         return true;
     }
 
     @Transactional
     public boolean banUser(CurrentUser currentUser, Long userId) {
-        ensureUserContext(currentUser);
+        Long operatorId = requirePermission(currentUser, PERMISSION_BAN);
+        requirePositiveId(userId, "User id");
         if (userId == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "用户ID不能为空");
+            throw new BizException(ErrorCode.BAD_REQUEST, "鐢ㄦ埛ID涓嶈兘涓虹┖");
         }
-        if (userId.equals(currentUser.getUserId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不能封禁当前登录账号");
+        if (userId.equals(operatorId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "涓嶈兘灏佺褰撳墠鐧诲綍璐﹀彿");
         }
 
         UserRow targetUser = loadUser(userId)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "用户不存在或无权访问"));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "鐢ㄦ埛涓嶅瓨鍦ㄦ垨鏃犳潈璁块棶"));
 
-        jdbcTemplate.update(
-                "update sys_user set status = 'DISABLED', updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                currentUser.getUserId(),
+        if (isProtectedAdminAccount(targetUser)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Protected admin account cannot be banned");
+        }
+
+        int updated = jdbcTemplate.update(
+                "update sys_user set status = 'DISABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
+                operatorId,
+                currentUser.getUserUuid(),
                 LocalDateTime.now(),
-                userId
+                userId,
+                targetUser.getUuid()
         );
-        authSessionStore.revokeUserSessions(userId, true);
-        operationAuditService.log(currentUser.getUserId(),
-                currentUser.getUsername(),
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "User changed, please retry");
+        }
+        authSessionStore.revokeUserSessions(userId, targetUser.getUuid(), true);
+        operationAuditService.log(operatorId,
+                currentUser.getUserUuid(),
+                trustedUsername(currentUser),
                 "online-user",
                 "ban",
                 "BAN",
                 "SUCCESS",
-                "封禁账号并清退在线会话: " + targetUser.getUsername() + " / " + userId
+                "灏佺璐﹀彿骞舵竻閫€鍦ㄧ嚎浼氳瘽: " + targetUser.getUsername() + " / " + userId
         );
         return true;
     }
 
-    public void revokeUserSessions(Long userId) {
-        authSessionStore.revokeUserSessions(userId, true);
+    public void revokeUserSessions(Long userId, String userUuid) {
+        requirePositiveId(userId, "User id");
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "User uuid is required");
+        }
+        String trustedUserUuid = loadUser(userId)
+                .map(UserRow::getUuid)
+                .filter(StringUtils::hasText)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "User does not exist or cannot be accessed"));
+        if (!trustedUserUuid.trim().equals(userUuid.trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        authSessionStore.revokeUserSessions(userId, trustedUserUuid.trim(), true);
     }
 
     public void retainLatestSessionForEachUser() {
@@ -143,11 +247,12 @@ public class OnlineSessionManagementAppService {
     }
 
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter stream(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_VIEW);
         return onlineSessionStreamService.openStream(currentUser);
     }
 
     private List<AuthSession> fetchOnlineSessions(long idleTimeoutSeconds) {
-        List<String> sessionIds = authSessionStore.listActiveSessionIds(0, -1);
+        List<String> sessionIds = authSessionStore.listActiveSessionIds(0, MAX_SESSION_SCAN_SIZE - 1L);
         if (CollectionUtils.isEmpty(sessionIds)) {
             return List.of();
         }
@@ -170,13 +275,14 @@ public class OnlineSessionManagementAppService {
             return collected;
         }
 
-        Map<Long, String> latestSessionIds = loadLatestSessionIdsByUser(collected);
+        Map<SessionOwnerKey, String> latestSessionIds = loadLatestSessionIdsByUser(collected);
         List<AuthSession> latestSessions = new ArrayList<>();
         for (AuthSession session : collected) {
-            if (session.getUserId() == null) {
+            SessionOwnerKey ownerKey = SessionOwnerKey.from(session);
+            if (ownerKey == null) {
                 continue;
             }
-            String latestSessionId = latestSessionIds.get(session.getUserId());
+            String latestSessionId = latestSessionIds.get(ownerKey);
             if (session.getSessionId().equals(latestSessionId)) {
                 latestSessions.add(session);
             }
@@ -184,13 +290,14 @@ public class OnlineSessionManagementAppService {
         return latestSessions;
     }
 
-    private Map<Long, String> loadLatestSessionIdsByUser(List<AuthSession> sessions) {
-        Set<Long> userIds = new LinkedHashSet<>();
-        Map<Long, String> latestSessionIds = new LinkedHashMap<>();
+    private Map<SessionOwnerKey, String> loadLatestSessionIdsByUser(List<AuthSession> sessions) {
+        Set<SessionOwnerKey> userIds = new LinkedHashSet<>();
+        Map<SessionOwnerKey, String> latestSessionIds = new LinkedHashMap<>();
         for (AuthSession session : sessions) {
-            if (session.getUserId() != null) {
-                userIds.add(session.getUserId());
-                latestSessionIds.putIfAbsent(session.getUserId(), session.getSessionId());
+            SessionOwnerKey ownerKey = SessionOwnerKey.from(session);
+            if (ownerKey != null) {
+                userIds.add(ownerKey);
+                latestSessionIds.putIfAbsent(ownerKey, session.getSessionId());
             }
         }
         if (userIds.isEmpty()) {
@@ -217,6 +324,151 @@ public class OnlineSessionManagementAppService {
         return idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) < 0;
     }
 
+    private Long requirePermission(CurrentUser currentUser, String permissionKey) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        Set<String> permissions = currentUser.getPermissions();
+        if (permissions == null || permissions.isEmpty() || (!permissions.contains("*") && !permissions.contains(permissionKey))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
+        }
+        return currentUser.getUserId();
+    }
+
+    private String trustedUsername(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser.getUsername();
+    }
+
+    private String requireText(String value, String name, int maxLength) {
+        if (!StringUtils.hasText(value)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, name + " is required");
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength
+                || !SAFE_SESSION_ID_PATTERN.matcher(normalized).matches()
+                || normalized.contains("..")
+                || normalized.contains("//")) {
+            throw new BizException(ErrorCode.BAD_REQUEST, name + " is invalid");
+        }
+        return normalized;
+    }
+
+    private void requirePositiveId(Long id, String name) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, name + " must be a positive number");
+        }
+    }
+
+    private long normalizePageNo(long pageNo) {
+        if (pageNo < 1L || pageNo > MAX_PAGE_NO) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Page number is invalid");
+        }
+        return pageNo;
+    }
+
+    private long normalizePageSize(long pageSize) {
+        if (pageSize < 1L || pageSize > MAX_PAGE_SIZE) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Page size is invalid");
+        }
+        return pageSize;
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        if (authenticatedAccess == null || !AuthenticationTrustSupport.isTrustedCurrentUser(authenticatedAccess.currentUser())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        return authenticatedAccess.currentUser();
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
     private Map<Long, UserRow> loadUsers(Collection<Long> userIds) {
         if (CollectionUtils.isEmpty(userIds)) {
             return Map.of();
@@ -230,7 +482,7 @@ public class OnlineSessionManagementAppService {
         String placeholders = distinctIds.stream().map(id -> "?").collect(Collectors.joining(","));
         List<UserRow> rows = jdbcTemplate.query(
                 """
-                        select id, username, nickname, real_name as realName
+                        select id, uuid, username, nickname, real_name as realName
                         from sys_user
                         where deleted = 0 and id in (%s)
                         """.formatted(placeholders),
@@ -258,6 +510,13 @@ public class OnlineSessionManagementAppService {
         return rows.stream().findFirst();
     }
 
+    private boolean isProtectedAdminAccount(UserRow user) {
+        return user != null
+                && Objects.equals(user.getId(), PROTECTED_ADMIN_ID)
+                && StringUtils.hasText(user.getUsername())
+                && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(user.getUsername().trim());
+    }
+
     private SystemVO.OnlineSessionVO toOnlineSessionVO(AuthSession session, UserRow userRow) {
         SystemVO.OnlineSessionVO vo = new SystemVO.OnlineSessionVO();
         vo.setSessionId(session.getSessionId());
@@ -280,8 +539,8 @@ public class OnlineSessionManagementAppService {
     }
 
     private void ensureUserContext(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "用户上下文缺失");
+        if (!isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is missing");
         }
     }
 
@@ -330,6 +589,18 @@ public class OnlineSessionManagementAppService {
 
         public void setRealName(String realName) {
             this.realName = realName;
+        }
+    }
+
+    private record SessionOwnerKey(Long userId, String userUuid) {
+        private static SessionOwnerKey from(AuthSession session) {
+            if (session == null
+                    || session.getUserId() == null
+                    || session.getUserId() <= 0
+                    || !StringUtils.hasText(session.getUserUuid())) {
+                return null;
+            }
+            return new SessionOwnerKey(session.getUserId(), session.getUserUuid().trim());
         }
     }
 }

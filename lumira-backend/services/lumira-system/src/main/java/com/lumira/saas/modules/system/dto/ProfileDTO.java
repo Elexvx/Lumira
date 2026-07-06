@@ -152,6 +152,10 @@ public final class ProfileDTO {
         private String contactType;
         @NotBlank(message = "请输入绑定信息")
         private String value;
+        private String currentPassword;
+        private String currentFactorCode;
+        private String currentChallengeId;
+        private String currentVerificationCode;
 
         public String getContactType() {
             return contactType;
@@ -167,6 +171,38 @@ public final class ProfileDTO {
 
         public void setValue(String value) {
             this.value = value == null ? null : value.trim();
+        }
+
+        public String getCurrentPassword() {
+            return currentPassword;
+        }
+
+        public void setCurrentPassword(String currentPassword) {
+            this.currentPassword = currentPassword == null ? null : currentPassword.trim();
+        }
+
+        public String getCurrentFactorCode() {
+            return currentFactorCode;
+        }
+
+        public void setCurrentFactorCode(String currentFactorCode) {
+            this.currentFactorCode = currentFactorCode == null ? null : currentFactorCode.trim();
+        }
+
+        public String getCurrentChallengeId() {
+            return currentChallengeId;
+        }
+
+        public void setCurrentChallengeId(String currentChallengeId) {
+            this.currentChallengeId = currentChallengeId == null ? null : currentChallengeId.trim();
+        }
+
+        public String getCurrentVerificationCode() {
+            return currentVerificationCode;
+        }
+
+        public void setCurrentVerificationCode(String currentVerificationCode) {
+            this.currentVerificationCode = currentVerificationCode == null ? null : currentVerificationCode.trim();
         }
     }
 

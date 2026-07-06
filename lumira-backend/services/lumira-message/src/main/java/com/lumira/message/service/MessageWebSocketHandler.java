@@ -1,5 +1,6 @@
 package com.lumira.message.service;
 
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
@@ -29,11 +30,11 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
             session.close();
             return;
         }
-        if (currentUser.getUserId() == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             session.close();
             return;
         }
-        webSocketRegistry.register(session, currentUser.getUserId());
+        webSocketRegistry.register(session, currentUser);
         connectionSnapshotService.emitSnapshot(currentUser);
     }
 

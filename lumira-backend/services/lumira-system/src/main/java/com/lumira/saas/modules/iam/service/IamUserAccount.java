@@ -7,6 +7,7 @@ import java.util.List;
 
 public class IamUserAccount {
     private Long userId;
+    private String userUuid;
     private String userNo;
     private String displayName;
     private String avatarUrl;
@@ -23,6 +24,8 @@ public class IamUserAccount {
 
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getUserNo() { return userNo; }
     public void setUserNo(String userNo) { this.userNo = userNo; }
     public String getDisplayName() { return displayName; }
@@ -53,6 +56,7 @@ public class IamUserAccount {
     public static class IdentityView {
         private Long id;
         private Long userId;
+        private String userUuid;
         private String identityType;
         private String identifier;
         private String identifierNormalized;
@@ -64,6 +68,8 @@ public class IamUserAccount {
         public void setId(Long id) { this.id = id; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public String getIdentityType() { return identityType; }
         public void setIdentityType(String identityType) { this.identityType = identityType; }
         public String getIdentifier() { return identifier; }
@@ -81,6 +87,7 @@ public class IamUserAccount {
     public static class CredentialView {
         private Long id;
         private Long userId;
+        private String userUuid;
         private String credentialType;
         private String credentialSecret;
         private String algorithm;
@@ -93,6 +100,8 @@ public class IamUserAccount {
         public void setId(Long id) { this.id = id; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public String getCredentialType() { return credentialType; }
         public void setCredentialType(String credentialType) { this.credentialType = credentialType; }
         public String getCredentialSecret() { return credentialSecret; }
@@ -112,6 +121,7 @@ public class IamUserAccount {
     public static class DeviceView {
         private Long id;
         private Long userId;
+        private String userUuid;
         private String deviceId;
         private String deviceName;
         private String deviceType;
@@ -125,6 +135,8 @@ public class IamUserAccount {
         public void setId(Long id) { this.id = id; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public String getDeviceId() { return deviceId; }
         public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
         public String getDeviceName() { return deviceName; }
@@ -145,6 +157,7 @@ public class IamUserAccount {
 
     public static class SecuritySettingView {
         private Long userId;
+        private String userUuid;
         private Boolean mfaEnabled;
         private Boolean passwordLoginEnabled;
         private Boolean smsLoginEnabled;
@@ -154,6 +167,8 @@ public class IamUserAccount {
 
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
         public Boolean getMfaEnabled() { return mfaEnabled; }
         public void setMfaEnabled(Boolean mfaEnabled) { this.mfaEnabled = mfaEnabled; }
         public Boolean getPasswordLoginEnabled() { return passwordLoginEnabled; }

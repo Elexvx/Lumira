@@ -72,6 +72,8 @@ saas:
       - /api/v1/auth/login
       - /api/v1/auth/login/code/challenge
       - /api/v1/auth/login/code/complete
+      - /api/v1/auth/password-reset/challenge
+      - /api/v1/auth/password-reset/complete
       - /api/v1/auth/login-encryption-key
       - /api/v2/auth/login
       - /api/v2/auth/login/code/challenge
@@ -102,11 +104,9 @@ saas:
       - /api/health
       - /api/v2/*/readiness
       - /api/v2/*/health
-      - /api/v2/*/metrics
       - /api/version
       - /api/v1/version
       - /api/v1/*/version
-      - /actuator/prometheus
   event:
     outbox:
       relay-enabled: false
@@ -126,8 +126,6 @@ saas:
     public-path: /api/uploads
     max-image-size-bytes: 5242880
     max-document-size-bytes: 52428800
-  job:
-    internal-token: test-job-token
 
 logging:
   config: classpath:logback-spring.xml

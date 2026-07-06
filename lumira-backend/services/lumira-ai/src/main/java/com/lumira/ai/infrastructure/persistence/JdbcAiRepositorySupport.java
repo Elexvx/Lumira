@@ -2,6 +2,8 @@ package com.lumira.ai.infrastructure.persistence;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.CurrentUser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -18,16 +20,40 @@ abstract class JdbcAiRepositorySupport {
 
     protected Long insertAndReturnId(String sql, StatementBinder binder) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
+        int inserted = jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             binder.bind(ps);
             return ps;
         }, keyHolder);
+        requireSingleWrite(inserted, "AI repository insert changed, please retry");
         Number key = keyHolder.getKey();
         if (key == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "新增记录失败");
         }
         return key.longValue();
+    }
+
+    protected void requireSingleWrite(int affectedRows, String message) {
+        if (affectedRows != 1) {
+            throw new BizException(ErrorCode.BIZ_ERROR, message);
+        }
+    }
+
+    protected Long requireTrustedUserId(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        return currentUser.getUserId();
+    }
+
+    protected String requireTrustedUserUuid(CurrentUser currentUser) {
+        requireTrustedUserId(currentUser);
+        return currentUser.getUserUuid();
+    }
+
+    protected boolean hasAllPermission(CurrentUser currentUser) {
+        requireTrustedUserId(currentUser);
+        return currentUser.getPermissions().contains("*");
     }
 
     @FunctionalInterface

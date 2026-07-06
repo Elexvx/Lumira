@@ -27,19 +27,21 @@ saas.elexvx.com / HTTPS / CDN / WAF
     -> plugin module
     -> localization module
     -> job module
+  -> lumira-async / lumira-job-executor
   -> MySQL / Redis / XXL-Job
-  -> Nacos锛堜粎涓烘湭鏉ユ媶鍒嗗拰閰嶇疆涓績棰勭暀锛岄粯璁や笉鍚姩锛?
 ```
 
 ## 榛樿鍚姩缁勪欢
 
 - MySQL锛歚mysql:8.4`
 - Redis锛歚redis:7.4`
-- Nacos锛歚nacos/nacos-server:v3.2.1`锛岄粯璁や笉鍚姩锛涘彧鏈?`NACOS_CONFIG_ENABLED=true`銆乣NACOS_DISCOVERY_ENABLED=true` 鎴栨樉寮忎紶鍏?`--nacos` 鏃跺惎鍔?
+- Nacos锛氬綋鍓嶇敓浜у拰瀹夎拓鎵戜笉鎻愪緵鍐呯疆瀹瑰櫒锛岃淇濇寔 `NACOS_CONFIG_ENABLED=false` 鍜?`NACOS_DISCOVERY_ENABLED=false`
 - XXL-Job Admin锛歚xuxueli/xxl-job-admin:3.4.0`
 - edge-proxy锛?0/443 瀵瑰缁熶竴鍏ュ彛锛岃礋璐?HTTPS 缁堟鍜岃矾鐢?
 - api-proxy锛歂ginx 鍚庣缁熶竴鍏ュ彛
 - lumira-server锛氬崟浣撳井鏈嶅姟鍚庣鍏ュ彛锛岃仛鍚堢郴缁熴€佽璇併€佹枃浠躲€佹秷鎭€佹彃浠躲€佹湰鍦板寲鍜屼换鍔℃ā鍧?
+- lumira-async 锛氬紓姝?owner runtime锛岃礋璐?outbox relay銆佹枃浠跺悗澶勭悊绛夊紓姝ュ伐浣?
+- lumira-job-executor 锛歑XXL-Job 鎵ц鍣紝璋冪敤 async/file/message/payment/plugin 鍚庡彴浠诲姟
 
 `lumira-ui` 瀹瑰櫒鍙綔涓烘湰鍦板鐢ㄩ瑙堬紝榛樿涓嶉殢鐢熶骇閮ㄧ讲鍚姩銆傛寮忓墠绔敱 Vercel 鎵樼銆?
 
@@ -73,10 +75,10 @@ node bin/install-platform.mjs
 
 - 鎺㈡祴 CPU銆佸唴瀛樸€佺鐩樸€佺郴缁熸灦鏋勩€?
 - 妫€娴?Node.js銆丏ocker銆丏ocker Compose銆佺鍙ｅ崰鐢ㄣ€佸繀濉幆澧冨彉閲忋€佸閮?MySQL 杩為€氭€у拰璧勬簮妗ｅ缓璁€?
-- 浜や簰纭 API 鍩熷悕銆佸墠绔?Origin銆佹槸鍚﹀惎鐢ㄥ唴缃?MySQL銆丯acos銆佸墠绔鍣ㄥ拰瑙傛祴鏍堛€?
+- 交互确认 API 域名、前端 Origin、是否启用内置 MySQL、前端容器和观测栈。
 - 鎸夋湇鍔″櫒瑙勬牸鑷姩鍐欏叆 `deploy/.env` 鐨?JVM銆佸鍣ㄥ唴瀛樸€丷edis銆佹暟鎹簱杩炴帴姹犮€乀omcat 绾跨▼姹犮€侀檺娴佸拰鏃ュ織杞浆鍙傛暟銆?
 - 妫€鏌?Docker锛汱inux 鏈嶅姟鍣ㄧ己灏?Docker 鏃跺彲鑷姩瀹夎銆?
-- 鎸夐樁娈靛惎鍔ㄥ熀纭€缁勪欢銆乣lumira-server`銆丄PI proxy銆佸彲閫夊墠绔鍣ㄥ拰鍙€夎娴嬫爤銆?
+- 按阶段启动基础组件、`lumira-server`、`lumira-async`、`lumira-job-executor`、API proxy、可选前端容器和可选观测栈。
 - 鑷姩杩愯閮ㄧ讲鍋ュ悍妫€鏌ュ拰杞婚噺骞跺彂鍐掔儫銆?
 
 鏃犱汉鍊煎畧瀹夎锛?
@@ -94,11 +96,13 @@ node bin/install-platform.mjs \
   --yes
 ```
 
-濡傛灉闇€瑕佸畬鍏ㄦ湰鏈哄寲婕旂ず锛屽彲鍚敤鍐呯疆 MySQL銆丯acos 鍜屽墠绔鍣細
+如果需要完全本地化演示，可启用内置 MySQL 和前端容器：
 
 ```bash
-node bin/install-platform.mjs --local-mysql --nacos --lumira-ui
+node bin/install-platform.mjs --local-mysql --lumira-ui
 ```
+
+- `--local-mysql` 仅启用内置 MySQL。当前生产与安装拓扑不提供 bundled Nacos，请保持 `NACOS_CONFIG_ENABLED=false` 和 `NACOS_DISCOVERY_ENABLED=false`。
 
 鏃ュ父宸叉湁鐜鏇存柊鎺ㄨ崘鐩存帴鎷夊彇 CI 浜х墿锛?
 
@@ -233,7 +237,7 @@ Grafana 浼氳嚜鍔?provision Prometheus銆丩oki銆乀empo 鏁版嵁婧愬拰 
 ## 4C4G 绋冲畾杩愯寤鸿
 
 - 榛樿浣跨敤澶栭儴鎴?1Panel MySQL锛涙湰浠撳簱鍐呯疆 MySQL 浠呯敤浜?`local-mysql` profile銆?
-- 榛樿涓嶅惎鍔?Nacos锛涘綋鍓嶅崟浣撳井鏈嶅姟妯″紡涓嶄緷璧栨湇鍔″彂鐜般€傜‘瀹炶婕旂粌鏈潵鎷嗗垎鏃讹紝鍙繍琛?`node bin/deploy-container.mjs --rebuild --nacos`銆?
+- 榛樿涓嶅惎鐢?Nacos锛涘綋鍓嶇敓浜у拰瀹夎鎷撴墤涓嶆敮鎸?`--nacos`锛岃淇濇寔 `NACOS_CONFIG_ENABLED=false` 鍜?`NACOS_DISCOVERY_ENABLED=false`
 - 榛樿涓嶅惎鍔?`lumira-ui` 瀹瑰櫒锛屾寮忓墠绔蛋 Vercel锛涙湇鍔″櫒鍙壙鎷呭悗绔拰 API proxy銆?
 - `deploy/.env` 閲岀殑 `*_MEM_LIMIT`銆乣SERVER_TOMCAT_THREADS_MAX`銆乣SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE` 鍜?`SAAS_TRAFFIC_*_QPS` 鏄皬鏈哄櫒瀹归噺闂搁棬銆傚厛鍘嬫祴瑙傚療锛屽啀閫愭璋冨ぇ銆?
 - API proxy 瀵瑰崟 IP 鍋氬熀纭€闄愭祦鍜岃繛鎺ユ暟闄愬埗锛涗笟鍔″眰 Sentinel 缁х画淇濇姢鐧诲綍銆佸叕寮€閰嶇疆銆侀獙璇佺爜鍜屽悗绔矾鐢便€?
@@ -383,7 +387,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node bin/deploy-container.mjs --reset
 
 - `deploy/.env` 涓嶈鎻愪氦鍒?Git銆?
 - 瀵瑰鍙毚闇?`https://saas.elexvx.com`锛屽鍣ㄥ唴閮ㄦ湇鍔＄鍙ｅ彧鍦ㄥ唴缃戣闂€?
-- `DB_PASSWORD`銆乣JWT_SECRET`銆乣FIELD_SECRET`銆乣PLUGIN_SIGNATURE_SECRET`銆乣SAAS_JOB_INTERNAL_TOKEN` 蹇呴』浣跨敤寮洪殢鏈哄€笺€?
+- `DB_PASSWORD`銆乣JWT_SECRET`銆乣FIELD_SECRET`銆乣PLUGIN_SIGNATURE_SECRET`銆乣SAAS_INTERNAL_SYSTEM_TOKEN`銆乣SAAS_INTERNAL_AUTH_TOKEN`銆乣SAAS_INTERNAL_AUTH_SYSTEM_TOKEN`銆乣SAAS_INTERNAL_FILE_TOKEN`銆乣SAAS_INTERNAL_MESSAGE_TOKEN`銆乣SAAS_INTERNAL_PAYMENT_TOKEN`銆乣SAAS_INTERNAL_PLUGIN_TOKEN`銆乣SAAS_INTERNAL_TEAM_TOKEN`銆乣SAAS_INTERNAL_JOB_TOKEN` 蹇呴』浣跨敤寮洪殢鏈哄€笺€?
 - 鐙珛閮ㄧ讲鎻掍欢鏈嶅姟鏃堕厤缃?`SAAS_JOB_PLUGIN_SERVICE_BASE_URL`锛岃仛鍚堥儴缃插彲娌跨敤榛樿鐨?lumira-server 鍦板潃銆?
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 鍦ㄧ敓浜х幆澧冨彧淇濈暀瀹為檯 Vercel 鍩熷悕鍜岃嚜瀹氫箟鍓嶇鍩熷悕锛涙湰鍦拌皟璇曞湴鍧€浠呮斁鍏?dev/test 鐜銆?
 - `LUMIRA_INITIAL_ADMIN_PASSWORD` can set a production-only first-login password; leave it unset to use the factory default `admin / 123456`, which still requires an immediate password change.

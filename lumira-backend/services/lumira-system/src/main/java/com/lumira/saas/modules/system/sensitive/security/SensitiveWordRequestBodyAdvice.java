@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.sensitive.security;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordPluginStateService;
@@ -13,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAdapter;
 
@@ -44,7 +46,7 @@ public class SensitiveWordRequestBodyAdvice extends RequestBodyAdviceAdapter {
     public Object afterBodyRead(Object body, HttpInputMessage inputMessage, MethodParameter parameter, Type targetType,
                                 Class<? extends HttpMessageConverter<?>> converterType) {
         CurrentUser currentUser = securityContextFacade.getCurrentUserOrNull();
-        if (currentUser == null || !currentUser.isAuthenticated()) {
+        if (!isTrustedCurrentUser(currentUser)) {
             return body;
         }
         if (!pluginStateService.isEnabled(currentUser)) {
@@ -73,6 +75,10 @@ public class SensitiveWordRequestBodyAdvice extends RequestBodyAdviceAdapter {
         }
         MediaType contentType = request.getHeaders().getContentType();
         return SensitiveWordRequestSkipMatcher.shouldSkipMultipart(contentType);
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
     }
 
     private BizException buildException(SensitiveWordVO.CheckResult result) {

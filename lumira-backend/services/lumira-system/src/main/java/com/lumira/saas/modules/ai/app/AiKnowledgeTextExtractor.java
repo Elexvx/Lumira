@@ -17,6 +17,7 @@ import java.util.Set;
 public class AiKnowledgeTextExtractor {
 
     private static final int MAX_EXTRACTED_CHARS = 800_000;
+    private static final long MAX_UPLOAD_BYTES = 20L * 1024L * 1024L;
     private static final Set<String> SUPPORTED_EXTENSIONS = Set.of(
             "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "md", "markdown", "txt"
     );
@@ -32,6 +33,9 @@ public class AiKnowledgeTextExtractor {
         if (!SUPPORTED_EXTENSIONS.contains(extension)) {
             throw badRequest("仅支持 PDF、Word、Excel、PPT、Markdown、TXT 文件构建知识库");
         }
+        if (file.getSize() > MAX_UPLOAD_BYTES) {
+            throw badRequest("知识库文件不能超过 20MB");
+        }
         byte[] bytes;
         try {
             bytes = file.getBytes();
@@ -46,7 +50,7 @@ public class AiKnowledgeTextExtractor {
             try {
                 text = tika().parseToString(new ByteArrayInputStream(bytes));
             } catch (IOException | TikaException exception) {
-                throw badRequest("解析知识库文件失败: " + safeMessage(exception));
+                throw badRequest("解析知识库文件失败");
             }
         }
 
@@ -89,10 +93,6 @@ public class AiKnowledgeTextExtractor {
                 .replaceAll("[ ]{2,}", " ")
                 .replaceAll("\\R{3,}", "\n\n")
                 .trim();
-    }
-
-    private String safeMessage(Exception exception) {
-        return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
     }
 
     public record ExtractedText(String extension, String text) {

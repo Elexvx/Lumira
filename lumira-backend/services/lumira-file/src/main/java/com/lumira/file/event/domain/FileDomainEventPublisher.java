@@ -26,22 +26,46 @@ public class FileDomainEventPublisher implements DomainEventPublisher {
         platformEventOutboxService.recordAfterCommit(
                 FilePlatformEventTypes.SOURCE_FILE,
                 event.eventType(),
-                null,
+                resolveUserId(event.attributes()),
                 event.eventKey(),
                 payload(event)
         );
+    }
+
+    private Long resolveUserId(Map<String, Object> attributes) {
+        if (resolveUserUuid(attributes) == null) {
+            return null;
+        }
+        Object value = attributes == null ? null : attributes.get("userId");
+        if (value instanceof Number number) {
+            long userId = number.longValue();
+            return userId > 0 ? userId : null;
+        }
+        return null;
     }
 
     private Map<String, Object> payload(DomainEvent event) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", event.schemaVersion());
         payload.put("occurredAt", event.occurredAt() == null ? Instant.now() : event.occurredAt());
-        payload.put("userId", null);
+        payload.put("userId", resolveUserId(event.attributes()));
+        String userUuid = resolveUserUuid(event.attributes());
+        if (userUuid != null) {
+            payload.put("userUuid", userUuid);
+        }
         payload.put("aggregateType", event.aggregateType());
         payload.put("aggregateId", event.aggregateId());
         payload.put("eventId", event.eventId().toString());
         payload.put("eventKey", event.eventKey());
         payload.put("attributes", event.attributes());
         return payload;
+    }
+
+    private String resolveUserUuid(Map<String, Object> attributes) {
+        Object value = attributes == null ? null : attributes.get("userUuid");
+        if (value instanceof String text && !text.isBlank()) {
+            return text.trim();
+        }
+        return null;
     }
 }

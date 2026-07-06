@@ -11,6 +11,7 @@ public class IamUserDeviceEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String deviceId;
     private String deviceName;
     private String deviceType;

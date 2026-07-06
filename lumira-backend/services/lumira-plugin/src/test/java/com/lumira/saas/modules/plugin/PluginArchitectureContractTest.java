@@ -21,6 +21,19 @@ class PluginArchitectureContractTest {
                 .exists();
     }
 
+    @Test
+    void pluginManagement_shouldNotInventSystemOperator() throws Exception {
+        Path repoRoot = findRepoRoot();
+        String source = Files.readString(repoRoot.resolve(
+                "services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/app/PluginManagementAppService.java"
+        ));
+
+        assertThat(source)
+                .doesNotContain("new CurrentUser(0L")
+                .doesNotContain("getUserId() == null ? 0L")
+                .doesNotContain("getUserId() <= 0 ? 0L");
+    }
+
     private static Path findRepoRoot() {
         Path current = Path.of("").toAbsolutePath();
         while (current != null) {

@@ -3,6 +3,7 @@ package com.lumira.saas.modules.plugin.gateway;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
@@ -18,11 +19,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StreamUtils;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -58,7 +60,9 @@ public class PluginGatewayController {
 
     @RequestMapping("/api/p/{pluginCode}/**")
     public ResponseEntity<Object> dispatch(HttpServletRequest request) throws Exception {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        CurrentUser currentUser = requireAuthenticatedUser();
+        Long actorUserId = currentUser.getUserId();
+        String actorUsername = currentUser.getUsername();
         runtimeSecurityPolicy.validateMethod(request.getMethod());
         runtimeSecurityPolicy.validateBodySize(request.getContentLengthLong());
         String pluginCode = resolvePluginCode(request.getRequestURI());
@@ -69,18 +73,28 @@ public class PluginGatewayController {
                 resolveQueryParameters(request),
                 runtimeSecurityPolicy.filterHeaders(resolveHeaders(request)),
                 resolveBody(request),
-                currentUser.getUserId(),
-                currentUser.getUsername(),
+                actorUserId,
+                currentUser.getUserUuid(),
+                actorUsername,
+                currentUser.getSessionId(),
+                currentUser.getSessionVersion(),
+                currentUser.getPermissionsVersion(),
                 TraceContext.getRequestId(),
                 TraceContext.getTraceId()
         );
         String permissionKey = runtimeDescriptor.getHttpHandler().requiredPermission(pluginRequest);
-        runtimeSecurityPolicy.validateRequiredPermission(permissionKey);
+        permissionKey = runtimeSecurityPolicy.validateRequiredPermission(
+                runtimeDescriptor.getPluginCode(),
+                permissionKey,
+                runtimeDescriptor.getPermissions()
+        );
         permissionGuard.requirePermission(currentUser, permissionKey);
         try {
             PluginHttpResponse response = runtimeDescriptor.getHttpHandler().handle(pluginRequest, runtimeDescriptor.getRuntimeContext());
-            return ResponseEntity.status(response.status())
-                    .contentType(MediaType.parseMediaType(response.contentType()))
+            int responseStatus = runtimeSecurityPolicy.validateResponseStatus(response.status());
+            MediaType responseContentType = runtimeSecurityPolicy.validateResponseContentType(response.contentType());
+            return ResponseEntity.status(responseStatus)
+                    .contentType(responseContentType)
                     .body(response.body());
         } catch (BizException exception) {
             throw exception;
@@ -95,7 +109,7 @@ public class PluginGatewayController {
                     exception
             );
             securityAuditEventService.record(request, SecurityAuditEvent.builder("PLUGIN_EXCEPTION_SANITIZED", "WARN", "DENIED")
-                    .userId(currentUser.getUserId())
+                    .userId(actorUserId)
                     .resourceCode("plugin_gateway")
                     .actionCode(request.getMethod())
                     .targetId(pluginCode)
@@ -109,15 +123,24 @@ public class PluginGatewayController {
             );
         }
     }
+
+    private CurrentUser requireAuthenticatedUser() {
+        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
+    }
+
     private String resolvePluginCode(String requestUri) {
         String prefix = "/api/p/";
         int start = requestUri.indexOf(prefix);
         if (start < 0) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件路由不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Plugin route does not exist");
         }
         String remainder = requestUri.substring(start + prefix.length());
         int slashIndex = remainder.indexOf('/');
-        return slashIndex < 0 ? remainder : remainder.substring(0, slashIndex);
+        return runtimeSecurityPolicy.validatePluginCode(slashIndex < 0 ? remainder : remainder.substring(0, slashIndex));
     }
 
     private String resolvePluginPath(String pluginCode, String requestUri) {
@@ -128,10 +151,28 @@ public class PluginGatewayController {
 
     private String resolveBody(HttpServletRequest request) {
         try {
-            return StreamUtils.copyToString(request.getInputStream(), StandardCharsets.UTF_8);
+            long maxBytes = runtimeSecurityPolicy.maxGatewayBodyBytes();
+            if (maxBytes <= 0) {
+                return StreamUtils.copyToString(request.getInputStream(), StandardCharsets.UTF_8);
+            }
+            int readLimit = maxBytes >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) maxBytes + 1;
+            byte[] bytes = readLimitedBytes(request.getInputStream(), readLimit);
+            if (bytes.length > maxBytes) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "Plugin request body exceeds limit");
+            }
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (BizException exception) {
+            throw exception;
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "插件请求体读取失败");
+            throw new BizException(ErrorCode.BAD_REQUEST, "Failed to read plugin request body");
         }
+    }
+
+    private byte[] readLimitedBytes(InputStream inputStream, int readLimit) throws IOException {
+        if (readLimit <= 0) {
+            return new byte[0];
+        }
+        return inputStream.readNBytes(readLimit);
     }
 
     private Map<String, List<String>> resolveQueryParameters(HttpServletRequest request) {

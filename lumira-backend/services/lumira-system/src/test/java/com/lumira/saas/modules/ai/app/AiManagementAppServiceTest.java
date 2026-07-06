@@ -1,13 +1,17 @@
 package com.lumira.saas.modules.ai.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.infrastructure.AiSecretCryptoService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,9 +19,13 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,10 +37,225 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AiManagementAppServiceTest {
+
+    @Test
+    void listEmployeesShouldRequireViewPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(userWithPermissions(Set.of()), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRejectMissingSessionVersionBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(missingSessionVersionUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRejectMissingUserUuidBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setUserUuid(" ");
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void testLlmServiceShouldRejectMissingPermissionsVersionBeforeProbe() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                chatModelFactory
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setPermissionsVersion(" ");
+
+        assertThatThrownBy(() -> service.testLlmService(currentUser, testRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+        verifyNoInteractions(chatModelFactory);
+    }
+
+    @Test
+    void listEmployeesShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:manage")));
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                permissionSnapshotService
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRejectRevokedSessionTicketBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 100L, "user-uuid-100", null, 1, "permissions-1"))
+                .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                null,
+                sessionAuthenticationService
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "admin", "DISABLED"));
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRefreshTrustedUsernameFromLiveIdentityBeforeQuery() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "live-admin", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*")));
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), anyList()))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyList()))
+                .thenReturn(0L);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+
+        service.listEmployees(currentUser, 1, 10);
+
+        assertThat(currentUser.getUsername()).isEqualTo("live-admin");
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+    }
+
+    @Test
+    void createLlmServiceShouldRequireManagePermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.createLlmService(userWithPermissions(Set.of("ai:view")), new AiDTO.LlmServiceUpsertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void managementStateWritesShouldBindOriginalBusinessSnapshots() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/ai/app/AiManagementAppService.java"));
+
+        assertThat(source).contains("AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id)");
+        assertThat(source).contains("where id = ? and username = ? and enabled = ? and is_deleted = 0");
+        assertThat(source).contains("where id = ? and code = ? and provider = ? and enabled = ? and is_deleted = 0");
+        assertThat(source).contains("replaceEmployeeCapabilities(existing");
+        assertThat(source).contains("where id = ? and username = ? and enabled = ? and is_deleted = 0");
+        assertThat(source).contains("permission_mode = case when employee_id = values(employee_id) and skill_code = values(skill_code)");
+        assertThat(source).contains("requireAiWrite(updated, \"AI employee changed, please retry\")");
+        assertThat(source).contains("requireAiWrite(employeeDeleted, \"AI employee changed, please retry\")");
+        assertThat(source).contains("requireAiWrite(updated, \"AI LLM service changed, please retry\")");
+        assertThat(source).contains("requireAiWrite(conversationDeleted, \"AI conversation changed, please retry\")");
+        assertThat(source).contains("requireAiWrite(inserted, \"AI conversation changed, please retry\")");
+    }
 
     @Test
     void governanceOverviewUsesAggregateStatsQueries() {
@@ -44,13 +267,13 @@ class AiManagementAppServiceTest {
                 mock(AiEmployeeRuntimeService.class),
                 mock(AiChatModelFactory.class)
         );
-        when(jdbcTemplate.queryForList(contains("from ai_employee"), eq(1001L)))
+        when(jdbcTemplate.queryForList(contains("from ai_employee")))
                 .thenReturn(List.of(Map.of("employeeCount", 5L, "enabledEmployeeCount", 3L)));
-        when(jdbcTemplate.queryForList(contains("from ai_llm_service"), eq(1001L)))
+        when(jdbcTemplate.queryForList(contains("from ai_llm_service")))
                 .thenReturn(List.of(Map.of("llmServiceCount", 4L, "enabledLlmServiceCount", 2L, "missingApiKeyServiceCount", 1L)));
         when(jdbcTemplate.queryForList(contains("from ai_skill")))
                 .thenReturn(List.of(Map.of("skillCount", 7L, "highRiskSkillCount", 2L, "confirmationRequiredSkillCount", 4L)));
-        when(jdbcTemplate.queryForObject(contains("from ai_employee_skill"), eq(Long.class), eq(1001L))).thenReturn(6L);
+        when(jdbcTemplate.queryForObject(contains("from ai_employee_skill"), eq(Long.class))).thenReturn(6L);
 
         AiVO.GovernanceOverviewVO overview = service.governanceOverview(currentUser());
         AiVO.GovernanceOverviewVO cached = service.governanceOverview(currentUser());
@@ -67,10 +290,10 @@ class AiManagementAppServiceTest {
         assertThat(overview.getHighRiskAllowedBindingCount()).isEqualTo(6L);
         assertThat(overview.getSampledAt()).isNotNull();
         assertThat(cached.getSampledAt()).isNotNull();
-        verify(jdbcTemplate).queryForList(contains("from ai_employee"), eq(1001L));
-        verify(jdbcTemplate).queryForList(contains("from ai_llm_service"), eq(1001L));
+        verify(jdbcTemplate).queryForList(contains("from ai_employee"));
+        verify(jdbcTemplate).queryForList(contains("from ai_llm_service"));
         verify(jdbcTemplate).queryForList(contains("from ai_skill"));
-        verify(jdbcTemplate, times(1)).queryForObject(anyString(), eq(Long.class), any());
+        verify(jdbcTemplate, times(1)).queryForObject(anyString(), eq(Long.class));
     }
 
     @Test
@@ -114,6 +337,89 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void listConversationsShouldFilterByOwnerIdAndUuid() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        service.listConversations(currentUser(), null, 1, 10);
+
+        assertThat(queryOperations.lastQuerySql).contains("c.owner_user_id = ?");
+        assertThat(queryOperations.lastQuerySql).contains("c.owner_user_uuid = ?");
+        assertThat(queryOperations.lastQueryArgs).containsSequence(100L, "user-uuid-100");
+    }
+
+    @Test
+    void createConversationShareShouldPersistCreatorUuid() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        service.createConversationShare(currentUser(), 10L);
+
+        assertThat(queryOperations.lastUpdateSql).contains("created_by_uuid");
+        assertThat(queryOperations.lastUpdateSql)
+                .contains("from ai_conversation c")
+                .contains("c.owner_user_id = ?")
+                .contains("c.owner_user_uuid = ?")
+                .contains("c.conversation_code = ?")
+                .contains("c.status = ?");
+        assertThat(queryOperations.lastUpdateArgs).contains("user-uuid-100");
+    }
+
+    @Test
+    void updateConversationShouldConstrainWriteByOwnerIdAndUuid() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+        AiDTO.ConversationUpdateRequest request = new AiDTO.ConversationUpdateRequest();
+        request.setTitle("next");
+        request.setPinned(true);
+
+        assertThat(service.updateConversation(currentUser(), 10L, request)).isTrue();
+
+        assertThat(queryOperations.lastUpdateSql).contains("owner_user_id = ?");
+        assertThat(queryOperations.lastUpdateSql).contains("owner_user_uuid = ?");
+        assertThat(queryOperations.lastUpdateArgs).containsSequence(10L, 100L, "user-uuid-100");
+    }
+
+    @Test
+    void updateConversationShouldRejectWhenSnapshotWriteMisses() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        queryOperations.updateCount = 0;
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+        AiDTO.ConversationUpdateRequest request = new AiDTO.ConversationUpdateRequest();
+        request.setTitle("next");
+
+        assertThatThrownBy(() -> service.updateConversation(currentUser(), 10L, request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+                    assertThat(exception.getMessage()).contains("AI conversation changed, please retry");
+                });
+    }
+
+    @Test
     void deleteConversationShouldSkipShareCleanupWhenShareTableIsMissing() {
         ConversationQueryOperations queryOperations = new ConversationQueryOperations();
         OperationAuditService operationAuditService = mock(OperationAuditService.class);
@@ -129,9 +435,13 @@ class AiManagementAppServiceTest {
 
         assertThat(queryOperations.updatedTables).contains("ai_conversation", "ai_message", "ai_message_attachment");
         assertThat(queryOperations.updatedTables).doesNotContain("ai_conversation_share");
+        assertThat(queryOperations.updateSqlByTable.get("ai_conversation")).contains("owner_user_id = ?", "owner_user_uuid = ?", "conversation_code = ?", "status = ?");
+        assertThat(queryOperations.updateSqlByTable.get("ai_message")).contains("from ai_conversation", "owner_user_id = ?", "owner_user_uuid = ?", "conversation_code = ?", "status = ?");
+        assertThat(queryOperations.updateSqlByTable.get("ai_message_attachment")).contains("from ai_conversation", "owner_user_id = ?", "owner_user_uuid = ?", "conversation_code = ?", "status = ?");
         assertThat(queryOperations.shareTableExistsChecked).isTrue();
         verify(operationAuditService).log(
                 eq(100L),
+                eq("user-uuid-100"),
                 eq("admin"),
                 eq("ai"),
                 eq("conversation-delete"),
@@ -139,6 +449,45 @@ class AiManagementAppServiceTest {
                 eq("SUCCESS"),
                 contains("conv_10")
         );
+    }
+
+    @Test
+    void deleteConversationShouldRejectWhenPrimaryWriteMisses() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        queryOperations.updateCount = 0;
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.deleteConversation(currentUser(), 10L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+                    assertThat(exception.getMessage()).contains("AI conversation changed, please retry");
+                });
+        assertThat(queryOperations.updatedTables).containsExactly("ai_conversation");
+    }
+
+    @Test
+    void createConversationShareShouldRejectWhenInsertSelectMisses() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        queryOperations.updateCount = 0;
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.createConversationShare(currentUser(), 10L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+                    assertThat(exception.getMessage()).contains("AI conversation changed, please retry");
+                });
     }
 
     @Test
@@ -156,7 +505,7 @@ class AiManagementAppServiceTest {
         Object existing = llmServiceRecord("deepseek", "https://api.deepseek.com", "encrypted-secret");
         @SuppressWarnings({"rawtypes", "unchecked"})
         List existingServices = List.of(existing);
-        when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<Object>>any(), any(), any())).thenReturn(existingServices);
+        when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<Object>>any(), any())).thenReturn(existingServices);
 
         AiDTO.LlmServiceTestRequest request = testRequest();
         request.setServiceId(10L);
@@ -250,6 +599,27 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void createEmployeeShouldRejectWhenInsertMissesBeforeGeneratedIdLookup() {
+        RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        jdbcTemplate.updateResults.add(0);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.createEmployee(currentUser(), employeeRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+                    assertThat(exception.getMessage()).contains("AI employee changed, please retry");
+                });
+
+        assertThat(jdbcTemplate.lastInsertIdQueries).isZero();
+    }
+
+    @Test
     void createLlmServiceShouldRejectDuplicateCodeViaExistsCheck() {
         RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
         jdbcTemplate.llmServiceCodeExists = true;
@@ -271,6 +641,70 @@ class AiManagementAppServiceTest {
                 .hasMessageContaining("LLM 服务标识已存在");
         assertThat(jdbcTemplate.llmServiceExistsChecked).isTrue();
         assertThat(jdbcTemplate.countQueryCalled).isFalse();
+    }
+
+    @Test
+    void createLlmServiceShouldRejectWhenInsertMissesBeforeGeneratedIdLookup() {
+        RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        jdbcTemplate.updateResults.add(0);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.createLlmService(currentUser(), llmServiceRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+                    assertThat(exception.getMessage()).contains("AI LLM service changed, please retry");
+                });
+
+        assertThat(jdbcTemplate.lastInsertIdQueries).isZero();
+    }
+
+    @Test
+    void updateLlmServiceShouldRejectWhenSnapshotWriteMisses() {
+        RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        jdbcTemplate.updateResults.add(0);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        AiDTO.LlmServiceUpsertRequest request = llmServiceRequest();
+
+        assertThatThrownBy(() -> service.updateLlmService(currentUser(), 1L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("AI LLM service changed");
+    }
+
+    @Test
+    void updateEmployeeCapabilitiesShouldRejectWhenCapabilityWriteMisses() {
+        RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        jdbcTemplate.updateResults.add(1);
+        jdbcTemplate.updateResults.add(0);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        AiDTO.EmployeeCapabilityItem item = new AiDTO.EmployeeCapabilityItem();
+        item.setCapabilityCode("system.user.search");
+        item.setPermissionMode("visit");
+        AiDTO.EmployeeCapabilitiesUpdateRequest request = new AiDTO.EmployeeCapabilitiesUpdateRequest();
+        request.setCapabilities(List.of(item));
+
+        assertThatThrownBy(() -> service.updateEmployeeCapabilities(currentUser(), 1L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("AI employee capability changed");
     }
 
     @Test
@@ -308,6 +742,26 @@ class AiManagementAppServiceTest {
         return record;
     }
 
+    private AiDTO.LlmServiceUpsertRequest llmServiceRequest() {
+        AiDTO.LlmServiceUpsertRequest request = new AiDTO.LlmServiceUpsertRequest();
+        request.setProvider("deepseek");
+        request.setCode("deepseek-chat");
+        request.setTitle("DeepSeek");
+        request.setBaseUrl("https://api.deepseek.com");
+        request.setDefaultModel("deepseek-chat");
+        request.setEnabled(true);
+        request.setTimeoutMs(60000);
+        return request;
+    }
+
+    private AiDTO.EmployeeUpsertRequest employeeRequest() {
+        AiDTO.EmployeeUpsertRequest request = new AiDTO.EmployeeUpsertRequest();
+        request.setUsername("assistant");
+        request.setNickname("助理");
+        request.setDefaultLlmServiceId(null);
+        return request;
+    }
+
     private void setRecordValue(Class<?> recordType, Object record, String methodName, Object value) throws Exception {
         Method method = recordType.getMethod(methodName, value.getClass());
         method.setAccessible(true);
@@ -325,7 +779,25 @@ class AiManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("ai:llm:update"));
+        return userWithPermissions(Set.of("*"));
+    }
+
+    private CurrentUser userWithPermissions(Set<String> permissions) {
+        return trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, permissions));
+    }
+
+    private CurrentUser missingSessionVersionUser() {
+        return new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("*"));
+    }
+
+    private CurrentUser trusted(CurrentUser currentUser) {
+        currentUser.setUserUuid("user-uuid-" + currentUser.getUserId());
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
+        return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private AiDTO.LlmServiceTestRequest testRequest() {
@@ -342,20 +814,32 @@ class AiManagementAppServiceTest {
 
     private static final class ConversationQueryOperations extends MyBatisQueryOperations {
         private final List<String> updatedTables = new java.util.ArrayList<>();
+        private final Map<String, String> updateSqlByTable = new java.util.LinkedHashMap<>();
         private boolean shareTableExistsChecked;
+        private String lastQuerySql;
+        private Object[] lastQueryArgs;
+        private String lastUpdateSql;
+        private Object[] lastUpdateArgs;
+        private int updateCount = 1;
 
         @Override
         public int update(String sql, Object... args) {
+            lastUpdateSql = sql;
+            lastUpdateArgs = args;
             if (sql.contains("update ai_conversation_share")) {
                 updatedTables.add("ai_conversation_share");
+                updateSqlByTable.put("ai_conversation_share", sql);
             } else if (sql.contains("update ai_message_attachment")) {
                 updatedTables.add("ai_message_attachment");
+                updateSqlByTable.put("ai_message_attachment", sql);
             } else if (sql.contains("update ai_message")) {
                 updatedTables.add("ai_message");
+                updateSqlByTable.put("ai_message", sql);
             } else if (sql.contains("update ai_conversation")) {
                 updatedTables.add("ai_conversation");
+                updateSqlByTable.put("ai_conversation", sql);
             }
-            return 1;
+            return updateCount;
         }
 
         @Override
@@ -369,6 +853,8 @@ class AiManagementAppServiceTest {
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+            lastQuerySql = sql;
+            lastQueryArgs = args;
             if (sql.contains("from ai_conversation")) {
                 Map<String, Object> conversation = new java.util.LinkedHashMap<>();
                 conversation.put("id", 10L);
@@ -441,12 +927,14 @@ class AiManagementAppServiceTest {
         private boolean employeeExistsChecked;
         private boolean llmServiceExistsChecked;
         private boolean countQueryCalled;
+        private int lastInsertIdQueries;
         private Object[] lastUpdateArgs;
+        private final Queue<Integer> updateResults = new ArrayDeque<>();
 
         @Override
         public int update(String sql, Object... args) {
             lastUpdateArgs = args;
-            return 1;
+            return updateResults.isEmpty() ? 1 : updateResults.remove();
         }
 
         @Override
@@ -468,6 +956,7 @@ class AiManagementAppServiceTest {
                 countQueryCalled = true;
             }
             if (sql.contains("select last_insert_id()")) {
+                lastInsertIdQueries += 1;
                 return requiredType.cast(1L);
             }
             if (sql.contains("from ai_employee_skill")) {
@@ -478,6 +967,21 @@ class AiManagementAppServiceTest {
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+            if (sql.contains("from ai_llm_service")) {
+                Map<String, Object> row = new java.util.LinkedHashMap<>();
+                row.put("id", 1L);
+                row.put("provider", "deepseek");
+                row.put("code", "deepseek-chat");
+                row.put("title", "DeepSeek");
+                row.put("baseUrl", "https://api.deepseek.com");
+                row.put("apiKeyEncrypted", "encrypted");
+                row.put("defaultModel", "deepseek-chat");
+                row.put("enabled", 1);
+                row.put("timeoutMs", 60000);
+                row.put("createTime", LocalDateTime.now());
+                row.put("updateTime", LocalDateTime.now());
+                return mapRows(rowMapper, List.of(row));
+            }
             if (sql.contains("from ai_employee")) {
                 try {
                     return List.of(rowMapper.mapRow(new SqlRow(Map.of(
@@ -494,6 +998,29 @@ class AiManagementAppServiceTest {
                 }
             }
             return List.of();
+        }
+
+        @Override
+        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            if (sql.contains("from ai_skill")) {
+                return List.of(Map.of(
+                        "skillCode", "system.user.search",
+                        "readOnly", 1
+                ));
+            }
+            return List.of();
+        }
+
+        private <T> List<T> mapRows(RowMapper<T> rowMapper, List<Map<String, Object>> rows) {
+            List<T> mapped = new java.util.ArrayList<>();
+            for (int i = 0; i < rows.size(); i++) {
+                try {
+                    mapped.add(rowMapper.mapRow(new SqlRow(rows.get(i)), i));
+                } catch (Exception exception) {
+                    throw new AssertionError(exception);
+                }
+            }
+            return mapped;
         }
     }
 }

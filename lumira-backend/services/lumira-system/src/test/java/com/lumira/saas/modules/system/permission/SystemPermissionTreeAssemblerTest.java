@@ -84,6 +84,26 @@ class SystemPermissionTreeAssemblerTest {
     }
 
     @Test
+    void shouldExposePublicFilePublishAsPersonalFileAction() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(menu("Files", "/user-center/personal-center/files", "system:file:view")),
+                List.of(
+                        permission("system:file:view", "View files"),
+                        permission("system:file:upload", "Upload files"),
+                        permission("system:file:publish", "Publish public files")
+                )
+        );
+
+        Set<String> actionKeys = tree.getFirst().getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet());
+
+        assertTrue(actionKeys.contains("system:file:publish"));
+    }
+
+    @Test
     void shouldKeepCatalogRoutePathForFrontendLocalization() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
         SystemVO.MenuVO root = menu("Expert library", "/experts", null);

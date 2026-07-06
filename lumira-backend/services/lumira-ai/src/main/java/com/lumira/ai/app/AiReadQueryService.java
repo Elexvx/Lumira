@@ -8,9 +8,15 @@ import com.lumira.ai.vo.AiMessageAttachmentVO;
 import com.lumira.ai.vo.AiMessageVO;
 import com.lumira.ai.vo.AiToolVO;
 import com.lumira.ai.vo.PageResponse;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -34,12 +40,20 @@ public class AiReadQueryService {
     private static final String SCOPE_PLATFORM = "PLATFORM";
 
     private final JdbcTemplate jdbcTemplate;
+    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
 
     public AiReadQueryService(JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, null);
+    }
+
+    @Autowired
+    public AiReadQueryService(JdbcTemplate jdbcTemplate, ObjectProvider<SystemInternalApi> systemInternalApiProvider) {
         this.jdbcTemplate = jdbcTemplate;
+        this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
     public PageResponse<AiEmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
+        currentUserId(currentUser);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiEmployeeVO> records = jdbcTemplate.query(
                 employeeSelect("""
@@ -55,6 +69,7 @@ public class AiReadQueryService {
     }
 
     public AiEmployeeVO getAssistantEmployee(CurrentUser currentUser) {
+        currentUserId(currentUser);
         return jdbcTemplate.query(
                 employeeSelect("""
                         where e.is_deleted = 0
@@ -68,6 +83,7 @@ public class AiReadQueryService {
 
     public PageResponse<AiConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
         Long userId = currentUserId(currentUser);
+        String userUuid = currentUserUuid(currentUser);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiConversationVO> records = jdbcTemplate.query(
                 """
@@ -95,6 +111,7 @@ public class AiReadQueryService {
                           on e.id = c.employee_id
                          and e.is_deleted = 0
                         where c.owner_user_id = ?
+                          and c.owner_user_uuid = ?
                           and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
@@ -102,6 +119,7 @@ public class AiReadQueryService {
                         """,
                 this::mapConversation,
                 userId,
+                userUuid,
                 employeeId,
                 employeeId,
                 bounds.limitPlusOne(),
@@ -112,7 +130,7 @@ public class AiReadQueryService {
 
     public List<AiMessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
         Long userId = currentUserId(currentUser);
-        requireConversation(userId, conversationId);
+        requireConversation(userId, currentUserUuid(currentUser), conversationId);
         List<AiMessageVO> messages = jdbcTemplate.query(
                 """
                         select id, conversation_id, role, content, create_time
@@ -178,6 +196,17 @@ public class AiReadQueryService {
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "知识库不存在"));
     }
 
+    public AiKnowledgeBaseVO requireManageableKnowledgeBase(CurrentUser currentUser, Long id) {
+        StringBuilder where = new StringBuilder(" where kb.id = ? and kb.is_deleted = 0");
+        List<Object> args = new ArrayList<>();
+        args.add(id);
+        appendManageableKnowledgeBaseFilter(where, args, currentUser);
+        return jdbcTemplate.query(knowledgeBaseSelect(where.toString()) + " limit 1", this::mapKnowledgeBase, args.toArray())
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Knowledge base not found or manageable access denied"));
+    }
+
     public PageResponse<AiKnowledgeDocumentVO> listKnowledgeDocuments(CurrentUser currentUser, Long knowledgeBaseId, long pageNo, long pageSize) {
         getKnowledgeBase(currentUser, knowledgeBaseId);
         PageBounds bounds = pageBounds(pageNo, pageSize);
@@ -201,9 +230,35 @@ public class AiReadQueryService {
     }
 
     public List<AiToolVO> listTools(CurrentUser currentUser) {
-        return nativeTools().stream()
+        currentUserId(currentUser);
+        return allTools().stream()
+                .filter(tool -> canViewTool(currentUser, tool))
                 .sorted((left, right) -> left.toolCode().compareTo(right.toolCode()))
                 .toList();
+    }
+
+    List<AiToolVO> allTools() {
+        return nativeTools();
+    }
+
+    public void requireEnabledEmployee(Long employeeId) {
+        if (employeeId == null || employeeId <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "AI employee is required");
+        }
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from ai_employee
+                        where id = ?
+                          and enabled = 1
+                          and is_deleted = 0
+                        """,
+                Integer.class,
+                employeeId
+        );
+        if (count == null || count <= 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "AI employee not found or disabled");
+        }
     }
 
     private String employeeSelect(String tail) {
@@ -228,6 +283,7 @@ public class AiReadQueryService {
                        kb.status,
                        kb.visibility_scope,
                        kb.owner_user_id,
+                       kb.owner_user_uuid,
                        kb.created_by,
                        kb.create_time,
                        kb.update_time,
@@ -240,7 +296,7 @@ public class AiReadQueryService {
                   on c.knowledge_base_id = kb.id and c.is_deleted = 0
                 """ + where + """
                 group by kb.id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
-                         kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
+                         kb.owner_user_id, kb.owner_user_uuid, kb.created_by, kb.create_time, kb.update_time
                 """;
     }
 
@@ -300,6 +356,7 @@ public class AiReadQueryService {
                 rs.getString("status"),
                 rs.getString("visibility_scope"),
                 objectLong(rs, "owner_user_id"),
+                rs.getString("owner_user_uuid"),
                 objectLong(rs, "document_count"),
                 objectLong(rs, "chunk_count"),
                 objectLong(rs, "created_by"),
@@ -328,17 +385,19 @@ public class AiReadQueryService {
         );
     }
 
-    private void requireConversation(Long ownerUserId, Long conversationId) {
+    private void requireConversation(Long ownerUserId, String ownerUserUuid, Long conversationId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 """
                         select 1
                         from ai_conversation
                         where owner_user_id = ?
+                          and owner_user_uuid = ?
                           and id = ?
                           and is_deleted = 0
                         limit 1
                         """,
                 ownerUserId,
+                ownerUserUuid,
                 conversationId
         );
         if (rows.isEmpty()) {
@@ -397,8 +456,9 @@ public class AiReadQueryService {
         }
         String normalizedScope = StringUtils.hasText(scope) ? scope.trim().toUpperCase(Locale.ROOT) : null;
         if ("OWNED".equals(normalizedScope)) {
-            where.append(" and kb.owner_user_id = ?");
+            where.append(" and kb.owner_user_id = ? and kb.owner_user_uuid = ?");
             args.add(currentUserId(currentUser));
+            args.add(currentUserUuid(currentUser));
             return;
         }
         if (isPlatformScope(normalizedScope)) {
@@ -406,17 +466,19 @@ public class AiReadQueryService {
             return;
         }
         if ("SHARED".equals(normalizedScope)) {
-            where.append(" and kb.owner_user_id <> ?");
+            where.append(" and not (kb.owner_user_id = ? and kb.owner_user_uuid = ?)");
             args.add(currentUserId(currentUser));
-            where.append(" and ").append(buildAclExistsClause(currentUser, args));
+            args.add(currentUserUuid(currentUser));
+            where.append(" and ").append(buildAclExistsClause(currentUser, args, List.of("VIEW", "USE", "MANAGE")));
             return;
         }
 
-        where.append(" and (kb.owner_user_id = ?");
+        where.append(" and (kb.owner_user_id = ? and kb.owner_user_uuid = ?");
         args.add(currentUserId(currentUser));
+        args.add(currentUserUuid(currentUser));
         where.append(" or ");
         appendPlatformVisibilityPredicate(where, args);
-        where.append(" or ").append(buildAclExistsClause(currentUser, args)).append(")");
+        where.append(" or ").append(buildAclExistsClause(currentUser, args, List.of("VIEW", "USE", "MANAGE"))).append(")");
     }
 
     private void appendScopeFilter(StringBuilder where, List<Object> args, CurrentUser currentUser, String scope) {
@@ -425,15 +487,27 @@ public class AiReadQueryService {
         }
         String normalizedScope = scope.trim().toUpperCase(Locale.ROOT);
         if ("OWNED".equals(normalizedScope)) {
-            where.append(" and kb.owner_user_id = ?");
+            where.append(" and kb.owner_user_id = ? and kb.owner_user_uuid = ?");
             args.add(currentUserId(currentUser));
+            args.add(currentUserUuid(currentUser));
         } else if ("SHARED".equals(normalizedScope)) {
-            where.append(" and kb.owner_user_id <> ?");
+            where.append(" and not (kb.owner_user_id = ? and kb.owner_user_uuid = ?)");
             args.add(currentUserId(currentUser));
-            where.append(" and ").append(buildAclExistsClause(currentUser, args));
+            args.add(currentUserUuid(currentUser));
+            where.append(" and ").append(buildAclExistsClause(currentUser, args, List.of("VIEW", "USE", "MANAGE")));
         } else if (isPlatformScope(normalizedScope)) {
             appendPlatformVisibilityFilter(where, args);
         }
+    }
+
+    private void appendManageableKnowledgeBaseFilter(StringBuilder where, List<Object> args, CurrentUser currentUser) {
+        if (hasAllPermission(currentUser)) {
+            return;
+        }
+        where.append(" and ((kb.owner_user_id = ? and kb.owner_user_uuid = ?)");
+        args.add(currentUserId(currentUser));
+        args.add(currentUserUuid(currentUser));
+        where.append(" or ").append(buildAclExistsClause(currentUser, args, List.of("MANAGE"))).append(")");
     }
 
     private void appendPlatformVisibilityFilter(StringBuilder where, List<Object> args) {
@@ -450,8 +524,8 @@ public class AiReadQueryService {
         return SCOPE_PLATFORM.equals(scope);
     }
 
-    private String buildAclExistsClause(CurrentUser currentUser, List<Object> args) {
-        List<String> permissions = List.of("VIEW", "USE", "MANAGE");
+    private String buildAclExistsClause(CurrentUser currentUser, List<Object> args, List<String> permissions) {
+        Long actorUserId = currentUserId(currentUser);
         StringBuilder clause = new StringBuilder();
         clause.append("exists (select 1 from ai_knowledge_base_acl acl where acl.knowledge_base_id = kb.id")
                 .append(" and acl.is_deleted = 0 and acl.permission in (")
@@ -462,14 +536,14 @@ public class AiReadQueryService {
 
         List<String> subjectClauses = new ArrayList<>();
         subjectClauses.add("(acl.subject_type = 'USER' and acl.subject_id = ?)");
-        args.add(currentUserId(currentUser));
-        Set<Long> roleIds = currentUser == null ? Set.of() : currentUser.getRoleIds();
+        args.add(actorUserId);
+        Set<Long> roleIds = currentUser.getRoleIds() == null ? Set.of() : currentUser.getRoleIds();
         if (!roleIds.isEmpty()) {
             subjectClauses.add("(acl.subject_type = 'ROLE' and acl.subject_id in (" + "?,".repeat(roleIds.size()).replaceFirst(",$", "") + "))");
             args.addAll(roleIds);
         }
-        Set<Long> deptIds = new LinkedHashSet<>(currentUser == null ? Set.of() : currentUser.getDeptIds());
-        if (currentUser != null && currentUser.getPrimaryDeptId() != null) {
+        Set<Long> deptIds = new LinkedHashSet<>(currentUser.getDeptIds() == null ? Set.of() : currentUser.getDeptIds());
+        if (currentUser.getPrimaryDeptId() != null) {
             deptIds.add(currentUser.getPrimaryDeptId());
         }
         if (!deptIds.isEmpty()) {
@@ -535,14 +609,106 @@ public class AiReadQueryService {
     }
 
     private Long currentUserId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getUserId() == null) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
         }
         return currentUser.getUserId();
     }
 
+    private String currentUserUuid(CurrentUser currentUser) {
+        currentUserId(currentUser);
+        return currentUser.getUserUuid();
+    }
+
     private boolean hasAllPermission(CurrentUser currentUser) {
-        return currentUser != null && currentUser.getPermissions().contains("*");
+        return trustedPermissions(currentUser).contains("*");
+    }
+
+    private boolean canViewTool(CurrentUser currentUser, AiToolVO tool) {
+        if (tool == null || !StringUtils.hasText(tool.requiredPermission())) {
+            return true;
+        }
+        if (hasAllPermission(currentUser)) {
+            return true;
+        }
+        return trustedPermissions(currentUser).contains(tool.requiredPermission());
+    }
+
+    private boolean isTrustedCurrentUser(CurrentUser currentUser) {
+        return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
+    }
+
+    private Set<String> trustedPermissions(CurrentUser currentUser) {
+        currentUserId(currentUser);
+        return currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApiProvider == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
+        if (systemInternalApi == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userSnapshot.userId().equals(userId)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user does not exist");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid()) || !userSnapshot.userUuid().trim().equals(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity mismatch");
+        }
+        if (!StringUtils.hasText(userSnapshot.status()) || !"ENABLED".equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled");
+        }
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserUuid(normalizedUserUuid);
+        if (StringUtils.hasText(userSnapshot.username())) {
+            currentUser.setUsername(userSnapshot.username().trim());
+        }
+        currentUser.setPermissions(trustedPermissionSet(snapshot.permissions()));
+        currentUser.setRoleIds(trustedLongSet(snapshot.roleIds()));
+        currentUser.setPrimaryDeptId(snapshot.primaryDeptId());
+        currentUser.setDeptIds(trustedLongSet(snapshot.deptIds()));
+        currentUser.setDescendantDeptIds(trustedLongSet(snapshot.descendantDeptIds()));
+        currentUser.setDataScopes(snapshot.dataScopes() == null ? List.of() : List.copyOf(snapshot.dataScopes()));
+        currentUser.setPermissionsVersion(snapshot.version().trim());
+        currentUser.setDefaultHomePath(snapshot.defaultHomePath());
+    }
+
+    private Set<String> trustedPermissionSet(List<String> permissions) {
+        if (permissions == null || permissions.isEmpty()) {
+            return Set.of();
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String permission : permissions) {
+            if (StringUtils.hasText(permission)) {
+                normalized.add(permission.trim());
+            }
+        }
+        return normalized.isEmpty() ? Set.of() : Set.copyOf(normalized);
+    }
+
+    private Set<Long> trustedLongSet(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Set.of();
+        }
+        LinkedHashSet<Long> normalized = new LinkedHashSet<>();
+        for (Long id : ids) {
+            if (id != null && id > 0) {
+                normalized.add(id);
+            }
+        }
+        return normalized.isEmpty() ? Set.of() : Set.copyOf(normalized);
     }
 
     private Long objectLong(ResultSet rs, String column) throws SQLException {

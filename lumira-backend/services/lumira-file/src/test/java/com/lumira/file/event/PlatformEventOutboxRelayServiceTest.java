@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +29,7 @@ class PlatformEventOutboxRelayServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         ArgumentCaptor<String> updateSql = ArgumentCaptor.forClass(String.class);
         PlatformEventOutboxEntity row = outboxRow(15L, PlatformEventOutboxService.STATUS_RECORDED, 0);
+        row.setDispatchStatus(PlatformEventOutboxService.STATUS_DISPATCHING);
         when(jdbcTemplate.query(
                 contains("claim_token = ?"),
                 any(BeanPropertyRowMapper.class),
@@ -38,7 +40,7 @@ class PlatformEventOutboxRelayServiceTest {
         FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
         PlatformEventOutboxService service = service(jdbcTemplate);
 
-        int delivered = service.dispatchPending(dispatcher, 500);
+        int delivered = service.dispatchPending(dispatcher, PlatformEventOutboxService.MAX_DISPATCH_LIMIT);
 
         assertThat(delivered).isEqualTo(1);
         assertThat(updateSql.getAllValues().get(0).toLowerCase())
@@ -77,6 +79,7 @@ class PlatformEventOutboxRelayServiceTest {
     void dispatchPendingClaimsAndMarksDelivered() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxEntity row = outboxRow(10L, PlatformEventOutboxService.STATUS_RECORDED, 0);
+        row.setDispatchStatus(PlatformEventOutboxService.STATUS_DISPATCHING);
         doReturn(List.of(row)).when(jdbcTemplate).query(
                 contains("claim_token = ?"),
                 any(BeanPropertyRowMapper.class),
@@ -119,10 +122,18 @@ class PlatformEventOutboxRelayServiceTest {
                 any(),
                 any(),
                 eq(9L),
+                eq("user-uuid-9"),
                 eq(10L),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq("FILE_OBJECT_UPLOADED:1001:file.object:3001"),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
-                anyString()
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(0),
+                eq(0)
         );
     }
 
@@ -130,6 +141,7 @@ class PlatformEventOutboxRelayServiceTest {
     void failedDispatchAfterMaxRetriesMovesToDeadLetter() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxEntity row = outboxRow(11L, PlatformEventOutboxService.STATUS_FAILED, 7);
+        row.setDispatchStatus(PlatformEventOutboxService.STATUS_DISPATCHING);
         doReturn(List.of(row)).when(jdbcTemplate).query(
                 contains("claim_token = ?"),
                 any(BeanPropertyRowMapper.class),
@@ -172,11 +184,72 @@ class PlatformEventOutboxRelayServiceTest {
                 eq("boom"),
                 any(),
                 eq(9L),
+                eq("user-uuid-9"),
                 eq(11L),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq("FILE_OBJECT_UPLOADED:1001:file.object:3001"),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
-                anyString()
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(7),
+                eq(7)
         );
+    }
+
+    @Test
+    void dispatchPendingShouldRejectUntrustedClaimedRowBeforeDispatcher() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxEntity row = outboxRow(13L, PlatformEventOutboxService.STATUS_DISPATCHING, 0);
+        row.setPayloadJson("x".repeat(256 * 1024 + 1));
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                contains("claim_token = ?"),
+                any(BeanPropertyRowMapper.class),
+                any(),
+                any()
+        );
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
+        PlatformEventOutboxService service = service(jdbcTemplate);
+
+        int delivered = service.dispatchPending(dispatcher, 50);
+
+        assertThat(delivered).isZero();
+        verify(dispatcher, never()).dispatch(any());
+        verify(jdbcTemplate).update(
+                contains("claim_token = ?"),
+                eq(PlatformEventOutboxService.STATUS_FAILED),
+                eq(1),
+                any(LocalDateTime.class),
+                eq("File outbox row is invalid"),
+                any(LocalDateTime.class),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(13L),
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq("FILE_OBJECT_UPLOADED:1001:file.object:3001"),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                anyString(),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(0),
+                eq(0)
+        );
+    }
+
+    @Test
+    void dispatchStateWritesShouldBindEventAndUserIdentity() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/com/lumira/file/event/PlatformEventOutboxService.java"));
+
+        assertThat(source)
+                .contains("and event_type = ?")
+                .contains("and event_key = ?")
+                .contains("((user_id is null and ? is null and user_uuid is null) or (user_id = ? and user_uuid = ?))")
+                .contains("normalizeUserUuidOrNull(row.getUserUuid())");
     }
 
     @Test
@@ -196,8 +269,77 @@ class PlatformEventOutboxRelayServiceTest {
         boolean replayed = service.replay(12L, dispatcher);
 
         assertThat(replayed).isTrue();
-        verify(jdbcTemplate).update(contains("retry_count = 0"), eq(PlatformEventOutboxService.STATUS_RECORDED), any(), eq(9L), eq(12L), eq(FilePlatformEventTypes.SOURCE_FILE));
+        verify(jdbcTemplate).update(
+                contains("event_key = ?"),
+                eq(PlatformEventOutboxService.STATUS_RECORDED),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(12L),
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq("FILE_OBJECT_UPLOADED:1001:file.object:3001"),
+                eq(PlatformEventOutboxService.STATUS_DEAD_LETTER),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9")
+        );
         verify(dispatcher).dispatch(deadLetter);
+    }
+
+    @Test
+    void replayShouldNormalizeUserUuidWhenResettingBoundary() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxEntity deadLetter = outboxRow(12L, PlatformEventOutboxService.STATUS_DEAD_LETTER, 8);
+        deadLetter.setUserUuid("  user-uuid-9  ");
+        doReturn(deadLetter).when(jdbcTemplate).queryForObject(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq(12L),
+                eq(FilePlatformEventTypes.SOURCE_FILE)
+        );
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
+        PlatformEventOutboxService service = service(jdbcTemplate);
+
+        boolean replayed = service.replay(12L, dispatcher);
+
+        assertThat(replayed).isTrue();
+        verify(jdbcTemplate).update(
+                contains("dispatch_status = ?"),
+                eq(PlatformEventOutboxService.STATUS_RECORDED),
+                any(),
+                eq(9L),
+                eq("user-uuid-9"),
+                eq(12L),
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq("FILE_OBJECT_UPLOADED:1001:file.object:3001"),
+                eq(PlatformEventOutboxService.STATUS_DEAD_LETTER),
+                eq(9L),
+                eq(9L),
+                eq("user-uuid-9")
+        );
+    }
+
+    @Test
+    void replayShouldNotDispatchWhenResetBoundaryMisses() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxEntity deadLetter = outboxRow(12L, PlatformEventOutboxService.STATUS_DEAD_LETTER, 8);
+        doReturn(deadLetter).when(jdbcTemplate).queryForObject(
+                anyString(),
+                any(BeanPropertyRowMapper.class),
+                eq(12L),
+                eq(FilePlatformEventTypes.SOURCE_FILE)
+        );
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
+        FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
+        PlatformEventOutboxService service = service(jdbcTemplate);
+
+        boolean replayed = service.replay(12L, dispatcher);
+
+        assertThat(replayed).isFalse();
+        verify(dispatcher, never()).dispatch(any());
     }
 
     @Test
@@ -224,7 +366,22 @@ class PlatformEventOutboxRelayServiceTest {
                 .contains("limit 1");
     }
 
+    @Test
+    void replayShouldRejectInvalidIdBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
+        PlatformEventOutboxService service = service(jdbcTemplate);
+
+        boolean replayed = service.replay(0L, dispatcher);
+
+        assertThat(replayed).isFalse();
+        verify(jdbcTemplate, never()).queryForObject(anyString(), any(BeanPropertyRowMapper.class), any(), any());
+        verify(dispatcher, never()).dispatch(any());
+    }
+
+
     private PlatformEventOutboxService service(JdbcTemplate jdbcTemplate) {
+        when(jdbcTemplate.queryForObject(contains("select uuid"), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         return new PlatformEventOutboxService(new ObjectMapper(), mock(FilePlatformEventOutboxMapper.class), jdbcTemplate);
     }
 
@@ -232,16 +389,18 @@ class PlatformEventOutboxRelayServiceTest {
         PlatformEventOutboxEntity row = new PlatformEventOutboxEntity();
         row.setId(id);
         row.setUserId(9L);
+        row.setUserUuid("user-uuid-9");
         row.setSourceType(FilePlatformEventTypes.SOURCE_FILE);
         row.setEventType(FilePlatformEventTypes.FILE_OBJECT_UPLOADED);
         row.setEventKey("FILE_OBJECT_UPLOADED:1001:file.object:3001");
-        row.setPayloadJson("{}");
+        row.setPayloadJson("{\"userUuid\":\"user-uuid-9\"}");
         row.setDispatchStatus(status);
         row.setRetryCount(retryCount);
         row.setClaimToken("claim-" + id);
         row.setClaimExpiresAt(LocalDateTime.now().plusMinutes(15));
         row.setCreatedAt(LocalDateTime.now().minusMinutes(1));
         row.setUpdatedBy(9L);
+        row.setUpdatedByUuid("user-uuid-9");
         row.setUpdatedAt(LocalDateTime.now().minusMinutes(1));
         row.setDeleted(0);
         return row;

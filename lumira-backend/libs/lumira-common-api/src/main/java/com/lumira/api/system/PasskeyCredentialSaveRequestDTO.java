@@ -2,6 +2,7 @@ package com.lumira.api.system;
 
 public record PasskeyCredentialSaveRequestDTO(
         Long userId,
+        String userUuid,
         String userHandle,
         String credentialId,
         String publicKeyCose,

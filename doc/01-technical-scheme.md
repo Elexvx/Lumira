@@ -6,7 +6,7 @@
 
 目标是构建一套可长期运营、可维护、可扩展、可容灾的中后台系统底座，支持多租户隔离、多端访问、高可用、灰度发布、可观测运维和业务快速扩展。
 
-当前仓库已经从早期的“多进程微服务演进设想”收敛为“单体微服务”主线：正式后端入口为 `services/lumira-admin`，通过 `api-proxy` 统一暴露 `/api`、`/ws` 和 `/health`；代码层仍保留 `services/*-service` 模块边界，为后续物理拆分预留条件。
+当前仓库已经从早期的“多进程微服务演进设想”收敛为“单体微服务”主线：正式后端入口为 `services/lumira-admin`，同步配套 `lumira-async` 和 `lumira-job-executor` 两个后台运行时，通过 `api-proxy` 统一暴露 `/api`、`/ws` 和 `/health`；代码层仍保留 `services/*-service` 模块边界，为后续物理拆分预留条件。
 
 ## 2. 建设目标
 
@@ -44,7 +44,7 @@
 ## 6. 后端核心原则
 
 - 优先采用模块化单体。
-- 当前默认统一由 `lumira-server` 聚合启动，对外经 `api-proxy` 暴露。
+- 当前默认由 `lumira-server` 承载同步请求入口，`lumira-async` 与 `lumira-job-executor` 承载异步处理和调度执行，对外统一经 `api-proxy` 暴露。
 - 业务模块边界清晰，公共能力集中治理。
 - 使用 MyBatis Plus 配合关键 SQL 手写，保证可控性。
 - 核心模块至少包含认证、租户、用户、组织、权限、字典、配置、文件、消息、任务、审计和监控。

@@ -10,6 +10,7 @@ public record AiKnowledgeBaseVO(
         String status,
         String visibilityScope,
         Long ownerUserId,
+        String ownerUserUuid,
         Long documentCount,
         Long chunkCount,
         Long createdBy,

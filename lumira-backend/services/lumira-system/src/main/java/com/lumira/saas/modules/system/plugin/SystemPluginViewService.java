@@ -27,6 +27,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
@@ -38,6 +40,11 @@ public class SystemPluginViewService {
     private static final String PLUGIN_BOOTSTRAP_SCOPE = "bootstrap";
     private static final String AVAILABLE_PLUGINS_CACHE_KEY = "available-plugins";
     private static final Duration AVAILABLE_PLUGINS_CACHE_TTL = Duration.ofSeconds(15);
+    private static final long MAX_MANIFEST_BYTES = 256 * 1024;
+    private static final int MAX_MANIFEST_ITEMS = 100;
+    private static final int MAX_MANIFEST_VALUE_LENGTH = 160;
+    private static final Pattern ROUTE_PATTERN = Pattern.compile("^/[A-Za-z0-9/_:.-]*$");
+    private static final Pattern SHARED_DEP_PATTERN = Pattern.compile("^[A-Za-z0-9@/_.-]+$");
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -197,27 +204,61 @@ public class SystemPluginViewService {
     }
 
     private CachedManifest loadCachedManifest(Path manifestPath) throws java.io.IOException {
-        String cacheKey = manifestPath.toAbsolutePath().normalize().toString();
-        long modifiedAt = Files.getLastModifiedTime(manifestPath).toMillis();
+        Path normalizedManifestPath = validateManifestPath(manifestPath);
+        String cacheKey = normalizedManifestPath.toString();
+        long modifiedAt = Files.getLastModifiedTime(normalizedManifestPath).toMillis();
         CachedManifest cached = manifestCache.get(cacheKey);
         if (cached != null && cached.modifiedAt() == modifiedAt) {
             return cached;
         }
-        PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(manifestPath.toFile(), PluginDTO.FrontendPluginManifest.class);
+        PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(normalizedManifestPath.toFile(), PluginDTO.FrontendPluginManifest.class);
         CachedManifest next = new CachedManifest(
                 modifiedAt,
-                immutableList(manifest.getSharedDeps()),
-                immutableList(manifest.getRoutes())
+                immutableManifestList(manifest.getSharedDeps(), SystemPluginViewService::isSafeSharedDependency),
+                immutableManifestList(manifest.getRoutes(), ROUTE_PATTERN.asMatchPredicate())
         );
         manifestCache.put(cacheKey, next);
         return next;
     }
 
-    private static List<String> immutableList(List<String> values) {
+    private static Path validateManifestPath(Path manifestPath) throws java.io.IOException {
+        Path normalized = manifestPath.toAbsolutePath().normalize();
+        String fileName = normalized.getFileName() == null ? "" : normalized.getFileName().toString();
+        if (!fileName.endsWith(".json") || !Files.isRegularFile(normalized) || !Files.isReadable(normalized)) {
+            throw new java.io.IOException("Invalid plugin frontend manifest path");
+        }
+        if (Files.size(normalized) > MAX_MANIFEST_BYTES) {
+            throw new java.io.IOException("Plugin frontend manifest is too large");
+        }
+        return normalized;
+    }
+
+    private static boolean isSafeSharedDependency(String value) {
+        return SHARED_DEP_PATTERN.matcher(value).matches()
+                && !value.contains("..")
+                && !value.contains("\\")
+                && !value.contains("//");
+    }
+
+    private static List<String> immutableManifestList(List<String> values, Predicate<String> validator) {
         if (values == null || values.isEmpty()) {
             return List.of();
         }
-        return Collections.unmodifiableList(new ArrayList<>(values));
+        List<String> normalized = new ArrayList<>(Math.min(values.size(), MAX_MANIFEST_ITEMS));
+        for (String value : values) {
+            if (!StringUtils.hasText(value)) {
+                continue;
+            }
+            String trimmed = value.trim();
+            if (trimmed.length() > MAX_MANIFEST_VALUE_LENGTH || !validator.test(trimmed)) {
+                continue;
+            }
+            normalized.add(trimmed);
+            if (normalized.size() >= MAX_MANIFEST_ITEMS) {
+                break;
+            }
+        }
+        return Collections.unmodifiableList(normalized);
     }
 
     private List<PluginVO.PluginAvailabilityVO> copyAvailablePlugins(List<PluginVO.PluginAvailabilityVO> source) {

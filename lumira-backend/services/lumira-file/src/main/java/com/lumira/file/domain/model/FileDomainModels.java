@@ -3,6 +3,7 @@ package com.lumira.file.domain.model;
 import com.lumira.domain.event.StandardDomainEvent;
 import com.lumira.domain.model.AggregateRoot;
 import com.lumira.domain.model.EntityId;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class FileDomainModels {
@@ -23,15 +24,27 @@ public final class FileDomainModels {
         }
 
         public void recordUploaded(String contentType) {
+            recordUploaded(contentType, null, null);
+        }
+
+        public void recordUploaded(String contentType, Long userId, String userUuid) {
             registerEvent(StandardDomainEvent.of(
                     "FILE_OBJECT_UPLOADED",
                     "file.object",
                     String.valueOf(id().value()),
-                    Map.of("sizeBytes", sizeBytes, "contentType", contentType == null ? "" : contentType)
+                    actorAttributes(
+                            Map.of("sizeBytes", sizeBytes, "contentType", contentType == null ? "" : contentType),
+                            userId,
+                            userUuid
+                    )
             ));
         }
 
         public void delete() {
+            delete(null, null);
+        }
+
+        public void delete(Long userId, String userUuid) {
             if (deleted) {
                 return;
             }
@@ -40,8 +53,20 @@ public final class FileDomainModels {
                     "FILE_OBJECT_DELETED",
                     "file.object",
                     String.valueOf(id().value()),
-                    Map.of("sizeBytes", sizeBytes)
+                    actorAttributes(Map.of("sizeBytes", sizeBytes), userId, userUuid)
             ));
+        }
+
+        private Map<String, Object> actorAttributes(Map<String, Object> baseAttributes, Long userId, String userUuid) {
+            Map<String, Object> attributes = new LinkedHashMap<>(baseAttributes);
+            if (userId != null) {
+                if (userId <= 0 || userUuid == null || userUuid.isBlank()) {
+                    throw new IllegalArgumentException("trusted actor identity is required");
+                }
+                attributes.put("userId", userId);
+                attributes.put("userUuid", userUuid.trim());
+            }
+            return attributes;
         }
     }
 

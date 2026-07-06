@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.iam.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -15,7 +17,9 @@ import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -39,12 +44,23 @@ import static org.mockito.Mockito.when;
 class PermissionSnapshotServiceTest {
 
     @Test
+    void loadSnapshotShouldNotExposeUserIdOnlyIdentity() {
+        PermissionSnapshotService service = newService(List.of("team:view"));
+
+        assertEquals(List.of(), Arrays.stream(PermissionSnapshotService.class.getMethods())
+                .filter(method -> method.getDeclaringClass().equals(PermissionSnapshotService.class))
+                .map(Method::toString)
+                .filter(signature -> signature.contains("loadSnapshot(java.lang.Long)"))
+                .toList());
+    }
+
+    @Test
     void loadSnapshotKeepsAdminOnlyPermissionsForProtectedAdmin() {
         PermissionSnapshotService service = newService(
                 List.of("system:menu:view", "system:config:view", "plugin:management:view", "team:view")
         );
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L, "uuid-1001");
 
         assertTrue(snapshot.getPermissions().contains("*"));
         assertTrue(snapshot.getPermissions().contains("system:menu:view"));
@@ -58,7 +74,7 @@ class PermissionSnapshotServiceTest {
     void loadSnapshotGrantsWildcardWhenProtectedAdminRoleHasNoPermissions() {
         PermissionSnapshotService service = newService(List.of());
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L, "uuid-1001");
 
         assertEquals(Set.of("*"), snapshot.getPermissions());
     }
@@ -69,7 +85,7 @@ class PermissionSnapshotServiceTest {
                 List.of("system:menu:view", "system:config:view", "plugin:management:view", "team:view")
         );
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(2001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(2001L, "uuid-2001");
 
         assertFalse(snapshot.getPermissions().contains("system:menu:view"));
         assertFalse(snapshot.getPermissions().contains("system:config:view"));
@@ -86,10 +102,10 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
         int queryCountAfterWarmup = jdbcTemplate.queryCount();
 
-        PermissionSnapshotService.PermissionSnapshot cachedSnapshot = service.loadSnapshot(1001L);
+        PermissionSnapshotService.PermissionSnapshot cachedSnapshot = service.loadSnapshot(1001L, "uuid-1001");
 
         assertTrue(cachedSnapshot.getPermissions().contains("team:view"));
         assertEquals(queryCountAfterWarmup, jdbcTemplate.queryCount());
@@ -123,10 +139,10 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
         int queryCountAfterFirstLoad = jdbcTemplate.queryCount();
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
 
         assertEquals(queryCountAfterFirstLoad, jdbcTemplate.queryCount(), "Global snapshot cache should not be partitioned by request scope");
         assertFalse(jdbcTemplate.usedLegacyScopeIds.contains(1L));
@@ -142,14 +158,14 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
         int queryCountAfterWarmup = jdbcTemplate.queryCount();
         assertTrue(queryCountAfterWarmup > 0);
 
         service.invalidatePermissions();
         int queryCountAfterInvalidate = jdbcTemplate.queryCount();
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
         assertTrue(jdbcTemplate.queryCount() > queryCountAfterInvalidate, "Platform snapshot should be rebuilt after compatibility invalidation");
     }
 
@@ -164,7 +180,7 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
         int warmupQueryCount = jdbcTemplate.queryCount();
         service.invalidatePermissions();
         int countAfterInvalidate = jdbcTemplate.queryCount();
@@ -175,7 +191,7 @@ class PermissionSnapshotServiceTest {
             futures.add(CompletableFuture.supplyAsync(() -> {
                 try {
                     startSignal.await();
-                    return service.loadSnapshot(1001L);
+                    return service.loadSnapshot(1001L, "uuid-1001");
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                     return null;
@@ -215,7 +231,7 @@ class PermissionSnapshotServiceTest {
                 null
         );
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L, "uuid-1001");
         assertNotNull(snapshot);
         assertFalse(snapshot.getVersion().isBlank());
         assertTrue(snapshot.getPermissions().contains("team:view"));
@@ -236,7 +252,7 @@ class PermissionSnapshotServiceTest {
                 null
         );
 
-        PermissionSnapshotService.PermissionSnapshot userSnapshot = service.loadSnapshot(1001L);
+        PermissionSnapshotService.PermissionSnapshot userSnapshot = service.loadSnapshot(1001L, "uuid-1001");
         PermissionSnapshotService.PermissionSnapshot roleSnapshot = service.loadRoleSnapshot(2001L);
 
         assertEquals("v123:data-scope-cache-v4", userSnapshot.getVersion());
@@ -266,7 +282,7 @@ class PermissionSnapshotServiceTest {
                 new OwnerRuntimeMetrics(meterRegistry)
         );
 
-        service.loadSnapshot(1001L);
+        service.loadSnapshot(1001L, "uuid-1001");
 
         assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.IAM_PERMISSION_SNAPSHOT_ROLE_IDS_QUERY), 0.0);
         assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.IAM_PERMISSION_SNAPSHOT_PERMISSIONS_QUERY), 0.0);
@@ -288,7 +304,7 @@ class PermissionSnapshotServiceTest {
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             queryCount.incrementAndGet();
             if (String.class.equals(requiredType) && sql.contains("from sys_user")) {
-                return requiredType.cast("ordinary");
+                return requiredType.cast(args != null && args.length > 0 && Long.valueOf(1001L).equals(args[0]) ? "admin" : "ordinary");
             }
             if (String.class.equals(requiredType)) {
                 return requiredType.cast("role-version");

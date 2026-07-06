@@ -24,29 +24,33 @@ public class MessageEventFactory {
     public static final String EVENT_HEARTBEAT = "HEARTBEAT";
 
     public MessageEventDTO createCreatedEvent(MessageVO.NoticeVO notice) {
-        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_CREATED, notice, null, "消息已发布", notice == null ? null : notice.getId(), null);
+        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_CREATED, notice, null, "message published",
+                notice == null ? null : notice.getId(), null, null);
     }
 
     public MessageEventDTO createRetractedEvent(MessageVO.NoticeVO notice) {
-        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_RETRACTED, notice, null, "消息状态已更新", notice == null ? null : notice.getId(), null);
+        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_RETRACTED, notice, null, "message status updated",
+                notice == null ? null : notice.getId(), null, null);
     }
 
-    public MessageEventDTO createReadEvent(Long userId, MessageVO.NoticeVO notice, Integer unreadCount) {
-        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_READ, notice, unreadCount, "消息状态已更新", notice == null ? null : notice.getId(), userId);
+    public MessageEventDTO createReadEvent(Long userId, String userUuid, MessageVO.NoticeVO notice, Integer unreadCount) {
+        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_READ, notice, unreadCount, "message status updated",
+                notice == null ? null : notice.getId(), userId, userUuid);
     }
 
-    public MessageEventDTO createUnreadCountEvent(Long userId, Integer unreadCount) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_BUSINESS, EVENT_UNREAD_COUNT, SOURCE_MESSAGE, userId, null, unreadCount == null ? 0L : unreadCount.longValue());
+    public MessageEventDTO createUnreadCountEvent(Long userId, String userUuid, Integer unreadCount) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_BUSINESS, EVENT_UNREAD_COUNT, SOURCE_MESSAGE, userId, userUuid,
+                null, unreadCount == null ? 0L : unreadCount.longValue());
         event.setUnreadCount(unreadCount);
-        event.setMessage("未读消息数量已更新");
+        event.setMessage("unread count updated");
         event.getPayload().put("unreadCount", unreadCount);
         return event;
     }
 
-    public MessageEventDTO createSyncStateEvent(Long userId, Integer unreadCount, Long latestVersion, Integer sessionVersion) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_SYNC_STATE, SOURCE_MESSAGE, userId, null, latestVersion);
+    public MessageEventDTO createSyncStateEvent(Long userId, String userUuid, Integer unreadCount, Long latestVersion, Integer sessionVersion) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_SYNC_STATE, SOURCE_MESSAGE, userId, userUuid, null, latestVersion);
         event.setUnreadCount(unreadCount);
-        event.setMessage("消息状态已同步");
+        event.setMessage("message state synchronized");
         event.getPayload().put("unreadCount", unreadCount);
         event.getPayload().put("latestVersion", latestVersion);
         event.getPayload().put("sessionVersion", sessionVersion);
@@ -54,8 +58,8 @@ public class MessageEventFactory {
         return event;
     }
 
-    public MessageEventDTO createHeartbeatEvent(Long userId) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_HEARTBEAT, SOURCE_MESSAGE, userId, null, null);
+    public MessageEventDTO createHeartbeatEvent(Long userId, String userUuid) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_HEARTBEAT, SOURCE_MESSAGE, userId, userUuid, null, null);
         event.setMessage("heartbeat");
         return event;
     }
@@ -69,6 +73,7 @@ public class MessageEventFactory {
         dto.setMessageType(notice.getMessageType());
         dto.setTargetScope(notice.getTargetScope());
         dto.setTargetUserId(notice.getTargetUserId());
+        dto.setTargetUserUuid(notice.getTargetUserUuid());
         dto.setTargetUserName(notice.getTargetUserName());
         dto.setTargetRoleId(notice.getTargetRoleId());
         dto.setTargetRoleName(notice.getTargetRoleName());
@@ -86,14 +91,10 @@ public class MessageEventFactory {
         return dto;
     }
 
-    public MessageEventDTO toConnectedEvent(Long userId) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_CONNECTED, SOURCE_MESSAGE, userId, null, null);
-        event.setMessage("消息通道已连接");
+    public MessageEventDTO toConnectedEvent(Long userId, String userUuid) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_CONNECTED, SOURCE_MESSAGE, userId, userUuid, null, null);
+        event.setMessage("message channel connected");
         return event;
-    }
-
-    public MessageEventDTO toHeartbeatEvent(Long userId) {
-        return createHeartbeatEvent(userId);
     }
 
     private MessageEventDTO buildNoticeEvent(
@@ -103,13 +104,15 @@ public class MessageEventFactory {
             Integer unreadCount,
             String message,
             Long version,
-            Long userId
+            Long userId,
+            String userUuid
     ) {
         MessageEventDTO event = buildBaseEvent(
                 eventCategory,
                 eventType,
                 SOURCE_MESSAGE,
-                userId == null ? (notice == null ? null : notice.getTargetUserId()) : userId,
+                trustedEventUserId(userId, userUuid),
+                userUuid,
                 copyNotice(notice),
                 version
         );
@@ -118,6 +121,7 @@ public class MessageEventFactory {
         if (notice != null) {
             event.getPayload().put("targetScope", notice.getTargetScope());
             event.getPayload().put("targetUserId", notice.getTargetUserId());
+            event.getPayload().put("targetUserUuid", notice.getTargetUserUuid());
             event.getPayload().put("targetRoleId", notice.getTargetRoleId());
             event.getPayload().put("notice", event.getNotice());
         }
@@ -128,19 +132,35 @@ public class MessageEventFactory {
         return event;
     }
 
+    private Long trustedEventUserId(Long userId, String userUuid) {
+        if (userId == null) {
+            return null;
+        }
+        if (normalizeText(userUuid) == null) {
+            throw new IllegalArgumentException("userUuid is required for user-scoped message events");
+        }
+        return userId;
+    }
+
     private MessageEventDTO buildBaseEvent(
             String eventCategory,
             String eventType,
             String sourceType,
             Long userId,
+            String userUuid,
             MessageNoticeDTO notice,
             Long version
     ) {
+        String normalizedUserUuid = normalizeText(userUuid);
+        if (userId != null && normalizedUserUuid == null) {
+            throw new IllegalArgumentException("userUuid is required for user-scoped message events");
+        }
         MessageEventDTO event = new MessageEventDTO();
         event.setEventCategory(eventCategory);
         event.setSourceType(sourceType);
         event.setEventType(eventType);
         event.setUserId(userId);
+        event.setUserUuid(normalizedUserUuid);
         event.setNotice(notice);
         event.setVersion(version);
         event.setTraceId(TraceContext.getTraceId());
@@ -149,6 +169,13 @@ public class MessageEventFactory {
         event.setPayload(new LinkedHashMap<>());
         event.setEventKey(buildEventKey(event));
         return event;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     public String buildEventKey(MessageEventDTO event) {

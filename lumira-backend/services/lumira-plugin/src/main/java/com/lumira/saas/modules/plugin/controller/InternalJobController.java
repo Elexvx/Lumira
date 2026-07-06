@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalJobController {
 
     private final PluginOutboxRelay pluginOutboxRelay;
-    private final String internalToken;
+    private final String pluginInternalToken;
 
     public InternalJobController(
             PluginOutboxRelay pluginOutboxRelay,
-            @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken
+            @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginInternalToken
     ) {
         this.pluginOutboxRelay = pluginOutboxRelay;
-        this.internalToken = internalToken;
+        this.pluginInternalToken = pluginInternalToken;
     }
 
     @PostMapping("/outbox/relay")
@@ -41,15 +41,23 @@ public class InternalJobController {
             @RequestHeader(name = "X-Job-Token", required = false) String token
     ) {
         ensureAuthorized(token);
+        requirePositiveId(id);
         return ApiResponse.success(pluginOutboxRelay.replay(id), null);
     }
 
     private void ensureAuthorized(String token) {
-        if (!InternalJobTokenValidator.isConfigured(internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内部任务令牌未配置");
+        String requiredToken = pluginInternalToken;
+        if (!InternalJobTokenValidator.isConfigured(requiredToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Internal job token is not configured");
         }
-        if (!InternalJobTokenValidator.isAuthorized(token, internalToken)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权访问内部任务接口");
+        if (!InternalJobTokenValidator.isAuthorized(token, requiredToken)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Unauthorized internal job access");
+        }
+    }
+
+    private void requirePositiveId(Long id) {
+        if (id == null || id <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Valid outbox event id is required");
         }
     }
 }

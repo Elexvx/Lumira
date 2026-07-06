@@ -11,6 +11,7 @@ public class IamUserIdentityEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String identityType;
     private String identifier;
     private String identifierNormalized;
@@ -25,6 +26,8 @@ public class IamUserIdentityEntity {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getIdentityType() { return identityType; }
     public void setIdentityType(String identityType) { this.identityType = identityType; }
     public String getIdentifier() { return identifier; }

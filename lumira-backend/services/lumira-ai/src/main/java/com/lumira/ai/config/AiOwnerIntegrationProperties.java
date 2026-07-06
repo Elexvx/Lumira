@@ -1,21 +1,40 @@
 package com.lumira.ai.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import com.lumira.common.web.TrustedServiceBaseUrlValidator;
 
 @ConfigurationProperties(prefix = "lumira.ai.owner-integrations")
 public class AiOwnerIntegrationProperties {
 
-    private String internalToken;
+    private String systemToken;
+    private String authSystemToken;
+    private String fileToken;
     private OwnerEndpoint iam = new OwnerEndpoint();
     private OwnerEndpoint platform = new OwnerEndpoint();
     private OwnerEndpoint file = new OwnerEndpoint();
 
-    public String getInternalToken() {
-        return internalToken;
+    public String getSystemToken() {
+        return systemToken;
     }
 
-    public void setInternalToken(String internalToken) {
-        this.internalToken = internalToken;
+    public void setSystemToken(String systemToken) {
+        this.systemToken = systemToken;
+    }
+
+    public String getAuthSystemToken() {
+        return authSystemToken;
+    }
+
+    public void setAuthSystemToken(String authSystemToken) {
+        this.authSystemToken = authSystemToken;
+    }
+
+    public String getFileToken() {
+        return fileToken;
+    }
+
+    public void setFileToken(String fileToken) {
+        this.fileToken = fileToken;
     }
 
     public OwnerEndpoint getIam() {
@@ -63,7 +82,16 @@ public class AiOwnerIntegrationProperties {
         }
 
         public boolean configured() {
-            return enabled && baseUrl != null && !baseUrl.isBlank();
+            return enabled && validBaseUrl(baseUrl);
+        }
+
+        private boolean validBaseUrl(String candidate) {
+            try {
+                TrustedServiceBaseUrlValidator.requireHttpBaseUrl(candidate, "lumira.ai.owner-integrations.base-url");
+                return true;
+            } catch (IllegalStateException exception) {
+                return false;
+            }
         }
     }
 }

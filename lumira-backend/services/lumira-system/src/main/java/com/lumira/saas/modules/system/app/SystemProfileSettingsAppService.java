@@ -1,13 +1,18 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.profile.dto.ProfileFieldSettingItem;
@@ -19,6 +24,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.springframework.dao.EmptyResultDataAccessException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -47,6 +53,7 @@ public class SystemProfileSettingsAppService {
     private static final long PROFILE_SETTINGS_CACHE_TTL_MS = 30_000L;
     private static final int PROFILE_SETTINGS_CACHE_MAX_ENTRIES = 2048;
     private static final Integer PROFILE_SCORE_MAX = 100;
+    private static final String STATUS_ENABLED = "ENABLED";
     private static final String PROFILE_FIELD_GROUP_BASIC_KEY = "basic";
     private static final String PROFILE_FIELD_GROUP_CONTACT_KEY = "contact";
     private static final String PROFILE_FIELD_GROUP_IDENTITY_KEY = "identity";
@@ -76,12 +83,33 @@ public class SystemProfileSettingsAppService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
     private final Cache<String, List<ProfileFieldSettingVO>> profileFieldSettingsCache;
     private final Cache<String, CompletableFuture<List<ProfileFieldSettingVO>>> profileFieldSettingsLoadInFlight;
 
-    public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
+    public SystemProfileSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, null);
+    }
+
+    @Autowired
+    public SystemProfileSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
         this.profileFieldSettingsCache = CacheBuilder.newBuilder()
                 .maximumSize(PROFILE_SETTINGS_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(PROFILE_SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -92,21 +120,40 @@ public class SystemProfileSettingsAppService {
                 .build();
     }
 
+    public SystemProfileSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, sessionAuthenticationService);
+    }
+
+    public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
+        this(jdbcTemplate, operationAuditService, null, null, null);
+    }
+
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
+        requireAuthenticated(currentUser);
         return getProfileFieldSettings(currentUser, PROFILE_PAGE_KEY);
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser, String pageKey) {
+        requireAuthenticated(currentUser);
         return loadProfileFieldSettings(normalizePageKey(pageKey));
     }
 
     @Transactional
     public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
+        requireRequest(request, "Profile field settings request is required");
         return updateProfileFieldSettings(currentUser, request, request.getPageKey());
     }
 
     @Transactional
     public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request, String pageKey) {
+        requirePermission(currentUser, "system:config:update");
+        requireRequest(request, "Profile field settings request is required");
+        String operatorUuid = currentUser.getUserUuid();
         String normalizedPageKey = normalizePageKey(pageKey);
         List<ProfileFieldDefinition> builtInDefinitions = builtInDefinitions(normalizedPageKey);
         Map<String, ProfileFieldSettingItem> requestedSettings = new LinkedHashMap<>();
@@ -118,46 +165,163 @@ public class SystemProfileSettingsAppService {
                 definition.fieldLabel() + "展示开关",
                 String.valueOf(requestedVisibility(requestedSettings.get(definition.fieldKey()), definition.defaultVisible())),
                 definition.fieldDescription(),
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                operatorUuid
         ));
         builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.weightConfigKey(),
                 definition.fieldLabel() + "评分权重",
                 String.valueOf(resolveRequestedWeight(requestedSettings.get(definition.fieldKey()), definition.defaultWeight())),
                 definition.fieldDescription(),
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                operatorUuid
         ));
         builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.requiredConfigKey(),
                 definition.fieldLabel() + " required",
                 String.valueOf(requestedRequired(requestedSettings.get(definition.fieldKey()), definition.required())),
                 definition.fieldDescription(),
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                operatorUuid
         ));
         builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.sortConfigKey(),
                 definition.fieldLabel() + " sort",
                 String.valueOf(resolveRequestedSortNo(requestedSettings.get(definition.fieldKey()), definition.sortNo())),
                 definition.fieldDescription(),
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                operatorUuid
         ));
         upsertConfigValue(
                 systemOverridesConfigKey(normalizedPageKey),
                 "System profile field metadata overrides",
                 serializeSystemFieldOverrides(systemOverrides),
                 "Stores editable labels, descriptions, placeholders, and groups for built-in profile fields",
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                operatorUuid
         );
         upsertConfigValue(
                 customDefinitionsConfigKey(normalizedPageKey),
                 "自定义资料字段定义",
                 serializeCustomDefinitions(customDefinitions),
                 "保存个人中心可扩展的自定义资料字段定义",
-                currentUser.getUserId()
+                currentUser.getUserId(),
+                operatorUuid
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
         invalidateProfileFieldSettingsCache(normalizedPageKey);
         return loadProfileFieldSettings(normalizedPageKey);
+    }
+
+    private Long requireAuthenticated(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "用户上下文不可信");
+        }
+        return currentUser.getUserId();
+    }
+
+    private Long requirePermission(CurrentUser currentUser, String permission) {
+        Long userId = requireAuthenticated(currentUser);
+        if (currentUser.getPermissions() == null || !currentUser.getPermissions().contains(permission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "缺少权限: " + permission);
+        }
+        return userId;
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!StringUtils.hasText(userSnapshot.userUuid())
+                    || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = userSnapshot.userUuid().trim();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
+    }
+
+    private void requireRequest(Object request, String message) {
+        if (request == null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, message);
+        }
     }
 
     private List<ProfileFieldSettingVO> loadProfileFieldSettings(String pageKey) {
@@ -559,40 +723,55 @@ public class SystemProfileSettingsAppService {
             String configName,
             String configValue,
             String remark,
-            Long operatorId
+            Long operatorId,
+            String operatorUuid
     ) {
         Long existingId = queryConfigId(configKey);
         if (existingId == null) {
-            jdbcTemplate.update(
+            int inserted = jdbcTemplate.update(
                     """
                             insert into sys_config (
                                 config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
                             """,
                     configKey,
                     configName,
                     configValue,
                     remark,
                     operatorId,
-                    operatorId
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
             );
+            if (inserted != 1) {
+                throw new BizException(ErrorCode.BIZ_ERROR, "Profile config changed, please retry");
+            }
             return;
         }
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update sys_config
                         set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_at = ?, deleted = 0
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ?
+                          and config_key = ?
+                          and config_scope = 'PLATFORM'
+                          and is_system = 0
+                          and deleted = 0
                         """,
                 configName,
                 configValue,
                 remark,
                 operatorId,
+                operatorUuid,
                 LocalDateTime.now(),
-                existingId
+                existingId,
+                configKey
         );
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Profile config changed, please retry");
+        }
     }
 
     private Long queryConfigId(String configKey) {
@@ -602,6 +781,9 @@ public class SystemProfileSettingsAppService {
                             select id
                             from sys_config
                             where config_key = ?
+                              and config_scope = 'PLATFORM'
+                              and is_system = 0
+                              and deleted = 0
                             order by id desc
                             limit 1
                             """,

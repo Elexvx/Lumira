@@ -32,7 +32,7 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     PluginVO.PluginStatusVO pluginStatus(@Param("pluginCode") String pluginCode);
 
-    void markInstalled(
+    int markInstalled(
             @Param("pluginCode") String pluginCode,
             @Param("version") String version,
             @Param("artifactPath") String artifactPath,
@@ -41,22 +41,36 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
             @Param("installStatus") String installStatus,
             @Param("loadStatus") String loadStatus,
             @Param("healthStatus") String healthStatus,
-            @Param("rollbackable") Integer rollbackable
+            @Param("rollbackable") Integer rollbackable,
+            @Param("operatorId") Long operatorId,
+            @Param("operatorUuid") String operatorUuid
     );
 
-    void updateVersionStatus(
+    int updateVersionStatus(
             @Param("pluginCode") String pluginCode,
             @Param("version") String version,
             @Param("installStatus") String installStatus,
             @Param("loadStatus") String loadStatus,
             @Param("healthStatus") String healthStatus,
             @Param("lifecycleStatus") String lifecycleStatus,
-            @Param("schemaStatus") String schemaStatus
+            @Param("schemaStatus") String schemaStatus,
+            @Param("operatorId") Long operatorId,
+            @Param("operatorUuid") String operatorUuid
     );
 
-    void deactivateOtherVersions(@Param("pluginCode") String pluginCode, @Param("version") String version);
+    int deactivateOtherVersions(
+            @Param("pluginCode") String pluginCode,
+            @Param("version") String version,
+            @Param("operatorId") Long operatorId,
+            @Param("operatorUuid") String operatorUuid
+    );
 
-    void activateVersion(@Param("pluginCode") String pluginCode, @Param("version") String version);
+    int activateVersion(
+            @Param("pluginCode") String pluginCode,
+            @Param("version") String version,
+            @Param("operatorId") Long operatorId,
+            @Param("operatorUuid") String operatorUuid
+    );
 
     void deleteDependencies(@Param("pluginCode") String pluginCode);
 
@@ -74,17 +88,22 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     List<PluginPermissionRelEntity> listPermissionRelations(@Param("pluginCode") String pluginCode, @Param("version") String version);
 
-    void setPluginDefinitionStatus(@Param("pluginCode") String pluginCode, @Param("status") String status, @Param("operatorId") Long operatorId);
+    int setPluginDefinitionStatus(
+            @Param("pluginCode") String pluginCode,
+            @Param("status") String status,
+            @Param("operatorId") Long operatorId,
+            @Param("operatorUuid") String operatorUuid
+    );
 
-    void uninstallVersionsByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
+    void uninstallVersionsByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId, @Param("operatorUuid") String operatorUuid);
 
-    void markMenuRelationsDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
+    void markMenuRelationsDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId, @Param("operatorUuid") String operatorUuid);
 
-    void markPermissionRelationsDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
+    void markPermissionRelationsDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId, @Param("operatorUuid") String operatorUuid);
 
-    void markDependenciesDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
+    void markDependenciesDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId, @Param("operatorUuid") String operatorUuid);
 
-    void markDefinitionDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
+    int markDefinitionDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId, @Param("operatorUuid") String operatorUuid);
 
     void deleteRuntimeLogsByPlugin(@Param("pluginCode") String pluginCode);
 
@@ -96,7 +115,7 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     void deleteDependenciesByPlugin(@Param("pluginCode") String pluginCode);
 
-    void deleteDefinitionByPlugin(@Param("pluginCode") String pluginCode);
+    int deleteDefinitionByPlugin(@Param("pluginCode") String pluginCode);
 
     void deleteSchemaHistoryByPlugin(@Param("pluginCode") String pluginCode);
 

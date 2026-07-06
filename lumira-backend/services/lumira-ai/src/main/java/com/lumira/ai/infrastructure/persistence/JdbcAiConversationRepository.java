@@ -15,47 +15,56 @@ public class JdbcAiConversationRepository extends JdbcAiRepositorySupport implem
     }
 
     @Override
-    public ConversationIdentity createConversation(Long ownerUserId, Long employeeId, String code, String title, LocalDateTime now) {
+    public ConversationIdentity createConversation(Long ownerUserId, String ownerUserUuid, Long employeeId, String code, String title, LocalDateTime now) {
         Long id = insertAndReturnId("""
                         insert into ai_conversation (
-                            employee_id, owner_user_id, conversation_code, title, status,
+                            employee_id, owner_user_id, owner_user_uuid, conversation_code, title, status,
                             is_pinned, latest_message_at, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, 'ACTIVE', 0, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, 'ACTIVE', 0, ?, 0, ?, ?)
                         """,
                 ps -> {
                     ps.setLong(1, employeeId);
                     ps.setLong(2, ownerUserId);
-                    ps.setString(3, code);
-                    ps.setString(4, title);
-                    ps.setTimestamp(5, Timestamp.valueOf(now));
+                    ps.setString(3, ownerUserUuid);
+                    ps.setString(4, code);
+                    ps.setString(5, title);
                     ps.setTimestamp(6, Timestamp.valueOf(now));
                     ps.setTimestamp(7, Timestamp.valueOf(now));
+                    ps.setTimestamp(8, Timestamp.valueOf(now));
                 });
         return new ConversationIdentity(id, code);
     }
 
     @Override
-    public ConversationIdentity findActiveConversation(Long ownerUserId, Long conversationId) {
+    public ConversationIdentity findActiveConversation(Long ownerUserId, String ownerUserUuid, Long conversationId) {
         Map<String, Object> row = jdbcTemplate.queryForMap(
                 """
                         select id, conversation_code
                         from ai_conversation
-                        where owner_user_id = ? and id = ? and is_deleted = 0
+                        where owner_user_id = ? and owner_user_uuid = ? and id = ? and is_deleted = 0
                         """,
                 ownerUserId,
+                ownerUserUuid,
                 conversationId
         );
         return new ConversationIdentity(objectLong(row, "id"), String.valueOf(row.get("conversation_code")));
     }
 
     @Override
-    public void updateLatestMessageAt(Long conversationId, LocalDateTime latestMessageAt, LocalDateTime now) {
-        jdbcTemplate.update(
-                "update ai_conversation set latest_message_at = ?, update_time = ? where id = ?",
+    public void updateLatestMessageAt(Long ownerUserId, String ownerUserUuid, Long conversationId, LocalDateTime latestMessageAt, LocalDateTime now) {
+        int updated = jdbcTemplate.update(
+                """
+                        update ai_conversation
+                        set latest_message_at = ?, update_time = ?
+                        where id = ? and owner_user_id = ? and owner_user_uuid = ? and is_deleted = 0
+                        """,
                 latestMessageAt,
                 now,
-                conversationId
+                conversationId,
+                ownerUserId,
+                ownerUserUuid
         );
+        requireSingleWrite(updated, "AI conversation state changed, please retry");
     }
 
     private Long objectLong(Map<String, Object> row, String key) {

@@ -18,7 +18,6 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
@@ -61,12 +60,15 @@ public class AuthSessionStore {
 
     public void save(AuthSession session, Duration ttl, boolean publishChange) {
         try {
+            AuthSessionTrustValidator.requireTrustedSession(session);
             Duration effectiveTtl = ttl == null || ttl.isZero() || ttl.isNegative()
                     ? Duration.ofSeconds(1)
                     : ttl;
-            cacheTemplate.put(CacheKeyConstants.sessionKey(session.getSessionId()), objectMapper.writeValueAsString(session), effectiveTtl);
-            cacheTemplate.put(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()), "1", effectiveTtl);
-            cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId(), toScore(session));
+            String payload = objectMapper.writeValueAsString(session);
+            AuthSessionTrustValidator.requireTrustedPayload(payload);
+            cacheTemplate.put(CacheKeyConstants.sessionKey(session.getSessionId()), payload, effectiveTtl);
+            cacheTemplate.put(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()), "1", effectiveTtl);
+            cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId(), toScore(session));
             cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionKey(), session.getSessionId(), toScore(session));
             cacheLatestSessionId(session, effectiveTtl);
             if (publishChange) {
@@ -83,24 +85,39 @@ public class AuthSessionStore {
     }
 
     public Optional<AuthSession> findBySessionId(String sessionId) {
-        String payload = cacheTemplate.get(CacheKeyConstants.sessionKey(sessionId));
+        String normalizedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(sessionId);
+        if (normalizedSessionId == null) {
+            misses.incrementAndGet();
+            return Optional.empty();
+        }
+        String payload = cacheTemplate.get(CacheKeyConstants.sessionKey(normalizedSessionId));
         if (!StringUtils.hasText(payload)) {
             misses.incrementAndGet();
+            return Optional.empty();
+        }
+        try {
+            AuthSessionTrustValidator.requireTrustedPayload(payload);
+        } catch (IllegalArgumentException exception) {
+            corruptPayloads.incrementAndGet();
+            removeSessionReferences(normalizedSessionId);
+            removeSessionFromOnlineIndexes(normalizedSessionId);
             return Optional.empty();
         }
 
         try {
             hits.incrementAndGet();
-            return Optional.of(objectMapper.readValue(payload, AuthSession.class));
-        } catch (JsonProcessingException ex) {
+            AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+            AuthSessionTrustValidator.requireTrustedSession(session);
+            return Optional.of(session);
+        } catch (JsonProcessingException | IllegalArgumentException ex) {
             corruptPayloads.incrementAndGet();
             log.warn(
                     "Session payload is corrupted, removing stale session cache. sessionId={}, reason={}",
-                    sessionId,
+                    normalizedSessionId,
                     ex.getMessage()
             );
-            removeSessionReferences(sessionId);
-            removeSessionFromOnlineIndexes(sessionId);
+            removeSessionReferences(normalizedSessionId);
+            removeSessionFromOnlineIndexes(normalizedSessionId);
             return Optional.empty();
         }
     }
@@ -111,6 +128,7 @@ public class AuthSessionStore {
         }
 
         List<String> distinctSessionIds = sessionIds.stream()
+                .map(AuthSessionTrustValidator::trustedSessionIdOrNull)
                 .filter(StringUtils::hasText)
                 .distinct()
                 .toList();
@@ -130,9 +148,12 @@ public class AuthSessionStore {
                 continue;
             }
             try {
+                AuthSessionTrustValidator.requireTrustedPayload(payload);
                 hits.incrementAndGet();
-                sessions.put(sessionId, objectMapper.readValue(payload, AuthSession.class));
-            } catch (JsonProcessingException ex) {
+                AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+                AuthSessionTrustValidator.requireTrustedSession(session);
+                sessions.put(sessionId, session);
+            } catch (JsonProcessingException | IllegalArgumentException ex) {
                 corruptPayloads.incrementAndGet();
                 log.warn(
                         "Session payload is corrupted during batch lookup, removing stale session cache. sessionId={}, reason={}",
@@ -151,8 +172,15 @@ public class AuthSessionStore {
     }
 
     public void remove(AuthSession session, boolean publishChange) {
+        try {
+            AuthSessionTrustValidator.requireTrustedSession(session);
+        } catch (IllegalArgumentException exception) {
+            return;
+        }
         cacheTemplate.remove(CacheKeyConstants.sessionKey(session.getSessionId()));
+        cacheTemplate.remove(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()));
         cacheTemplate.remove(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
+        cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId());
         cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
         cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionKey(), session.getSessionId());
         clearLatestSessionIdIfMatch(session);
@@ -168,7 +196,10 @@ public class AuthSessionStore {
         if (CollectionUtils.isEmpty(sessionIds)) {
             return List.of();
         }
-        return new ArrayList<>(sessionIds);
+        return sessionIds.stream()
+                .map(AuthSessionTrustValidator::trustedSessionIdOrNull)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
     public long countActiveSessions() {
@@ -177,34 +208,39 @@ public class AuthSessionStore {
         return count == null ? 0L : count;
     }
 
-    public List<String> listActiveUserSessionIds(Long userId) {
-        if (userId == null) {
+    public List<String> listActiveUserSessionIds(Long userId, String userUuid) {
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
             return List.of();
         }
-        cleanupExpiredUserIndex(userId);
-        Set<String> sessionIds = cacheTemplate.reverseRange(CacheKeyConstants.onlineSessionUserKey(userId), 0, -1);
+        cleanupExpiredUserIndex(userId, userUuid);
+        Set<String> sessionIds = cacheTemplate.reverseRange(onlineSessionUserKey(userId, userUuid), 0, -1);
         if (CollectionUtils.isEmpty(sessionIds)) {
             return List.of();
         }
-        return new ArrayList<>(sessionIds);
+        return sessionIds.stream()
+                .map(AuthSessionTrustValidator::trustedSessionIdOrNull)
+                .filter(StringUtils::hasText)
+                .filter(sessionId -> belongsToUser(sessionId, userId, userUuid))
+                .toList();
     }
 
-    public Optional<String> findLatestActiveUserSessionId(Long userId) {
-        if (userId == null) {
+    public Optional<String> findLatestActiveUserSessionId(Long userId, String userUuid) {
+        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
             return Optional.empty();
         }
-        String latestCacheKey = CacheKeyConstants.onlineSessionLatestUserKey(userId);
+        String latestCacheKey = onlineSessionLatestUserKey(userId, userUuid);
         String latestSessionId = cacheTemplate.get(latestCacheKey);
         if (StringUtils.hasText(latestSessionId)) {
-            Optional<AuthSession> cachedLatestSession = findBySessionId(latestSessionId);
+            Optional<AuthSession> cachedLatestSession = findBySessionId(latestSessionId)
+                    .filter(session -> belongsToUser(session, userId, userUuid));
             if (cachedLatestSession.isPresent()) {
                 return Optional.of(latestSessionId);
             }
             cacheTemplate.remove(latestCacheKey);
         }
 
-        String key = CacheKeyConstants.onlineSessionUserKey(userId);
-        cleanupExpiredUserIndex(userId);
+        String key = onlineSessionUserKey(userId, userUuid);
+        cleanupExpiredUserIndex(userId, userUuid);
         while (true) {
             Set<String> sessionIds = cacheTemplate.reverseRange(key, 0, 0);
             if (CollectionUtils.isEmpty(sessionIds)) {
@@ -217,7 +253,8 @@ public class AuthSessionStore {
                 }
                 continue;
             }
-            Optional<AuthSession> latestSession = findBySessionId(sessionId);
+            Optional<AuthSession> latestSession = findBySessionId(sessionId)
+                    .filter(session -> belongsToUser(session, userId, userUuid));
             if (latestSession.isPresent()) {
                 cacheLatestSessionId(latestSession.get(), sessionTtl(latestSession.get()));
                 return Optional.of(sessionId);
@@ -226,26 +263,28 @@ public class AuthSessionStore {
         }
     }
 
-    public void revokeUserSessions(Long userId, boolean publishChange) {
-        revokeSessions(listActiveUserSessionIds(userId), publishChange);
+    public void revokeUserSessions(Long userId, String userUuid, boolean publishChange) {
+        revokeSessions(listActiveUserSessionIds(userId, userUuid), publishChange);
     }
 
-    public void revokeUserSessionsExcept(Long userId, String excludedSessionId, boolean publishChange) {
-        if (userId == null) {
+    public void revokeUserSessionsExcept(Long userId, String userUuid, String excludedSessionId, boolean publishChange) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
             return;
         }
-        List<String> toRevoke = listActiveUserSessionIds(userId).stream()
-                .filter(id -> id != null && !id.equals(excludedSessionId))
+        String normalizedExcludedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(excludedSessionId);
+        List<String> toRevoke = listActiveUserSessionIds(userId, userUuid).stream()
+                .filter(id -> id != null && !id.equals(normalizedExcludedSessionId))
                 .toList();
         revokeSessions(toRevoke, publishChange);
     }
 
-    public void markPasswordChangeResolved(Long userId, String sessionId, boolean publishChange) {
-        if (userId == null || !StringUtils.hasText(sessionId)) {
+    public void markPasswordChangeResolved(Long userId, String userUuid, String sessionId, boolean publishChange) {
+        String normalizedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(sessionId);
+        if (userId == null || !StringUtils.hasText(userUuid) || normalizedSessionId == null) {
             return;
         }
-        findBySessionId(sessionId)
-                .filter(session -> userId.equals(session.getUserId()))
+        findBySessionId(normalizedSessionId)
+                .filter(session -> belongsToUser(session, userId, userUuid))
                 .ifPresent(session -> {
                     session.setRequiresPasswordChange(Boolean.FALSE);
                     save(session, publishChange);
@@ -256,28 +295,40 @@ public class AuthSessionStore {
         if (CollectionUtils.isEmpty(sessionIds)) {
             return;
         }
+        List<String> trustedSessionIds = sessionIds.stream()
+                .map(AuthSessionTrustValidator::trustedSessionIdOrNull)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (trustedSessionIds.isEmpty()) {
+            return;
+        }
 
-        List<String> sessionKeys = sessionIds.stream().map(CacheKeyConstants::sessionKey).toList();
+        List<String> sessionKeys = trustedSessionIds.stream().map(CacheKeyConstants::sessionKey).toList();
         List<String> payloads = cacheTemplate.multiGet(sessionKeys);
         List<String> keysToDelete = new ArrayList<>();
 
-        for (int i = 0; i < sessionIds.size(); i++) {
-            String sessionId = sessionIds.get(i);
+        for (int i = 0; i < trustedSessionIds.size(); i++) {
+            String sessionId = trustedSessionIds.get(i);
             String payload = payloads.get(i);
             if (payload == null) {
                 removeSessionReferences(sessionId);
                 continue;
             }
             try {
+                AuthSessionTrustValidator.requireTrustedPayload(payload);
                 AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+                AuthSessionTrustValidator.requireTrustedSession(session);
                 keysToDelete.add(CacheKeyConstants.sessionKey(session.getSessionId()));
+                keysToDelete.add(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()));
                 keysToDelete.add(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
+                cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId());
                 cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
                 cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionKey(), session.getSessionId());
                 if (publishChange) {
                     publishEvent(OnlineSessionEvent.ACTION_REMOVED, session);
                 }
-            } catch (JsonProcessingException ex) {
+            } catch (JsonProcessingException | IllegalArgumentException ex) {
                 removeSessionReferences(sessionId);
             }
         }
@@ -294,19 +345,26 @@ public class AuthSessionStore {
             return;
         }
 
-        Set<Long> userIds = new LinkedHashSet<>();
+        Map<UserIdentity, List<String>> sessionsByUser = new LinkedHashMap<>();
         for (String key : keys) {
             String[] parts = key.split(":");
-            if (parts.length >= 4) {
-                try {
-                    userIds.add(Long.parseLong(parts[2]));
-                } catch (NumberFormatException ignored) {
-                }
+            if (parts.length < 4) {
+                continue;
+            }
+            String sessionId = parts[parts.length - 1];
+            Optional<AuthSession> session = findBySessionId(sessionId)
+                    .filter(item -> item.getUserId() != null && StringUtils.hasText(item.getUserUuid()));
+            if (session.isPresent()) {
+                AuthSession authSession = session.get();
+                sessionsByUser
+                        .computeIfAbsent(new UserIdentity(authSession.getUserId(), authSession.getUserUuid().trim()), ignored -> new ArrayList<>())
+                        .add(authSession.getSessionId());
             }
         }
 
-        for (Long userId : userIds) {
-            List<String> sessionIds = listActiveUserSessionIds(userId);
+        for (Map.Entry<UserIdentity, List<String>> entry : sessionsByUser.entrySet()) {
+            UserIdentity identity = entry.getKey();
+            List<String> sessionIds = listActiveUserSessionIds(identity.userId(), identity.userUuid());
             if (sessionIds.size() <= 1) {
                 continue;
             }
@@ -333,19 +391,31 @@ public class AuthSessionStore {
     }
 
     public void removeSessionReferences(String sessionId) {
-        cacheTemplate.remove(CacheKeyConstants.sessionKey(sessionId));
-        Set<String> userSessionKeys = cacheTemplate.scan(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*:" + sessionId);
+        String normalizedSessionId = AuthSessionTrustValidator.trustedSessionIdOrNull(sessionId);
+        if (normalizedSessionId == null) {
+            return;
+        }
+        cacheTemplate.remove(CacheKeyConstants.sessionKey(normalizedSessionId));
+        Set<String> userSessionKeys = cacheTemplate.scan(CacheKeyConstants.PREFIX + ":" + CacheKeyConstants.SESSION_USER + ":*:" + normalizedSessionId);
         if (CollectionUtils.isEmpty(userSessionKeys)) {
-            removeSessionFromOnlineIndexes(sessionId);
+            removeSessionFromOnlineIndexes(normalizedSessionId);
             return;
         }
 
         for (String key : userSessionKeys) {
             String[] parts = key.split(":");
-            if (parts.length >= 4) {
+            if (parts.length >= 5) {
+                Long userId = parseLong(parts[2]);
+                String userUuid = parts[3];
+                if (userId != null && StringUtils.hasText(userUuid)) {
+                    removeUserSessionReference(userId, userUuid, normalizedSessionId);
+                } else {
+                    cacheTemplate.remove(key);
+                }
+            } else if (parts.length >= 4) {
                 try {
                     Long userId = Long.parseLong(parts[2]);
-                    removeUserSessionReference(userId, sessionId);
+                    removeUserSessionReference(userId, normalizedSessionId);
                 } catch (NumberFormatException ignored) {
                     cacheTemplate.remove(key);
                 }
@@ -353,7 +423,7 @@ public class AuthSessionStore {
                 cacheTemplate.remove(key);
             }
         }
-        removeSessionFromOnlineIndexes(sessionId);
+        removeSessionFromOnlineIndexes(normalizedSessionId);
     }
 
     private void cleanupExpiredSessionIndex() {
@@ -361,7 +431,14 @@ public class AuthSessionStore {
     }
 
     private void cleanupExpiredUserIndex(Long userId) {
-        cacheTemplate.removeRangeByScore(CacheKeyConstants.onlineSessionUserKey(userId), Double.NEGATIVE_INFINITY, Instant.now().toEpochMilli());
+        cleanupExpiredUserIndex(userId, null);
+    }
+
+    private void cleanupExpiredUserIndex(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
+            return;
+        }
+        cacheTemplate.removeRangeByScore(onlineSessionUserKey(userId, userUuid), Double.NEGATIVE_INFINITY, Instant.now().toEpochMilli());
     }
 
     private double toScore(AuthSession session) {
@@ -381,17 +458,17 @@ public class AuthSessionStore {
     }
 
     private void cacheLatestSessionId(AuthSession session, Duration ttl) {
-        if (session == null || session.getUserId() == null || !StringUtils.hasText(session.getSessionId())) {
+        if (session == null || session.getUserId() == null || !StringUtils.hasText(session.getUserUuid()) || !StringUtils.hasText(session.getSessionId())) {
             return;
         }
-        cacheTemplate.put(CacheKeyConstants.onlineSessionLatestUserKey(session.getUserId()), session.getSessionId(), ttl);
+        cacheTemplate.put(CacheKeyConstants.onlineSessionLatestUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId(), ttl);
     }
 
     private void clearLatestSessionIdIfMatch(AuthSession session) {
-        if (session == null || session.getUserId() == null || !StringUtils.hasText(session.getSessionId())) {
+        if (session == null || session.getUserId() == null || !StringUtils.hasText(session.getUserUuid()) || !StringUtils.hasText(session.getSessionId())) {
             return;
         }
-        String latestKey = CacheKeyConstants.onlineSessionLatestUserKey(session.getUserId());
+        String latestKey = CacheKeyConstants.onlineSessionLatestUserKey(session.getUserId(), session.getUserUuid());
         String cachedLatest = cacheTemplate.get(latestKey);
         if (session.getSessionId().equals(cachedLatest)) {
             cacheTemplate.remove(latestKey);
@@ -456,5 +533,56 @@ public class AuthSessionStore {
         }
         cacheTemplate.remove(CacheKeyConstants.userSessionKey(userId, sessionId));
         cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId), sessionId);
+    }
+
+    private void removeUserSessionReference(Long userId, String userUuid, String sessionId) {
+        if (userId == null || !StringUtils.hasText(userUuid) || !StringUtils.hasText(sessionId)) {
+            return;
+        }
+        cacheTemplate.remove(CacheKeyConstants.userSessionKey(userId, userUuid, sessionId));
+        cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(userId, userUuid), sessionId);
+    }
+
+    private String onlineSessionUserKey(Long userId, String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new IllegalArgumentException("Full user identity is required");
+        }
+        return CacheKeyConstants.onlineSessionUserKey(userId, userUuid.trim());
+    }
+
+    private String onlineSessionLatestUserKey(Long userId, String userUuid) {
+        if (!StringUtils.hasText(userUuid)) {
+            throw new IllegalArgumentException("Full user identity is required");
+        }
+        return CacheKeyConstants.onlineSessionLatestUserKey(userId, userUuid.trim());
+    }
+
+    private boolean belongsToUser(String sessionId, Long userId, String userUuid) {
+        return findBySessionId(sessionId)
+                .filter(session -> belongsToUser(session, userId, userUuid))
+                .isPresent();
+    }
+
+    private boolean belongsToUser(AuthSession session, Long userId, String userUuid) {
+        if (session == null || userId == null || !userId.equals(session.getUserId())) {
+            return false;
+        }
+        return StringUtils.hasText(userUuid)
+                && StringUtils.hasText(session.getUserUuid())
+                && userUuid.trim().equals(session.getUserUuid().trim());
+    }
+
+    private Long parseLong(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private record UserIdentity(Long userId, String userUuid) {
     }
 }

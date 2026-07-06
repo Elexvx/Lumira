@@ -77,7 +77,7 @@ public class SecurityRateLimitFilter extends OncePerRequestFilter {
     private RateLimitRule resolveRule(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getRequestURI();
-        if ("POST".equalsIgnoreCase(method) && (path.endsWith("/auth/login") || path.endsWith("/login"))) {
+        if ("POST".equalsIgnoreCase(method) && isAuthenticationAttemptPath(path)) {
             return properties.getLogin().toRule("login");
         }
         if ("POST".equalsIgnoreCase(method) && path.endsWith("/auth/refresh-token")) {
@@ -99,6 +99,18 @@ public class SecurityRateLimitFilter extends OncePerRequestFilter {
             return properties.getRemoteStorageTest().toRule("remote-storage-test");
         }
         return null;
+    }
+
+    private boolean isAuthenticationAttemptPath(String path) {
+        String normalized = path == null ? "" : path.toLowerCase();
+        return normalized.endsWith("/auth/login")
+                || normalized.endsWith("/login")
+                || normalized.endsWith("/auth/login/code/challenge")
+                || normalized.endsWith("/auth/login/code/complete")
+                || normalized.endsWith("/auth/second-factor/complete")
+                || normalized.endsWith("/auth/passkeys/authentication/options")
+                || normalized.endsWith("/auth/passkeys/authentication/complete")
+                || normalized.endsWith("/auth/wechat/login");
     }
 
     private String resolveIp(HttpServletRequest request) {

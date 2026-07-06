@@ -38,6 +38,8 @@ class AiV2ControllerTest {
                 permissionGuard
         )).build();
         CurrentUser user = new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of("ai:view"));
+        user.setUserUuid("user-uuid-7");
+        user.setPermissionsVersion("permissions-1");
         when(securityContextFacade.getCurrentUser()).thenReturn(user);
         PageResponse<AiEmployeeVO> page = new PageResponse<>();
         page.setPageNo(1);

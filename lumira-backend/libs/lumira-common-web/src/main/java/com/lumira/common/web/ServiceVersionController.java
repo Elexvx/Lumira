@@ -15,7 +15,7 @@ public class ServiceVersionController {
         this.serviceVersionProvider = serviceVersionProvider;
     }
 
-    @GetMapping({"/api/version", "/api/v1/version", "/api/v1/{scope}/version"})
+    @GetMapping({"/api/version", "/api/v1/version", "/api/v1/{scope}/version", "/api/v2/runtime/version"})
     public ApiResponse<ServiceVersionInfo> version(HttpServletRequest request) {
         return ApiResponse.success(serviceVersionProvider.current(), TraceContext.getRequestId(), request.getRequestURI());
     }

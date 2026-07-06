@@ -7,7 +7,11 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+
+import java.net.URI;
+import java.net.URISyntaxException;
 
 @Component
 @ConditionalOnLumiraAsyncEnabled
@@ -26,30 +30,29 @@ public class BackendJobClient {
 
     public BackendJobClient(JobExecutorProperties properties) {
         this.properties = properties;
+        String backendBaseUrl = requireTrustedBaseUrl(properties.getBackendBaseUrl(), "backendBaseUrl");
+        String messageBaseUrl = requireTrustedBaseUrl(properties.getMessageServiceBaseUrl(), "messageServiceBaseUrl");
+        String fileBaseUrl = optionalTrustedBaseUrl(properties.getFileServiceBaseUrl(), backendBaseUrl, "fileServiceBaseUrl");
+        String paymentBaseUrl = optionalTrustedBaseUrl(properties.getPaymentServiceBaseUrl(), backendBaseUrl, "paymentServiceBaseUrl");
+        String pluginBaseUrl = optionalTrustedBaseUrl(properties.getPluginServiceBaseUrl(), backendBaseUrl, "pluginServiceBaseUrl");
         this.restClient = RestClient.builder()
-                .baseUrl(properties.getBackendBaseUrl())
+                .baseUrl(backendBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.messageRestClient = RestClient.builder()
-                .baseUrl(properties.getMessageServiceBaseUrl())
+                .baseUrl(messageBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.fileRestClient = RestClient.builder()
-                .baseUrl(properties.getFileServiceBaseUrl() == null || properties.getFileServiceBaseUrl().isBlank()
-                        ? properties.getBackendBaseUrl()
-                        : properties.getFileServiceBaseUrl())
+                .baseUrl(fileBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.paymentRestClient = RestClient.builder()
-                .baseUrl(properties.getPaymentServiceBaseUrl() == null || properties.getPaymentServiceBaseUrl().isBlank()
-                        ? properties.getBackendBaseUrl()
-                        : properties.getPaymentServiceBaseUrl())
+                .baseUrl(paymentBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.pluginRestClient = RestClient.builder()
-                .baseUrl(properties.getPluginServiceBaseUrl() == null || properties.getPluginServiceBaseUrl().isBlank()
-                        ? properties.getBackendBaseUrl()
-                        : properties.getPluginServiceBaseUrl())
+                .baseUrl(pluginBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
@@ -113,16 +116,51 @@ public class BackendJobClient {
 
     private String internalTokenFor(String path) {
         JobExecutorProperties.Internal internal = properties.getInternal();
-        return InternalServiceTokenPolicy.tokenForPath(
+        String token = InternalServiceTokenPolicy.tokenForPath(
                 path,
-                properties.getInternalToken(),
-                internal.getSystemToken(),
-                internal.getAuthToken(),
+                null,
+                null,
+                null,
                 internal.getFileToken(),
                 internal.getMessageToken(),
                 internal.getPaymentToken(),
                 internal.getPluginToken(),
                 internal.getJobToken()
         );
+        if (!StringUtils.hasText(token)) {
+            throw new IllegalStateException("Scoped internal job token is not configured for " + path);
+        }
+        return token;
+    }
+
+    private String optionalTrustedBaseUrl(String value, String fallback, String propertyName) {
+        return StringUtils.hasText(value) ? requireTrustedBaseUrl(value, propertyName) : fallback;
+    }
+
+    private String requireTrustedBaseUrl(String value, String propertyName) {
+        if (!StringUtils.hasText(value)) {
+            throw new IllegalStateException(propertyName + " is not configured");
+        }
+        String normalized = value.trim();
+        URI uri;
+        try {
+            uri = new URI(normalized);
+        } catch (URISyntaxException exception) {
+            throw new IllegalStateException(propertyName + " is invalid", exception);
+        }
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            throw new IllegalStateException(propertyName + " must use http or https");
+        }
+        if (!StringUtils.hasText(uri.getHost())) {
+            throw new IllegalStateException(propertyName + " host is required");
+        }
+        if (StringUtils.hasText(uri.getUserInfo())) {
+            throw new IllegalStateException(propertyName + " must not include user info");
+        }
+        if (StringUtils.hasText(uri.getQuery()) || StringUtils.hasText(uri.getFragment())) {
+            throw new IllegalStateException(propertyName + " must not include query or fragment");
+        }
+        return normalized;
     }
 }
