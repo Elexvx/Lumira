@@ -4,12 +4,14 @@ import com.lumira.api.auth.CurrentUserDTO;
 import com.lumira.api.client.AuthInternalApi;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.regex.Pattern;
 
-@Service
+@Service("authInternalApi")
+@Primary
 public class AuthInternalApiService implements AuthInternalApi {
 
     private static final int MAX_SESSION_ID_LENGTH = 128;

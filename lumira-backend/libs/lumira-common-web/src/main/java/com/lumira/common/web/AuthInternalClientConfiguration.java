@@ -5,6 +5,7 @@ import com.lumira.api.client.AuthInternalApi;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -13,6 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false")
 public class AuthInternalClientConfiguration {
 
     private static final String INTERNAL_TOKEN_HEADER = "X-Job-Token";
@@ -20,7 +22,7 @@ public class AuthInternalClientConfiguration {
     @Bean
     @Lazy
     @ConditionalOnMissingBean(AuthInternalApi.class)
-    public AuthInternalApi authInternalApi(
+    public AuthInternalApi remoteAuthInternalApi(
             @Value("${saas.auth.service-base-url:${AUTH_SERVICE_BASE_URL:http://localhost:8082}}") String authServiceBaseUrl,
             @Value("${saas.internal.auth-token:${SAAS_INTERNAL_AUTH_TOKEN:}}") String authInternalToken,
             ObjectProvider<RestClient.Builder> restClientBuilderProvider

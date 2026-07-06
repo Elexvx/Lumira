@@ -45,7 +45,7 @@ class AuthInternalClientConfigurationTest {
 
     @Test
     void authInternalApiRejectsUntrustedBaseUrl() {
-        assertThatThrownBy(() -> new AuthInternalClientConfiguration().authInternalApi(
+        assertThatThrownBy(() -> new AuthInternalClientConfiguration().remoteAuthInternalApi(
                 "http://token@auth-service:8082",
                 "auth-token-2026",
                 provider(RestClient.builder())
@@ -55,7 +55,7 @@ class AuthInternalClientConfigurationTest {
     }
 
     private static AuthInternalApi authInternalApi(RestClient.Builder builder, String authToken) {
-        return new AuthInternalClientConfiguration().authInternalApi(
+        return new AuthInternalClientConfiguration().remoteAuthInternalApi(
                 "http://auth-service:8082",
                 authToken,
                 provider(builder)

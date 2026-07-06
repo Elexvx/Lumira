@@ -12,11 +12,13 @@ import com.lumira.team.infrastructure.persistence.BeanPropertyRowMapper;
 import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
+@Service("teamInternalApi")
+@Primary
 public class TeamInternalApiService implements TeamInternalApi {
     private final MyBatisQueryOperations jdbcTemplate;
     private final TeamPermissionService permissionService;

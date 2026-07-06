@@ -84,7 +84,7 @@ class PaymentInternalClientConfigurationTest {
 
     @Test
     void paymentInternalApiRejectsUntrustedBaseUrl() {
-        assertThatThrownBy(() -> new PaymentInternalClientConfiguration().paymentInternalApi(
+        assertThatThrownBy(() -> new PaymentInternalClientConfiguration().remotePaymentInternalApi(
                 "ftp://payment-service",
                 "payment-token-2026",
                 provider(RestClient.builder())
@@ -94,7 +94,7 @@ class PaymentInternalClientConfigurationTest {
     }
 
     private static PaymentInternalApi paymentInternalApi(RestClient.Builder builder, String paymentToken) {
-        return new PaymentInternalClientConfiguration().paymentInternalApi(
+        return new PaymentInternalClientConfiguration().remotePaymentInternalApi(
                 "http://payment-service:8085",
                 paymentToken,
                 provider(builder)

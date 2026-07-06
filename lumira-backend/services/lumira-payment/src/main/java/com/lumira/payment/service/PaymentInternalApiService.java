@@ -11,12 +11,14 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashSet;
 
-@Service
+@Service("paymentInternalApi")
+@Primary
 public class PaymentInternalApiService implements PaymentInternalApi {
 
     private static final int MAX_ORDER_NO_LENGTH = 64;

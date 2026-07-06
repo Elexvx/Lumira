@@ -11,6 +11,7 @@ import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -25,6 +26,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false")
 public class FileInternalClientConfiguration {
 
     private static final String INTERNAL_TOKEN_HEADER = "X-Job-Token";
@@ -32,7 +34,7 @@ public class FileInternalClientConfiguration {
     @Bean
     @Lazy
     @ConditionalOnMissingBean(FileInternalApi.class)
-    public FileInternalApi fileInternalApi(
+    public FileInternalApi remoteFileInternalApi(
             @Value("${saas.file.service-base-url:${FILE_SERVICE_BASE_URL:${saas.job.file-service-base-url:${SAAS_JOB_FILE_SERVICE_BASE_URL:http://localhost:8080}}}}") String fileServiceBaseUrl,
             @Value("${saas.internal.file-token:${SAAS_INTERNAL_FILE_TOKEN:}}") String fileToken,
             ObjectProvider<RestClient.Builder> restClientBuilderProvider

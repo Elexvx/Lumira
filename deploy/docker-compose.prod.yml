@@ -360,11 +360,12 @@ services:
       NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
       SPRING_CLOUD_NACOS_CONFIG_ENABLED: ${NACOS_CONFIG_ENABLED:-false}
       SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
-      SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-}
+      SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-{"saas":{"system":{"service-base-url":"http://localhost:8080"},"auth":{"service-base-url":"http://localhost:8080"},"file":{"service-base-url":"http://localhost:8080"},"payment":{"service-base-url":"http://localhost:8080"},"team":{"service-base-url":"http://localhost:8080"}}}}
       DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       LEGENDARY_MONOLITH: 'true'
+      LUMIRA_MONOLITH: ${LUMIRA_MONOLITH:-true}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
@@ -395,12 +396,17 @@ services:
       SAAS_INTERNAL_JOB_TOKEN: ${SAAS_INTERNAL_JOB_TOKEN:?SAAS_INTERNAL_JOB_TOKEN
         is required}
       SYSTEM_SERVICE_BASE_URL: ${SYSTEM_SERVICE_BASE_URL:-http://localhost:8080}
+      SAAS_SYSTEM_SERVICE_BASE_URL: ${SAAS_SYSTEM_SERVICE_BASE_URL:-http://localhost:8080}
       AUTH_SERVICE_BASE_URL: ${AUTH_SERVICE_BASE_URL:-http://localhost:8080}
+      SAAS_AUTH_SERVICE_BASE_URL: ${SAAS_AUTH_SERVICE_BASE_URL:-http://localhost:8080}
       FILE_SERVICE_BASE_URL: ${FILE_SERVICE_BASE_URL:-http://localhost:8080}
+      SAAS_FILE_SERVICE_BASE_URL: ${SAAS_FILE_SERVICE_BASE_URL:-http://localhost:8080}
       MESSAGE_SERVICE_BASE_URL: ${MESSAGE_SERVICE_BASE_URL:-http://localhost:8080}
       PAYMENT_SERVICE_BASE_URL: ${PAYMENT_SERVICE_BASE_URL:-http://localhost:8080}
+      SAAS_PAYMENT_SERVICE_BASE_URL: ${SAAS_PAYMENT_SERVICE_BASE_URL:-http://localhost:8080}
       PLUGIN_SERVICE_BASE_URL: ${PLUGIN_SERVICE_BASE_URL:-http://localhost:8080}
       TEAM_SERVICE_BASE_URL: ${TEAM_SERVICE_BASE_URL:-http://localhost:8080}
+      SAAS_TEAM_SERVICE_BASE_URL: ${SAAS_TEAM_SERVICE_BASE_URL:-http://localhost:8080}
       LOCALIZATION_SERVICE_BASE_URL: ${LOCALIZATION_SERVICE_BASE_URL:-http://localhost:8080}
       LUMIRA_RUNTIME_ASYNC_ENABLED: ${LUMIRA_SERVER_RUNTIME_ASYNC_ENABLED:-false}
       TRUST_FORWARDED_HEADERS: ${TRUST_FORWARDED_HEADERS:-true}

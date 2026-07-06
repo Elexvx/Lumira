@@ -15,6 +15,7 @@ import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.file.app.FileManagementAppService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,7 +24,8 @@ import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-@Service
+@Service("fileInternalApi")
+@Primary
 public class FileInternalApiService implements FileInternalApi {
 
     private static final int MAX_INTERNAL_FILE_SEARCH_LIMIT = 100;
@@ -155,7 +157,7 @@ public class FileInternalApiService implements FileInternalApi {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid acting user is required");
         }
         SystemUserSnapshotDTO snapshot = resolveTrustedUserSnapshot(userId);
-        String trustedUsername = snapshot.username();
+        String trustedUsername = StringUtils.hasText(snapshot.username()) ? snapshot.username().trim() : null;
         if (!StringUtils.hasText(trustedUsername) || !trustedUsername.equals(username.trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user identity mismatch");
         }

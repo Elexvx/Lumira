@@ -60,7 +60,6 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,7 +86,6 @@ import java.util.LinkedHashSet;
 
 @RestController
 @RequestMapping("/internal/system")
-@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false", matchIfMissing = true)
 public class InternalSystemController {
 
     private static final Logger log = LoggerFactory.getLogger(InternalSystemController.class);
@@ -596,7 +594,10 @@ public class InternalSystemController {
             @RequestParam("userUuid") String userUuid
     ) {
         requireInternalServicePrincipal();
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(requireTrustedInternalUser(userId, userUuid), userUuid);
+        PermissionSnapshotService.PermissionSnapshot snapshot = requireTrustedPermissionSnapshot(
+                permissionSnapshotService.loadSnapshot(requireTrustedInternalUser(userId, userUuid), userUuid),
+                "Trusted user permission snapshot is unavailable"
+        );
         return new PermissionSnapshotDTO(
                 snapshot.getVersion(),
                 snapshot.getPermissionList(),
@@ -615,7 +616,10 @@ public class InternalSystemController {
             @RequestParam("userUuid") String userUuid
     ) {
         requireInternalServicePrincipal();
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(requireTrustedInternalUser(userId, userUuid), userUuid);
+        PermissionSnapshotService.PermissionSnapshot snapshot = requireTrustedPermissionSnapshot(
+                permissionSnapshotService.loadSnapshot(requireTrustedInternalUser(userId, userUuid), userUuid),
+                "Trusted user permission snapshot is unavailable"
+        );
         return new PermissionSnapshotDTO(
                 snapshot.getVersion(),
                 List.of(),
@@ -637,7 +641,10 @@ public class InternalSystemController {
         requireInternalServicePrincipal();
         SysUserEntity user = requireTrustedInternalUserEntity(userId, userUuid);
         Long trustedRoleId = requireGrantedRole(user.getId(), user.getUuid(), roleId);
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadRoleSnapshot(trustedRoleId);
+        PermissionSnapshotService.PermissionSnapshot snapshot = requireTrustedPermissionSnapshot(
+                permissionSnapshotService.loadRoleSnapshot(trustedRoleId),
+                "Trusted role permission snapshot is unavailable"
+        );
         return new PermissionSnapshotDTO(
                 snapshot.getVersion(),
                 snapshot.getPermissionList(),
@@ -1336,14 +1343,27 @@ public class InternalSystemController {
             @RequestParam("userUuid") String userUuid
     ) {
         requireInternalServicePrincipal();
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(
-                requireTrustedInternalUser(userId, userUuid),
-                userUuid
+        PermissionSnapshotService.PermissionSnapshot snapshot = requireTrustedPermissionSnapshot(
+                permissionSnapshotService.loadSnapshot(
+                        requireTrustedInternalUser(userId, userUuid),
+                        userUuid
+                ),
+                "Trusted user permission snapshot is unavailable"
         );
         return filterVisibleMenus(
                 listSystemMenusFromDatabase().stream().map(this::toMenuNode).toList(),
                 snapshot.getPermissions()
         );
+    }
+
+    private PermissionSnapshotService.PermissionSnapshot requireTrustedPermissionSnapshot(
+            PermissionSnapshotService.PermissionSnapshot snapshot,
+            String message
+    ) {
+        if (snapshot == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, message);
+        }
+        return snapshot;
     }
 
     private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> listSystemMenusFromDatabase() {

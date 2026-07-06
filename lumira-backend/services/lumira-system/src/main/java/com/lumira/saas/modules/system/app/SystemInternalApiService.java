@@ -51,6 +51,7 @@ import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -62,7 +63,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 
-@Service
+@Service("systemInternalApi")
+@Primary
 public class SystemInternalApiService implements SystemInternalApi {
 
     private static final Authentication INTERNAL_SERVICE_AUTHENTICATION = internalServiceAuthentication();

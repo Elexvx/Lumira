@@ -6,6 +6,7 @@ import java.net.URI;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -16,6 +17,7 @@ import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false")
 public class SystemInternalClientConfiguration {
 
     private static final String INTERNAL_TOKEN_HEADER = "X-Job-Token";
@@ -23,7 +25,7 @@ public class SystemInternalClientConfiguration {
     @Bean
     @Lazy
     @ConditionalOnMissingBean(SystemInternalApi.class)
-    public SystemInternalApi systemInternalApi(
+    public SystemInternalApi remoteSystemInternalApi(
             @Value("${saas.system.service-base-url:${SYSTEM_SERVICE_BASE_URL:http://localhost:8081}}") String systemServiceBaseUrl,
             @Value("${saas.internal.system-token:${SAAS_INTERNAL_SYSTEM_TOKEN:}}") String systemToken,
             @Value("${saas.internal.auth-token:${SAAS_INTERNAL_AUTH_TOKEN:}}") String authToken,

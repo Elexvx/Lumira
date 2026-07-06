@@ -84,7 +84,7 @@ class FileInternalClientConfigurationTest {
 
     @Test
     void fileInternalApiRejectsBaseUrlWithQuery() {
-        assertThatThrownBy(() -> new FileInternalClientConfiguration().fileInternalApi(
+        assertThatThrownBy(() -> new FileInternalClientConfiguration().remoteFileInternalApi(
                 "http://file-service:8084?trace=1",
                 "file-token-2026",
                 provider(RestClient.builder())
@@ -94,7 +94,7 @@ class FileInternalClientConfigurationTest {
     }
 
     private static FileInternalApi fileInternalApi(RestClient.Builder builder, String fileToken) {
-        return new FileInternalClientConfiguration().fileInternalApi(
+        return new FileInternalClientConfiguration().remoteFileInternalApi(
                 "http://file-service:8084",
                 fileToken,
                 provider(builder)

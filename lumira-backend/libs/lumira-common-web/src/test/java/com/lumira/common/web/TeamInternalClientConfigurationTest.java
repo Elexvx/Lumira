@@ -64,7 +64,7 @@ class TeamInternalClientConfigurationTest {
 
     @Test
     void teamInternalApiRejectsBaseUrlWithoutTrustedScheme() {
-        assertThatThrownBy(() -> new TeamInternalClientConfiguration().teamInternalApi(
+        assertThatThrownBy(() -> new TeamInternalClientConfiguration().remoteTeamInternalApi(
                 "mailto:team-service",
                 "team-token-2026",
                 provider(RestClient.builder())
@@ -74,7 +74,7 @@ class TeamInternalClientConfigurationTest {
     }
 
     private static TeamInternalApi teamInternalApi(RestClient.Builder builder, String teamToken) {
-        return new TeamInternalClientConfiguration().teamInternalApi(
+        return new TeamInternalClientConfiguration().remoteTeamInternalApi(
                 "http://team-service:8087",
                 teamToken,
                 provider(builder)

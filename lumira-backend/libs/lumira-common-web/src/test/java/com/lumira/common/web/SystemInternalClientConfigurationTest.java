@@ -200,7 +200,7 @@ class SystemInternalClientConfigurationTest {
 
     @Test
     void systemInternalApiRejectsBaseUrlWithFragment() {
-        assertThatThrownBy(() -> new SystemInternalClientConfiguration().systemInternalApi(
+        assertThatThrownBy(() -> new SystemInternalClientConfiguration().remoteSystemInternalApi(
                 "http://system-service:8081#fragment",
                 "system-token-2026",
                 "auth-token-2026",
@@ -217,7 +217,7 @@ class SystemInternalClientConfigurationTest {
     }
 
     private static SystemInternalApi systemInternalApi(RestClient.Builder builder, String messageToken) {
-        return new SystemInternalClientConfiguration().systemInternalApi(
+        return new SystemInternalClientConfiguration().remoteSystemInternalApi(
                 "http://system-service:8081",
                 "system-token-2026",
                 "auth-token-2026",

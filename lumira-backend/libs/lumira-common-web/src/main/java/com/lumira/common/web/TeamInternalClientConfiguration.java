@@ -4,6 +4,7 @@ import com.lumira.team.api.TeamInternalApi;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -14,6 +15,7 @@ import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false")
 public class TeamInternalClientConfiguration {
 
     private static final String INTERNAL_TOKEN_HEADER = "X-Job-Token";
@@ -21,7 +23,7 @@ public class TeamInternalClientConfiguration {
     @Bean
     @Lazy
     @ConditionalOnMissingBean(TeamInternalApi.class)
-    public TeamInternalApi teamInternalApi(
+    public TeamInternalApi remoteTeamInternalApi(
             @Value("${saas.team.service-base-url:${TEAM_SERVICE_BASE_URL:http://localhost:8087}}") String teamServiceBaseUrl,
             @Value("${saas.internal.team-token:${SAAS_INTERNAL_TEAM_TOKEN:}}") String teamToken,
             ObjectProvider<RestClient.Builder> restClientBuilderProvider
