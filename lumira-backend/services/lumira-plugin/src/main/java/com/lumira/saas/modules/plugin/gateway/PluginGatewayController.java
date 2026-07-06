@@ -1,5 +1,8 @@
 package com.lumira.saas.modules.plugin.gateway;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
@@ -16,6 +19,7 @@ import com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
 import com.lumira.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginHttpRequest;
 import com.lumira.saas.modules.plugin.runtime.runtime.PluginRuntimeModels.PluginHttpResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StreamUtils;
@@ -31,9 +35,11 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 public class PluginGatewayController {
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final PluginManagementAppService pluginManagementAppService;
     private final SecurityContextFacade securityContextFacade;
@@ -41,6 +47,7 @@ public class PluginGatewayController {
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
     private final SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer;
     private final SecurityAuditEventService securityAuditEventService;
+    private final SystemInternalApi systemInternalApi;
 
     public PluginGatewayController(
             PluginManagementAppService pluginManagementAppService,
@@ -50,12 +57,34 @@ public class PluginGatewayController {
             SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer,
             SecurityAuditEventService securityAuditEventService
     ) {
+        this(
+                pluginManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                runtimeSecurityPolicy,
+                sensitiveErrorMessageSanitizer,
+                securityAuditEventService,
+                null
+        );
+    }
+
+    @Autowired
+    public PluginGatewayController(
+            PluginManagementAppService pluginManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
+            SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer,
+            SecurityAuditEventService securityAuditEventService,
+            SystemInternalApi systemInternalApi
+    ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.runtimeSecurityPolicy = runtimeSecurityPolicy;
         this.sensitiveErrorMessageSanitizer = sensitiveErrorMessageSanitizer;
         this.securityAuditEventService = securityAuditEventService;
+        this.systemInternalApi = systemInternalApi;
     }
 
     @RequestMapping("/api/p/{pluginCode}/**")
@@ -126,9 +155,54 @@ public class PluginGatewayController {
 
     private CurrentUser requireAuthenticatedUser() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        currentUser = refreshTrustedCurrentUser(currentUser);
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
+        return currentUser;
+    }
+
+    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+            return currentUser;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!StringUtils.hasText(userSnapshot.status())
+                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
+                userId,
+                userSnapshot.userUuid().trim()
+        );
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+        }
+        currentUser.setUserId(userSnapshot.userId());
+        currentUser.setUserUuid(userSnapshot.userUuid().trim());
+        currentUser.setUsername(userSnapshot.username());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+        currentUser.setDescendantDeptIds(
+                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
+        );
+        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
         return currentUser;
     }
 
