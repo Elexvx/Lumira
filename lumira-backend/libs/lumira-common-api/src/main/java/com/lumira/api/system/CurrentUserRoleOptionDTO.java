@@ -5,6 +5,7 @@ public record CurrentUserRoleOptionDTO(
         String roleCode,
         String roleName,
         String roleType,
-        Integer permissionCount
+        Integer permissionCount,
+        String defaultHomePath
 ) {
 }

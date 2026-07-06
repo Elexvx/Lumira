@@ -175,6 +175,24 @@ const run = () => {
 
   assert.equal(
     resolveAuthorizedLoginRedirectTarget(
+      '',
+      {
+        ...dictRoleUser,
+        simulatedRoleId: 15,
+        defaultHomePath: '/dashboard/home',
+        availableRoles: [
+          { id: 14, roleCode: 'menu_role', roleName: 'Menu Role', roleType: 'FUNCTIONAL', defaultHomePath: '/settings/menus' },
+          { id: 15, roleCode: 'dict_role', roleName: 'Dict Role', roleType: 'FUNCTIONAL', defaultHomePath: '/settings/dicts' },
+        ],
+      },
+      [{ id: 16, menuCode: 'settings.dicts', name: 'Dicts', path: '/settings/dicts' }],
+    ),
+    '/settings/dicts',
+    'selected role default home should override the aggregate user default home',
+  );
+
+  assert.equal(
+    resolveAuthorizedLoginRedirectTarget(
       '?redirect=%2Fdashboard%2F%2F',
       dashboardUser,
       [],

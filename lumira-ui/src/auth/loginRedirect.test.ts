@@ -176,4 +176,34 @@ describe('resolveAuthorizedLoginRedirectTarget', () => {
     expect(beforeAdjustmentTarget).toBe('/settings/menus');
     expect(afterAdjustmentTarget).toBe('/settings/dicts');
   });
+
+  it('prefers the selected role default page over the aggregate user default page', () => {
+    const target = resolveAuthorizedLoginRedirectTarget(
+      '',
+      trustedUser({
+        simulatedRoleId: 3002,
+        permissions: ['system:dict:view'],
+        defaultHomePath: '/dashboard/home',
+        availableRoles: [
+          {
+            id: 3001,
+            roleCode: 'menu_role',
+            roleName: 'Menu Role',
+            roleType: 'FUNCTIONAL',
+            defaultHomePath: '/settings/menus',
+          },
+          {
+            id: 3002,
+            roleCode: 'dict_role',
+            roleName: 'Dict Role',
+            roleType: 'FUNCTIONAL',
+            defaultHomePath: '/settings/dicts',
+          },
+        ],
+      }),
+      [{ id: 6, menuCode: 'settings.dicts', name: 'Dicts', path: '/settings/dicts' }],
+    );
+
+    expect(target).toBe('/settings/dicts');
+  });
 });

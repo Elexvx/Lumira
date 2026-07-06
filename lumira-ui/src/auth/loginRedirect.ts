@@ -1,5 +1,6 @@
 import { DEFAULT_HOME_PATH, LOGIN_PATH } from '@/app.constants';
 import buildAccess from '@/access';
+import { getCurrentRoleDefaultHomePath } from '@/auth/defaultHomePath';
 import { isLoginInProgress } from '@/auth/loginFlowState';
 import { AUTH_SESSION_BROADCAST_CHANNEL } from '@/auth/token';
 import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
@@ -138,7 +139,7 @@ export const resolveAuthorizedLoginRedirectTarget = (
   menuTree?: MenuNode[],
   fallback = DEFAULT_HOME_PATH,
 ) => {
-  const preferredFallback = resolveCanonicalRoutePath(currentUser.defaultHomePath?.trim() || fallback);
+  const preferredFallback = resolveCanonicalRoutePath(getCurrentRoleDefaultHomePath(currentUser, fallback));
   const redirectTarget = resolveLoginRedirectTarget(search, preferredFallback);
   const canonicalRedirectTarget = normalizeTargetWithOriginalQuery(redirectTarget);
   if (canVisitPath(canonicalRedirectTarget, currentUser)) {

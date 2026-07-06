@@ -1588,6 +1588,7 @@ public class InternalSystemController {
                                r.role_code as roleCode,
                                r.role_name as roleName,
                                r.role_type as roleType,
+                               r.default_home_path as defaultHomePath,
                                count(rp.permission_key) as permissionCount
                         from sys_user_role ur
                         join sys_role r on r.id = ur.role_id and r.deleted = 0
@@ -1595,7 +1596,7 @@ public class InternalSystemController {
                         where ur.user_id = ?
                           and ur.user_uuid = ?
                           and ur.deleted = 0
-                        group by r.id, r.role_code, r.role_name, r.role_type
+                        group by r.id, r.role_code, r.role_name, r.role_type, r.default_home_path
                         order by r.id desc
                         """,
                 (rs, rowNum) -> new CurrentUserRoleOptionDTO(
@@ -1603,7 +1604,8 @@ public class InternalSystemController {
                         rs.getString("roleCode"),
                         rs.getString("roleName"),
                         rs.getString("roleType"),
-                        rs.getInt("permissionCount")
+                        rs.getInt("permissionCount"),
+                        rs.getString("defaultHomePath")
                 ),
                 userId,
                 userUuid

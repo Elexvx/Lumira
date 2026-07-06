@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
+import { getCurrentRoleDefaultHomePath } from '@/auth/defaultHomePath';
 import { performLogout } from '@/auth/sessionLifecycle';
 import { persistCurrentUser } from '@/auth/sessionState';
 import { tokenManager } from '@/auth/token';
@@ -311,7 +312,7 @@ export const TopActions = () => {
           },
         ),
       );
-      history.replace(DEFAULT_HOME_PATH);
+      history.replace(getCurrentRoleDefaultHomePath(updatedUser, DEFAULT_HOME_PATH));
     } catch (error) {
       showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     } finally {

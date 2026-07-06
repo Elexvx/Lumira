@@ -661,12 +661,12 @@ class InternalSystemControllerTest {
         user.setStatus("ENABLED");
         when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
         when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<CurrentUserRoleOptionDTO>>any(), eq(2001L), eq("user-uuid-2001"))).thenReturn(
-                List.of(new CurrentUserRoleOptionDTO(3001L, "team_operator", "Team Operator", "FUNCTIONAL", 2))
+                List.of(new CurrentUserRoleOptionDTO(3001L, "team_operator", "Team Operator", "FUNCTIONAL", 2, "/workflows/tasks"))
         );
 
         var roles = controller.userRoleOptions(2001L, "user-uuid-2001");
 
-        assertThat(roles).containsExactly(new CurrentUserRoleOptionDTO(3001L, "team_operator", "Team Operator", "FUNCTIONAL", 2));
+        assertThat(roles).containsExactly(new CurrentUserRoleOptionDTO(3001L, "team_operator", "Team Operator", "FUNCTIONAL", 2, "/workflows/tasks"));
     }
 
     @Test

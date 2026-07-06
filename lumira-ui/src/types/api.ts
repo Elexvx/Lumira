@@ -381,6 +381,7 @@ export interface CurrentUserRoleOption {
   roleName: string;
   roleType: string;
   permissionCount?: number;
+  defaultHomePath?: string | null;
 }
 
 export interface MenuNode {

@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.iam.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -9,6 +11,8 @@ import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.saas.common.annotation.RepeatSubmit;
 import com.lumira.saas.common.vo.PageResponse;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
@@ -21,6 +25,9 @@ import com.lumira.saas.modules.system.export.ExportVO;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import jakarta.validation.Valid;
+import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import java.util.List;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +45,7 @@ import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCur
 @RestController
 @RequestMapping("/api/v2/iam")
 public class IamV2Controller {
+    private static final String STATUS_ENABLED = "ENABLED";
 
     private final SystemManagementAppService systemManagementAppService;
     private final SystemDepartmentAppService departmentAppService;
@@ -45,6 +53,9 @@ public class IamV2Controller {
     private final ExportTaskService exportTaskService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
+    private final PermissionSnapshotService permissionSnapshotService;
+    private final SystemInternalApi systemInternalApi;
+    private final SessionAuthenticationService sessionAuthenticationService;
 
     public IamV2Controller(
             SystemManagementAppService systemManagementAppService,
@@ -54,12 +65,85 @@ public class IamV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
+        this(
+                systemManagementAppService,
+                departmentAppService,
+                userExportAppService,
+                exportTaskService,
+                securityContextFacade,
+                permissionGuard,
+                null,
+                null,
+                null
+        );
+    }
+
+    public IamV2Controller(
+            SystemManagementAppService systemManagementAppService,
+            SystemDepartmentAppService departmentAppService,
+            UserExportAppService userExportAppService,
+            ExportTaskService exportTaskService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PermissionSnapshotService permissionSnapshotService
+    ) {
+        this(
+                systemManagementAppService,
+                departmentAppService,
+                userExportAppService,
+                exportTaskService,
+                securityContextFacade,
+                permissionGuard,
+                permissionSnapshotService,
+                null,
+                null
+        );
+    }
+
+    public IamV2Controller(
+            SystemManagementAppService systemManagementAppService,
+            SystemDepartmentAppService departmentAppService,
+            UserExportAppService userExportAppService,
+            ExportTaskService exportTaskService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(
+                systemManagementAppService,
+                departmentAppService,
+                userExportAppService,
+                exportTaskService,
+                securityContextFacade,
+                permissionGuard,
+                permissionSnapshotService,
+                null,
+                sessionAuthenticationService
+        );
+    }
+
+    @Autowired
+    public IamV2Controller(
+            SystemManagementAppService systemManagementAppService,
+            SystemDepartmentAppService departmentAppService,
+            UserExportAppService userExportAppService,
+            ExportTaskService exportTaskService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
         this.systemManagementAppService = systemManagementAppService;
         this.departmentAppService = departmentAppService;
         this.userExportAppService = userExportAppService;
         this.exportTaskService = exportTaskService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
+        this.permissionSnapshotService = permissionSnapshotService;
+        this.systemInternalApi = systemInternalApi;
+        this.sessionAuthenticationService = sessionAuthenticationService;
     }
 
     @GetMapping("/permissions")
@@ -320,14 +404,108 @@ public class IamV2Controller {
 
     private CurrentUser require(String permissionKey) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        currentUser = requireTrustedUser(currentUser);
         permissionGuard.requirePermission(currentUser, permissionKey);
-        return requireTrustedUser(currentUser);
+        return currentUser;
     }
 
     private CurrentUser requireTrustedUser(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser);
         if (!isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
         return currentUser;
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        if (!isTrustedCurrentUser(currentUser)) {
+            return;
+        }
+        if (sessionAuthenticationService != null) {
+            CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    )
+            );
+            copyTrustedCurrentUser(currentUser, refreshedUser);
+            return;
+        }
+        if (permissionSnapshotService == null) {
+            return;
+        }
+        Long userId = currentUser.getUserId();
+        String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            String currentUserUuid = userSnapshot == null || !StringUtils.hasText(userSnapshot.userUuid())
+                    ? null
+                    : userSnapshot.userUuid().trim();
+            if (userSnapshot == null
+                    || userSnapshot.userId() == null
+                    || !userId.equals(userSnapshot.userId())
+                    || !StringUtils.hasText(currentUserUuid)
+                    || !normalizedUserUuid.equals(currentUserUuid)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            userId = userSnapshot.userId();
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(currentUserUuid);
+            currentUser.setUsername(userSnapshot.username());
+            normalizedUserUuid = currentUserUuid;
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
+                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
+        currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
+        currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
+        currentUser.setDeptIds(snapshot.getDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDeptIds()));
+        currentUser.setDescendantDeptIds(snapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(snapshot.getDescendantDeptIds()));
+        currentUser.setDataScopes(snapshot.getDataScopes() == null ? List.of() : List.copyOf(snapshot.getDataScopes()));
+        currentUser.setPermissionsVersion(snapshot.getVersion());
+        currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
+    }
+
+    private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
+        CurrentUser refreshedUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!isTrustedCurrentUser(refreshedUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return refreshedUser;
+    }
+
+    private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
+        target.setUserId(source.getUserId());
+        target.setUserUuid(source.getUserUuid());
+        target.setUsername(source.getUsername());
+        target.setSessionId(source.getSessionId());
+        target.setSessionVersion(source.getSessionVersion());
+        target.setAuthenticated(source.isAuthenticated());
+        target.setPermissions(source.getPermissions() == null ? Set.of() : Set.copyOf(source.getPermissions()));
+        target.setRoleIds(source.getRoleIds() == null ? Set.of() : Set.copyOf(source.getRoleIds()));
+        target.setPrimaryDeptId(source.getPrimaryDeptId());
+        target.setDeptIds(source.getDeptIds() == null ? Set.of() : Set.copyOf(source.getDeptIds()));
+        target.setDescendantDeptIds(source.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(source.getDescendantDeptIds()));
+        target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
+        target.setPermissionsVersion(source.getPermissionsVersion());
+        target.setRequiresPasswordChange(source.getRequiresPasswordChange());
+        target.setDefaultHomePath(source.getDefaultHomePath());
+        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setLoginType(source.getLoginType());
     }
 }

@@ -1189,7 +1189,7 @@ class AuthAppServiceTest {
                 )
         );
         when(systemInternalApi.userRoleOptions(42L, "user-uuid-42")).thenReturn(
-                List.of(new CurrentUserRoleOptionDTO(9L, "team_operator", "Team Operator", "FUNCTIONAL", 1))
+                List.of(new CurrentUserRoleOptionDTO(9L, "team_operator", "Team Operator", "FUNCTIONAL", 1, "/workflows/tasks"))
         );
 
         var currentUser = authAppService.currentUserBySessionId(
@@ -1228,7 +1228,7 @@ class AuthAppServiceTest {
                 )
         );
         when(systemInternalApi.userRoleOptions(42L, "user-uuid-42")).thenReturn(
-                List.of(new CurrentUserRoleOptionDTO(9L, "team_operator", "Team Operator", "FUNCTIONAL", 2))
+                List.of(new CurrentUserRoleOptionDTO(9L, "team_operator", "Team Operator", "FUNCTIONAL", 2, "/workflows/tasks"))
         );
         when(jwtTokenService.generateAccessToken(session)).thenReturn("access-role");
         when(jwtTokenService.generateRefreshToken(eq(session), anyString())).thenReturn("refresh-role");
