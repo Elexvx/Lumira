@@ -256,7 +256,7 @@ describe('getAppInitialState', () => {
       { menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' },
       expect.objectContaining({
         menuCode: 'registration.root',
-        children: expect.arrayContaining([expect.objectContaining({ menuCode: 'activity.registration' })]),
+        children: [expect.objectContaining({ menuCode: 'competition.registration' })],
       }),
     ]);
     expect(initialState.availablePlugins).toEqual([
@@ -269,7 +269,7 @@ describe('getAppInitialState', () => {
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/runtime-appearance-settings', expect.any(Object));
   });
 
-  it('places competition and activity registration under the registration group when menus are missing', async () => {
+  it('places competition registration under the registration group when menus are missing', async () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
@@ -293,10 +293,7 @@ describe('getAppInitialState', () => {
       path: '/registration',
       component: 'redirect:/competitions/register',
     });
-    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual([
-      'competition.registration',
-      'activity.registration',
-    ]);
+    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual(['competition.registration']);
     expect(initialState.menuTree?.some((menu) => menu.menuCode === 'activity.registration')).toBe(false);
     expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'competition.registration'))).toBe(false);
   });

@@ -107,6 +107,40 @@ class SaasSqlBootstrapCompletenessTest {
         assertThat(extractValuesBlock(sql, "sys_role_permission"))
                 .as("admin bootstrap should enumerate concrete permission keys instead of wildcard role permissions")
                 .doesNotContain("'*'");
+        assertThat(rolePermissionSelectKeys(sql, 1002L))
+                .as("default common user role should not expose management surfaces")
+                .containsExactlyInAnyOrder(
+                        "dashboard:view",
+                        "profile:view",
+                        "system:file:view",
+                        "system:file:upload",
+                        "aiadc:registration:view",
+                        "aiadc:registration:create",
+                        "aiadc:registration:update",
+                        "aiadc:registration:pay",
+                        "aiadc:material:view",
+                        "aiadc:material:submit",
+                        "aiadc:stage:view"
+                )
+                .doesNotContain(
+                        "aiadc:competition:view",
+                        "aiadc:activity:view",
+                        "aiadc:project:view",
+                        "aiadc:project:create",
+                        "team:view",
+                        "team:create",
+                        "team:member:view",
+                        "expert:view",
+                        "expert:create",
+                        "expert:update",
+                        "expert:delete",
+                        "download:center:view",
+                        "user:center:view",
+                        "message:message:view",
+                        "message:message:read",
+                        "ai:view",
+                        "ai:chat:send"
+                );
 
         assertThat(normalizedSql)
                 .contains("INSERT INTO `ddd_read_model_version`")
@@ -119,6 +153,23 @@ class SaasSqlBootstrapCompletenessTest {
         Matcher matcher = Pattern.compile("\\(\\s*'([^']+)'\\s*,").matcher(valuesBlock);
         while (matcher.find()) {
             keys.add(matcher.group(1));
+        }
+        return keys;
+    }
+
+    private static Set<String> rolePermissionSelectKeys(String sql, long roleId) {
+        Pattern pattern = Pattern.compile(
+                "SELECT\\s+" + roleId + "\\s*,\\s*p\\.`permission_key`[\\s\\S]*?p\\.`permission_key`\\s+IN\\s*\\(([\\s\\S]*?)\\)\\s*ON\\s+DUPLICATE\\s+KEY\\s+UPDATE",
+                Pattern.CASE_INSENSITIVE
+        );
+        Matcher matcher = pattern.matcher(sql);
+        assertThat(matcher.find())
+                .as("expected role permission SELECT bootstrap block for role " + roleId)
+                .isTrue();
+        Set<String> keys = new LinkedHashSet<>();
+        Matcher keyMatcher = Pattern.compile("'([^']+)'").matcher(matcher.group(1));
+        while (keyMatcher.find()) {
+            keys.add(keyMatcher.group(1));
         }
         return keys;
     }

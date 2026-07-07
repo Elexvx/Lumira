@@ -138,10 +138,52 @@ describe('access', () => {
   });
 
   it('does not expose activity registration without role permissions', () => {
-    const result = access({ currentUser: commonUserWithPermissions([]) });
+    const result = access({ currentUser: commonUserWithPermissions(['aiadc:registration:view']) });
 
-    expect(result.canVisitCompetitionRegister).toBe(false);
+    expect(result.canVisitCompetitionRegister).toBe(true);
     expect(result.canVisitActivityRegister).toBe(false);
+  });
+
+  it('keeps the default common user surface to dashboard, registration, and personal center', () => {
+    const result = access({
+      currentUser: commonUserWithPermissions([
+        'dashboard:view',
+        'profile:view',
+        'system:file:view',
+        'system:file:upload',
+        'aiadc:registration:view',
+        'aiadc:registration:create',
+        'aiadc:registration:update',
+        'aiadc:registration:pay',
+        'aiadc:material:view',
+        'aiadc:material:submit',
+        'aiadc:stage:view',
+      ]),
+    });
+
+    expect(result.canVisitDashboard).toBe(true);
+    expect(result.canVisitCompetitionRegister).toBe(true);
+    expect(result.canVisitProfile).toBe(true);
+    expect(result.canVisitPersonalCenter).toBe(true);
+    expect(result.canVisitSystemMyFiles).toBe(true);
+    expect(result.canVisitActivityRegister).toBe(false);
+    expect(result.canVisitDataManagement).toBe(false);
+    expect(result.canVisitDownloadCenter).toBe(false);
+    expect(result.canVisitQueryCenter).toBe(false);
+    expect(result.canVisitAnyUserCenter).toBe(false);
+    expect(result.canVisitUserCenter).toBe(false);
+    expect(result.canVisitExperts).toBe(false);
+    expect(result.canVisitAi).toBe(false);
+    expect(result.canVisitSystemSettings).toBe(false);
+    expect(result.canVisitPluginRuntime).toBe(false);
+  });
+
+  it('does not expose query center when a common user only has download center access', () => {
+    const result = access({ currentUser: commonUserWithPermissions(['download:center:view']) });
+
+    expect(result.canVisitDataManagement).toBe(true);
+    expect(result.canVisitDownloadCenter).toBe(true);
+    expect(result.canVisitQueryCenter).toBe(false);
   });
 
   it('updates visible settings pages when role permissions are adjusted', () => {

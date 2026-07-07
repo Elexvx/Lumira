@@ -35,6 +35,8 @@ const COMPETITION_REGISTER_PERMISSIONS = [
   'aiadc:stage:manage',
   'payment:order:view',
 ];
+const ACTIVITY_REGISTER_PERMISSIONS = ['aiadc:activity:view'];
+const USER_CENTER_MANAGEMENT_PERMISSIONS = ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: PluginAvailability[] }) {
   const trustedUser = isTrustedCurrentUser(initialState?.currentUser) ? initialState.currentUser : undefined;
@@ -69,7 +71,8 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitCompetitions = isLogin && hasPermission(permissions, 'aiadc:competition:view');
   const canVisitPaymentOrders = isLogin && hasPermission(permissions, 'payment:order:view');
   const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
-  const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
+  const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
+  const canVisitQueryCenter = [canVisitActivities, canVisitProjects, canVisitTeam, canVisitPaymentOrders].some(Boolean);
   const canVisitDataManagement =
     [canVisitCompetitions, canVisitActivities, canVisitProjects, canVisitTeam, canVisitPaymentOrders, canVisitDownloadCenter].some(Boolean);
   const canVisitSystemSettings =
@@ -95,13 +98,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
       ].some(Boolean));
   const canVisitAnyUserCenter =
     isLogin &&
-    (
-      ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'].some((item) =>
-        hasPermission(permissions, item),
-      )
-      || hasPermission(permissions, 'profile:view')
-      || hasPermission(permissions, 'system:file:view')
-    );
+    USER_CENTER_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item));
 
   return {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
@@ -112,9 +109,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitAnyUserCenter,
     canVisitUserCenter:
       isLogin &&
-      ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'].some((item) =>
-        hasPermission(permissions, item),
-      ),
+      USER_CENTER_MANAGEMENT_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitDataManagement,
     canVisitSystemManagement: canVisitSystemSettings,
     canVisitSystemMonitoring,
@@ -141,6 +136,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitActivitiesRoot: canVisitActivities,
     canVisitActivities,
     canVisitCompetitions,
+    canVisitQueryCenter,
     canVisitCompetitionRegister,
     canVisitActivityRegister,
     canVisitPaymentOrders,

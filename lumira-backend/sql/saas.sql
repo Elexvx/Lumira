@@ -3175,6 +3175,22 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 DELETE FROM `sys_role_permission`
+WHERE `role_id` = 1002
+  AND `permission_key` NOT IN (
+      'dashboard:view',
+      'profile:view',
+      'system:file:view',
+      'system:file:upload',
+      'aiadc:registration:view',
+      'aiadc:registration:create',
+      'aiadc:registration:update',
+      'aiadc:registration:pay',
+      'aiadc:material:view',
+      'aiadc:material:submit',
+      'aiadc:stage:view'
+  );
+
+DELETE FROM `sys_role_permission`
 WHERE `role_id` = 1001 AND `permission_key` = '*';
 
 INSERT INTO `sys_role_permission` (`role_id`, `permission_key`, `created_by`, `updated_by`, `deleted`)
@@ -3191,29 +3207,16 @@ FROM `sys_permission` p
 WHERE p.`deleted` = 0
   AND p.`permission_key` IN (
       'dashboard:view',
-      'download:center:view',
-      'user:center:view',
       'profile:view',
       'system:file:view',
       'system:file:upload',
-      'aiadc:activity:view',
-      'aiadc:competition:view',
       'aiadc:registration:view',
       'aiadc:registration:create',
       'aiadc:registration:update',
       'aiadc:registration:pay',
       'aiadc:material:view',
       'aiadc:material:submit',
-      'aiadc:stage:view',
-      'expert:view',
-      'expert:create',
-      'expert:update',
-      'expert:delete',
-      'aiadc:project:view',
-      'aiadc:project:create',
-      'team:view',
-      'team:create',
-      'team:member:view'
+      'aiadc:stage:view'
   )
 ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),

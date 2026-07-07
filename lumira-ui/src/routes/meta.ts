@@ -440,7 +440,7 @@ const dataManagementRouteMeta: BackendRouteMeta[] = [
   ...teamRouteMeta.map((item) => item.path === '/team' ? { ...item, hideInMenu: true } : item),
   ...paymentRouteMeta,
   { path: '/data-management/download-center', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
-  { path: '/data-management/query-center', name: 'nav.data.queryCenter', icon: 'SearchOutlined' },
+  { path: '/data-management/query-center', name: 'nav.data.queryCenter', icon: 'SearchOutlined', access: 'canVisitQueryCenter' },
 ];
 
 const dataSourceRoutes = [
@@ -456,7 +456,7 @@ const dataManagementRoutes: BackendRouteRecord[] = [
   ...dataSourceRoutes,
   { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   { path: '/data-management/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
-  { path: '/data-management/query-center', redirect: '/team/search', name: 'nav.data.queryCenter', icon: 'SearchOutlined', hideInMenu: true },
+  { path: '/data-management/query-center', redirect: '/team/search', name: 'nav.data.queryCenter', icon: 'SearchOutlined', access: 'canVisitQueryCenter', hideInMenu: true },
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [
