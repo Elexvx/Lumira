@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -131,7 +132,7 @@ public class SystemVerificationAppService {
     }
 
     @Autowired
-    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
+    public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, @Lazy SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
         this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 

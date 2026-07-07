@@ -9,6 +9,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -33,6 +34,7 @@ public class SensitiveWordPluginStateService {
     public SensitiveWordPluginStateService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService,
+            @Lazy
             SystemInternalApi systemInternalApi
     ) {
         this(jdbcTemplate, permissionSnapshotService, systemInternalApi, true);

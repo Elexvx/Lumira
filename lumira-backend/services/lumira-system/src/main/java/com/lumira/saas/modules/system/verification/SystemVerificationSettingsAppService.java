@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
@@ -134,6 +135,7 @@ public class SystemVerificationSettingsAppService {
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
             PermissionSnapshotService permissionSnapshotService,
+            @Lazy
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
