@@ -82,6 +82,18 @@ const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldCo
   ],
 };
 
+type PaymentFormValidationError = {
+  errorFields?: Array<{
+    name?: (string | number)[];
+    errors?: string[];
+  }>;
+};
+
+const isFormValidationError = (error: unknown): error is PaymentFormValidationError =>
+  Boolean(error && typeof error === 'object' && 'errorFields' in error);
+
+const resolveSandboxEnabled = (environment?: string | null) => environment?.trim().toUpperCase() === 'SANDBOX';
+
 const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSettings => ({
   ...settings,
   appId: settings.appId ?? '',
@@ -174,14 +186,26 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
     try {
       setSaving(true);
       const values = await form.validateFields();
+      const payload = {
+        ...values,
+        sandboxEnabled: resolveSandboxEnabled(values.environment),
+      };
       await request<PaymentProviderSettings>(`/v1/payment/providers/${editingProviderCode}`, {
         method: 'PUT',
-        data: values,
+        data: payload,
         ...API_OPTS.NO_REDIRECT,
       });
       message.success(t('支付配置已保存', 'Payment configuration saved'));
       await onRefetch();
       closeConfigDrawer();
+    } catch (error) {
+      if (isFormValidationError(error)) {
+        const firstError = error.errorFields?.[0];
+        if (firstError?.name?.length) {
+          form.scrollToField(firstError.name, { block: 'center' });
+        }
+        message.warning(firstError?.errors?.[0] || t('请先补全支付配置中的必填项', 'Please complete the required payment configuration fields first'));
+      }
     } finally {
       setSaving(false);
     }
@@ -236,14 +260,16 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
           <Form.Item name="enabled" label={t('启用', 'Enabled')} valuePropName="checked" extra={t('停用后，新的支付和退款请求将被拦截。', 'When disabled, new payment and refund requests will be blocked.')}>
             <Switch disabled={!canUpdateSettings} />
           </Form.Item>
-          <Form.Item name="environment" label={t('环境', 'Environment')} rules={[{ required: true, message: t('请选择环境', 'Please select an environment') }]}>
+          <Form.Item
+            name="environment"
+            label={t('环境', 'Environment')}
+            rules={[{ required: true, message: t('请选择环境', 'Please select an environment') }]}
+            extra={t('选择沙箱时，系统会自动按沙箱配置保存。', 'Sandbox environment is saved as sandbox configuration automatically.')}
+          >
             <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canUpdateSettings} />
           </Form.Item>
           <Form.Item name="currency" label={t('结算币种', 'Currency')} extra={t('留空时使用平台默认币种。', 'Leave blank to use the platform default currency.')}>
             <Input disabled={!canUpdateSettings} maxLength={16} placeholder={t('例如：CNY', 'e.g. CNY')} />
-          </Form.Item>
-          <Form.Item name="sandboxEnabled" label={t('沙箱模式', 'Sandbox mode')} valuePropName="checked" extra={t('开启后优先按沙箱环境理解配置。', 'When enabled, the configuration is interpreted as sandbox first.')}>
-            <Switch disabled={!canUpdateSettings} />
           </Form.Item>
           {providerFields.map((field) => {
             const extraMessage =
