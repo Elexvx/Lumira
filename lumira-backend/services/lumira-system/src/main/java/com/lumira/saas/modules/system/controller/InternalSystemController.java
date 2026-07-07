@@ -90,7 +90,7 @@ public class InternalSystemController {
 
     private static final Logger log = LoggerFactory.getLogger(InternalSystemController.class);
 
-    private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final Long SERVICE_PRINCIPAL_ID = 0L;
@@ -642,7 +642,7 @@ public class InternalSystemController {
         SysUserEntity user = requireTrustedInternalUserEntity(userId, userUuid);
         Long trustedRoleId = requireGrantedRole(user.getId(), user.getUuid(), roleId);
         PermissionSnapshotService.PermissionSnapshot snapshot = requireTrustedPermissionSnapshot(
-                permissionSnapshotService.loadRoleSnapshot(trustedRoleId),
+                permissionSnapshotService.loadGrantedRoleSnapshot(user.getId(), user.getUuid(), trustedRoleId),
                 "Trusted role permission snapshot is unavailable"
         );
         return new PermissionSnapshotDTO(
@@ -1591,9 +1591,7 @@ public class InternalSystemController {
         if (user == null) {
             return false;
         }
-        boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account)
-                || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.getUsername());
-        return adminAccount
+        return DEFAULT_ADMIN_USER_ID.equals(user.getId())
                 && StringUtils.hasText(user.getPasswordHash())
                 && passwordEncoder.matches(InitialAdminPassword.DEFAULT_PASSWORD, user.getPasswordHash());
     }
