@@ -6,9 +6,12 @@ import com.lumira.common.exception.BizException;
 import com.lumira.team.infrastructure.persistence.RowMapper;
 import org.junit.jupiter.api.Test;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -107,6 +110,33 @@ class TeamRepositoryTest {
                 .contains("and owner_user_uuid = ?")
                 .contains("status = 'ACTIVE'");
         assertThat(queries.lastWriteArgs).contains(3002L, "user-uuid-3002", 3001L, "user-uuid-3001", 2001L);
+    }
+
+    @Test
+    void jdbcTeamRepositoryListsAdminTeamsWithJdbcTimestamps() {
+        RecordingQueries queries = new RecordingQueries();
+        queries.teamRows = List.of(Map.ofEntries(
+                Map.entry("id", 2001L),
+                Map.entry("teamCode", "T001"),
+                Map.entry("teamName", "Core Team"),
+                Map.entry("teamType", "GENERAL"),
+                Map.entry("visibility", "PRIVATE"),
+                Map.entry("joinMode", "INVITE_ONLY"),
+                Map.entry("ownerUserId", 3001L),
+                Map.entry("ownerUserUuid", "user-uuid-3001"),
+                Map.entry("memberCount", 1),
+                Map.entry("status", "ACTIVE"),
+                Map.entry("createdAt", Timestamp.valueOf(LocalDateTime.of(2026, 7, 7, 10, 0))),
+                Map.entry("updatedAt", Timestamp.valueOf(LocalDateTime.of(2026, 7, 7, 11, 30)))
+        ));
+        JdbcTeamRepository repository = new JdbcTeamRepository(queries);
+
+        List<TeamVO.Team> teams = repository.listTeamsForAdmin(3001L, "user-uuid-3001");
+
+        assertThat(teams).hasSize(1);
+        assertThat(teams.get(0).getUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 7, 7, 11, 30));
+        assertThat(queries.lastReadSql).contains("left join team_member m");
+        assertThat(queries.lastReadArgs).containsExactly(3001L, "user-uuid-3001");
     }
 
     @Test
@@ -430,6 +460,9 @@ class TeamRepositoryTest {
         private String lastCodeLookupSql;
         private List<String> lastCodeCandidates = List.of();
         private java.util.function.Function<List<String>, List<String>> existingCodeStrategy = ignored -> List.of();
+        private String lastReadSql;
+        private List<Object> lastReadArgs = List.of();
+        private List<Map<String, Object>> teamRows = List.of();
         private final java.util.Queue<Integer> nextUpdateCounts = new java.util.ArrayDeque<>();
         private int updateCallCount;
         private int lastInsertIdQueries;
@@ -467,9 +500,22 @@ class TeamRepositoryTest {
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+            lastReadSql = sql;
+            lastReadArgs = new ArrayList<>(Arrays.asList(args));
+            if (sql.contains("from team t")) {
+                return teamRows.stream()
+                        .map(row -> {
+                            try {
+                                return rowMapper.mapRow(new SqlRow(row), 0);
+                            } catch (Exception exception) {
+                                throw new IllegalStateException(exception);
+                            }
+                        })
+                        .toList();
+            }
             if (sql.contains("from team_invite")) {
                 try {
-                    return List.of(rowMapper.mapRow(new SqlRow(java.util.Map.of(
+                    return List.of(rowMapper.mapRow(new SqlRow(Map.of(
                             "id", 5001L,
                             "teamId", 2001L,
                             "inviteCode", "JOIN2026",

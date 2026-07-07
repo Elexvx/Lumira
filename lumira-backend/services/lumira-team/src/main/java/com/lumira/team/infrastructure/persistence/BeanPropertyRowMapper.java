@@ -5,6 +5,8 @@ import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.PropertyAccessorFactory;
 
 import java.lang.reflect.Field;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 public class BeanPropertyRowMapper<T> implements RowMapper<T> {
@@ -54,6 +56,9 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
         }
         if (targetType == Boolean.class || targetType == boolean.class) {
             return toBoolean(value);
+        }
+        if (targetType == LocalDateTime.class && value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
         }
         return value;
     }
