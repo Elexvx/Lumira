@@ -329,7 +329,7 @@ class FileManagementAppServiceTest {
     }
 
     @Test
-    void listFiles_downloadCenterScopeShouldIncludeRecordsSavedInLegacyLocalBucket() {
+    void listFiles_downloadCenterScopeShouldIncludeVisibilityScopeAndLegacyDownloadBucket() {
         when(fileObjectMapper.selectList(ArgumentMatchers.<QueryWrapper<FileObjectEntity>>any()))
                 .thenReturn(List.of(), fileObjectEntities(1));
 
@@ -341,7 +341,8 @@ class FileManagementAppServiceTest {
         assertThat(captor.getAllValues())
                 .allSatisfy(wrapper -> {
                     assertThat(wrapper.getSqlSegment()).contains("visibility_scope");
-                    assertThat(wrapper.getSqlSegment()).doesNotContain("bucket");
+                    assertThat(wrapper.getSqlSegment()).contains("bucket");
+                    assertThat(wrapper.getSqlSegment()).contains("OR");
                 });
     }
 

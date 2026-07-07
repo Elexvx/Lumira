@@ -2811,6 +2811,14 @@ ALTER TABLE `file_object`
     ADD COLUMN `uploaded_by_uuid` char(36) DEFAULT NULL,
     ADD INDEX `idx_file_object_uploader` (`uploaded_by`, `uploaded_by_uuid`, `deleted`);
 ALTER TABLE `file_object`
+    ADD COLUMN `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL',
+    ADD INDEX `idx_file_object_visibility` (`visibility_scope`, `deleted`);
+UPDATE `file_object`
+SET `visibility_scope` = 'DOWNLOAD_CENTER'
+WHERE `bucket` = 'download_center'
+  AND `deleted` = 0
+  AND (`visibility_scope` IS NULL OR `visibility_scope` = '' OR `visibility_scope` = 'PERSONAL');
+ALTER TABLE `file_object`
     ADD INDEX `idx_file_object_deleted_bucket` (`deleted`, `bucket`);
 ALTER TABLE `file_object`
     ADD INDEX `idx_file_object_deleted_created_id` (`deleted`, `created_at`, `id`);

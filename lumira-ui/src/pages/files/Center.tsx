@@ -741,6 +741,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   const deletePermission = readOnlyCenter ? 'download:center:delete' : isSharedScope ? 'system:file:manage:delete' : 'system:file:delete';
   const canUploadFile = actionPermission.can(uploadPermission);
   const canUploadInCurrentScope = readOnlyCenter ? canUploadFile : !isSharedScope && canUploadFile;
+  const shouldLoadDefaultStorageSpace = !readOnlyCenter && canUploadInCurrentScope;
   const buildToolbarActions = actionPermission.buildToolbarActions;
   const previewBackgroundColor = token.colorFillQuaternary;
   const previewContainerBackgroundColor = token.colorBgContainer;
@@ -754,6 +755,10 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   const showRemoteStorageFields = Boolean(storageProvider && storageProvider !== 'LOCAL');
 
   useEffect(() => {
+    if (!shouldLoadDefaultStorageSpace) {
+      setDefaultStorageSpace(null);
+      return undefined;
+    }
     let active = true;
     void request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
       method: 'GET',
@@ -778,7 +783,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
     return () => {
       active = false;
     };
-  }, [requestOptions]);
+  }, [requestOptions, shouldLoadDefaultStorageSpace]);
 
   const openStorageDrawer = useCallback(
     (provider: FileStorageProvider, record?: FileStorageSpaceRecord) => {

@@ -1264,7 +1264,10 @@ public class FileManagementAppService {
 
     private void applyFileVisibilityScope(QueryWrapper<FileObjectEntity> queryWrapper, boolean downloadCenterScope) {
         if (downloadCenterScope) {
-            queryWrapper.eq("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER);
+            queryWrapper.and(wrapper -> wrapper
+                    .eq("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER)
+                    .or()
+                    .eq("bucket", STORAGE_KEY_DOWNLOAD_CENTER));
             return;
         }
         queryWrapper

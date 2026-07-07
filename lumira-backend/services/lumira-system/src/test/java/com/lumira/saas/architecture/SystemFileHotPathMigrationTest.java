@@ -14,6 +14,10 @@ class SystemFileHotPathMigrationTest {
 
         assertThat(schema)
                 .contains("idx_file_storage_space_deleted_default_id")
+                .contains("ADD COLUMN `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL'")
+                .contains("idx_file_object_visibility")
+                .contains("SET `visibility_scope` = 'DOWNLOAD_CENTER'")
+                .contains("WHERE `bucket` = 'download_center'")
                 .contains("idx_file_object_deleted_bucket")
                 .contains("idx_file_object_deleted_created_id")
                 .contains("idx_file_processing_task_queue")
