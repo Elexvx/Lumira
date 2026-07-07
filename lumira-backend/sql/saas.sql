@@ -173,6 +173,7 @@ CREATE TABLE `ai_knowledge_document` (
   `index_claim_expires_at` datetime DEFAULT NULL,
   `created_by` bigint unsigned NOT NULL DEFAULT '0',
   `created_by_uuid` char(36) DEFAULT NULL,
+  `simulated_role_id` bigint unsigned DEFAULT NULL,
   `updated_by` bigint unsigned NOT NULL DEFAULT '0',
   `updated_by_uuid` char(36) DEFAULT NULL,
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
@@ -1061,13 +1062,17 @@ CREATE TABLE `sys_export_task` (
   `created_by` bigint DEFAULT NULL,
   `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `claimed_by` varchar(128) DEFAULT NULL,
+  `claim_token` varchar(128) DEFAULT NULL,
+  `claim_expires_at` datetime DEFAULT NULL,
   `started_at` datetime DEFAULT NULL,
   `finished_at` datetime DEFAULT NULL,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_sys_export_task_creator_uuid` (`created_by_uuid`,`created_at`),
   KEY `idx_sys_export_task_creator` (`created_by`,`created_at`),
-  KEY `idx_sys_export_task_status` (`status`,`created_at`)
+  KEY `idx_sys_export_task_status` (`status`,`created_at`),
+  KEY `idx_sys_export_task_claim_token` (`claim_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_localization_entry` (
@@ -1855,6 +1860,7 @@ CREATE TABLE `competition_payment_order_task` (
   `claim_expires_at` datetime DEFAULT NULL,
   `process_message` varchar(1024) DEFAULT NULL,
   `owner_user_uuid` char(36) DEFAULT NULL,
+  `simulated_role_id` bigint DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
   `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2609,12 +2615,18 @@ ALTER TABLE `ai_knowledge_base_acl`
     ADD INDEX `idx_ai_knowledge_acl_creator_uuid` (`created_by`, `created_by_uuid`, `create_time`);
 ALTER TABLE `ai_knowledge_document`
     ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `simulated_role_id` bigint unsigned DEFAULT NULL,
     ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
     ADD INDEX `idx_ai_knowledge_document_creator_uuid` (`created_by`, `created_by_uuid`, `create_time`);
 ALTER TABLE `ai_knowledge_document`
     ADD COLUMN `index_claim_token` varchar(64) DEFAULT NULL,
     ADD COLUMN `index_claim_expires_at` datetime DEFAULT NULL,
     ADD INDEX `idx_ai_knowledge_document_index_claim` (`index_claim_token`);
+ALTER TABLE `sys_export_task`
+    ADD COLUMN `claimed_by` varchar(128) DEFAULT NULL,
+    ADD COLUMN `claim_token` varchar(128) DEFAULT NULL,
+    ADD COLUMN `claim_expires_at` datetime DEFAULT NULL,
+    ADD INDEX `idx_sys_export_task_claim_token` (`claim_token`);
 ALTER TABLE `certificate_batch`
     ADD COLUMN `updated_by_uuid` varchar(64) DEFAULT NULL;
 ALTER TABLE `certificate_record`
@@ -2657,6 +2669,7 @@ ALTER TABLE `certificate_template_version`
     ADD INDEX `idx_certificate_template_version_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `competition_payment_order_task`
     ADD COLUMN `created_by_uuid` char(36) DEFAULT NULL,
+    ADD COLUMN `simulated_role_id` bigint DEFAULT NULL,
     ADD COLUMN `updated_by_uuid` char(36) DEFAULT NULL,
     ADD INDEX `idx_competition_payment_order_task_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 ALTER TABLE `registration_material_submission`
@@ -2876,7 +2889,42 @@ VALUES
     ('aiadc:project:delete', '删除项目', 'aiadc', 'CORE', NULL, 0, 0, 0),
     ('dashboard:view', 'View dashboard', 'dashboard', 'CORE', NULL, 0, 0, 0),
     ('download:center:view', '查看下载中心', 'download', 'CORE', NULL, 0, 0, 0),
+    ('download:center:create', '创建下载任务', 'download', 'CORE', NULL, 0, 0, 0),
+    ('download:center:delete', '删除下载任务', 'download', 'CORE', NULL, 0, 0, 0),
     ('localization:view', '查看多语言设置', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('localization:create', '创建多语言资源', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('localization:update', '编辑多语言资源', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('localization:delete', '删除多语言资源', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('localization:publish', '发布多语言资源', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('localization:rollback', '回滚多语言资源', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('localization:sync', '同步多语言资源', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('ai:view', '查看 AI 能力', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:chat:send', '发送 AI 对话', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:employee:create', '创建数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:employee:update', '编辑数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:employee:delete', '删除数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:employee:status', '启停数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:employee:skills', '配置数字员工技能', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:llm:create', '创建模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:llm:update', '编辑模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:llm:delete', '删除模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:llm:status', '启停模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:skill:view', '查看技能列表', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:view', '查看知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:query', '检索知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:create', '创建知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:update', '编辑知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:delete', '删除知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:bind', '绑定知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:share', '共享知识库', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:document:upload', '上传知识文档', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:document:delete', '删除知识文档', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:knowledge:document:index', '重建知识索引', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:tool:view', '查看 AI 工具', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:tool:execute', '执行 AI 工具', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:tool:invoke', '调用 AI 工具', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:tool-policy:view', '查看 AI 工具策略', 'ai', 'CORE', NULL, 0, 0, 0),
+    ('ai:tool-policy:manage', '管理 AI 工具策略', 'ai', 'CORE', NULL, 0, 0, 0),
     ('payment:config:test', '测试支付配置', 'payment', 'CORE', NULL, 0, 0, 0),
     ('payment:config:update', '编辑支付配置', 'payment', 'CORE', NULL, 0, 0, 0),
     ('payment:config:view', '查看支付配置', 'payment', 'CORE', NULL, 0, 0, 0),
@@ -2887,7 +2935,18 @@ VALUES
     ('payment:view', '访问支付中心', 'payment', 'CORE', NULL, 0, 0, 0),
     ('payment:webhook:retry', '重试支付回调', 'payment', 'CORE', NULL, 0, 0, 0),
     ('payment:webhook:view', '查看支付回调', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('message:message:view', '查看站内消息', 'message', 'CORE', NULL, 0, 0, 0),
+    ('message:message:read', '标记消息已读', 'message', 'CORE', NULL, 0, 0, 0),
+    ('message:message:write', '发送站内消息', 'message', 'CORE', NULL, 0, 0, 0),
+    ('message:message:retract', '撤回站内消息', 'message', 'CORE', NULL, 0, 0, 0),
     ('plugin:management:view', '查看插件管理', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:upload', '上传插件包', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:install', '安装插件', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:upgrade', '升级插件', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:rollback', '回滚插件', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:enable', '启用插件', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:disable', '停用插件', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:logs', '查看插件日志', 'plugin', 'CORE', NULL, 0, 0, 0),
     ('plugin:sensitive-words:import', 'Import sensitive words', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
     ('plugin:sensitive-words:manage', 'Manage sensitive words', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
     ('plugin:sensitive-words:view', 'View sensitive words', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
@@ -2907,6 +2966,8 @@ VALUES
     ('system:dict:view', '查看字典', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:file:delete', '删除文件', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:file:manage', '管理文件', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:file:manage:delete', '删除全站文件', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:file:publish', '发布公开文件', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:file:upload', '上传文件', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:file:view', '查看文件', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:menu:create', '新建菜单', 'system', 'CORE', NULL, 0, 0, 0),
@@ -2919,6 +2980,7 @@ VALUES
     ('system:monitor:service:view', '查看服务监控', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:monitor:view', '查看系统监控', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:notification:view', '查看消息通知', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:notification:write', '发送系统通知', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:online-user:ban', '封禁在线用户', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:online-user:kick', '强退在线用户', 'system', 'CORE', NULL, 0, 0, 0),
     ('system:online-user:view', '查看在线用户', 'system', 'CORE', NULL, 0, 0, 0),
@@ -2950,6 +3012,9 @@ VALUES
     ('team:member:invite', 'Invite team member', 'team', 'CORE', NULL, 0, 0, 0),
     ('team:member:remove', '移除团队成员', 'team', 'CORE', NULL, 0, 0, 0),
     ('team:member:role-update', '调整团队成员角色', 'team', 'CORE', NULL, 0, 0, 0),
+    ('workflow:view', '查看工作流', 'workflow', 'CORE', NULL, 0, 0, 0),
+    ('workflow:config', '配置工作流', 'workflow', 'CORE', NULL, 0, 0, 0),
+    ('workflow:approve', '审批工作流', 'workflow', 'CORE', NULL, 0, 0, 0),
     ('user:center:view', '访问用户中心', 'user', 'CORE', NULL, 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `permission_name` = VALUES(`permission_name`),

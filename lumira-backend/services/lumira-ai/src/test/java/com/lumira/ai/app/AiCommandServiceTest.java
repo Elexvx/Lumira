@@ -113,11 +113,44 @@ class AiCommandServiceTest {
     }
 
     @Test
+    void searchKnowledgeRejectsBlankLiveUsernameBeforePermissionSnapshotAndDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, " ", "ENABLED"));
+        AiCommandService service = service(jdbcTemplate, mock(AiReadQueryService.class), provider(systemInternalApi));
+
+        assertThatThrownBy(() -> service.searchKnowledge(user(), new KnowledgeSearchRequest("policy", List.of(1L), 5)))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(systemInternalApi, never()).permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString());
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void searchKnowledgeShouldRequireLiveKnowledgeQueryPermissionBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        AiCommandService service = service(
+                jdbcTemplate,
+                mock(AiReadQueryService.class),
+                provider(trustedSystemInternalApi(List.of("ai:chat:send")), false)
+        );
+
+        assertThatThrownBy(() -> service.searchKnowledge(user(), new KnowledgeSearchRequest("policy", List.of(1L), 5)))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void executeLocalPermissionSnapshotTool() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(1L))).thenReturn(1);
         when(jdbcTemplate.update(contains("insert into ai_tool_audit_log"), any(Object[].class))).thenReturn(1);
-        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
+        AiCommandService service = service(jdbcTemplate, readQueryService(jdbcTemplate));
 
         var result = service.executeTool(user(), new com.lumira.ai.dto.AiCommandModels.ToolExecuteRequest(
                 1L,
@@ -137,7 +170,7 @@ class AiCommandServiceTest {
     @Test
     void executeToolRejectsUnauthenticatedUserBeforeEmployeeLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
+        AiCommandService service = service(jdbcTemplate, readQueryService(jdbcTemplate));
 
         assertThatThrownBy(() -> service.executeTool(
                 unauthenticatedUser(),
@@ -150,6 +183,30 @@ class AiCommandServiceTest {
                 )
         )).isInstanceOfSatisfying(BizException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void executeToolShouldRequireLiveToolExecutePermissionBeforeEmployeeLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        AiCommandService service = service(
+                jdbcTemplate,
+                readQueryService(jdbcTemplate),
+                provider(trustedSystemInternalApi(List.of("system:permission:snapshot")), false)
+        );
+
+        assertThatThrownBy(() -> service.executeTool(
+                user(),
+                new com.lumira.ai.dto.AiCommandModels.ToolExecuteRequest(
+                        1L,
+                        null,
+                        "system.permission.snapshot",
+                        java.util.Map.of(),
+                        true
+                )
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         verifyNoInteractions(jdbcTemplate);
     }
@@ -182,7 +239,7 @@ class AiCommandServiceTest {
     void executeToolRejectsDisabledOrMissingEmployee() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(404L))).thenReturn(0);
-        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
+        AiCommandService service = service(jdbcTemplate, readQueryService(jdbcTemplate));
 
         assertThrows(com.lumira.common.exception.BizException.class, () -> service.executeTool(
                 user(),
@@ -199,7 +256,7 @@ class AiCommandServiceTest {
     @Test
     void executeToolShouldRequireDeclaredToolPermission() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
+        AiCommandService service = service(jdbcTemplate, readQueryService(jdbcTemplate));
 
         assertThrows(com.lumira.common.exception.BizException.class, () -> service.executeTool(
                 userWithPermissions("ai:tool:execute"),
@@ -226,7 +283,7 @@ class AiCommandServiceTest {
         when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq(1L))).thenReturn(1);
         when(jdbcTemplate.update(contains("update ai_tool_call_plan"), any(Object[].class))).thenReturn(1);
         when(jdbcTemplate.update(contains("insert into ai_tool_audit_log"), any(Object[].class))).thenReturn(1);
-        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
+        AiCommandService service = service(jdbcTemplate, readQueryService(jdbcTemplate));
 
         service.confirmTool(user(), new com.lumira.ai.dto.AiCommandModels.ToolConfirmRequest(9L));
 
@@ -262,7 +319,7 @@ class AiCommandServiceTest {
                 "arguments_json", "{}"
         ));
         when(jdbcTemplate.update(contains("update ai_tool_call_plan"), any(Object[].class))).thenReturn(0);
-        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
+        AiCommandService service = service(jdbcTemplate, readQueryService(jdbcTemplate));
 
         assertThatThrownBy(() -> service.confirmTool(user(), new com.lumira.ai.dto.AiCommandModels.ToolConfirmRequest(9L)))
                 .isInstanceOf(BizException.class)
@@ -313,6 +370,36 @@ class AiCommandServiceTest {
     }
 
     @Test
+    void chatShouldRequireLiveChatPermissionBeforeEmployeeLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        AiReadQueryService readQueryService = mock(AiReadQueryService.class);
+        AiCommandService service = service(
+                jdbcTemplate,
+                readQueryService,
+                provider(trustedSystemInternalApi(List.of("ai:knowledge:query")), false)
+        );
+
+        assertThatThrownBy(() -> service.chat(user(), new com.lumira.ai.dto.AiCommandModels.ChatRequest(
+                1L,
+                null,
+                3L,
+                null,
+                "hello",
+                false,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                true
+        )))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+        verifyNoInteractions(readQueryService);
+    }
+
+    @Test
     void uploadKnowledgeDocumentRejectsOversizedFileBeforeReadingBytes() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         AiReadQueryService readQueryService = mock(AiReadQueryService.class);
@@ -344,6 +431,27 @@ class AiCommandServiceTest {
 
         verify(readQueryService).requireManageableKnowledgeBase(currentUser, 11L);
         verify(readQueryService, never()).getKnowledgeBase(any(), eq(11L));
+    }
+
+    @Test
+    void uploadKnowledgeDocumentShouldRequireLiveUploadPermissionBeforeKnowledgeBaseCheck() throws Exception {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        AiReadQueryService readQueryService = mock(AiReadQueryService.class);
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.isEmpty()).thenReturn(false);
+        when(file.getSize()).thenReturn(1L);
+        AiCommandService service = service(
+                jdbcTemplate,
+                readQueryService,
+                provider(trustedSystemInternalApi(List.of("ai:knowledge:query")), false)
+        );
+
+        assertThatThrownBy(() -> service.uploadKnowledgeDocument(user(), 11L, file))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+        verifyNoInteractions(readQueryService);
     }
 
     @Test
@@ -531,7 +639,11 @@ class AiCommandServiceTest {
     }
 
     private AiCommandService service(JdbcTemplate jdbcTemplate, AiReadQueryService readQueryService) {
-        return service(jdbcTemplate, readQueryService, null);
+        return service(jdbcTemplate, readQueryService, provider(enabledSystemInternalApi()));
+    }
+
+    private AiReadQueryService readQueryService(JdbcTemplate jdbcTemplate) {
+        return new AiReadQueryService(jdbcTemplate, provider(enabledSystemInternalApi()));
     }
 
     private AiCommandService service(
@@ -601,12 +713,23 @@ class AiCommandServiceTest {
         return trusted(new CurrentUser(7L, "ai-user", null, "s1", 1, true, Set.of("*")));
     }
 
+    private SystemInternalApi enabledSystemInternalApi() {
+        return trustedSystemInternalApi(List.of(
+                "ai:knowledge:document:upload",
+                "ai:knowledge:document:index",
+                "ai:knowledge:query",
+                "ai:chat:send",
+                "ai:tool:execute",
+                "system:permission:snapshot"
+        ));
+    }
+
     private CurrentUser userWithPermissions(String... permissions) {
         return trusted(new CurrentUser(7L, "ai-user", 2002L, "s1", 1, true, Set.of(permissions)));
     }
 
     private CurrentUser managedByRoleAndDepartment() {
-        CurrentUser currentUser = userWithPermissions("ai:knowledge:manage");
+        CurrentUser currentUser = userWithPermissions("ai:knowledge:update");
         currentUser.setRoleIds(Set.of(9L));
         currentUser.setPrimaryDeptId(15L);
         currentUser.setDeptIds(Set.of(18L));
@@ -632,7 +755,11 @@ class AiCommandServiceTest {
     }
 
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
-        if (systemInternalApi != null) {
+        return provider(systemInternalApi, true);
+    }
+
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi, boolean stubSnapshot) {
+        if (systemInternalApi != null && stubSnapshot) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
@@ -641,14 +768,36 @@ class AiCommandServiceTest {
         return provider;
     }
 
+    private SystemInternalApi trustedSystemInternalApi(List<String> permissions) {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "ai-user", "ENABLED"));
+        when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class), permissions));
+        return systemInternalApi;
+    }
+
     private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
         return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private PermissionSnapshotDTO permissionSnapshot(Long userId) {
+        return permissionSnapshot(
+                userId,
+                List.of(
+                        "ai:knowledge:document:upload",
+                        "ai:knowledge:document:index",
+                        "ai:knowledge:query",
+                        "ai:chat:send",
+                        "ai:tool:execute",
+                        "system:permission:snapshot"
+                )
+        );
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(Long userId, List<String> permissions) {
         return new PermissionSnapshotDTO(
                 "perm-v" + userId,
-                List.of("*"),
+                permissions,
                 List.of(11L),
                 21L,
                 List.of(21L),

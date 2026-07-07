@@ -59,7 +59,7 @@ public class FileInternalClientConfiguration {
 
         @Override
         public FileObjectDTO uploadImage(MultipartFile file, String category, String remark, String bucket) {
-            return postMultipart("/internal/files/images", file, category, null, remark, bucket, null, null, null);
+            return postMultipart("/internal/files/images", file, category, null, remark, bucket, null, null, null, null);
         }
 
         @Override
@@ -72,12 +72,26 @@ public class FileInternalClientConfiguration {
                 String userUuid,
                 String username
         ) {
-            return postMultipart("/internal/files/images/as-user", file, category, null, remark, bucket, userId, userUuid, username);
+            return uploadImageForUser(file, category, remark, bucket, userId, userUuid, username, null);
+        }
+
+        @Override
+        public FileObjectDTO uploadImageForUser(
+                MultipartFile file,
+                String category,
+                String remark,
+                String bucket,
+                Long userId,
+                String userUuid,
+                String username,
+                Long simulatedRoleId
+        ) {
+            return postMultipart("/internal/files/images/as-user", file, category, null, remark, bucket, userId, userUuid, username, simulatedRoleId);
         }
 
         @Override
         public FileObjectDTO uploadDocument(MultipartFile file, String category, String tags, String remark, String bucket) {
-            return postMultipart("/internal/files/documents", file, category, tags, remark, bucket, null, null, null);
+            return postMultipart("/internal/files/documents", file, category, tags, remark, bucket, null, null, null, null);
         }
 
         @Override
@@ -91,11 +105,38 @@ public class FileInternalClientConfiguration {
                 String userUuid,
                 String username
         ) {
-            return postMultipart("/internal/files/documents/as-user", file, category, tags, remark, bucket, userId, userUuid, username);
+            return uploadDocumentForUser(file, category, tags, remark, bucket, userId, userUuid, username, null);
+        }
+
+        @Override
+        public FileObjectDTO uploadDocumentForUser(
+                MultipartFile file,
+                String category,
+                String tags,
+                String remark,
+                String bucket,
+                Long userId,
+                String userUuid,
+                String username,
+                Long simulatedRoleId
+        ) {
+            return postMultipart("/internal/files/documents/as-user", file, category, tags, remark, bucket, userId, userUuid, username, simulatedRoleId);
         }
 
         @Override
         public FileContentDTO readFileContentForUser(Long fileId, Long userId, String userUuid, String username, boolean sharedScope) {
+            return readFileContentForUser(fileId, userId, userUuid, username, sharedScope, null);
+        }
+
+        @Override
+        public FileContentDTO readFileContentForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                boolean sharedScope,
+                Long simulatedRoleId
+        ) {
             return restClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/internal/files/content")
                             .queryParam("fileId", fileId)
@@ -103,6 +144,7 @@ public class FileInternalClientConfiguration {
                             .queryParam("userUuid", userUuid)
                             .queryParam("username", username)
                             .queryParam("sharedScope", sharedScope)
+                            .queryParamIfPresent("simulatedRoleId", java.util.Optional.ofNullable(simulatedRoleId))
                             .build())
                     .retrieve()
                     .body(FileContentDTO.class);
@@ -117,6 +159,19 @@ public class FileInternalClientConfiguration {
                 boolean sharedScope,
                 boolean downloadCenterScope
         ) {
+            return getFileForUser(fileId, userId, userUuid, username, sharedScope, downloadCenterScope, null);
+        }
+
+        @Override
+        public FileObjectDTO getFileForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                boolean sharedScope,
+                boolean downloadCenterScope,
+                Long simulatedRoleId
+        ) {
             return restClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/internal/files/metadata")
                             .queryParam("fileId", fileId)
@@ -125,6 +180,7 @@ public class FileInternalClientConfiguration {
                             .queryParam("username", username)
                             .queryParam("sharedScope", sharedScope)
                             .queryParam("downloadCenterScope", downloadCenterScope)
+                            .queryParamIfPresent("simulatedRoleId", java.util.Optional.ofNullable(simulatedRoleId))
                             .build())
                     .retrieve()
                     .body(FileObjectDTO.class);
@@ -141,6 +197,21 @@ public class FileInternalClientConfiguration {
                 boolean sharedScope,
                 int limit
         ) {
+            return searchFilesForUser(userId, userUuid, username, keyword, contentType, status, sharedScope, limit, null);
+        }
+
+        @Override
+        public List<FileObjectDTO> searchFilesForUser(
+                Long userId,
+                String userUuid,
+                String username,
+                String keyword,
+                String contentType,
+                String status,
+                boolean sharedScope,
+                int limit,
+                Long simulatedRoleId
+        ) {
             FileObjectDTO[] files = restClient.get()
                     .uri(uriBuilder -> {
                         uriBuilder.path("/internal/files/search")
@@ -148,7 +219,8 @@ public class FileInternalClientConfiguration {
                                 .queryParam("userUuid", userUuid)
                                 .queryParam("username", username)
                                 .queryParam("sharedScope", sharedScope)
-                                .queryParam("limit", limit);
+                                .queryParam("limit", limit)
+                                .queryParamIfPresent("simulatedRoleId", java.util.Optional.ofNullable(simulatedRoleId));
                         if (StringUtils.hasText(keyword)) {
                             uriBuilder.queryParam("keyword", keyword);
                         }
@@ -177,6 +249,19 @@ public class FileInternalClientConfiguration {
                 String artifactType,
                 boolean sharedScope
         ) {
+            return readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, sharedScope, null);
+        }
+
+        @Override
+        public FileProcessingArtifactDTO readProcessingArtifactForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                String artifactType,
+                boolean sharedScope,
+                Long simulatedRoleId
+        ) {
             return restClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/internal/files/artifacts")
                             .queryParam("fileId", fileId)
@@ -185,6 +270,7 @@ public class FileInternalClientConfiguration {
                             .queryParam("username", username)
                             .queryParam("artifactType", artifactType)
                             .queryParam("sharedScope", sharedScope)
+                            .queryParamIfPresent("simulatedRoleId", java.util.Optional.ofNullable(simulatedRoleId))
                             .build())
                     .retrieve()
                     .body(FileProcessingArtifactDTO.class);
@@ -199,12 +285,13 @@ public class FileInternalClientConfiguration {
                 String bucket,
                 Long userId,
                 String userUuid,
-                String username
+                String username,
+                Long simulatedRoleId
         ) {
             return restClient.post()
                     .uri(path)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(multipartBody(file, category, tags, remark, bucket, userId, userUuid, username))
+                    .body(multipartBody(file, category, tags, remark, bucket, userId, userUuid, username, simulatedRoleId))
                     .retrieve()
                     .body(FileObjectDTO.class);
         }
@@ -217,7 +304,8 @@ public class FileInternalClientConfiguration {
                 String bucket,
                 Long userId,
                 String userUuid,
-                String username
+                String username,
+                Long simulatedRoleId
         ) {
             LinkedMultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", fileResource(file));
@@ -230,6 +318,9 @@ public class FileInternalClientConfiguration {
             }
             addTextPart(body, "userUuid", userUuid);
             addTextPart(body, "username", username);
+            if (simulatedRoleId != null && simulatedRoleId > 0) {
+                body.add("simulatedRoleId", String.valueOf(simulatedRoleId));
+            }
             return body;
         }
 

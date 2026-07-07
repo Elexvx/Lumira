@@ -689,7 +689,7 @@ public class MessageAppService {
         LocalDateTime now = LocalDateTime.now();
         int updated = messageNoticeMapper.upsertRead(noticeId, actorUserId, currentUser.getUserUuid(), roleIds, now);
         if (updated <= 0) {
-            throw new BizException(ErrorCode.NOT_FOUND, "閫氱煡涓嶅瓨鍦ㄦ垨鏃犳潈璁块棶");
+            throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
         notice.setReadFlag(Boolean.TRUE);
         notice.setReadAt(now);
@@ -1186,13 +1186,22 @@ public class MessageAppService {
         if (!STATUS_ENABLED.equalsIgnoreCase(snapshot.status())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        if (!StringUtils.hasText(snapshot.username())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, normalizedUserUuid)
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, normalizedUserUuid, simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserId(snapshot.userId());
         currentUser.setUserUuid(snapshot.userUuid().trim());
-        currentUser.setUsername(snapshot.username());
+        currentUser.setUsername(snapshot.username().trim());
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());

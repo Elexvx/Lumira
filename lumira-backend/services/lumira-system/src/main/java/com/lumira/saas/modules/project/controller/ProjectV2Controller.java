@@ -50,13 +50,14 @@ public class ProjectV2Controller {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public ProjectV2Controller(
             ProjectManagementAppService projectManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
-        this(projectManagementAppService, securityContextFacade, permissionGuard, null, null, null);
+        this(projectManagementAppService, securityContextFacade, permissionGuard, null, null, null, false);
     }
 
     public ProjectV2Controller(
@@ -65,7 +66,7 @@ public class ProjectV2Controller {
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(projectManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null);
+        this(projectManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null, false);
     }
 
     public ProjectV2Controller(
@@ -75,7 +76,7 @@ public class ProjectV2Controller {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(projectManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, sessionAuthenticationService);
+        this(projectManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     @Autowired
@@ -87,12 +88,25 @@ public class ProjectV2Controller {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(projectManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private ProjectV2Controller(
+            ProjectManagementAppService projectManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.projectManagementAppService = projectManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping
@@ -201,6 +215,9 @@ public class ProjectV2Controller {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -213,6 +230,9 @@ public class ProjectV2Controller {
             String currentUserUuid = userSnapshot == null || !StringUtils.hasText(userSnapshot.userUuid())
                     ? null
                     : userSnapshot.userUuid().trim();
+            String currentUsername = userSnapshot == null || !StringUtils.hasText(userSnapshot.username())
+                    ? null
+                    : userSnapshot.username().trim();
             if (userSnapshot == null
                     || userSnapshot.userId() == null
                     || !userId.equals(userSnapshot.userId())
@@ -223,18 +243,33 @@ public class ProjectV2Controller {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(currentUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             normalizedUserUuid = currentUserUuid;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -254,6 +289,10 @@ public class ProjectV2Controller {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -270,7 +309,7 @@ public class ProjectV2Controller {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 }

@@ -85,6 +85,7 @@ public class CompetitionManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public CompetitionManagementAppService(
@@ -93,7 +94,7 @@ public class CompetitionManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     public CompetitionManagementAppService(
@@ -103,11 +104,23 @@ public class CompetitionManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private CompetitionManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            DictRuntimeService dictRuntimeService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.dictRuntimeService = dictRuntimeService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public CompetitionManagementAppService(
@@ -115,11 +128,11 @@ public class CompetitionManagementAppService {
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, null);
+        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, null, null, false);
     }
 
     public CompetitionManagementAppService(MyBatisQueryOperations jdbcTemplate, DictRuntimeService dictRuntimeService) {
-        this(jdbcTemplate, dictRuntimeService, null);
+        this(jdbcTemplate, dictRuntimeService, null, null, null, false);
     }
 
     public PageResponse<CompetitionVO.Competition> listCompetitions(
@@ -1145,6 +1158,9 @@ public class CompetitionManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -1165,16 +1181,31 @@ public class CompetitionManagementAppService {
             }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -1196,6 +1227,10 @@ public class CompetitionManagementAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -1212,7 +1247,7 @@ public class CompetitionManagementAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

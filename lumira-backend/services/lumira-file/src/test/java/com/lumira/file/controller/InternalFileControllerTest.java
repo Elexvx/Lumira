@@ -45,7 +45,8 @@ class InternalFileControllerTest {
                 String.class,
                 String.class,
                 boolean.class,
-                boolean.class
+                boolean.class,
+                Long.class
         );
 
         RequestParam sharedScope = requestParam(method, "sharedScope");
@@ -59,13 +60,13 @@ class InternalFileControllerTest {
         InternalFileController controller = new InternalFileController(fileInternalApiService);
         MultipartFile file = mock(MultipartFile.class);
         FileObjectDTO result = mock(FileObjectDTO.class);
-        when(fileInternalApiService.uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice"))
+        when(fileInternalApiService.uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice", null))
                 .thenReturn(result);
 
-        FileObjectDTO actual = controller.uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice");
+        FileObjectDTO actual = controller.uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice", null);
 
         assertThat(actual).isSameAs(result);
-        verify(fileInternalApiService).uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice");
+        verify(fileInternalApiService).uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice", null);
     }
 
     @Test
@@ -74,7 +75,7 @@ class InternalFileControllerTest {
         FileInternalApiService fileInternalApiService = mock(FileInternalApiService.class);
         InternalFileController controller = new InternalFileController(fileInternalApiService);
 
-        assertThatThrownBy(() -> controller.searchFilesForUser(42L, "user-uuid-42", "alice", null, null, null, false, 10))
+        assertThatThrownBy(() -> controller.searchFilesForUser(42L, "user-uuid-42", "alice", null, null, null, false, 10, null))
                 .isInstanceOf(com.lumira.common.exception.BizException.class)
                 .hasMessageContaining("Internal service token is required");
 
@@ -86,7 +87,8 @@ class InternalFileControllerTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.anyBoolean(),
-                org.mockito.ArgumentMatchers.anyInt()
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.any()
         );
     }
 

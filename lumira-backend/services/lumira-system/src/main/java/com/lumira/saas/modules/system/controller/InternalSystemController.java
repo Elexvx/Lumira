@@ -1120,7 +1120,7 @@ public class InternalSystemController {
     ) {
         requireInternalServicePrincipal();
         if (!factorCode.equalsIgnoreCase(request.factorCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "楠岃瘉鏂瑰紡涓嶅尮閰?");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
         }
         return verificationAppService.unbind(
                 requireTrustedInternalUser(userId, userUuid),

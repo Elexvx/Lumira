@@ -976,6 +976,23 @@ class MessageAppServiceTest {
         verify(messageNoticeMapper, never()).countUnread(anyLong(), anyString(), any(), anyLong());
     }
 
+    @Test
+    void countUnread_shouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:view"));
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("stale");
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(
+                new SystemUserSnapshotDTO(1001L, "user-uuid-1001", " ", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null)
+        );
+
+        assertThatThrownBy(() -> messageAppService.countUnread(currentUser))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(messageNoticeMapper, never()).countUnread(anyLong(), anyString(), any(), anyLong());
+        verify(systemInternalApi, never()).permissionSnapshot(1001L, "user-uuid-1001");
+    }
+
     private CurrentUser currentUser() {
         return trusted(new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:view")));
     }

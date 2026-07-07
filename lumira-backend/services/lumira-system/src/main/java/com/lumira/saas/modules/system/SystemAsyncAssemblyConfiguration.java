@@ -17,6 +17,7 @@ import com.lumira.saas.infrastructure.redis.RedisConfig;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupProperties;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunner;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
+import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
 import org.apache.ibatis.annotations.Mapper;
@@ -53,6 +54,7 @@ import org.springframework.context.annotation.Import;
         RedisStartupCleanupRunner.class,
         RedisStreamPlatformEventDispatcher.class,
         SystemDomainEventPublisher.class,
+        UserExportTaskWorkerService.class,
         com.lumira.saas.infrastructure.job.InternalJobController.class
 })
 public class SystemAsyncAssemblyConfiguration {

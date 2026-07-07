@@ -32,7 +32,6 @@ import java.util.regex.Pattern;
 public class SessionAuthenticationService {
 
     private static final long PROTECTED_ADMIN_ID = 1001L;
-    private static final String PROTECTED_ADMIN_USERNAME = "admin";
     private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
     private static final long AUTHENTICATED_ACCESS_CACHE_TTL_MILLIS = 60_000L;
     private static final long AUTHENTICATED_ACCESS_CACHE_MAX_ENTRIES = 10_000L;
@@ -420,17 +419,26 @@ public class SessionAuthenticationService {
 
     private boolean isProtectedAdminAccount(AuthSession session) {
         return session != null
-                && PROTECTED_ADMIN_ID == session.getUserId()
-                && StringUtils.hasText(session.getUsername())
-                && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(session.getUsername().trim());
+                && PROTECTED_ADMIN_ID == session.getUserId();
     }
 
     private PermissionSnapshotResolution resolvePermissionSnapshot(TokenClaims claims, AuthSession session) {
         if (session.getSimulatedRoleId() != null) {
+            if (!permissionSnapshotService.isRoleGrantedToUser(
+                    session.getUserId(),
+                    session.getUserUuid(),
+                    session.getSimulatedRoleId()
+            )) {
+                invalidateSession(session, "Simulated role is no longer granted");
+            }
             if (ownerRuntimeMetrics != null) {
                 ownerRuntimeMetrics.recordAuthPermissionSnapshotFromRole();
             }
-            PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadRoleSnapshot(session.getSimulatedRoleId());
+            PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadGrantedRoleSnapshot(
+                    session.getUserId(),
+                    session.getUserUuid(),
+                    session.getSimulatedRoleId()
+            );
             return new PermissionSnapshotResolution(snapshot, false);
         }
         if (hasPermissionSnapshot(session)) {

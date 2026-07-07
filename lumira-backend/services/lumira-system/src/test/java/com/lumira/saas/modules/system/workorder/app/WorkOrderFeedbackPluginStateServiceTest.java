@@ -124,6 +124,22 @@ class WorkOrderFeedbackPluginStateServiceTest {
     }
 
     @Test
+    void isEnabledShouldRejectBlankLiveUsernameBeforeSnapshotAndDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        CurrentUser currentUser = currentUser();
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
+
+        assertThat(service.isEnabled(currentUser)).isFalse();
+        assertThat(queryOperations.pluginActivationChecked).isFalse();
+        assertThat(queryOperations.workOrderTableChecked).isFalse();
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(2001L, "user-uuid-2001");
+    }
+
+    @Test
     void isEnabledShouldRefreshLiveUsernameFromTrustedIdentity() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.pluginEnabled = true;
@@ -134,11 +150,26 @@ class WorkOrderFeedbackPluginStateServiceTest {
         CurrentUser currentUser = currentUser();
         currentUser.setUsername("admin-stale");
         when(systemInternalApi.findUserIdentityById(2001L))
-                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "  admin-live  ", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
 
         assertThat(service.isEnabled(currentUser)).isTrue();
         assertThat(currentUser.getUsername()).isEqualTo("admin-live");
+    }
+
+    @Test
+    void isEnabledShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.pluginEnabled = true;
+        queryOperations.tableExists = true;
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, null, null);
+
+        assertThatThrownBy(() -> service.isEnabled(currentUser()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+        assertThat(queryOperations.pluginActivationChecked).isFalse();
+        assertThat(queryOperations.workOrderTableChecked).isFalse();
     }
 
     private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {

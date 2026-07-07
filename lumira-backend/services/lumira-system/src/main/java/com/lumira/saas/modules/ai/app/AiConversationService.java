@@ -3,6 +3,7 @@ package com.lumira.saas.modules.ai.app;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -13,6 +14,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public interface AiConversationService {
@@ -34,6 +37,7 @@ public interface AiConversationService {
 @Service
 @Primary
 class JdbcAiConversationService implements AiConversationService {
+    private static final String PERMISSION_AI_CHAT_SEND = "ai:chat:send";
     private static final String STATUS_ENABLED = "ENABLED";
     private static final int MAX_MESSAGE_ATTACHMENTS = 10;
 
@@ -42,9 +46,10 @@ class JdbcAiConversationService implements AiConversationService {
     private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     JdbcAiConversationService(MyBatisQueryOperations jdbcTemplate, FileInternalApi fileInternalApi) {
-        this(jdbcTemplate, fileInternalApi, null, null);
+        this(jdbcTemplate, fileInternalApi, null, null, false);
     }
 
     JdbcAiConversationService(
@@ -52,20 +57,32 @@ class JdbcAiConversationService implements AiConversationService {
             FileInternalApi fileInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, fileInternalApi, null, sessionAuthenticationService);
+        this(jdbcTemplate, fileInternalApi, null, sessionAuthenticationService, false);
     }
 
+    @Autowired
     JdbcAiConversationService(
             MyBatisQueryOperations jdbcTemplate,
             FileInternalApi fileInternalApi,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, fileInternalApi, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private JdbcAiConversationService(
+            MyBatisQueryOperations jdbcTemplate,
+            FileInternalApi fileInternalApi,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.fileInternalApi = fileInternalApi;
         this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @Override
@@ -210,7 +227,7 @@ class JdbcAiConversationService implements AiConversationService {
         if (attachments == null || attachments.isEmpty()) {
             return;
         }
-        CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
+        CurrentUser runtimeUser = requireAttachmentOperator(currentUser);
         requirePositiveId(conversationId, "Conversation id is required");
         requirePositiveId(messageId, "Message id is required");
         if (attachments.size() > MAX_MESSAGE_ATTACHMENTS) {
@@ -384,6 +401,24 @@ class JdbcAiConversationService implements AiConversationService {
         }
     }
 
+    private CurrentUser requireAttachmentOperator(CurrentUser currentUser) {
+        CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(runtimeUser)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Attachment owner is required");
+        }
+        if (!hasPermission(runtimeUser, PERMISSION_AI_CHAT_SEND)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + PERMISSION_AI_CHAT_SEND);
+        }
+        return runtimeUser;
+    }
+
+    private boolean hasPermission(CurrentUser currentUser, String permissionKey) {
+        if (currentUser == null || currentUser.getPermissions() == null) {
+            return false;
+        }
+        return currentUser.getPermissions().contains("*") || currentUser.getPermissions().contains(permissionKey);
+    }
+
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Attachment owner is required");
@@ -402,6 +437,9 @@ class JdbcAiConversationService implements AiConversationService {
             copyTrustedCurrentUser(currentUser, refreshedUser);
             return currentUser;
         }
+        if (systemInternalApi == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Attachment owner is required");
+        }
         if (systemInternalApi != null) {
             Long userId = currentUser.getUserId();
             String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
@@ -418,9 +456,31 @@ class JdbcAiConversationService implements AiConversationService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user username is unavailable");
+            }
+            Long simulatedRoleId = currentUser.getSimulatedRoleId();
+            if (simulatedRoleId != null && simulatedRoleId <= 0) {
+                simulatedRoleId = null;
+            }
+            PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                    ? systemInternalApi.permissionSnapshot(userId, normalizedUserUuid)
+                    : systemInternalApi.simulatedRolePermissionSnapshot(userId, normalizedUserUuid, simulatedRoleId);
+            if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user permissions are unavailable");
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
+            currentUser.setSimulatedRoleId(simulatedRoleId);
+            currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
+            currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
+            currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
+            currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
+            currentUser.setDescendantDeptIds(permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds()));
+            currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
+            currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+            currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
         }
         return currentUser;
     }
@@ -449,7 +509,7 @@ class JdbcAiConversationService implements AiConversationService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -464,7 +524,8 @@ class JdbcAiConversationService implements AiConversationService {
                 trustedUserUuid(currentUser),
                 trustedUsername(currentUser),
                 false,
-                false
+                false,
+                currentUser.getSimulatedRoleId()
         );
         if (file == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "附件文件不存在");
@@ -497,6 +558,10 @@ class JdbcAiConversationService implements AiConversationService {
     private String trustedUserUuid(CurrentUser currentUser) {
         trustedUserId(currentUser);
         return currentUser.getUserUuid();
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private Long requirePositiveId(Long id, String message) {

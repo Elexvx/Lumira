@@ -51,6 +51,7 @@ public class ProjectManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public ProjectManagementAppService(
@@ -58,7 +59,7 @@ public class ProjectManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     public ProjectManagementAppService(
@@ -67,21 +68,32 @@ public class ProjectManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private ProjectManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public ProjectManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null);
+        this(jdbcTemplate, permissionSnapshotService, null, null, false);
     }
 
     public ProjectManagementAppService(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null);
+        this(jdbcTemplate, null, null, null, false);
     }
 
     public PageResponse<ProjectVO.Project> listProjects(
@@ -361,6 +373,9 @@ public class ProjectManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -379,18 +394,34 @@ public class ProjectManagementAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -412,6 +443,10 @@ public class ProjectManagementAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -428,7 +463,7 @@ public class ProjectManagementAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

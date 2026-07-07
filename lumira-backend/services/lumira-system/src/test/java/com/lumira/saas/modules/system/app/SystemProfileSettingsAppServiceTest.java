@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -101,6 +102,38 @@ class SystemProfileSettingsAppServiceTest {
         assertEquals(10, avatar.getWeight());
         assertFalse(email.getVisible());
         assertEquals(15, email.getWeight());
+    }
+
+    @Test
+    void getProfileFieldSettingsForManagementShouldRequireViewPermissionBeforeDatabaseRead() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.getProfileFieldSettingsForManagement(buildCurrentUser("system:config:update"), "PROFILE")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.queryForListCount());
+    }
+
+    @Test
+    void getProfileFieldSettingsForManagementShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeDatabaseRead() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        org.mockito.Mockito.when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        org.mockito.Mockito.when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate, permissionSnapshotService);
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.getProfileFieldSettingsForManagement(buildCurrentUser("system:config:view"), "PROFILE")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.queryForListCount());
     }
 
     @Test
@@ -196,6 +229,56 @@ class SystemProfileSettingsAppServiceTest {
     }
 
     @Test
+    void updateProfileFieldSettingsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        SystemProfileSettingsAppService service = new SystemProfileSettingsAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new RecordingOperationAuditService(),
+                null,
+                null,
+                null
+        );
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        org.mockito.Mockito.when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        org.mockito.Mockito.when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        SystemProfileSettingsAppService service = new SystemProfileSettingsAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new RecordingOperationAuditService(),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Trusted user permission snapshot is unavailable"));
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
     void updateProfileFieldSettingsShouldRejectDisabledTrustedUserIdentityBeforeDatabaseWrite() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
         PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
@@ -219,6 +302,34 @@ class SystemProfileSettingsAppServiceTest {
         );
 
         assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount());
+    }
+
+    @Test
+    void updateProfileFieldSettingsShouldRejectBlankLiveUsernameBeforeDatabaseWrite() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "   ", "ENABLED"));
+        SystemProfileSettingsAppService service = newService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+
+        SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
+        request.setItems(List.of(profileFieldSetting("avatarUrl", true, 12)));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.updateProfileFieldSettings(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, error.getErrorCode());
+        assertTrue(error.getMessage().contains("Trusted user username is unavailable"));
         assertEquals(0, jdbcTemplate.updateCount());
     }
 
@@ -269,7 +380,7 @@ class SystemProfileSettingsAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
         SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
         org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  admin-live  ", "ENABLED"));
         RecordingOperationAuditService auditService = new RecordingOperationAuditService();
         SystemProfileSettingsAppService service = newService(
                 jdbcTemplate,
@@ -327,7 +438,7 @@ class SystemProfileSettingsAppServiceTest {
     void profileFieldSettingsSupportCustomDefinitions() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.custom.definitions",
-                "[{\"fieldKey\":\"school\",\"fieldLabel\":\"瀛︽牎\",\"fieldDescription\":\"灏辫瀛︽牎\",\"fieldType\":\"TEXT\",\"visible\":true,\"required\":true,\"weight\":8,\"groupLabel\":\"鏁欒偛淇℃伅\",\"sortNo\":120,\"custom\":true}]"
+                "[{\"fieldKey\":\"school\",\"fieldLabel\":\"学校\",\"fieldDescription\":\"就读学校\",\"fieldType\":\"TEXT\",\"visible\":true,\"required\":true,\"weight\":8,\"groupLabel\":\"教育信息\",\"sortNo\":120,\"custom\":true}]"
         ));
         SystemProfileSettingsAppService service = newService(jdbcTemplate);
 
@@ -335,9 +446,9 @@ class SystemProfileSettingsAppServiceTest {
 
         ProfileFieldSettingVO school = findSetting(settings, "school");
         assertTrue(school.getCustom());
-        assertEquals("瀛︽牎", school.getFieldLabel());
+        assertEquals("学校", school.getFieldLabel());
         assertEquals("TEXT", school.getFieldType());
-        assertEquals("鏁欒偛淇℃伅", school.getGroupLabel());
+        assertEquals("教育信息", school.getGroupLabel());
         assertTrue(school.getRequired());
         assertEquals(8, school.getWeight());
     }
@@ -350,7 +461,7 @@ class SystemProfileSettingsAppServiceTest {
         ));
         SystemProfileSettingsAppService service = newService(jdbcTemplate);
 
-        List<ProfileFieldSettingVO> teamMemberSettings = service.getProfileFieldSettings(buildCurrentUser(), "TEAM_MEMBER");
+        List<ProfileFieldSettingVO> teamMemberSettings = service.getProfileFieldSettingsForManagement(buildCurrentUser("system:config:view"), "TEAM_MEMBER");
         List<ProfileFieldSettingVO> profileSettings = service.getProfileFieldSettings(buildCurrentUser());
 
         ProfileFieldSettingVO memberName = findSetting(teamMemberSettings, "memberName");
@@ -372,10 +483,10 @@ class SystemProfileSettingsAppServiceTest {
         items.add(profileFieldSetting("avatarUrl", true, 12));
         ProfileFieldSettingItem school = profileFieldSetting("school", true, 8);
         school.setCustom(true);
-        school.setFieldLabel("瀛︽牎");
+        school.setFieldLabel("学校");
         school.setFieldType("TEXT");
         school.setRequired(true);
-        school.setGroupLabel("鏁欒偛淇℃伅");
+        school.setGroupLabel("教育信息");
         school.setSortNo(120);
         items.add(school);
         request.setItems(items);
@@ -384,7 +495,7 @@ class SystemProfileSettingsAppServiceTest {
 
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.custom.definitions"));
         assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldKey\":\"school\""));
-        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldLabel\":\"瀛︽牎\""));
+        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.custom.definitions", "\"fieldLabel\":\"学校\""));
     }
 
     @Test
@@ -424,11 +535,11 @@ class SystemProfileSettingsAppServiceTest {
         currentUser.setEmail("admin@example.com");
 
         List<ProfileFieldSettingVO> settings = List.of(
-                profileFieldSettingVO("avatarUrl", true, 10, "鍩虹璧勬枡"),
-                profileFieldSettingVO("realName", true, 15, "鍩虹璧勬枡"),
-                profileFieldSettingVO("mobile", true, 20, "鑱旂郴鏂瑰紡"),
-                profileFieldSettingVO("email", false, 15, "鑱旂郴鏂瑰紡"),
-                profileFieldSettingVO("idCardNumber", true, 55, "璇佷欢淇℃伅")
+                profileFieldSettingVO("avatarUrl", true, 10, "基础资料"),
+                profileFieldSettingVO("realName", true, 15, "基础资料"),
+                profileFieldSettingVO("mobile", true, 20, "联系方式"),
+                profileFieldSettingVO("email", false, 15, "联系方式"),
+                profileFieldSettingVO("idCardNumber", true, 55, "证件信息")
         );
 
         ProfileCompletionSummaryVO summary = service.buildProfileCompletionSummary(currentUser, settings, false, true);
@@ -448,7 +559,7 @@ class SystemProfileSettingsAppServiceTest {
         ProfileCompletionItemVO mobile = contactGroup.getItems().get(0);
         assertFalse(mobile.getCompleted());
         assertEquals(Boolean.FALSE, mobile.getActionAvailable());
-        assertEquals("待开启", mobile.getActionLabel());
+        assertEquals("Disabled", mobile.getActionLabel());
         assertNotNull(mobile.getActionHint());
     }
 
@@ -475,6 +586,27 @@ class SystemProfileSettingsAppServiceTest {
             SystemInternalApi systemInternalApi,
             RecordingOperationAuditService auditService
     ) {
+        if (systemInternalApi == null && sessionAuthenticationService == null) {
+            if (permissionSnapshotService == null) {
+                return new SystemProfileSettingsAppService(
+                        new MyBatisQueryOperations(jdbcTemplate),
+                        auditService
+                );
+            }
+            return new SystemProfileSettingsAppService(
+                    new MyBatisQueryOperations(jdbcTemplate),
+                    auditService,
+                    permissionSnapshotService
+            );
+        }
+        if (systemInternalApi == null) {
+            return new SystemProfileSettingsAppService(
+                    new MyBatisQueryOperations(jdbcTemplate),
+                    auditService,
+                    permissionSnapshotService,
+                    sessionAuthenticationService
+            );
+        }
         return new SystemProfileSettingsAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 auditService,
@@ -520,6 +652,36 @@ class SystemProfileSettingsAppServiceTest {
 
     private static ProfileFieldSettingVO findSetting(List<ProfileFieldSettingVO> settings, String fieldKey) {
         return settings.stream().filter(item -> fieldKey.equals(item.getFieldKey())).findFirst().orElseThrow();
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
+        PermissionSnapshotService permissionSnapshotService = org.mockito.Mockito.mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        org.mockito.Mockito.when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        org.mockito.Mockito.when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
+        SystemProfileSettingsAppService service = newService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemProfileSettingsAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertEquals(null, currentUser.getSimulatedRoleId());
+        org.mockito.Mockito.verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        org.mockito.Mockito.verify(permissionSnapshotService, org.mockito.Mockito.never())
+                .loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {

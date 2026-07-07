@@ -1,5 +1,9 @@
 package com.lumira.localization.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
@@ -58,13 +62,13 @@ class LocalizationV2ControllerTest {
         LocalizationVO.LanguageVO language = new LocalizationVO.LanguageVO();
         language.setLocaleCode("zh-CN");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(localizationManagementAppService.listLanguages()).thenReturn(List.of(language));
+        when(localizationManagementAppService.listLanguages(currentUser)).thenReturn(List.of(language));
 
         var response = controller.listLanguages();
 
         assertThat(response.getData()).containsExactly(language);
         verify(permissionGuard).requirePermission(currentUser, "localization:view");
-        verify(localizationManagementAppService).listLanguages();
+        verify(localizationManagementAppService).listLanguages(currentUser);
     }
 
     @Test
@@ -72,13 +76,13 @@ class LocalizationV2ControllerTest {
         CurrentUser currentUser = currentUser("localization:view");
         LocalizationVO.EntryPageResponse page = new LocalizationVO.EntryPageResponse();
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(localizationManagementAppService.listEntries("en-US", "common", "ok", "ENABLED", "TRANSLATED", 2L, 50L, "updatedAt", "descend"))
+        when(localizationManagementAppService.listEntries(currentUser, "en-US", "common", "ok", "ENABLED", "TRANSLATED", 2L, 50L, "updatedAt", "descend"))
                 .thenReturn(page);
 
         var response = controller.listEntries("en-US", "common", "ok", "ENABLED", "TRANSLATED", "updatedAt", "descend", 2L, 50L);
 
         assertThat(response.getData()).isSameAs(page);
-        verify(localizationManagementAppService).listEntries("en-US", "common", "ok", "ENABLED", "TRANSLATED", 2L, 50L, "updatedAt", "descend");
+        verify(localizationManagementAppService).listEntries(currentUser, "en-US", "common", "ok", "ENABLED", "TRANSLATED", 2L, 50L, "updatedAt", "descend");
     }
 
     @Test
@@ -142,10 +146,64 @@ class LocalizationV2ControllerTest {
                 .hasMessageContaining("缺少权限");
     }
 
+    @Test
+    void listLanguagesShouldRejectTrustedUserWhenResolverIsUnavailable() {
+        LocalizationV2Controller strictController = new LocalizationV2Controller(
+                localizationManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                null
+        );
+        CurrentUser currentUser = currentUser("localization:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(strictController::listLanguages)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+
+        verify(localizationManagementAppService, never()).listLanguages(currentUser);
+    }
+
+    @Test
+    void listLanguagesShouldRejectBlankLiveUsernameBeforePermissionCheck() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        LocalizationV2Controller strictController = new LocalizationV2Controller(
+                localizationManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                systemInternalApi
+        );
+        CurrentUser currentUser = currentUser("localization:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(systemInternalApi.findUserIdentityById(100L))
+                .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
+        when(systemInternalApi.permissionSnapshot(100L, "user-uuid-100"))
+                .thenReturn(permissionSnapshot(List.of("localization:view")));
+
+        assertThatThrownBy(strictController::listLanguages)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(localizationManagementAppService, never()).listLanguages(currentUser);
+    }
+
     private CurrentUser currentUser(String permission) {
         CurrentUser currentUser = new CurrentUser(100L, "alice", 1001L, "session-1", 1, true, Set.of(permission));
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(List<String> permissions) {
+        return new PermissionSnapshotDTO("permissions-2", permissions, List.of(3L), 5L, List.of(5L), List.of(5L), List.of(), "/localization");
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(userId, userUuid, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

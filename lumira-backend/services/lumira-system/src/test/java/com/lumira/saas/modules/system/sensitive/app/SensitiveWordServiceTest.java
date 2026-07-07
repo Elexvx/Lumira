@@ -15,6 +15,7 @@ import com.lumira.saas.modules.system.sensitive.vo.SensitiveWordVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -201,6 +203,147 @@ class SensitiveWordServiceTest {
     }
 
     @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*")));
+        SensitiveWordService service = new SensitiveWordService(
+                queryOperations,
+                mock(AiKnowledgeTextExtractor.class),
+                pluginStateService,
+                new SensitiveWordDictionaryCache(
+                        queryOperations,
+                        new SensitiveWordDictionaryVersionService(),
+                        new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry())
+                ),
+                new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SensitiveWordService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void createWordShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
+        SensitiveWordService service = new SensitiveWordService(
+                queryOperations,
+                mock(AiKnowledgeTextExtractor.class),
+                pluginStateService,
+                new SensitiveWordDictionaryCache(
+                        queryOperations,
+                        new SensitiveWordDictionaryVersionService(),
+                        new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry())
+                ),
+                new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),
+                null,
+                null,
+                null
+        );
+        SensitiveWordDTO.UpsertRequest request = new SensitiveWordDTO.UpsertRequest();
+        request.setWord("blocked");
+        request.setCategory("DEFAULT");
+        request.setSeverity("MEDIUM");
+        request.setEnabled(Boolean.TRUE);
+
+        assertThatThrownBy(() -> service.createWord(currentUser(Set.of("plugin:sensitive-words:manage")), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+        verifyNoInteractions(pluginStateService);
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.updateCallCount).isZero();
+    }
+
+    @Test
+    void createWordShouldRejectBlankLiveUsernameBeforePluginCheckAndDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
+        SensitiveWordService service = new SensitiveWordService(
+                queryOperations,
+                mock(AiKnowledgeTextExtractor.class),
+                pluginStateService,
+                new SensitiveWordDictionaryCache(
+                        queryOperations,
+                        new SensitiveWordDictionaryVersionService(),
+                        new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry())
+                ),
+                new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.createWord(currentUser(Set.of("plugin:sensitive-words:manage", "plugin:sensitive-words:view")), wordRequest("hello")));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+        assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+        verifyNoInteractions(pluginStateService);
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.updateCallCount).isZero();
+    }
+
+    @Test
+    void createWordShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+        SensitiveWordService service = new SensitiveWordService(
+                queryOperations,
+                mock(AiKnowledgeTextExtractor.class),
+                pluginStateService,
+                new SensitiveWordDictionaryCache(
+                        queryOperations,
+                        new SensitiveWordDictionaryVersionService(),
+                        new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry())
+                ),
+                new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),
+                permissionSnapshotService,
+                null,
+                null
+        );
+        SensitiveWordDTO.UpsertRequest request = new SensitiveWordDTO.UpsertRequest();
+        request.setWord("blocked");
+        request.setCategory("DEFAULT");
+        request.setSeverity("MEDIUM");
+        request.setEnabled(Boolean.TRUE);
+
+        assertThatThrownBy(() -> service.createWord(currentUser(Set.of("plugin:sensitive-words:manage")), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+        verifyNoInteractions(pluginStateService);
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.updateCallCount).isZero();
+    }
+
+    @Test
     void importWordsShouldRejectMissingPermissionsVersionBeforeFileReadAndDatabaseAccess() throws Exception {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
@@ -345,7 +488,7 @@ class SensitiveWordServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("plugin:sensitive-words:manage", "plugin:sensitive-words:view")));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
-                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "  admin-live  ", "ENABLED"));
         SensitiveWordService service = new SensitiveWordService(
                 queryOperations,
                 mock(AiKnowledgeTextExtractor.class),
@@ -578,6 +721,15 @@ class SensitiveWordServiceTest {
         CurrentUser currentUser = currentUser();
         currentUser.setSessionVersion(null);
         return currentUser;
+    }
+
+    private SensitiveWordDTO.UpsertRequest wordRequest(String word) {
+        SensitiveWordDTO.UpsertRequest request = new SensitiveWordDTO.UpsertRequest();
+        request.setWord(word);
+        request.setCategory("DEFAULT");
+        request.setSeverity("MEDIUM");
+        request.setEnabled(Boolean.TRUE);
+        return request;
     }
 
     private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {

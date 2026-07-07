@@ -94,6 +94,13 @@ describe('access', () => {
     expect(result.canVisitSystemSettings).toBe(true);
   });
 
+  it('allows ai assistant for users with ai view permission', () => {
+    const result = access({ currentUser: userWithPermissions(['ai:view']) });
+
+    expect(result.canVisitAi).toBe(true);
+    expect(result.canVisitAiAssistant).toBe(true);
+  });
+
   it('uses role-derived permissions instead of hard-coded common user blocks', () => {
     const result = access({
       currentUser: commonUserWithPermissions([

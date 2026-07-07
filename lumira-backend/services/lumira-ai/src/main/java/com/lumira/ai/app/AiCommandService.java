@@ -57,6 +57,11 @@ public class AiCommandService {
     private static final int MAX_SEARCH_LIMIT = 20;
     private static final int MAX_SEARCH_KNOWLEDGE_BASE_IDS = 100;
     private static final long MAX_KNOWLEDGE_DOCUMENT_BYTES = 10L * 1024L * 1024L;
+    private static final String AI_KNOWLEDGE_DOCUMENT_UPLOAD = "ai:knowledge:document:upload";
+    private static final String AI_KNOWLEDGE_DOCUMENT_INDEX = "ai:knowledge:document:index";
+    private static final String AI_KNOWLEDGE_QUERY = "ai:knowledge:query";
+    private static final String AI_CHAT_SEND = "ai:chat:send";
+    private static final String AI_TOOL_EXECUTE = "ai:tool:execute";
 
     private final AiKnowledgeDocumentRepository knowledgeDocumentRepository;
     private final AiKnowledgeChunkRepository knowledgeChunkRepository;
@@ -131,6 +136,7 @@ public class AiCommandService {
 
     @Transactional
     public AiKnowledgeDocumentVO uploadKnowledgeDocument(CurrentUser currentUser, Long knowledgeBaseId, MultipartFile file) {
+        requirePermission(currentUser, AI_KNOWLEDGE_DOCUMENT_UPLOAD);
         readQueryService.requireManageableKnowledgeBase(currentUser, knowledgeBaseId);
         Long ownerUserId = currentUserId(currentUser);
         String ownerUserUuid = currentUserUuid(currentUser);
@@ -157,26 +163,26 @@ public class AiCommandService {
         );
         int chunkCount = rebuildChunks(currentUser, knowledgeBaseId, documentId, extractedText, now);
         knowledgeDocumentRepository.updateChunkCount(currentUser, knowledgeBaseId, documentId, chunkCount, now);
-        return readQueryService.listKnowledgeDocuments(currentUser, knowledgeBaseId, 1, 100).getRecords().stream()
-                .filter(document -> document.id().equals(documentId))
-                .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Knowledge document not found"));
+        return readQueryService.getManageableKnowledgeDocument(currentUser, knowledgeBaseId, documentId);
     }
 
     @Transactional
     public AiKnowledgeDocumentVO reindexKnowledgeDocument(CurrentUser currentUser, Long knowledgeBaseId, Long documentId) {
+        requirePermission(currentUser, AI_KNOWLEDGE_DOCUMENT_INDEX);
         readQueryService.requireManageableKnowledgeBase(currentUser, knowledgeBaseId);
         String text = knowledgeDocumentRepository.findExtractedText(currentUser, knowledgeBaseId, documentId);
         LocalDateTime now = LocalDateTime.now();
         int chunkCount = rebuildChunks(currentUser, knowledgeBaseId, documentId, text, now);
         knowledgeDocumentRepository.markIndexed(currentUser, knowledgeBaseId, documentId, text.length(), chunkCount, now);
-        return readQueryService.listKnowledgeDocuments(currentUser, knowledgeBaseId, 1, 100).getRecords().stream()
-                .filter(item -> item.id().equals(documentId))
-                .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Knowledge document not found"));
+        return readQueryService.getManageableKnowledgeDocument(currentUser, knowledgeBaseId, documentId);
     }
 
     public List<AiKnowledgeReferenceVO> searchKnowledge(CurrentUser currentUser, KnowledgeSearchRequest request) {
+        requirePermission(currentUser, AI_KNOWLEDGE_QUERY);
+        return searchKnowledgeInternal(currentUser, request);
+    }
+
+    private List<AiKnowledgeReferenceVO> searchKnowledgeInternal(CurrentUser currentUser, KnowledgeSearchRequest request) {
         currentUserId(currentUser);
         if (request == null || !StringUtils.hasText(request.query())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Search query is required");
@@ -189,6 +195,7 @@ public class AiCommandService {
 
     @Transactional
     public AiChatResponseVO chat(CurrentUser currentUser, ChatRequest request) {
+        requirePermission(currentUser, AI_CHAT_SEND);
         if (request == null || !StringUtils.hasText(request.message())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Message is required");
         }
@@ -201,7 +208,10 @@ public class AiCommandService {
                 : existingConversation(ownerUserId, ownerUserUuid, request.conversationId());
         LocalDateTime now = LocalDateTime.now();
         insertMessage(conversation.id(), "USER", request.message(), now);
-        List<AiKnowledgeReferenceVO> references = searchKnowledge(currentUser, new KnowledgeSearchRequest(request.message(), request.knowledgeBaseIds(), 5));
+        List<AiKnowledgeReferenceVO> references = searchKnowledgeInternal(
+                currentUser,
+                new KnowledgeSearchRequest(request.message(), request.knowledgeBaseIds(), 5)
+        );
         AiProviderRuntime.ChatCompletion completion = providerRuntime.complete(new AiProviderRuntime.ChatPrompt(request.message(), references));
         String replyText = completion.text();
         insertMessage(conversation.id(), "ASSISTANT", replyText, now);
@@ -224,6 +234,7 @@ public class AiCommandService {
 
     @Transactional
     public AiToolPlanVO proposeTool(CurrentUser currentUser, ToolProposeRequest request) {
+        requirePermission(currentUser, AI_TOOL_EXECUTE);
         if (request == null || !StringUtils.hasText(request.toolCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code is required");
         }
@@ -275,6 +286,7 @@ public class AiCommandService {
 
     @Transactional
     public AiToolExecuteResultVO confirmTool(CurrentUser currentUser, ToolConfirmRequest request) {
+        requirePermission(currentUser, AI_TOOL_EXECUTE);
         if (request == null || request.pendingToolCallId() == null) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Pending tool call is required");
         }
@@ -314,7 +326,7 @@ public class AiCommandService {
 
     @Transactional
     public AiToolExecuteResultVO executeTool(CurrentUser currentUser, ToolExecuteRequest request) {
-        currentUserId(currentUser);
+        requirePermission(currentUser, AI_TOOL_EXECUTE);
         if (request == null || !StringUtils.hasText(request.toolCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code is required");
         }
@@ -434,7 +446,15 @@ public class AiCommandService {
         return readQueryService.allTools().stream()
                 .filter(tool -> tool.toolCode().equals(toolCode))
                 .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 闁诲氦顫夐幃鍫曞磿闁秴鐭楅柟绋挎捣閳绘梻鈧箍鍎遍幊鎰板箺閻樼粯鐓? " + toolCode));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 工具不存在: " + toolCode));
+    }
+
+    private void requirePermission(CurrentUser currentUser, String permissionKey) {
+        refreshTrustedCurrentUser(currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        permissionGuard.requirePermission(currentUser, permissionKey);
     }
 
     private void requireToolPermission(CurrentUser currentUser, AiToolVO tool) {
@@ -490,8 +510,11 @@ public class AiCommandService {
     }
 
     private void refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApiProvider == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return;
+        }
+        if (systemInternalApiProvider == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
         }
         Long userId = currentUser.getUserId();
         String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
@@ -512,14 +535,22 @@ public class AiCommandService {
         if (!StringUtils.hasText(userSnapshot.status()) || !"ENABLED".equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled");
         }
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+        if (!StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO snapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, normalizedUserUuid)
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, normalizedUserUuid, simulatedRoleId);
         if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserUuid(normalizedUserUuid);
-        if (StringUtils.hasText(userSnapshot.username())) {
-            currentUser.setUsername(userSnapshot.username().trim());
-        }
+        currentUser.setUsername(currentUsername);
         currentUser.setPermissions(trustedPermissionSet(snapshot.permissions()));
         currentUser.setRoleIds(trustedLongSet(snapshot.roleIds()));
         currentUser.setPrimaryDeptId(snapshot.primaryDeptId());

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -144,6 +145,17 @@ class MessageSessionAuthenticationServiceTest {
         org.junit.jupiter.api.Assertions.assertTrue(
                 service.isTrustedSession("session-1", 1001L, "user-uuid-1001", 9L, 1, "v1")
         );
+    }
+
+    @Test
+    void authenticateSessionTicketShouldTrimTrustedUsernameFromSnapshot() {
+        when(authInternalApi.currentUser("session-1", 1001L, "user-uuid-1001", 1, "v1", 9L))
+                .thenReturn(currentUser("session-1", 1001L, " admin ", 9L, 1));
+
+        MessageSessionAuthenticationService.AuthenticatedAccess access =
+                service.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", 9L, 1, "v1");
+
+        assertThat(access.currentUser().getUsername()).isEqualTo("admin");
     }
 
     @Test

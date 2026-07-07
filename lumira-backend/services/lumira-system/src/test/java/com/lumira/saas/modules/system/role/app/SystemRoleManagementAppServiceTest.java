@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -168,12 +169,12 @@ class SystemRoleManagementAppServiceTest {
     }
 
     @Test
-    void createRoleShouldWriteRolePermissionsAndInvalidateSnapshot() {
+    void createRoleShouldIgnoreNonAssignablePermissionsAndInvalidateSnapshot() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemRoleManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
 
-        SystemDTO.RoleUpsertRequest request = roleRequest("auditor", "审计员", List.of("audit:view", "audit:view", "audit:export"));
+        SystemDTO.RoleUpsertRequest request = roleRequest("auditor", "审计员", List.of("audit:view", "audit:view", "audit:unknown"));
         SystemVO.RoleDetailVO role = service.createRole(currentUser(), request);
 
         assertTrue(jdbcTemplate.insertedRole);
@@ -190,7 +191,7 @@ class SystemRoleManagementAppServiceTest {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemRoleManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
 
-        SystemDTO.RoleUpsertRequest request = roleRequest("auditor", "瀹¤鍛?", List.of("system:user:view"));
+        SystemDTO.RoleUpsertRequest request = roleRequest("auditor", "审计员", List.of("system:user:view"));
         service.createRole(currentUser(), request);
 
         assertEquals(List.of("*:SELF"), jdbcTemplate.insertedDataScopes);
@@ -226,6 +227,40 @@ class SystemRoleManagementAppServiceTest {
         service.createRole(superUser(), request);
 
         assertEquals(List.of("system:user:ALL"), jdbcTemplate.insertedDataScopes);
+    }
+
+    @Test
+    void listRolesShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemRoleManagementAppService service = new SystemRoleManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                null,
+                new RecordingOperationAuditService(jdbcTemplate)
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.listRoles(currentUser(), null, null, null, 1, 10));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.roleListCountQueries);
+    }
+
+    @Test
+    void listRolesShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        SystemRoleManagementAppService service = new SystemRoleManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                permissionSnapshotService,
+                new RecordingOperationAuditService(jdbcTemplate)
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.listRoles(currentUser(), null, null, null, 1, 10));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user permission snapshot is unavailable"));
+        assertEquals(0, jdbcTemplate.roleListCountQueries);
     }
 
     @Test
@@ -386,6 +421,35 @@ class SystemRoleManagementAppServiceTest {
     }
 
     @Test
+    void updateRolePermissionsShouldRejectBlankLiveUsernameBeforeDatabaseLookup() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        SystemRoleManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                event -> {
+                },
+                systemInternalApi,
+                null
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.updateRolePermissions(currentUser(), 2001L, List.of("system:user:view"))
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user username is unavailable"));
+        assertEquals(0, jdbcTemplate.rolePermissionLookupCount);
+        assertFalse(jdbcTemplate.deletedRolePermissions);
+        assertTrue(jdbcTemplate.insertedPermissionKeys.isEmpty());
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(anyLong(), anyString());
+    }
+
+    @Test
     void updateRolePermissionsShouldRejectBlankUsernameBeforeDatabaseLookup() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
@@ -428,7 +492,7 @@ class SystemRoleManagementAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*")));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  admin-live  ", "ENABLED"));
         SystemRoleManagementAppService service = buildService(
                 jdbcTemplate,
                 permissionSnapshotService,
@@ -607,6 +671,14 @@ class SystemRoleManagementAppServiceTest {
             when(permissionSnapshotService.loadRoleSnapshot(anyLong()))
                     .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-1", Set.of("*")));
         }
+        if (systemInternalApi == null && sessionAuthenticationService == null) {
+            return new SystemRoleManagementAppService(
+                    new MyBatisQueryOperations(jdbcTemplate),
+                    permissionSnapshotService,
+                    new RecordingOperationAuditService(jdbcTemplate),
+                    domainEventPublisher
+            );
+        }
         return new SystemRoleManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 permissionSnapshotService,
@@ -636,6 +708,36 @@ class SystemRoleManagementAppServiceTest {
                 null,
                 null
         );
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*")));
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        SystemRoleManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                event -> {
+                },
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemRoleManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
     }
 
     private CurrentUser currentUser() {

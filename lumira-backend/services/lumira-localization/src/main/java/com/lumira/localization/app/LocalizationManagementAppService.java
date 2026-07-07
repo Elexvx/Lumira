@@ -124,7 +124,8 @@ public class LocalizationManagementAppService {
         this.systemInternalApi = systemInternalApi;
     }
 
-    public List<LocalizationVO.LanguageVO> listLanguages() {
+    public List<LocalizationVO.LanguageVO> listLanguages(CurrentUser currentUser) {
+        requireTrustedOperator(currentUser, "localization:view");
         List<LocalizationVO.LanguageVO> languages = languageMapper.selectList(new QueryWrapper<LanguageEntity>()
                         .eq("deleted", 0)
                         .orderByDesc("is_default")
@@ -142,7 +143,8 @@ public class LocalizationManagementAppService {
         return languages;
     }
 
-    public List<LocalizationVO.NamespaceVO> listNamespaces(String localeCode) {
+    public List<LocalizationVO.NamespaceVO> listNamespaces(CurrentUser currentUser, String localeCode) {
+        requireTrustedOperator(currentUser, "localization:view");
         String targetLocale = normalizeLocale(localeCode);
         List<LocalizationVO.NamespaceVO> namespaces = namespaceMapper.selectList(new QueryWrapper<NamespaceEntity>()
                         .eq("deleted", 0)
@@ -159,6 +161,7 @@ public class LocalizationManagementAppService {
     }
 
     public LocalizationVO.EntryPageResponse listEntries(
+            CurrentUser currentUser,
             String localeCode,
             String namespaceCode,
             String keyword,
@@ -169,6 +172,7 @@ public class LocalizationManagementAppService {
             String sortField,
             String sortOrder
     ) {
+        requireTrustedOperator(currentUser, "localization:view");
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long safePage = Math.max(1L, pageNo);
         String targetLocale = normalizeLocale(localeCode);
@@ -501,7 +505,12 @@ public class LocalizationManagementAppService {
         }
     }
 
-    public List<LocalizationVO.ReleaseVO> listReleases(String localeCode) {
+    public List<LocalizationVO.ReleaseVO> listReleases(CurrentUser currentUser, String localeCode) {
+        requireTrustedOperator(currentUser, "localization:view");
+        return loadReleases(localeCode);
+    }
+
+    private List<LocalizationVO.ReleaseVO> loadReleases(String localeCode) {
         String targetLocale = normalizeLocale(localeCode);
         return releaseMapper.selectList(new QueryWrapper<ReleaseEntity>()
                         .eq("deleted", 0)
@@ -559,7 +568,7 @@ public class LocalizationManagementAppService {
             throw new IllegalStateException("本地化发布失败", error);
         }
 
-        return listReleases(localeCode).stream().findFirst().orElseThrow();
+        return loadReleases(localeCode).stream().findFirst().orElseThrow();
     }
 
     @Transactional
@@ -1034,13 +1043,23 @@ public class LocalizationManagementAppService {
         if (!"ENABLED".equalsIgnoreCase(snapshot.status())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, normalizedUserUuid)
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, normalizedUserUuid, simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
+        String currentUsername = StringUtils.hasText(snapshot.username()) ? snapshot.username().trim() : null;
+        if (!StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
         currentUser.setUserId(snapshot.userId());
         currentUser.setUserUuid(snapshot.userUuid().trim());
-        currentUser.setUsername(snapshot.username());
+        currentUser.setUsername(currentUsername);
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());

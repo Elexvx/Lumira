@@ -138,6 +138,26 @@ class PasskeyAuthServiceTest {
     }
 
     @Test
+    void listCredentialsShouldUseSimulatedRolePermissionSnapshot() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PasskeyAuthService service = service(systemInternalApi, securityContextFacade, mock(StringRedisTemplate.class));
+        CurrentUser currentUser = trustedUser(1001L, "alice");
+        currentUser.setSimulatedRoleId(9L);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(systemInternalApi.passkeyCredentials(1001L, "user-uuid-1001")).thenReturn(List.of());
+        when(systemInternalApi.simulatedRolePermissionSnapshot(1001L, "user-uuid-1001", 9L)).thenReturn(
+                new PermissionSnapshotDTO("permissions-1001-role-9", List.of("*"), List.of(9L), null, List.of(), List.of(), List.of(), "/")
+        );
+
+        service.listCredentials();
+
+        verify(systemInternalApi).simulatedRolePermissionSnapshot(1001L, "user-uuid-1001", 9L);
+        verify(systemInternalApi, never()).permissionSnapshot(1001L, "user-uuid-1001");
+        verify(systemInternalApi).passkeyCredentials(1001L, "user-uuid-1001");
+    }
+
+    @Test
     void renameCredentialShouldRejectInvalidIdBeforeCurrentUserLookup() {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);

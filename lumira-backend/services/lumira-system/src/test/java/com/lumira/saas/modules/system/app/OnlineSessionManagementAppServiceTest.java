@@ -20,6 +20,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,9 +31,14 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class OnlineSessionManagementAppServiceTest {
@@ -147,6 +153,52 @@ class OnlineSessionManagementAppServiceTest {
     }
 
     @Test
+    void listOnlineSessionsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        OnlineSessionManagementAppService liveSnapshotService = new OnlineSessionManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                authSessionStore,
+                securitySettingsService,
+                new RecordingOperationAuditService(),
+                new OnlineSessionStreamService(new ObjectMapper(), mock(SessionAuthenticationService.class)) {
+                },
+                null,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> liveSnapshotService.listOnlineSessions(currentUser(2001L, "system:online-user:view"), 1, 10));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, authSessionStore.activeSessionListLookups);
+        assertEquals(0, authSessionStore.batchLookupCounts);
+    }
+
+    @Test
+    void listOnlineSessionsShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+        OnlineSessionManagementAppService liveSnapshotService = new OnlineSessionManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                authSessionStore,
+                securitySettingsService,
+                new RecordingOperationAuditService(),
+                new OnlineSessionStreamService(new ObjectMapper(), mock(SessionAuthenticationService.class)) {
+                },
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> liveSnapshotService.listOnlineSessions(currentUser(2001L, "system:online-user:view"), 1, 10));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user permission snapshot is unavailable"));
+        assertEquals(0, authSessionStore.activeSessionListLookups);
+        assertEquals(0, authSessionStore.batchLookupCounts);
+    }
+
+    @Test
     void listOnlineSessionsShouldRejectRevokedSessionTicketBeforeSessionLookup() {
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         when(sessionAuthenticationService.authenticateSessionTicket("current-session", 2001L, "user-uuid-2001", null, 1, "permissions-1"))
@@ -196,6 +248,59 @@ class OnlineSessionManagementAppServiceTest {
         assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
         assertEquals(0, authSessionStore.sessionLookupCounts);
         assertTrue(authSessionStore.removedSessions.isEmpty());
+    }
+
+    @Test
+    void kickSessionShouldRejectBlankLiveUsernameBeforeSessionLookup() {
+        AuthSession target = buildSession("target-session", 2002L, Instant.now(), Instant.now().plusSeconds(3600));
+        authSessionStore.put(target);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
+        OnlineSessionManagementAppService liveSnapshotService = newService(
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> liveSnapshotService.kickSession(currentUser(2001L, "system:online-user:kick"), "target-session")
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user username is unavailable"));
+        assertEquals(0, authSessionStore.sessionLookupCounts);
+        assertTrue(authSessionStore.removedSessions.isEmpty());
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", java.util.Set.of("system:online-user:view")));
+        OnlineSessionManagementAppService liveSnapshotService = newService(
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+        CurrentUser currentUser = currentUser(2001L, "system:online-user:view");
+        currentUser.setSimulatedRoleId(0L);
+        Method method = OnlineSessionManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(liveSnapshotService, currentUser);
+
+        assertNull(currentUser.getSimulatedRoleId());
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(any(), anyString(), any());
     }
 
     @Test
@@ -405,6 +510,23 @@ class OnlineSessionManagementAppServiceTest {
     }
 
     @Test
+    void banUserShouldRejectProtectedAdminAfterUsernameRename() {
+        OnlineSessionManagementAppService.UserRow admin = new OnlineSessionManagementAppService.UserRow();
+        admin.setId(1001L);
+        admin.setUsername("root-admin");
+        jdbcTemplate.userRows = List.of(admin);
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> service.banUser(currentUser(2001L, "system:online-user:ban"), 1001L)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, jdbcTemplate.updateCount);
+        assertEquals(0, authSessionStore.revokedUserSessions);
+    }
+
+    @Test
     void banUserShouldPersistTrustedOperatorUuid() {
         OnlineSessionManagementAppService.UserRow target = new OnlineSessionManagementAppService.UserRow();
         target.setId(2002L);
@@ -436,7 +558,7 @@ class OnlineSessionManagementAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", java.util.Set.of("system:online-user:ban")));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
-                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "  admin-live  ", "ENABLED"));
         RecordingOperationAuditService auditService = new RecordingOperationAuditService();
         OnlineSessionManagementAppService liveSnapshotService = newService(
                 permissionSnapshotService,
@@ -558,6 +680,39 @@ class OnlineSessionManagementAppServiceTest {
             SystemInternalApi systemInternalApi,
             OperationAuditService operationAuditService
     ) {
+        if (systemInternalApi == null && sessionAuthenticationService == null) {
+            if (permissionSnapshotService == null) {
+                return new OnlineSessionManagementAppService(
+                        new MyBatisQueryOperations(jdbcTemplate),
+                        authSessionStore,
+                        securitySettingsService,
+                        operationAuditService,
+                        new OnlineSessionStreamService(new ObjectMapper(), mock(SessionAuthenticationService.class)) {
+                        }
+                );
+            }
+            return new OnlineSessionManagementAppService(
+                    new MyBatisQueryOperations(jdbcTemplate),
+                    authSessionStore,
+                    securitySettingsService,
+                    operationAuditService,
+                    new OnlineSessionStreamService(new ObjectMapper(), mock(SessionAuthenticationService.class)) {
+                    },
+                    permissionSnapshotService
+            );
+        }
+        if (systemInternalApi == null) {
+            return new OnlineSessionManagementAppService(
+                    new MyBatisQueryOperations(jdbcTemplate),
+                    authSessionStore,
+                    securitySettingsService,
+                    operationAuditService,
+                    new OnlineSessionStreamService(new ObjectMapper(), mock(SessionAuthenticationService.class)) {
+                    },
+                    permissionSnapshotService,
+                    sessionAuthenticationService
+            );
+        }
         return new OnlineSessionManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 authSessionStore,

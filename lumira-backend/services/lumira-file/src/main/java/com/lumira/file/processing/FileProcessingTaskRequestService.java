@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -32,6 +33,7 @@ public class FileProcessingTaskRequestService {
         this(jdbcTemplate, outboxService, null);
     }
 
+    @Autowired
     public FileProcessingTaskRequestService(
             JdbcTemplate jdbcTemplate,
             PlatformEventOutboxService outboxService,
@@ -51,10 +53,11 @@ public class FileProcessingTaskRequestService {
 
     private Actor trustedActor(CurrentUser currentUser) {
         if (systemInternalApiProvider == null) {
-            return new Actor(currentUser.getUserId(), currentUser.getUserUuid().trim());
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted file owner resolver is unavailable");
         }
         Long userId = currentUser.getUserId();
         String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
         if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted file owner is required");
         }
@@ -72,11 +75,13 @@ public class FileProcessingTaskRequestService {
         if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "File owner is disabled");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim());
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, snapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "File owner permissions are unavailable");
         }
-        return new Actor(snapshot.userId(), snapshot.userUuid().trim());
+        return new Actor(snapshot.userId(), snapshot.userUuid().trim(), simulatedRoleId);
     }
 
     private int requestTasksForUpload(FileObjectDTO file, Actor actor) {
@@ -87,7 +92,7 @@ public class FileProcessingTaskRequestService {
         if (ownerUserId == null) {
             return 0;
         }
-        Actor owner = new Actor(ownerUserId, actor.userUuid());
+        Actor owner = new Actor(ownerUserId, actor.userUuid(), actor.simulatedRoleId());
         int requested = 0;
         for (String taskType : resolveTaskTypes(file)) {
             if (upsertTask(file, taskType, owner) > 0) {
@@ -197,6 +202,9 @@ public class FileProcessingTaskRequestService {
         if (StringUtils.hasText(actor.userUuid())) {
             payload.put("userUuid", actor.userUuid());
         }
+        if (actor.simulatedRoleId() != null) {
+            payload.put("simulatedRoleId", actor.simulatedRoleId());
+        }
         payload.put("aggregateType", FilePlatformEventTypes.AGGREGATE_FILE_PROCESSING_TASK);
         payload.put("aggregateId", file.id() + ":" + taskType);
         payload.put("attributes", Map.of(
@@ -260,6 +268,10 @@ public class FileProcessingTaskRequestService {
         };
     }
 
-    private record Actor(Long userId, String userUuid) {
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
+    private record Actor(Long userId, String userUuid, Long simulatedRoleId) {
     }
 }

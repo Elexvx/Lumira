@@ -31,7 +31,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedAfterCommitShouldUseStandardFileEventKey() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
 
         publisher.publishUploadedAfterCommit(currentUser(), file());
 
@@ -47,7 +47,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedAfterCommitShouldUseCurrentUserWhenFileIsMissing() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
         CurrentUser currentUser = currentUser();
 
         publisher.publishUploadedAfterCommit(currentUser, null);
@@ -64,7 +64,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedAfterCommitShouldIncludeTrustedUserUuidInPayload() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
         ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
 
         publisher.publishUploadedAfterCommit(currentUser(), file());
@@ -83,9 +83,31 @@ class FilePlatformEventPublisherTest {
     }
 
     @Test
+    void publishUploadedAfterCommitShouldIncludeSimulatedRoleIdInPayloadWhenPresent() {
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
+        ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(9L);
+
+        publisher.publishUploadedAfterCommit(currentUser, file());
+
+        verify(outboxService).recordAfterCommit(
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq(2001L),
+                eq("FILE_OBJECT_UPLOADED:file.object:3001"),
+                payloadCaptor.capture()
+        );
+        assertThat(payloadCaptor.getValue())
+                .isInstanceOfSatisfying(Map.class, payload ->
+                        assertThat(payload).containsEntry("simulatedRoleId", 9L));
+    }
+
+    @Test
     void publishUploadedAfterCommitShouldRejectUnauthenticatedUserBeforeOutboxWrite() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
 
         assertThatThrownBy(() -> publisher.publishUploadedAfterCommit(unauthenticatedUser(), file()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -97,7 +119,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedAfterCommitShouldRejectBlankUsernameBeforeOutboxWrite() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
 
         assertThatThrownBy(() -> publisher.publishUploadedAfterCommit(blankUsernameUser(), file()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -109,7 +131,7 @@ class FilePlatformEventPublisherTest {
     @Test
     void publishUploadedAfterCommitShouldRejectMissingUserUuidBeforeOutboxWrite() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        FilePlatformEventPublisher publisher = publisher(outboxService);
         CurrentUser currentUser = currentUser();
         currentUser.setUserUuid(" ");
 
@@ -173,6 +195,17 @@ class FilePlatformEventPublisherTest {
 
     private CurrentUser blankUsernameUser() {
         return new CurrentUser(2001L, " ", null, "session-1", 1, true, Set.of("system:file:upload"));
+    }
+
+    private FilePlatformEventPublisher publisher(PlatformEventOutboxService outboxService) {
+        return new FilePlatformEventPublisher(outboxService, provider(enabledSystemInternalApi()));
+    }
+
+    private SystemInternalApi enabledSystemInternalApi() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(eq(2001L)))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "ENABLED"));
+        return systemInternalApi;
     }
 
     @SuppressWarnings("unchecked")

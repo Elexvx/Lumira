@@ -83,13 +83,32 @@ class RemoteAiOwnerToolGatewayTest {
 
         var execution = gateway.execute(
                 user(),
-                new AiToolVO("system.config.read", "璇诲彇閰嶇疆", "system", "璇诲彇闈炴晱鎰熼厤缃", "MEDIUM", true, true, "system:config:view", Map.of()),
+                new AiToolVO("system.config.read", "读取配置", "system", "读取非敏感配置", "MEDIUM", true, true, "system:config:view", Map.of()),
                 Map.of("keys", java.util.List.of("verification.wechat-login.app-secret", "jwt.secret", "auth.default-registration-role-code"))
         );
 
         assertThat(execution.remote()).isFalse();
         assertThat(execution.degraded()).isFalse();
         assertThat(execution.data()).containsEntry("limitedBy", "empty-config-key-list");
+    }
+
+    @Test
+    void executeShouldRejectWhenLivePermissionsLoseToolPermissionBeforeRemoteCall() {
+        AiOwnerIntegrationProperties properties = new AiOwnerIntegrationProperties();
+        properties.getPlatform().setEnabled(true);
+        properties.getPlatform().setBaseUrl("http://platform-owner");
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        RemoteAiOwnerToolGateway gateway = new RemoteAiOwnerToolGateway(properties, builder, providerWithPermissions(Set.of("dashboard:view")));
+
+        assertThatThrownBy(() -> gateway.execute(
+                menuViewerUser(),
+                new AiToolVO("system.config.read", "config", "system", "read config", "MEDIUM", true, true, "system:config:view", Map.of()),
+                Map.of("keys", java.util.List.of("branding.website-name"))
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        server.verify();
     }
 
     @Test
@@ -375,6 +394,40 @@ class RemoteAiOwnerToolGatewayTest {
     }
 
     @Test
+    void executeRejectsTrustedUserWhenLiveUsernameIsUnavailable() {
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, " ", "ENABLED"));
+        RemoteAiOwnerToolGateway gateway = new RemoteAiOwnerToolGateway(
+                new AiOwnerIntegrationProperties(),
+                RestClient.builder(),
+                provider(systemInternalApi)
+        );
+
+        assertThatThrownBy(() -> gateway.execute(
+                user(),
+                new AiToolVO("system.permission.snapshot", "snapshot", "system", "read snapshot", "LOW", true, true, null, Map.of()),
+                Map.of()
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+    }
+
+    @Test
+    void executeRejectsWhenTrustedResolverIsUnavailableInStrictGatewayMode() {
+        RemoteAiOwnerToolGateway gateway = new RemoteAiOwnerToolGateway(
+                new AiOwnerIntegrationProperties(),
+                RestClient.builder(),
+                null
+        );
+
+        assertThatThrownBy(() -> gateway.execute(
+                user(),
+                new AiToolVO("system.permission.snapshot", "snapshot", "system", "read snapshot", "LOW", true, true, null, Map.of()),
+                Map.of()
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+    }
+
+    @Test
     void degradedToolsNormalizeNullArguments() {
         RemoteAiOwnerToolGateway gateway = new RemoteAiOwnerToolGateway(
                 new AiOwnerIntegrationProperties(),
@@ -389,6 +442,53 @@ class RemoteAiOwnerToolGatewayTest {
 
         assertThat(execution.degraded()).isTrue();
         assertThat(execution.data()).containsEntry("arguments", Map.of());
+    }
+
+    @Test
+    void permissionSnapshotFallbackClearsStalePermissionsWhenRemoteSnapshotPermissionsAreUnavailable() {
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "ai-user", "ENABLED"));
+        org.mockito.Mockito.when(systemInternalApi.permissionSnapshot(7L, "user-uuid-7"))
+                .thenReturn(new PermissionSnapshotDTO("perm-v7", null, List.of(1L), 2L, List.of(2L), List.of(2L, 3L), List.of(), "/dashboard"));
+        RemoteAiOwnerToolGateway gateway = new RemoteAiOwnerToolGateway(
+                new AiOwnerIntegrationProperties(),
+                RestClient.builder(),
+                providerWithExplicitSnapshot(systemInternalApi)
+        );
+
+        var execution = gateway.execute(
+                user(),
+                new AiToolVO("system.permission.snapshot", "snapshot", "system", "read snapshot", "LOW", true, true, null, Map.of()),
+                Map.of()
+        );
+
+        assertThat(execution.remote()).isFalse();
+        assertThat(execution.degraded()).isTrue();
+        assertThat(execution.data()).containsEntry("permissions", Set.of());
+    }
+
+    @Test
+    void permissionSnapshotFallbackUsesSimulatedRolePermissionSnapshot() {
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "ai-user", "ENABLED"));
+        org.mockito.Mockito.when(systemInternalApi.simulatedRolePermissionSnapshot(7L, "user-uuid-7", 9L))
+                .thenReturn(new PermissionSnapshotDTO("perm-v7-role-9", List.of("dashboard:view"), List.of(9L), 2L, List.of(2L), List.of(2L, 3L), List.of(), "/dashboard"));
+        RemoteAiOwnerToolGateway gateway = new RemoteAiOwnerToolGateway(
+                new AiOwnerIntegrationProperties(),
+                RestClient.builder(),
+                providerWithExplicitSnapshot(systemInternalApi)
+        );
+        CurrentUser currentUser = user();
+        currentUser.setSimulatedRoleId(9L);
+
+        gateway.execute(
+                currentUser,
+                new AiToolVO("system.permission.snapshot", "snapshot", "system", "read snapshot", "LOW", true, true, null, Map.of()),
+                Map.of()
+        );
+
+        org.mockito.Mockito.verify(systemInternalApi, org.mockito.Mockito.atLeastOnce()).simulatedRolePermissionSnapshot(7L, "user-uuid-7", 9L);
+        org.mockito.Mockito.verify(systemInternalApi, org.mockito.Mockito.never()).permissionSnapshot(7L, "user-uuid-7");
     }
 
     private CurrentUser user() {
@@ -410,6 +510,18 @@ class RemoteAiOwnerToolGatewayTest {
             org.mockito.Mockito.when(systemInternalApi.permissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
+        return providerWithExplicitSnapshot(systemInternalApi);
+    }
+
+    private ObjectProvider<SystemInternalApi> providerWithPermissions(Set<String> permissions) {
+        SystemInternalApi systemInternalApi = org.mockito.Mockito.mock(SystemInternalApi.class);
+        org.mockito.Mockito.when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "ai-user", "ENABLED"));
+        org.mockito.Mockito.when(systemInternalApi.permissionSnapshot(7L, "user-uuid-7"))
+                .thenReturn(new PermissionSnapshotDTO("perm-v7", List.copyOf(permissions), List.of(1L), 2L, List.of(2L), List.of(2L, 3L), List.of(), "/dashboard"));
+        return providerWithExplicitSnapshot(systemInternalApi);
+    }
+
+    private ObjectProvider<SystemInternalApi> providerWithExplicitSnapshot(SystemInternalApi systemInternalApi) {
         ObjectProvider<SystemInternalApi> provider = org.mockito.Mockito.mock(ObjectProvider.class);
         org.mockito.Mockito.when(provider.getIfAvailable()).thenReturn(systemInternalApi);
         return provider;

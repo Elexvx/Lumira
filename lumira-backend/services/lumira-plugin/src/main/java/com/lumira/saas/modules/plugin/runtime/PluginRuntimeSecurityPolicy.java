@@ -52,7 +52,7 @@ public class PluginRuntimeSecurityPolicy {
     public void validateMethod(String method) {
         String normalized = method == null ? "" : method.toUpperCase(Locale.ROOT);
         if (!ALLOWED_METHODS.contains(normalized)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "鎻掍欢缃戝叧涓嶅厑璁歌璇锋眰鏂规硶");
+            throw new BizException(ErrorCode.FORBIDDEN, "插件网关不允许该请求方法");
         }
     }
 

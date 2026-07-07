@@ -58,12 +58,13 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     DefaultAiToolPolicyService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, null);
+        this(jdbcTemplate, permissionSnapshotService, null, null, false);
     }
 
     @Autowired
@@ -72,7 +73,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     DefaultAiToolPolicyService(
@@ -81,10 +82,21 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private DefaultAiToolPolicyService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     DefaultAiToolPolicyService(MyBatisQueryOperations jdbcTemplate) {
@@ -141,7 +153,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                             match_value, verdict, message, enabled, is_deleted, create_time, update_time
                         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
-                requiredText(request.getPolicyName(), "策略名称不能为空"),
+                requiredText(request.getPolicyName(), "Policy name is required"),
                 defaultText(request.getToolCode(), "*"),
                 normalizeText(request.getActionType()),
                 normalizeRisk(request.getRiskLevel()),
@@ -170,7 +182,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                             match_value = ?, verdict = ?, message = ?, enabled = ?, update_time = ?
                         where id = ? and policy_name = ? and tool_code = ? and enabled = ? and is_deleted = 0
                         """,
-                requiredText(request.getPolicyName(), "策略名称不能为空"),
+                requiredText(request.getPolicyName(), "Policy name is required"),
                 defaultText(request.getToolCode(), "*"),
                 normalizeText(request.getActionType()),
                 normalizeRisk(request.getRiskLevel()),
@@ -250,18 +262,18 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
             }
             matches.add(policy.getPolicyName());
             if ("DENY".equalsIgnoreCase(policy.getVerdict())) {
-                return new PolicyDecision("DENY", firstText(policy.getMessage(), "命中 AI 工具防护规则：" + policy.getPolicyName()), matches);
+                return new PolicyDecision("DENY", firstText(policy.getMessage(), "AI tool policy blocked: " + policy.getPolicyName()), matches);
             }
             if (!StringUtils.hasText(decisionMessage)) {
                 decisionMessage = policy.getMessage();
             }
         }
-        return new PolicyDecision("ALLOW", firstText(decisionMessage, "平台防护规则通过"), matches);
+        return new PolicyDecision("ALLOW", firstText(decisionMessage, "Platform policy check passed"), matches);
     }
 
     private AiVO.ToolPolicyVO requirePolicy(Long id) {
         if (id == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "策略 ID 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Policy id is required");
         }
         return jdbcTemplate.query(
                 """
@@ -275,7 +287,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ToolPolicyVO.class),
                 id
-        ).stream().findFirst().orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 工具策略不存在"));
+        ).stream().findFirst().orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI tool policy does not exist"));
     }
 
     private boolean matchesTool(String pattern, String toolCode) {
@@ -371,6 +383,9 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -389,18 +404,32 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
         CurrentUser refreshed = new CurrentUser(
                 userId,
                 currentUser.getUsername(),
@@ -418,7 +447,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
         refreshed.setPermissionsVersion(snapshot.getVersion());
         refreshed.setDefaultHomePath(snapshot.getDefaultHomePath());
         refreshed.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
-        refreshed.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        refreshed.setSimulatedRoleId(simulatedRoleId);
         refreshed.setLoginType(currentUser.getLoginType());
         copyTrustedCurrentUser(currentUser, refreshed);
         return currentUser;
@@ -430,6 +459,10 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted user identity is required");
         }
         return refreshedUser;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
@@ -448,7 +481,7 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 }

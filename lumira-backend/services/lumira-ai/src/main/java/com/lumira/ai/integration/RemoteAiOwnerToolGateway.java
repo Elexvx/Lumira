@@ -37,9 +37,10 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
     private final AiOwnerIntegrationProperties properties;
     private final RestClient.Builder restClientBuilder;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final boolean enforceTrustedUserResolution;
 
     public RemoteAiOwnerToolGateway(AiOwnerIntegrationProperties properties, RestClient.Builder restClientBuilder) {
-        this(properties, restClientBuilder, null);
+        this(properties, restClientBuilder, null, false);
     }
 
     @Autowired
@@ -48,9 +49,19 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
             RestClient.Builder restClientBuilder,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
+        this(properties, restClientBuilder, systemInternalApiProvider, true);
+    }
+
+    private RemoteAiOwnerToolGateway(
+            AiOwnerIntegrationProperties properties,
+            RestClient.Builder restClientBuilder,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            boolean enforceTrustedUserResolution
+    ) {
         this.properties = properties;
         this.restClientBuilder = restClientBuilder;
         this.systemInternalApiProvider = systemInternalApiProvider;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @Override
@@ -59,6 +70,7 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
         if (tool == null || !StringUtils.hasText(tool.toolCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code is required");
         }
+        requireToolPermission(trustedUser, tool);
         Map<String, Object> safeArguments = arguments == null ? Map.of() : arguments;
         return switch (tool.toolCode()) {
             case "system.permission.snapshot" -> permissionSnapshot(trustedUser);
@@ -303,6 +315,9 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user context is required");
         }
         if (systemInternalApiProvider == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -324,19 +339,29 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
         if (!StringUtils.hasText(userSnapshot.status()) || !"ENABLED".equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, userUuid);
+        if (!StringUtils.hasText(userSnapshot.username())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userUuid)
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userUuid, simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
+        currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userUuid);
-        if (StringUtils.hasText(userSnapshot.username())) {
-            currentUser.setUsername(userSnapshot.username().trim());
-        }
-        if (permissionSnapshot.permissions() != null) {
-            currentUser.setPermissions(new HashSet<>(permissionSnapshot.permissions()));
-        }
+        currentUser.setUsername(userSnapshot.username().trim());
+        currentUser.setPermissions(permissionSnapshot.permissions() == null
+                ? Set.of()
+                : new HashSet<>(permissionSnapshot.permissions()));
         currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         return currentUser;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private Long trustedUserId(CurrentUser currentUser) {
@@ -354,6 +379,17 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
     private Set<String> trustedPermissions(CurrentUser currentUser) {
         CurrentUser trustedUser = requireTrustedUser(currentUser);
         return trustedUser.getPermissions() == null ? Set.of() : new HashSet<>(trustedUser.getPermissions());
+    }
+
+    private void requireToolPermission(CurrentUser currentUser, AiToolVO tool) {
+        if (tool == null || !StringUtils.hasText(tool.requiredPermission())) {
+            return;
+        }
+        Set<String> permissions = trustedPermissions(currentUser);
+        String requiredPermission = tool.requiredPermission().trim();
+        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
+        }
     }
 
     private ToolExecution degraded(AiToolVO tool, String reason, Map<String, Object> arguments) {

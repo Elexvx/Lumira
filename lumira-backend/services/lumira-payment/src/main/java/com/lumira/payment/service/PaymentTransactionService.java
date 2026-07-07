@@ -19,6 +19,7 @@ import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,6 +39,10 @@ public class PaymentTransactionService {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
+    private static final String PERMISSION_PAYMENT_ORDER_CREATE = "payment:order:create";
+    private static final String PERMISSION_PAYMENT_ORDER_VIEW = "payment:order:view";
+    private static final String PERMISSION_PAYMENT_REFUND_CREATE = "payment:refund:create";
+    private static final String PERMISSION_PAYMENT_REFUND_VIEW = "payment:refund:view";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -47,6 +52,7 @@ public class PaymentTransactionService {
     private final DomainEventPublisher domainEventPublisher;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
 
+    @Autowired
     public PaymentTransactionService(
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
@@ -86,7 +92,7 @@ public class PaymentTransactionService {
 
     @Transactional
     public PaymentOrderDTO createOrder(CurrentUser currentUser, PaymentCreateOrderRequestDTO request) {
-        return createOrder(trustedActor(currentUser), request);
+        return createOrder(trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE), request);
     }
 
     private PaymentOrderDTO createOrder(Actor actor, PaymentCreateOrderRequestDTO request) {
@@ -205,7 +211,7 @@ public class PaymentTransactionService {
 
     @Transactional(readOnly = true)
     public PaymentOrderDTO getOrderForUser(CurrentUser currentUser, String orderNo) {
-        Actor actor = trustedActor(currentUser);
+        Actor actor = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_VIEW);
         PaymentOrderRow row = findOrderByOrderNoAndCreatedBy(orderNo, actor);
         if (row == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
@@ -215,7 +221,7 @@ public class PaymentTransactionService {
 
     @Transactional
     public PaymentRefundDTO createRefund(CurrentUser currentUser, String orderNo, PaymentCreateRefundRequestDTO request) {
-        return createRefund(trustedActor(currentUser), orderNo, request);
+        return createRefund(trustedActor(currentUser, PERMISSION_PAYMENT_REFUND_CREATE), orderNo, request);
     }
 
     private PaymentRefundDTO createRefund(Actor actor, String orderNo, PaymentCreateRefundRequestDTO request) {
@@ -328,12 +334,12 @@ public class PaymentTransactionService {
         return toRefundDto(findRefundByRefundNo(row.getRefundNo()));
     }
 
-    private Actor trustedActor(CurrentUser currentUser) {
+    private Actor trustedActor(CurrentUser currentUser, String requiredPermission) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
         }
         if (systemInternalApiProvider == null) {
-            return new Actor(currentUser.getUserId(), currentUser.getUserUuid().trim());
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
         }
         Long userId = currentUser.getUserId();
         String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
@@ -354,9 +360,19 @@ public class PaymentTransactionService {
         if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim());
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, snapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
+        }
+        List<String> permissions = permissionSnapshot.permissions() == null ? List.of() : permissionSnapshot.permissions();
+        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
         }
         return new Actor(snapshot.userId(), snapshot.userUuid().trim());
     }
@@ -475,7 +491,7 @@ public class PaymentTransactionService {
 
     @Transactional(readOnly = true)
     public PaymentRefundDTO getRefundForUser(CurrentUser currentUser, String refundNo) {
-        Actor actor = trustedActor(currentUser);
+        Actor actor = trustedActor(currentUser, PERMISSION_PAYMENT_REFUND_VIEW);
         PaymentRefundRow row = findRefundByRefundNoAndCreatedBy(refundNo, actor);
         if (row == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment refund does not exist");

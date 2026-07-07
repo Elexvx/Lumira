@@ -54,6 +54,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     DefaultAiEmployeeRuntimeService(
             MyBatisQueryOperations jdbcTemplate,
@@ -76,7 +77,8 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 null,
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -104,7 +106,8 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 aiToolOrchestrationService,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                true
         );
     }
 
@@ -121,6 +124,36 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                jdbcTemplate,
+                aiLlmServiceConfigProvider,
+                aiChatModelFactory,
+                aiConversationService,
+                aiToolRegistry,
+                aiSkillPermissionChecker,
+                aiKnowledgeBaseAppService,
+                aiToolOrchestrationService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private DefaultAiEmployeeRuntimeService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiLlmServiceConfigProvider aiLlmServiceConfigProvider,
+            AiChatModelFactory aiChatModelFactory,
+            AiConversationService aiConversationService,
+            AiToolRegistry aiToolRegistry,
+            AiSkillPermissionChecker aiSkillPermissionChecker,
+            AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
+            AiToolOrchestrationService aiToolOrchestrationService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.aiLlmServiceConfigProvider = aiLlmServiceConfigProvider;
         this.aiChatModelFactory = aiChatModelFactory;
@@ -133,6 +166,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @Override
@@ -359,7 +393,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 String heading = "### " + displayEmployeeName(employee) + "\n\n";
                 replyText.append(heading);
                 emit(onEvent, AiVO.ChatStreamEventVO.delta(heading));
-                emit(onEvent, AiVO.ChatStreamEventVO.status("濠殿喗绻愮徊钘夛耿椤忓棙瀚柛鎰典簼閺?" + displayEmployeeName(employee)));
+                emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用数字员工 " + displayEmployeeName(employee)));
                 AiVO.ChatResponseVO response = onEvent == null
                         ? aiChatModelFactory.create(config).chat(employeeRequest, employee, skills)
                         : aiChatModelFactory.create(config).streamChat(
@@ -713,6 +747,9 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -732,16 +769,32 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
         CurrentUser refreshed = new CurrentUser(
                 userId,
                 currentUser.getUsername(),
@@ -759,7 +812,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         refreshed.setPermissionsVersion(snapshot.getVersion());
         refreshed.setDefaultHomePath(snapshot.getDefaultHomePath());
         refreshed.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
-        refreshed.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        refreshed.setSimulatedRoleId(simulatedRoleId);
         refreshed.setLoginType(currentUser.getLoginType());
         copyTrustedCurrentUser(currentUser, refreshed);
         return currentUser;
@@ -771,6 +824,10 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted user context is invalid");
         }
         return refreshedUser;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
@@ -789,7 +846,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 }

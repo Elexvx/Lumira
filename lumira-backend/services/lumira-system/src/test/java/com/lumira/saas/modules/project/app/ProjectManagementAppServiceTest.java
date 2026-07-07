@@ -10,6 +10,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.project.dto.ProjectDTO;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -93,6 +96,30 @@ class ProjectManagementAppServiceTest {
     }
 
     @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:project:view")));
+        ProjectManagementAppService service =
+                new ProjectManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        CurrentUser currentUser = user("aiadc:project:view");
+        currentUser.setSimulatedRoleId(0L);
+        Method method = ProjectManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(any(), anyString(), any());
+    }
+
+    @Test
     void createProjectShouldRejectDisabledTrustedIdentityBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -104,6 +131,27 @@ class ProjectManagementAppServiceTest {
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.updateCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(2001L, "user-uuid-2001");
+    }
+
+    @Test
+    void createProjectShouldRejectBlankLiveUsernameBeforeDatabaseWrite() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
+        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
         assertThat(queryOperations.updateCallCount).isZero();
         assertThat(queryOperations.queryCallCount).isZero();
         verify(permissionSnapshotService, never()).isTrustedActiveUser(2001L, "user-uuid-2001");
@@ -127,7 +175,7 @@ class ProjectManagementAppServiceTest {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
-                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "operator-live", "ENABLED"));
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " operator-live ", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:project:create", "aiadc:project:view")));
@@ -153,6 +201,41 @@ class ProjectManagementAppServiceTest {
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(queryOperations.updateCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+    }
+
+    @Test
+    void createProjectShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        ProjectManagementAppService service =
+                new ProjectManagementAppService(queryOperations, null, (SessionAuthenticationService) null);
+
+        assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(queryOperations.updateCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+    }
+
+    @Test
+    void createProjectShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+        ProjectManagementAppService service =
+                new ProjectManagementAppService(queryOperations, permissionSnapshotService, null, null);
+
+        assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
 
         assertThat(queryOperations.updateCallCount).isZero();
         assertThat(queryOperations.queryCallCount).isZero();

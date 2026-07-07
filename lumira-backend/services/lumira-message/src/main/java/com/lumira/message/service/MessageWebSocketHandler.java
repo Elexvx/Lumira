@@ -34,8 +34,12 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
             session.close();
             return;
         }
-        webSocketRegistry.register(session, currentUser);
-        connectionSnapshotService.emitSnapshot(currentUser);
+        CurrentUser trustedCurrentUser = webSocketRegistry.register(session, currentUser);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(trustedCurrentUser)) {
+            session.close();
+            return;
+        }
+        connectionSnapshotService.emitSnapshot(trustedCurrentUser);
     }
 
     @Override

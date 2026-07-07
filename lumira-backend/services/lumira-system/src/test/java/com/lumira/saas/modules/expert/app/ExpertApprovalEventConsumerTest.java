@@ -67,7 +67,7 @@ class ExpertApprovalEventConsumerTest {
         SystemVO.UserDetailVO createdUser = new SystemVO.UserDetailVO();
         createdUser.setId(9001L);
         createdUser.setUserUuid("user-uuid-9001");
-        when(userManagementAppService.createUser(any(CurrentUser.class), any(SystemDTO.UserUpsertRequest.class)))
+        when(userManagementAppService.createUserFromTrustedSnapshot(any(CurrentUser.class), any(SystemDTO.UserUpsertRequest.class)))
                 .thenReturn(createdUser);
         stubOperator(jdbcTemplate, 42L, "reviewer", "ENABLED");
         PermissionSnapshotService permissionSnapshotService = permissionSnapshotService(
@@ -94,7 +94,7 @@ class ExpertApprovalEventConsumerTest {
         consumer.consume(event(42L));
 
         var userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
-        verify(userManagementAppService).createUser(userCaptor.capture(), any(SystemDTO.UserUpsertRequest.class));
+        verify(userManagementAppService).createUserFromTrustedSnapshot(userCaptor.capture(), any(SystemDTO.UserUpsertRequest.class));
         assertThat(userCaptor.getValue().getUserId()).isEqualTo(42L);
         assertThat(userCaptor.getValue().getUserUuid()).isEqualTo("user-uuid-42");
         assertThat(userCaptor.getValue().getUsername()).isEqualTo("reviewer");
@@ -134,7 +134,7 @@ class ExpertApprovalEventConsumerTest {
         SystemVO.UserDetailVO createdUser = new SystemVO.UserDetailVO();
         createdUser.setId(9001L);
         createdUser.setUserUuid("user-uuid-9001");
-        when(userManagementAppService.createUser(any(CurrentUser.class), any(SystemDTO.UserUpsertRequest.class)))
+        when(userManagementAppService.createUserFromTrustedSnapshot(any(CurrentUser.class), any(SystemDTO.UserUpsertRequest.class)))
                 .thenReturn(createdUser);
         stubOperator(jdbcTemplate, 42L, "reviewer", "ENABLED");
         PermissionSnapshotService permissionSnapshotService = permissionSnapshotService(
@@ -171,8 +171,43 @@ class ExpertApprovalEventConsumerTest {
 
         consumer.consume(event(42L));
 
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verify(activationService).sendActivationEmail("alice@example.test", "expert_alice", "token");
+    }
+
+    @Test
+    void consumeCreatesExpertAccountUsingSimulatedRolePermissionSnapshotWhenPresent() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        SystemVO.UserDetailVO createdUser = new SystemVO.UserDetailVO();
+        createdUser.setId(9001L);
+        createdUser.setUserUuid("user-uuid-9001");
+        when(userManagementAppService.createUserFromTrustedSnapshot(any(CurrentUser.class), any(SystemDTO.UserUpsertRequest.class)))
+                .thenReturn(createdUser);
+        stubOperator(jdbcTemplate, 42L, "reviewer", "ENABLED");
+        PermissionSnapshotService permissionSnapshotService = permissionSnapshotService(
+                new PermissionSnapshotService.PermissionSnapshot("perm-v42", Set.of("system:user:view")),
+                new PermissionSnapshotService.PermissionSnapshot("perm-role-9", Set.of("system:user:create", "system:user:view"))
+        );
+        stubExpert(jdbcTemplate, null, null);
+        when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<Long>>any(), eq("EXPERT")))
+                .thenReturn(List.of(3001L));
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), eq("expert_EXP001"))).thenReturn(0L);
+        when(jdbcTemplate.update(anyString(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1);
+        AccountActivationService activationService = mock(AccountActivationService.class);
+        when(activationService.createActivationToken(9001L, 1001L, 42L, "user-uuid-42")).thenReturn("token");
+        ExpertApprovalEventConsumer consumer = consumer(jdbcTemplate, permissionSnapshotService, userManagementAppService, activationService);
+
+        consumer.consume(event(42L, 9L));
+
+        var userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
+        verify(userManagementAppService).createUserFromTrustedSnapshot(userCaptor.capture(), any(SystemDTO.UserUpsertRequest.class));
+        assertThat(userCaptor.getValue().getSimulatedRoleId()).isEqualTo(9L);
+        assertThat(userCaptor.getValue().getPermissionsVersion()).isEqualTo("perm-role-9");
+        assertThat(userCaptor.getValue().getPermissions()).containsExactlyInAnyOrder("system:user:create", "system:user:view");
+        verify(permissionSnapshotService).loadGrantedRoleSnapshot(42L, "user-uuid-42", 9L);
+        verify(permissionSnapshotService, never()).loadSnapshot(42L, "user-uuid-42");
+        verify(activationService).sendActivationEmail("alice@example.test", "expert_EXP001", "token");
     }
 
     @Test
@@ -187,7 +222,7 @@ class ExpertApprovalEventConsumerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("operator is disabled");
 
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -203,7 +238,7 @@ class ExpertApprovalEventConsumerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("operator is disabled");
 
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -226,7 +261,7 @@ class ExpertApprovalEventConsumerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("operator uuid mismatch");
 
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -246,7 +281,7 @@ class ExpertApprovalEventConsumerTest {
                 .hasMessageContaining("operator uuid mismatch");
 
         verifyNoInteractions(jdbcTemplate);
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -264,7 +299,7 @@ class ExpertApprovalEventConsumerTest {
                 .hasMessageContaining("event key mismatch");
 
         verifyNoInteractions(jdbcTemplate);
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -285,7 +320,7 @@ class ExpertApprovalEventConsumerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Expert not found");
 
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -304,7 +339,62 @@ class ExpertApprovalEventConsumerTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("lacks required permission");
 
-        verify(userManagementAppService, never()).createUser(any(), any());
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
+        verifyNoInteractions(activationService);
+    }
+
+    @Test
+    void consumeRejectsOperatorWhenPermissionSnapshotPermissionsAreUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        AccountActivationService activationService = mock(AccountActivationService.class);
+        stubOperator(jdbcTemplate, 42L, "reviewer", "ENABLED");
+        PermissionSnapshotService permissionSnapshotService = permissionSnapshotService(
+                new PermissionSnapshotService.PermissionSnapshot("perm-v42", null)
+        );
+        ExpertApprovalEventConsumer consumer = consumer(jdbcTemplate, permissionSnapshotService, userManagementAppService, activationService);
+
+        assertThatThrownBy(() -> consumer.consume(event(42L)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("lacks required permission");
+
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
+        verifyNoInteractions(activationService);
+    }
+
+    @Test
+    void consumeRejectsOperatorWhenPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        AccountActivationService activationService = mock(AccountActivationService.class);
+        stubOperator(jdbcTemplate, 42L, "reviewer", "ENABLED");
+        PermissionSnapshotService permissionSnapshotService = permissionSnapshotService(null);
+        ExpertApprovalEventConsumer consumer = consumer(jdbcTemplate, permissionSnapshotService, userManagementAppService, activationService);
+
+        assertThatThrownBy(() -> consumer.consume(event(42L)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("permission snapshot is unavailable");
+
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
+        verifyNoInteractions(activationService);
+    }
+
+    @Test
+    void consumeRejectsOperatorWhenPermissionSnapshotVersionIsBlank() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        AccountActivationService activationService = mock(AccountActivationService.class);
+        stubOperator(jdbcTemplate, 42L, "reviewer", "ENABLED");
+        PermissionSnapshotService permissionSnapshotService = permissionSnapshotService(
+                new PermissionSnapshotService.PermissionSnapshot(" ", Set.of("system:user:create"))
+        );
+        ExpertApprovalEventConsumer consumer = consumer(jdbcTemplate, permissionSnapshotService, userManagementAppService, activationService);
+
+        assertThatThrownBy(() -> consumer.consume(event(42L)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("permission snapshot is unavailable");
+
+        verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
         verifyNoInteractions(activationService);
     }
 
@@ -337,6 +427,10 @@ class ExpertApprovalEventConsumerTest {
     }
 
     private PlatformEventOutboxEntity event(Long userId) {
+        return event(userId, null);
+    }
+
+    private PlatformEventOutboxEntity event(Long userId, Long simulatedRoleId) {
         PlatformEventOutboxEntity event = new PlatformEventOutboxEntity();
         event.setId(20001L);
         event.setUserId(userId);
@@ -344,9 +438,14 @@ class ExpertApprovalEventConsumerTest {
         event.setSourceType(PlatformEventTypes.SOURCE_SYSTEM);
         event.setEventType(WorkflowAppService.EVENT_EXPERT_APPROVED);
         event.setEventKey(WorkflowAppService.EVENT_EXPERT_APPROVED + ":expert:1001");
-        event.setPayloadJson("""
+        String payload = simulatedRoleId == null
+                ? """
                 {"aggregateId":1001,"workflowInstanceId":7001,"businessUuid":"EXP001","userUuid":"user-uuid-42"}
-                """);
+                """
+                : """
+                {"aggregateId":1001,"workflowInstanceId":7001,"businessUuid":"EXP001","userUuid":"user-uuid-42","simulatedRoleId":%d}
+                """.formatted(simulatedRoleId);
+        event.setPayloadJson(payload);
         return event;
     }
 
@@ -391,8 +490,16 @@ class ExpertApprovalEventConsumerTest {
     }
 
     private PermissionSnapshotService permissionSnapshotService(PermissionSnapshotService.PermissionSnapshot snapshot) {
+        return permissionSnapshotService(snapshot, snapshot);
+    }
+
+    private PermissionSnapshotService permissionSnapshotService(
+            PermissionSnapshotService.PermissionSnapshot snapshot,
+            PermissionSnapshotService.PermissionSnapshot simulatedRoleSnapshot
+    ) {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         when(permissionSnapshotService.loadSnapshot(42L, "user-uuid-42")).thenReturn(snapshot);
+        when(permissionSnapshotService.loadGrantedRoleSnapshot(42L, "user-uuid-42", 9L)).thenReturn(simulatedRoleSnapshot);
         return permissionSnapshotService;
     }
 }

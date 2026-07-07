@@ -12,6 +12,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.workorder.dto.WorkOrderFeedbackDTO;
 import com.lumira.saas.modules.system.workorder.vo.WorkOrderFeedbackVO;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -164,6 +165,69 @@ class WorkOrderFeedbackServiceTest {
     }
 
     @Test
+    void createShouldRejectTrustedUserIdentityWhenLiveUsernameIsUnavailableBeforePluginCheckAndDatabaseWrite() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(
+                jdbcTemplate,
+                pluginStateService,
+                fileInternalApi,
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        WorkOrderFeedbackDTO.CreateRequest request = new WorkOrderFeedbackDTO.CreateRequest();
+        request.setTitle("Problem");
+        request.setDetailHtml("<p>Details</p>");
+
+        assertThatThrownBy(() -> service.create(user(Set.of("plugin:work-order-feedback:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(pluginStateService);
+        verifyNoInteractions(jdbcTemplate);
+        verify(fileInternalApi, never()).uploadImageForUser(any(), anyString(), anyString(), anyString(), any(), anyString(), anyString());
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("plugin:work-order-feedback:create")));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(
+                jdbcTemplate,
+                pluginStateService,
+                fileInternalApi,
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = user(Set.of("plugin:work-order-feedback:create"));
+        currentUser.setSimulatedRoleId(0L);
+        Method method = WorkOrderFeedbackService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
     void createShouldRejectRevokedSessionTicketBeforePluginCheckAndDatabaseWrite() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
@@ -185,6 +249,63 @@ class WorkOrderFeedbackServiceTest {
         assertThatThrownBy(() -> service.create(user(Set.of("plugin:work-order-feedback:create")), request))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(pluginStateService);
+        verifyNoInteractions(jdbcTemplate);
+        verify(fileInternalApi, never()).uploadImageForUser(any(), anyString(), anyString(), anyString(), any(), anyString(), anyString());
+    }
+
+    @Test
+    void createShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(
+                jdbcTemplate,
+                pluginStateService,
+                fileInternalApi,
+                null,
+                null,
+                null
+        );
+        WorkOrderFeedbackDTO.CreateRequest request = new WorkOrderFeedbackDTO.CreateRequest();
+        request.setTitle("Problem");
+        request.setDetailHtml("<p>Details</p>");
+
+        assertThatThrownBy(() -> service.create(user(Set.of("plugin:work-order-feedback:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(pluginStateService);
+        verifyNoInteractions(jdbcTemplate);
+        verify(fileInternalApi, never()).uploadImageForUser(any(), anyString(), anyString(), anyString(), any(), anyString(), anyString());
+    }
+
+    @Test
+    void createShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(
+                jdbcTemplate,
+                pluginStateService,
+                fileInternalApi,
+                permissionSnapshotService,
+                null,
+                null
+        );
+        WorkOrderFeedbackDTO.CreateRequest request = new WorkOrderFeedbackDTO.CreateRequest();
+        request.setTitle("Problem");
+        request.setDetailHtml("<p>Details</p>");
+
+        assertThatThrownBy(() -> service.create(user(Set.of("plugin:work-order-feedback:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
 
         verifyNoInteractions(pluginStateService);
         verifyNoInteractions(jdbcTemplate);
@@ -215,13 +336,13 @@ class WorkOrderFeedbackServiceTest {
         CurrentUser currentUser = user(Set.of("*", "plugin:work-order-feedback:create"));
         currentUser.setUsername("alice-stale");
         org.springframework.web.multipart.MultipartFile file = mock(org.springframework.web.multipart.MultipartFile.class);
-        when(fileInternalApi.uploadImageForUser(any(), anyString(), anyString(), anyString(), eq(1001L), eq("user-uuid-1001"), eq("alice-live")))
+        when(fileInternalApi.uploadImageForUser(any(), anyString(), anyString(), anyString(), eq(1001L), eq("user-uuid-1001"), eq("alice-live"), eq(null)))
                 .thenReturn(null);
 
         service.uploadImage(currentUser, file);
 
         assertThat(currentUser.getUsername()).isEqualTo("alice-live");
-        verify(fileInternalApi).uploadImageForUser(any(), anyString(), anyString(), anyString(), eq(1001L), eq("user-uuid-1001"), eq("alice-live"));
+        verify(fileInternalApi).uploadImageForUser(any(), anyString(), anyString(), anyString(), eq(1001L), eq("user-uuid-1001"), eq("alice-live"), eq(null));
     }
 
     @Test

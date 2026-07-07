@@ -62,7 +62,7 @@ class FileProcessingTaskRequestServiceTest {
                 .thenReturn(2001L);
         when(jdbcTemplate.update(anyString(), any(Object[].class)))
                 .thenReturn(1);
-        FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService);
+        FileProcessingTaskRequestService service = service(jdbcTemplate, outboxService);
         ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
 
         int requested = service.requestTasksForUpload(file("pdf", "application/pdf"), currentUser());
@@ -83,10 +83,42 @@ class FileProcessingTaskRequestServiceTest {
     }
 
     @Test
+    void requestTasksForUploadShouldUseSimulatedRolePermissionSnapshotWhenPresent() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        SystemInternalApi systemInternalApi = enabledSystemInternalApi();
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), eq(3001L), eq(2001L), eq("user-uuid-2001")))
+                .thenReturn(2001L);
+        when(jdbcTemplate.update(anyString(), any(Object[].class)))
+                .thenReturn(1);
+        FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService, provider(systemInternalApi));
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(9L);
+        ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
+
+        int requested = service.requestTasksForUpload(file("txt", "text/plain"), currentUser);
+
+        assertThat(requested).isEqualTo(3);
+        verify(systemInternalApi).simulatedRolePermissionSnapshot(2001L, "user-uuid-2001", 9L);
+        verify(systemInternalApi, org.mockito.Mockito.never()).permissionSnapshot(2001L, "user-uuid-2001");
+        verify(outboxService, times(3)).recordAfterCommit(
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED),
+                eq(2001L),
+                anyString(),
+                payloadCaptor.capture()
+        );
+        assertThat(payloadCaptor.getAllValues())
+                .allSatisfy(payload -> assertThat(payload)
+                        .isInstanceOfSatisfying(Map.class, item ->
+                                assertThat(item).containsEntry("simulatedRoleId", 9L)));
+    }
+
+    @Test
     void requestTasksForUploadShouldRejectMissingCurrentUserBeforeQueueWrite() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService);
+        FileProcessingTaskRequestService service = service(jdbcTemplate, outboxService);
 
         assertThatThrownBy(() -> service.requestTasksForUpload(file("txt", "text/plain"), (CurrentUser) null))
                 .isInstanceOf(BizException.class);
@@ -98,7 +130,7 @@ class FileProcessingTaskRequestServiceTest {
     void requestTasksForUploadShouldRejectMismatchedExplicitUserIdBeforeQueueWrite() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService);
+        FileProcessingTaskRequestService service = service(jdbcTemplate, outboxService);
 
         CurrentUser currentUser = currentUser();
         currentUser.setUserId(9001L);
@@ -129,7 +161,7 @@ class FileProcessingTaskRequestServiceTest {
     void requestTasksForUploadShouldRequireDatabaseOwnerUuidMatchBeforeQueueWrite() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService);
+        FileProcessingTaskRequestService service = service(jdbcTemplate, outboxService);
 
         int requested = service.requestTasksForUpload(file("txt", "text/plain"), currentUser());
 
@@ -165,7 +197,7 @@ class FileProcessingTaskRequestServiceTest {
     void requestTasksForUploadShouldNotTrustExplicitUserIdWhenFileOwnerIsMissing() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        FileProcessingTaskRequestService service = new FileProcessingTaskRequestService(jdbcTemplate, outboxService);
+        FileProcessingTaskRequestService service = service(jdbcTemplate, outboxService);
 
         int requested = service.requestTasksForUpload(file(null, "txt", "text/plain"), currentUser());
 
@@ -214,9 +246,25 @@ class FileProcessingTaskRequestServiceTest {
         return currentUser;
     }
 
+    private FileProcessingTaskRequestService service(JdbcTemplate jdbcTemplate, PlatformEventOutboxService outboxService) {
+        return new FileProcessingTaskRequestService(jdbcTemplate, outboxService, provider(enabledSystemInternalApi()));
+    }
+
+    private SystemInternalApi enabledSystemInternalApi() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(ArgumentMatchers.anyLong()))
+                .thenAnswer(invocation -> {
+                    Long userId = invocation.getArgument(0, Long.class);
+                    return userSnapshot(userId, "tester", "ENABLED");
+                });
+        return systemInternalApi;
+    }
+
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
+                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
+            when(systemInternalApi.simulatedRolePermissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString(), ArgumentMatchers.anyLong()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
         ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);

@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -147,6 +148,63 @@ class AiNativeToolRuntimeServiceTest {
     }
 
     @Test
+    void executeShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableBeforeEmployeeOrToolChecks() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        DefaultAiNativeToolRuntimeService service = new DefaultAiNativeToolRuntimeService(
+                jdbcTemplate,
+                new PermissionGuard(),
+                authorization(request -> AuthorizationDecision.allow("TEST_ALLOW", "allow")),
+                mock(AiSkillPermissionChecker.class),
+                new ObjectMapper(),
+                new StubPlatformQueryFacade(),
+                new StubIamQueryFacade(),
+                null,
+                null,
+                null,
+                new StubFileInternalApi(),
+                false
+        );
+
+        assertThatThrownBy(() -> service.execute(currentUser(), request("system.permission.snapshot", Map.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(jdbcTemplate.employeeExistsChecked).isFalse();
+        assertThat(jdbcTemplate.employeeCountQueried).isFalse();
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+    }
+
+    @Test
+    void executeShouldRejectWhenTrustedPermissionSnapshotIsUnavailableBeforeEmployeeOrToolChecks() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100")).thenReturn(null);
+        DefaultAiNativeToolRuntimeService service = new DefaultAiNativeToolRuntimeService(
+                jdbcTemplate,
+                new PermissionGuard(),
+                authorization(request -> AuthorizationDecision.allow("TEST_ALLOW", "allow")),
+                mock(AiSkillPermissionChecker.class),
+                new ObjectMapper(),
+                new StubPlatformQueryFacade(),
+                new StubIamQueryFacade(),
+                permissionSnapshotService,
+                null,
+                null,
+                new StubFileInternalApi(),
+                false
+        );
+
+        assertThatThrownBy(() -> service.execute(currentUser(), request("system.permission.snapshot", Map.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(jdbcTemplate.employeeExistsChecked).isFalse();
+        assertThat(jdbcTemplate.employeeCountQueried).isFalse();
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+    }
+
+    @Test
     void executeShouldRejectDisabledTrustedIdentityBeforeEmployeeOrToolChecks() {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -173,6 +231,57 @@ class AiNativeToolRuntimeServiceTest {
         assertThat(jdbcTemplate.employeeCountQueried).isFalse();
         assertThat(jdbcTemplate.lastUpdateSql).isNull();
         verify(permissionSnapshotService, org.mockito.Mockito.never()).isTrustedActiveUser(100L, "user-uuid-100");
+    }
+
+    @Test
+    void executeShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeEmployeeOrToolChecks() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L))
+                .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
+        DefaultAiNativeToolRuntimeService service = newService(
+                jdbcTemplate,
+                mock(AiSkillPermissionChecker.class),
+                new StubFileInternalApi(),
+                authorization(request -> AuthorizationDecision.allow("TEST_ALLOW", "allow")),
+                permissionSnapshotService,
+                systemInternalApi,
+                null,
+                null,
+                false
+        );
+
+        assertThatThrownBy(() -> service.execute(currentUser(), request("system.permission.snapshot", Map.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(jdbcTemplate.employeeExistsChecked).isFalse();
+        assertThat(jdbcTemplate.employeeCountQueried).isFalse();
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+        verify(permissionSnapshotService, org.mockito.Mockito.never()).isTrustedActiveUser(100L, "user-uuid-100");
+    }
+
+    @Test
+    void listToolsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableBeforeListing() {
+        DefaultAiNativeToolRuntimeService service = new DefaultAiNativeToolRuntimeService(
+                new StubQueryOperations(),
+                new PermissionGuard(),
+                authorization(request -> AuthorizationDecision.allow("TEST_ALLOW", "allow")),
+                mock(AiSkillPermissionChecker.class),
+                new ObjectMapper(),
+                new StubPlatformQueryFacade(),
+                new StubIamQueryFacade(),
+                null,
+                null,
+                null,
+                new StubFileInternalApi(),
+                false
+        );
+
+        assertThatThrownBy(() -> service.listTools(currentUser(), 1L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
     }
 
     @Test
@@ -264,6 +373,35 @@ class AiNativeToolRuntimeServiceTest {
         assertThat(result.getData()).containsEntry("username", "admin-live");
         assertThat(currentUser.getUsername()).isEqualTo("admin-live");
         assertThat(currentUser.getPermissionsVersion()).isEqualTo("perm-v2");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("perm-v2", Set.of("ai:tool:execute")));
+        DefaultAiNativeToolRuntimeService service = newService(
+                jdbcTemplate,
+                mock(AiSkillPermissionChecker.class),
+                new StubFileInternalApi(),
+                authorization(request -> AuthorizationDecision.allow("TEST_ALLOW", "allow")),
+                permissionSnapshotService,
+                null,
+                false
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = DefaultAiNativeToolRuntimeService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("perm-v2");
+        verify(permissionSnapshotService).loadSnapshot(100L, "user-uuid-100");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(100L, "user-uuid-100", 0L);
     }
 
     @Test
@@ -383,7 +521,7 @@ class AiNativeToolRuntimeServiceTest {
         existing.setId(9L);
         existing.setConfigKey("auth.default-registration-role-code");
         existing.setConfigValue("commonuser");
-        when(systemManagementAppService.getConfig(any(CurrentUser.class), eq(9L))).thenReturn(existing);
+        when(systemManagementAppService.getConfigForUpdate(any(CurrentUser.class), eq(9L))).thenReturn(existing);
         DefaultAiNativeToolRuntimeService service = newService(
                 jdbcTemplate,
                 mock(AiSkillPermissionChecker.class),
@@ -409,7 +547,7 @@ class AiNativeToolRuntimeServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN)
                 .hasMessageContaining("auth.default-registration-role-code");
 
-        verify(systemManagementAppService).getConfig(any(CurrentUser.class), eq(9L));
+        verify(systemManagementAppService).getConfigForUpdate(any(CurrentUser.class), eq(9L));
         verify(systemManagementAppService, org.mockito.Mockito.never()).updateConfig(any(), any(), any());
     }
 
@@ -1072,6 +1210,19 @@ class AiNativeToolRuntimeServiceTest {
                 boolean sharedScope,
                 boolean downloadCenterScope
         ) {
+            return getFileForUser(fileId, userId, userUuid, username, sharedScope, downloadCenterScope, null);
+        }
+
+        @Override
+        public FileObjectDTO getFileForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                boolean sharedScope,
+                boolean downloadCenterScope,
+                Long simulatedRoleId
+        ) {
             lastUserUuid = userUuid;
             lastGetSharedScope = sharedScope;
             lastGetDownloadCenterScope = downloadCenterScope;
@@ -1114,10 +1265,25 @@ class AiNativeToolRuntimeServiceTest {
                 boolean sharedScope,
                 int limit
         ) {
+            return searchFilesForUser(userId, userUuid, username, keyword, contentType, status, sharedScope, limit, null);
+        }
+
+        @Override
+        public List<FileObjectDTO> searchFilesForUser(
+                Long userId,
+                String userUuid,
+                String username,
+                String keyword,
+                String contentType,
+                String status,
+                boolean sharedScope,
+                int limit,
+                Long simulatedRoleId
+        ) {
             searchCalled = true;
             lastUserUuid = userUuid;
             lastSearchSharedScope = sharedScope;
-            return List.of(getFileForUser(200L, userId, userUuid, username, sharedScope, false));
+            return List.of(getFileForUser(200L, userId, userUuid, username, sharedScope, false, simulatedRoleId));
         }
     }
 }

@@ -39,7 +39,6 @@ public class PermissionSnapshotService {
     private static final Logger log = LoggerFactory.getLogger(PermissionSnapshotService.class);
 
     private static final Long PROTECTED_ADMIN_ID = 1001L;
-    private static final String PROTECTED_ADMIN_USERNAME = "admin";
     private static final String SNAPSHOT_SCHEMA_VERSION = "data-scope-cache-v4";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
@@ -236,6 +235,49 @@ public class PermissionSnapshotService {
 
     private String normalizeUserUuid(String userUuid) {
         return StringUtils.hasText(userUuid) ? userUuid.trim() : null;
+    }
+
+    public boolean isRoleGrantedToUser(Long userId, String userUuid, Long roleId) {
+        if (userId == null || userId <= 0 || roleId == null || roleId <= 0 || !StringUtils.hasText(userUuid)) {
+            return false;
+        }
+        try {
+            Boolean granted = jdbcTemplate.queryForObject(
+                    """
+                            select exists(
+                                select 1
+                                from sys_user_role ur
+                                join sys_role r on r.id = ur.role_id and r.deleted = 0
+                                where ur.user_id = ?
+                                  and ur.user_uuid = ?
+                                  and ur.role_id = ?
+                                  and ur.deleted = 0
+                            )
+                            """,
+                    Boolean.class,
+                    userId,
+                    userUuid.trim(),
+                    roleId
+            );
+            return Boolean.TRUE.equals(granted);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to validate granted role userId={} roleId={}", userId, roleId, exception);
+            return false;
+        }
+    }
+
+    public PermissionSnapshot loadGrantedRoleSnapshot(Long userId, String userUuid, Long roleId) {
+        if (roleId == null) {
+            return PermissionSnapshot.empty();
+        }
+        String normalizedUserUuid = normalizeUserUuid(userUuid);
+        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!isRoleGrantedToUser(userId, normalizedUserUuid, roleId)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Trusted simulated role is no longer granted");
+        }
+        return loadRoleSnapshot(roleId);
     }
 
     private String permissionSnapshotCacheKey(Long userId, String userUuid, String version) {
@@ -560,19 +602,19 @@ public class PermissionSnapshotService {
                 uuidCondition = " and uuid = ?";
                 params.add(userUuid.trim());
             }
-            String username = jdbcTemplate.queryForObject(
+            Long matchedUserCount = jdbcTemplate.queryForObject(
                     ("""
-                            select username
+                            select count(1)
                             from sys_user
                             where id = ?
                               and deleted = 0
                             """ + uuidCondition),
-                    String.class,
+                    Long.class,
                     params.toArray()
             );
             boolean isProtectedAdmin = PROTECTED_ADMIN_ID.equals(userId)
-                    && StringUtils.hasText(username)
-                    && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(username.trim());
+                    && matchedUserCount != null
+                    && matchedUserCount > 0;
             protectedAdminUserCache.put(cacheKey, isProtectedAdmin);
             return isProtectedAdmin;
         } catch (Throwable throwable) {

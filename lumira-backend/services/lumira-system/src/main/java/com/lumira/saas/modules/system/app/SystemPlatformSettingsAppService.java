@@ -177,6 +177,7 @@ public class SystemPlatformSettingsAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final Cache<String, Map<String, String>> configSnapshotCache;
     private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
     private final Cache<String, Long> runtimeAppearanceVersionCache;
@@ -194,6 +195,21 @@ public class SystemPlatformSettingsAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, operationAuditService, fieldCryptoService, readModelVersionService, ownerRuntimeMetrics, smtpMailService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private SystemPlatformSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            SmtpMailService smtpMailService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
         this.fieldCryptoService = fieldCryptoService;
@@ -203,6 +219,7 @@ public class SystemPlatformSettingsAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.configSnapshotCache = CacheBuilder.newBuilder()
                 .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
                 .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -237,7 +254,8 @@ public class SystemPlatformSettingsAppService {
                 smtpMailService,
                 null,
                 null,
-                null);
+                null,
+                false);
     }
 
     public SystemPlatformSettingsAppService(
@@ -257,7 +275,8 @@ public class SystemPlatformSettingsAppService {
                 smtpMailService,
                 permissionSnapshotService,
                 null,
-                null);
+                null,
+                false);
     }
 
     public SystemVO.BrandingSettingsVO getBrandingSettings(CurrentUser currentUser) {
@@ -281,26 +300,26 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.BrandingSettingsVO updateBrandingSettings(CurrentUser currentUser, SystemDTO.BrandingSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Branding settings request is required");
-        String websiteName = sanitizeBrandingText(request.getWebsiteName(), "宏翔商道");
+        String websiteName = sanitizeBrandingText(request.getWebsiteName(), "Website name");
         String companyName = sanitizeBrandingText(request.getCompanyName(), websiteName);
         Integer copyrightStartYear = request.getCopyrightStartYear() == null ? LocalDate.now().getYear() : request.getCopyrightStartYear();
-        upsertBrandingConfig(BRANDING_WEBSITE_NAME_KEY, "站点名称", websiteName, "控制台顶部与浏览器标题展示名称", operatorId);
-        upsertBrandingConfig(BRANDING_WEBSITE_FAVICON_URL_KEY, "站点图标地址", sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), "浏览器标签页 icon 地址", operatorId);
-        upsertBrandingConfig(BRANDING_WEBSITE_LOGO_URL_KEY, "站点 Logo 地址", sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), "控制台左上角品牌 Logo 地址", operatorId);
-        upsertBrandingConfig(BRANDING_LOGIN_BACKGROUND_URL_KEY, "登录页背景图地址", sanitizeBrandingText(request.getLoginBackgroundUrl(), ""), "登录页背景图地址", operatorId);
-        upsertBrandingConfig(BRANDING_GITHUB_LINK_ENABLED_KEY, "GitHub 链接开关", String.valueOf(request.getGithubLinkEnabled() == null || request.getGithubLinkEnabled()), "是否显示顶部 GitHub 图标", operatorId);
-        upsertBrandingConfig(BRANDING_GITHUB_LINK_URL_KEY, "GitHub 链接", sanitizeBrandingText(request.getGithubLinkUrl(), ""), "顶部 GitHub 图标跳转地址", operatorId);
-        upsertBrandingConfig(BRANDING_HELP_LINK_ENABLED_KEY, "帮助链接开关", String.valueOf(request.getHelpLinkEnabled() == null || request.getHelpLinkEnabled()), "是否显示顶部帮助图标", operatorId);
-        upsertBrandingConfig(BRANDING_HELP_LINK_URL_KEY, "帮助链接", sanitizeBrandingText(request.getHelpLinkUrl(), ""), "顶部帮助图标跳转地址", operatorId);
-        upsertBrandingConfig(BRANDING_COMPANY_NAME_KEY, "公司名称", companyName, "页脚版权主体名称", operatorId);
-        upsertBrandingConfig(BRANDING_COPYRIGHT_START_YEAR_KEY, "版权起始年份", String.valueOf(copyrightStartYear), "页脚版权起始年份", operatorId);
-        upsertBrandingConfig(BRANDING_FOOTER_ICP_KEY, "页脚 ICP 备案", sanitizeBrandingText(request.getFooterIcp(), ""), "页脚备案信息", operatorId);
-        upsertBrandingConfig(BRANDING_FOOTER_POLICE_BEIAN_KEY, "页脚公安备案", sanitizeBrandingText(request.getFooterPoliceBeian(), ""), "页脚公安备案信息", operatorId);
+        upsertBrandingConfig(BRANDING_WEBSITE_NAME_KEY, "Website name", websiteName, "Website name shown in branding and browser title", operatorId);
+        upsertBrandingConfig(BRANDING_WEBSITE_FAVICON_URL_KEY, "Website favicon URL", sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), "Favicon URL used by the website", operatorId);
+        upsertBrandingConfig(BRANDING_WEBSITE_LOGO_URL_KEY, "Website logo URL", sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), "Logo URL used by the website", operatorId);
+        upsertBrandingConfig(BRANDING_LOGIN_BACKGROUND_URL_KEY, "Login background URL", sanitizeBrandingText(request.getLoginBackgroundUrl(), ""), "Background image shown on the login page", operatorId);
+        upsertBrandingConfig(BRANDING_GITHUB_LINK_ENABLED_KEY, "GitHub link enabled", String.valueOf(request.getGithubLinkEnabled() == null || request.getGithubLinkEnabled()), "Whether the GitHub link is shown", operatorId);
+        upsertBrandingConfig(BRANDING_GITHUB_LINK_URL_KEY, "GitHub link URL", sanitizeBrandingText(request.getGithubLinkUrl(), ""), "GitHub link target URL", operatorId);
+        upsertBrandingConfig(BRANDING_HELP_LINK_ENABLED_KEY, "Help link enabled", String.valueOf(request.getHelpLinkEnabled() == null || request.getHelpLinkEnabled()), "Whether the help link is shown", operatorId);
+        upsertBrandingConfig(BRANDING_HELP_LINK_URL_KEY, "Help link URL", sanitizeBrandingText(request.getHelpLinkUrl(), ""), "Help link target URL", operatorId);
+        upsertBrandingConfig(BRANDING_COMPANY_NAME_KEY, "Company name", companyName, "Company name shown in branding", operatorId);
+        upsertBrandingConfig(BRANDING_COPYRIGHT_START_YEAR_KEY, "Copyright start year", String.valueOf(copyrightStartYear), "Copyright start year", operatorId);
+        upsertBrandingConfig(BRANDING_FOOTER_ICP_KEY, "Footer ICP", sanitizeBrandingText(request.getFooterIcp(), ""), "ICP text shown in the footer", operatorId);
+        upsertBrandingConfig(BRANDING_FOOTER_POLICE_BEIAN_KEY, "Footer police beian", sanitizeBrandingText(request.getFooterPoliceBeian(), ""), "Police beian text shown in the footer", operatorId);
         String footerCopyright = sanitizeBrandingText(
                 request.getFooterCopyright(),
                 buildCopyrightText(companyName, copyrightStartYear)
         );
-        upsertBrandingConfig(BRANDING_FOOTER_COPYRIGHT_KEY, "页脚版权声明", footerCopyright, "页脚版权声明", operatorId);
+        upsertBrandingConfig(BRANDING_FOOTER_COPYRIGHT_KEY, "Footer copyright", footerCopyright, "Footer copyright text", operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -309,7 +328,7 @@ public class SystemPlatformSettingsAppService {
                 "branding-update",
                 "UPDATE",
                 "SUCCESS",
-                "更新个性化设置"
+                "Update branding settings"
         );
         markRuntimeAppearanceChanged("branding-update");
         markPublicBootstrapChanged("branding-update");
@@ -320,8 +339,8 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.AgreementSettingsVO updateAgreementSettings(CurrentUser currentUser, SystemDTO.AgreementSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Agreement settings request is required");
-        upsertConfigValue(AGREEMENT_USER_MARKDOWN_KEY, "用户协议", normalizeMarkdownText(request.getUserAgreementMarkdown()), "用户协议 Markdown", operatorId);
-        upsertConfigValue(AGREEMENT_PRIVACY_MARKDOWN_KEY, "隐私协议", normalizeMarkdownText(request.getPrivacyAgreementMarkdown()), "隐私协议 Markdown", operatorId);
+        upsertConfigValue(AGREEMENT_USER_MARKDOWN_KEY, "User agreement", normalizeMarkdownText(request.getUserAgreementMarkdown()), "User agreement Markdown", operatorId);
+        upsertConfigValue(AGREEMENT_PRIVACY_MARKDOWN_KEY, "Privacy agreement", normalizeMarkdownText(request.getPrivacyAgreementMarkdown()), "Privacy agreement Markdown", operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -330,7 +349,7 @@ public class SystemPlatformSettingsAppService {
                 "agreement-update",
                 "UPDATE",
                 "SUCCESS",
-                "更新协议设置"
+                "Update agreement settings"
         );
         markRuntimeAppearanceChanged("agreement-update");
         markPublicBootstrapChanged("agreement-update");
@@ -359,20 +378,20 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Watermark settings request is required");
-        upsertBrandingConfig(WATERMARK_ENABLED_KEY, "水印开关", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "全局水印开关", operatorId);
-        upsertBrandingConfig(WATERMARK_MODE_KEY, "水印模式", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
-        upsertBrandingConfig(WATERMARK_TEXT_LINES_KEY, "水印文本", String.join("\n", request.getTextLines() == null ? List.of() : request.getTextLines()), "多行文本水印", operatorId);
-        upsertBrandingConfig(WATERMARK_IMAGE_URL_KEY, "水印图片", defaultIfBlank(request.getImageUrl(), ""), "图片水印 URL", operatorId);
-        upsertBrandingConfig(WATERMARK_FONT_COLOR_KEY, "字体颜色", defaultIfBlank(request.getFontColor(), "rgba(0,0,0,0.15)"), "字体颜色", operatorId);
-        upsertBrandingConfig(WATERMARK_FONT_SIZE_KEY, "字体大小", String.valueOf(request.getFontSize() == null ? 14 : request.getFontSize()), "字体大小", operatorId);
-        upsertBrandingConfig(WATERMARK_FONT_WEIGHT_KEY, "字体粗细", defaultIfBlank(request.getFontWeight(), "normal"), "字体粗细", operatorId);
-        upsertBrandingConfig(WATERMARK_ROTATE_KEY, "旋转角度", String.valueOf(request.getRotate() == null ? -22 : request.getRotate()), "旋转角度", operatorId);
-        upsertBrandingConfig(WATERMARK_GAP_X_KEY, "横向间距", String.valueOf(request.getGapX() == null ? 100 : request.getGapX()), "横向间距", operatorId);
-        upsertBrandingConfig(WATERMARK_GAP_Y_KEY, "纵向间距", String.valueOf(request.getGapY() == null ? 100 : request.getGapY()), "纵向间距", operatorId);
-        upsertBrandingConfig(WATERMARK_OFFSET_X_KEY, "横向偏移", String.valueOf(request.getOffsetX() == null ? 0 : request.getOffsetX()), "横向偏移", operatorId);
-        upsertBrandingConfig(WATERMARK_OFFSET_Y_KEY, "纵向偏移", String.valueOf(request.getOffsetY() == null ? 0 : request.getOffsetY()), "纵向偏移", operatorId);
-        upsertBrandingConfig(WATERMARK_Z_INDEX_KEY, "层级", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "z-index", operatorId);
-        upsertBrandingConfig(WATERMARK_OPACITY_KEY, "透明度", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "透明度", operatorId);
+        upsertBrandingConfig(WATERMARK_ENABLED_KEY, "Watermark enabled", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "Whether watermark display is enabled", operatorId);
+        upsertBrandingConfig(WATERMARK_MODE_KEY, "Watermark mode", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
+        upsertBrandingConfig(WATERMARK_TEXT_LINES_KEY, "Watermark text lines", String.join("\\n", request.getTextLines() == null ? List.of() : request.getTextLines()), "Watermark text lines", operatorId);
+        upsertBrandingConfig(WATERMARK_IMAGE_URL_KEY, "Watermark image URL", defaultIfBlank(request.getImageUrl(), ""), "Watermark image URL", operatorId);
+        upsertBrandingConfig(WATERMARK_FONT_COLOR_KEY, "Watermark font color", defaultIfBlank(request.getFontColor(), "rgba(0,0,0,0.15)"), "Watermark font color", operatorId);
+        upsertBrandingConfig(WATERMARK_FONT_SIZE_KEY, "Watermark font size", String.valueOf(request.getFontSize() == null ? 14 : request.getFontSize()), "Watermark font size", operatorId);
+        upsertBrandingConfig(WATERMARK_FONT_WEIGHT_KEY, "Watermark font weight", defaultIfBlank(request.getFontWeight(), "normal"), "Watermark font weight", operatorId);
+        upsertBrandingConfig(WATERMARK_ROTATE_KEY, "Watermark rotate", String.valueOf(request.getRotate() == null ? -22 : request.getRotate()), "Watermark rotate angle", operatorId);
+        upsertBrandingConfig(WATERMARK_GAP_X_KEY, "Watermark gap X", String.valueOf(request.getGapX() == null ? 100 : request.getGapX()), "Watermark horizontal gap", operatorId);
+        upsertBrandingConfig(WATERMARK_GAP_Y_KEY, "Watermark gap Y", String.valueOf(request.getGapY() == null ? 100 : request.getGapY()), "Watermark vertical gap", operatorId);
+        upsertBrandingConfig(WATERMARK_OFFSET_X_KEY, "Watermark offset X", String.valueOf(request.getOffsetX() == null ? 0 : request.getOffsetX()), "Watermark horizontal offset", operatorId);
+        upsertBrandingConfig(WATERMARK_OFFSET_Y_KEY, "Watermark offset Y", String.valueOf(request.getOffsetY() == null ? 0 : request.getOffsetY()), "Watermark vertical offset", operatorId);
+        upsertBrandingConfig(WATERMARK_Z_INDEX_KEY, "Watermark z-index", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "Watermark z-index", operatorId);
+        upsertBrandingConfig(WATERMARK_OPACITY_KEY, "Watermark opacity", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "Watermark opacity", operatorId);
         markRuntimeAppearanceChanged("watermark-update");
         return loadWatermarkSettings();
     }
@@ -381,9 +400,9 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Floating window settings request is required");
-        upsertBrandingConfig(FLOATING_API_DOCS_QR_ENABLED_KEY, "接口文档二维码开关", String.valueOf(Boolean.TRUE.equals(request.getApiDocsQrEnabled())), "是否在全局悬浮窗展示接口文档二维码入口", operatorId);
-        upsertBrandingConfig(FLOATING_API_DOCS_QR_TITLE_KEY, "接口文档二维码标题", defaultIfBlank(request.getApiDocsQrTitle(), ""), "接口文档二维码弹层标题", operatorId);
-        upsertBrandingConfig(FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "接口文档二维码图片", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "接口文档悬浮入口展开后展示的二维码图片", operatorId);
+        upsertBrandingConfig(FLOATING_API_DOCS_QR_ENABLED_KEY, "API docs QR enabled", String.valueOf(Boolean.TRUE.equals(request.getApiDocsQrEnabled())), "Whether API docs QR is shown", operatorId);
+        upsertBrandingConfig(FLOATING_API_DOCS_QR_TITLE_KEY, "API docs QR title", defaultIfBlank(request.getApiDocsQrTitle(), ""), "API docs QR title", operatorId);
+        upsertBrandingConfig(FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "API docs QR image URL", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "API docs QR image URL", operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -392,7 +411,7 @@ public class SystemPlatformSettingsAppService {
                 "floating-window-update",
                 "UPDATE",
                 "SUCCESS",
-                "更新悬浮窗设置"
+                "Update floating window settings"
         );
         markRuntimeAppearanceChanged("floating-window-update");
         return loadFloatingWindowSettings();
@@ -425,17 +444,17 @@ public class SystemPlatformSettingsAppService {
         boolean startTlsEnabled = request.getStartTlsEnabled() == null ? Boolean.TRUE.equals(current.getStartTlsEnabled()) : request.getStartTlsEnabled();
         boolean sslEnabled = request.getSslEnabled() == null ? Boolean.TRUE.equals(current.getSslEnabled()) : request.getSslEnabled();
 
-        upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP 邮箱通知启用", String.valueOf(enabled), "是否启用邮箱通知渠道", operatorId);
-        upsertPlatformConfig(SMTP_HOST_KEY, "SMTP 主机", host, "邮件服务器地址", operatorId);
-        upsertPlatformConfig(SMTP_PORT_KEY, "SMTP 端口", String.valueOf(port == null ? 25 : port), "邮件服务器端口", operatorId);
-        upsertPlatformConfig(SMTP_USERNAME_KEY, "SMTP 用户名", username, "SMTP 登录用户名", operatorId);
-        upsertPlatformConfig(SMTP_PASSWORD_KEY, "SMTP 密码", password, "SMTP 登录密码", operatorId);
-        upsertPlatformConfig(SMTP_FROM_KEY, "发件人地址", from, "SMTP 默认发件人", operatorId);
-        upsertPlatformConfig(SMTP_AUTH_ENABLED_KEY, "SMTP 认证", String.valueOf(authEnabled), "是否启用 SMTP AUTH", operatorId);
-        upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "是否启用 STARTTLS", operatorId);
-        upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "是否启用 SSL", operatorId);
+        upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP enabled", String.valueOf(enabled), "Whether SMTP is enabled", operatorId);
+        upsertPlatformConfig(SMTP_HOST_KEY, "SMTP host", host, "SMTP host address", operatorId);
+        upsertPlatformConfig(SMTP_PORT_KEY, "SMTP port", String.valueOf(port == null ? 25 : port), "SMTP port", operatorId);
+        upsertPlatformConfig(SMTP_USERNAME_KEY, "SMTP username", username, "SMTP username", operatorId);
+        upsertPlatformConfig(SMTP_PASSWORD_KEY, "SMTP password", password, "SMTP password", operatorId);
+        upsertPlatformConfig(SMTP_FROM_KEY, "SMTP from", from, "SMTP from address", operatorId);
+        upsertPlatformConfig(SMTP_AUTH_ENABLED_KEY, "SMTP auth", String.valueOf(authEnabled), "Whether SMTP AUTH is enabled", operatorId);
+        upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "Whether SMTP STARTTLS is enabled", operatorId);
+        upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "Whether SMTP SSL is enabled", operatorId);
         smtpMailService.invalidate();
-        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "更新 SMTP 配置");
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "Update SMTP settings");
         currentValues.put(SMTP_ENABLED_KEY, String.valueOf(enabled));
         currentValues.put(SMTP_HOST_KEY, host);
         currentValues.put(SMTP_PORT_KEY, String.valueOf(port == null ? 25 : port));
@@ -452,17 +471,17 @@ public class SystemPlatformSettingsAppService {
     @Transactional
     public SystemVO.SmtpSettingsVO resetSmtpSettings(CurrentUser currentUser) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
-        upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP 邮箱通知启用", "false", "是否启用邮箱通知渠道", operatorId);
-        upsertPlatformConfig(SMTP_HOST_KEY, "SMTP 主机", "", "邮件服务器地址", operatorId);
-        upsertPlatformConfig(SMTP_PORT_KEY, "SMTP 端口", "25", "邮件服务器端口", operatorId);
-        upsertPlatformConfig(SMTP_USERNAME_KEY, "SMTP 用户名", "", "SMTP 登录用户名", operatorId);
-        upsertPlatformConfig(SMTP_PASSWORD_KEY, "SMTP 密码", "", "SMTP 登录密码", operatorId);
-        upsertPlatformConfig(SMTP_FROM_KEY, "发件人地址", "", "SMTP 默认发件人", operatorId);
-        upsertPlatformConfig(SMTP_AUTH_ENABLED_KEY, "SMTP 认证", "true", "是否启用 SMTP AUTH", operatorId);
-        upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", "true", "是否启用 STARTTLS", operatorId);
-        upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "是否启用 SSL", operatorId);
+        upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP enabled", "false", "Whether SMTP is enabled", operatorId);
+        upsertPlatformConfig(SMTP_HOST_KEY, "SMTP host", "", "SMTP host address", operatorId);
+        upsertPlatformConfig(SMTP_PORT_KEY, "SMTP port", "25", "SMTP port", operatorId);
+        upsertPlatformConfig(SMTP_USERNAME_KEY, "SMTP username", "", "SMTP username", operatorId);
+        upsertPlatformConfig(SMTP_PASSWORD_KEY, "SMTP password", "", "SMTP password", operatorId);
+        upsertPlatformConfig(SMTP_FROM_KEY, "SMTP from", "", "SMTP from address", operatorId);
+        upsertPlatformConfig(SMTP_AUTH_ENABLED_KEY, "SMTP auth", "true", "Whether SMTP AUTH is enabled", operatorId);
+        upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", "true", "Whether SMTP STARTTLS is enabled", operatorId);
+        upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "Whether SMTP SSL is enabled", operatorId);
         smtpMailService.invalidate();
-        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "重置 SMTP 配置");
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "Reset SMTP settings");
         markRuntimeAppearanceChanged("smtp-reset");
         return buildSmtpSettings(Map.of(
                 SMTP_ENABLED_KEY, "false",
@@ -490,12 +509,12 @@ public class SystemPlatformSettingsAppService {
         String templateId = sanitizeText(request.getTemplateId(), current.getTemplateId());
         String detailUrl = sanitizeText(request.getDetailUrl(), current.getDetailUrl());
 
-        upsertPlatformConfig(WECHAT_OFFICIAL_ENABLED_KEY, "微信公众号通知启用", String.valueOf(enabled), "是否启用微信公众号/服务号模板消息通知", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_APP_ID_KEY, "微信公众号 AppID", appId, "微信公众号或服务号 AppID", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_APP_SECRET_KEY, "微信公众号 AppSecret", appSecret, "微信公众号或服务号 AppSecret", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, "微信公众号模板 ID", templateId, "用于系统通知的公众号模板消息 ID", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_DETAIL_URL_KEY, "微信公众号通知详情链接", detailUrl, "模板消息点击后打开的系统链接，可留空", operatorId);
-        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "更新微信公众号通知配置");
+        upsertPlatformConfig(WECHAT_OFFICIAL_ENABLED_KEY, "WeChat official account notifications", String.valueOf(enabled), "Whether official account template notifications are enabled", operatorId);
+        upsertPlatformConfig(WECHAT_OFFICIAL_APP_ID_KEY, "WeChat official account AppID", appId, "WeChat official account AppID", operatorId);
+        upsertPlatformConfig(WECHAT_OFFICIAL_APP_SECRET_KEY, "WeChat official account AppSecret", appSecret, "WeChat official account AppSecret", operatorId);
+        upsertPlatformConfig(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, "WeChat template ID", templateId, "Template message ID for notifications", operatorId);
+        upsertPlatformConfig(WECHAT_OFFICIAL_DETAIL_URL_KEY, "WeChat notification detail URL", detailUrl, "Optional URL opened from template messages", operatorId);
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "Update WeChat official account notification settings");
         currentValues.put(WECHAT_OFFICIAL_ENABLED_KEY, String.valueOf(enabled));
         currentValues.put(WECHAT_OFFICIAL_APP_ID_KEY, appId);
         currentValues.put(WECHAT_OFFICIAL_APP_SECRET_KEY, appSecret);
@@ -513,30 +532,30 @@ public class SystemPlatformSettingsAppService {
         JavaMailSenderImpl mailSender = buildSmtpSender(values);
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY));
         if (!StringUtils.hasText(from)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "请先补充 SMTP 发件人地址");
+            throw new BizException(ErrorCode.BIZ_ERROR, "SMTP sender address is required");
         }
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(request.getToEmail());
         message.setFrom(from);
-        message.setSubject(defaultIfBlank(request.getSubject(), "SMTP 测试邮件"));
-        message.setText(defaultIfBlank(request.getContent(), "这是一封来自系统的 SMTP 测试邮件。"));
+        message.setSubject(defaultIfBlank(request.getSubject(), "SMTP test email"));
+        message.setText(defaultIfBlank(request.getContent(), "This is a test email sent from the system SMTP settings."));
         try {
             mailSender.send(message);
         } catch (MailException exception) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "SMTP 测试发送失败: " + exception.getMessage());
+            throw new BizException(ErrorCode.BIZ_ERROR, "SMTP test send failed: " + exception.getMessage());
         }
         SystemVO.SmtpTestVO result = new SystemVO.SmtpTestVO();
         result.setSuccess(Boolean.TRUE);
-        result.setMessage("SMTP 测试邮件已发送");
+        result.setMessage("SMTP test email sent");
         result.setToEmail(request.getToEmail());
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "test", "CREATE", "SUCCESS", "SMTP 测试发送至 " + request.getToEmail());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "test", "CREATE", "SUCCESS", "SMTP 测试发送成功: " + request.getToEmail());
         return result;
     }
 
     private SystemVO.BrandingSettingsVO loadBrandingSettings() {
         Map<String, String> valueByKey = loadConfigValuesByKeys(BRANDING_CONFIG_KEYS);
         SystemVO.BrandingSettingsVO settings = new SystemVO.BrandingSettingsVO();
-        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
+        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "Lumira"));
         settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
         settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
         settings.setLoginBackgroundUrl(defaultIfBlank(valueByKey.get(BRANDING_LOGIN_BACKGROUND_URL_KEY), ""));
@@ -951,8 +970,8 @@ public class SystemPlatformSettingsAppService {
         int currentYear = LocalDate.now().getYear();
         int startYear = copyrightStartYear == null ? currentYear : copyrightStartYear;
         String yearLabel = startYear < currentYear ? startYear + "-" + currentYear : String.valueOf(startYear);
-        String owner = StringUtils.hasText(companyName) ? companyName : "宏翔商道";
-        return "Copyright © " + yearLabel + " " + owner + " All Rights Reserved";
+        String owner = StringUtils.hasText(companyName) ? companyName : "Lumira";
+        return "Copyright (c) " + yearLabel + " " + owner + " All Rights Reserved";
     }
 
     private Integer parseInteger(String value, Integer fallback) {
@@ -990,7 +1009,7 @@ public class SystemPlatformSettingsAppService {
 
     private Long requireAuthenticated(CurrentUser currentUser) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "用户上下文缺失");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
         }
         return currentUser.getUserId();
     }
@@ -1024,6 +1043,9 @@ public class SystemPlatformSettingsAppService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -1043,17 +1065,33 @@ public class SystemPlatformSettingsAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             normalizedUserUuid = userSnapshot.userUuid().trim();
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -1074,6 +1112,10 @@ public class SystemPlatformSettingsAppService {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -1090,7 +1132,7 @@ public class SystemPlatformSettingsAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
     private void requireRequest(Object request, String message) {
@@ -1105,7 +1147,7 @@ public class SystemPlatformSettingsAppService {
         String username = defaultIfBlank(values.get(SMTP_USERNAME_KEY), "");
         String password = defaultIfBlank(values.get(SMTP_PASSWORD_KEY), "");
         if (!StringUtils.hasText(host)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 主机");
+            throw new BizException(ErrorCode.BIZ_ERROR, "SMTP host must be configured");
         }
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(host);

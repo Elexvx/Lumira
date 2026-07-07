@@ -42,7 +42,7 @@ public class OnlineSessionEventIdentityVerifier {
         if (!StringUtils.hasText(row.userUuid()) || !row.userUuid().trim().equals(event.getUserUuid().trim())) {
             return false;
         }
-        return !StringUtils.hasText(row.status()) || "ENABLED".equalsIgnoreCase(row.status().trim());
+        return StringUtils.hasText(row.status()) && "ENABLED".equalsIgnoreCase(row.status().trim());
     }
 
     private record UserIdentityRow(String userUuid, String status) {

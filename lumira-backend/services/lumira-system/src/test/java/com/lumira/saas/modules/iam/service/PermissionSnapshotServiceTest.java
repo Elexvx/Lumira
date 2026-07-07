@@ -80,6 +80,40 @@ class PermissionSnapshotServiceTest {
     }
 
     @Test
+    void loadSnapshotKeepsWildcardForProtectedAdminWithRenamedUsername() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("team:view"));
+        jdbcTemplate.protectedAdminUsername = "root-admin";
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L, "uuid-1001");
+
+        assertTrue(snapshot.getPermissions().contains("*"));
+        assertTrue(snapshot.getPermissions().contains("team:view"));
+    }
+
+    @Test
+    void loadGrantedRoleSnapshotShouldRejectRevokedTrustedRole() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("team:view"));
+        jdbcTemplate.roleGranted = false;
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.loadGrantedRoleSnapshot(1001L, "uuid-1001", 3001L)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+    }
+
+    @Test
     void loadSnapshotFiltersAdminOnlyPermissionsForOrdinaryUser() {
         PermissionSnapshotService service = newService(
                 List.of("system:menu:view", "system:config:view", "plugin:management:view", "team:view")
@@ -293,6 +327,8 @@ class PermissionSnapshotServiceTest {
 
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
         private final List<String> permissions;
+        private String protectedAdminUsername = "admin";
+        private boolean roleGranted = true;
         private final AtomicInteger queryCount = new AtomicInteger();
         private final List<Long> usedLegacyScopeIds = java.util.Collections.synchronizedList(new ArrayList<>());
 
@@ -303,8 +339,14 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             queryCount.incrementAndGet();
+            if (Boolean.class.equals(requiredType) && sql.contains("from sys_user_role ur")) {
+                return requiredType.cast(Boolean.valueOf(roleGranted));
+            }
             if (String.class.equals(requiredType) && sql.contains("from sys_user")) {
-                return requiredType.cast(args != null && args.length > 0 && Long.valueOf(1001L).equals(args[0]) ? "admin" : "ordinary");
+                return requiredType.cast(args != null && args.length > 0 && Long.valueOf(1001L).equals(args[0]) ? protectedAdminUsername : "ordinary");
+            }
+            if (Long.class.equals(requiredType) && sql.contains("from sys_user")) {
+                return requiredType.cast(args != null && args.length > 0 && Long.valueOf(1001L).equals(args[0]) ? Long.valueOf(1L) : Long.valueOf(1L));
             }
             if (String.class.equals(requiredType)) {
                 return requiredType.cast("role-version");

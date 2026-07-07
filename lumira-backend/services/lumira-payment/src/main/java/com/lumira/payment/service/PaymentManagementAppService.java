@@ -11,6 +11,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,6 +35,9 @@ import java.util.UUID;
 @Service
 public class PaymentManagementAppService {
 
+    private static final String PERMISSION_PAYMENT_CONFIG_VIEW = "payment:config:view";
+    private static final String PERMISSION_PAYMENT_CONFIG_UPDATE = "payment:config:update";
+    private static final String PERMISSION_PAYMENT_CONFIG_TEST = "payment:config:test";
     private static final String SECRET_PLACEHOLDER = "********";
     private static final Duration TEST_TIMEOUT = Duration.ofSeconds(2);
     private static final Duration PROVIDER_LIST_CACHE_TTL = Duration.ofSeconds(30);
@@ -47,6 +51,7 @@ public class PaymentManagementAppService {
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private volatile CachedProviderList providerListCache;
 
+    @Autowired
     public PaymentManagementAppService(
             JdbcTemplate jdbcTemplate,
             ObjectMapper objectMapper,
@@ -73,7 +78,12 @@ public class PaymentManagementAppService {
         this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
-    public List<PaymentProviderSettingsDTO> listProviderSettings() {
+    public List<PaymentProviderSettingsDTO> listProviderSettings(CurrentUser currentUser) {
+        trustedActor(currentUser, PERMISSION_PAYMENT_CONFIG_VIEW);
+        return listProviderSettingsInternal();
+    }
+
+    private List<PaymentProviderSettingsDTO> listProviderSettingsInternal() {
         CachedProviderList cached = providerListCache;
         Instant now = Instant.now();
         if (cached != null && cached.expireAt().isAfter(now)) {
@@ -91,13 +101,14 @@ public class PaymentManagementAppService {
         return immutableSettings;
     }
 
-    public PaymentProviderSettingsDTO paymentProviderSettings(String providerCode) {
+    public PaymentProviderSettingsDTO paymentProviderSettings(CurrentUser currentUser, String providerCode) {
+        trustedActor(currentUser, PERMISSION_PAYMENT_CONFIG_VIEW);
         return loadProviderSettings(providerCode);
     }
 
     @Transactional
     public PaymentProviderSettingsDTO updatePaymentProviderSettings(CurrentUser currentUser, String providerCode, PaymentProviderSettingsDTO request) {
-        return updatePaymentProviderSettings(trustedActor(currentUser), providerCode, request);
+        return updatePaymentProviderSettings(trustedActor(currentUser, PERMISSION_PAYMENT_CONFIG_UPDATE), providerCode, request);
     }
 
     private PaymentProviderSettingsDTO updatePaymentProviderSettings(Actor actor, String providerCode, PaymentProviderSettingsDTO request) {
@@ -136,7 +147,7 @@ public class PaymentManagementAppService {
 
     @Transactional
     public PaymentProviderTestResultDTO testPaymentProvider(CurrentUser currentUser, String providerCode) {
-        return testPaymentProvider(trustedActor(currentUser), providerCode);
+        return testPaymentProvider(trustedActor(currentUser, PERMISSION_PAYMENT_CONFIG_TEST), providerCode);
     }
 
     private PaymentProviderTestResultDTO testPaymentProvider(Actor actor, String providerCode) {
@@ -175,12 +186,12 @@ public class PaymentManagementAppService {
         return new PaymentProviderTestResultDTO(providerCode, definition.providerName(), success, message, checkedAt);
     }
 
-    private Actor trustedActor(CurrentUser currentUser) {
+    private Actor trustedActor(CurrentUser currentUser, String requiredPermission) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
         }
         if (systemInternalApiProvider == null) {
-            return new Actor(currentUser.getUserId(), currentUser.getUserUuid().trim());
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
         }
         Long userId = currentUser.getUserId();
         String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
@@ -201,9 +212,19 @@ public class PaymentManagementAppService {
         if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim());
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, snapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
+        }
+        List<String> permissions = permissionSnapshot.permissions() == null ? List.of() : permissionSnapshot.permissions();
+        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
         }
         return new Actor(snapshot.userId(), snapshot.userUuid().trim());
     }

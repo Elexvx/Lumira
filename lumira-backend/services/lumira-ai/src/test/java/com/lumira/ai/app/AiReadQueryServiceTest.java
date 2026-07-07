@@ -32,7 +32,7 @@ class AiReadQueryServiceTest {
     void listEmployeesUsesBoundedPageAndCappedCount() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.query(anyString(), anyRowMapper(), anyVarargs())).thenReturn(List.of());
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = service(jdbcTemplate);
 
         var response = service.listEmployees(user(Set.of("ai:view")), 0, 500);
 
@@ -73,7 +73,7 @@ class AiReadQueryServiceTest {
     @Test
     void listEmployeesRejectsBlankUsernameBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = service(jdbcTemplate);
 
         assertThatThrownBy(() -> service.listEmployees(blankUsernameUser(), 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -85,7 +85,7 @@ class AiReadQueryServiceTest {
     @Test
     void listEmployeesRejectsMissingSessionIdBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = service(jdbcTemplate);
 
         assertThatThrownBy(() -> service.listEmployees(missingSessionIdUser(), 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -109,8 +109,38 @@ class AiReadQueryServiceTest {
     }
 
     @Test
+    void listEmployeesRejectsBlankLiveUsernameBeforePermissionSnapshotAndDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, " ", "ENABLED"));
+        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi));
+
+        assertThatThrownBy(() -> service.listEmployees(user(Set.of("ai:view")), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(systemInternalApi, never()).permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString());
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRequireLiveViewOrChatPermissionBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        SystemInternalApi systemInternalApi = trustedSystemInternalApi(List.of("system:file:view"));
+        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi, false));
+
+        assertThatThrownBy(() -> service.listEmployees(user(Set.of("ai:view")), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void listToolsExposesOnlyToolsVisibleToCurrentUser() {
-        AiReadQueryService service = new AiReadQueryService(mock(JdbcTemplate.class));
+        AiReadQueryService service = service(mock(JdbcTemplate.class));
 
         var tools = service.listTools(user(Set.of("system:permission:snapshot", "system:file:view")));
 
@@ -160,9 +190,9 @@ class AiReadQueryServiceTest {
         when(jdbcTemplate.queryForList(contains("select 1"), anyVarargs()))
                 .thenReturn(List.of(java.util.Map.of("exists", 1)));
         when(jdbcTemplate.query(anyString(), anyRowMapper(), anyVarargs())).thenReturn(List.of());
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = service(jdbcTemplate);
 
-        var messages = service.listConversationMessages(user(Set.of("ai:conversation:view")), 99L);
+        var messages = service.listConversationMessages(user(Set.of("ai:chat:send")), 99L);
 
         assertThat(messages).isEmpty();
         verify(jdbcTemplate).queryForList(contains("select 1"), anyVarargs());
@@ -170,10 +200,48 @@ class AiReadQueryServiceTest {
     }
 
     @Test
+    void listConversationMessagesShouldRequireChatPermissionBeforeConversationProbe() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        SystemInternalApi systemInternalApi = trustedSystemInternalApi(List.of("ai:view"));
+        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi, false));
+
+        assertThatThrownBy(() -> service.listConversationMessages(user(Set.of("ai:chat:send")), 99L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void getKnowledgeBaseShouldRequireKnowledgeViewBeforeDatabaseAccess() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        SystemInternalApi systemInternalApi = trustedSystemInternalApi(List.of("ai:chat:send"));
+        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi, false));
+
+        assertThatThrownBy(() -> service.getKnowledgeBase(user(Set.of("ai:knowledge:view")), 11L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listToolsShouldRequireToolViewBeforeReadingToolCatalog() {
+        AiReadQueryService service = new AiReadQueryService(
+                mock(JdbcTemplate.class),
+                provider(trustedSystemInternalApi(List.of("system:file:view")), false)
+        );
+
+        assertThatThrownBy(() -> service.listTools(user(Set.of("ai:tool:view"))))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
     void requireManageableKnowledgeBaseShouldExcludePlatformVisibilityAndUseManageAclOnly() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.query(anyString(), anyRowMapper(), anyVarargs())).thenReturn(List.of());
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = service(jdbcTemplate);
 
         assertThatThrownBy(() -> service.requireManageableKnowledgeBase(sharedManager(), 11L))
                 .isInstanceOf(BizException.class);
@@ -207,7 +275,7 @@ class AiReadQueryServiceTest {
     }
 
     private CurrentUser sharedManager() {
-        CurrentUser currentUser = user(Set.of("ai:knowledge:manage"));
+        CurrentUser currentUser = user(Set.of("ai:knowledge:update"));
         currentUser.setRoleIds(Set.of(9L));
         currentUser.setPrimaryDeptId(15L);
         currentUser.setDeptIds(Set.of(18L));
@@ -226,8 +294,28 @@ class AiReadQueryServiceTest {
         return new CurrentUser(7L, "ai-user", 2002L, null, 1, true, Set.of("*"));
     }
 
+    private AiReadQueryService service(JdbcTemplate jdbcTemplate) {
+        return new AiReadQueryService(jdbcTemplate, provider(enabledSystemInternalApi()));
+    }
+
+    private SystemInternalApi enabledSystemInternalApi() {
+        return trustedSystemInternalApi(List.of(
+                "ai:view",
+                "ai:chat:send",
+                "ai:knowledge:view",
+                "ai:knowledge:update",
+                "ai:tool:view",
+                "system:permission:snapshot",
+                "system:file:view"
+        ));
+    }
+
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
-        if (systemInternalApi != null) {
+        return provider(systemInternalApi, true);
+    }
+
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi, boolean stubSnapshot) {
+        if (systemInternalApi != null && stubSnapshot) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
@@ -236,14 +324,37 @@ class AiReadQueryServiceTest {
         return provider;
     }
 
+    private SystemInternalApi trustedSystemInternalApi(List<String> permissions) {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "ai-user", "ENABLED"));
+        when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class), permissions));
+        return systemInternalApi;
+    }
+
     private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {
         return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private PermissionSnapshotDTO permissionSnapshot(Long userId) {
+        return permissionSnapshot(
+                userId,
+                List.of(
+                        "ai:view",
+                        "ai:chat:send",
+                        "ai:knowledge:view",
+                        "ai:knowledge:update",
+                        "ai:tool:view",
+                        "system:permission:snapshot",
+                        "system:file:view"
+                )
+        );
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(Long userId, List<String> permissions) {
         return new PermissionSnapshotDTO(
                 "perm-v" + userId,
-                List.of("ai:view"),
+                permissions,
                 List.of(11L),
                 21L,
                 List.of(21L),

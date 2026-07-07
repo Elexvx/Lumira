@@ -73,7 +73,7 @@ class LocalizationManagementAppServiceTest {
         when(localizationManagementMapper.countEntries(any())).thenReturn(250L);
         when(translationMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of());
 
-        LocalizationVO.EntryPageResponse page = service.listEntries("zh-CN", null, null, null, null, 2L, 20L, "updatedAt", "desc");
+        LocalizationVO.EntryPageResponse page = service.listEntries(trustedUser("localization:view"), "zh-CN", null, null, null, null, 2L, 20L, "updatedAt", "desc");
 
         ArgumentCaptor<EntryQuery> queryCaptor = ArgumentCaptor.forClass(EntryQuery.class);
         verify(localizationManagementMapper).countEntries(queryCaptor.capture());
@@ -97,7 +97,7 @@ class LocalizationManagementAppServiceTest {
         when(localizationManagementMapper.countEntries(any())).thenReturn(10L);
         when(translationMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of());
 
-        LocalizationVO.EntryPageResponse page = service.listEntries("en-US", "common", "ok", "ENABLED", "PENDING", 1L, 20L, "updatedAt", "ascend");
+        LocalizationVO.EntryPageResponse page = service.listEntries(trustedUser("localization:view"), "en-US", "common", "ok", "ENABLED", "PENDING", 1L, 20L, "updatedAt", "ascend");
 
         assertThat(page.getHasMore()).isFalse();
         assertThat(page.getTotal()).isEqualTo(10L);
@@ -135,7 +135,7 @@ class LocalizationManagementAppServiceTest {
         when(localizationManagementMapper.listLanguageStats()).thenReturn(List.of(zhStat, enStat));
         when(entryMapper.selectCount(any(QueryWrapper.class))).thenReturn(10L);
 
-        List<LocalizationVO.LanguageVO> languages = service.listLanguages();
+        List<LocalizationVO.LanguageVO> languages = service.listLanguages(trustedUser("localization:view"));
 
         assertThat(languages).hasSize(2);
         assertThat(languages.get(0).getLocaleCode()).isEqualTo("zh-CN");
@@ -147,6 +147,21 @@ class LocalizationManagementAppServiceTest {
 
         verify(localizationManagementMapper).listLanguageStats();
         verify(localizationManagementMapper, never()).countTranslatedEntries(any());
+    }
+
+    @Test
+    void listLanguages_shouldRejectRevokedTrustedPermissionBeforeMapperReads() {
+        CurrentUser currentUser = trustedUser("localization:view");
+        when(systemInternalApi.permissionSnapshot(100L, "user-uuid-100"))
+                .thenReturn(permissionSnapshot(List.of("localization:update")));
+
+        assertThatThrownBy(() -> service.listLanguages(currentUser))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(languageMapper, never()).selectList(any(QueryWrapper.class));
+        verify(localizationManagementMapper, never()).listLanguageStats();
+        verify(entryMapper, never()).selectCount(any(QueryWrapper.class));
     }
 
     @Test
@@ -178,7 +193,7 @@ class LocalizationManagementAppServiceTest {
         when(namespaceMapper.selectList(any(QueryWrapper.class))).thenReturn(List.of(common, nav));
         when(localizationManagementMapper.listNamespaceStats("zh-CN")).thenReturn(List.of(commonStat, navStat));
 
-        List<LocalizationVO.NamespaceVO> namespaces = service.listNamespaces("zh-CN");
+        List<LocalizationVO.NamespaceVO> namespaces = service.listNamespaces(trustedUser("localization:view"), "zh-CN");
 
         assertThat(namespaces).hasSize(2);
         assertThat(namespaces.get(0).getNamespaceCode()).isEqualTo("common");
@@ -325,6 +340,32 @@ class LocalizationManagementAppServiceTest {
     }
 
     @Test
+    void saveLanguage_shouldTrimRefreshedLiveUsernameBeforeAuditWrite() {
+        LocalizationDTO.LanguageUpsertRequest request = new LocalizationDTO.LanguageUpsertRequest();
+        request.setLocaleCode("fr-FR");
+        request.setLanguageName("French");
+        request.setNativeName("Francais");
+        request.setDefaultLanguage(false);
+        request.setStatus("ENABLED");
+        CurrentUser currentUser = trustedUser("localization:update");
+        currentUser.setUsername("alice-stale");
+        AtomicReference<LanguageEntity> inserted = new AtomicReference<>();
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, "  alice-live  ", "ENABLED"));
+        when(languageMapper.selectOne(any(QueryWrapper.class))).thenAnswer(invocation -> inserted.get());
+        org.mockito.Mockito.doAnswer(invocation -> {
+            LanguageEntity entity = invocation.getArgument(0);
+            entity.id = 11L;
+            inserted.set(entity);
+            return 1;
+        }).when(languageMapper).insert(any(LanguageEntity.class));
+
+        service.saveLanguage(currentUser, null, request);
+
+        assertThat(currentUser.getUsername()).isEqualTo("alice-live");
+        assertThat(inserted.get().createdBy).isEqualTo(100L);
+    }
+
+    @Test
     void saveLanguage_shouldRejectDisabledTrustedUserBeforeAuditWrite() {
         LocalizationDTO.LanguageUpsertRequest request = new LocalizationDTO.LanguageUpsertRequest();
         request.setLocaleCode("en-US");
@@ -336,6 +377,25 @@ class LocalizationManagementAppServiceTest {
         assertThatThrownBy(() -> service.saveLanguage(currentUser, null, request))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(languageMapper, never()).insert(any(LanguageEntity.class));
+        verify(languageMapper, never()).update(any(), any(UpdateWrapper.class));
+    }
+
+    @Test
+    void saveLanguage_shouldRejectBlankLiveUsernameBeforeAuditWrite() {
+        LocalizationDTO.LanguageUpsertRequest request = new LocalizationDTO.LanguageUpsertRequest();
+        request.setLocaleCode("en-US");
+        request.setLanguageName("English");
+        request.setDefaultLanguage(false);
+        CurrentUser currentUser = trustedUser("localization:update");
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, " ", "ENABLED"));
+
+        assertThatThrownBy(() -> service.saveLanguage(currentUser, null, request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
 
         verify(languageMapper, never()).insert(any(LanguageEntity.class));
         verify(languageMapper, never()).update(any(), any(UpdateWrapper.class));
@@ -550,7 +610,7 @@ class LocalizationManagementAppServiceTest {
         request.setSourceType("UI");
         request.setSourceRef("settings.save");
         request.setStatus("ENABLED");
-        request.setTranslations(Map.of("zh-CN", "淇濆瓨"));
+        request.setTranslations(Map.of("zh-CN", "保存"));
         return request;
     }
 

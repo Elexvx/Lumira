@@ -42,13 +42,14 @@ public class OnlineSessionController {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public OnlineSessionController(
             OnlineSessionManagementAppService onlineSessionManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
-        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, null, null, null);
+        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, null, null, null, false);
     }
 
     public OnlineSessionController(
@@ -57,7 +58,7 @@ public class OnlineSessionController {
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null);
+        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null, false);
     }
 
     public OnlineSessionController(
@@ -67,7 +68,7 @@ public class OnlineSessionController {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, sessionAuthenticationService);
+        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     @Autowired
@@ -79,12 +80,25 @@ public class OnlineSessionController {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(onlineSessionManagementAppService, securityContextFacade, permissionGuard, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private OnlineSessionController(
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.onlineSessionManagementAppService = onlineSessionManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping
@@ -159,6 +173,9 @@ public class OnlineSessionController {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -181,18 +198,34 @@ public class OnlineSessionController {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(currentUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             normalizedUserUuid = currentUserUuid;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -212,6 +245,10 @@ public class OnlineSessionController {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -228,7 +265,7 @@ public class OnlineSessionController {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 }

@@ -142,6 +142,96 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
+    void listKnowledgeBasesShouldRejectTrustedUserWhenNoTrustedResolverIsAvailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listKnowledgeBases(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                null,
+                null,
+                "OWNED",
+                1,
+                10
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
+    void listKnowledgeBasesShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7")).thenReturn(null);
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listKnowledgeBases(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                null,
+                null,
+                "OWNED",
+                1,
+                10
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
+    void listKnowledgeBasesShouldRequireKnowledgeViewPermissionBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+
+        assertThatThrownBy(() -> service.listKnowledgeBases(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:view"))),
+                null,
+                null,
+                "OWNED",
+                1,
+                10
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
     void createKnowledgeBaseShouldRejectUnauthenticatedUserBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
@@ -166,7 +256,7 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
-    void listEmployeeKnowledgeBasesShouldRequireViewPermissionBeforeDatabaseAccess() {
+    void createKnowledgeBaseShouldRequireCreatePermissionBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
                 queryOperations,
@@ -177,18 +267,22 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+        AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
+        request.setName("private docs");
+        request.setVisibilityScope("PERSONAL");
 
-        assertThatThrownBy(() -> service.listEmployeeKnowledgeBases(currentUser, 11L))
-                .isInstanceOfSatisfying(BizException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        assertThatThrownBy(() -> service.createKnowledgeBase(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                request
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         assertThat(queryOperations.queryCalled).isFalse();
         assertThat(queryOperations.updateSql).isEmpty();
     }
 
     @Test
-    void updateEmployeeKnowledgeBasesShouldRequireManagePermissionBeforeDatabaseWrite() {
+    void listEmployeeKnowledgeBasesShouldRequireKnowledgeViewPermissionBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
                 queryOperations,
@@ -200,6 +294,28 @@ class AiKnowledgeBaseAppServiceTest {
                 vectorService()
         );
         CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:view")));
+
+        assertThatThrownBy(() -> service.listEmployeeKnowledgeBases(currentUser, 11L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
+    void updateEmployeeKnowledgeBasesShouldRequireBindPermissionBeforeDatabaseWrite() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
         AiDTO.EmployeeKnowledgeBasesUpdateRequest request = new AiDTO.EmployeeKnowledgeBasesUpdateRequest();
         request.setKnowledgeBaseIds(List.of(20L));
 
@@ -213,12 +329,12 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
-    void listEmployeeKnowledgeBasesShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeDatabaseAccess() {
+    void listEmployeeKnowledgeBasesShouldRejectWhenLiveSnapshotRevokesKnowledgeViewPermissionBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7"))
-                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:knowledge:view")));
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:view")));
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
                 queryOperations,
                 mock(com.lumira.api.client.FileInternalApi.class),
@@ -229,7 +345,7 @@ class AiKnowledgeBaseAppServiceTest {
                 vectorService(),
                 permissionSnapshotService
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:view", "ai:knowledge:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
 
         assertThatThrownBy(() -> service.listEmployeeKnowledgeBases(currentUser, 11L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -270,6 +386,40 @@ class AiKnowledgeBaseAppServiceTest {
 
         assertThat(queryOperations.queryCalled).isFalse();
         assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
+    void listKnowledgeBasesShouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, " ", "ENABLED"));
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listKnowledgeBases(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                null,
+                null,
+                "OWNED",
+                1,
+                10
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+        verify(permissionSnapshotService, org.mockito.Mockito.never()).isTrustedActiveUser(7L, "user-uuid-7");
     }
 
     @Test
@@ -398,8 +548,105 @@ class AiKnowledgeBaseAppServiceTest {
 
         assertThat(source).doesNotContain("Set.of(\"*\")");
         assertThat(source).doesNotContain("CurrentUser jobUser = new CurrentUser(");
-        assertThat(source).contains("IndexOwnerContext owner = requireIndexOwner(task);");
-        assertThat(source).doesNotContain("aiIndexerPermissionsVersion(task)");
+        assertThat(source).contains("IndexOwnerContext owner = requireTrustedIndexOwner(task);");
+        assertThat(source).contains("PERMISSION_KNOWLEDGE_DOCUMENT_INDEX");
+    }
+
+    @Test
+    void pendingIndexJobShouldRejectWhenLiveSnapshotRevokesDocumentIndexPermission() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("hello knowledge world".getBytes(StandardCharsets.UTF_8));
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:knowledge:view")));
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                fileInternalApi,
+                new AiKnowledgeTextExtractor(),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        int processed = service.processPendingIndexTasks(10);
+
+        assertThat(processed).isEqualTo(1);
+        assertThat(fileInternalApi.lastReadUserId).isNull();
+        assertThat(queryOperations.updateSql).anySatisfy(sql ->
+                assertThat(sql).contains("index_last_error"));
+        assertThat(queryOperations.updateSql).noneSatisfy(sql ->
+                assertThat(sql).contains("set extracted_text"));
+        assertThat(queryOperations.updateSql).noneSatisfy(sql ->
+                assertThat(sql).contains("insert into ai_knowledge_chunk"));
+    }
+
+    @Test
+    void pendingIndexJobShouldRefreshTrustedOwnerIdentityBeforeFileRead() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("hello knowledge world".getBytes(StandardCharsets.UTF_8));
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(7L, "user-uuid-7"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:knowledge:document:index")));
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                fileInternalApi,
+                new AiKnowledgeTextExtractor(),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        int processed = service.processPendingIndexTasks(10);
+
+        assertThat(processed).isEqualTo(1);
+        assertThat(fileInternalApi.lastReadUserId).isEqualTo(7L);
+        assertThat(fileInternalApi.lastReadUserUuid).isEqualTo("user-uuid-7");
+        assertThat(fileInternalApi.lastReadUsername).isEqualTo("live-admin");
+    }
+
+    @Test
+    void pendingIndexJobShouldPreserveSimulatedRoleTrustScope() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.createdBySimulatedRoleId = 9L;
+        InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("hello knowledge world".getBytes(StandardCharsets.UTF_8));
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "live-admin", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(7L, "user-uuid-7")).thenReturn(true);
+        when(permissionSnapshotService.loadGrantedRoleSnapshot(7L, "user-uuid-7", 9L))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:knowledge:document:index")));
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                fileInternalApi,
+                new AiKnowledgeTextExtractor(),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        int processed = service.processPendingIndexTasks(10);
+
+        assertThat(processed).isEqualTo(1);
+        verify(permissionSnapshotService, org.mockito.Mockito.atLeastOnce()).loadGrantedRoleSnapshot(7L, "user-uuid-7", 9L);
+        assertThat(fileInternalApi.lastReadSimulatedRoleId).isEqualTo(9L);
     }
 
     @Test
@@ -447,6 +694,32 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
+    void uploadDocumentShouldPropagateSimulatedRoleIdToFileService() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                fileInternalApi,
+                new AiKnowledgeTextExtractor(),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:upload")));
+        currentUser.setSimulatedRoleId(9L);
+        MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
+
+        service.uploadDocument(currentUser, 20L, file);
+
+        assertThat(fileInternalApi.uploadedForSimulatedRoleId).isEqualTo(9L);
+        assertThat(queryOperations.updateCalls).anySatisfy(call -> {
+            assertThat(call.sql()).contains("insert into ai_knowledge_document", "simulated_role_id");
+            assertThat(call.args()).contains(9L);
+        });
+    }
+
+    @Test
     void uploadDocumentShouldRejectWhenInsertMissesBeforeDocumentLookup() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.knowledgeDocumentInsertResult = 0;
@@ -473,6 +746,32 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
+    void uploadDocumentShouldRequireDocumentUploadPermissionBeforeKnowledgeBaseLookup() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        InMemoryFileInternalApi fileInternalApi = new InMemoryFileInternalApi("uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                fileInternalApi,
+                new AiKnowledgeTextExtractor(),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+        MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.uploadDocument(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                20L,
+                file
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
     void deleteDocumentShouldBindDocumentCreatorIdentityInFinalWrites() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
@@ -484,7 +783,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:manage")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:delete")));
 
         service.deleteDocument(currentUser, 20L, 30L);
 
@@ -503,6 +802,30 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
+    void deleteDocumentShouldRequireDocumentDeletePermissionBeforeDatabaseWrite() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+
+        assertThatThrownBy(() -> service.deleteDocument(
+                trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view"))),
+                20L,
+                30L
+        )).isInstanceOfSatisfying(BizException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.updateSql).isEmpty();
+    }
+
+    @Test
     void deleteDocumentShouldRejectWhenFinalWriteMisses() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.knowledgeDocumentDeleteResult = 0;
@@ -515,7 +838,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:manage")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:delete")));
 
         assertThatThrownBy(() -> service.deleteDocument(currentUser, 20L, 30L))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -694,6 +1017,51 @@ class AiKnowledgeBaseAppServiceTest {
     }
 
     @Test
+    void retrieveShouldRequireQueryPermissionBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        queryOperations.vectorSearchRows = true;
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+
+        assertThatThrownBy(() -> service.retrieve(currentUser, "合同审批", List.of(20L), 2))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.lastListSql).isBlank();
+    }
+
+    @Test
+    void retrieveForEmployeeShouldRequireQueryPermissionBeforeBindingLookup() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                mock(com.lumira.api.client.FileInternalApi.class),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:view")));
+
+        assertThatThrownBy(() -> service.retrieveForEmployee(currentUser, 11L, "合同审批", 2))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        assertThat(queryOperations.lastListSql).isBlank();
+    }
+
+    @Test
     void createKnowledgeBaseShouldUseLastInsertId() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.lastInsertId = 88L;
@@ -761,7 +1129,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:manage")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:update")));
         AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
         request.setName("Research KB");
         request.setStatus("ENABLED");
@@ -788,7 +1156,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:manage")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:update")));
         AiDTO.KnowledgeBaseUpsertRequest request = new AiDTO.KnowledgeBaseUpsertRequest();
         request.setName("Research KB");
         request.setStatus("ENABLED");
@@ -813,7 +1181,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:manage")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:delete")));
 
         assertThat(service.deleteKnowledgeBase(currentUser, 88L)).isTrue();
 
@@ -852,7 +1220,7 @@ class AiKnowledgeBaseAppServiceTest {
                 mock(DomainEventPublisher.class),
                 vectorService()
         );
-        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:manage")));
+        CurrentUser currentUser = trusted(new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:delete")));
 
         assertThatThrownBy(() -> service.deleteKnowledgeBase(currentUser, 88L))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -892,6 +1260,7 @@ class AiKnowledgeBaseAppServiceTest {
         private int retryCount = 0;
         private Long createdBy = 7L;
         private String createdByUserUuid = "user-uuid-7";
+        private Long createdBySimulatedRoleId;
         private boolean vectorSearchRows;
         private boolean lastInsertIdQueried;
         private int lastInsertIdQueries;
@@ -1036,6 +1405,7 @@ class AiKnowledgeBaseAppServiceTest {
             row.put("chunk_count", 1);
             row.put("created_by", createdBy);
             row.put("created_by_user_uuid", createdByUserUuid);
+            row.put("simulated_role_id", createdBySimulatedRoleId);
             row.put("created_by_username", "admin");
             row.put("index_retry_count", retryCount);
             row.put("create_time", LocalDateTime.now());
@@ -1085,9 +1455,11 @@ class AiKnowledgeBaseAppServiceTest {
         private Long uploadedForUserId;
         private String uploadedForUserUuid;
         private String uploadedForUsername;
+        private Long uploadedForSimulatedRoleId;
         private Long lastReadUserId;
         private String lastReadUserUuid;
         private String lastReadUsername;
+        private Long lastReadSimulatedRoleId;
 
         private InMemoryFileInternalApi(byte[] content) {
             this.content = content;
@@ -1112,11 +1484,13 @@ class AiKnowledgeBaseAppServiceTest {
                 String bucket,
                 Long userId,
                 String userUuid,
-                String username
+                String username,
+                Long simulatedRoleId
         ) {
             this.uploadedForUserId = userId;
             this.uploadedForUserUuid = userUuid;
             this.uploadedForUsername = username;
+            this.uploadedForSimulatedRoleId = simulatedRoleId;
             return new FileObjectDTO(
                     40L,
                     userId,
@@ -1146,19 +1520,36 @@ class AiKnowledgeBaseAppServiceTest {
         }
 
         @Override
-        public FileContentDTO readFileContentForUser(Long fileId, Long userId, String userUuid, String username) {
+        public FileContentDTO readFileContentForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                boolean sharedScope,
+                Long simulatedRoleId
+        ) {
             contentReadCount++;
             lastReadUserId = userId;
             lastReadUserUuid = userUuid;
             lastReadUsername = username;
+            lastReadSimulatedRoleId = simulatedRoleId;
             return new FileContentDTO(fileId, "doc.txt", "text/plain", "txt", content);
         }
 
         @Override
-        public FileProcessingArtifactDTO readProcessingArtifactForUser(Long fileId, Long userId, String userUuid, String username, String artifactType) {
+        public FileProcessingArtifactDTO readProcessingArtifactForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                String artifactType,
+                boolean sharedScope,
+                Long simulatedRoleId
+        ) {
             lastReadUserId = userId;
             lastReadUserUuid = userUuid;
             lastReadUsername = username;
+            lastReadSimulatedRoleId = simulatedRoleId;
             if (textArtifact == null) {
                 throw new RuntimeException("artifact unavailable");
             }
@@ -1188,7 +1579,14 @@ class AiKnowledgeBaseAppServiceTest {
         }
 
         @Override
-        public FileContentDTO readFileContentForUser(Long fileId, Long userId, String userUuid, String username) {
+        public FileContentDTO readFileContentForUser(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                boolean sharedScope,
+                Long simulatedRoleId
+        ) {
             throw new RuntimeException("temporary parser failure");
         }
     }

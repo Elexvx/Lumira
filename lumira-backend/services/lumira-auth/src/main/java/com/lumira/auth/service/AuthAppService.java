@@ -52,7 +52,7 @@ import java.util.regex.Pattern;
 public class AuthAppService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthAppService.class);
-    private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String READ_MODEL_CONTEXT_IAM = "IAM";
     private static final String READ_MODEL_SCOPE_IAM_PERMISSION_SNAPSHOT = "permission-snapshot";
     private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
@@ -66,7 +66,6 @@ public class AuthAppService {
     private static final String AUTH_BOOTSTRAP_TIMER = "auth.bootstrap";
     private static final String AUTH_REFRESH_TOKEN_TIMER = "auth.refresh_token";
     private static final String PLAINTEXT_LOGIN_PASSWORD_HEADER = "X-Login-Password-Plaintext";
-    private static final String GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY = "permission-snapshot";
     private static final String GLOBAL_PUBLIC_BOOTSTRAP_READ_MODEL_VERSION_CACHE_KEY = "platform/public-bootstrap";
     private static final String GLOBAL_PLATFORM_RUNTIME_APPEARANCE_READ_MODEL_VERSION_CACHE_KEY = "platform/runtime-appearance";
     private static final String GLOBAL_PLATFORM_MENU_TREE_READ_MODEL_VERSION_CACHE_KEY = "platform/menu-tree";
@@ -103,9 +102,7 @@ public class AuthAppService {
     private final Cache<String, CurrentUserDTO> currentUserCache;
     private final Cache<String, AuthBootstrapCache> authBootstrapCache;
     private final Cache<String, String> authBootstrapSessionCacheKeys;
-    private final Cache<String, Long> permissionReadModelVersionCache;
     private final Cache<PermissionSnapshotLoadInFlightKey, CompletableFuture<PermissionSnapshotDTO>> permissionSnapshotLoadInFlight;
-    private final Cache<String, CompletableFuture<Long>> permissionReadModelVersionLoadInFlight;
     private final long permissionSnapshotVersionCacheTtlMillis;
     private final long authBootstrapCacheTtlMillis;
     private final long loginCapabilitiesCacheTtlMillis;
@@ -275,15 +272,7 @@ public class AuthAppService {
                 .maximumSize(authBootstrapCacheMaxEntries)
                 .expireAfterWrite(authBootstrapCacheTtlMillis, TimeUnit.MILLISECONDS)
                 .build();
-        this.permissionReadModelVersionCache = CacheBuilder.newBuilder()
-                .maximumSize(Math.max(1L, securityProperties.getPermissionSnapshotVersionCacheMaxEntries()))
-                .expireAfterWrite(permissionSnapshotVersionCacheTtlMillis, TimeUnit.MILLISECONDS)
-                .build();
         this.permissionSnapshotLoadInFlight = CacheBuilder.newBuilder()
-                .maximumSize(Math.max(1L, securityProperties.getPermissionSnapshotVersionCacheMaxEntries()))
-                .expireAfterWrite(permissionSnapshotVersionCacheTtlMillis, TimeUnit.MILLISECONDS)
-                .build();
-        this.permissionReadModelVersionLoadInFlight = CacheBuilder.newBuilder()
                 .maximumSize(Math.max(1L, securityProperties.getPermissionSnapshotVersionCacheMaxEntries()))
                 .expireAfterWrite(permissionSnapshotVersionCacheTtlMillis, TimeUnit.MILLISECONDS)
                 .build();
@@ -362,7 +351,7 @@ public class AuthAppService {
                 return response;
             }
 
-            PermissionSnapshotDTO snapshot = snapshotFuture.join();
+            PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(snapshotFuture.join());
             cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
 
             AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresPasswordChange, "PASSWORD");
@@ -398,10 +387,10 @@ public class AuthAppService {
     }
 
     private boolean requiresInitialAdminPasswordChange(SystemUserSnapshotDTO user) {
-        if (user == null || !DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username())) {
+        if (user == null || !DEFAULT_ADMIN_USER_ID.equals(user.userId())) {
             return false;
         }
-        if (user.userId() == null || !StringUtils.hasText(user.userUuid())) {
+        if (!StringUtils.hasText(user.userUuid())) {
             return true;
         }
         return Boolean.TRUE.equals(systemInternalApi.requiresInitialPasswordChange(user.userId(), user.userUuid()));
@@ -501,7 +490,7 @@ public class AuthAppService {
         CompletableFuture<List<LoginResponseDTO.SecondFactorOptionDTO>> secondFactorOptionsFuture = supplyBlockingIo(
                 () -> loadLoginSecondFactorOptions(user.userId(), user.userUuid())
         );
-        PermissionSnapshotDTO snapshot = snapshotFuture.join();
+        PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(snapshotFuture.join());
         cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
@@ -619,12 +608,12 @@ public class AuthAppService {
         long start = System.nanoTime();
         try {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
-            CurrentUserDTO cached = getCachedCurrentUser(currentUser);
+            AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
+                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+            CurrentUserDTO cached = getCachedCurrentUser(currentUser, session);
             if (cached != null) {
                 return cached;
             }
-            AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
             CurrentUserDTO resolved = resolveCurrentUserFromSession(session);
             putCachedCurrentUser(session, resolved);
             return resolved;
@@ -701,9 +690,9 @@ public class AuthAppService {
                     .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
             SystemUserSnapshotDTO user = requireTrustedActiveSessionProfile(session);
             Long requestedRoleId = normalizeSimulatedRoleId(request == null ? null : request.roleId());
-            PermissionSnapshotDTO snapshot = requestedRoleId == null
+            PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(requestedRoleId == null
                     ? systemInternalApi.permissionSnapshot(user.userId(), user.userUuid())
-                    : systemInternalApi.simulatedRolePermissionSnapshot(user.userId(), user.userUuid(), requestedRoleId);
+                    : systemInternalApi.simulatedRolePermissionSnapshot(user.userId(), user.userUuid(), requestedRoleId));
             String previousCurrentUserCacheKey = currentUserCacheKey(session);
             session.setSimulatedRoleId(requestedRoleId);
             session.setLastActivityAt(Instant.now());
@@ -764,8 +753,11 @@ public class AuthAppService {
 
     private CurrentUserDTO resolveCurrentUserFromSession(AuthSession session) {
         reconcileInitialPasswordState(session);
-        if (hasCurrentUserSnapshot(session) && refreshPermissionSnapshotVersionIfNeeded(session)) {
-            return currentUserFromProfileAndSession(requireTrustedActiveSessionProfile(session), session);
+        if (hasCurrentUserSnapshot(session)) {
+            if (refreshPermissionSnapshotVersionIfNeeded(session)) {
+                return currentUserFromProfileAndSession(requireTrustedActiveSessionProfile(session), session);
+            }
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session permissions are unavailable");
         }
         CurrentUserSessionHydration hydration = loadCurrentUserSessionHydration(session);
         SystemUserSnapshotDTO user = hydration.user();
@@ -831,7 +823,7 @@ public class AuthAppService {
     public Boolean verificationUnbind(String factorCode, SecondFactorCompleteRequest request) {
         CurrentUser currentUser = requireAuthenticatedCurrentUser();
         if (!factorCode.equalsIgnoreCase(request.factorCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "婵°倗濮撮惌渚€鎯佹径鎰闁荤喐澹嗙涵鈧繛鎴炴尭缁夊浜搁鈧弻?");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
         }
         return systemInternalApi.unbindVerificationProvider(currentUser.getUserId(), currentUser.getUserUuid(), factorCode, request);
     }
@@ -873,7 +865,7 @@ public class AuthAppService {
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "Verified login user is disabled: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(user.userId(), user.userUuid());
+        PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(systemInternalApi.permissionSnapshot(user.userId(), user.userUuid()));
         cachePermissionSnapshotVersion(user.userId(), user.userUuid(), snapshot);
         String loginIp = clientIpResolver.resolve(request);
         String userAgent = request.getHeader("User-Agent");
@@ -1044,7 +1036,7 @@ public class AuthAppService {
     }
 
     private CurrentUserDTO currentUserBySession(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot) {
-        hydrateSessionSnapshot(session, user, snapshot, requiresInitialAdminPasswordChange(user));
+        hydrateSessionSnapshot(session, user, requireTrustedPermissionSnapshot(snapshot), requiresInitialAdminPasswordChange(user));
         authSessionStore.save(session, false);
         return currentUserFromProfileAndSession(user, session);
     }
@@ -1080,6 +1072,13 @@ public class AuthAppService {
         if (user == null || !"ENABLED".equalsIgnoreCase(normalizeText(user.status()))) {
             throw new BizException(ErrorCode.SESSION_EXPIRED, "Session user is disabled");
         }
+    }
+
+    private PermissionSnapshotDTO requireTrustedPermissionSnapshot(PermissionSnapshotDTO snapshot) {
+        if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session permissions are unavailable");
+        }
+        return snapshot;
     }
 
     private List<CurrentUserRoleOptionDTO> loadCurrentUserRoleOptions(Long userId, String userUuid) {
@@ -1198,21 +1197,32 @@ public class AuthAppService {
         return (double) hits / total;
     }
 
-    private CurrentUserDTO getCachedCurrentUser(CurrentUser currentUser) {
+    private CurrentUserDTO getCachedCurrentUser(CurrentUser currentUser, AuthSession session) {
         if (!isTrustedCurrentUser(currentUser)
-                || Boolean.TRUE.equals(currentUser.getRequiresPasswordChange())) {
+                || Boolean.TRUE.equals(currentUser.getRequiresPasswordChange())
+                || session == null) {
             return null;
         }
-        String key = currentUserCacheKey(currentUser);
-        if (!StringUtils.hasText(key)) {
+        String currentUserKey = currentUserCacheKey(currentUser);
+        String sessionKey = currentUserCacheKey(session);
+        if (!StringUtils.hasText(currentUserKey) && !StringUtils.hasText(sessionKey)) {
             return null;
         }
-        CurrentUserDTO cached = currentUserCache.getIfPresent(key);
+        CurrentUserDTO cached = currentUserCache.getIfPresent(StringUtils.hasText(sessionKey) ? sessionKey : currentUserKey);
         if (cached == null) {
             return null;
         }
-        if (!isTrustedActiveUser(currentUser.getUserId(), currentUser.getUserUuid())) {
-            currentUserCache.invalidate(key);
+        if (!isTrustedActiveUser(session.getUserId(), session.getUserUuid())) {
+            invalidateCurrentUserCacheKeys(currentUserKey, sessionKey);
+            return null;
+        }
+        if (!refreshPermissionSnapshotVersionIfNeeded(session)) {
+            invalidateCurrentUserCacheKeys(currentUserKey, sessionKey);
+            return null;
+        }
+        String refreshedSessionKey = currentUserCacheKey(session);
+        if (StringUtils.hasText(refreshedSessionKey) && !refreshedSessionKey.equals(sessionKey)) {
+            invalidateCurrentUserCacheKeys(currentUserKey, sessionKey);
             return null;
         }
         return cached;
@@ -1338,6 +1348,17 @@ public class AuthAppService {
                 + "#" + session.getPermissionsVersion();
     }
 
+    private void invalidateCurrentUserCacheKeys(String... keys) {
+        if (keys == null) {
+            return;
+        }
+        for (String key : keys) {
+            if (StringUtils.hasText(key)) {
+                currentUserCache.invalidate(key);
+            }
+        }
+    }
+
     private AuthBootstrapDTO getAuthBootstrap(AuthSession session, ResolvedAuthBootstrapCacheKey resolvedCacheKey) {
         String key = resolvedCacheKey == null ? null : resolvedCacheKey.cacheKey();
         if (!StringUtils.hasText(key)) {
@@ -1391,21 +1412,13 @@ public class AuthAppService {
         }
 
         PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(session);
-        if (cachedVersion != null) {
-            if (sessionPermissionsVersion.equals(cachedVersion.version)) {
-                return true;
-            }
-            Long readModelVersion = getPermissionReadModelVersion();
-            Long parsedSessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
-            return readModelVersion != null && parsedSessionVersion != null && readModelVersion.equals(parsedSessionVersion);
+        if (cachedVersion != null && !sessionPermissionsVersion.equals(cachedVersion.version)) {
+            return false;
         }
 
         Long readModelVersion = getPermissionReadModelVersion();
         Long parsedSessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
-        if (readModelVersion == null || parsedSessionVersion == null) {
-            return true;
-        }
-        if (readModelVersion.equals(parsedSessionVersion)) {
+        if (readModelVersion != null && readModelVersion > 0 && parsedSessionVersion != null && readModelVersion.equals(parsedSessionVersion)) {
             cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
             return true;
         }
@@ -1614,37 +1627,28 @@ public class AuthAppService {
         }
 
         PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(session);
+        Long readModelVersion = getPermissionReadModelVersion();
+        Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
         if (cachedVersion != null) {
             permissionSnapshotVersionCacheHits.increment();
-            if (sessionPermissionsVersion.equals(cachedVersion.version)) {
-                return true;
+            if (!sessionPermissionsVersion.equals(cachedVersion.version)) {
+                permissionSnapshotVersionCacheRefreshes.increment();
+                return ensurePermissionSnapshotFromSystem(session, readModelVersion);
             }
-            Long readModelVersion = getPermissionReadModelVersion();
-            Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
             if (readModelVersion != null && readModelVersion > 0 && sessionVersion != null && readModelVersion.equals(sessionVersion)) {
-                cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
                 return true;
             }
             permissionSnapshotVersionCacheRefreshes.increment();
             return ensurePermissionSnapshotFromSystem(session, readModelVersion);
         }
 
-        Long readModelVersion = getPermissionReadModelVersion();
-        if (readModelVersion != null && readModelVersion > 0) {
-            Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
-            if (sessionVersion != null && readModelVersion.equals(sessionVersion)) {
-                permissionSnapshotVersionCacheMisses.increment();
-                cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
-                return true;
-            }
-            if (sessionVersion == null || !readModelVersion.equals(sessionVersion)) {
-                permissionSnapshotVersionCacheMisses.increment();
-                return ensurePermissionSnapshotFromSystem(session, readModelVersion);
-            }
-        }
-
         permissionSnapshotVersionCacheMisses.increment();
-        return ensurePermissionSnapshotFromSystem(session, null);
+        if (readModelVersion != null && readModelVersion > 0 && sessionVersion != null && readModelVersion.equals(sessionVersion)) {
+            cachePermissionSnapshotVersion(session, sessionPermissionsVersion);
+            return true;
+        }
+        permissionSnapshotVersionCacheRefreshes.increment();
+        return ensurePermissionSnapshotFromSystem(session, readModelVersion);
 
     }
 
@@ -1689,16 +1693,16 @@ public class AuthAppService {
             try {
                 return inFlight.join();
             } catch (CompletionException exception) {
-                permissionSnapshotLoadInFlight.invalidate(key);
                 Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
                 if (cause instanceof RuntimeException runtimeException) {
                     throw runtimeException;
                 }
                 log.warn("Failed to load permission snapshot for userId={} with single-flight path", userId, cause);
                 return null;
+            } finally {
+                permissionSnapshotLoadInFlight.invalidate(key);
             }
         } catch (ExecutionException exception) {
-            permissionSnapshotLoadInFlight.invalidate(key);
             log.warn("Failed to load permission snapshot single-flight for userId={}", userId, exception);
             return null;
         }
@@ -1717,8 +1721,7 @@ public class AuthAppService {
     }
 
     private Long getPermissionReadModelVersion() {
-        return getReadModelVersion(
-                GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY,
+        return readReadModelVersion(
                 READ_MODEL_CONTEXT_IAM,
                 READ_MODEL_SCOPE_IAM_PERMISSION_SNAPSHOT
         );
@@ -1742,46 +1745,6 @@ public class AuthAppService {
                     BOOTSTRAP_READ_MODEL_VERSION_CACHE_TTL_MILLIS,
                     () -> systemInternalApi.readModelVersion(context, scope)
             );
-        } catch (Exception exception) {
-            log.debug("Failed to read read-model version context={} scope={}", context, scope, exception);
-            return null;
-        }
-    }
-
-    private Long getReadModelVersion(String cacheKey, String context, String scope) {
-        Long cachedVersion = permissionReadModelVersionCache.getIfPresent(cacheKey);
-        if (cachedVersion != null) {
-            return cachedVersion;
-        }
-        Long version = loadReadModelVersionWithSingleFlight(cacheKey, context, scope);
-        if (version != null) {
-            permissionReadModelVersionCache.put(cacheKey, version);
-        }
-        return version;
-    }
-
-    private Long loadReadModelVersionWithSingleFlight(String cacheKey, String context, String scope) {
-        try {
-            CompletableFuture<Long> inFlight = permissionReadModelVersionLoadInFlight.get(
-                    cacheKey,
-                    () -> CompletableFuture.completedFuture(loadReadModelVersion(context, scope))
-            );
-            return inFlight.join();
-        } catch (CompletionException exception) {
-            permissionReadModelVersionLoadInFlight.invalidate(cacheKey);
-            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-            log.debug("Failed to load read-model version context={} scope={}", context, scope, cause);
-            return null;
-        } catch (ExecutionException exception) {
-            permissionReadModelVersionLoadInFlight.invalidate(cacheKey);
-            log.debug("Failed to load read-model version single-flight context={} scope={}", context, scope, exception);
-            return null;
-        }
-    }
-
-    private Long loadReadModelVersion(String context, String scope) {
-        try {
-            return systemInternalApi.readModelVersion(context, scope);
         } catch (Exception exception) {
             log.debug("Failed to read read-model version context={} scope={}", context, scope, exception);
             return null;

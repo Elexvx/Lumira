@@ -113,6 +113,7 @@ class AuthAppServiceTest {
                 .thenAnswer(invocation -> enabledUser(invocation.getArgument(0)));
         when(systemInternalApi.findUserProfileById(org.mockito.ArgumentMatchers.anyLong()))
                 .thenAnswer(invocation -> enabledUser(invocation.getArgument(0)));
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(1L);
         when(systemInternalApi.requiresInitialPasswordChange(org.mockito.ArgumentMatchers.anyLong(), anyString()))
                 .thenReturn(false);
         when(systemInternalApi.verifyPasswordLogin(anyString(), anyString()))
@@ -281,6 +282,19 @@ class AuthAppServiceTest {
 
         verify(systemInternalApi).findUserProfileById(42L);
         verify(systemInternalApi, never()).permissionSnapshot(any(), any());
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+    }
+
+    @Test
+    void loginVerifiedUserShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(systemInternalApi.findUserProfileById(42L)).thenReturn(enabledUser(42L));
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(null);
+
+        BizException exception = assertThrows(BizException.class, () -> authAppService.loginVerifiedUser(42L, "user-uuid-42", httpRequest));
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals("Session permissions are unavailable", exception.getMessage());
         verify(authSessionStore, never()).save(any(), anyBoolean());
     }
 
@@ -540,15 +554,19 @@ class AuthAppServiceTest {
     @Test
     void bootstrapSkipsPostLoginResourcesWhenPasswordChangeIsRequired() {
         AuthSession session = cachedSession();
+        session.setUserId(1001L);
+        session.setUserUuid("user-uuid-1001");
         session.setUsername("admin");
         session.setRequiresPasswordChange(Boolean.TRUE);
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         CurrentUser adminCurrentUser = trustedJaneCurrentUser();
+        adminCurrentUser.setUserId(1001L);
+        adminCurrentUser.setUserUuid("user-uuid-1001");
         adminCurrentUser.setUsername("admin");
         when(securityContextFacade.getCurrentUser()).thenReturn(adminCurrentUser);
-        when(systemInternalApi.findUserById(42L)).thenReturn(initialPasswordAdminUser(42L));
-        when(systemInternalApi.requiresInitialPasswordChange(42L, "user-uuid-42")).thenReturn(true);
-        seedPermissionVersionCache(42L, "v1");
+        when(systemInternalApi.findUserById(1001L)).thenReturn(initialPasswordAdminUser(1001L));
+        when(systemInternalApi.requiresInitialPasswordChange(1001L, "user-uuid-1001")).thenReturn(true);
+        seedPermissionVersionCache(1001L, "v1");
         AtomicInteger providerCalls = new AtomicInteger();
         AuthPostLoginBootstrapProvider provider = currentUser -> {
             providerCalls.incrementAndGet();
@@ -558,7 +576,7 @@ class AuthAppServiceTest {
             );
         };
         AuthAppService serviceWithProvider = createAuthAppService(provider);
-        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+        seedPermissionVersionCache(serviceWithProvider, 1001L, "v1");
 
         var bootstrap = serviceWithProvider.bootstrap();
 
@@ -573,15 +591,19 @@ class AuthAppServiceTest {
     @Test
     void bootstrapClearsPasswordChangeFlagWhenSystemReportsPasswordUpdated() {
         AuthSession session = cachedSession();
+        session.setUserId(1001L);
+        session.setUserUuid("user-uuid-1001");
         session.setUsername("admin");
         session.setRequiresPasswordChange(Boolean.TRUE);
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         CurrentUser adminCurrentUser = trustedJaneCurrentUser();
+        adminCurrentUser.setUserId(1001L);
+        adminCurrentUser.setUserUuid("user-uuid-1001");
         adminCurrentUser.setUsername("admin");
         when(securityContextFacade.getCurrentUser()).thenReturn(adminCurrentUser);
-        when(systemInternalApi.findUserById(42L)).thenReturn(initialPasswordAdminUser(42L));
-        when(systemInternalApi.requiresInitialPasswordChange(42L, "user-uuid-42")).thenReturn(false);
-        seedPermissionVersionCache(42L, "v1");
+        when(systemInternalApi.findUserById(1001L)).thenReturn(initialPasswordAdminUser(1001L));
+        when(systemInternalApi.requiresInitialPasswordChange(1001L, "user-uuid-1001")).thenReturn(false);
+        seedPermissionVersionCache(1001L, "v1");
         AtomicInteger providerCalls = new AtomicInteger();
         AuthPostLoginBootstrapProvider provider = ignored -> {
             providerCalls.incrementAndGet();
@@ -591,13 +613,34 @@ class AuthAppServiceTest {
             );
         };
         AuthAppService serviceWithProvider = createAuthAppService(provider);
-        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+        seedPermissionVersionCache(serviceWithProvider, 1001L, "v1");
 
         var bootstrap = serviceWithProvider.bootstrap();
 
         assertTrue(Boolean.FALSE.equals(bootstrap.currentUser().requiresPasswordChange()));
         assertEquals(1, providerCalls.get());
         verify(authSessionStore, atLeast(1)).save(session, false);
+    }
+
+    @Test
+    void bootstrapShouldNotForcePasswordChangeForNonDefaultUserNamedAdmin() {
+        AuthSession session = cachedSession();
+        session.setUsername("admin");
+        session.setRequiresPasswordChange(Boolean.TRUE);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        CurrentUser adminLikeCurrentUser = trustedJaneCurrentUser();
+        adminLikeCurrentUser.setUsername("admin");
+        when(securityContextFacade.getCurrentUser()).thenReturn(adminLikeCurrentUser);
+        when(systemInternalApi.findUserById(42L)).thenReturn(initialPasswordAdminUser(42L));
+        seedPermissionVersionCache(42L, "v1");
+        AuthAppService serviceWithProvider = createAuthAppService(ignored ->
+                new AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload(List.of(), List.of()));
+        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+
+        var bootstrap = serviceWithProvider.bootstrap();
+
+        assertFalse(Boolean.TRUE.equals(bootstrap.currentUser().requiresPasswordChange()));
+        verify(systemInternalApi, never()).requiresInitialPasswordChange(42L, "user-uuid-42");
     }
 
     @Test
@@ -687,7 +730,7 @@ class AuthAppServiceTest {
 
         assertEquals(42L, first.userId());
         assertEquals("v1", second.permissionsVersion());
-        verify(authSessionStore, times(1)).findBySessionId("session-1");
+        verify(authSessionStore, times(2)).findBySessionId("session-1");
         verify(systemInternalApi, times(1)).findUserProfileById(42L);
         verify(systemInternalApi, times(1)).findUserById(42L);
         verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
@@ -727,6 +770,102 @@ class AuthAppServiceTest {
         verify(systemInternalApi, times(2)).findUserProfileById(42L);
         verify(systemInternalApi, times(1)).findUserById(42L);
         verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+    }
+
+    @Test
+    void currentUserFallsBackToLivePermissionSnapshotWhenReadModelVersionIsUnavailable() {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(trustedJaneCurrentUser(
+                Set.of("dashboard:view"),
+                Set.of(7L),
+                9L,
+                Set.of(9L),
+                Set.of(10L)
+        ));
+        seedPermissionVersionCache(42L, "v1");
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot"))
+                .thenThrow(new RuntimeException("permission read-model unavailable"));
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(new PermissionSnapshotDTO(
+                "v1",
+                List.of("dashboard:view"),
+                List.of(7L),
+                9L,
+                List.of(9L),
+                List.of(10L),
+                List.of(),
+                "/dashboard/home"
+        ));
+
+        CurrentUserDTO currentUser = authAppService.currentUser();
+
+        assertEquals(42L, currentUser.userId());
+        assertEquals("v1", currentUser.permissionsVersion());
+        verify(systemInternalApi).permissionSnapshot(42L, "user-uuid-42");
+    }
+
+    @Test
+    void currentUserRefreshesCachedSnapshotWhenPermissionVersionChanges() {
+        AuthSession session = cachedSession();
+        CurrentUser currentUser = trustedJaneCurrentUser(
+                Set.of("dashboard:view"),
+                Set.of(7L),
+                9L,
+                Set.of(9L),
+                Set.of(10L)
+        );
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        seedPermissionVersionCache(42L, "v1");
+
+        CurrentUserDTO first = authAppService.currentUser();
+        assertEquals("v1", first.permissionsVersion());
+
+        seedPermissionVersionCache(42L, "v2");
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(new PermissionSnapshotDTO(
+                "v2",
+                List.of("dashboard:view", "project:view"),
+                List.of(7L),
+                9L,
+                List.of(9L),
+                List.of(10L),
+                List.of(),
+                "/dashboard/home"
+        ));
+
+        CurrentUserDTO second = authAppService.currentUser();
+
+        assertEquals("v2", second.permissionsVersion());
+        assertEquals(List.of("dashboard:view", "project:view"), second.permissions());
+        verify(systemInternalApi, times(2)).permissionSnapshot(42L, "user-uuid-42");
+        verify(authSessionStore, atLeast(1)).save(session, false);
+    }
+
+    @Test
+    void currentUserRejectsCachedSnapshotWhenRefreshedPermissionSnapshotIsUnavailable() {
+        AuthSession session = cachedSession();
+        CurrentUser currentUser = trustedJaneCurrentUser(
+                Set.of("dashboard:view"),
+                Set.of(7L),
+                9L,
+                Set.of(9L),
+                Set.of(10L)
+        );
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        seedPermissionVersionCache(42L, "v1");
+
+        CurrentUserDTO first = authAppService.currentUser();
+        assertEquals("v1", first.permissionsVersion());
+
+        seedPermissionVersionCache(42L, "v2");
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(null);
+
+        BizException exception = assertThrows(BizException.class, () -> authAppService.currentUser());
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertEquals("Session permissions are unavailable", exception.getMessage());
+        verify(systemInternalApi, times(2)).permissionSnapshot(42L, "user-uuid-42");
     }
 
     @Test
@@ -957,7 +1096,11 @@ class AuthAppServiceTest {
         serviceWithProvider.bootstrap();
 
         assertEquals(1, versionLoads.get());
-        verify(systemInternalApi, never()).readModelVersion(anyString(), anyString());
+        verify(systemInternalApi, times(1)).readModelVersion("IAM", "permission-snapshot");
+        verify(systemInternalApi, never()).readModelVersion("platform", "public-bootstrap");
+        verify(systemInternalApi, never()).readModelVersion("platform", "runtime-appearance");
+        verify(systemInternalApi, never()).readModelVersion("plugin", "bootstrap");
+        verify(systemInternalApi, never()).readModelVersion("platform", "menu-tree");
     }
 
     @Test    void bootstrapRefreshesWhenPermissionVersionChanges() {
@@ -1040,6 +1183,37 @@ class AuthAppServiceTest {
         assertEquals("v1", bootstrap.currentUser().permissionsVersion());
         assertEquals(List.of("dashboard:view"), bootstrap.currentUser().permissions());
         verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+    }
+
+    @Test
+    void bootstrapDoesNotServeCachedBootstrapWhenPermissionReadModelVersionIsUnavailable() {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                trustedJaneCurrentUser()
+        );
+        seedPermissionVersionCache(42L, "v1");
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot"))
+                .thenThrow(new RuntimeException("permission read-model unavailable"));
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(new PermissionSnapshotDTO(
+                "v1",
+                List.of("dashboard:view"),
+                List.of(3L),
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                "/dashboard/home"
+        ));
+
+        authAppService.bootstrap();
+        var secondBootstrap = authAppService.bootstrap();
+
+        assertEquals("v1", secondBootstrap.currentUser().permissionsVersion());
+        assertEquals(2, authAppService.authBootstrapCacheMisses());
+        assertEquals(0, authAppService.authBootstrapCacheHits());
+        assertEquals(1, authAppService.authBootstrapCacheAlignmentRejects());
+        verify(systemInternalApi, times(2)).permissionSnapshot(42L, "user-uuid-42");
     }
 
     @Test
@@ -1340,7 +1514,7 @@ class AuthAppServiceTest {
         user51Session.setUserId(51L);
         user51Session.setUserUuid("user-uuid-51");
         user51Session.setPermissionsVersion("v20");
-        user51Session.setPermissions(List.of("report:view"));
+        user51Session.setPermissions(List.of("dashboard:view"));
         user51Session.setRoleIds(List.of(7L));
         user51Session.setDeptIds(List.of(200L));
         user51Session.setDescendantDeptIds(List.of(200L));
@@ -1348,6 +1522,17 @@ class AuthAppServiceTest {
 
         seedPermissionVersionCache(42L, "v10");
         seedPermissionVersionCache(51L, "v20");
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(10L);
+        when(systemInternalApi.permissionSnapshot(51L, "user-uuid-51")).thenReturn(new PermissionSnapshotDTO(
+                "v21",
+                List.of("report:view"),
+                List.of(7L),
+                null,
+                List.of(200L),
+                List.of(200L),
+                List.of(),
+                "/report/home"
+        ));
 
         when(authSessionStore.findBySessionId("session-42")).thenReturn(Optional.of(user42Session));
         when(authSessionStore.findBySessionId("session-51")).thenReturn(Optional.of(user51Session));
@@ -1360,7 +1545,7 @@ class AuthAppServiceTest {
         assertEquals(51L, currentUser51.userId());
         assertEquals(List.of("report:view"), currentUser51.permissions());
         verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
-        verify(systemInternalApi, never()).permissionSnapshot(51L, "user-uuid-51");
+        verify(systemInternalApi).permissionSnapshot(51L, "user-uuid-51");
     }
 
     @Test

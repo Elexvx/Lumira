@@ -149,16 +149,16 @@ public class ImageUploadService {
             return null;
         }
         if (normalized.contains(":")) {
-            throw badRequest("鍥剧墖瀛樺偍璺緞鏃犳晥");
+            throw badRequest("图片存储路径无效");
         }
         try {
             Path subPath = Path.of(normalized).normalize();
             if (subPath.isAbsolute() || subPath.startsWith("..")) {
-                throw badRequest("鍥剧墖瀛樺偍璺緞鏃犳晥");
+                throw badRequest("图片存储路径无效");
             }
             return subPath.toString().replace('\\', '/');
         } catch (InvalidPathException exception) {
-            throw badRequest("鍥剧墖瀛樺偍璺緞鏃犳晥");
+            throw badRequest("图片存储路径无效");
         }
     }
 

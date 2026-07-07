@@ -143,7 +143,7 @@ describe('sessionState', () => {
       userId: 1001,
       username: 'operator',
       nickname: 'Updated name',
-      permissions: ['dashboard:view', 'profile:update'],
+      permissions: ['dashboard:view', 'profile:view'],
     } as CurrentUser);
 
     expect(merged).toMatchObject({
@@ -154,7 +154,7 @@ describe('sessionState', () => {
       sessionId: 'session-1001',
       sessionVersion: 1,
       permissionsVersion: 'permissions-1',
-      permissions: ['dashboard:view', 'profile:update'],
+      permissions: ['dashboard:view', 'profile:view'],
     });
   });
 

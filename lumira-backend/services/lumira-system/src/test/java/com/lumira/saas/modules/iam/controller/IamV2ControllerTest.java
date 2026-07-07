@@ -1,14 +1,22 @@
 package com.lumira.saas.modules.iam.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.common.annotation.RepeatSubmit;
+import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -129,6 +137,157 @@ class IamV2ControllerTest {
 
         verify(permissionGuard).requirePermission(user, "system:role:grant");
         verify(systemManagementAppService).updateRolePermissions(user, 2001L, request.getPermissionKeys());
+    }
+
+    @Test
+    void createUserShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        CurrentUser user = trustedCurrentUser("system:user:create");
+        when(securityContextFacade.getCurrentUser()).thenReturn(user);
+        IamV2Controller controller = new IamV2Controller(
+                systemManagementAppService,
+                mock(SystemDepartmentAppService.class),
+                mock(UserExportAppService.class),
+                mock(ExportTaskService.class),
+                securityContextFacade,
+                new PermissionGuard(),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.createUser(new SystemDTO.UserUpsertRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+        verify(systemManagementAppService, never()).createUser(any(), any());
+    }
+
+    @Test
+    void createUserShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        CurrentUser user = trustedCurrentUser("system:user:create");
+        when(securityContextFacade.getCurrentUser()).thenReturn(user);
+        when(permissionSnapshotService.isTrustedActiveUser(3001L, "user-uuid-3001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(3001L, "user-uuid-3001")).thenReturn(null);
+        IamV2Controller controller = new IamV2Controller(
+                systemManagementAppService,
+                mock(SystemDepartmentAppService.class),
+                mock(UserExportAppService.class),
+                mock(ExportTaskService.class),
+                securityContextFacade,
+                new PermissionGuard(),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.createUser(new SystemDTO.UserUpsertRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user permission snapshot is unavailable");
+        verify(systemManagementAppService, never()).createUser(any(), any());
+    }
+
+    @Test
+    void createUserShouldRejectWhenLiveUsernameIsBlank() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        com.lumira.api.client.SystemInternalApi systemInternalApi = mock(com.lumira.api.client.SystemInternalApi.class);
+        CurrentUser user = trustedCurrentUser("system:user:create");
+        when(securityContextFacade.getCurrentUser()).thenReturn(user);
+        when(systemInternalApi.findUserIdentityById(3001L))
+                .thenReturn(userSnapshot(3001L, "user-uuid-3001", " ", "ENABLED"));
+        IamV2Controller controller = new IamV2Controller(
+                systemManagementAppService,
+                mock(SystemDepartmentAppService.class),
+                mock(UserExportAppService.class),
+                mock(ExportTaskService.class),
+                securityContextFacade,
+                new PermissionGuard(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.createUser(new SystemDTO.UserUpsertRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user username is unavailable");
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(any(), any());
+        verify(systemManagementAppService, never()).createUser(any(), any());
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        com.lumira.api.client.SystemInternalApi systemInternalApi = mock(com.lumira.api.client.SystemInternalApi.class);
+        CurrentUser user = trustedCurrentUser("system:user:create");
+        user.setSimulatedRoleId(0L);
+        when(permissionSnapshotService.isTrustedActiveUser(3001L, "user-uuid-3001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(3001L, "user-uuid-3001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:user:create")));
+        when(systemInternalApi.findUserIdentityById(3001L))
+                .thenReturn(userSnapshot(3001L, "user-uuid-3001", "admin-live", "ENABLED"));
+        IamV2Controller controller = new IamV2Controller(
+                systemManagementAppService,
+                mock(SystemDepartmentAppService.class),
+                mock(UserExportAppService.class),
+                mock(ExportTaskService.class),
+                securityContextFacade,
+                new PermissionGuard(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        Method method = IamV2Controller.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(controller, user);
+
+        assertThat(user.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(3001L, "user-uuid-3001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
+    private CurrentUser trustedCurrentUser(String permission) {
+        CurrentUser currentUser = new CurrentUser();
+        currentUser.setUserId(3001L);
+        currentUser.setUsername("admin");
+        currentUser.setSessionId("session-3001");
+        currentUser.setSessionVersion(1);
+        currentUser.setUserUuid("user-uuid-3001");
+        currentUser.setPermissionsVersion("permissions-1");
+        currentUser.setAuthenticated(true);
+        currentUser.setPermissions(Set.of(permission));
+        return currentUser;
+    }
+
+    private com.lumira.api.system.SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new com.lumira.api.system.SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     private Set<String> methodsWith(Class<? extends java.lang.annotation.Annotation> annotationClass) {

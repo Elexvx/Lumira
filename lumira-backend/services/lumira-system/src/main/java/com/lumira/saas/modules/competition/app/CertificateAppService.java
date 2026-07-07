@@ -95,6 +95,7 @@ public class CertificateAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public CertificateAppService(
@@ -112,7 +113,8 @@ public class CertificateAppService {
                 renderService,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                true
         );
     }
 
@@ -125,6 +127,19 @@ public class CertificateAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private CertificateAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            ObjectMapper objectMapper,
+            FileInternalApi fileInternalApi,
+            CertificateRenderService renderService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.fileInternalApi = fileInternalApi;
@@ -132,6 +147,7 @@ public class CertificateAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public CertificateAppService(
@@ -141,7 +157,7 @@ public class CertificateAppService {
             CertificateRenderService renderService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, permissionSnapshotService, null, null);
+        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, permissionSnapshotService, null, null, false);
     }
 
     public CertificateAppService(
@@ -150,7 +166,7 @@ public class CertificateAppService {
             FileInternalApi fileInternalApi,
             CertificateRenderService renderService
     ) {
-        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, null);
+        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, null, null, null, false);
     }
 
     public PageResponse<CertificateVO.Template> listTemplates(CurrentUser currentUser, String keyword, String status, long pageNo, long pageSize) {
@@ -344,7 +360,8 @@ public class CertificateAppService {
                 "certificate-template",
                 userId,
                 trustedUserUuid(currentUser),
-                trustedUsername(currentUser)
+                trustedUsername(currentUser),
+                currentUser.getSimulatedRoleId()
         );
         int updated = jdbcTemplate.update(
                 """
@@ -947,6 +964,9 @@ public class CertificateAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -967,16 +987,31 @@ public class CertificateAppService {
             }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -998,6 +1033,10 @@ public class CertificateAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -1014,7 +1053,7 @@ public class CertificateAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

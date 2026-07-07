@@ -1,18 +1,25 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
+import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService.SecuritySettingsSnapshot;
+import com.lumira.saas.modules.audit.app.LoginAuditService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserAccount;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.ProfileDTO;
+import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
+import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
+import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
@@ -21,6 +28,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.lang.reflect.Constructor;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
@@ -262,6 +270,121 @@ class SystemManagementAppServicePasswordTest {
         assertEquals(null, passwordPolicyService.validatedPassword);
         assertEquals(null, jdbcTemplate.lastSql);
         assertEquals(null, authSessionStore.revokedUserId);
+    }
+
+    @Test
+    void shouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        SysUserEntity user = buildUser("OldPass1!");
+        StubUserDomainService userDomainService = new StubUserDomainService(user);
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        SystemManagementAppService service = strictService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                userDomainService,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate),
+                null,
+                null,
+                null
+        );
+        ProfileDTO.PasswordUpdateRequest request = buildRequest("OldPass1!", "NewPass1!", "NewPass1!");
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateCurrentUserPassword(buildCurrentUser(), request));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, userDomainService.findByIdCalls);
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, jdbcTemplate.lastSql);
+        assertEquals(null, authSessionStore.revokedUserId);
+    }
+
+    private static SystemManagementAppService strictService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemPluginViewService systemPluginViewService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService,
+            FieldCryptoService fieldCryptoService
+    ) {
+        try {
+            Constructor<SystemManagementAppService> constructor = SystemManagementAppService.class.getDeclaredConstructor(
+                    MyBatisQueryOperations.class,
+                    UserDomainService.class,
+                    PermissionSnapshotService.class,
+                    SystemInternalApi.class,
+                    SessionAuthenticationService.class,
+                    SystemPluginViewService.class,
+                    OnlineSessionManagementAppService.class,
+                    SystemVerificationAppService.class,
+                    SystemPlatformSettingsAppService.class,
+                    SystemProfileSettingsAppService.class,
+                    PasswordEncoder.class,
+                    AuthSessionStore.class,
+                    LoginAuditService.class,
+                    OperationAuditService.class,
+                    SecuritySettingsService.class,
+                    PasswordPolicyService.class,
+                    IamUserService.class,
+                    SystemUserManagementAppService.class,
+                    SystemRoleManagementAppService.class,
+                    FieldCryptoService.class,
+                    boolean.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    jdbcTemplate,
+                    userDomainService,
+                    permissionSnapshotService,
+                    systemInternalApi,
+                    sessionAuthenticationService,
+                    systemPluginViewService,
+                    onlineSessionManagementAppService,
+                    systemVerificationAppService,
+                    systemPlatformSettingsAppService,
+                    systemProfileSettingsAppService,
+                    passwordEncoder,
+                    authSessionStore,
+                    loginAuditService,
+                    operationAuditService,
+                    securitySettingsService,
+                    passwordPolicyService,
+                    iamUserService,
+                    systemUserManagementAppService,
+                    systemRoleManagementAppService,
+                    fieldCryptoService,
+                    true
+            );
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("Failed to create strict SystemManagementAppService", ex);
+        }
     }
 
     private static SysUserEntity buildUser(String passwordHash) {

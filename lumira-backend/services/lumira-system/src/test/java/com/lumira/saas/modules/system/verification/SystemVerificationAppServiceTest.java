@@ -30,14 +30,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -260,6 +264,65 @@ class SystemVerificationAppServiceTest {
     }
 
     @Test
+    void currentUserListProvidersShouldRequireViewPermissionBeforeLookup() {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        SystemVerificationAppService service = service(userDomainService);
+        CurrentUser currentUser = currentUser();
+        currentUser.setPermissions(java.util.Set.of("system:user:view"));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.listProviders(currentUser)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        verify(userDomainService, never()).findById(1001L);
+    }
+
+    @Test
+    void currentUserProviderShouldRequireViewPermissionBeforeLookup() {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        SystemVerificationAppService service = service(userDomainService);
+        CurrentUser currentUser = currentUser();
+        currentUser.setPermissions(java.util.Set.of("system:user:view"));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.provider(currentUser, "totp")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        verify(userDomainService, never()).findById(1001L);
+    }
+
+    @Test
+    void currentUserProviderShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeLookup() {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", java.util.Set.of("system:user:view")));
+        SystemVerificationAppService service = service(
+                new MyBatisQueryOperations(mock(JdbcTemplate.class)),
+                userDomainService,
+                mock(SystemVerificationSettingsAppService.class),
+                mock(SmtpMailService.class),
+                mock(IamUserService.class),
+                mock(PasswordEncoder.class),
+                permissionSnapshotService
+        );
+        CurrentUser currentUser = currentUser();
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.provider(currentUser, "totp")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        verify(userDomainService, never()).findById(1001L);
+    }
+
+    @Test
     void currentUserBindShouldRejectMissingUserBeforeLookup() {
         UserDomainService userDomainService = mock(UserDomainService.class);
         SystemVerificationAppService service = service(userDomainService);
@@ -396,12 +459,42 @@ class SystemVerificationAppServiceTest {
     }
 
     @Test
+    void currentUserBindShouldRejectBlankLiveUsernameBeforeLookup() {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        SystemVerificationAppService service = service(
+                new MyBatisQueryOperations(mock(JdbcTemplate.class)),
+                userDomainService,
+                mock(SystemVerificationSettingsAppService.class),
+                mock(SmtpMailService.class),
+                mock(IamUserService.class),
+                mock(PasswordEncoder.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.bindCurrentUser(currentUser(), "totp")
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user username is unavailable"));
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+        verify(userDomainService, never()).findById(1001L);
+    }
+
+    @Test
     void currentUserProviderShouldRefreshLiveUsernameFromTrustedIdentity() {
         UserDomainService userDomainService = mock(UserDomainService.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "tester-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  tester-live  ", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", java.util.Set.of("system:verification:manage")));
@@ -453,6 +546,102 @@ class SystemVerificationAppServiceTest {
         );
 
         assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        verify(userDomainService, never()).findById(1001L);
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:verification:view")));
+        SystemVerificationAppService service = service(
+                new MyBatisQueryOperations(mock(JdbcTemplate.class)),
+                mock(UserDomainService.class),
+                mock(SystemVerificationSettingsAppService.class),
+                mock(SmtpMailService.class),
+                mock(IamUserService.class),
+                mock(PasswordEncoder.class),
+                permissionSnapshotService,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        assertDoesNotThrow(() -> invokeDeclared(
+                service,
+                "refreshTrustedCurrentUser",
+                new Class<?>[]{CurrentUser.class},
+                currentUser
+        ));
+
+        assertNull(currentUser.getSimulatedRoleId());
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
+    @Test
+    void currentUserBindShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        SystemVerificationAppService service = new SystemVerificationAppService(
+                new MyBatisQueryOperations(mock(JdbcTemplate.class)),
+                new ObjectMapper(),
+                userDomainService,
+                new SystemVerificationProperties(),
+                mock(SmtpMailService.class),
+                mock(SmsVerificationSender.class),
+                mock(VerificationDeliveryAuditService.class),
+                mock(SystemVerificationSettingsAppService.class),
+                mock(SecuritySettingsService.class),
+                mock(IamUserService.class),
+                mock(PasswordEncoder.class),
+                mock(FieldCryptoService.class),
+                null,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.bindCurrentUser(currentUser(), "totp")
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user resolver is unavailable"));
+        verify(userDomainService, never()).findById(1001L);
+    }
+
+    @Test
+    void currentUserBindShouldRejectWhenTrustedPermissionSnapshotIsUnavailableInStrictMode() {
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemVerificationAppService service = new SystemVerificationAppService(
+                new MyBatisQueryOperations(mock(JdbcTemplate.class)),
+                new ObjectMapper(),
+                userDomainService,
+                new SystemVerificationProperties(),
+                mock(SmtpMailService.class),
+                mock(SmsVerificationSender.class),
+                mock(VerificationDeliveryAuditService.class),
+                mock(SystemVerificationSettingsAppService.class),
+                mock(SecuritySettingsService.class),
+                mock(IamUserService.class),
+                mock(PasswordEncoder.class),
+                mock(FieldCryptoService.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.bindCurrentUser(currentUser(), "totp")
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user permission snapshot is unavailable"));
         verify(userDomainService, never()).findById(1001L);
     }
 
@@ -681,23 +870,47 @@ class SystemVerificationAppServiceTest {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        return new SystemVerificationAppService(
-                jdbcTemplate,
-                new ObjectMapper(),
-                userDomainService,
-                new SystemVerificationProperties(),
-                smtpMailService,
-                mock(SmsVerificationSender.class),
-                mock(VerificationDeliveryAuditService.class),
-                settingsAppService,
-                mock(SecuritySettingsService.class),
-                iamUserService,
-                passwordEncoder,
-                mock(FieldCryptoService.class),
-                permissionSnapshotService,
-                systemInternalApi,
-                sessionAuthenticationService
-        );
+        try {
+            Constructor<SystemVerificationAppService> constructor = SystemVerificationAppService.class.getDeclaredConstructor(
+                    MyBatisQueryOperations.class,
+                    ObjectMapper.class,
+                    UserDomainService.class,
+                    SystemVerificationProperties.class,
+                    SmtpMailService.class,
+                    SmsVerificationSender.class,
+                    VerificationDeliveryAuditService.class,
+                    SystemVerificationSettingsAppService.class,
+                    SecuritySettingsService.class,
+                    IamUserService.class,
+                    PasswordEncoder.class,
+                    FieldCryptoService.class,
+                    PermissionSnapshotService.class,
+                    SystemInternalApi.class,
+                    SessionAuthenticationService.class,
+                    boolean.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    jdbcTemplate,
+                    new ObjectMapper(),
+                    userDomainService,
+                    new SystemVerificationProperties(),
+                    smtpMailService,
+                    mock(SmsVerificationSender.class),
+                    mock(VerificationDeliveryAuditService.class),
+                    settingsAppService,
+                    mock(SecuritySettingsService.class),
+                    iamUserService,
+                    passwordEncoder,
+                    mock(FieldCryptoService.class),
+                    permissionSnapshotService,
+                    systemInternalApi,
+                    sessionAuthenticationService,
+                    false
+            );
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     private static CurrentUser currentUser() {

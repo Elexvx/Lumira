@@ -342,13 +342,20 @@ public class PasskeyAuthService {
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        String trustedUsername = StringUtils.hasText(user.username()) ? user.username().trim() : null;
+        if (!StringUtils.hasText(trustedUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotDTO snapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, normalizedUserUuid)
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, normalizedUserUuid, simulatedRoleId);
         if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserId(user.userId());
         currentUser.setUserUuid(user.userUuid().trim());
-        currentUser.setUsername(user.username());
+        currentUser.setUsername(trustedUsername);
         currentUser.setPermissions(snapshot.permissions() == null ? Set.of() : Set.copyOf(snapshot.permissions()));
         currentUser.setRoleIds(snapshot.roleIds() == null ? Set.of() : Set.copyOf(snapshot.roleIds()));
         currentUser.setPrimaryDeptId(snapshot.primaryDeptId());
@@ -357,6 +364,11 @@ public class PasskeyAuthService {
         currentUser.setDataScopes(snapshot.dataScopes() == null ? List.of() : List.copyOf(snapshot.dataScopes()));
         currentUser.setPermissionsVersion(snapshot.version().trim());
         currentUser.setDefaultHomePath(snapshot.defaultHomePath());
+        currentUser.setSimulatedRoleId(simulatedRoleId);
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void requireCurrentUserIdMatchesChallenge(ChallengeRecord challenge) {

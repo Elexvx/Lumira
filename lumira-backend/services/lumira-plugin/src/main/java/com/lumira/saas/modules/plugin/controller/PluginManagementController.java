@@ -50,6 +50,7 @@ public class PluginManagementController {
     private final PermissionGuard permissionGuard;
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
     private final SystemInternalApi systemInternalApi;
+    private final boolean enforceTrustedUserResolution;
 
     public PluginManagementController(
             PluginManagementAppService pluginManagementAppService,
@@ -57,7 +58,7 @@ public class PluginManagementController {
             PermissionGuard permissionGuard,
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy
     ) {
-        this(pluginManagementAppService, securityContextFacade, permissionGuard, runtimeSecurityPolicy, null);
+        this(pluginManagementAppService, securityContextFacade, permissionGuard, runtimeSecurityPolicy, null, false);
     }
 
     @Autowired
@@ -68,11 +69,23 @@ public class PluginManagementController {
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
             SystemInternalApi systemInternalApi
     ) {
+        this(pluginManagementAppService, securityContextFacade, permissionGuard, runtimeSecurityPolicy, systemInternalApi, true);
+    }
+
+    private PluginManagementController(
+            PluginManagementAppService pluginManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
+            SystemInternalApi systemInternalApi,
+            boolean enforceTrustedUserResolution
+    ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.runtimeSecurityPolicy = runtimeSecurityPolicy;
         this.systemInternalApi = systemInternalApi;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/definitions")
@@ -300,7 +313,13 @@ public class PluginManagementController {
     }
 
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (systemInternalApi == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -320,16 +339,23 @@ public class PluginManagementController {
                 || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
-                userId,
-                userSnapshot.userUuid().trim()
-        );
+        String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+        if (!StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username());
+        currentUser.setUsername(currentUsername);
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());

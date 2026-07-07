@@ -18,6 +18,8 @@ import com.lumira.saas.modules.plugin.runtime.spi.PluginMenuProvider;
 import com.lumira.saas.modules.plugin.runtime.spi.PluginPermissionProvider;
 import com.lumira.saas.modules.plugin.runtime.spi.PluginSecondFactorProvider;
 import com.lumira.saas.modules.plugin.runtime.spi.PluginScheduledTaskProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.net.URLClassLoader;
@@ -32,6 +34,8 @@ import java.util.regex.Pattern;
 
 @Service
 public class PluginRuntimeLoader {
+
+    private static final Logger log = LoggerFactory.getLogger(PluginRuntimeLoader.class);
 
     private static final int MAX_SCHEDULED_TASKS = 16;
     private static final int MAX_TASK_CODE_LENGTH = 64;
@@ -126,11 +130,9 @@ public class PluginRuntimeLoader {
         List<ScheduledExecutorService> executors = new ArrayList<>(tasks.size());
         for (PluginScheduledTask task : tasks) {
             String taskCode = task.taskCode().trim();
-            ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(
-                    runnable -> new Thread(runnable, "plugin-" + metadata.getPluginCode() + "-" + taskCode)
-            );
+            ScheduledExecutorService executor = createScheduledExecutor(metadata.getPluginCode(), taskCode);
             executor.scheduleWithFixedDelay(
-                    task.task(),
+                    guardedTask(metadata.getPluginCode(), taskCode, task.task()),
                     task.initialDelaySeconds(),
                     task.fixedDelaySeconds(),
                     TimeUnit.SECONDS
@@ -138,6 +140,30 @@ public class PluginRuntimeLoader {
             executors.add(executor);
         }
         return executors;
+    }
+
+    ScheduledExecutorService createScheduledExecutor(String pluginCode, String taskCode) {
+        return Executors.newSingleThreadScheduledExecutor(
+                runnable -> new Thread(runnable, "plugin-" + pluginCode + "-" + taskCode)
+        );
+    }
+
+    private Runnable guardedTask(String pluginCode, String taskCode, Runnable task) {
+        return () -> {
+            try {
+                task.run();
+            } catch (VirtualMachineError error) {
+                throw error;
+            } catch (Throwable throwable) {
+                log.warn(
+                        "plugin scheduled task failed, pluginCode={}, taskCode={}, message={}",
+                        pluginCode,
+                        taskCode,
+                        throwable.getMessage(),
+                        throwable
+                );
+            }
+        };
     }
 
     private void validateScheduledTasks(List<PluginScheduledTask> tasks) {

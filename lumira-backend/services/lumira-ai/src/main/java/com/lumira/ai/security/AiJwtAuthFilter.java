@@ -94,7 +94,7 @@ public class AiJwtAuthFilter extends OncePerRequestFilter {
                     if (isTrustedSnapshot(snapshot, claims, trustedSessionId)) {
                         CurrentUser currentUser = new CurrentUser(
                                 snapshot.userId(),
-                                snapshot.username(),
+                                snapshot.username().trim(),
                                 snapshot.sessionId(),
                                 snapshot.sessionVersion(),
                                 true,

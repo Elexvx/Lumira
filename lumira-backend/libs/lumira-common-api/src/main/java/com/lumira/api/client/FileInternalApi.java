@@ -34,6 +34,19 @@ public interface FileInternalApi {
              String userUuid,
              String username
     ) {
+        return uploadImageForUser(file, category, remark, bucket, userId, userUuid, username, null);
+    }
+
+    default FileObjectDTO uploadImageForUser(
+             MultipartFile file,
+             String category,
+             String remark,
+             String bucket,
+             Long userId,
+             String userUuid,
+             String username,
+             Long simulatedRoleId
+    ) {
         throw new UnsupportedOperationException("uploadImageForUser is not implemented");
     }
 
@@ -65,6 +78,20 @@ public interface FileInternalApi {
              String userUuid,
              String username
     ) {
+        return uploadDocumentForUser(file, category, tags, remark, bucket, userId, userUuid, username, null);
+    }
+
+    default FileObjectDTO uploadDocumentForUser(
+             MultipartFile file,
+             String category,
+             String tags,
+             String remark,
+             String bucket,
+             Long userId,
+             String userUuid,
+             String username,
+             Long simulatedRoleId
+    ) {
         throw new UnsupportedOperationException("uploadDocumentForUser is not implemented");
     }
 
@@ -74,7 +101,7 @@ public interface FileInternalApi {
             String userUuid,
             String username
     ) {
-        return readFileContentForUser(fileId, userId, userUuid, username, false);
+        return readFileContentForUser(fileId, userId, userUuid, username, false, null);
     }
 
     default FileContentDTO readFileContentForUser(
@@ -83,6 +110,17 @@ public interface FileInternalApi {
             String userUuid,
             String username,
             boolean sharedScope
+    ) {
+        return readFileContentForUser(fileId, userId, userUuid, username, sharedScope, null);
+    }
+
+    default FileContentDTO readFileContentForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            boolean sharedScope,
+            Long simulatedRoleId
     ) {
         throw new UnsupportedOperationException("readFileContentForUser is not implemented");
     }
@@ -94,6 +132,18 @@ public interface FileInternalApi {
             String username,
             boolean sharedScope,
             boolean downloadCenterScope
+    ) {
+        return getFileForUser(fileId, userId, userUuid, username, sharedScope, downloadCenterScope, null);
+    }
+
+    default FileObjectDTO getFileForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            boolean sharedScope,
+            boolean downloadCenterScope,
+            Long simulatedRoleId
     ) {
         throw new UnsupportedOperationException("getFileForUser is not implemented");
     }
@@ -108,6 +158,20 @@ public interface FileInternalApi {
             boolean sharedScope,
             int limit
     ) {
+        return searchFilesForUser(userId, userUuid, username, keyword, contentType, status, sharedScope, limit, null);
+    }
+
+    default List<FileObjectDTO> searchFilesForUser(
+            Long userId,
+            String userUuid,
+            String username,
+            String keyword,
+            String contentType,
+            String status,
+            boolean sharedScope,
+            int limit,
+            Long simulatedRoleId
+    ) {
         throw new UnsupportedOperationException("searchFilesForUser is not implemented");
     }
 
@@ -118,7 +182,7 @@ public interface FileInternalApi {
             String username,
             String artifactType
     ) {
-        return readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, false);
+        return readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, false, null);
     }
 
     default FileProcessingArtifactDTO readProcessingArtifactForUser(
@@ -128,6 +192,18 @@ public interface FileInternalApi {
             String username,
             String artifactType,
             boolean sharedScope
+    ) {
+        return readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, sharedScope, null);
+    }
+
+    default FileProcessingArtifactDTO readProcessingArtifactForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            String artifactType,
+            boolean sharedScope,
+            Long simulatedRoleId
     ) {
         throw new UnsupportedOperationException("readProcessingArtifactForUser is not implemented");
     }

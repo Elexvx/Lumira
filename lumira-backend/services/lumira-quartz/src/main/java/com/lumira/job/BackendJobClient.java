@@ -89,6 +89,10 @@ public class BackendJobClient {
         post("/internal/jobs/online-session/heartbeat");
     }
 
+    public int processExportTasks() {
+        return postForInt("/internal/jobs/export/run?limit=20");
+    }
+
     private void post(String path) {
         post(restClient, path);
     }

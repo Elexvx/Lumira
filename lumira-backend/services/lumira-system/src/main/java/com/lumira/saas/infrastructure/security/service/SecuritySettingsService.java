@@ -9,6 +9,7 @@ import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -42,6 +43,7 @@ public class SecuritySettingsService {
     private static final long READ_MODEL_VERSION_CACHE_TTL_MS = 2_000L;
     private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
     private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
+    private static final String PERMISSION_CONFIG_UPDATE = "system:config:update";
     private static final List<String> SETTINGS_KEYS = List.of(
             IDLE_TIMEOUT_KEY,
             ACCESS_TOKEN_EXPIRE_KEY,
@@ -65,12 +67,13 @@ public class SecuritySettingsService {
     private final SecurityProperties securityProperties;
     private final ReadModelVersionService readModelVersionService;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private volatile CachedSecuritySettings cachedSettings;
     private volatile CachedReadModelVersion cachedReadModelVersion;
     private final ThreadLocal<CurrentUser> currentUpdateOperator = new ThreadLocal<>();
 
     public SecuritySettingsService(SysConfigMapper sysConfigMapper, SecurityProperties securityProperties) {
-        this(sysConfigMapper, securityProperties, null, null);
+        this(sysConfigMapper, securityProperties, null, null, false);
     }
 
     @Autowired
@@ -78,12 +81,23 @@ public class SecuritySettingsService {
             SysConfigMapper sysConfigMapper,
             SecurityProperties securityProperties,
             ReadModelVersionService readModelVersionService,
-            SessionAuthenticationService sessionAuthenticationService
+            @Lazy SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(sysConfigMapper, securityProperties, readModelVersionService, sessionAuthenticationService, true);
+    }
+
+    private SecuritySettingsService(
+            SysConfigMapper sysConfigMapper,
+            SecurityProperties securityProperties,
+            ReadModelVersionService readModelVersionService,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
     ) {
         this.sysConfigMapper = sysConfigMapper;
         this.securityProperties = securityProperties;
         this.readModelVersionService = readModelVersionService;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public SecuritySettingsService(
@@ -91,7 +105,7 @@ public class SecuritySettingsService {
             SecurityProperties securityProperties,
             ReadModelVersionService readModelVersionService
     ) {
-        this(sysConfigMapper, securityProperties, readModelVersionService, null);
+        this(sysConfigMapper, securityProperties, readModelVersionService, null, false);
     }
 
     public long getIdleTimeoutSeconds() {
@@ -207,7 +221,7 @@ public class SecuritySettingsService {
     }
 
     public SecuritySettingsSnapshot updateSettings(SecuritySettingsSnapshot request, CurrentUser operator) {
-        CurrentUser trustedOperator = requireTrustedOperator(operator);
+        CurrentUser trustedOperator = requireTrustedConfigOperator(operator);
         currentUpdateOperator.set(trustedOperator);
         try {
         validatePositive(request.getIdleTimeoutSeconds(), "空闲超时时间");
@@ -447,7 +461,7 @@ public class SecuritySettingsService {
     }
 
     private void upsertConfig(String configKey, String configName, String configValue, String remark) {
-        CurrentUser operator = requireTrustedOperator(currentUpdateOperator.get());
+        CurrentUser operator = requireTrustedConfigOperator(currentUpdateOperator.get());
         Long operatorId = operator.getUserId();
         String operatorUuid = operator.getUserUuid();
         SysConfigEntity entity = new SysConfigEntity();
@@ -461,6 +475,25 @@ public class SecuritySettingsService {
         entity.setUpdatedBy(operatorId);
         entity.setUpdatedByUuid(operatorUuid);
         sysConfigMapper.upsertPlatformConfig(entity);
+    }
+
+    private CurrentUser requireTrustedConfigOperator(CurrentUser operator) {
+        CurrentUser trustedOperator = requireTrustedOperator(operator);
+        if (!hasConfigUpdatePermission(trustedOperator)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + PERMISSION_CONFIG_UPDATE);
+        }
+        return trustedOperator;
+    }
+
+    private boolean hasConfigUpdatePermission(CurrentUser operator) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
+            return false;
+        }
+        if (operator.getPermissions() == null || operator.getPermissions().isEmpty()) {
+            return false;
+        }
+        return operator.getPermissions().contains("*")
+                || operator.getPermissions().contains(PERMISSION_CONFIG_UPDATE);
     }
 
     private CurrentUser requireTrustedOperator(CurrentUser operator) {
@@ -480,6 +513,9 @@ public class SecuritySettingsService {
                 return operator;
             }
             return refreshedOperator;
+        }
+        if (enforceTrustedUserResolution && AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
         }
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator identity is required");

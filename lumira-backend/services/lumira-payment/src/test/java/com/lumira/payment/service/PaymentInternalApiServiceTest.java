@@ -149,6 +149,35 @@ class PaymentInternalApiServiceTest {
     }
 
     @Test
+    void createOrderShouldUseSimulatedRolePermissionSnapshotWhenPresent() {
+        PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "alice", "ENABLED"));
+        PaymentInternalApiService service = new PaymentInternalApiService(transactionService, provider(systemInternalApi));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                null
+        );
+        when(transactionService.createOrder(any(CurrentUser.class), any()))
+                .thenReturn(new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null));
+
+        service.createOrder(1001L, "user-uuid-1001", 9L, request);
+
+        org.mockito.ArgumentCaptor<CurrentUser> userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
+        verify(transactionService).createOrder(userCaptor.capture(), org.mockito.ArgumentMatchers.same(request));
+        verify(systemInternalApi).simulatedRolePermissionSnapshot(1001L, "user-uuid-1001", 9L);
+        assertThat(userCaptor.getValue().getSimulatedRoleId()).isEqualTo(9L);
+    }
+
+    @Test
     void createOrderRejectsOperatorSnapshotMissingUserUuidBeforeCreatingOrder() {
         PaymentTransactionService transactionService = mock(PaymentTransactionService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
@@ -190,6 +219,8 @@ class PaymentInternalApiServiceTest {
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
+            when(systemInternalApi.simulatedRolePermissionSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong()))
                     .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
         }
         ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);

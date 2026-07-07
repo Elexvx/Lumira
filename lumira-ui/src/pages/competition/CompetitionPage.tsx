@@ -1,4 +1,4 @@
-﻿import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
@@ -461,8 +461,10 @@ const sanitizeSchedules = (schedules?: CompetitionScheduleFormItem[]): Competiti
 const organizerLabel = (organizer: CompetitionOrganizerFormItem) =>
   [organizer.role, organizer.name].map(trimOptional).filter(Boolean).join('：');
 
+const mojibakeReplacementPattern = new RegExp(`${String.fromCharCode(0xfffd)}\\??`, 'g');
+
 const normalizeMojibakeText = (value?: string | null) =>
-  trimOptional(value)?.replace(/锛\?|锟\?/g, '：');
+  trimOptional(value)?.replace(mojibakeReplacementPattern, '');
 
 const normalizePayload = (values: CompetitionFormValues): CompetitionUpsertPayload => {
   const [registrationStart, registrationEnd] = values.registrationRange || [];
@@ -2633,7 +2635,7 @@ const CompetitionRegistrationPage = () => {
       normalizeDisplayText(extraValues.name) ||
       normalizeDisplayText(extraValues.memberName) ||
       normalizeDisplayText(extraValues.mobile) ||
-      `鎴愬憳 ${index + 1}`
+      `成员 ${index + 1}`
     );
   };
 
@@ -2884,7 +2886,7 @@ const CompetitionRegistrationPage = () => {
                 <Card
                   key={memberField.key}
                   size="small"
-                  title={`鎴愬憳 ${index + 1}`}
+                  title={`成员 ${index + 1}`}
                   extra={
                     <Button danger type="link" disabled={memberFields.length <= 1} onClick={() => remove(memberField.name)}>
                       移除
@@ -3060,7 +3062,7 @@ const CompetitionRegistrationPage = () => {
                   <Form.Item name="newProjectTitle" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
                     <Input maxLength={128} />
                   </Form.Item>
-                  <Form.Item name="newProjectDescription" label="椤圭洰绠€浠?">
+                  <Form.Item name="newProjectDescription" label="项目简介">
                     <Input.TextArea rows={3} maxLength={1000} />
                   </Form.Item>
                 </>
@@ -3626,7 +3628,7 @@ const renderConfigItemFields = (
       <Form.Item name={[fieldName, 'itemKey']} label="时间标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入时间标识' }]}>
         <Input placeholder="例如 registration、review_preliminary" maxLength={64} />
       </Form.Item>
-      <Form.Item name={[fieldName, 'metadata', 'startAt']} label="寮€濮嬫椂闂?">
+      <Form.Item name={[fieldName, 'metadata', 'startAt']} label="开始时间">
         <Input placeholder="例如 2026-07-01 09:00" maxLength={32} />
       </Form.Item>
       <Form.Item name={[fieldName, 'metadata', 'endAt']} label="结束时间">

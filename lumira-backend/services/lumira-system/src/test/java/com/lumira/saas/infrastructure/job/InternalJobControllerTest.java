@@ -2,6 +2,7 @@ package com.lumira.saas.infrastructure.job;
 
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
+import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.common.exception.BizException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
@@ -22,6 +23,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -39,6 +41,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -54,6 +57,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -70,6 +74,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -86,6 +91,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 ""
         );
 
@@ -102,6 +108,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -118,6 +125,7 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
+                mock(UserExportTaskWorkerService.class),
                 ""
         );
 

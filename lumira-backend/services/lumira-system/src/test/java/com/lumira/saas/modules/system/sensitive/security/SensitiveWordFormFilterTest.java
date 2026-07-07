@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.system.sensitive.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordPluginStateService;
@@ -12,6 +14,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,7 +31,7 @@ class SensitiveWordFormFilterTest {
         SensitiveWordFormFilter filter = new SensitiveWordFormFilter(
                 sensitiveWordService,
                 securityContextFacade,
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 pluginStateService
         );
         CurrentUser currentUser = new CurrentUser(1001L, " ", 1001L, "session-1", 1, true, Set.of("*"));
@@ -53,7 +57,7 @@ class SensitiveWordFormFilterTest {
         SensitiveWordFormFilter filter = new SensitiveWordFormFilter(
                 sensitiveWordService,
                 securityContextFacade,
-                new ObjectMapper(),
+                new ObjectMapper().findAndRegisterModules(),
                 pluginStateService
         );
         CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", null, true, Set.of("*"));
@@ -69,5 +73,48 @@ class SensitiveWordFormFilterTest {
         verify(filterChain).doFilter(request, response);
         verify(pluginStateService, never()).isEnabled(currentUser);
         verify(sensitiveWordService, never()).checkPayload(currentUser, java.util.Map.of("title", "sensitive"));
+    }
+
+    @Test
+    void doFilterShouldRejectTrustedUserWhenPluginResolverIsUnavailable() throws Exception {
+        SensitiveWordService sensitiveWordService = mock(SensitiveWordService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        ObjectMapper objectMapper = mock(ObjectMapper.class);
+        SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
+        SensitiveWordFormFilter filter = new SensitiveWordFormFilter(
+                sensitiveWordService,
+                securityContextFacade,
+                objectMapper,
+                pluginStateService
+        );
+        CurrentUser currentUser = trustedCurrentUser();
+        when(securityContextFacade.getCurrentUserOrNull()).thenReturn(currentUser);
+        when(pluginStateService.isEnabled(currentUser))
+                .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/content");
+        request.setContentType("application/x-www-form-urlencoded");
+        request.addParameter("title", "sensitive");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain filterChain = mock(FilterChain.class);
+
+        filter.doFilter(request, response, filterChain);
+
+        assertThat(response.getStatus()).isEqualTo(ErrorCode.UNAUTHORIZED.getHttpStatus());
+        verify(filterChain, never()).doFilter(request, response);
+        verify(sensitiveWordService, never()).checkPayload(currentUser, java.util.Map.of("title", "sensitive"));
+    }
+
+    private CurrentUser trustedCurrentUser() {
+        CurrentUser currentUser = new CurrentUser();
+        currentUser.setUserId(1001L);
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setUsername("alice");
+        currentUser.setAuthenticated(true);
+        currentUser.setSessionId("session-1");
+        currentUser.setSessionVersion(1);
+        currentUser.setPermissionsVersion("permissions-1");
+        currentUser.setPermissions(Set.of("*"));
+        return currentUser;
     }
 }

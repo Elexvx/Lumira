@@ -48,10 +48,11 @@ public class InternalFileController {
             @RequestParam(name = "bucket", required = false) String bucket,
             @RequestParam("userId") Long userId,
             @RequestParam("userUuid") String userUuid,
-            @RequestParam("username") String username
+            @RequestParam("username") String username,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
     ) {
         requireInternalServicePrincipal();
-        return fileInternalApiService.uploadImageForUser(file, category, remark, bucket, userId, userUuid, username);
+        return fileInternalApiService.uploadImageForUser(file, category, remark, bucket, userId, userUuid, username, simulatedRoleId);
     }
 
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -74,10 +75,11 @@ public class InternalFileController {
             @RequestParam(name = "bucket", required = false) String bucket,
             @RequestParam("userId") Long userId,
             @RequestParam("userUuid") String userUuid,
-            @RequestParam("username") String username
+            @RequestParam("username") String username,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
     ) {
         requireInternalServicePrincipal();
-        return fileInternalApiService.uploadDocumentForUser(file, category, tags, remark, bucket, userId, userUuid, username);
+        return fileInternalApiService.uploadDocumentForUser(file, category, tags, remark, bucket, userId, userUuid, username, simulatedRoleId);
     }
 
     @GetMapping("/content")
@@ -86,10 +88,11 @@ public class InternalFileController {
             @RequestParam("userId") Long userId,
             @RequestParam("userUuid") String userUuid,
             @RequestParam("username") String username,
-            @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope
+            @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
     ) {
         requireInternalServicePrincipal();
-        return fileInternalApiService.readFileContentForUser(fileId, userId, userUuid, username, sharedScope);
+        return fileInternalApiService.readFileContentForUser(fileId, userId, userUuid, username, sharedScope, simulatedRoleId);
     }
 
     @GetMapping("/artifacts")
@@ -99,10 +102,11 @@ public class InternalFileController {
             @RequestParam("userUuid") String userUuid,
             @RequestParam("username") String username,
             @RequestParam("artifactType") String artifactType,
-            @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope
+            @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
     ) {
         requireInternalServicePrincipal();
-        return fileInternalApiService.readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, sharedScope);
+        return fileInternalApiService.readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, sharedScope, simulatedRoleId);
     }
 
     @GetMapping("/metadata")
@@ -112,10 +116,11 @@ public class InternalFileController {
             @RequestParam("userUuid") String userUuid,
             @RequestParam("username") String username,
             @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope,
-            @RequestParam(name = "downloadCenterScope", defaultValue = "false") boolean downloadCenterScope
+            @RequestParam(name = "downloadCenterScope", defaultValue = "false") boolean downloadCenterScope,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
     ) {
         requireInternalServicePrincipal();
-        return fileInternalApiService.getFileForUser(fileId, userId, userUuid, username, sharedScope, downloadCenterScope);
+        return fileInternalApiService.getFileForUser(fileId, userId, userUuid, username, sharedScope, downloadCenterScope, simulatedRoleId);
     }
 
     @GetMapping("/search")
@@ -127,10 +132,11 @@ public class InternalFileController {
             @RequestParam(name = "contentType", required = false) String contentType,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope,
-            @RequestParam(name = "limit", defaultValue = "50") int limit
+            @RequestParam(name = "limit", defaultValue = "50") int limit,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
     ) {
         requireInternalServicePrincipal();
-        return fileInternalApiService.searchFilesForUser(userId, userUuid, username, keyword, contentType, status, sharedScope, limit);
+        return fileInternalApiService.searchFilesForUser(userId, userUuid, username, keyword, contentType, status, sharedScope, limit, simulatedRoleId);
     }
 
     private void requireInternalServicePrincipal() {

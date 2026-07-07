@@ -98,6 +98,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private final FileInternalApi fileInternalApi;
     private final Map<String, NativeTool> tools;
     private final boolean writeToolsEnabled;
+    private final boolean enforceTrustedUserResolution;
 
     DefaultAiNativeToolRuntimeService(
             MyBatisQueryOperations jdbcTemplate,
@@ -125,7 +126,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 null,
                 systemManagementAppService,
                 fileInternalApi,
-                writeToolsEnabled
+                writeToolsEnabled,
+                false
         );
     }
 
@@ -157,7 +159,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 sessionAuthenticationService,
                 systemManagementAppService,
                 fileInternalApi,
-                writeToolsEnabled
+                writeToolsEnabled,
+                true
         );
     }
 
@@ -176,6 +179,40 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             FileInternalApi fileInternalApi,
             boolean writeToolsEnabled
     ) {
+        this(
+                jdbcTemplate,
+                permissionGuard,
+                authorizationService,
+                aiSkillPermissionChecker,
+                objectMapper,
+                platformQueryFacade,
+                iamQueryFacade,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                systemManagementAppService,
+                fileInternalApi,
+                writeToolsEnabled,
+                false
+        );
+    }
+
+    private DefaultAiNativeToolRuntimeService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionGuard permissionGuard,
+            AuthorizationService authorizationService,
+            AiSkillPermissionChecker aiSkillPermissionChecker,
+            ObjectMapper objectMapper,
+            AiPlatformQueryFacade platformQueryFacade,
+            AiIamQueryFacade iamQueryFacade,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemManagementAppService systemManagementAppService,
+            FileInternalApi fileInternalApi,
+            boolean writeToolsEnabled,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionGuard = permissionGuard;
         this.authorizationService = authorizationService;
@@ -189,12 +226,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         this.systemManagementAppService = systemManagementAppService;
         this.fileInternalApi = fileInternalApi;
         this.writeToolsEnabled = writeToolsEnabled;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.tools = new LinkedHashMap<>(Map.of(
                 "system.permission.snapshot", new NativeTool(
                         "system.permission.snapshot",
-                        "读取当前权限上下文",
+                        "Read current permission context",
                         "system",
-                        "返回当前登录用户、角色、部门和权限集合，供 AI 判断可访问边界。",
+                        "Returns the current logged-in user, roles, departments, and permissions for AI boundary checks.",
                         "LOW",
                         true,
                         false,
@@ -204,9 +242,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 ),
                 "system.menu.list", new NativeTool(
                         "system.menu.list",
-                        "读取系统菜单与模块入口",
+                        "Read system menus and module entry points",
                         "system",
-                        "按当前账号权限读取系统菜单、路由、权限键和状态，供 AI 理解平台能力地图。",
+                        "Reads system menus, routes, permission keys, and status for the current account.",
                         "LOW",
                         true,
                         false,
@@ -214,7 +252,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         Map.of(
                                 "type", "object",
                                 "properties", Map.of(
-                                        "status", Map.of("type", "string", "description", "菜单状态，例如 ENABLED"),
+                                        "status", Map.of("type", "string", "description", "Menu status, for example ENABLED"),
                                         "limit", Map.of("type", "integer", "minimum", 1, "maximum", MAX_LIMIT)
                                 )
                         ),
@@ -222,9 +260,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 ),
                 "system.config.read", new NativeTool(
                         "system.config.read",
-                        "读取非敏感系统配置",
+                        "Read non-sensitive system configuration",
                         "system",
-                        "按配置键读取非敏感平台配置。涉及 password、secret、token、key 等敏感字段会被拒绝。",
+                        "Reads non-sensitive platform configuration by key. Sensitive keys such as password, secret, token, and key are rejected.",
                         "MEDIUM",
                         true,
                         false,
@@ -233,16 +271,16 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                                 "type", "object",
                                 "required", List.of("configKey"),
                                 "properties", Map.of(
-                                        "configKey", Map.of("type", "string", "description", "配置键")
+                                        "configKey", Map.of("type", "string", "description", "Configuration key")
                                 )
                         ),
                         this::readScopedConfig
                 ),
                 "system.user.search", new NativeTool(
                         "system.user.search",
-                        "检索系统用户",
+                        "Search system users",
                         "system",
-                        "按关键词和状态检索平台用户，返回脱敏后的基础资料。",
+                        "Searches platform users by keyword and status and returns masked basic information.",
                         "MEDIUM",
                         true,
                         false,
@@ -250,8 +288,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         Map.of(
                                 "type", "object",
                                 "properties", Map.of(
-                                        "keyword", Map.of("type", "string", "description", "用户名、昵称、姓名、手机号或邮箱关键词"),
-                                        "status", Map.of("type", "string", "description", "用户状态，例如 ENABLED"),
+                                        "keyword", Map.of("type", "string", "description", "Username, nickname, real name, phone, or email keyword"),
+                                        "status", Map.of("type", "string", "description", "User status, for example ENABLED"),
                                         "limit", Map.of("type", "integer", "minimum", 1, "maximum", MAX_LIMIT)
                                 )
                         ),
@@ -259,9 +297,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 ),
                 "file.object.search", new NativeTool(
                         "file.object.search",
-                        "检索文件对象",
+                        "Search file objects",
                         "file",
-                        "按关键词、类型和状态检索文件中心对象；普通用户仅返回本人上传文件，全站文件管理员可检索平台文件。",
+                        "Searches file-center objects by keyword, type, and status. Regular users only see their own uploads; file admins can search platform files.",
                         "MEDIUM",
                         true,
                         false,
@@ -269,9 +307,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         Map.of(
                                 "type", "object",
                                 "properties", Map.of(
-                                        "keyword", Map.of("type", "string", "description", "文件名、分类或标签关键词"),
-                                        "contentType", Map.of("type", "string", "description", "MIME 类型前缀或完整类型"),
-                                        "status", Map.of("type", "string", "description", "文件状态，例如 ENABLED"),
+                                        "keyword", Map.of("type", "string", "description", "File name, category, or tag keyword"),
+                                        "contentType", Map.of("type", "string", "description", "MIME type prefix or full type"),
+                                        "status", Map.of("type", "string", "description", "File status, for example ENABLED"),
                                         "limit", Map.of("type", "integer", "minimum", 1, "maximum", MAX_LIMIT)
                                 )
                         ),
@@ -279,9 +317,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 ),
                 "audit.ai_call.search", new NativeTool(
                         "audit.ai_call.search",
-                        "检索 AI 工具审计",
+                        "Search AI tool audit logs",
                         "audit",
-                        "按数字员工、技能编码和结果状态检索 AI 调用审计日志。",
+                        "Searches AI call audit logs by employee, skill code, and result status.",
                         "MEDIUM",
                         true,
                         false,
@@ -289,9 +327,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         Map.of(
                                 "type", "object",
                                 "properties", Map.of(
-                                        "employeeId", Map.of("type", "integer", "description", "数字员工 ID"),
-                                        "skillCode", Map.of("type", "string", "description", "技能或工具编码关键词"),
-                                        "resultStatus", Map.of("type", "string", "description", "SUCCESS、FAIL 或 ERROR"),
+                                        "employeeId", Map.of("type", "integer", "description", "AI employee ID"),
+                                        "skillCode", Map.of("type", "string", "description", "Skill or tool code keyword"),
+                                        "resultStatus", Map.of("type", "string", "description", "SUCCESS, FAIL, or ERROR"),
                                         "limit", Map.of("type", "integer", "minimum", 1, "maximum", MAX_LIMIT)
                                 )
                         ),
@@ -306,9 +344,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private void registerWriteTools() {
         tools.put("system.user.create", new NativeTool(
                 "system.user.create",
-                "新增系统用户",
+                "Create system user",
                 "system",
-                "在当前账号权限范围内新增系统用户。",
+                "Creates a system user within the current account's permission scope.",
                 "HIGH",
                 false,
                 true,
@@ -329,9 +367,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         ));
         tools.put("system.user.update", new NativeTool(
                 "system.user.update",
-                "编辑系统用户",
+                "Update system user",
                 "system",
-                "在当前账号权限范围内编辑用户基础信息、角色和部门。",
+                "Updates user profile, roles, and departments within the current account's permission scope.",
                 "HIGH",
                 false,
                 true,
@@ -354,9 +392,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         ));
         tools.put("system.user.status", new NativeTool(
                 "system.user.status",
-                "启停系统用户",
+                "Enable or disable system user",
                 "system",
-                "在当前账号权限范围内启用或禁用用户。",
+                "Enables or disables a user within the current account's permission scope.",
                 "HIGH",
                 false,
                 true,
@@ -370,9 +408,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         ));
         tools.put("system.user.delete", new NativeTool(
                 "system.user.delete",
-                "删除系统用户",
+                "Delete system user",
                 "system",
-                "在当前账号权限范围内删除用户。",
+                "Deletes a user within the current account's permission scope.",
                 "HIGH",
                 false,
                 true,
@@ -385,9 +423,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         ));
         tools.put("profile.avatar.update", new NativeTool(
                 "profile.avatar.update",
-                "修改当前用户头像",
+                "Update current user avatar",
                 "profile",
-                "仅修改当前登录用户自己的头像。可传 avatarUrl，或传已上传文件 fileId。",
+                "Updates only the current logged-in user's avatar. Accepts avatarUrl or an uploaded fileId.",
                 "MEDIUM",
                 false,
                 true,
@@ -402,26 +440,26 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void registerSystemManagementTools() {
-        tools.put("system.role.create", writeTool("system.role.create", "新增角色", "新增平台角色。", "system:role:create", this::createRole));
-        tools.put("system.role.update", writeTool("system.role.update", "编辑角色", "编辑平台角色基础信息。", "system:role:update", this::updateRole));
-        tools.put("system.role.permissions", writeTool("system.role.permissions", "配置角色权限", "更新平台角色权限集合。", "system:role:grant", this::updateRolePermissions));
-        tools.put("system.role.delete", writeTool("system.role.delete", "删除角色", "删除平台角色。", "system:role:delete", this::deleteRole));
-        tools.put("system.menu.create", writeTool("system.menu.create", "新增菜单", "新增平台自定义菜单。", "system:menu:create", this::createMenu));
-        tools.put("system.menu.update", writeTool("system.menu.update", "编辑菜单", "编辑平台自定义菜单。", "system:menu:update", this::updateMenu));
-        tools.put("system.menu.status", writeTool("system.menu.status", "启停菜单", "更新平台菜单状态。", "system:menu:status", this::updateMenuStatus));
-        tools.put("system.menu.delete", writeTool("system.menu.delete", "删除菜单", "删除平台自定义菜单。", "system:menu:delete", this::deleteMenu));
-        tools.put("system.dict_type.create", writeTool("system.dict_type.create", "新增字典类型", "新增平台字典类型。", "system:dict:create", this::createDictType));
-        tools.put("system.dict_type.update", writeTool("system.dict_type.update", "编辑字典类型", "编辑平台字典类型。", "system:dict:update", this::updateDictType));
-        tools.put("system.dict_type.delete", writeTool("system.dict_type.delete", "删除字典类型", "删除平台非系统字典类型。", "system:dict:delete", this::deleteDictType));
-        tools.put("system.dict_item.create", writeTool("system.dict_item.create", "新增字典项", "新增平台字典项。", "system:dict:create", this::createDictItem));
-        tools.put("system.dict_item.update", writeTool("system.dict_item.update", "编辑字典项", "编辑平台字典项。", "system:dict:update", this::updateDictItem));
-        tools.put("system.dict_item.delete", writeTool("system.dict_item.delete", "删除字典项", "删除平台字典项。", "system:dict:delete", this::deleteDictItem));
-        tools.put("system.config.create", writeTool("system.config.create", "新增系统配置", "新增非敏感平台配置。", "system:config:update", this::createConfig));
-        tools.put("system.config.update", writeTool("system.config.update", "编辑系统配置", "编辑非敏感平台配置。", "system:config:update", this::updateConfig));
-        tools.put("platform.branding.update", writeTool("platform.branding.update", "更新品牌设置", "更新网站名称、Logo、页脚等品牌设置。", "system:config:update", this::updateBrandingSettings));
-        tools.put("platform.agreement.update", writeTool("platform.agreement.update", "更新协议设置", "更新用户协议与隐私协议设置。", "system:config:update", this::updateAgreementSettings));
-        tools.put("platform.watermark.update", writeTool("platform.watermark.update", "更新水印设置", "更新平台水印设置。", "system:config:update", this::updateWatermarkSettings));
-        tools.put("platform.floating_window.update", writeTool("platform.floating_window.update", "更新浮窗设置", "更新全局浮窗设置。", "system:config:update", this::updateFloatingWindowSettings));
+        tools.put("system.role.create", writeTool("system.role.create", "Create role", "Creates a platform role.", "system:role:create", this::createRole));
+        tools.put("system.role.update", writeTool("system.role.update", "Update role", "Updates platform role basics.", "system:role:update", this::updateRole));
+        tools.put("system.role.permissions", writeTool("system.role.permissions", "Update role permissions", "Updates the permission set of a platform role.", "system:role:grant", this::updateRolePermissions));
+        tools.put("system.role.delete", writeTool("system.role.delete", "Delete role", "Deletes a platform role.", "system:role:delete", this::deleteRole));
+        tools.put("system.menu.create", writeTool("system.menu.create", "Create menu", "Creates a custom platform menu.", "system:menu:create", this::createMenu));
+        tools.put("system.menu.update", writeTool("system.menu.update", "Update menu", "Updates a custom platform menu.", "system:menu:update", this::updateMenu));
+        tools.put("system.menu.status", writeTool("system.menu.status", "Update menu status", "Updates platform menu status.", "system:menu:status", this::updateMenuStatus));
+        tools.put("system.menu.delete", writeTool("system.menu.delete", "Delete menu", "Deletes a custom platform menu.", "system:menu:delete", this::deleteMenu));
+        tools.put("system.dict_type.create", writeTool("system.dict_type.create", "Create dictionary type", "Creates a platform dictionary type.", "system:dict:create", this::createDictType));
+        tools.put("system.dict_type.update", writeTool("system.dict_type.update", "Update dictionary type", "Updates a platform dictionary type.", "system:dict:update", this::updateDictType));
+        tools.put("system.dict_type.delete", writeTool("system.dict_type.delete", "Delete dictionary type", "Deletes a non-system platform dictionary type.", "system:dict:delete", this::deleteDictType));
+        tools.put("system.dict_item.create", writeTool("system.dict_item.create", "Create dictionary item", "Creates a platform dictionary item.", "system:dict:create", this::createDictItem));
+        tools.put("system.dict_item.update", writeTool("system.dict_item.update", "Update dictionary item", "Updates a platform dictionary item.", "system:dict:update", this::updateDictItem));
+        tools.put("system.dict_item.delete", writeTool("system.dict_item.delete", "Delete dictionary item", "Deletes a platform dictionary item.", "system:dict:delete", this::deleteDictItem));
+        tools.put("system.config.create", writeTool("system.config.create", "Create system config", "Creates a non-sensitive platform configuration.", "system:config:update", this::createConfig));
+        tools.put("system.config.update", writeTool("system.config.update", "Update system config", "Updates a non-sensitive platform configuration.", "system:config:update", this::updateConfig));
+        tools.put("platform.branding.update", writeTool("platform.branding.update", "Update branding settings", "Updates site name, logo, footer, and other branding settings.", "system:config:update", this::updateBrandingSettings));
+        tools.put("platform.agreement.update", writeTool("platform.agreement.update", "Update agreement settings", "Updates user agreement and privacy agreement settings.", "system:config:update", this::updateAgreementSettings));
+        tools.put("platform.watermark.update", writeTool("platform.watermark.update", "Update watermark settings", "Updates platform watermark settings.", "system:config:update", this::updateWatermarkSettings));
+        tools.put("platform.floating_window.update", writeTool("platform.floating_window.update", "Update floating window settings", "Updates global floating window settings.", "system:config:update", this::updateFloatingWindowSettings));
     }
 
     private NativeTool writeTool(String code, String name, String description, String requiredPermission, ToolExecutor executor) {
@@ -485,7 +523,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private AiVO.ToolExecuteResultVO executeInternal(CurrentUser currentUser, AiDTO.ToolExecuteRequest request, boolean approvalGranted) {
         if (request == null || !StringUtils.hasText(request.getToolCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code cannot be blank");
         }
         CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
         Long actorUserId = requireLogin(runtimeUser);
@@ -532,10 +570,10 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             AiVO.ToolExecuteResultVO result = new AiVO.ToolExecuteResultVO();
             result.setToolCode(toolCode);
             result.setResultStatus("SUCCESS");
-            result.setMessage("工具调用成功");
+            result.setMessage("Tool call succeeded");
             result.setData(data);
             result.setExecutedAt(LocalDateTime.now());
-            recordToolAuditLog(currentUser, request, tool, confirmed, "allow", "SUCCESS", "AI 工具调用成功", data);
+            recordToolAuditLog(currentUser, request, tool, confirmed, "allow", "SUCCESS", "AI tool call succeeded", data);
             return result;
         } catch (RuntimeException exception) {
             recordFailedToolAuditLog(currentUser, request, tool, confirmed, exception);
@@ -583,14 +621,14 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private Map<String, Object> readScopedConfig(ToolExecutionContext context) {
-        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿璇诲彇: ");
+        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "该配置不在 AI 工具允许读取的范围内: ");
         return readConfig(context);
     }
 
     private Map<String, Object> readConfig(ToolExecutionContext context) {
         String configKey = stringArg(context.arguments(), "configKey", null);
         if (!StringUtils.hasText(configKey)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "configKey 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "configKey cannot be blank");
         }
         if (looksSensitive(configKey)) {
             throw new BizException(ErrorCode.FORBIDDEN, "敏感配置不允许通过 AI 工具读取: " + configKey);
@@ -648,7 +686,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Map<String, Object> updateUser(ToolExecutionContext context) {
         Long userId = longArg(context.arguments(), "userId");
         if (userId == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId cannot be blank");
         }
         SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
         requireTargetUserUuid(context, existing);
@@ -661,15 +699,15 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         Long userId = longArg(context.arguments(), "userId");
         String status = stringArg(context.arguments(), "status", null);
         if (userId == null || !StringUtils.hasText(status)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 和 status 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId and status cannot be blank");
         }
         SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
         requireTargetUserUuid(context, existing);
         if (isActorUser(context, userId) && "DISABLED".equalsIgnoreCase(status)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 禁用当前登录账号");
+            throw new BizException(ErrorCode.FORBIDDEN, "Current login account cannot be disabled via AI");
         }
         if (Long.valueOf(1001L).equals(userId) && "DISABLED".equalsIgnoreCase(status)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 禁用默认管理员账户");
+            throw new BizException(ErrorCode.FORBIDDEN, "Default administrator account cannot be disabled via AI");
         }
         boolean updated = systemManagementAppService.updateUserStatus(context.currentUser(), userId, status);
         return Map.of("updated", updated, "userId", userId, "status", status.toUpperCase(Locale.ROOT));
@@ -678,15 +716,15 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Map<String, Object> deleteUser(ToolExecutionContext context) {
         Long userId = longArg(context.arguments(), "userId");
         if (userId == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "userId cannot be blank");
         }
         SystemVO.UserDetailVO existing = systemManagementAppService.getUser(context.currentUser(), userId);
         requireTargetUserUuid(context, existing);
         if (isActorUser(context, userId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 删除当前登录账号");
+            throw new BizException(ErrorCode.FORBIDDEN, "Current login account cannot be deleted via AI");
         }
         if (Long.valueOf(1001L).equals(userId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "不允许通过 AI 删除默认管理员账户");
+            throw new BizException(ErrorCode.FORBIDDEN, "Default administrator account cannot be deleted via AI");
         }
         boolean deleted = systemManagementAppService.deleteUser(context.currentUser(), userId);
         return Map.of("deleted", deleted, "userId", userId);
@@ -719,10 +757,10 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private String resolveAvatarUrlFromFile(ToolExecutionContext context, Long fileId) {
         if (fileId == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "avatarUrl 或 fileId 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "avatarUrl or fileId cannot be blank");
         }
         if (fileInternalApi == null) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "文件服务不可用");
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "File service is unavailable");
         }
         CurrentUser currentUser = context.currentUser();
         FileObjectDTO file = fileInternalApi.getFileForUser(
@@ -731,10 +769,11 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 context.actorUserUuid(),
                 context.actorUsername(),
                 false,
-                false
+                false,
+                currentUser == null ? null : currentUser.getSimulatedRoleId()
         );
         if (file == null || !StringUtils.hasText(file.publicUrl())) {
-            throw new BizException(ErrorCode.NOT_FOUND, "头像文件不存在或无权使用");
+            throw new BizException(ErrorCode.NOT_FOUND, "Avatar file does not exist or cannot be used");
         }
         return file.publicUrl();
     }
@@ -876,7 +915,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private Map<String, Object> createConfig(ToolExecutionContext context) {
-        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿淇敼: ");
+        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "该配置不在 AI 工具允许管理的范围内: ");
         ensureNonSensitiveConfig(context.arguments());
         SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.ConfigUpsertRequest.class);
         SystemVO.ConfigVO config = systemManagementAppService.createConfig(context.currentUser(), request);
@@ -886,7 +925,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Map<String, Object> updateConfig(ToolExecutionContext context) {
         Long configId = requireLong(context.arguments(), "configId");
         ensureAiConfigUpdateAllowed(context, configId);
-        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿淇敼: ");
+        ensureAiConfigKeyAllowed(stringArg(context.arguments(), "configKey", null), "该配置不在 AI 工具允许管理的范围内: ");
         ensureNonSensitiveConfig(context.arguments());
         SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(withoutKeys(context.arguments(), "configId"), SystemDTO.ConfigUpsertRequest.class);
         SystemVO.ConfigVO config = systemManagementAppService.updateConfig(context.currentUser(), configId, request);
@@ -932,8 +971,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (configId == null) {
             return;
         }
-        SystemVO.ConfigVO existing = requireSystemManagementAppService().getConfig(context.currentUser(), configId);
-        ensureAiConfigKeyAllowed(existing == null ? null : existing.getConfigKey(), "鏁忔劅閰嶇疆涓嶅厑璁搁€氳繃 AI 宸ュ叿淇敼: ");
+        SystemVO.ConfigVO existing = requireSystemManagementAppService().getConfigForUpdate(context.currentUser(), configId);
+        ensureAiConfigKeyAllowed(existing == null ? null : existing.getConfigKey(), "该配置不在 AI 工具允许管理的范围内: ");
     }
 
     private void ensureAiConfigKeyAllowed(String configKey, String messagePrefix) {
@@ -963,7 +1002,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         String configValue = stringArg(arguments, "configValue", null);
         if (StringUtils.hasText(configValue) && looksSensitive(configValue)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "疑似敏感配置值不允许通过 AI 工具修改");
+            throw new BizException(ErrorCode.FORBIDDEN, "Sensitive configuration values cannot be modified via AI tools");
         }
     }
 
@@ -984,7 +1023,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         String status = stringArg(context.arguments(), "status", "ENABLED");
         int limit = limitArg(context.arguments());
         if (fileInternalApi == null) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "文件服务不可用");
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "File service is unavailable");
         }
         CurrentUser currentUser = context.currentUser();
         List<Map<String, Object>> files = fileInternalApi.searchFilesForUser(
@@ -995,7 +1034,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         contentType,
                         status,
                         false,
-                        limit
+                        limit,
+                        currentUser == null ? null : currentUser.getSimulatedRoleId()
                 )
                 .stream()
                 .map(this::toFileToolItem)
@@ -1071,7 +1111,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 employeeId
         );
         if (!exists) {
-            throw new BizException(ErrorCode.NOT_FOUND, "数字员工不存在或已禁用");
+            throw new BizException(ErrorCode.NOT_FOUND, "AI employee does not exist or has been disabled");
         }
     }
 
@@ -1157,7 +1197,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (exception instanceof BizException bizException && StringUtils.hasText(bizException.getUserMessage())) {
             return bizException.getUserMessage();
         }
-        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "AI 工具调用失败";
+        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "AI tool execution failed";
     }
 
     private boolean looksSensitive(String value) {
@@ -1187,7 +1227,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (!isTrustedCurrentUser(currentUser)) {
             return currentUser;
         }
-        if (sessionAuthenticationService == null && permissionSnapshotService == null) {
+        if (!enforceTrustedUserResolution && sessionAuthenticationService == null && permissionSnapshotService == null) {
             return currentUser;
         }
         return refreshTrustedCurrentUser(currentUser);
@@ -1214,6 +1254,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -1233,18 +1276,32 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
         CurrentUser refreshed = new CurrentUser(
                 currentUser.getUserId(),
                 currentUser.getUsername(),
@@ -1262,7 +1319,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         refreshed.setPermissionsVersion(snapshot.getVersion());
         refreshed.setDefaultHomePath(snapshot.getDefaultHomePath());
         refreshed.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
-        refreshed.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        refreshed.setSimulatedRoleId(simulatedRoleId);
         refreshed.setLoginType(currentUser.getLoginType());
         copyTrustedCurrentUser(currentUser, refreshed);
         return currentUser;
@@ -1278,6 +1335,10 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             throw new BizException(errorCode, message);
         }
         return refreshedUser;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
@@ -1296,7 +1357,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -1316,7 +1377,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Long requireLong(Map<String, Object> arguments, String key) {
         Long value = longArg(arguments, key);
         if (value == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " cannot be blank");
         }
         return value;
     }
@@ -1331,7 +1392,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         try {
             return Long.parseLong(String.valueOf(value).trim());
         } catch (NumberFormatException exception) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " 必须是数字");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " must be a number");
         }
     }
 
@@ -1341,11 +1402,11 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         if (value instanceof List<?> values) {
             return values.stream()
-                    .map(item -> longValue(item, "列表项"))
+                    .map(item -> longValue(item, "list item"))
                     .filter(item -> item != null && item > 0)
                     .toList();
         }
-        throw new BizException(ErrorCode.VALIDATION_ERROR, "参数必须是数字数组");
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "Parameter must be a numeric array");
     }
 
     private List<String> stringListArg(Object value) {
@@ -1358,7 +1419,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                     .filter(StringUtils::hasText)
                     .toList();
         }
-        throw new BizException(ErrorCode.VALIDATION_ERROR, "参数必须是字符串数组");
+        throw new BizException(ErrorCode.VALIDATION_ERROR, "Parameter must be a string array");
     }
 
     private String maskMobile(Object value) {
@@ -1396,7 +1457,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private String requiredString(Map<String, Object> arguments, String key) {
         String value = stringArg(arguments, key, null);
         if (!StringUtils.hasText(value)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " 不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, key + " cannot be blank");
         }
         return value;
     }

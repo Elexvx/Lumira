@@ -223,6 +223,27 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void createOrderShouldRejectWhenLivePermissionsLoseCreatePermissionBeforeProviderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                managementAppService,
+                mock(PaymentOutboxService.class),
+                mock(DomainEventPublisher.class),
+                provider(enabledSystemInternalApi(), "payment:refund:create")
+        );
+
+        assertThatThrownBy(() -> service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(managementAppService);
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void createOrderShouldScopeIdempotencyLookupToCreator() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
@@ -403,6 +424,29 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void createRefundShouldRejectWhenLivePermissionsLoseRefundCreatePermissionBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                mock(PaymentManagementAppService.class),
+                mock(PaymentOutboxService.class),
+                mock(DomainEventPublisher.class),
+                provider(enabledSystemInternalApi(), "payment:order:view")
+        );
+
+        assertThatThrownBy(() -> service.createRefund(
+                currentUser(),
+                "ORD-1",
+                new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void createRefundShouldRejectNullRequestBeforeOrderLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentTransactionService service = service(jdbcTemplate);
@@ -514,6 +558,44 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void getOrderForUserShouldRejectWhenLivePermissionsLoseViewPermissionBeforeQuery() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                mock(PaymentManagementAppService.class),
+                mock(PaymentOutboxService.class),
+                mock(DomainEventPublisher.class),
+                provider(enabledSystemInternalApi(), "payment:refund:create")
+        );
+
+        assertThatThrownBy(() -> service.getOrderForUser(currentUser(), "ORD-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void getRefundForUserShouldRejectWhenLivePermissionsLoseRefundViewPermissionBeforeQuery() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                mock(PaymentManagementAppService.class),
+                mock(PaymentOutboxService.class),
+                mock(DomainEventPublisher.class),
+                provider(enabledSystemInternalApi(), "payment:refund:create")
+        );
+
+        assertThatThrownBy(() -> service.getRefundForUser(currentUser(), "REF-1"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void createRefundShouldScopeIdempotencyLookupToCreator() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentOrderRow order = orderRow(1001L);
@@ -583,7 +665,7 @@ class PaymentTransactionServiceTest {
     }
 
     private PaymentTransactionService service(JdbcTemplate jdbcTemplate, PaymentManagementAppService managementAppService, PaymentOutboxService outboxService, DomainEventPublisher domainEventPublisher) {
-        return service(jdbcTemplate, managementAppService, outboxService, domainEventPublisher, null);
+        return service(jdbcTemplate, managementAppService, outboxService, domainEventPublisher, provider(enabledSystemInternalApi()));
     }
 
     private PaymentTransactionService service(
@@ -605,14 +687,36 @@ class PaymentTransactionServiceTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(1001L, "tester", null, "session-1", 1, true, Set.of("payment:refund:create"));
+        CurrentUser currentUser = new CurrentUser(
+                1001L,
+                "tester",
+                null,
+                "session-1",
+                1,
+                true,
+                Set.of("payment:order:create", "payment:order:view", "payment:refund:create", "payment:refund:view")
+        );
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
     }
 
+    private SystemInternalApi enabledSystemInternalApi() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "tester", "ENABLED"));
+        return systemInternalApi;
+    }
+
     private CurrentUser untrustedUser() {
-        return new CurrentUser(1001L, "tester", null, "session-1", 1, true, Set.of("payment:refund:create"));
+        return new CurrentUser(
+                1001L,
+                "tester",
+                null,
+                "session-1",
+                1,
+                true,
+                Set.of("payment:order:create", "payment:order:view", "payment:refund:create", "payment:refund:view")
+        );
     }
 
     private PaymentCreateOrderRequestDTO orderRequest(String orderNo, String idempotencyKey) {
@@ -680,10 +784,10 @@ class PaymentTransactionServiceTest {
         return any();
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi, String... permissions) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
-                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
+                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class), permissions));
         }
         ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
@@ -694,10 +798,12 @@ class PaymentTransactionServiceTest {
         return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private PermissionSnapshotDTO permissionSnapshot(Long userId) {
+    private PermissionSnapshotDTO permissionSnapshot(Long userId, String... permissions) {
         return new PermissionSnapshotDTO(
                 "perm-v" + userId,
-                List.of("payment:refund:create"),
+                permissions == null || permissions.length == 0
+                        ? List.of("payment:order:create", "payment:order:view", "payment:refund:create", "payment:refund:view")
+                        : List.of(permissions),
                 List.of(31L),
                 41L,
                 List.of(41L),

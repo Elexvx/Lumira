@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,7 +62,7 @@ class SystemManagementAppServiceWriteHotPathTest {
     void configUpdateShouldBindOriginalConfigKeyAndScope() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
 
-        assertTrue(source.contains("SystemVO.ConfigVO currentConfig = getConfig(currentUser, id)"));
+        assertTrue(source.contains("SystemVO.ConfigVO currentConfig = loadConfig(id)"));
         assertTrue(source.contains("and config_key = ?"));
         assertTrue(source.contains("and config_scope = 'PLATFORM'"));
         assertTrue(source.contains("and is_system = 0"));
@@ -88,7 +89,7 @@ class SystemManagementAppServiceWriteHotPathTest {
     void dictTypeWritesShouldBindOriginalCodeAndSystemFlag() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
 
-        assertTrue(source.contains("SystemVO.DictTypeVO existingType = getDictType(currentUser, id)"));
+        assertTrue(source.contains("SystemVO.DictTypeVO existingType = loadDictType(id)"));
         assertTrue(source.contains("int typeDeleted = jdbcTemplate.update("));
         assertTrue(source.contains("requireSystemWrite(typeDeleted, \"Dict type changed, please retry\")"));
         assertTrue(source.contains("where dict_type_id = ? and deleted = 0"));
@@ -100,7 +101,7 @@ class SystemManagementAppServiceWriteHotPathTest {
     void dictItemWritesShouldBindOriginalValueAndStatus() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
 
-        assertTrue(source.contains("SystemVO.DictItemVO existingItem = getDictItem(currentUser, dictTypeId, itemId)"));
+        assertTrue(source.contains("SystemVO.DictItemVO existingItem = loadDictItem(dictTypeId, itemId)"));
         assertTrue(source.contains("int deleted = jdbcTemplate.update("));
         assertTrue(source.contains("requireSystemWrite(deleted, \"Dict item changed, please retry\")"));
         assertTrue(source.contains("where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0"));
@@ -187,6 +188,16 @@ class SystemManagementAppServiceWriteHotPathTest {
     }
 
     @Test
+    void createMenuShouldAcceptCreatePermissionWithoutSeparateViewPermission() {
+        TestEnvironment env = new TestEnvironment();
+
+        SystemVO.MenuVO menu = env.service.createMenu(buildCurrentUser("system:menu:create"), menuRequest());
+
+        assertEquals(901L, menu.getId());
+        assertEquals(1, env.jdbcTemplate.lastInsertIdQueries);
+    }
+
+    @Test
     void createMenuShouldRejectMissingSessionVersionBeforeDatabaseWrite() {
         TestEnvironment env = new TestEnvironment();
         CurrentUser currentUser = buildCurrentUser();
@@ -237,6 +248,27 @@ class SystemManagementAppServiceWriteHotPathTest {
     }
 
     @Test
+    void updateMenuStatusShouldRequireStatusPermissionBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.updateMenuStatus(buildCurrentUser("system:menu:update"), 901L, "DISABLED")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
+    @Test
+    void updateMenuStatusShouldAcceptStatusPermissionWithoutUpdatePermission() {
+        TestEnvironment env = new TestEnvironment();
+
+        assertDoesNotThrow(() -> env.service.updateMenuStatus(buildCurrentUser("system:menu:status"), 901L, "DISABLED"));
+        assertTrue(env.jdbcTemplate.updateCalls > 0);
+    }
+
+    @Test
     void listMenusShouldReuseVersionedCacheUntilReadModelVersionCacheExpires() throws InterruptedException {
         TestEnvironment env = new TestEnvironment();
 
@@ -264,6 +296,58 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
         assertEquals(1, env.jdbcTemplate.menuTreeQueries);
         assertEquals(2, env.jdbcTemplate.permissionCatalogQueries);
+    }
+
+    @Test
+    void listPermissionsShouldRequireRoleViewBeforePermissionCatalogRead() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.listPermissions(buildCurrentUser("system:menu:view"))
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.permissionCatalogQueries);
+    }
+
+    @Test
+    void listMenusShouldRequireMenuViewBeforeDatabaseRead() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.listMenus(buildCurrentUser("system:role:view"))
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.menuTreeQueries);
+    }
+
+    @Test
+    void getDictTypeShouldRequireViewPermissionBeforeDatabaseRead() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.getDictType(buildCurrentUser("system:dict:update"), 77L)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.rowMapperQueryForObjectCalls);
+    }
+
+    @Test
+    void getConfigShouldRequireViewPermissionBeforeDatabaseRead() {
+        TestEnvironment env = new TestEnvironment();
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.getConfig(buildCurrentUser("system:config:update"), 901L)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.rowMapperQueryForObjectCalls);
     }
 
     @Test
@@ -481,6 +565,30 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(0, env.jdbcTemplate.updateCalls);
     }
 
+    @Test
+    void updateMenuStatusShouldRejectWhenLiveSnapshotRevokesStatusPermissionBeforeDatabaseWrite() {
+        TestEnvironment env = new TestEnvironment();
+        when(env.permissionSnapshotService.loadSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot(
+                        "permissions-3",
+                        Set.of("system:menu:update"),
+                        Set.of(1L),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of(),
+                        "/dashboard/home"
+                ));
+
+        BizException error = assertThrows(
+                BizException.class,
+                () -> env.service.updateMenuStatus(buildCurrentUser("system:menu:status"), 901L, "DISABLED")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, error.getErrorCode());
+        assertEquals(0, env.jdbcTemplate.updateCalls);
+    }
+
     private static CurrentUser buildCurrentUser() {
         return buildCurrentUser("*");
     }
@@ -612,6 +720,7 @@ class SystemManagementAppServiceWriteHotPathTest {
         private int readModelVersionBumps;
         private int menuTreeQueries;
         private int permissionCatalogQueries;
+        private int rowMapperQueryForObjectCalls;
         private Long dictTypeId;
         private String dictTypeCode;
         private String dictTypeName;
@@ -696,6 +805,7 @@ class SystemManagementAppServiceWriteHotPathTest {
 
         @Override
         public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args) {
+            rowMapperQueryForObjectCalls += 1;
             if (sql.contains("from sys_menu")) {
                 SystemVO.MenuVO menu = new SystemVO.MenuVO();
                 menu.setId(menuId == null ? 901L : menuId);

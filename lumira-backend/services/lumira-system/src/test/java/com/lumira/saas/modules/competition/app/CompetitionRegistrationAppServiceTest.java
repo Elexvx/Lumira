@@ -26,6 +26,8 @@ import com.lumira.team.api.TeamSummaryDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -129,6 +131,169 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = new CompetitionRegistrationAppService(
+                sql,
+                objectMapper,
+                objectProvider(teamApiRejectingLookup()),
+                objectProvider((PaymentInternalApi) null),
+                objectProvider((SystemInternalApi) null),
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.createRegistration(student(), registrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
+    void createRegistrationShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        CompetitionRegistrationAppService service = new CompetitionRegistrationAppService(
+                sql,
+                objectMapper,
+                objectProvider(teamApiRejectingLookup()),
+                objectProvider((PaymentInternalApi) null),
+                objectProvider((SystemInternalApi) null),
+                permissionSnapshotService,
+                null
+        );
+
+        assertThatThrownBy(() -> service.createRegistration(student(), registrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
+    void createRegistrationShouldRejectWhenLiveIdentityUserUuidMismatchesTrustedUser() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
+                1001L,
+                "user-uuid-mismatch",
+                "student",
+                null,
+                "ENABLED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        CompetitionRegistrationAppService service =
+                service(sql, teamApiRejectingLookup(), null, permissionSnapshotService, null, systemInternalApi);
+
+        assertThatThrownBy(() -> service.createRegistration(student(), registrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
+    void createRegistrationShouldRefreshUsernameFromLiveIdentityBeforeUsingPermissionSnapshot() {
+        RegistrationSql sql = new RegistrationSql();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        PermissionSnapshotService.PermissionSnapshot snapshot = mock(PermissionSnapshotService.PermissionSnapshot.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(new SystemUserSnapshotDTO(
+                1001L,
+                "user-uuid-1001",
+                "student-live",
+                null,
+                "ENABLED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(snapshot);
+        when(snapshot.getPermissions()).thenReturn(Set.of("aiadc:registration:create", "aiadc:registration:pay"));
+        when(snapshot.getRoleIds()).thenReturn(Set.of());
+        when(snapshot.getDeptIds()).thenReturn(Set.of());
+        when(snapshot.getDescendantDeptIds()).thenReturn(Set.of());
+        when(snapshot.getDataScopes()).thenReturn(List.of());
+        when(snapshot.getVersion()).thenReturn("permissions-2");
+
+        CompetitionRegistrationAppService service =
+                service(sql, teamApiWithMembers(1001L, 1), null, permissionSnapshotService, null, systemInternalApi);
+        CurrentUser currentUser = student();
+        currentUser.setUsername("student-stale");
+
+        service.createRegistration(currentUser, registrationRequest());
+
+        assertThat(currentUser.getUsername()).isEqualTo("student-live");
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(new SystemUserSnapshotDTO(
+                        1001L,
+                        "user-uuid-1001",
+                        "student-live",
+                        null,
+                        "ENABLED",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                ));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:registration:create")));
+        CompetitionRegistrationAppService service =
+                service(sql, mock(TeamInternalApi.class), null, permissionSnapshotService, null, systemInternalApi);
+        CurrentUser currentUser = student();
+        currentUser.setSimulatedRoleId(0L);
+        Method method = CompetitionRegistrationAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(any(), anyString(), any());
+    }
+
+    @Test
     void createRegistrationShouldRejectTooManyInlineMembersBeforeDatabaseOrTeamLookup() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         CompetitionRegistrationAppService service = service(sql, teamApiRejectingLookup());
@@ -196,6 +361,20 @@ class CompetitionRegistrationAppServiceTest {
                 "user-uuid-1001",
                 "PENDING_PAYMENT"
         );
+    }
+
+    @Test
+    void updateRegistrationShouldRequireUpdatePermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:registration:create"));
+
+        assertThatThrownBy(() -> service.updateRegistration(currentUser, 1L, registrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(sql);
     }
 
     @Test
@@ -283,6 +462,20 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void listRegistrationsShouldRequireRegistrationReadAccessBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:competition:update"));
+
+        assertThatThrownBy(() -> service.listRegistrations(currentUser, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
     void getRegistrationShouldRejectMissingUserUuidBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
@@ -292,6 +485,20 @@ class CompetitionRegistrationAppServiceTest {
         assertThatThrownBy(() -> service.getRegistration(currentUser, 1L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
+    void getRegistrationShouldRequireRegistrationReadAccessBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:competition:update"));
+
+        assertThatThrownBy(() -> service.getRegistration(currentUser, 1L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         verifyNoInteractions(sql);
     }
@@ -310,6 +517,34 @@ class CompetitionRegistrationAppServiceTest {
 
         verifyNoInteractions(sql);
         verifyNoInteractions(paymentInternalApi);
+    }
+
+    @Test
+    void getPaymentStatusShouldRequireRegistrationReadAccessBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class), paymentInternalApi);
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:competition:update"));
+
+        assertThatThrownBy(() -> service.getPaymentStatus(currentUser, 1L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(sql);
+        verifyNoInteractions(paymentInternalApi);
+    }
+
+    @Test
+    void listPaymentRecordsShouldRequirePaymentViewPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+
+        assertThatThrownBy(() -> service.listPaymentRecords(student(), 1, 10, null, null, null, null))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(sql);
     }
 
     @Test
@@ -401,6 +636,22 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void submitMaterialsShouldRequireMaterialSubmitPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:registration:view"));
+        CompetitionRegistrationDTO.MaterialSubmitRequest request = new CompetitionRegistrationDTO.MaterialSubmitRequest();
+        request.setStageId(71L);
+
+        assertThatThrownBy(() -> service.submitMaterials(currentUser, 1L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
     void submitMaterialsShouldConstrainExistingSubmissionByOwnerUuid() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
@@ -452,6 +703,20 @@ class CompetitionRegistrationAppServiceTest {
         assertThatThrownBy(() -> service.createRegistration(currentUser, registrationRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
+    void createRegistrationShouldRequireCreatePermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:registration:view"));
+
+        assertThatThrownBy(() -> service.createRegistration(currentUser, registrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         verifyNoInteractions(sql);
     }
@@ -622,6 +887,23 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void getStageFormShouldAllowRegistrationPayPermissionWithoutCreatePermission() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(jdbcTemplate, teamApiWithMembers(1001L, 1));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:registration:pay"));
+        when(jdbcTemplate.queryForObject(
+                contains("join competition_stage s"),
+                org.mockito.ArgumentMatchers.<RowMapper<CompetitionRegistrationVO.StageForm>>any(),
+                eq(71L)))
+                .thenReturn(null);
+
+        assertThatThrownBy(() -> service.getStageForm(currentUser, 71L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
     void getStageFormShouldHideDraftStageFromRegistrationPermission() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         CompetitionRegistrationAppService service = service(jdbcTemplate, teamApiWithMembers(1001L, 1));
@@ -692,9 +974,10 @@ class CompetitionRegistrationAppServiceTest {
         sql.submittedMaterialCount = 1L;
         PaymentInternalApi paymentInternalApi = new PaymentInternalApi() {
             @Override
-            public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, PaymentCreateOrderRequestDTO request) {
+            public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, PaymentCreateOrderRequestDTO request) {
                 assertThat(operatorId).isEqualTo(1001L);
                 assertThat(operatorUuid).isEqualTo("user-uuid-1001");
+                assertThat(simulatedRoleId).isNull();
                 sql.paymentOrderInserts += 1;
                 sql.paymentOrderNo = request.orderNo();
                 try {
@@ -707,9 +990,10 @@ class CompetitionRegistrationAppServiceTest {
             }
 
             @Override
-            public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, String orderNo) {
+            public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
                 assertThat(operatorId).isEqualTo(1001L);
                 assertThat(operatorUuid).isEqualTo("user-uuid-1001");
+                assertThat(simulatedRoleId).isNull();
                 return paymentOrder(orderNo, 8_800L, "CNY");
             }
         };
@@ -747,6 +1031,41 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void paymentOrderQueueShouldPreserveSimulatedRoleScope() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        sql.preliminaryStageId = 71L;
+        sql.submittedMaterialCount = 1L;
+        PaymentInternalApi paymentInternalApi = new PaymentInternalApi() {
+            @Override
+            public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, PaymentCreateOrderRequestDTO request) {
+                assertThat(operatorId).isEqualTo(1001L);
+                assertThat(operatorUuid).isEqualTo("user-uuid-1001");
+                assertThat(simulatedRoleId).isEqualTo(9L);
+                sql.registration.put("paymentOrderNo", request.orderNo());
+                return paymentOrder(request.orderNo(), request.amountMinor(), request.currency());
+            }
+
+            @Override
+            public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+                assertThat(operatorId).isEqualTo(1001L);
+                assertThat(operatorUuid).isEqualTo("user-uuid-1001");
+                assertThat(simulatedRoleId).isEqualTo(9L);
+                return paymentOrder(orderNo, 8_800L, "CNY");
+            }
+        };
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
+        CurrentUser simulatedStudent = student();
+        simulatedStudent.setSimulatedRoleId(9L);
+
+        CompetitionRegistrationVO.PaymentOrder order = service.createPaymentOrder(simulatedStudent, 1L, new CompetitionRegistrationDTO.PaymentOrderRequest());
+
+        assertThat(order.getStatus()).isIn("PENDING", "QUEUED");
+        assertThat(sql.paymentOrderTask.get("simulatedRoleId")).isEqualTo(9L);
+        assertThat(sql.lastPaymentTaskInsertSql).contains("simulated_role_id");
+    }
+
+    @Test
     void paymentOrderCreationShouldRejectWhenTaskInsertMisses() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
@@ -766,6 +1085,20 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createPaymentOrderShouldRequirePayPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
+        CurrentUser currentUser = student();
+        currentUser.setPermissions(Set.of("aiadc:registration:create"));
+
+        assertThatThrownBy(() -> service.createPaymentOrder(currentUser, 1L, new CompetitionRegistrationDTO.PaymentOrderRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(sql);
+    }
+
+    @Test
     void paymentOrderTaskClaimShouldRequireOwnerUuidBoundToRegistrationAndUser() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/app/CompetitionRegistrationAppService.java"));
 
@@ -781,6 +1114,48 @@ class CompetitionRegistrationAppServiceTest {
                 .contains("select retry_count")
                 .contains("Payment order task changed, please retry")
                 .contains("Registration payment state changed, please retry");
+    }
+
+    @Test
+    void drainPaymentOrderQueueShouldMarkTaskFailedWhenPaymentOwnerResolverIsUnavailable() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        sql.seedPaymentOrderTask(1L, "user-uuid-1001");
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        CompetitionRegistrationAppService service = new CompetitionRegistrationAppService(
+                sql,
+                objectMapper,
+                objectProvider(teamApiWithMembers(1001L, 1)),
+                objectProvider(paymentInternalApi),
+                objectProvider((SystemInternalApi) null),
+                null
+        );
+        service.createPaymentOrder(student(), 1L, new CompetitionRegistrationDTO.PaymentOrderRequest());
+
+        int processed = service.drainPaymentOrderQueue(5);
+
+        assertThat(processed).isZero();
+        assertThat(sql.paymentOrderTask).isNotNull();
+        assertThat(sql.paymentOrderTask.get("status")).isEqualTo("FAILED");
+        assertThat(sql.paymentOrderTask.get("processMessage")).isEqualTo("Trusted payment owner resolver is unavailable");
+        verifyNoInteractions(paymentInternalApi);
+    }
+
+    @Test
+    void drainPaymentOrderQueueShouldMarkTaskFailedWhenTaskOwnerUuidMismatchesRegistration() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        sql.seedPaymentOrderTask(1L, "user-uuid-9999");
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
+
+        int processed = service.drainPaymentOrderQueue(5);
+
+        assertThat(processed).isZero();
+        assertThat(sql.paymentOrderTask).isNotNull();
+        assertThat(sql.paymentOrderTask.get("status")).isEqualTo("FAILED");
+        assertThat(String.valueOf(sql.paymentOrderTask.get("processMessage"))).contains("Payment order task owner userUuid mismatch");
+        verifyNoInteractions(paymentInternalApi);
     }
 
     @Test
@@ -892,15 +1267,49 @@ class CompetitionRegistrationAppServiceTest {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        return new CompetitionRegistrationAppService(
+        return service(
                 sql,
-                objectMapper,
-                objectProvider(teamInternalApi),
-                objectProvider(paymentInternalApi),
-                objectProvider(systemInternalApi(1001L)),
+                teamInternalApi,
+                paymentInternalApi,
                 permissionSnapshotService,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                systemInternalApi(1001L)
         );
+    }
+
+    private CompetitionRegistrationAppService service(
+            MyBatisQueryOperations sql,
+            TeamInternalApi teamInternalApi,
+            PaymentInternalApi paymentInternalApi,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemInternalApi systemInternalApi
+    ) {
+        try {
+            Constructor<CompetitionRegistrationAppService> constructor = CompetitionRegistrationAppService.class.getDeclaredConstructor(
+                    MyBatisQueryOperations.class,
+                    ObjectMapper.class,
+                    ObjectProvider.class,
+                    ObjectProvider.class,
+                    ObjectProvider.class,
+                    PermissionSnapshotService.class,
+                    SessionAuthenticationService.class,
+                    boolean.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    sql,
+                    objectMapper,
+                    objectProvider(teamInternalApi),
+                    objectProvider(paymentInternalApi),
+                    objectProvider(systemInternalApi),
+                    permissionSnapshotService,
+                    sessionAuthenticationService,
+                    false
+            );
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("Failed to create lenient CompetitionRegistrationAppService", ex);
+        }
     }
 
     private PaymentOrderDTO paymentOrder(String orderNo, Long amountMinor, String currency) {
@@ -944,7 +1353,13 @@ class CompetitionRegistrationAppServiceTest {
         currentUser.setSessionVersion(1);
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setAuthenticated(true);
-        currentUser.setPermissions(Set.of("aiadc:registration:create", "aiadc:registration:pay"));
+        currentUser.setPermissions(Set.of(
+                "aiadc:registration:view",
+                "aiadc:registration:create",
+                "aiadc:registration:update",
+                "aiadc:registration:pay",
+                "aiadc:material:submit"
+        ));
         return currentUser;
     }
 
@@ -1158,6 +1573,24 @@ class CompetitionRegistrationAppServiceTest {
             this.paymentOrderNo = paymentOrderNo;
         }
 
+        void seedPaymentOrderTask(Long registrationId, String ownerUserUuid) {
+            seedPaymentOrderTask(registrationId, ownerUserUuid, null);
+        }
+
+        void seedPaymentOrderTask(Long registrationId, String ownerUserUuid, Long simulatedRoleId) {
+            paymentOrderTask = new LinkedHashMap<>();
+            paymentOrderTask.put("id", 301L);
+            paymentOrderTask.put("registrationId", registrationId);
+            paymentOrderTask.put("providerCode", "alipay");
+            paymentOrderTask.put("clientIp", null);
+            paymentOrderTask.put("notifyUrl", null);
+            paymentOrderTask.put("returnUrl", null);
+            paymentOrderTask.put("ownerUserUuid", ownerUserUuid);
+            paymentOrderTask.put("simulatedRoleId", simulatedRoleId);
+            paymentOrderTask.put("status", "PENDING");
+            paymentOrderTask.put("retryCount", 0);
+        }
+
         @Override
         public int update(String sql, Object... args) {
             String normalized = sql.toLowerCase();
@@ -1253,6 +1686,7 @@ class CompetitionRegistrationAppServiceTest {
                 paymentOrderTask.put("notifyUrl", args[3]);
                 paymentOrderTask.put("returnUrl", args[4]);
                 paymentOrderTask.put("ownerUserUuid", args[5]);
+                paymentOrderTask.put("simulatedRoleId", args[6]);
                 paymentOrderTask.put("status", "PENDING");
                 paymentOrderTask.put("retryCount", 0);
                 return updateResults.isEmpty() ? 1 : updateResults.remove();
@@ -1273,6 +1707,21 @@ class CompetitionRegistrationAppServiceTest {
                         && Objects.equals(paymentOrderTask.get("claimToken"), args[5])) {
                     paymentOrderTask.put("status", "SUCCEEDED");
                     paymentOrderTask.put("processMessage", args[0]);
+                    paymentOrderTask.put("claimToken", null);
+                    return 1;
+                }
+                return 0;
+            }
+            if (normalized.contains("update competition_payment_order_task")
+                    && normalized.contains("set status = ?")
+                    && normalized.contains("retry_count = ?")) {
+                if (paymentOrderTask != null
+                        && Objects.equals(paymentOrderTask.get("registrationId"), args[6])
+                        && Objects.equals(paymentOrderTask.get("ownerUserUuid"), args[7])
+                        && Objects.equals(paymentOrderTask.get("claimToken"), args[8])) {
+                    paymentOrderTask.put("status", args[0]);
+                    paymentOrderTask.put("retryCount", args[1]);
+                    paymentOrderTask.put("processMessage", args[3]);
                     paymentOrderTask.put("claimToken", null);
                     return 1;
                 }
@@ -1331,6 +1780,19 @@ class CompetitionRegistrationAppServiceTest {
             if (normalized.contains("from competition_registration cr")) {
                 lastPaymentRecordCountSql = sql;
                 return requiredType.cast((long) paymentRecordRows.size());
+            }
+            if (normalized.contains("select retry_count")
+                    && normalized.contains("from competition_payment_order_task")) {
+                if (paymentOrderTask == null
+                        || !"RUNNING".equals(paymentOrderTask.get("status"))
+                        || !Objects.equals(paymentOrderTask.get("id"), args[0])
+                        || !Objects.equals(paymentOrderTask.get("registrationId"), args[1])
+                        || !Objects.equals(paymentOrderTask.get("ownerUserUuid"), args[2])
+                        || !Objects.equals(paymentOrderTask.get("claimToken"), args[3])) {
+                    return null;
+                }
+                Object retryCount = paymentOrderTask.get("retryCount");
+                return retryCount == null ? null : requiredType.cast(((Number) retryCount).intValue());
             }
             if (normalized.contains("from competition_registration where deleted = 0")) {
                 lastRegistrationCountSql = sql;

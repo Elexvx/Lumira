@@ -78,6 +78,7 @@ public class PlatformUpdateAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final HttpClient httpClient;
     private volatile PlatformUpdateVO.StatusVO cachedStatus;
     private volatile Path cachedGitDirectory;
@@ -90,7 +91,16 @@ public class PlatformUpdateAppService {
             PlatformUpdateTaskMapper taskMapper,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(environment, buildPropertiesProvider, objectMapper, taskMapper, permissionSnapshotService, null, null);
+        this(
+                environment,
+                buildPropertiesProvider,
+                objectMapper,
+                taskMapper,
+                permissionSnapshotService,
+                null,
+                null,
+                false
+        );
     }
 
     @Autowired
@@ -103,6 +113,28 @@ public class PlatformUpdateAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                environment,
+                buildPropertiesProvider,
+                objectMapper,
+                taskMapper,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private PlatformUpdateAppService(
+            Environment environment,
+            ObjectProvider<BuildProperties> buildPropertiesProvider,
+            ObjectMapper objectMapper,
+            PlatformUpdateTaskMapper taskMapper,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.environment = environment;
         this.buildPropertiesProvider = buildPropertiesProvider;
         this.objectMapper = objectMapper;
@@ -110,6 +142,7 @@ public class PlatformUpdateAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
@@ -123,7 +156,16 @@ public class PlatformUpdateAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(environment, buildPropertiesProvider, objectMapper, taskMapper, permissionSnapshotService, null, sessionAuthenticationService);
+        this(
+                environment,
+                buildPropertiesProvider,
+                objectMapper,
+                taskMapper,
+                permissionSnapshotService,
+                null,
+                sessionAuthenticationService,
+                false
+        );
     }
 
     public PlatformUpdateAppService(
@@ -132,7 +174,7 @@ public class PlatformUpdateAppService {
             ObjectMapper objectMapper,
             PlatformUpdateTaskMapper taskMapper
     ) {
-        this(environment, buildPropertiesProvider, objectMapper, taskMapper, null);
+        this(environment, buildPropertiesProvider, objectMapper, taskMapper, null, null, null, false);
     }
 
     public PlatformUpdateVO.StatusVO getStatus(CurrentUser currentUser) {
@@ -192,16 +234,16 @@ public class PlatformUpdateAppService {
             }
             if (!comparable) {
                 status.setStatus(STATUS_UNKNOWN);
-                status.setActionRequired("当前部署或更新源缺少可比较的提交信息，请确认构建注入 GIT_COMMIT 且 manifest 包含 commit。");
-                status.setNotes(List.of("系统只展示状态，不会自动安装更新。", "配置 PLATFORM_UPDATE_MANIFEST_URL 后可展示镜像和发布说明。"));
+                status.setActionRequired("Current deployment or update source is missing comparable commit information. Ensure GIT_COMMIT is injected and the manifest includes commit.");
+                status.setNotes(List.of("The system only displays status and will not install updates automatically.", "Configure PLATFORM_UPDATE_MANIFEST_URL to show images and release notes."));
             } else if (updateAvailable) {
                 status.setStatus(STATUS_UPDATE_AVAILABLE);
-                status.setActionRequired("发现新版本。管理员可在确认备份和维护窗口后手动安装。");
-                status.setNotes(List.of("安装由宿主机 lumira-updater 代理执行。", "业务服务不会直接执行 shell 或控制 Docker。"));
+                status.setActionRequired("A new version is available. Admins can install it manually after confirming backups and a maintenance window.");
+                status.setNotes(List.of("Installation is executed by the host lumira-updater agent.", "The business service does not execute shell commands or control Docker directly."));
             } else {
                 status.setStatus(STATUS_UP_TO_DATE);
-                status.setActionRequired("无需处理。");
-                status.setNotes(List.of("当前部署提交与更新源一致。", "可随时手动重新检查。"));
+                status.setActionRequired("No action required.");
+                status.setNotes(List.of("The current deployment commit matches the update source.", "You can run a manual check again at any time."));
             }
         } catch (Exception ex) {
             if (isDefaultSource(status.getSourceUrl())) {
@@ -211,11 +253,11 @@ public class PlatformUpdateAppService {
                     status.setLatestKnown(true);
                     status.setUpdateAvailable(false);
                     status.setStatus(STATUS_UP_TO_DATE);
-                    status.setActionRequired("当前为本地运行模式，已使用本地 Git 提交作为版本基准。配置 PLATFORM_UPDATE_MANIFEST_URL 后可启用远程更新检查。");
+                    status.setActionRequired("Local runtime mode is using the local Git commit as the version baseline. Configure PLATFORM_UPDATE_MANIFEST_URL to enable remote update checks.");
                     status.setErrorMessage(ex.getMessage());
                     status.setNotes(List.of(
-                            "默认 GitHub 更新源当前不可达，已回退到本地 Git 信息。",
-                            "生产更新请配置 PLATFORM_UPDATE_MANIFEST_URL、PLATFORM_UPDATE_AGENT_URL 和 PLATFORM_UPDATE_AGENT_TOKEN。"
+                            "The default GitHub update source is currently unreachable; local Git information is used instead.",
+                            "For production updates, configure PLATFORM_UPDATE_MANIFEST_URL, PLATFORM_UPDATE_AGENT_URL, and PLATFORM_UPDATE_AGENT_TOKEN."
                     ));
                     status.setActiveTask(findActiveTask());
                     cachedStatus = status;
@@ -226,9 +268,9 @@ public class PlatformUpdateAppService {
             status.setStatus(STATUS_CHECK_FAILED);
             status.setLatestKnown(false);
             status.setSourceReachable(false);
-            status.setActionRequired("更新源检查失败，请确认 manifest 地址、网络或令牌配置。");
+            status.setActionRequired("Update source check failed. Verify manifest URL, network access, or token configuration.");
             status.setErrorMessage(ex.getMessage());
-            status.setNotes(List.of("检查失败不会影响当前系统运行。", "系统不会因为检查失败而执行任何更新动作。"));
+            status.setNotes(List.of("Check failures do not affect the running system.", "The system will not perform update actions because a check failed."));
         }
         status.setActiveTask(findActiveTask());
         cachedStatus = status;
@@ -239,11 +281,11 @@ public class PlatformUpdateAppService {
         requirePermission(currentUser, PERMISSION_INSTALL);
         PlatformUpdateVO.StatusVO status = checkLatestInternal();
         if (!Boolean.TRUE.equals(status.getUpdaterAvailable())) {
-            throw new IllegalStateException("平台更新代理不可用，请先配置并启动 lumira-updater。");
+            throw new IllegalStateException("Platform update agent is unavailable. Configure and start lumira-updater first.");
         }
         PlatformUpdateVO.LatestVersionVO latest = status.getLatest();
         if (latest == null || !StringUtils.hasText(latest.getServerImage())) {
-            throw new IllegalStateException("当前更新源没有可安装的 serverImage，请配置 release manifest。");
+            throw new IllegalStateException("Current update source does not provide an installable serverImage. Configure the release manifest.");
         }
         PlatformUpdateTaskEntity task = createTask(TASK_INSTALL, latest, currentUser);
         return startUpdaterTask(task, "/v1/update/install");
@@ -252,7 +294,7 @@ public class PlatformUpdateAppService {
     public PlatformUpdateVO.TaskVO rollback(CurrentUser currentUser) {
         requirePermission(currentUser, PERMISSION_ROLLBACK);
         if (!isUpdaterAvailable()) {
-            throw new IllegalStateException("平台更新代理不可用，请先配置并启动 lumira-updater。");
+            throw new IllegalStateException("Platform update agent is unavailable. Configure and start lumira-updater first.");
         }
         PlatformUpdateVO.LatestVersionVO latest = getStatusInternal().getLatest();
         PlatformUpdateTaskEntity task = createTask(TASK_ROLLBACK, latest, currentUser);
@@ -442,6 +484,9 @@ public class PlatformUpdateAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -463,17 +508,32 @@ public class PlatformUpdateAppService {
             }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
         currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
@@ -507,8 +567,12 @@ public class PlatformUpdateAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private JsonNode postUpdater(String path, PlatformUpdateTaskEntity task) throws Exception {
@@ -567,7 +631,7 @@ public class PlatformUpdateAppService {
         HttpRequest request = builder.build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("更新源请求失败: HTTP " + response.statusCode());
+            throw new IllegalStateException("更新源请求失败 HTTP " + response.statusCode());
         }
         JsonNode root = objectMapper.readTree(response.body());
         return manifestSource ? fromManifest(root) : fromGithubCommit(root);

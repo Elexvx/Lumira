@@ -7,6 +7,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -26,7 +27,7 @@ public class OnlineSessionStreamService {
 
     private static final long SSE_TIMEOUT_MILLIS = 0L;
     private static final String PERMISSION_VIEW = "system:online-user:view";
-    private static final Duration DEFAULT_TRUST_REVALIDATION_INTERVAL = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_TRUST_REVALIDATION_INTERVAL = Duration.ZERO;
 
     private final ObjectMapper objectMapper;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -36,6 +37,7 @@ public class OnlineSessionStreamService {
     private final Map<String, Set<String>> subscriberIdsBySessionId = new ConcurrentHashMap<>();
     private final Map<String, Instant> trustedAtBySubscriberId = new ConcurrentHashMap<>();
 
+    @Autowired
     public OnlineSessionStreamService(
             ObjectMapper objectMapper,
             SessionAuthenticationService sessionAuthenticationService
@@ -58,37 +60,12 @@ public class OnlineSessionStreamService {
     }
 
     public SseEmitter openStream(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)
-                || currentUser.getPermissions() == null
-                || (!currentUser.getPermissions().contains("*")
-                && !currentUser.getPermissions().contains(PERMISSION_VIEW))) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Missing online session permission");
-        }
-
-        String sessionId;
-        try {
-            sessionId = OnlineSessionEventTrustValidator.requireTrustedSessionId(currentUser.getSessionId());
-        } catch (IllegalArgumentException exception) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Invalid online session");
-        }
-
-        SessionAuthenticationService.AuthenticatedAccess authenticatedAccess;
-        try {
-            authenticatedAccess = sessionAuthenticationService.authenticateSessionTicket(
-                    sessionId,
-                    currentUser.getUserId(),
-                    currentUser.getUserUuid().trim(),
-                    normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
-                    currentUser.getSessionVersion(),
-                    currentUser.getPermissionsVersion().trim()
-            );
-        } catch (RuntimeException exception) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Invalid online session");
-        }
-        CurrentUser trustedCurrentUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        CurrentUser trustedCurrentUser = authenticateTrustedCurrentUser(currentUser);
         if (!hasViewPermission(trustedCurrentUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Missing online session permission");
         }
+
+        String sessionId = trustedCurrentUser.getSessionId().trim();
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
         String subscriberId = UUID.randomUUID().toString();
@@ -146,7 +123,7 @@ public class OnlineSessionStreamService {
 
         Collection<Subscriber> targets = new ArrayList<>(subscribers.values());
         for (Subscriber subscriber : targets) {
-            if (!hasTrustedSubscription(subscriber)) {
+            if (!hasTrustedSubscription(subscriber, true)) {
                 continue;
             }
             send(subscriber, event);
@@ -222,11 +199,15 @@ public class OnlineSessionStreamService {
     }
 
     private boolean hasTrustedSubscription(Subscriber subscriber) {
+        return hasTrustedSubscription(subscriber, false);
+    }
+
+    private boolean hasTrustedSubscription(Subscriber subscriber, boolean forceRevalidation) {
         if (subscriber == null) {
             return false;
         }
         Instant now = clock.instant();
-        if (!shouldRevalidateTrust(subscriber.subscriberId(), now)) {
+        if (!forceRevalidation && !shouldRevalidateTrust(subscriber.subscriberId(), now)) {
             return true;
         }
         try {
@@ -264,6 +245,41 @@ public class OnlineSessionStreamService {
             return false;
         }
         return currentUser.getPermissions().contains("*") || currentUser.getPermissions().contains(PERMISSION_VIEW);
+    }
+
+    private CurrentUser authenticateTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Invalid online session");
+        }
+
+        String sessionId;
+        try {
+            sessionId = OnlineSessionEventTrustValidator.requireTrustedSessionId(currentUser.getSessionId());
+        } catch (IllegalArgumentException exception) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Invalid online session");
+        }
+
+        try {
+            SessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            sessionId,
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid().trim(),
+                            normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion().trim()
+                    );
+            CurrentUser trustedCurrentUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+            if (!AuthenticationTrustSupport.isTrustedCurrentUser(trustedCurrentUser)) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Invalid online session");
+            }
+            return trustedCurrentUser;
+        } catch (RuntimeException exception) {
+            if (exception instanceof BizException bizException && bizException.getErrorCode() == ErrorCode.FORBIDDEN) {
+                throw bizException;
+            }
+            throw new BizException(ErrorCode.FORBIDDEN, "Invalid online session");
+        }
     }
 
     private Long normalizeSimulatedRoleId(Long simulatedRoleId) {

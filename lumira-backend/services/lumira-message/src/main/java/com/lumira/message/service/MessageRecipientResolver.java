@@ -15,6 +15,8 @@ import java.util.Set;
 @Component
 public class MessageRecipientResolver {
 
+    private static final String STATUS_ENABLED = "ENABLED";
+
     private final ObjectProvider<SystemInternalApi> systemInternalApi;
 
     public MessageRecipientResolver(ObjectProvider<SystemInternalApi> systemInternalApi) {
@@ -71,7 +73,9 @@ public class MessageRecipientResolver {
                 .filter(user -> user != null
                         && user.userId() != null
                         && user.userId() > 0
-                        && StringUtils.hasText(user.userUuid()))
+                        && StringUtils.hasText(user.userUuid())
+                        && StringUtils.hasText(user.status())
+                        && STATUS_ENABLED.equalsIgnoreCase(user.status().trim()))
                 .map(user -> new Recipient(user.userId(), user.userUuid().trim()))
                 .distinct()
                 .toList();

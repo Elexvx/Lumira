@@ -61,8 +61,15 @@ public class AiKnowledgeBaseAppService {
     private static final int MAX_INDEX_RETRY_COUNT = 5;
     private static final int MAX_INDEX_RETRY_DELAY_SECONDS = 300;
     private static final int INDEX_CLAIM_TTL_SECONDS = 900;
-    private static final String PERMISSION_AI_VIEW = "ai:view";
-    private static final String PERMISSION_AI_MANAGE = "ai:manage";
+    private static final String PERMISSION_KNOWLEDGE_VIEW = "ai:knowledge:view";
+    private static final String PERMISSION_KNOWLEDGE_QUERY = "ai:knowledge:query";
+    private static final String PERMISSION_KNOWLEDGE_CREATE = "ai:knowledge:create";
+    private static final String PERMISSION_KNOWLEDGE_UPDATE = "ai:knowledge:update";
+    private static final String PERMISSION_KNOWLEDGE_DELETE = "ai:knowledge:delete";
+    private static final String PERMISSION_KNOWLEDGE_BIND = "ai:knowledge:bind";
+    private static final String PERMISSION_KNOWLEDGE_DOCUMENT_UPLOAD = "ai:knowledge:document:upload";
+    private static final String PERMISSION_KNOWLEDGE_DOCUMENT_DELETE = "ai:knowledge:document:delete";
+    private static final String PERMISSION_KNOWLEDGE_DOCUMENT_INDEX = "ai:knowledge:document:index";
     private static final String STATUS_ENABLED = "ENABLED";
 
     private final MyBatisQueryOperations jdbcTemplate;
@@ -75,6 +82,7 @@ public class AiKnowledgeBaseAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public AiKnowledgeBaseAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -96,7 +104,8 @@ public class AiKnowledgeBaseAppService {
                 vectorService,
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -113,6 +122,34 @@ public class AiKnowledgeBaseAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                jdbcTemplate,
+                fileInternalApi,
+                textExtractor,
+                operationAuditService,
+                platformEventPublisher,
+                domainEventPublisher,
+                vectorService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private AiKnowledgeBaseAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            FileInternalApi fileInternalApi,
+            AiKnowledgeTextExtractor textExtractor,
+            OperationAuditService operationAuditService,
+            PlatformEventPublisher platformEventPublisher,
+            @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            AiKnowledgeVectorService vectorService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.fileInternalApi = fileInternalApi;
         this.textExtractor = textExtractor;
@@ -123,6 +160,7 @@ public class AiKnowledgeBaseAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public AiKnowledgeBaseAppService(
@@ -146,7 +184,8 @@ public class AiKnowledgeBaseAppService {
                 vectorService,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                false
         );
     }
 
@@ -168,7 +207,8 @@ public class AiKnowledgeBaseAppService {
                 vectorService,
                 null,
                 null,
-                null);
+                null,
+                false);
     }
 
     private enum KnowledgeAccess {
@@ -178,7 +218,7 @@ public class AiKnowledgeBaseAppService {
     }
 
     public PageResponse<AiVO.KnowledgeBaseVO> listKnowledgeBases(CurrentUser currentUser, String keyword, String status, String scope, long pageNo, long pageSize) {
-        requireLogin(currentUser);
+        requireKnowledgeViewPermission(currentUser);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(MAX_PAGE_SIZE, pageSize));
         StringBuilder where = new StringBuilder(" where kb.is_deleted = 0");
@@ -224,12 +264,13 @@ public class AiKnowledgeBaseAppService {
     }
 
     public AiVO.KnowledgeBaseVO getKnowledgeBase(CurrentUser currentUser, Long id) {
+        requireKnowledgeViewPermission(currentUser);
         return requireKnowledgeBase(currentUser, id, KnowledgeAccess.VIEW);
     }
 
     @Transactional
     public AiVO.KnowledgeBaseVO createKnowledgeBase(CurrentUser currentUser, AiDTO.KnowledgeBaseUpsertRequest request) {
-        Long ownerUserId = requireLogin(currentUser);
+        Long ownerUserId = requireKnowledgeCreatePermission(currentUser);
         String ownerUserUuid = trustedUserUuid(currentUser);
         String ownerUsername = trustedUsername(currentUser);
         validateKnowledgeName(ownerUserId, ownerUserUuid, request.getName(), null);
@@ -260,13 +301,13 @@ public class AiKnowledgeBaseAppService {
         );
         requireKnowledgeBaseWrite(inserted);
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        operationAuditService.log(ownerUserId, ownerUserUuid, ownerUsername, "ai", "knowledge-create", "CREATE", "SUCCESS", "鍒涘缓鐭ヨ瘑搴? " + request.getName());
+        operationAuditService.log(ownerUserId, ownerUserUuid, ownerUsername, "ai", "knowledge-create", "CREATE", "SUCCESS", "创建知识库: " + request.getName());
         return requireKnowledgeBase(currentUser, id, KnowledgeAccess.VIEW);
     }
 
     @Transactional
     public AiVO.KnowledgeBaseVO updateKnowledgeBase(CurrentUser currentUser, Long id, AiDTO.KnowledgeBaseUpsertRequest request) {
-        Long actorUserId = requireLogin(currentUser);
+        Long actorUserId = requireKnowledgeUpdatePermission(currentUser);
         String actorUserUuid = trustedUserUuid(currentUser);
         String actorUsername = trustedUsername(currentUser);
         AiVO.KnowledgeBaseVO knowledgeBase = requireKnowledgeBase(currentUser, id, KnowledgeAccess.MANAGE);
@@ -293,13 +334,13 @@ public class AiKnowledgeBaseAppService {
                 knowledgeBase.getOwnerUserUuid()
         );
         requireKnowledgeBaseWrite(updated);
-        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-update", "UPDATE", "SUCCESS", "鏇存柊鐭ヨ瘑搴? " + id);
+        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-update", "UPDATE", "SUCCESS", "更新知识库: " + id);
         return requireKnowledgeBase(currentUser, id, KnowledgeAccess.VIEW);
     }
 
     @Transactional
     public boolean deleteKnowledgeBase(CurrentUser currentUser, Long id) {
-        Long actorUserId = requireLogin(currentUser);
+        Long actorUserId = requireKnowledgeDeletePermission(currentUser);
         String actorUserUuid = trustedUserUuid(currentUser);
         String actorUsername = trustedUsername(currentUser);
         AiVO.KnowledgeBaseVO knowledgeBase = requireKnowledgeBase(currentUser, id, KnowledgeAccess.MANAGE);
@@ -399,12 +440,12 @@ public class AiKnowledgeBaseAppService {
                 ownerUserId,
                 ownerUserUuid
         );
-        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-delete", "DELETE", "SUCCESS", "鍒犻櫎鐭ヨ瘑搴? " + id);
+        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-delete", "DELETE", "SUCCESS", "删除知识库: " + id);
         return true;
     }
 
     public PageResponse<AiVO.KnowledgeDocumentVO> listDocuments(CurrentUser currentUser, Long knowledgeBaseId, long pageNo, long pageSize) {
-        requireLogin(currentUser);
+        requireKnowledgeViewPermission(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.VIEW);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(MAX_PAGE_SIZE, pageSize));
@@ -440,11 +481,12 @@ public class AiKnowledgeBaseAppService {
 
     @Transactional
     public AiVO.KnowledgeDocumentVO uploadDocument(CurrentUser currentUser, Long knowledgeBaseId, MultipartFile file) {
-        Long actorUserId = requireLogin(currentUser);
+        Long actorUserId = requireKnowledgeDocumentUploadPermission(currentUser);
         String actorUserUuid = trustedUserUuid(currentUser);
         String actorUsername = trustedUsername(currentUser);
+        Long actorSimulatedRoleId = trustedSimulatedRoleId(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.MANAGE);
-        FileObjectDTO uploaded = uploadKnowledgeDocumentFile(actorUserId, actorUserUuid, actorUsername, file);
+        FileObjectDTO uploaded = uploadKnowledgeDocumentFile(actorUserId, actorUserUuid, actorUsername, actorSimulatedRoleId, file);
         LocalDateTime now = LocalDateTime.now();
         String title = cleanTitle(file.getOriginalFilename());
         int inserted = jdbcTemplate.update(
@@ -453,8 +495,8 @@ public class AiKnowledgeBaseAppService {
                             knowledge_base_id, file_id, title, original_file_name, file_extension,
                             mime_type, file_size_bytes, status, extracted_text, extracted_char_count,
                             chunk_count, index_retry_count, index_next_retry_at, index_last_error,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, 'INDEXING', null, 0, 0, 0, null, null, ?, ?, ?, ?, 0, ?, ?)
+                            created_by, created_by_uuid, simulated_role_id, updated_by, updated_by_uuid, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, ?, ?, ?, ?, 'INDEXING', null, 0, 0, 0, null, null, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
                 knowledgeBaseId,
                 uploaded.id(),
@@ -465,6 +507,7 @@ public class AiKnowledgeBaseAppService {
                 uploaded.fileSizeBytes(),
                 actorUserId,
                 actorUserUuid,
+                actorSimulatedRoleId,
                 actorUserId,
                 actorUserUuid,
                 now,
@@ -481,11 +524,17 @@ public class AiKnowledgeBaseAppService {
         knowledgeBase.requestIndex(documentId, uploaded.id(), actorUserId, actorUserUuid);
         domainEventPublisher.publishAll(knowledgeBase.pullDomainEvents());
         processKnowledgeDocumentIndex(knowledgeBaseId, documentId);
-        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-document-upload", "CREATE", "SUCCESS", "涓婁紶鐭ヨ瘑搴撴枃妗ｅ苟鎻愪氦绱㈠紩浠诲姟: " + title);
+        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-document-upload", "CREATE", "SUCCESS", "上传知识库文档: " + title);
         return requireDocument(knowledgeBaseId, documentId);
     }
 
-    private FileObjectDTO uploadKnowledgeDocumentFile(Long actorUserId, String actorUserUuid, String actorUsername, MultipartFile file) {
+    private FileObjectDTO uploadKnowledgeDocumentFile(
+            Long actorUserId,
+            String actorUserUuid,
+            String actorUsername,
+            Long actorSimulatedRoleId,
+            MultipartFile file
+    ) {
         try {
             return fileInternalApi.uploadDocumentForUser(
                     file,
@@ -495,27 +544,29 @@ public class AiKnowledgeBaseAppService {
                     KNOWLEDGE_STORAGE_BUCKET,
                     actorUserId,
                     actorUserUuid,
-                    actorUsername
+                    actorUsername,
+                    actorSimulatedRoleId
             );
         } catch (BizException exception) {
             ErrorCode errorCode = exception.getErrorCode();
             if (errorCode == ErrorCode.BAD_REQUEST || errorCode == ErrorCode.VALIDATION_ERROR) {
                 throw exception;
             }
-            String message = "鐭ヨ瘑搴撴枃浠朵笂浼犲け璐ワ細" + visibleUploadMessage(exception);
+            String message = "Knowledge document file upload failed: " + visibleUploadMessage(exception);
             throw new BizException(ErrorCode.BIZ_ERROR, message, message);
         } catch (RuntimeException exception) {
             log.warn("Knowledge document file upload failed", exception);
-            String message = "鐭ヨ瘑搴撴枃浠朵笂浼犲け璐ワ紝璇锋鏌ュ瓨鍌ㄧ┖闂撮厤缃垨绋嶅悗閲嶈瘯";
+            String message = "Knowledge document file upload failed. Please check storage configuration and try again later.";
             throw new BizException(ErrorCode.BIZ_ERROR, message, message);
         }
     }
 
     @Transactional
     public AiVO.KnowledgeDocumentVO reindexDocument(CurrentUser currentUser, Long knowledgeBaseId, Long documentId) {
-        Long actorUserId = requireLogin(currentUser);
+        Long actorUserId = requireKnowledgeDocumentIndexPermission(currentUser);
         String actorUserUuid = trustedUserUuid(currentUser);
         String actorUsername = trustedUsername(currentUser);
+        Long actorSimulatedRoleId = trustedSimulatedRoleId(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.MANAGE);
         AiVO.KnowledgeDocumentVO document = requireDocument(knowledgeBaseId, documentId);
         String extractedText = jdbcTemplate.queryForObject(
@@ -529,7 +580,9 @@ public class AiKnowledgeBaseAppService {
                     document.getFileId(),
                     actorUserId,
                     actorUserUuid,
-                    actorUsername
+                    actorUsername,
+                    false,
+                    actorSimulatedRoleId
             );
             extractedText = textExtractor.extract(toMultipartFile(content)).text();
         }
@@ -538,7 +591,7 @@ public class AiKnowledgeBaseAppService {
         knowledgeBase.requestIndex(documentId, document.getFileId(), actorUserId, actorUserUuid);
         domainEventPublisher.publishAll(knowledgeBase.pullDomainEvents());
         processKnowledgeDocumentIndex(knowledgeBaseId, documentId);
-        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-document-reindex", "UPDATE", "SUCCESS", "鎻愪氦鐭ヨ瘑搴撴枃妗ｉ噸寤虹储寮曚换鍔? " + document.getTitle());
+        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-document-reindex", "UPDATE", "SUCCESS", "重新索引知识库文档: " + document.getTitle());
         return requireDocument(knowledgeBaseId, documentId);
     }
 
@@ -548,7 +601,8 @@ public class AiKnowledgeBaseAppService {
         List<PendingIndexTask> candidates = jdbcTemplate.query(
                 """
                         select d.id, d.knowledge_base_id, d.file_id, d.title, d.created_by,
-                               d.created_by_uuid as created_by_user_uuid, u.username as created_by_username,
+                               d.created_by_uuid as created_by_user_uuid, d.simulated_role_id,
+                               u.username as created_by_username,
                                coalesce(d.index_retry_count, 0) as index_retry_count
                         from ai_knowledge_document d
                         left join sys_user u on u.id = d.created_by and u.uuid = d.created_by_uuid and u.deleted = 0 and u.status = 'ENABLED'
@@ -570,6 +624,7 @@ public class AiKnowledgeBaseAppService {
                         row.getString("title"),
                         row.getObject("created_by", Long.class),
                         row.getString("created_by_user_uuid"),
+                        row.getObject("simulated_role_id", Long.class),
                         row.getString("created_by_username"),
                         row.getObject("index_retry_count", Integer.class),
                         null
@@ -602,7 +657,8 @@ public class AiKnowledgeBaseAppService {
         PendingIndexTask task = jdbcTemplate.queryForObject(
                 """
                         select d.id, d.knowledge_base_id, d.file_id, d.title, d.created_by,
-                               d.created_by_uuid as created_by_user_uuid, u.username as created_by_username,
+                               d.created_by_uuid as created_by_user_uuid, d.simulated_role_id,
+                               u.username as created_by_username,
                                coalesce(d.index_retry_count, 0) as index_retry_count
                         from ai_knowledge_document d
                         left join sys_user u on u.id = d.created_by and u.uuid = d.created_by_uuid and u.deleted = 0 and u.status = 'ENABLED'
@@ -617,6 +673,7 @@ public class AiKnowledgeBaseAppService {
                         row.getString("title"),
                         row.getObject("created_by", Long.class),
                         row.getString("created_by_user_uuid"),
+                        row.getObject("simulated_role_id", Long.class),
                         row.getString("created_by_username"),
                         row.getObject("index_retry_count", Integer.class),
                         null
@@ -634,7 +691,7 @@ public class AiKnowledgeBaseAppService {
 
     @Transactional
     public boolean deleteDocument(CurrentUser currentUser, Long knowledgeBaseId, Long documentId) {
-        Long actorUserId = requireLogin(currentUser);
+        Long actorUserId = requireKnowledgeDocumentDeletePermission(currentUser);
         String actorUserUuid = trustedUserUuid(currentUser);
         String actorUsername = trustedUsername(currentUser);
         requireKnowledgeBase(currentUser, knowledgeBaseId, KnowledgeAccess.MANAGE);
@@ -687,11 +744,12 @@ public class AiKnowledgeBaseAppService {
                 "DELETED",
                 0
         );
-        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-document-delete", "DELETE", "SUCCESS", "鍒犻櫎鐭ヨ瘑搴撴枃妗? " + documentId);
+        operationAuditService.log(actorUserId, actorUserUuid, actorUsername, "ai", "knowledge-document-delete", "DELETE", "SUCCESS", "删除知识库文档: " + documentId);
         return true;
     }
 
     public List<AiVO.KnowledgeReferenceVO> retrieve(CurrentUser currentUser, String query, List<Long> knowledgeBaseIds, int limit) {
+        requireKnowledgeQueryPermission(currentUser);
         return retrieve(currentUser, query, knowledgeBaseIds, limit, false);
     }
 
@@ -772,7 +830,7 @@ public class AiKnowledgeBaseAppService {
     }
 
     public List<AiVO.KnowledgeBaseVO> listEmployeeKnowledgeBases(CurrentUser currentUser, Long employeeId) {
-        requireViewPermission(currentUser);
+        requireKnowledgeViewPermission(currentUser);
         List<Object> args = new ArrayList<>();
         args.add(employeeId);
         StringBuilder where = new StringBuilder(" where rel.employee_id = ? and rel.is_deleted = 0");
@@ -795,7 +853,7 @@ public class AiKnowledgeBaseAppService {
 
     @Transactional
     public boolean updateEmployeeKnowledgeBases(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeKnowledgeBasesUpdateRequest request) {
-        Long operatorId = requireManagePermission(currentUser);
+        Long operatorId = requireKnowledgeBindPermission(currentUser);
         String operatorUsername = trustedUsername(currentUser);
         EmployeeBindingContext employee = requireEmployeeBindingContext(employeeId);
         LocalDateTime now = LocalDateTime.now();
@@ -860,7 +918,7 @@ public class AiKnowledgeBaseAppService {
                     employee.enabled()
             );
         }
-        operationAuditService.log(operatorId, currentUser.getUserUuid(), operatorUsername, "ai", "knowledge-bind", "UPDATE", "SUCCESS", "鏇存柊鏁板瓧鍛樺伐鐭ヨ瘑搴? " + employee.id());
+        operationAuditService.log(operatorId, currentUser.getUserUuid(), operatorUsername, "ai", "knowledge-bind", "UPDATE", "SUCCESS", "更新数字员工知识库绑定: " + employee.id());
         return true;
     }
 
@@ -911,7 +969,7 @@ public class AiKnowledgeBaseAppService {
     }
 
     public List<AiVO.KnowledgeReferenceVO> retrieveForEmployee(CurrentUser currentUser, Long employeeId, String query, int limit) {
-        requireLogin(currentUser);
+        requireKnowledgeQueryPermission(currentUser);
         List<Long> boundIds = jdbcTemplate.queryForList(
                 """
                         select knowledge_base_id
@@ -989,8 +1047,9 @@ public class AiKnowledgeBaseAppService {
         if (task == null) {
             return null;
         }
-        Long indexUserId = requireIndexUserId(task.createdBy());
-        String indexUserUuid = requireIndexUserUuid(task.createdByUserUuid());
+        IndexOwnerContext owner = requireTrustedIndexOwner(task);
+        Long indexUserId = owner.userId();
+        String indexUserUuid = owner.userUuid();
         String claimToken = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         int updated = jdbcTemplate.update(
@@ -1155,7 +1214,7 @@ public class AiKnowledgeBaseAppService {
     private void processKnowledgeDocumentIndex(PendingIndexTask task) {
         try {
             String claimToken = requireIndexClaimToken(task);
-            IndexOwnerContext owner = requireIndexOwner(task);
+            IndexOwnerContext owner = requireTrustedIndexOwner(task);
             AiKnowledgeTextExtractor.ExtractedText extracted = resolveExtractedText(task, owner);
             int extractedUpdated = jdbcTemplate.update(
                     """
@@ -1182,11 +1241,12 @@ public class AiKnowledgeBaseAppService {
             if (extractedUpdated != 1) {
                 throw new IllegalStateException("Knowledge document index task changed, please retry");
             }
-            int chunkCount = rebuildChunks(task, extracted.text(), owner.userId(), owner.userUuid());
+            IndexOwnerContext refreshedOwner = requireTrustedIndexOwner(task);
+            int chunkCount = rebuildChunks(task, extracted.text(), refreshedOwner.userId(), refreshedOwner.userUuid());
             publishKnowledgeDocumentEvent(
                     PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
-                    owner.userId(),
-                    owner.userUuid(),
+                    refreshedOwner.userId(),
+                    refreshedOwner.userUuid(),
                     task.knowledgeBaseId(),
                     task.documentId(),
                     task.title(),
@@ -1210,7 +1270,9 @@ public class AiKnowledgeBaseAppService {
                 task.fileId(),
                 owner.userId(),
                 owner.userUuid(),
-                owner.username()
+                owner.username(),
+                false,
+                owner.simulatedRoleId()
         );
         return textExtractor.extract(toMultipartFile(content));
     }
@@ -1222,7 +1284,9 @@ public class AiKnowledgeBaseAppService {
                     owner.userId(),
                     owner.userUuid(),
                     owner.username(),
-                    FILE_TEXT_CONTENT_ARTIFACT
+                    FILE_TEXT_CONTENT_ARTIFACT,
+                    false,
+                    owner.simulatedRoleId()
             );
         } catch (RuntimeException exception) {
             return null;
@@ -1313,12 +1377,50 @@ public class AiKnowledgeBaseAppService {
         return userUuid.trim();
     }
 
-    private IndexOwnerContext requireIndexOwner(PendingIndexTask task) {
-        return new IndexOwnerContext(
-                requireIndexUserId(task == null ? null : task.createdBy()),
-                requireIndexUserUuid(task == null ? null : task.createdByUserUuid()),
-                requireIndexUsername(task == null ? null : task.createdByUsername())
-        );
+    private IndexOwnerContext requireTrustedIndexOwner(PendingIndexTask task) {
+        Long userId = requireIndexUserId(task == null ? null : task.createdBy());
+        String userUuid = requireIndexUserUuid(task == null ? null : task.createdByUserUuid());
+        String username = requireIndexUsername(task == null ? null : task.createdByUsername());
+        Long simulatedRoleId = normalizeSimulatedRoleId(task == null ? null : task.simulatedRoleId());
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            String liveUserUuid = userSnapshot == null || !StringUtils.hasText(userSnapshot.userUuid())
+                    ? null
+                    : userSnapshot.userUuid().trim();
+            if (userSnapshot == null
+                    || userSnapshot.userId() == null
+                    || !userId.equals(userSnapshot.userId())
+                    || !StringUtils.hasText(liveUserUuid)
+                    || !userUuid.equals(liveUserUuid)
+                    || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Knowledge document index owner is disabled or no longer active");
+            }
+            username = requireIndexUsername(userSnapshot.username());
+            userUuid = liveUserUuid;
+        }
+        if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Knowledge document index trusted owner resolver is unavailable");
+            }
+            return new IndexOwnerContext(userId, userUuid, username, simulatedRoleId);
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, userUuid)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Knowledge document index owner is disabled or no longer active");
+        }
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(userId, userUuid, simulatedRoleId)
+                : permissionSnapshotService.loadSnapshot(userId, userUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Knowledge document index owner permission snapshot is unavailable");
+            }
+            return new IndexOwnerContext(userId, userUuid, username, simulatedRoleId);
+        }
+        Set<String> permissions = snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions());
+        if (!permissions.contains("*") && !permissions.contains(PERMISSION_KNOWLEDGE_DOCUMENT_INDEX)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + PERMISSION_KNOWLEDGE_DOCUMENT_INDEX);
+        }
+        return new IndexOwnerContext(userId, userUuid, username, simulatedRoleId);
     }
 
     private Long indexUserIdOrNull(PendingIndexTask task) {
@@ -1364,7 +1466,7 @@ public class AiKnowledgeBaseAppService {
 
     private MultipartFile toMultipartFile(FileContentDTO content) {
         if (content == null || content.content() == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "鐭ヨ瘑搴撴枃浠跺唴瀹逛笉瀛樺湪");
+            throw new BizException(ErrorCode.NOT_FOUND, "Knowledge document content not found");
         }
         return new InMemoryMultipartFile(
                 "file",
@@ -1453,6 +1555,7 @@ public class AiKnowledgeBaseAppService {
             String title,
             Long createdBy,
             String createdByUserUuid,
+            Long simulatedRoleId,
             String createdByUsername,
             Integer retryCount,
             String claimToken
@@ -1465,6 +1568,7 @@ public class AiKnowledgeBaseAppService {
                     title,
                     createdBy,
                     createdByUserUuid,
+                    simulatedRoleId,
                     createdByUsername,
                     retryCount,
                     claimToken
@@ -1472,7 +1576,7 @@ public class AiKnowledgeBaseAppService {
         }
     }
 
-    private record IndexOwnerContext(Long userId, String userUuid, String username) {
+    private record IndexOwnerContext(Long userId, String userUuid, String username, Long simulatedRoleId) {
     }
 
     private record InMemoryMultipartFile(
@@ -1571,7 +1675,7 @@ public class AiKnowledgeBaseAppService {
                 args.toArray()
         );
         if (result == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "鐭ヨ瘑搴撲笉瀛樺湪");
+            throw new BizException(ErrorCode.NOT_FOUND, "Knowledge base not found");
         }
         return result;
     }
@@ -1591,7 +1695,7 @@ public class AiKnowledgeBaseAppService {
                 documentId
         );
         if (result == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "鐭ヨ瘑搴撴枃妗ｄ笉瀛樺湪");
+            throw new BizException(ErrorCode.NOT_FOUND, "Knowledge document not found");
         }
         return result;
     }
@@ -1696,7 +1800,7 @@ public class AiKnowledgeBaseAppService {
                 excludeId
         );
         if (exists) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "鐭ヨ瘑搴撳悕绉板凡瀛樺湪", "鐭ヨ瘑搴撳悕绉板凡瀛樺湪");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Knowledge base name already exists", "Knowledge base name already exists");
         }
     }
 
@@ -1707,7 +1811,7 @@ public class AiKnowledgeBaseAppService {
             return exception.getUserMessage().trim();
         }
         if (exception.getErrorCode() == ErrorCode.SYSTEM_ERROR) {
-            return "璇锋鏌ュ瓨鍌ㄧ┖闂撮厤缃垨绋嶅悗閲嶈瘯";
+            return "Please check the storage space configuration and try again later";
         }
         if (StringUtils.hasText(exception.getMessage())) {
             return exception.getMessage().trim();
@@ -1845,12 +1949,40 @@ public class AiKnowledgeBaseAppService {
         return runtimeUser.getUserId();
     }
 
-    private Long requireViewPermission(CurrentUser currentUser) {
-        return requirePermission(currentUser, PERMISSION_AI_VIEW);
+    private Long requireKnowledgeViewPermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_VIEW);
     }
 
-    private Long requireManagePermission(CurrentUser currentUser) {
-        return requirePermission(currentUser, PERMISSION_AI_MANAGE);
+    private Long requireKnowledgeCreatePermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_CREATE);
+    }
+
+    private Long requireKnowledgeUpdatePermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_UPDATE);
+    }
+
+    private Long requireKnowledgeDeletePermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_DELETE);
+    }
+
+    private Long requireKnowledgeBindPermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_BIND);
+    }
+
+    private Long requireKnowledgeQueryPermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_QUERY);
+    }
+
+    private Long requireKnowledgeDocumentUploadPermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_DOCUMENT_UPLOAD);
+    }
+
+    private Long requireKnowledgeDocumentDeletePermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_DOCUMENT_DELETE);
+    }
+
+    private Long requireKnowledgeDocumentIndexPermission(CurrentUser currentUser) {
+        return requirePermission(currentUser, PERMISSION_KNOWLEDGE_DOCUMENT_INDEX);
     }
 
     private Long requirePermission(CurrentUser currentUser, String permissionKey) {
@@ -1877,6 +2009,10 @@ public class AiKnowledgeBaseAppService {
 
     private String trustedUserUuid(CurrentUser currentUser) {
         return requireTrustedCurrentUser(currentUser).getUserUuid().trim();
+    }
+
+    private Long trustedSimulatedRoleId(CurrentUser currentUser) {
+        return normalizeSimulatedRoleId(requireTrustedCurrentUser(currentUser).getSimulatedRoleId());
     }
 
     private String sqlClause(StringBuilder clause) {
@@ -1931,6 +2067,9 @@ public class AiKnowledgeBaseAppService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -1951,18 +2090,32 @@ public class AiKnowledgeBaseAppService {
                     || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(currentUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
             normalizedUserUuid = currentUserUuid;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
         CurrentUser refreshed = new CurrentUser(
                 userId,
                 currentUser.getUsername(),
@@ -1980,10 +2133,14 @@ public class AiKnowledgeBaseAppService {
         refreshed.setPermissionsVersion(snapshot.getVersion());
         refreshed.setDefaultHomePath(snapshot.getDefaultHomePath());
         refreshed.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
-        refreshed.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        refreshed.setSimulatedRoleId(simulatedRoleId);
         refreshed.setLoginType(currentUser.getLoginType());
         copyTrustedCurrentUser(currentUser, refreshed);
         return currentUser;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
@@ -2010,7 +2167,7 @@ public class AiKnowledgeBaseAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -2037,10 +2194,10 @@ public class AiKnowledgeBaseAppService {
         }
         
         if (!SCOPE_PERSONAL.equals(normalized) && !SCOPE_PLATFORM.equals(normalized)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "鐭ヨ瘑搴撳彲瑙佽寖鍥翠笉鏀寔");
+            throw new BizException(ErrorCode.BAD_REQUEST, "Knowledge visibility scope is not supported");
         }
         if (SCOPE_PLATFORM.equals(normalized) && !canPublishPlatformKnowledge(currentUser)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "娌℃湁鍙戝竷浼佷笟鐭ヨ瘑搴撶殑鏉冮檺");
+            throw new BizException(ErrorCode.FORBIDDEN, "Publishing platform knowledge is not allowed");
         }
         return normalized;
     }

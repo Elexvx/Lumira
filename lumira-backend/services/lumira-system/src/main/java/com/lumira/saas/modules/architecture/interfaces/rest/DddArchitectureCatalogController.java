@@ -29,9 +29,10 @@ public class DddArchitectureCatalogController {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final SystemInternalApi systemInternalApi;
+    private final boolean enforceTrustedUserResolution;
 
     public DddArchitectureCatalogController(SecurityContextFacade securityContextFacade, PermissionGuard permissionGuard) {
-        this(securityContextFacade, permissionGuard, null);
+        this(securityContextFacade, permissionGuard, null, false);
     }
 
     @Autowired
@@ -40,9 +41,19 @@ public class DddArchitectureCatalogController {
             PermissionGuard permissionGuard,
             SystemInternalApi systemInternalApi
     ) {
+        this(securityContextFacade, permissionGuard, systemInternalApi, true);
+    }
+
+    private DddArchitectureCatalogController(
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi,
+            boolean enforceTrustedUserResolution
+    ) {
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.systemInternalApi = systemInternalApi;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/contexts")
@@ -65,7 +76,13 @@ public class DddArchitectureCatalogController {
     }
 
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (systemInternalApi == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -85,16 +102,21 @@ public class DddArchitectureCatalogController {
                 || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
-                userId,
-                userSnapshot.userUuid().trim()
-        );
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+        }
+        String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+        if (!StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
         }
         currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username());
+        currentUser.setUsername(currentUsername);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
@@ -106,6 +128,10 @@ public class DddArchitectureCatalogController {
         currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
         currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
         return currentUser;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     public record ArchitectureCatalogResponse(

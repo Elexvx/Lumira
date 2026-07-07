@@ -65,6 +65,7 @@ public class CertificateV2Controller {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public CertificateV2Controller(
             CertificateAppService certificateAppService,
@@ -72,7 +73,7 @@ public class CertificateV2Controller {
             PermissionGuard permissionGuard,
             ClientIpResolver clientIpResolver
     ) {
-        this(certificateAppService, securityContextFacade, permissionGuard, clientIpResolver, null, null, null);
+        this(certificateAppService, securityContextFacade, permissionGuard, clientIpResolver, null, null, null, false);
     }
 
     public CertificateV2Controller(
@@ -89,7 +90,8 @@ public class CertificateV2Controller {
                 clientIpResolver,
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -108,7 +110,8 @@ public class CertificateV2Controller {
                 clientIpResolver,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                false
         );
     }
 
@@ -122,6 +125,19 @@ public class CertificateV2Controller {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(certificateAppService, securityContextFacade, permissionGuard, clientIpResolver, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private CertificateV2Controller(
+            CertificateAppService certificateAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            ClientIpResolver clientIpResolver,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.certificateAppService = certificateAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
@@ -129,6 +145,7 @@ public class CertificateV2Controller {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/api/v2/aiadc/certificate-templates")
@@ -343,6 +360,9 @@ public class CertificateV2Controller {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -366,17 +386,32 @@ public class CertificateV2Controller {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
             userId = userSnapshot.userId();
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userId);
             currentUser.setUserUuid(currentUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
             normalizedUserUuid = currentUserUuid;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -396,6 +431,10 @@ public class CertificateV2Controller {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -412,7 +451,7 @@ public class CertificateV2Controller {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

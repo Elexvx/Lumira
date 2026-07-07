@@ -3,6 +3,8 @@ package com.lumira.saas.modules.system.verification;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,9 +18,11 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.vo.SystemVO;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -276,6 +280,41 @@ class SystemVerificationSettingsAppServiceTest {
     }
 
     @Test
+    void updateVerificationSettingsShouldRejectBlankLiveUsernameBeforeDatabaseWrite() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
+        when(wechatLoginSettingsService.loadSettings()).thenReturn(wechatSettings(false));
+        PermissionSnapshotService permissionSnapshotService = Mockito.mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = Mockito.mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(9L))
+                .thenReturn(userSnapshot(9L, "user-uuid-9", " ", "ENABLED"));
+        SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
+                queryOperations,
+                new SystemVerificationProperties(),
+                Mockito.mock(SmtpMailService.class),
+                wechatLoginSettingsService,
+                cryptoService(),
+                Mockito.mock(ReadModelVersionService.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        SystemDTO.VerificationSettingsRequest request = new SystemDTO.VerificationSettingsRequest();
+        request.setEnabled(Boolean.FALSE);
+
+        assertThatThrownBy(() -> service.updateVerificationSettings(currentUser(), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+        assertThat(queryOperations.updateCount.get()).isZero();
+        assertThat(queryOperations.queryForListCount.get()).isZero();
+    }
+
+    @Test
     void updateVerificationSettingsShouldRejectRevokedSessionTicketBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
         WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
@@ -300,6 +339,64 @@ class SystemVerificationSettingsAppServiceTest {
         assertThatThrownBy(() -> service.updateVerificationSettings(currentUser(), request))
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.updateCount.get()).isZero();
+        assertThat(queryOperations.queryForListCount.get()).isZero();
+    }
+
+    @Test
+    void updateVerificationSettingsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
+        when(wechatLoginSettingsService.loadSettings()).thenReturn(wechatSettings(false));
+        SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
+                queryOperations,
+                new SystemVerificationProperties(),
+                Mockito.mock(SmtpMailService.class),
+                wechatLoginSettingsService,
+                cryptoService(),
+                Mockito.mock(ReadModelVersionService.class),
+                null,
+                null,
+                null
+        );
+
+        SystemDTO.VerificationSettingsRequest request = new SystemDTO.VerificationSettingsRequest();
+        request.setEnabled(Boolean.FALSE);
+
+        assertThatThrownBy(() -> service.updateVerificationSettings(currentUser(), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.updateCount.get()).isZero();
+        assertThat(queryOperations.queryForListCount.get()).isZero();
+    }
+
+    @Test
+    void updateVerificationSettingsShouldRejectWhenTrustedPermissionSnapshotIsUnavailableBeforeDatabaseWrite() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
+        when(wechatLoginSettingsService.loadSettings()).thenReturn(wechatSettings(false));
+        PermissionSnapshotService permissionSnapshotService = Mockito.mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(9L, "user-uuid-9")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(9L, "user-uuid-9")).thenReturn(null);
+        SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
+                queryOperations,
+                new SystemVerificationProperties(),
+                Mockito.mock(SmtpMailService.class),
+                wechatLoginSettingsService,
+                cryptoService(),
+                Mockito.mock(ReadModelVersionService.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        SystemDTO.VerificationSettingsRequest request = new SystemDTO.VerificationSettingsRequest();
+        request.setEnabled(Boolean.FALSE);
+
+        assertThatThrownBy(() -> service.updateVerificationSettings(currentUser(), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user permission snapshot is unavailable");
         assertThat(queryOperations.updateCount.get()).isZero();
         assertThat(queryOperations.queryForListCount.get()).isZero();
     }
@@ -419,7 +516,7 @@ class SystemVerificationSettingsAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:verification:manage")));
         SystemInternalApi systemInternalApi = Mockito.mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(9L))
-                .thenReturn(userSnapshot(9L, "user-uuid-9", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(9L, "user-uuid-9", "  admin-live  ", "ENABLED"));
         SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
                 queryOperations,
                 new SystemVerificationProperties(),
@@ -440,6 +537,54 @@ class SystemVerificationSettingsAppServiceTest {
 
         assertThat(currentUser.getUsername()).isEqualTo("admin-live");
         verify(wechatLoginSettingsService).updateSettings(currentUser, request);
+    }
+
+    @Test
+    void updateWechatSettingsShouldRejectPermissionRevokedBetweenOuterAndInnerTrustedRefresh() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        SessionAuthenticationService sessionAuthenticationService = Mockito.mock(SessionAuthenticationService.class);
+        CurrentUser managerAtOuterCheck = currentUser("system:verification:manage");
+        managerAtOuterCheck.setUsername("admin-outer");
+        managerAtOuterCheck.setPermissionsVersion("permissions-2");
+        CurrentUser revokedAtInnerCheck = currentUser("system:verification:view");
+        revokedAtInnerCheck.setUsername("admin-inner");
+        revokedAtInnerCheck.setPermissionsVersion("permissions-3");
+        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 9L, "user-uuid-9", null, 1, "permissions-1"))
+                .thenReturn(new SessionAuthenticationService.AuthenticatedAccess(managerAtOuterCheck, null, false));
+        when(sessionAuthenticationService.authenticateSessionTicket("session-1", 9L, "user-uuid-9", null, 1, "permissions-2"))
+                .thenReturn(new SessionAuthenticationService.AuthenticatedAccess(revokedAtInnerCheck, null, false));
+        WechatLoginSettingsService wechatLoginSettingsService = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService,
+                sessionAuthenticationService
+        );
+        SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
+                queryOperations,
+                new SystemVerificationProperties(),
+                Mockito.mock(SmtpMailService.class),
+                wechatLoginSettingsService,
+                cryptoService(),
+                Mockito.mock(ReadModelVersionService.class),
+                Mockito.mock(PermissionSnapshotService.class),
+                sessionAuthenticationService
+        );
+        SystemDTO.WechatLoginSettingsRequest request = new SystemDTO.WechatLoginSettingsRequest();
+        request.setEnabled(Boolean.TRUE);
+
+        assertThatThrownBy(() -> service.updateWechatSettings(currentUser("system:verification:manage"), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+                    assertThat(exception.getMessage()).contains("Missing permission: system:verification:manage");
+                });
+
+        assertThat(queryOperations.updateCount.get()).isZero();
+        verify(mapper, never()).listEffectiveValues(eq("PLATFORM"), any());
+        verify(mapper, never()).upsertPlatformConfig(any());
+        verify(readModelVersionService, never()).bump(any(), any(), any());
     }
 
     @Test
@@ -562,6 +707,40 @@ class SystemVerificationSettingsAppServiceTest {
 
     private CurrentUser currentUser() {
         return currentUser("*");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
+        PermissionSnapshotService permissionSnapshotService = Mockito.mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(9L, "user-uuid-9")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(9L, "user-uuid-9"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:verification:manage")));
+        SystemInternalApi systemInternalApi = Mockito.mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(9L))
+                .thenReturn(userSnapshot(9L, "user-uuid-9", "admin-live", "ENABLED"));
+        SystemVerificationSettingsAppService service = new SystemVerificationSettingsAppService(
+                queryOperations,
+                new SystemVerificationProperties(),
+                Mockito.mock(SmtpMailService.class),
+                Mockito.mock(WechatLoginSettingsService.class),
+                cryptoService(),
+                Mockito.mock(ReadModelVersionService.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser("*");
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemVerificationSettingsAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(9L, "user-uuid-9");
+        verify(permissionSnapshotService, never())
+                .loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     private CurrentUser currentUser(String permission) {

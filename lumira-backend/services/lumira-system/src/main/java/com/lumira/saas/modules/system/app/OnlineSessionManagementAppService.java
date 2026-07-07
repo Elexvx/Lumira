@@ -48,7 +48,6 @@ public class OnlineSessionManagementAppService {
     private static final int MAX_SESSION_SCAN_SIZE = 10_000;
     private static final int MAX_SESSION_ID_LENGTH = 128;
     private static final long PROTECTED_ADMIN_ID = 1001L;
-    private static final String PROTECTED_ADMIN_USERNAME = "admin";
     private static final Pattern SAFE_SESSION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
     private static final String PERMISSION_VIEW = "system:online-user:view";
     private static final String PERMISSION_KICK = "system:online-user:kick";
@@ -63,6 +62,7 @@ public class OnlineSessionManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public OnlineSessionManagementAppService(
@@ -81,7 +81,8 @@ public class OnlineSessionManagementAppService {
                 onlineSessionStreamService,
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -96,6 +97,20 @@ public class OnlineSessionManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private OnlineSessionManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            AuthSessionStore authSessionStore,
+            SecuritySettingsService securitySettingsService,
+            OperationAuditService operationAuditService,
+            OnlineSessionStreamService onlineSessionStreamService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.authSessionStore = authSessionStore;
         this.securitySettingsService = securitySettingsService;
@@ -104,6 +119,7 @@ public class OnlineSessionManagementAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public OnlineSessionManagementAppService(
@@ -123,7 +139,8 @@ public class OnlineSessionManagementAppService {
                 onlineSessionStreamService,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                false
         );
     }
 
@@ -134,7 +151,7 @@ public class OnlineSessionManagementAppService {
             OperationAuditService operationAuditService,
             OnlineSessionStreamService onlineSessionStreamService
     ) {
-        this(jdbcTemplate, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, null, null, null);
+        this(jdbcTemplate, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, null, null, null, false);
     }
 
     public PageResponse<SystemVO.OnlineSessionVO> listOnlineSessions(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -169,7 +186,7 @@ public class OnlineSessionManagementAppService {
                 .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Online session does not exist or has expired"));
 
         if (normalizedSessionId.equals(currentUser.getSessionId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "涓嶈兘韪㈠嚭褰撳墠鐧诲綍浼氳瘽");
+            throw new BizException(ErrorCode.FORBIDDEN, "You cannot kick your current online session");
         }
 
         authSessionStore.remove(session, true);
@@ -180,7 +197,7 @@ public class OnlineSessionManagementAppService {
                 "kick",
                 "KICK",
                 "SUCCESS",
-                "韪㈠嚭鍦ㄧ嚎浼氳瘽: " + session.getUsername() + " / " + normalizedSessionId
+                "Kick online session: " + session.getUsername() + " / " + normalizedSessionId
         );
         return true;
     }
@@ -190,14 +207,14 @@ public class OnlineSessionManagementAppService {
         Long operatorId = requirePermission(currentUser, PERMISSION_BAN);
         requirePositiveId(userId, "User id");
         if (userId == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "鐢ㄦ埛ID涓嶈兘涓虹┖");
+            throw new BizException(ErrorCode.BAD_REQUEST, "User id is required");
         }
         if (userId.equals(operatorId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "涓嶈兘灏佺褰撳墠鐧诲綍璐﹀彿");
+            throw new BizException(ErrorCode.FORBIDDEN, "You cannot ban your own account");
         }
 
         UserRow targetUser = loadUser(userId)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "鐢ㄦ埛涓嶅瓨鍦ㄦ垨鏃犳潈璁块棶"));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "User does not exist or has been deleted"));
 
         if (isProtectedAdminAccount(targetUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Protected admin account cannot be banned");
@@ -222,7 +239,7 @@ public class OnlineSessionManagementAppService {
                 "ban",
                 "BAN",
                 "SUCCESS",
-                "灏佺璐﹀彿骞舵竻閫€鍦ㄧ嚎浼氳瘽: " + targetUser.getUsername() + " / " + userId
+                "强制下线并禁止在线会话: " + targetUser.getUsername() + " / " + userId
         );
         return true;
     }
@@ -400,6 +417,9 @@ public class OnlineSessionManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -419,18 +439,34 @@ public class OnlineSessionManagementAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -449,6 +485,10 @@ public class OnlineSessionManagementAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -465,7 +505,7 @@ public class OnlineSessionManagementAppService {
         target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -512,9 +552,7 @@ public class OnlineSessionManagementAppService {
 
     private boolean isProtectedAdminAccount(UserRow user) {
         return user != null
-                && Objects.equals(user.getId(), PROTECTED_ADMIN_ID)
-                && StringUtils.hasText(user.getUsername())
-                && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(user.getUsername().trim());
+                && Objects.equals(user.getId(), PROTECTED_ADMIN_ID);
     }
 
     private SystemVO.OnlineSessionVO toOnlineSessionVO(AuthSession session, UserRow userRow) {

@@ -49,7 +49,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("first-secret"));
@@ -78,7 +79,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 mock(PaymentConfigCryptoService.class),
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret"));
@@ -120,6 +122,113 @@ class PaymentManagementAppServiceTest {
     }
 
     @Test
+    void listProviderSettingsShouldRejectWhenLivePermissionsLoseViewPermission() {
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                mock(JdbcTemplate.class),
+                new ObjectMapper(),
+                mock(PaymentConfigCryptoService.class),
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi(), "payment:config:update")
+        );
+
+        assertThatThrownBy(() -> service.listProviderSettings(currentUser()))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void paymentProviderSettingsShouldRejectWhenLivePermissionsLoseViewPermission() {
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                mock(JdbcTemplate.class),
+                new ObjectMapper(),
+                mock(PaymentConfigCryptoService.class),
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi(), "payment:config:update")
+        );
+
+        assertThatThrownBy(() -> service.paymentProviderSettings(currentUser(), "stripe"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void updateProviderSettingsShouldRejectWhenLivePermissionsLoseManagePermissionBeforePersisting() {
+        InsertSuccessJdbcTemplate jdbcTemplate = new InsertSuccessJdbcTemplate();
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                mock(PaymentConfigCryptoService.class),
+                new PaymentProviderCatalog(),
+                outboxService,
+                provider(enabledSystemInternalApi(), "payment:config:view")
+        );
+
+        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+        verifyNoInteractions(outboxService);
+    }
+
+    @Test
+    void testPaymentProviderShouldRejectWhenLivePermissionsLoseManagePermissionBeforeResultWrite() {
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                mock(JdbcTemplate.class),
+                new ObjectMapper(),
+                mock(PaymentConfigCryptoService.class),
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi(), "payment:config:update")
+        );
+
+        assertThatThrownBy(() -> service.testPaymentProvider(currentUser(), "stripe"))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void listProviderSettingsShouldRejectLegacySettingsViewPermission() {
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                mock(JdbcTemplate.class),
+                new ObjectMapper(),
+                mock(PaymentConfigCryptoService.class),
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi(), "payment:settings:view")
+        );
+
+        assertThatThrownBy(() -> service.listProviderSettings(currentUser()))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void updateProviderSettingsShouldRejectLegacySettingsManagePermission() {
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                mock(JdbcTemplate.class),
+                new ObjectMapper(),
+                mock(PaymentConfigCryptoService.class),
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi(), "payment:settings:manage")
+        );
+
+        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
     void updateProviderSettingsShouldPersistTrustedUserUuidInProviderConfig() {
         InsertSuccessJdbcTemplate jdbcTemplate = new InsertSuccessJdbcTemplate();
         PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
@@ -130,7 +239,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret"));
@@ -178,7 +288,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("new-secret")))
@@ -216,7 +327,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("new-secret")))
@@ -255,7 +367,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         assertThatThrownBy(() -> service.testPaymentProvider(currentUser(), "stripe"))
@@ -290,7 +403,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
 
         assertThatThrownBy(() -> service.testPaymentProvider(currentUser(), "stripe"))
@@ -321,7 +435,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
         PaymentProviderSettingsDTO request = stripeSettings("secret");
         request.setApiBaseUrl("http://127.0.0.1:8080");
@@ -346,7 +461,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
         PaymentProviderSettingsDTO request = stripeSettings("secret");
         request.setApiBaseUrl("http://metadata.google.internal/computeMetadata/v1");
@@ -371,7 +487,8 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                outboxService
+                outboxService,
+                provider(enabledSystemInternalApi())
         );
         PaymentProviderSettingsDTO request = stripeSettings("secret");
         request.setSuccessUrl("https://token@example.com/payment/success");
@@ -409,10 +526,11 @@ class PaymentManagementAppServiceTest {
                 new ObjectMapper(),
                 cryptoService,
                 new PaymentProviderCatalog(),
-                mock(PaymentOutboxService.class)
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi())
         );
 
-        PaymentProviderSettingsDTO publicSettings = service.paymentProviderSettings("stripe");
+        PaymentProviderSettingsDTO publicSettings = service.paymentProviderSettings(currentUser(), "stripe");
         PaymentProviderSettingsDTO requiredSettings = service.getRequiredProviderSettings("stripe");
 
         assertThat(publicSettings.getWebhookSecret()).isEmpty();
@@ -446,20 +564,26 @@ class PaymentManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of("payment:settings:manage"));
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of("payment:config:view", "payment:config:update", "payment:config:test"));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
+    }
+
+    private SystemInternalApi enabledSystemInternalApi() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "admin", "ENABLED"));
+        return systemInternalApi;
     }
 
     private BeanPropertyRowMapper<PaymentProviderConfigRow> anyPaymentProviderRowMapper() {
         return any();
     }
 
-    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi, String... permissions) {
         if (systemInternalApi != null) {
             when(systemInternalApi.permissionSnapshot(ArgumentMatchers.anyLong(), ArgumentMatchers.anyString()))
-                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class)));
+                    .thenAnswer(invocation -> permissionSnapshot(invocation.getArgument(0, Long.class), permissions));
         }
         ObjectProvider<SystemInternalApi> provider = mock(ObjectProvider.class);
         when(provider.getIfAvailable()).thenReturn(systemInternalApi);
@@ -470,10 +594,12 @@ class PaymentManagementAppServiceTest {
         return new SystemUserSnapshotDTO(userId, "user-uuid-" + userId, username, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private PermissionSnapshotDTO permissionSnapshot(Long userId) {
+    private PermissionSnapshotDTO permissionSnapshot(Long userId, String... permissions) {
         return new PermissionSnapshotDTO(
                 "perm-v" + userId,
-                List.of("payment:settings:manage"),
+                permissions == null || permissions.length == 0
+                        ? List.of("payment:config:view", "payment:config:update", "payment:config:test")
+                        : List.of(permissions),
                 List.of(31L),
                 41L,
                 List.of(41L),

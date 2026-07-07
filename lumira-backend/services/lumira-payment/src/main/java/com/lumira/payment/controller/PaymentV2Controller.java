@@ -46,7 +46,6 @@ import java.util.Set;
 public class PaymentV2Controller {
 
     private static final Long PROTECTED_ADMIN_ID = 1001L;
-    private static final String PROTECTED_ADMIN_USERNAME = "admin";
     private static final String STATUS_ENABLED = "ENABLED";
 
     private final PaymentManagementAppService paymentManagementAppService;
@@ -55,6 +54,7 @@ public class PaymentV2Controller {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final SystemInternalApi systemInternalApi;
+    private final boolean enforceTrustedUserResolution;
 
     public PaymentV2Controller(
             PaymentManagementAppService paymentManagementAppService,
@@ -69,7 +69,8 @@ public class PaymentV2Controller {
                 paymentWebhookService,
                 securityContextFacade,
                 permissionGuard,
-                null
+                null,
+                false
         );
     }
 
@@ -82,19 +83,40 @@ public class PaymentV2Controller {
             PermissionGuard permissionGuard,
             SystemInternalApi systemInternalApi
     ) {
+        this(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard,
+                systemInternalApi,
+                true
+        );
+    }
+
+    private PaymentV2Controller(
+            PaymentManagementAppService paymentManagementAppService,
+            PaymentTransactionService paymentTransactionService,
+            PaymentWebhookService paymentWebhookService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi,
+            boolean enforceTrustedUserResolution
+    ) {
         this.paymentManagementAppService = paymentManagementAppService;
         this.paymentTransactionService = paymentTransactionService;
         this.paymentWebhookService = paymentWebhookService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.systemInternalApi = systemInternalApi;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/providers")
     public ApiResponse<List<PaymentProviderSettingsDTO>> providers() {
         CurrentUser currentUser = requireSettingsAdmin();
         return ApiResponse.success(
-                paymentManagementAppService.listProviderSettings(),
+                paymentManagementAppService.listProviderSettings(currentUser),
                 TraceContext.getRequestId()
         );
     }
@@ -103,7 +125,7 @@ public class PaymentV2Controller {
     public ApiResponse<PaymentProviderSettingsDTO> provider(@PathVariable String providerCode) {
         CurrentUser currentUser = requireSettingsAdmin();
         return ApiResponse.success(
-                paymentManagementAppService.paymentProviderSettings(providerCode),
+                paymentManagementAppService.paymentProviderSettings(currentUser, providerCode),
                 TraceContext.getRequestId()
         );
     }
@@ -181,9 +203,7 @@ public class PaymentV2Controller {
     private CurrentUser requireSettingsAdmin() {
         CurrentUser currentUser = currentUser();
         if (isAuthenticatedUser(currentUser)
-                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
-                && StringUtils.hasText(currentUser.getUsername())
-                && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername().trim())) {
+                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())) {
             return currentUser;
         }
         throw new BizException(ErrorCode.FORBIDDEN, "仅超级管理员可访问设置");
@@ -221,7 +241,13 @@ public class PaymentV2Controller {
     }
 
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (systemInternalApi == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -241,16 +267,22 @@ public class PaymentV2Controller {
                 || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
-                userId,
-                userSnapshot.userUuid().trim()
-        );
+        if (!StringUtils.hasText(userSnapshot.username())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username());
+        currentUser.setUsername(userSnapshot.username().trim());
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());

@@ -36,17 +36,27 @@ public class PaymentInternalApiService implements PaymentInternalApi {
 
     @Override
     public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, PaymentCreateOrderRequestDTO request) {
+        return createOrder(operatorId, operatorUuid, null, request);
+    }
+
+    @Override
+    public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, PaymentCreateOrderRequestDTO request) {
         requireRequest(request);
-        return paymentTransactionService.createOrder(resolveTrustedOperator(operatorId, operatorUuid), request);
+        return paymentTransactionService.createOrder(resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId), request);
     }
 
     @Override
     public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, String orderNo) {
-        CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid);
+        return getOrder(operatorId, operatorUuid, null, orderNo);
+    }
+
+    @Override
+    public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+        CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
         return paymentTransactionService.getOrderForUser(operator.getUserId(), operator.getUserUuid(), requireOrderNo(orderNo));
     }
 
-    private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid) {
+    private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid, Long simulatedRoleId) {
         if (operatorId == null || operatorId <= 0) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid operator is required");
         }
@@ -73,7 +83,10 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(operatorId, snapshot.userUuid().trim());
+        Long normalizedSimulatedRoleId = normalizeSimulatedRoleId(simulatedRoleId);
+        PermissionSnapshotDTO permissionSnapshot = normalizedSimulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(operatorId, snapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(operatorId, snapshot.userUuid().trim(), normalizedSimulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
         }
@@ -94,10 +107,15 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         operator.setUserUuid(snapshot.userUuid().trim());
         operator.setPermissionsVersion(permissionSnapshot.version().trim());
         operator.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        operator.setSimulatedRoleId(normalizedSimulatedRoleId);
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator is required");
         }
         return operator;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private PaymentCreateOrderRequestDTO requireRequest(PaymentCreateOrderRequestDTO request) {

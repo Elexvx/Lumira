@@ -148,16 +148,16 @@ public class DocumentUploadService {
             return null;
         }
         if (normalized.contains(":")) {
-            throw badRequest("鏂囦欢瀛樺偍璺緞鏃犳晥");
+            throw badRequest("文件存储路径无效");
         }
         try {
             Path subPath = Path.of(normalized).normalize();
             if (subPath.isAbsolute() || subPath.startsWith("..")) {
-                throw badRequest("鏂囦欢瀛樺偍璺緞鏃犳晥");
+                throw badRequest("文件存储路径无效");
             }
             return subPath.toString().replace('\\', '/');
         } catch (InvalidPathException exception) {
-            throw badRequest("鏂囦欢瀛樺偍璺緞鏃犳晥");
+            throw badRequest("文件存储路径无效");
         }
     }
 

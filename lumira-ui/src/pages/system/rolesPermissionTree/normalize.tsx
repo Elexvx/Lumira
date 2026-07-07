@@ -1,4 +1,4 @@
-﻿import type { PermissionTreeRecord } from '@/types/api';
+import type { PermissionTreeRecord } from '@/types/api';
 import { backendRouteMetaMap, realPageRouteMetaMap, realPageRoutePaths, resolveCanonicalRoutePath } from '@/routes/meta';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 
@@ -43,28 +43,25 @@ const CATALOG_LABEL_BY_PAGE_KEY = new Map<string, string>([
 const CATALOG_LABEL_BY_RAW_NAME = new Map<string, string>([
   ['Data Management', 'nav.data.management'],
   ['数据管理', 'nav.data.management'],
-  ['鏁版嵁绠＄悊', 'nav.data.management'],
   ['Query Center', 'nav.data.queryCenter'],
   ['查询中心', 'nav.data.queryCenter'],
-  ['鏌ヨ涓績', 'nav.data.queryCenter'],
+  ['查询中心', 'nav.data.queryCenter'],
   ['Registration', 'nav.competitions.register'],
   ['报名', 'nav.competitions.register'],
-  ['鎶ュ悕', 'nav.competitions.register'],
   ['Competitions', 'nav.competitions.root'],
   ['赛事', 'nav.competitions.root'],
-  ['璧涗簨', 'nav.competitions.root'],
   ['Certificate Management', 'nav.certificates.root'],
   ['证书管理', 'nav.certificates.root'],
-  ['璇佷功绠＄悊', 'nav.certificates.root'],
+  ['证书管理', 'nav.certificates.root'],
   ['Expert Library', 'nav.experts.root'],
   ['Expert library', 'nav.experts.root'],
   ['专家库', 'nav.experts.root'],
   ['User Center', 'nav.user.center'],
   ['用户中心', 'nav.user.center'],
-  ['鐢ㄦ埛涓績', 'nav.user.center'],
+  ['用户中心', 'nav.user.center'],
   ['Personal Center', 'nav.user.personalCenter'],
   ['个人中心', 'nav.user.personalCenter'],
-  ['涓汉涓績', 'nav.user.personalCenter'],
+  ['个人中心', 'nav.user.personalCenter'],
 ]);
 
 const resolveCatalogMessageKey = (node: PermissionTreeRecord) => {

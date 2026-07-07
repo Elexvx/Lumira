@@ -123,14 +123,14 @@ public class JwtTokenService {
         TokenClaims tokenClaims = new TokenClaims();
         tokenClaims.setSessionId(AuthSessionTrustValidator.requireTrustedSessionId(claims.getSessionId()));
         if (claims.getUserId() == null || claims.getUserId() <= 0) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "token鏃犳晥鎴栧凡杩囨湡");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "token无效或已过期");
         }
         tokenClaims.setUserId(claims.getUserId());
         tokenClaims.setUserUuid(requireTrustedUserUuid(claims.getUserUuid()));
         tokenClaims.setUsername(requireTrustedUsername(claims.getUsername()));
         tokenClaims.setSimulatedRoleId(normalizeSimulatedRoleId(claims.getSimulatedRoleId()));
         if (claims.getSessionVersion() == null || claims.getSessionVersion() < 0) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "token鏃犳晥鎴栧凡杩囨湡");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "token无效或已过期");
         }
         tokenClaims.setSessionVersion(claims.getSessionVersion());
         tokenClaims.setPermissionsVersion(requireTrustedPermissionsVersion(claims.getPermissionsVersion()));
@@ -141,7 +141,7 @@ public class JwtTokenService {
 
     private String requireTrustedUsername(String username) {
         if (username == null || username.trim().isEmpty() || username.trim().length() > 64) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "token鏃犳晥鎴栧凡杩囨湡");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "token无效或已过期");
         }
         return username.trim();
     }

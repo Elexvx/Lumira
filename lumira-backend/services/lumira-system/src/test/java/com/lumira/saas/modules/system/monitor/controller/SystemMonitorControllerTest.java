@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.monitor.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springdoc.webmvc.api.OpenApiWebMvcResource;
 
+import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -75,6 +78,124 @@ class SystemMonitorControllerTest {
         verify(systemMonitorAppService, never()).getServiceMonitor(any());
     }
 
+    @Test
+    void serviceMonitorShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        SystemMonitorAppService systemMonitorAppService = mock(SystemMonitorAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        CurrentUser currentUser = currentUser("system:monitor:service:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        SystemMonitorController controller = new SystemMonitorController(
+                systemMonitorAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                objectProvider(null),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(controller::serviceMonitor)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+        verify(systemMonitorAppService, never()).getServiceMonitor(any());
+    }
+
+    @Test
+    void serviceMonitorShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        SystemMonitorAppService systemMonitorAppService = mock(SystemMonitorAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        CurrentUser currentUser = currentUser("system:monitor:service:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+        SystemMonitorController controller = new SystemMonitorController(
+                systemMonitorAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                objectProvider(null),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(controller::serviceMonitor)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+        verify(systemMonitorAppService, never()).getServiceMonitor(any());
+    }
+
+    @Test
+    void serviceMonitorShouldRejectBlankLiveUsernameBeforeDelegating() {
+        SystemMonitorAppService systemMonitorAppService = mock(SystemMonitorAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        CurrentUser currentUser = currentUser("system:monitor:service:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:monitor:service:view")));
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
+        SystemMonitorController controller = new SystemMonitorController(
+                systemMonitorAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                objectProvider(null),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(controller::serviceMonitor)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+        verify(systemMonitorAppService, never()).getServiceMonitor(any());
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        SystemMonitorAppService systemMonitorAppService = mock(SystemMonitorAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        CurrentUser currentUser = currentUser("system:monitor:service:view");
+        currentUser.setSimulatedRoleId(0L);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:monitor:service:view")));
+        SystemMonitorController controller = new SystemMonitorController(
+                systemMonitorAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                objectProvider(null),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        Method method = SystemMonitorController.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(controller, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
     private static CurrentUser currentUser(String permission) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(2001L);
@@ -98,5 +219,26 @@ class SystemMonitorControllerTest {
             @Override public Stream<T> stream() { return value == null ? Stream.empty() : Stream.of(value); }
             @Override public Stream<T> orderedStream() { return stream(); }
         };
+    }
+
+    private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 }

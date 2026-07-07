@@ -61,7 +61,21 @@ public class FileInternalApiService implements FileInternalApi {
             String userUuid,
             String username
     ) {
-        return fileManagementAppService.uploadPublicImage(asInternalUser(userId, userUuid, username), file, category, remark, bucket);
+        return uploadImageForUser(file, category, remark, bucket, userId, userUuid, username, null);
+    }
+
+    @Override
+    public FileObjectDTO uploadImageForUser(
+            MultipartFile file,
+            String category,
+            String remark,
+            String bucket,
+            Long userId,
+            String userUuid,
+            String username,
+            Long simulatedRoleId
+    ) {
+        return fileManagementAppService.uploadPublicImage(asInternalUser(userId, userUuid, username, simulatedRoleId), file, category, remark, bucket);
     }
 
     @Override
@@ -80,13 +94,40 @@ public class FileInternalApiService implements FileInternalApi {
             String userUuid,
             String username
     ) {
-        return fileManagementAppService.uploadDocument(asInternalUser(userId, userUuid, username), file, category, tags, remark, bucket);
+        return uploadDocumentForUser(file, category, tags, remark, bucket, userId, userUuid, username, null);
+    }
+
+    @Override
+    public FileObjectDTO uploadDocumentForUser(
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket,
+            Long userId,
+            String userUuid,
+            String username,
+            Long simulatedRoleId
+    ) {
+        return fileManagementAppService.uploadDocument(asInternalUser(userId, userUuid, username, simulatedRoleId), file, category, tags, remark, bucket);
     }
 
     @Override
     public FileContentDTO readFileContentForUser(Long fileId, Long userId, String userUuid, String username, boolean sharedScope) {
+        return readFileContentForUser(fileId, userId, userUuid, username, sharedScope, null);
+    }
+
+    @Override
+    public FileContentDTO readFileContentForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            boolean sharedScope,
+            Long simulatedRoleId
+    ) {
         requirePositiveId(fileId, "fileId");
-        return fileManagementAppService.readFileContent(asInternalUser(userId, userUuid, username), fileId, sharedScope, false);
+        return fileManagementAppService.readFileContent(asInternalUser(userId, userUuid, username, simulatedRoleId), fileId, sharedScope, false);
     }
 
     @Override
@@ -98,9 +139,28 @@ public class FileInternalApiService implements FileInternalApi {
             String artifactType,
             boolean sharedScope
     ) {
+        return readProcessingArtifactForUser(fileId, userId, userUuid, username, artifactType, sharedScope, null);
+    }
+
+    @Override
+    public FileProcessingArtifactDTO readProcessingArtifactForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            String artifactType,
+            boolean sharedScope,
+            Long simulatedRoleId
+    ) {
         requirePositiveId(fileId, "fileId");
         String normalizedArtifactType = requireSafeToken(artifactType, "artifactType", MAX_ARTIFACT_TYPE_LENGTH);
-        return fileManagementAppService.readProcessingArtifact(asInternalUser(userId, userUuid, username), fileId, normalizedArtifactType, sharedScope, false);
+        return fileManagementAppService.readProcessingArtifact(
+                asInternalUser(userId, userUuid, username, simulatedRoleId),
+                fileId,
+                normalizedArtifactType,
+                sharedScope,
+                false
+        );
     }
 
     @Override
@@ -112,8 +172,21 @@ public class FileInternalApiService implements FileInternalApi {
             boolean sharedScope,
             boolean downloadCenterScope
     ) {
+        return getFileForUser(fileId, userId, userUuid, username, sharedScope, downloadCenterScope, null);
+    }
+
+    @Override
+    public FileObjectDTO getFileForUser(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            boolean sharedScope,
+            boolean downloadCenterScope,
+            Long simulatedRoleId
+    ) {
         requirePositiveId(fileId, "fileId");
-        return fileManagementAppService.getFile(asInternalUser(userId, userUuid, username), fileId, sharedScope, downloadCenterScope);
+        return fileManagementAppService.getFile(asInternalUser(userId, userUuid, username, simulatedRoleId), fileId, sharedScope, downloadCenterScope);
     }
 
     @Override
@@ -127,9 +200,24 @@ public class FileInternalApiService implements FileInternalApi {
             boolean sharedScope,
             int limit
     ) {
+        return searchFilesForUser(userId, userUuid, username, keyword, contentType, status, sharedScope, limit, null);
+    }
+
+    @Override
+    public List<FileObjectDTO> searchFilesForUser(
+            Long userId,
+            String userUuid,
+            String username,
+            String keyword,
+            String contentType,
+            String status,
+            boolean sharedScope,
+            int limit,
+            Long simulatedRoleId
+    ) {
         requireInternalSearchLimit(limit);
         return fileManagementAppService.searchFilesForInternalTool(
-                asInternalUser(userId, userUuid, username),
+                asInternalUser(userId, userUuid, username, simulatedRoleId),
                 keyword,
                 contentType,
                 status,
@@ -152,7 +240,7 @@ public class FileInternalApiService implements FileInternalApi {
         return currentUser;
     }
 
-    private CurrentUser asInternalUser(Long userId, String userUuid, String username) {
+    private CurrentUser asInternalUser(Long userId, String userUuid, String username, Long simulatedRoleId) {
         if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid) || !StringUtils.hasText(username)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid acting user is required");
         }
@@ -168,7 +256,8 @@ public class FileInternalApiService implements FileInternalApi {
         if (!trustedUserUuid.equals(userUuid.trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user identity mismatch");
         }
-        PermissionSnapshotDTO permissionSnapshot = snapshotPermissions(userId, trustedUserUuid);
+        Long normalizedSimulatedRoleId = normalizeSimulatedRoleId(simulatedRoleId);
+        PermissionSnapshotDTO permissionSnapshot = snapshotPermissions(userId, trustedUserUuid, normalizedSimulatedRoleId);
         CurrentUser internalUser = new CurrentUser(
                 userId,
                 trustedUsername,
@@ -186,6 +275,7 @@ public class FileInternalApiService implements FileInternalApi {
         internalUser.setUserUuid(trustedUserUuid);
         internalUser.setPermissionsVersion(requirePermissionSnapshotVersion(permissionSnapshot));
         internalUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
+        internalUser.setSimulatedRoleId(normalizedSimulatedRoleId);
         return internalUser;
     }
 
@@ -205,16 +295,22 @@ public class FileInternalApiService implements FileInternalApi {
         return snapshot;
     }
 
-    private PermissionSnapshotDTO snapshotPermissions(Long userId, String userUuid) {
+    private PermissionSnapshotDTO snapshotPermissions(Long userId, String userUuid, Long simulatedRoleId) {
         SystemInternalApi internalApi = systemInternalApi == null ? null : systemInternalApi.getIfAvailable();
         if (internalApi == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }
-        PermissionSnapshotDTO snapshot = internalApi.permissionSnapshot(userId, userUuid);
+        PermissionSnapshotDTO snapshot = simulatedRoleId == null
+                ? internalApi.permissionSnapshot(userId, userUuid)
+                : internalApi.simulatedRolePermissionSnapshot(userId, userUuid, simulatedRoleId);
         if (snapshot == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user permissions are unavailable");
         }
         return snapshot;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private String requireTrustedUserUuid(SystemUserSnapshotDTO snapshot) {

@@ -33,6 +33,7 @@ import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.api.system.VerificationVerificationDTO;
 import com.lumira.common.security.CurrentUser;
 import org.junit.jupiter.api.AfterEach;
@@ -330,6 +331,40 @@ class InternalSystemControllerTest {
     }
 
     @Test
+    void aiVisibleBuiltinMenusShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        SysUserEntity user = new SysUserEntity();
+        user.setId(2001L);
+        user.setUuid("user-uuid-2001");
+        user.setUsername("alice");
+        user.setStatus("ENABLED");
+        when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+
+        assertThatThrownBy(() -> controller.aiVisibleBuiltinMenus(2001L, "user-uuid-2001"))
+                .isInstanceOfSatisfying(com.lumira.common.exception.BizException.class, exception -> {
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                });
+    }
+
+    @Test
+    void permissionSnapshotShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        SysUserEntity user = new SysUserEntity();
+        user.setId(2001L);
+        user.setUuid("user-uuid-2001");
+        user.setUsername("alice");
+        user.setStatus("ENABLED");
+        when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+
+        assertThatThrownBy(() -> controller.permissionSnapshot(2001L, "user-uuid-2001"))
+                .isInstanceOfSatisfying(com.lumira.common.exception.BizException.class, exception -> {
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                });
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void userIdentitiesByIdsReturnsIdentityOnlySnapshot() {
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any()))
@@ -583,17 +618,35 @@ class InternalSystemControllerTest {
     @Test
     void requiresInitialPasswordChangeReturnsTrueForAdminOnDefaultPassword() {
         SysUserEntity user = new SysUserEntity();
-        user.setId(2001L);
+        user.setId(1001L);
         user.setUuid("user-uuid");
         user.setUsername("admin");
         user.setPasswordHash("encoded-password");
         user.setStatus("ENABLED");
-        when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
+        when(userDomainService.findById(1001L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("123456", "encoded-password")).thenReturn(true);
 
-        var required = controller.requiresInitialPasswordChange(2001L, "user-uuid");
+        var required = controller.requiresInitialPasswordChange(1001L, "user-uuid");
 
         assertThat(required).isTrue();
+    }
+
+    @Test
+    void verifyPasswordLoginShouldNotRequirePasswordChangeForNonDefaultUserNamedAdmin() {
+        SysUserEntity user = new SysUserEntity();
+        user.setId(2002L);
+        user.setUuid("user-uuid-2002");
+        user.setUsername("admin");
+        user.setPasswordHash("encoded-password");
+        user.setStatus("ENABLED");
+        when(userDomainService.findLoginUser("admin")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "encoded-password")).thenReturn(true);
+
+        var verification = controller.verifyPasswordLogin("admin", "secret");
+
+        assertThat(verification).isNotNull();
+        assertThat(verification.passwordMatched()).isTrue();
+        assertThat(verification.requiresPasswordChange()).isFalse();
     }
 
     @Test
@@ -678,7 +731,7 @@ class InternalSystemControllerTest {
         user.setStatus("ENABLED");
         when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
         when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(2001L), eq("user-uuid-2001"), eq(3001L))).thenReturn(Boolean.TRUE);
-        when(permissionSnapshotService.loadRoleSnapshot(3001L)).thenReturn(
+        when(permissionSnapshotService.loadGrantedRoleSnapshot(2001L, "user-uuid-2001", 3001L)).thenReturn(
                 new PermissionSnapshotService.PermissionSnapshot(
                         "role-v2",
                         Set.of("team:view"),
@@ -697,6 +750,8 @@ class InternalSystemControllerTest {
         assertThat(snapshot.permissions()).containsExactly("team:view");
         assertThat(snapshot.roleIds()).containsExactly(3001L);
         assertThat(snapshot.defaultHomePath()).isEqualTo("/team");
+        verify(permissionSnapshotService).loadGrantedRoleSnapshot(2001L, "user-uuid-2001", 3001L);
+        verify(permissionSnapshotService, never()).loadRoleSnapshot(3001L);
     }
 
     @Test

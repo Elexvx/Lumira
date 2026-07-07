@@ -62,6 +62,7 @@ public class SystemController {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public SystemController(
             SystemManagementAppService systemManagementAppService,
@@ -82,7 +83,8 @@ public class SystemController {
                 dictRuntimeService,
                 null,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -106,7 +108,8 @@ public class SystemController {
                 dictRuntimeService,
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -131,7 +134,8 @@ public class SystemController {
                 dictRuntimeService,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                false
         );
     }
 
@@ -148,6 +152,34 @@ public class SystemController {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                systemManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                fileInternalApi,
+                userExportAppService,
+                exportTaskService,
+                dictRuntimeService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private SystemController(
+            SystemManagementAppService systemManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            FileInternalApi fileInternalApi,
+            UserExportAppService userExportAppService,
+            ExportTaskService exportTaskService,
+            DictRuntimeService dictRuntimeService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.systemManagementAppService = systemManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
@@ -158,6 +190,7 @@ public class SystemController {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/permissions")
@@ -660,7 +693,8 @@ public class SystemController {
                 PUBLIC_BRANDING_UPLOAD_BUCKET,
                 currentUser.getUserId(),
                 currentUser.getUserUuid(),
-                currentUser.getUsername()
+                currentUser.getUsername(),
+                currentUser.getSimulatedRoleId()
         );
         return ApiResponse.success(uploaded.publicUrl(), TraceContext.getRequestId());
     }
@@ -699,6 +733,9 @@ public class SystemController {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -721,18 +758,34 @@ public class SystemController {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(currentUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             normalizedUserUuid = currentUserUuid;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -751,6 +804,10 @@ public class SystemController {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -767,7 +824,7 @@ public class SystemController {
         target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 }

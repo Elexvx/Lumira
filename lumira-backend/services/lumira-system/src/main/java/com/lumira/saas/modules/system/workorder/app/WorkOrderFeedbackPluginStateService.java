@@ -21,10 +21,11 @@ public class WorkOrderFeedbackPluginStateService {
     private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
+    private final boolean enforceTrustedUserResolution;
     private volatile Boolean workOrderTableExists;
 
     public WorkOrderFeedbackPluginStateService(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null, null);
+        this(jdbcTemplate, null, null, false);
     }
 
     @Autowired
@@ -33,16 +34,26 @@ public class WorkOrderFeedbackPluginStateService {
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi
     ) {
+        this(jdbcTemplate, permissionSnapshotService, systemInternalApi, true);
+    }
+
+    private WorkOrderFeedbackPluginStateService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public WorkOrderFeedbackPluginStateService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null);
+        this(jdbcTemplate, permissionSnapshotService, null, false);
     }
 
     public boolean isEnabled(CurrentUser currentUser) {
@@ -86,13 +97,24 @@ public class WorkOrderFeedbackPluginStateService {
                     || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 return false;
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            // "Trusted user username is unavailable" must fail closed for plugin-state probes.
+            if (!StringUtils.hasText(currentUsername)) {
+                return false;
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             userId = userSnapshot.userId();
             userUuid = userSnapshot.userUuid().trim();
         }
-        return permissionSnapshotService == null || permissionSnapshotService.isTrustedActiveUser(userId, userUuid);
+        if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
+            return true;
+        }
+        return permissionSnapshotService.isTrustedActiveUser(userId, userUuid);
     }
 
     public void ensureEnabled(CurrentUser currentUser) {

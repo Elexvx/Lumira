@@ -76,6 +76,24 @@ class PaymentInternalClientConfigurationTest {
     }
 
     @Test
+    void paymentInternalApiCarriesSimulatedRoleIdWhenPresent() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        PaymentInternalApi api = paymentInternalApi(builder, "payment-token-2026");
+        server.expect(requestTo("http://payment-service:8085/internal/payment/orders/ORD-1?operatorId=1001&operatorUuid=user-uuid-1001&simulatedRoleId=9"))
+                .andExpect(header("X-Job-Token", "payment-token-2026"))
+                .andRespond(withSuccess(
+                        "{\"orderNo\":\"ORD-1\",\"providerCode\":\"stripe\",\"status\":\"PAID\"}",
+                        MediaType.APPLICATION_JSON
+                ));
+
+        var order = api.getOrder(1001L, "user-uuid-1001", 9L, "ORD-1");
+
+        assertThat(order.status()).isEqualTo("PAID");
+        server.verify();
+    }
+
+    @Test
     void paymentInternalApiRequiresPaymentToken() {
         assertThatThrownBy(() -> paymentInternalApi(RestClient.builder(), " "))
                 .isInstanceOf(IllegalStateException.class)

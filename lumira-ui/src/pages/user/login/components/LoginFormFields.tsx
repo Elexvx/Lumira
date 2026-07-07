@@ -428,7 +428,7 @@ const OfficialWechatLoginPanel = ({
       <div
         id={containerIdRef.current}
         className="saas-login-page__wechat-official"
-        aria-label={formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '寰俊鎵爜鐧诲綍' })}
+        aria-label={formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}
       >
         {available ? (
           <Skeleton.Image active className="saas-login-page__wechat-skeleton" />

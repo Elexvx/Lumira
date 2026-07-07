@@ -53,6 +53,7 @@ public class WorkflowAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public WorkflowAppService(
@@ -64,6 +65,19 @@ public class WorkflowAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private WorkflowAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            ObjectMapper objectMapper,
+            PlatformEventPublisher platformEventPublisher,
+            OperationAuditService operationAuditService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.platformEventPublisher = platformEventPublisher;
@@ -71,6 +85,7 @@ public class WorkflowAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public WorkflowAppService(
@@ -80,7 +95,7 @@ public class WorkflowAppService {
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, permissionSnapshotService, null, null);
+        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, permissionSnapshotService, null, null, false);
     }
 
     public WorkflowAppService(
@@ -91,7 +106,18 @@ public class WorkflowAppService {
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi
     ) {
-        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, permissionSnapshotService, systemInternalApi, null);
+        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, permissionSnapshotService, systemInternalApi, null, false);
+    }
+
+    public WorkflowAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            ObjectMapper objectMapper,
+            PlatformEventPublisher platformEventPublisher,
+            OperationAuditService operationAuditService,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     public WorkflowAppService(
@@ -100,7 +126,7 @@ public class WorkflowAppService {
             PlatformEventPublisher platformEventPublisher,
             OperationAuditService operationAuditService
     ) {
-        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, null, null, null);
+        this(jdbcTemplate, objectMapper, platformEventPublisher, operationAuditService, null, null, null, false);
     }
 
     public WorkflowVO.Definition getDefinition(CurrentUser currentUser, String businessType) {
@@ -113,7 +139,7 @@ public class WorkflowAppService {
     public WorkflowVO.Definition saveDraft(CurrentUser currentUser, String businessType, WorkflowDTO.DefinitionSaveRequest request) {
         Long userId = requireUserId(currentUser);
         String userUuid = requireUserUuid(currentUser);
-        requireAnyPermission(currentUser, Set.of("workflow:config", "workflow:definition:config"));
+        requirePermission(currentUser, "workflow:config");
         String normalizedBusinessType = normalizeBusinessType(businessType);
         NormalizedDefinition normalized = normalizeDefinition(request);
         DefinitionBoundary existingDefinition = findDefinitionBoundary(normalizedBusinessType);
@@ -207,12 +233,13 @@ public class WorkflowAppService {
     public WorkflowVO.Definition publish(CurrentUser currentUser, String businessType) {
         Long userId = requireUserId(currentUser);
         String userUuid = requireUserUuid(currentUser);
-        requireAnyPermission(currentUser, Set.of("workflow:config", "workflow:definition:config"));
+        requirePermission(currentUser, "workflow:config");
         String normalizedBusinessType = normalizeBusinessType(businessType);
         DefinitionBoundary definition = findDefinitionBoundary(normalizedBusinessType);
         if (definition == null) {
             throw biz(ErrorCode.NOT_FOUND, "Workflow definition not found");
         }
+        validateDefinitionAssignments(loadDefinition(normalizedBusinessType, false));
         int updated = jdbcTemplate.update(
                 """
                         update workflow_definition
@@ -243,6 +270,7 @@ public class WorkflowAppService {
         Long userId = requireUserId(currentUser);
         String userUuid = requireUserUuid(currentUser);
         WorkflowVO.Definition definition = loadDefinition(normalizeBusinessType(businessType), true);
+        validateDefinitionAssignments(definition);
         String snapshot = toJson(Map.of(
                 "definitionId", definition.getId(),
                 "versionNo", definition.getVersionNo(),
@@ -306,7 +334,7 @@ public class WorkflowAppService {
             where.append(")");
             params.addAll(roleIds);
         }
-        where.append(" or (t.approver_user_id is null and t.approver_role_id is null))");
+        where.append(")");
 
         Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
         List<Object> selectParams = new ArrayList<>(params);
@@ -548,18 +576,22 @@ public class WorkflowAppService {
                     instance.id()
             );
             requireSingleWorkflowUpdate(expertUpdated, "Workflow business state changed, please retry");
+            Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("businessType", instance.businessType());
+            payload.put("businessUuid", instance.businessUuid() == null ? "" : instance.businessUuid());
+            payload.put("workflowInstanceId", instance.id());
+            payload.put("userUuid", userUuid);
+            if (simulatedRoleId != null) {
+                payload.put("simulatedRoleId", simulatedRoleId);
+            }
             platformEventPublisher.publishAfterCommit(
                     PlatformEventTypes.SOURCE_SYSTEM,
                     EVENT_EXPERT_APPROVED,
                     userId,
                     "aiadc_expert",
                     instance.businessId(),
-                    Map.of(
-                            "businessType", instance.businessType(),
-                            "businessUuid", instance.businessUuid() == null ? "" : instance.businessUuid(),
-                            "workflowInstanceId", instance.id(),
-                            "userUuid", userUuid
-                    )
+                    payload
             );
         }
         logAction(instance.id(), null, "INSTANCE_APPROVED", null, null, currentUser, "Approved");
@@ -569,6 +601,10 @@ public class WorkflowAppService {
         if (updated != 1) {
             throw biz(ErrorCode.BIZ_ERROR, message);
         }
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void createApprovalTasks(Long instanceId, WorkflowVO.Node node, CurrentUser currentUser) {
@@ -848,8 +884,7 @@ public class WorkflowAppService {
             predicate.append(")");
             params.addAll(roleIds);
         }
-        predicate.append(" or (").append(columnPrefix).append("approver_user_id is null and ")
-                .append(columnPrefix).append("approver_role_id is null))");
+        predicate.append(")");
         return predicate.toString();
     }
 
@@ -945,6 +980,7 @@ public class WorkflowAppService {
             if (node.getApproverRoleIds() != null && node.getApproverRoleIds().stream().anyMatch(id -> id == null || id <= 0)) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Invalid approver role");
             }
+            validateApprovalAssignment(node.getNodeType(), node.getApproverUserIds(), node.getApproverRoleIds());
         }
         for (WorkflowDTO.EdgeRequest edge : edges) {
             edge.setEdgeKey(trimRequired(edge.getEdgeKey(), "Edge key is required"));
@@ -955,6 +991,26 @@ public class WorkflowAppService {
             }
         }
         return new NormalizedDefinition(name, nodes, edges);
+    }
+
+    private void validateDefinitionAssignments(WorkflowVO.Definition definition) {
+        if (definition == null || definition.getNodes() == null) {
+            return;
+        }
+        for (WorkflowVO.Node node : definition.getNodes()) {
+            validateApprovalAssignment(node.getNodeType(), node.getApproverUserIds(), node.getApproverRoleIds());
+        }
+    }
+
+    private void validateApprovalAssignment(String nodeType, List<Long> approverUserIds, List<Long> approverRoleIds) {
+        if (!"APPROVAL".equals(normalizeNodeType(nodeType))) {
+            return;
+        }
+        boolean hasApproverUsers = approverUserIds != null && !approverUserIds.isEmpty();
+        boolean hasApproverRoles = approverRoleIds != null && !approverRoleIds.isEmpty();
+        if (!hasApproverUsers && !hasApproverRoles) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Approval node must declare at least one approver");
+        }
     }
 
     private String normalizeNodeType(String value) {
@@ -1182,6 +1238,9 @@ public class WorkflowAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -1201,18 +1260,33 @@ public class WorkflowAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
             normalizedUserUuid = userSnapshot.userUuid().trim();
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
         currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
@@ -1249,7 +1323,7 @@ public class WorkflowAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

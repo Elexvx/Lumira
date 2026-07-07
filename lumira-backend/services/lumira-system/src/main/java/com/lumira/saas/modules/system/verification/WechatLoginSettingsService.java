@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -41,17 +42,21 @@ public class WechatLoginSettingsService {
     private static final String GLOBAL_SETTINGS_CACHE_KEY = "global";
     private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
     private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
+    private static final String PERMISSION_VERIFICATION_MANAGE = "system:verification:manage";
+    private static final String PERMISSION_CONFIG_UPDATE = "system:config:update";
 
     private final SysConfigMapper sysConfigMapper;
     private final WechatLoginProperties properties;
     private final FieldCryptoService fieldCryptoService;
     private final ReadModelVersionService readModelVersionService;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final Cache<String, WechatLoginSettingsRecord> settingsCache;
     private final Cache<String, CompletableFuture<WechatLoginSettingsRecord>> settingsLoadInFlight;
     private final ThreadLocal<CurrentUser> currentUpdateOperator = new ThreadLocal<>();
     private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
 
+    @Autowired
     public WechatLoginSettingsService(
             SysConfigMapper sysConfigMapper,
             WechatLoginProperties properties,
@@ -59,11 +64,30 @@ public class WechatLoginSettingsService {
             ReadModelVersionService readModelVersionService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                sysConfigMapper,
+                properties,
+                fieldCryptoService,
+                readModelVersionService,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private WechatLoginSettingsService(
+            SysConfigMapper sysConfigMapper,
+            WechatLoginProperties properties,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.sysConfigMapper = sysConfigMapper;
         this.properties = properties;
         this.fieldCryptoService = fieldCryptoService;
         this.readModelVersionService = readModelVersionService;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.settingsCache = CacheBuilder.newBuilder()
                 .maximumSize(2048)
                 .expireAfterWrite(SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -80,7 +104,7 @@ public class WechatLoginSettingsService {
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService
     ) {
-        this(sysConfigMapper, properties, fieldCryptoService, readModelVersionService, null);
+        this(sysConfigMapper, properties, fieldCryptoService, readModelVersionService, null, false);
     }
 
     public WechatLoginSettingsRecord loadSettings() {
@@ -173,8 +197,9 @@ public class WechatLoginSettingsService {
     }
 
     public SystemVO.WechatLoginSettingsVO updateSettings(CurrentUser operator, SystemDTO.WechatLoginSettingsRequest request) {
-        Long operatorId = requireTrustedOperator(operator);
-        currentUpdateOperator.set(operator);
+        CurrentUser trustedOperator = requireTrustedVerificationManager(operator);
+        Long operatorId = trustedOperator.getUserId();
+        currentUpdateOperator.set(trustedOperator);
         try {
             requireRequest(request, "Wechat login settings request");
             WechatLoginSettingsRecord current = loadSettings();
@@ -201,8 +226,9 @@ public class WechatLoginSettingsService {
     }
 
     public SystemVO.WechatLoginSettingsVO resetSettings(CurrentUser operator) {
-        Long operatorId = requireTrustedOperator(operator);
-        currentUpdateOperator.set(operator);
+        CurrentUser trustedOperator = requireTrustedVerificationManager(operator);
+        Long operatorId = trustedOperator.getUserId();
+        currentUpdateOperator.set(trustedOperator);
         try {
             upsertConfigValue(ENABLED_KEY, "微信登录启用", "false", "是否启用微信扫码登录", operatorId);
             upsertConfigValue(APP_ID_KEY, "微信 AppID", "", "微信开放平台网站应用 AppID", operatorId);
@@ -323,28 +349,59 @@ public class WechatLoginSettingsService {
         }
     }
 
-    private Long requireTrustedOperator(CurrentUser operator) {
+    private CurrentUser requireTrustedVerificationManager(CurrentUser operator) {
+        CurrentUser trustedOperator = requireTrustedOperator(operator);
+        if (!hasConfigManagePermission(trustedOperator)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + PERMISSION_VERIFICATION_MANAGE);
+        }
+        return trustedOperator;
+    }
+
+    private boolean hasConfigManagePermission(CurrentUser operator) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
+            return false;
+        }
+        if (operator.getPermissions() == null || operator.getPermissions().isEmpty()) {
+            return false;
+        }
+        return operator.getPermissions().contains("*")
+                || operator.getPermissions().contains(PERMISSION_VERIFICATION_MANAGE)
+                || operator.getPermissions().contains(PERMISSION_CONFIG_UPDATE);
+    }
+
+    private CurrentUser requireTrustedOperator(CurrentUser operator) {
+        Long simulatedRoleId = normalizeSimulatedRoleId(operator == null ? null : operator.getSimulatedRoleId());
+        if (operator != null) {
+            operator.setSimulatedRoleId(simulatedRoleId);
+        }
         if (sessionAuthenticationService != null) {
             CurrentUser refreshedOperator = requireTrustedAuthenticatedCurrentUser(
                     sessionAuthenticationService.authenticateSessionTicket(
                             operator == null ? null : operator.getSessionId(),
                             operator == null ? null : operator.getUserId(),
                             operator == null ? null : operator.getUserUuid(),
-                            operator == null ? null : operator.getSimulatedRoleId(),
+                            simulatedRoleId,
                             operator == null ? null : operator.getSessionVersion(),
                             operator == null ? null : operator.getPermissionsVersion()
                     )
             );
             if (operator != null) {
                 copyTrustedCurrentUser(operator, refreshedOperator);
-                return operator.getUserId();
+                return operator;
             }
-            return refreshedOperator.getUserId();
+            return refreshedOperator;
+        }
+        if (enforceTrustedUserResolution && AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
         }
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(operator)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator identity is required");
         }
-        return operator.getUserId();
+        return operator;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private CurrentUser requireTrustedAuthenticatedCurrentUser(SessionAuthenticationService.AuthenticatedAccess authenticatedAccess) {
@@ -371,7 +428,7 @@ public class WechatLoginSettingsService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

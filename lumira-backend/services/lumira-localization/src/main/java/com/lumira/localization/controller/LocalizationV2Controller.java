@@ -39,13 +39,14 @@ public class LocalizationV2Controller {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final SystemInternalApi systemInternalApi;
+    private final boolean enforceTrustedUserResolution;
 
     public LocalizationV2Controller(
             LocalizationManagementAppService localizationManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
-        this(localizationManagementAppService, securityContextFacade, permissionGuard, null);
+        this(localizationManagementAppService, securityContextFacade, permissionGuard, null, false);
     }
 
     @Autowired
@@ -55,10 +56,21 @@ public class LocalizationV2Controller {
             PermissionGuard permissionGuard,
             SystemInternalApi systemInternalApi
     ) {
+        this(localizationManagementAppService, securityContextFacade, permissionGuard, systemInternalApi, true);
+    }
+
+    private LocalizationV2Controller(
+            LocalizationManagementAppService localizationManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            SystemInternalApi systemInternalApi,
+            boolean enforceTrustedUserResolution
+    ) {
         this.localizationManagementAppService = localizationManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.systemInternalApi = systemInternalApi;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/runtime/{localeCode}")
@@ -68,14 +80,14 @@ public class LocalizationV2Controller {
 
     @GetMapping("/languages")
     public ApiResponse<List<LocalizationVO.LanguageVO>> listLanguages() {
-        require("localization:view");
-        return ApiResponse.success(localizationManagementAppService.listLanguages(), TraceContext.getRequestId());
+        CurrentUser currentUser = require("localization:view");
+        return ApiResponse.success(localizationManagementAppService.listLanguages(currentUser), TraceContext.getRequestId());
     }
 
     @GetMapping("/namespaces")
     public ApiResponse<List<LocalizationVO.NamespaceVO>> listNamespaces(@RequestParam(name = "localeCode", required = false) String localeCode) {
-        require("localization:view");
-        return ApiResponse.success(localizationManagementAppService.listNamespaces(localeCode), TraceContext.getRequestId());
+        CurrentUser currentUser = require("localization:view");
+        return ApiResponse.success(localizationManagementAppService.listNamespaces(currentUser, localeCode), TraceContext.getRequestId());
     }
 
     @GetMapping("/entries")
@@ -90,9 +102,9 @@ public class LocalizationV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "20") long pageSize
     ) {
-        require("localization:view");
+        CurrentUser currentUser = require("localization:view");
         return ApiResponse.success(
-                localizationManagementAppService.listEntries(localeCode, namespaceCode, keyword, status, translationStatus, pageNo, pageSize, sortField, sortOrder),
+                localizationManagementAppService.listEntries(currentUser, localeCode, namespaceCode, keyword, status, translationStatus, pageNo, pageSize, sortField, sortOrder),
                 TraceContext.getRequestId()
         );
     }
@@ -106,8 +118,8 @@ public class LocalizationV2Controller {
 
     @GetMapping("/releases")
     public ApiResponse<List<LocalizationVO.ReleaseVO>> listReleases(@RequestParam(name = "localeCode", required = false) String localeCode) {
-        require("localization:view");
-        return ApiResponse.success(localizationManagementAppService.listReleases(localeCode), TraceContext.getRequestId());
+        CurrentUser currentUser = require("localization:view");
+        return ApiResponse.success(localizationManagementAppService.listReleases(currentUser, localeCode), TraceContext.getRequestId());
     }
 
     @PostMapping("/publish")
@@ -156,8 +168,10 @@ public class LocalizationV2Controller {
         return ApiResponse.success(localizationManagementAppService.saveEntry(currentUser(), request), TraceContext.getRequestId());
     }
 
-    private void require(String permissionKey) {
-        permissionGuard.requirePermission(currentUser(), permissionKey);
+    private CurrentUser require(String permissionKey) {
+        CurrentUser currentUser = currentUser();
+        permissionGuard.requirePermission(currentUser, permissionKey);
+        return currentUser;
     }
 
     private CurrentUser currentUser() {
@@ -169,7 +183,13 @@ public class LocalizationV2Controller {
     }
 
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (systemInternalApi == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -189,16 +209,23 @@ public class LocalizationV2Controller {
                 || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
-                userId,
-                userSnapshot.userUuid().trim()
-        );
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
+        String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+        if (!StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
         currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username());
+        currentUser.setUsername(currentUsername);
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());

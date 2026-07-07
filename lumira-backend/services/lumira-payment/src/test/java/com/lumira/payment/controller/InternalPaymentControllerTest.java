@@ -65,12 +65,12 @@ class InternalPaymentControllerTest {
         );
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po-1", "subject", 100L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
         authenticateInternalService();
-        when(paymentInternalApiService.createOrder(1001L, "user-uuid-1001", request)).thenReturn(order);
+        when(paymentInternalApiService.createOrder(1001L, "user-uuid-1001", 9L, request)).thenReturn(order);
 
-        PaymentOrderDTO result = controller.createOrder(1001L, "user-uuid-1001", request);
+        PaymentOrderDTO result = controller.createOrder(1001L, "user-uuid-1001", 9L, request);
 
         assertThat(result).isSameAs(order);
-        verify(paymentInternalApiService).createOrder(1001L, "user-uuid-1001", request);
+        verify(paymentInternalApiService).createOrder(1001L, "user-uuid-1001", 9L, request);
     }
 
     @Test
@@ -78,10 +78,11 @@ class InternalPaymentControllerTest {
         PaymentInternalApiService paymentInternalApiService = mock(PaymentInternalApiService.class);
         InternalPaymentController controller = new InternalPaymentController(paymentInternalApiService);
 
-        assertThatThrownBy(() -> controller.getOrder(1001L, "user-uuid-1001", "ORD-1"))
+        assertThatThrownBy(() -> controller.getOrder(1001L, "user-uuid-1001", null, "ORD-1"))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
         verify(paymentInternalApiService, never()).getOrder(
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()

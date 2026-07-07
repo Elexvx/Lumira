@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -33,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MessageWebSocketRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageWebSocketRegistry.class);
-    private static final Duration DEFAULT_TRUST_REVALIDATION_INTERVAL = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_TRUST_REVALIDATION_INTERVAL = Duration.ZERO;
 
     private final ObjectMapper objectMapper;
     private final MessageEventFactory messageEventFactory;
@@ -49,6 +50,7 @@ public class MessageWebSocketRegistry {
     private final Map<Long, Set<String>> subscriberIdsByUserId = new ConcurrentHashMap<>();
     private final Map<String, Instant> trustedAtBySubscriberId = new ConcurrentHashMap<>();
 
+    @Autowired
     public MessageWebSocketRegistry(
             ObjectMapper objectMapper,
             MessageEventFactory messageEventFactory,
@@ -81,11 +83,16 @@ public class MessageWebSocketRegistry {
                 .register(meterRegistry);
     }
 
-    public void register(WebSocketSession session, CurrentUser currentUser) {
-        if (session == null || !AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
-            return;
+    public CurrentUser register(WebSocketSession session, CurrentUser currentUser) {
+        if (session == null) {
+            return null;
         }
-        registerSubscriber(session, currentUser);
+        CurrentUser trustedCurrentUser = authenticateTrustedCurrentUser(currentUser);
+        if (trustedCurrentUser == null) {
+            return null;
+        }
+        registerSubscriber(session, trustedCurrentUser);
+        return trustedCurrentUser;
     }
 
     private void registerSubscriber(WebSocketSession session, CurrentUser currentUser) {
@@ -248,6 +255,30 @@ public class MessageWebSocketRegistry {
         return userId != null && userId > 0;
     }
 
+    private CurrentUser authenticateTrustedCurrentUser(CurrentUser currentUser) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return null;
+        }
+        MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess;
+        try {
+            authenticatedAccess = sessionAuthenticationService.authenticateSessionTicket(
+                    currentUser.getSessionId(),
+                    currentUser.getUserId(),
+                    currentUser.getUserUuid(),
+                    normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
+                    currentUser.getSessionVersion(),
+                    currentUser.getPermissionsVersion()
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+        CurrentUser trustedCurrentUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(trustedCurrentUser) || !hasMessageViewPermission(trustedCurrentUser)) {
+            return null;
+        }
+        return trustedCurrentUser;
+    }
+
     private boolean isTrustedSubscriber(Subscriber subscriber) {
         if (subscriber == null) {
             return false;
@@ -260,18 +291,42 @@ public class MessageWebSocketRegistry {
                 && trustedAt.plus(trustRevalidationInterval).isAfter(now)) {
             return true;
         }
-        boolean trusted = sessionAuthenticationService.isTrustedSession(
-                subscriber.sessionId(),
-                subscriber.userId(),
-                subscriber.userUuid(),
-                subscriber.simulatedRoleId(),
-                subscriber.sessionVersion(),
-                subscriber.permissionsVersion()
-        );
+        CurrentUser trustedCurrentUser = authenticateTrustedSubscriber(subscriber);
+        boolean trusted = AuthenticationTrustSupport.isTrustedCurrentUser(trustedCurrentUser)
+                && hasMessageViewPermission(trustedCurrentUser);
         if (trusted) {
             trustedAtBySubscriberId.put(subscriber.subscriberId(), now);
         }
         return trusted;
+    }
+
+    private CurrentUser authenticateTrustedSubscriber(Subscriber subscriber) {
+        if (subscriber == null) {
+            return null;
+        }
+        MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess;
+        try {
+            authenticatedAccess = sessionAuthenticationService.authenticateSessionTicket(
+                    subscriber.sessionId(),
+                    subscriber.userId(),
+                    subscriber.userUuid(),
+                    subscriber.simulatedRoleId(),
+                    subscriber.sessionVersion(),
+                    subscriber.permissionsVersion()
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+        return authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+    }
+
+    private boolean hasMessageViewPermission(CurrentUser currentUser) {
+        if (currentUser == null || currentUser.getPermissions() == null) {
+            return false;
+        }
+        return currentUser.getPermissions().contains("*")
+                || currentUser.getPermissions().contains("message:message:view")
+                || currentUser.getPermissions().contains("system:notification:view");
     }
 
     private void closeAndRemoveSubscriber(Subscriber subscriber) {

@@ -15,6 +15,7 @@ import com.lumira.saas.modules.expert.vo.ExpertVO;
 import com.lumira.saas.modules.workflow.app.WorkflowAppService;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -204,6 +205,27 @@ class ExpertManagementAppServiceTest {
     }
 
     @Test
+    void createExpertShouldRejectBlankLiveUsernameBeforeDatabaseOrWorkflowAccess() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+        verify(sql, never()).update(anyString(), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
     void createExpertShouldRefreshLiveUsernameBeforeWorkflowStart() throws Exception {
         ExpertSql sql = new ExpertSql();
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
@@ -212,7 +234,7 @@ class ExpertManagementAppServiceTest {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " admin-live ", "ENABLED"));
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*", "expert:create")));
@@ -243,6 +265,22 @@ class ExpertManagementAppServiceTest {
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
         ExpertManagementAppService service =
                 new ExpertManagementAppService(sql, workflowAppService, null, sessionAuthenticationService);
+
+        assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(sql, never()).update(anyString(), any());
+        verify(sql, never()).queryForObject(anyString(), any(Class.class), any());
+        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createExpertShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        ExpertManagementAppService service =
+                new ExpertManagementAppService(sql, workflowAppService, null, (SessionAuthenticationService) null);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -345,6 +383,28 @@ class ExpertManagementAppServiceTest {
         assertThat(sql.lastUpdateArgs).containsSubsequence(501L, "exp-001", "inactive", "PENDING");
     }
 
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("expert:view")));
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService);
+        CurrentUser currentUser = user("expert:view");
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = ExpertManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(1001L, "user-uuid-1001", 0L);
+    }
+
     private ExpertDTO.ExpertUpsertRequest expertRequest() {
         ExpertDTO.ExpertUpsertRequest request = new ExpertDTO.ExpertUpsertRequest();
         request.setCode("exp-001");
@@ -426,9 +486,9 @@ class ExpertManagementAppServiceTest {
             expert.put("id", 501L);
             expert.put("code", "exp-001");
             expert.put("name", "Ada Expert");
-            expert.put("title", "鏁欐巿");
+            expert.put("title", "教授");
             expert.put("organization", "Lumira University");
-            expert.put("position", "瀵煎笀");
+            expert.put("position", "导师");
             expert.put("expertise", "AI");
             expert.put("mobile", "13800000000");
             expert.put("email", "ada@example.com");

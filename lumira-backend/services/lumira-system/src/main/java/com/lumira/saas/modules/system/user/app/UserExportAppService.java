@@ -19,6 +19,8 @@ import com.lumira.saas.modules.system.export.ExportTaskService;
 import com.lumira.saas.modules.system.export.ExportVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -35,10 +37,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
 public class UserExportAppService {
+    private static final Logger log = LoggerFactory.getLogger(UserExportAppService.class);
     private static final String MODULE_KEY = "system:user";
     private static final String XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final long SYNC_THRESHOLD = 5000L;
@@ -51,6 +55,7 @@ public class UserExportAppService {
     private static final int MAX_DATE_TEXT_LENGTH = 32;
     private static final Set<String> SENSITIVE_EXPORT_FIELDS = Set.of("idCardNumber");
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final String ASYNC_EXPORT_SESSION_PREFIX = "internal-export-task-";
 
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final ExcelExportService excelExportService;
@@ -59,6 +64,8 @@ public class UserExportAppService {
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final ExecutorService executorService;
+    private final ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider;
+    private final boolean enforceTrustedUserResolution;
 
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
@@ -74,7 +81,9 @@ public class UserExportAppService {
                 permissionSnapshotService,
                 null,
                 null,
-                executorServiceProvider
+                executorServiceProvider,
+                null,
+                false
         );
     }
 
@@ -94,7 +103,9 @@ public class UserExportAppService {
                 permissionSnapshotService,
                 null,
                 sessionAuthenticationService,
-                executorServiceProvider
+                executorServiceProvider,
+                null,
+                true
         );
     }
 
@@ -107,6 +118,53 @@ public class UserExportAppService {
             SessionAuthenticationService sessionAuthenticationService,
             ObjectProvider<ExecutorService> executorServiceProvider
     ) {
+        this(
+                systemUserManagementAppService,
+                excelExportService,
+                exportTaskService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                executorServiceProvider,
+                null,
+                true
+        );
+    }
+
+    public UserExportAppService(
+            SystemUserManagementAppService systemUserManagementAppService,
+            ExcelExportService excelExportService,
+            ExportTaskService exportTaskService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            ObjectProvider<ExecutorService> executorServiceProvider,
+            ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider
+    ) {
+        this(
+                systemUserManagementAppService,
+                excelExportService,
+                exportTaskService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                executorServiceProvider,
+                userExportTaskWorkerServiceProvider,
+                true
+        );
+    }
+
+    private UserExportAppService(
+            SystemUserManagementAppService systemUserManagementAppService,
+            ExcelExportService excelExportService,
+            ExportTaskService exportTaskService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            ObjectProvider<ExecutorService> executorServiceProvider,
+            ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider,
+            boolean enforceTrustedUserResolution
+    ) {
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.excelExportService = excelExportService;
         this.exportTaskService = exportTaskService;
@@ -114,6 +172,8 @@ public class UserExportAppService {
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.executorService = executorServiceProvider.getIfAvailable(Executors::newVirtualThreadPerTaskExecutor);
+        this.userExportTaskWorkerServiceProvider = userExportTaskWorkerServiceProvider;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public List<ExportFieldVO> listUserExportFields(CurrentUser currentUser) {
@@ -135,7 +195,7 @@ public class UserExportAppService {
         long total = countUsers(trustedUser, normalizedRequest);
         String fileName = buildFileName();
         if (total <= SYNC_THRESHOLD) {
-            byte[] content = excelExportService.export("鐢ㄦ埛绠＄悊", selectedColumns, loadAllUsers(trustedUser, normalizedRequest));
+            byte[] content = excelExportService.export("user management", selectedColumns, loadAllUsers(trustedUser, normalizedRequest));
             ExportVO.ExportStartVO response = new ExportVO.ExportStartVO();
             response.setMode("SYNC");
             response.setFileName(fileName);
@@ -145,8 +205,16 @@ public class UserExportAppService {
             return response;
         }
 
-        ExportTaskEntity task = exportTaskService.createTask(trustedUser, MODULE_KEY, normalizedRequest, selectedColumns.stream().map(ExportColumn::key).toList(), total);
-        executorService.submit(() -> runAsyncExport(trustedUser, normalizedRequest, selectedColumns, task.getId(), fileName));
+        ExportTaskEntity task = exportTaskService.createTask(
+                trustedUser,
+                MODULE_KEY,
+                asyncTaskPayload(normalizedRequest, fileName, trustedUser.getSimulatedRoleId()),
+                selectedColumns.stream().map(ExportColumn::key).toList(),
+                total
+        );
+        CurrentUser asyncUser = trustedCurrentUserSnapshot(trustedUser);
+        asyncUser.setSessionId(asyncExportSessionId(task.getId()));
+        submitAsyncExport(task.getId(), asyncUser, normalizedRequest, selectedColumns, fileName);
         ExportVO.ExportStartVO response = new ExportVO.ExportStartVO();
         response.setMode("ASYNC");
         response.setTaskId(task.getId());
@@ -160,6 +228,36 @@ public class UserExportAppService {
         executorService.shutdown();
     }
 
+    private void submitAsyncExport(
+            Long taskId,
+            CurrentUser asyncUser,
+            ExportDTO.UserExportRequest normalizedRequest,
+            List<ExportColumn<SystemVO.UserVO>> selectedColumns,
+            String fileName
+    ) {
+        UserExportTaskWorkerService workerService = userExportTaskWorkerServiceProvider == null
+                ? null
+                : userExportTaskWorkerServiceProvider.getIfAvailable();
+        try {
+            if (workerService != null) {
+                executorService.submit(() -> workerService.processPendingTasks(1));
+                return;
+            }
+            executorService.submit(() -> runAsyncExport(asyncUser, normalizedRequest, selectedColumns, taskId, fileName));
+        } catch (RejectedExecutionException exception) {
+            if (workerService != null) {
+                log.warn("user export worker submission rejected for taskId={}: {}", taskId, exception.getMessage());
+                return;
+            }
+            try {
+                exportTaskService.markFailedFromTrustedSnapshot(asyncUser, taskId, exception);
+            } catch (RuntimeException ignored) {
+                log.warn("failed to mark rejected export task as failed taskId={}", taskId);
+            }
+            throw exception;
+        }
+    }
+
     private void runAsyncExport(
             CurrentUser currentUser,
             ExportDTO.UserExportRequest request,
@@ -168,25 +266,84 @@ public class UserExportAppService {
             String fileName
     ) {
         try {
-            CurrentUser refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser);
-            exportTaskService.markRunning(refreshedUser, taskId);
-            byte[] content = excelExportService.export("鐢ㄦ埛绠＄悊", selectedColumns, loadAllUsers(refreshedUser, request));
-            refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser);
-            FileObjectDTO uploaded = exportTaskService.uploadExportFile(refreshedUser, content, fileName, "鐢ㄦ埛瀵煎嚭", "export,user", "鐢ㄦ埛绠＄悊寮傛瀵煎嚭");
-            refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser);
-            exportTaskService.markSuccess(refreshedUser, taskId, uploaded, fileName);
+            CurrentUser refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser, true);
+            exportTaskService.markRunningFromTrustedSnapshot(refreshedUser, taskId);
+            byte[] content = excelExportService.export("user management", selectedColumns, loadAllUsers(refreshedUser, request));
+            refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser, true);
+            FileObjectDTO uploaded = exportTaskService.uploadExportFile(refreshedUser, content, fileName, "user export", "export,user", "user async export");
+            refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser, true);
+            exportTaskService.markSuccessFromTrustedSnapshot(refreshedUser, taskId, uploaded, fileName);
         } catch (Exception exception) {
             try {
-                exportTaskService.markFailed(refreshTrustedCurrentUserSnapshot(currentUser), taskId, exception);
+                exportTaskService.markFailedFromTrustedSnapshot(refreshTrustedCurrentUserSnapshot(currentUser, true), taskId, exception);
             } catch (RuntimeException ignored) {
                 // A revoked or expired session must not keep mutating async export state.
             }
         }
     }
 
+    CurrentUser buildQueuedAsyncUser(Long userId, String userUuid, Long simulatedRoleId, Long taskId) {
+        simulatedRoleId = normalizeSimulatedRoleId(simulatedRoleId);
+        if (permissionSnapshotService == null || systemInternalApi == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+        }
+        if (userId == null || userId <= 0 || !org.springframework.util.StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        String normalizedUserUuid = userUuid.trim();
+        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+        if (userSnapshot == null
+                || userSnapshot.userId() == null
+                || !userId.equals(userSnapshot.userId())
+                || !org.springframework.util.StringUtils.hasText(userSnapshot.userUuid())
+                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
+        }
+        if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Export user is disabled or no longer trusted");
+        }
+        String currentUsername = org.springframework.util.StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+        if (!org.springframework.util.StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Export user is disabled or no longer trusted");
+        }
+        PermissionSnapshotService.PermissionSnapshot permissionSnapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(userId, normalizedUserUuid, simulatedRoleId)
+                : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (permissionSnapshot == null || permissionSnapshot.getVersion() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Export user permission snapshot is unavailable");
+        }
+        CurrentUser currentUser = buildCurrentUserSnapshot(
+                userId,
+                currentUsername,
+                asyncExportSessionId(taskId),
+                1,
+                permissionSnapshot.getPermissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.getPermissions()),
+                permissionSnapshot.getRoleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.getRoleIds()),
+                permissionSnapshot.getPrimaryDeptId(),
+                permissionSnapshot.getDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.getDeptIds()),
+                permissionSnapshot.getDescendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.getDescendantDeptIds()),
+                permissionSnapshot.getDataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.getDataScopes())
+        );
+        currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setPermissionsVersion(permissionSnapshot.getVersion());
+        currentUser.setDefaultHomePath(permissionSnapshot.getDefaultHomePath());
+        currentUser.setSimulatedRoleId(simulatedRoleId);
+        return currentUser;
+    }
+
+    byte[] exportUsersFromTrustedSnapshot(CurrentUser currentUser, ExportDTO.UserExportRequest request) {
+        CurrentUser refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser, true);
+        ExportDTO.UserExportRequest normalizedRequest = normalizeRequest(request);
+        List<ExportColumn<SystemVO.UserVO>> selectedColumns = List.copyOf(selectedColumns(refreshedUser, normalizedRequest.getFields()));
+        return excelExportService.export("user management", selectedColumns, loadAllUsers(refreshedUser, normalizedRequest));
+    }
+
     private long countUsers(CurrentUser currentUser, ExportDTO.UserExportRequest request) {
         CurrentUser refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser);
-        PageResponse<SystemVO.UserVO> page = systemUserManagementAppService.listUsers(
+        PageResponse<SystemVO.UserVO> page = systemUserManagementAppService.listUsersFromTrustedSnapshot(
                 refreshedUser,
                 request.getUserId(),
                 null,
@@ -214,7 +371,10 @@ public class UserExportAppService {
         String cursorCreatedAt = null;
         while (true) {
             CurrentUser refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser);
-            PageResponse<SystemVO.UserVO> page = systemUserManagementAppService.listUsers(
+            // Re-check field-level permission on every page so revoked sensitive access
+            // cannot continue exporting through a long-running job.
+            selectedColumns(refreshedUser, request.getFields());
+            PageResponse<SystemVO.UserVO> page = systemUserManagementAppService.listUsersFromTrustedSnapshot(
                     refreshedUser,
                     request.getUserId(),
                     null,
@@ -337,25 +497,38 @@ public class UserExportAppService {
         snapshot.setPermissionsVersion(currentUser.getPermissionsVersion().trim());
         snapshot.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
         snapshot.setDefaultHomePath(currentUser.getDefaultHomePath());
-        snapshot.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        snapshot.setSimulatedRoleId(normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()));
         return snapshot;
     }
 
     private CurrentUser refreshTrustedCurrentUserSnapshot(CurrentUser currentUser) {
+        return refreshTrustedCurrentUserSnapshot(currentUser, false);
+    }
+
+    private CurrentUser refreshTrustedCurrentUserSnapshot(CurrentUser currentUser, boolean bypassSessionAuthentication) {
         CurrentUser trustedSnapshot = trustedCurrentUserSnapshot(currentUser);
-        if (sessionAuthenticationService != null) {
+        Long simulatedRoleId = normalizeSimulatedRoleId(trustedSnapshot.getSimulatedRoleId());
+        trustedSnapshot.setSimulatedRoleId(simulatedRoleId);
+        if (!shouldBypassSessionAuthentication(trustedSnapshot, bypassSessionAuthentication) && sessionAuthenticationService != null) {
             SessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
                     sessionAuthenticationService.authenticateSessionTicket(
                             trustedSnapshot.getSessionId(),
                             trustedSnapshot.getUserId(),
                             trustedSnapshot.getUserUuid(),
-                            trustedSnapshot.getSimulatedRoleId(),
+                            simulatedRoleId,
                             trustedSnapshot.getSessionVersion(),
                             trustedSnapshot.getPermissionsVersion()
                     );
             CurrentUser refreshedSnapshot = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
             requireExportPermission(refreshedSnapshot);
             return refreshedSnapshot;
+        }
+        if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
+            requireExportPermission(trustedSnapshot);
+            return trustedSnapshot;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(trustedSnapshot.getUserId(), trustedSnapshot.getUserUuid())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Export user is disabled or no longer trusted");
@@ -372,19 +545,34 @@ public class UserExportAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Export user is disabled or no longer trusted");
             }
+            String currentUsername = org.springframework.util.StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!org.springframework.util.StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             trustedSnapshot.setUserId(userSnapshot.userId());
             trustedSnapshot.setUserUuid(userSnapshot.userUuid().trim());
-            trustedSnapshot.setUsername(userSnapshot.username());
+            trustedSnapshot.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(trustedSnapshot.getUserId(), trustedSnapshot.getUserUuid())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Export user is disabled or no longer trusted");
         }
-        PermissionSnapshotService.PermissionSnapshot permissionSnapshot = trustedSnapshot.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(trustedSnapshot.getSimulatedRoleId())
+        PermissionSnapshotService.PermissionSnapshot permissionSnapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                trustedSnapshot.getUserId(),
+                trustedSnapshot.getUserUuid(),
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(
                 trustedSnapshot.getUserId(),
                 trustedSnapshot.getUserUuid()
         );
+        if (permissionSnapshot == null || permissionSnapshot.getVersion() == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Export user permission snapshot is unavailable");
+            }
+            requireExportPermission(trustedSnapshot);
+            return trustedSnapshot;
+        }
         CurrentUser refreshedSnapshot = buildCurrentUserSnapshot(
                 trustedSnapshot.getUserId(),
                 trustedSnapshot.getUsername(),
@@ -401,9 +589,27 @@ public class UserExportAppService {
         refreshedSnapshot.setPermissionsVersion(permissionSnapshot.getVersion());
         refreshedSnapshot.setRequiresPasswordChange(trustedSnapshot.getRequiresPasswordChange());
         refreshedSnapshot.setDefaultHomePath(permissionSnapshot.getDefaultHomePath());
-        refreshedSnapshot.setSimulatedRoleId(trustedSnapshot.getSimulatedRoleId());
+        refreshedSnapshot.setSimulatedRoleId(simulatedRoleId);
         requireExportPermission(refreshedSnapshot);
         return refreshedSnapshot;
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
+    private boolean shouldBypassSessionAuthentication(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        return bypassSessionAuthentication || isAsyncExportSession(currentUser);
+    }
+
+    private boolean isAsyncExportSession(CurrentUser currentUser) {
+        return currentUser != null
+                && currentUser.getSessionId() != null
+                && currentUser.getSessionId().startsWith(ASYNC_EXPORT_SESSION_PREFIX);
+    }
+
+    private String asyncExportSessionId(Long taskId) {
+        return ASYNC_EXPORT_SESSION_PREFIX + taskId;
     }
 
     private CurrentUser buildCurrentUserSnapshot(
@@ -511,7 +717,49 @@ public class UserExportAppService {
         return trimmed;
     }
 
+    private AsyncTaskPayload asyncTaskPayload(
+            ExportDTO.UserExportRequest request,
+            String fileName,
+            Long simulatedRoleId
+    ) {
+        AsyncTaskPayload payload = new AsyncTaskPayload();
+        payload.setRequest(request);
+        payload.setFileName(fileName);
+        payload.setSimulatedRoleId(simulatedRoleId);
+        return payload;
+    }
+
     private String buildFileName() {
-        return "鐢ㄦ埛绠＄悊瀵煎嚭-" + FILE_TIME_FORMATTER.format(LocalDateTime.now()) + ".xlsx";
+        return "user-export-" + FILE_TIME_FORMATTER.format(LocalDateTime.now()) + ".xlsx";
+    }
+
+    static class AsyncTaskPayload {
+        private ExportDTO.UserExportRequest request;
+        private String fileName;
+        private Long simulatedRoleId;
+
+        public ExportDTO.UserExportRequest getRequest() {
+            return request;
+        }
+
+        public void setRequest(ExportDTO.UserExportRequest request) {
+            this.request = request;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public void setFileName(String fileName) {
+            this.fileName = fileName;
+        }
+
+        public Long getSimulatedRoleId() {
+            return simulatedRoleId;
+        }
+
+        public void setSimulatedRoleId(Long simulatedRoleId) {
+            this.simulatedRoleId = simulatedRoleId;
+        }
     }
 }

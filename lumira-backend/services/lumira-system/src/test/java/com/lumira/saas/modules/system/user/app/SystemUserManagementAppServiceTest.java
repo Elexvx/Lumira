@@ -2,10 +2,13 @@ package com.lumira.saas.modules.system.user.app;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.data.DataPermissionRule;
+import com.lumira.common.security.data.DataScopeType;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
@@ -38,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -98,6 +102,101 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void listUsersShouldRequireViewPermissionBeforeDatabaseAccess() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.listUsers(
+                        userWithPermission("system:user:export"),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        1,
+                        10
+                )
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessCountChecks);
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+    }
+
+    @Test
+    void getUserShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeAccessCheck() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+
+        BizException exception = assertThrows(BizException.class, () -> service.getUser(currentUser(), 2001L));
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+    }
+
+    @Test
+    void getUserShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = new SystemUserManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                mock(UserDomainService.class),
+                defaultIamUserService(),
+                null,
+                null,
+                null,
+                mock(OnlineSessionManagementAppService.class),
+                mock(OperationAuditService.class),
+                mock(PasswordEncoder.class),
+                mock(PasswordPolicyService.class)
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.getUser(currentUser(), 2001L));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+    }
+
+    @Test
+    void getUserShouldRejectTrustedUserWhenPermissionSnapshotDisappearsInStrictMode() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        SystemUserManagementAppService service = new SystemUserManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                mock(UserDomainService.class),
+                defaultIamUserService(),
+                permissionSnapshotService,
+                null,
+                null,
+                mock(OnlineSessionManagementAppService.class),
+                mock(OperationAuditService.class),
+                mock(PasswordEncoder.class),
+                mock(PasswordPolicyService.class)
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.getUser(currentUser(), 2001L));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+    }
+
+    @Test
     void resolvePermissionSnapshotShouldRejectUntrustedCurrentUserSnapshot() throws Exception {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
@@ -116,6 +215,89 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void resolvePermissionSnapshotShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+        CurrentUser currentUser = currentUser();
+        currentUser.setPermissionsVersion(null);
+        currentUser.setSimulatedRoleId(0L);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("*")));
+        Method method = SystemUserManagementAppService.class.getDeclaredMethod("resolvePermissionSnapshot", CurrentUser.class);
+        method.setAccessible(true);
+
+        PermissionSnapshotService.PermissionSnapshot snapshot =
+                (PermissionSnapshotService.PermissionSnapshot) method.invoke(service, currentUser);
+
+        assertEquals("permissions-2", snapshot.getVersion());
+        assertEquals(null, currentUser.getSimulatedRoleId());
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("*")));
+        SystemUserManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                null,
+                mock(UserDomainService.class),
+                defaultIamUserService()
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemUserManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class, boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser, false);
+
+        assertEquals(null, currentUser.getSimulatedRoleId());
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
+    @Test
+    void userDataPermissionClauseShouldNotTrustSessionPermissionsWhenSnapshotIsEmpty() throws Exception {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+        CurrentUser currentUser = currentUserWithPermissionSnapshot();
+        currentUser.setSessionId(null);
+        currentUser.setPermissions(Set.of("*"));
+        currentUser.setDeptIds(Set.of(10L));
+        currentUser.setDescendantDeptIds(Set.of(10L, 11L));
+        currentUser.setDataScopes(List.of(new DataPermissionRule("system:user", DataScopeType.ALL, List.of(), List.of())));
+
+        Method method = SystemUserManagementAppService.class.getDeclaredMethod("userDataPermissionClause", CurrentUser.class, String.class);
+        method.setAccessible(true);
+        Object dataPermissionSql = method.invoke(service, currentUser, "u");
+        Method sqlMethod = dataPermissionSql.getClass().getDeclaredMethod("sql");
+        Method paramsMethod = dataPermissionSql.getClass().getDeclaredMethod("params");
+        sqlMethod.setAccessible(true);
+        paramsMethod.setAccessible(true);
+
+        String sql = (String) sqlMethod.invoke(dataPermissionSql);
+        @SuppressWarnings("unchecked")
+        List<Object> params = (List<Object>) paramsMethod.invoke(dataPermissionSql);
+
+        assertTrue(sql.contains("u.id in (?)"));
+        assertEquals(List.of(1001L), params);
+        verify(permissionSnapshotService, never()).loadSnapshot(anyLong(), org.mockito.ArgumentMatchers.anyString());
+        verify(permissionSnapshotService, never()).loadRoleSnapshot(anyLong());
+    }
+
+    @Test
     void listUserRolesShouldRejectInaccessibleUserBeforeQueryingRoles() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         jdbcTemplate.userRecordAccessCount = 0L;
@@ -125,6 +307,21 @@ class SystemUserManagementAppServiceTest {
 
         assertEquals(ErrorCode.NOT_FOUND, exception.getErrorCode());
         assertEquals(1, jdbcTemplate.userAccessExistenceChecks);
+        assertEquals(0, jdbcTemplate.userRoleQueries);
+    }
+
+    @Test
+    void listUserRolesShouldRequireViewPermissionBeforeAccessCheck() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.listUserRoles(userWithPermission("system:user:update"), 2001L)
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
         assertEquals(0, jdbcTemplate.userRoleQueries);
     }
 
@@ -290,6 +487,19 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void updateUserShouldNotTreatNonDefaultUserNamedAdminAsProtectedAdmin() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+        SystemDTO.UserUpsertRequest request = userRequest(List.of());
+        request.setUsername("admin");
+        request.setStatus("DISABLED");
+
+        assertDoesNotThrow(() -> service.updateUser(currentUser(), 2002L, request));
+
+        assertTrue(jdbcTemplate.updateCount > 0);
+    }
+
+    @Test
     void updateUserShouldRejectInaccessibleUserBeforeMutating() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         jdbcTemplate.userRecordAccessCount = 0L;
@@ -350,6 +560,32 @@ class SystemUserManagementAppServiceTest {
         assertDoesNotThrow(() -> service.updateUserStatus(currentUser(), 2001L, "DISABLED"));
 
         assertEquals(0, jdbcTemplate.userAccessCountChecks);
+    }
+
+    @Test
+    void updateUserStatusShouldRequireStatusPermissionBeforeAccessCheck() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.updateUserStatus(userWithPermission("system:user:update"), 2001L, "DISABLED")
+        );
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+        assertEquals(0, jdbcTemplate.updateCount);
+    }
+
+    @Test
+    void updateUserStatusShouldAllowDedicatedStatusPermissionWithoutUpdatePermission() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SystemUserManagementAppService service = buildService(jdbcTemplate);
+
+        assertDoesNotThrow(() -> service.updateUserStatus(userWithPermission("system:user:status"), 2001L, "DISABLED"));
+
+        assertEquals(0, jdbcTemplate.userAccessCountChecks);
+        assertTrue(jdbcTemplate.updateCount > 0);
     }
 
     @Test
@@ -531,6 +767,136 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void getUserShouldRejectBlankLiveUsernameBeforeAccessCheck() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        SystemUserManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                null,
+                mock(UserDomainService.class),
+                defaultIamUserService()
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.getUser(currentUser(), 2001L));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user username is unavailable"));
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(anyLong(), anyString());
+    }
+
+    @Test
+    void createUserFromTrustedSnapshotShouldBypassRevokedSessionTicketAndUseLiveSnapshot() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        SysUserEntity createdUser = new SysUserEntity();
+        createdUser.setId(2001L);
+        createdUser.setUuid("user-uuid-2001");
+        createdUser.setUsername("create-user");
+        when(userDomainService.findById(2001L)).thenReturn(Optional.of(createdUser));
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  admin-live  ", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("*")));
+        SystemUserManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                sessionAuthenticationService,
+                systemInternalApi,
+                null,
+                userDomainService,
+                defaultIamUserService()
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionId("internal-workflow-event-20001");
+        currentUser.setUsername("stale-admin");
+        SystemDTO.UserUpsertRequest request = userRequest(List.of());
+        request.setUsername("create-user");
+        request.setPassword("DemoPass1!");
+
+        SystemVO.UserDetailVO detail = service.createUserFromTrustedSnapshot(currentUser, request);
+
+        assertEquals(2001L, detail.getId());
+        assertEquals("admin-live", currentUser.getUsername());
+        verify(sessionAuthenticationService, never()).authenticateSessionTicket(
+                org.mockito.ArgumentMatchers.anyString(),
+                anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.isNull(),
+                anyInt(),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
+    void listUsersFromTrustedSnapshotShouldBypassRevokedSessionTicketAndUseLiveSnapshot() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+        UserDomainService userDomainService = mock(UserDomainService.class);
+        when(userDomainService.findById(anyLong())).thenReturn(Optional.empty());
+        SystemUserManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                sessionAuthenticationService,
+                systemInternalApi,
+                null,
+                userDomainService,
+                defaultIamUserService()
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionId("internal-export-task-9001");
+        currentUser.setUsername("stale-admin");
+
+        PageResponse<SystemVO.UserVO> page = service.listUsersFromTrustedSnapshot(
+                currentUser,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                1,
+                10
+        );
+
+        assertTrue(page != null);
+        assertEquals("admin-live", currentUser.getUsername());
+        verify(sessionAuthenticationService, never()).authenticateSessionTicket(
+                org.mockito.ArgumentMatchers.anyString(),
+                anyLong(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.isNull(),
+                anyInt(),
+                org.mockito.ArgumentMatchers.anyString()
+        );
+    }
+
+    @Test
     void updateUserShouldRejectWhenLiveSnapshotRevokesUpdatePermissionBeforeAccessCheck() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -540,6 +906,25 @@ class SystemUserManagementAppServiceTest {
                 .thenReturn(permissionSnapshot(Set.of("system:user:view")));
 
         BizException exception = assertThrows(BizException.class, () -> service.updateUser(currentUser(), 2001L, userRequest(List.of())));
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
+        assertEquals(0, jdbcTemplate.updateCount);
+    }
+
+    @Test
+    void updateUserStatusShouldRejectWhenLiveSnapshotRevokesStatusPermissionBeforeAccessCheck() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("system:user:update")));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.updateUserStatus(userWithPermission("system:user:status"), 2001L, "DISABLED")
+        );
 
         assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
         assertEquals(0, jdbcTemplate.userAccessExistenceChecks);
@@ -647,6 +1032,18 @@ class SystemUserManagementAppServiceTest {
             IamUserService iamUserService
     ) {
         when(permissionSnapshotService.isTrustedActiveUser(anyLong(), org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        if (sessionAuthenticationService == null && systemInternalApi == null) {
+            return new SystemUserManagementAppService(
+                    new MyBatisQueryOperations(jdbcTemplate),
+                    userDomainService,
+                    iamUserService,
+                    permissionSnapshotService,
+                    mock(OnlineSessionManagementAppService.class),
+                    operationAuditService == null ? mock(OperationAuditService.class) : operationAuditService,
+                    mock(PasswordEncoder.class),
+                    mock(PasswordPolicyService.class)
+            );
+        }
         return new SystemUserManagementAppService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 userDomainService,

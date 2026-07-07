@@ -121,13 +121,13 @@ class SystemPermissionTreeAssemblerTest {
     @Test
     void shouldAttachDatabaseButtonMenusAsPageActions() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
-        SystemVO.MenuVO page = menu("AI 助手", "/ai/assistant", "ai:assistant:view");
+        SystemVO.MenuVO page = menu("AI 助手", "/ai/assistant", "ai:view");
         page.setChildren(List.of(button("发送消息", "ai:chat:send")));
 
         List<SystemVO.PermissionTreeVO> tree = assembler.build(
                 List.of(page),
                 List.of(
-                        permission("ai:assistant:view", "访问 AI 助手"),
+                        permission("ai:view", "访问 AI 助手"),
                         permission("ai:chat:send", "发送 AI 对话")
                 )
         );
@@ -137,6 +137,33 @@ class SystemPermissionTreeAssemblerTest {
                 .collect(Collectors.toSet());
 
         assertTrue(actionKeys.contains("ai:chat:send"));
+    }
+
+    @Test
+    void shouldAttachMessageActionsToNotificationPage() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(menu("通知中心", "/message/center", "system:notification:view")),
+                List.of(
+                        permission("system:notification:view", "查看消息通知"),
+                        permission("system:notification:write", "发送系统通知"),
+                        permission("message:message:view", "查看站内消息"),
+                        permission("message:message:read", "标记消息已读"),
+                        permission("message:message:write", "发送站内消息"),
+                        permission("message:message:retract", "撤回站内消息")
+                )
+        );
+
+        Set<String> actionKeys = tree.getFirst().getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet());
+
+        assertTrue(actionKeys.contains("system:notification:write"));
+        assertTrue(actionKeys.contains("message:message:view"));
+        assertTrue(actionKeys.contains("message:message:read"));
+        assertTrue(actionKeys.contains("message:message:write"));
+        assertTrue(actionKeys.contains("message:message:retract"));
     }
 
     private SystemVO.MenuVO menu(String name, String path, String permissionKey) {

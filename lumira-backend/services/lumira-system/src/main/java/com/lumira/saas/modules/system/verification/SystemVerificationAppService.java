@@ -67,6 +67,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -118,17 +119,23 @@ public class SystemVerificationAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final TotpService totpService = new TotpService();
 
     public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService) {
-        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, null, null);
+        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, null, null, false);
     }
 
     public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SessionAuthenticationService sessionAuthenticationService) {
-        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
+    @Autowired
     public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService) {
+        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService, PermissionSnapshotService permissionSnapshotService, SystemInternalApi systemInternalApi, SessionAuthenticationService sessionAuthenticationService, boolean enforceTrustedUserResolution) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.userDomainService = userDomainService;
@@ -144,10 +151,11 @@ public class SystemVerificationAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public SystemVerificationAppService(MyBatisQueryOperations jdbcTemplate, ObjectMapper objectMapper, UserDomainService userDomainService, SystemVerificationProperties properties, SmtpMailService smtpMailService, SmsVerificationSender smsVerificationSender, VerificationDeliveryAuditService verificationDeliveryAuditService, SystemVerificationSettingsAppService settingsAppService, SecuritySettingsService securitySettingsService, IamUserService iamUserService, PasswordEncoder passwordEncoder, FieldCryptoService fieldCryptoService) {
-        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, null, null, null);
+        this(jdbcTemplate, objectMapper, userDomainService, properties, smtpMailService, smsVerificationSender, verificationDeliveryAuditService, settingsAppService, securitySettingsService, iamUserService, passwordEncoder, fieldCryptoService, null, null, null, false);
     }
 
     public List<SystemVO.VerificationProviderVO> listProviders(Long userId, String userUuid) {
@@ -157,7 +165,7 @@ public class SystemVerificationAppService {
     }
 
     public List<SystemVO.VerificationProviderVO> listProviders(CurrentUser currentUser) {
-        this.requireAuthenticatedUserId(currentUser);
+        this.requireVerificationViewPermission(currentUser);
         return this.listProviders(currentUser.getUserId(), currentUser.getUserUuid());
     }
 
@@ -167,7 +175,7 @@ public class SystemVerificationAppService {
     }
 
     public SystemVO.VerificationProviderVO provider(CurrentUser currentUser, String factorCode) {
-        this.requireAuthenticatedUserId(currentUser);
+        this.requireVerificationViewPermission(currentUser);
         return this.provider(currentUser.getUserId(), currentUser.getUserUuid(), factorCode);
     }
 
@@ -226,10 +234,14 @@ public class SystemVerificationAppService {
             return;
         }
         if (this.permissionSnapshotService == null) {
+            if (this.enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
         String normalizedUserUuid = StringUtils.hasText((String)currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
         if (userId == null || userId <= 0L || !StringUtils.hasText((String)normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
@@ -244,17 +256,30 @@ public class SystemVerificationAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText((String)userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText((String)currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!this.permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null ? this.permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId()) : this.permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? this.permissionSnapshotService.loadGrantedRoleSnapshot(userId, normalizedUserUuid, simulatedRoleId)
+                : this.permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (this.enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
         currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
@@ -289,8 +314,12 @@ public class SystemVerificationAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     public SystemVO.VerificationChallengeVO bindCurrentUser(CurrentUser currentUser, String factorCode) {
@@ -596,7 +625,7 @@ public class SystemVerificationAppService {
                     maskedContact,
                     verificationCode,
                     challengeId,
-                    "邮箱验证码",
+                    "Email verification code",
                     smsSettings
             );
         } catch (RuntimeException exception) {

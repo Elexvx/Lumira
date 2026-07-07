@@ -24,6 +24,7 @@ import java.util.Set;
 
 @Service
 public class TeamInviteService {
+    private static final String TEAM_MEMBER_INVITE = "team:member:invite";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Set<String> ROLES_ON_JOIN = Set.of("ADMIN", "MANAGER", "MEMBER");
     private static final char[] INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
@@ -55,6 +56,7 @@ public class TeamInviteService {
 
     @Transactional
     public TeamVO.Invite createInvite(CurrentUser currentUser, Long teamId, TeamDTO.InviteCreateRequest request) {
+        teamAppService.requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long userId = teamAppService.requireUserId(currentUser);
         String userUuid = teamAppService.requireUserUuid(currentUser);
         teamAppService.requirePositiveId(teamId, "Team id is required");
@@ -92,6 +94,7 @@ public class TeamInviteService {
     }
 
     public List<TeamVO.Invite> listInvites(CurrentUser currentUser, Long teamId) {
+        teamAppService.requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long userId = teamAppService.requireUserId(currentUser);
         String userUuid = teamAppService.requireUserUuid(currentUser);
         teamAppService.requirePositiveId(teamId, "Team id is required");
@@ -101,6 +104,7 @@ public class TeamInviteService {
 
     @Transactional
     public boolean disableInvite(CurrentUser currentUser, Long teamId, Long inviteId) {
+        teamAppService.requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long userId = teamAppService.requireUserId(currentUser);
         String userUuid = teamAppService.requireUserUuid(currentUser);
         teamAppService.requirePositiveId(teamId, "Team id is required");
@@ -165,6 +169,7 @@ public class TeamInviteService {
     }
 
     public List<TeamVO.JoinRequest> listJoinRequests(CurrentUser currentUser, Long teamId) {
+        teamAppService.requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long userId = teamAppService.requireUserId(currentUser);
         String userUuid = teamAppService.requireUserUuid(currentUser);
         teamAppService.requirePositiveId(teamId, "Team id is required");
@@ -174,6 +179,7 @@ public class TeamInviteService {
 
     @Transactional
     public TeamVO.JoinRequest approveJoinRequest(CurrentUser currentUser, Long teamId, Long requestId, TeamDTO.JoinReviewRequest request) {
+        teamAppService.requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long userId = teamAppService.requireUserId(currentUser);
         String userUuid = teamAppService.requireUserUuid(currentUser);
         teamAppService.requirePositiveId(teamId, "Team id is required");
@@ -195,6 +201,7 @@ public class TeamInviteService {
 
     @Transactional
     public TeamVO.JoinRequest rejectJoinRequest(CurrentUser currentUser, Long teamId, Long requestId, TeamDTO.JoinReviewRequest request) {
+        teamAppService.requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long userId = teamAppService.requireUserId(currentUser);
         String userUuid = teamAppService.requireUserUuid(currentUser);
         teamAppService.requirePositiveId(teamId, "Team id is required");

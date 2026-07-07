@@ -49,6 +49,19 @@ class FileInternalApiServiceTest {
     }
 
     @Test
+    void internalUserFileOperationsShouldTrimTrustedUsernameBeforeDelegating() {
+        FileManagementAppService appService = mock(FileManagementAppService.class);
+        FileInternalApiService service = service(appService, userSnapshot(42L, "  alice  ", "ENABLED"));
+        MultipartFile file = mock(MultipartFile.class);
+
+        service.uploadDocumentForUser(file, "knowledge", "ai", "remark", null, 42L, "user-uuid-42", "alice");
+
+        org.mockito.ArgumentCaptor<CurrentUser> userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
+        verify(appService).uploadDocument(userCaptor.capture(), eq(file), eq("knowledge"), eq("ai"), eq("remark"), any());
+        assertThat(userCaptor.getValue().getUsername()).isEqualTo("alice");
+    }
+
+    @Test
     void contentReadsDefaultToPersonalScope() {
         FileManagementAppService appService = mock(FileManagementAppService.class);
         FileInternalApiService service = service(appService, userSnapshot(42L, "alice", "ENABLED"));
@@ -97,6 +110,26 @@ class FileInternalApiServiceTest {
         assertThat(userCaptor.getValue().getPermissionsVersion()).isEqualTo("perm-v42");
         assertThat(userCaptor.getValue().getPermissions()).containsExactlyInAnyOrder("system:file:view", "download:center:view");
         assertThat(userCaptor.getValue().getPermissions()).doesNotContain("*");
+    }
+
+    @Test
+    void internalUserFileOperationsUseSimulatedRolePermissionSnapshotWhenPresent() {
+        FileManagementAppService appService = mock(FileManagementAppService.class);
+        SystemUserSnapshotDTO snapshot = userSnapshot(42L, "alice", "ENABLED");
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(42L)).thenReturn(snapshot);
+        when(systemInternalApi.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 9L)).thenReturn(permissionSnapshot());
+        ObjectProvider<SystemInternalApi> provider = provider(systemInternalApi);
+        FileInternalApiService service = new FileInternalApiService(appService, mock(SecurityContextFacade.class), provider);
+        MultipartFile file = mock(MultipartFile.class);
+
+        service.uploadDocumentForUser(file, "knowledge", "ai", "remark", null, 42L, "user-uuid-42", "alice", 9L);
+
+        verify(systemInternalApi).simulatedRolePermissionSnapshot(42L, "user-uuid-42", 9L);
+        verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+        org.mockito.ArgumentCaptor<CurrentUser> userCaptor = org.mockito.ArgumentCaptor.forClass(CurrentUser.class);
+        verify(appService).uploadDocument(userCaptor.capture(), eq(file), eq("knowledge"), eq("ai"), eq("remark"), any());
+        assertThat(userCaptor.getValue().getSimulatedRoleId()).isEqualTo(9L);
     }
 
     @Test
@@ -233,6 +266,10 @@ class FileInternalApiServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(snapshot.userId())).thenReturn(snapshot);
         when(systemInternalApi.permissionSnapshot(snapshot.userId(), snapshot.userUuid())).thenReturn(permissionSnapshot());
+        return provider(systemInternalApi);
+    }
+
+    private ObjectProvider<SystemInternalApi> provider(SystemInternalApi systemInternalApi) {
         return new ObjectProvider<>() {
             @Override
             public SystemInternalApi getObject(Object... args) {

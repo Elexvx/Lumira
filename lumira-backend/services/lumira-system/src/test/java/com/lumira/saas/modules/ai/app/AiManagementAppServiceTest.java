@@ -100,6 +100,24 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void employeeTemplateShouldRequireViewPermission() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.employeeTemplate(userWithPermissions(Set.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void testLlmServiceShouldRejectMissingPermissionsVersionBeforeProbe() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
@@ -127,7 +145,7 @@ class AiManagementAppServiceTest {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
-                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:manage")));
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:employee:create")));
         AiManagementAppService service = new AiManagementAppService(
                 jdbcTemplate,
                 mock(OperationAuditService.class),
@@ -168,6 +186,51 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void listEmployeesShouldRejectTrustedUserWhenNoTrustedResolverIsAvailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100")).thenReturn(null);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void listEmployeesShouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -189,6 +252,31 @@ class AiManagementAppServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void listEmployeesShouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, " ", "ENABLED"));
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> service.listEmployees(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+        verify(permissionSnapshotService, org.mockito.Mockito.never()).isTrustedActiveUser(100L, "user-uuid-100");
     }
 
     @Test
@@ -223,7 +311,127 @@ class AiManagementAppServiceTest {
     }
 
     @Test
-    void createLlmServiceShouldRequireManagePermissionBeforeDatabaseAccess() {
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*")));
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = AiManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(permissionSnapshotService).loadSnapshot(100L, "user-uuid-100");
+        verify(permissionSnapshotService, org.mockito.Mockito.never()).loadGrantedRoleSnapshot(100L, "user-uuid-100", 0L);
+    }
+
+    @Test
+    void createEmployeeShouldRequireCreatePermissionBeforeDatabaseWrite() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.createEmployee(userWithPermissions(Set.of("ai:view")), new AiDTO.EmployeeUpsertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void updateEmployeeShouldRequireUpdatePermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.updateEmployee(userWithPermissions(Set.of("ai:employee:create")), 1L, new AiDTO.EmployeeUpsertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void deleteEmployeeShouldRequireDeletePermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.deleteEmployee(userWithPermissions(Set.of("ai:employee:update")), 1L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void updateEmployeeEnabledShouldRequireStatusPermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.updateEmployeeEnabled(userWithPermissions(Set.of("ai:employee:update")), 1L, true))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void updateEmployeeCapabilitiesShouldRequireSkillsPermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.updateEmployeeCapabilities(userWithPermissions(Set.of("ai:employee:update")), 1L, new AiDTO.EmployeeCapabilitiesUpdateRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createLlmServiceShouldRequireCreatePermissionBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         AiManagementAppService service = new AiManagementAppService(
                 jdbcTemplate,
@@ -238,6 +446,80 @@ class AiManagementAppServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void updateLlmServiceShouldRequireUpdatePermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.updateLlmService(userWithPermissions(Set.of("ai:llm:create")), 1L, new AiDTO.LlmServiceUpsertRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void deleteLlmServiceShouldRequireDeletePermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.deleteLlmService(userWithPermissions(Set.of("ai:llm:update")), 1L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void updateLlmServiceEnabledShouldRequireStatusPermissionBeforeDatabaseRead() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.updateLlmServiceEnabled(userWithPermissions(Set.of("ai:llm:update")), 1L, true))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void testLlmServiceShouldRequireCreateOrUpdatePermissionBeforeProbe() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                chatModelFactory
+        );
+
+        assertThatThrownBy(() -> service.testLlmService(userWithPermissions(Set.of("ai:llm:status")), testRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+        verifyNoInteractions(chatModelFactory);
     }
 
     @Test
@@ -311,11 +593,29 @@ class AiManagementAppServiceTest {
         AiVO.LlmServiceTestResultVO result = service.testLlmService(currentUser(), testRequest());
 
         assertThat(result.getSuccess()).isTrue();
-        assertThat(result.getMessage()).isEqualTo("测试通过");
+        assertThat(result.getMessage()).isEqualTo("Test passed");
         assertThat(result.getProvider()).isEqualTo("deepseek");
         assertThat(result.getModel()).isEqualTo("deepseek-chat");
         assertThat(result.getReplyText()).isEqualTo("OK");
         assertThat(result.getLatencyMs()).isNotNull();
+    }
+
+    @Test
+    void getAssistantEmployeeShouldRequireChatPermissionBeforeResolverAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.getAssistantEmployee(userWithPermissions(Set.of("ai:view"))))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
     }
 
     @Test
@@ -337,6 +637,24 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void listConversationMessagesShouldRequireChatPermissionBeforeConversationLookup() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.listConversationMessages(userWithPermissions(Set.of("ai:view")), 10L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.lastQuerySql).isNull();
+    }
+
+    @Test
     void listConversationsShouldFilterByOwnerIdAndUuid() {
         ConversationQueryOperations queryOperations = new ConversationQueryOperations();
         AiManagementAppService service = new AiManagementAppService(
@@ -352,6 +670,24 @@ class AiManagementAppServiceTest {
         assertThat(queryOperations.lastQuerySql).contains("c.owner_user_id = ?");
         assertThat(queryOperations.lastQuerySql).contains("c.owner_user_uuid = ?");
         assertThat(queryOperations.lastQueryArgs).containsSequence(100L, "user-uuid-100");
+    }
+
+    @Test
+    void listConversationsShouldRequireChatPermissionBeforeDatabaseAccess() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThatThrownBy(() -> service.listConversations(userWithPermissions(Set.of("ai:view")), null, 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.lastQuerySql).isNull();
     }
 
     @Test
@@ -514,7 +850,7 @@ class AiManagementAppServiceTest {
 
         assertThatThrownBy(() -> service.testLlmService(currentUser(), request))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("重新输入 API Key");
+                .hasMessageContaining("Please re-enter the API key");
     }
 
     @Test
@@ -571,7 +907,7 @@ class AiManagementAppServiceTest {
 
         assertThatThrownBy(() -> service.createEmployee(currentUser(), request))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("用户名已存在");
+                .hasMessageContaining("Username already exists");
         assertThat(jdbcTemplate.employeeExistsChecked).isTrue();
         assertThat(jdbcTemplate.countQueryCalled).isFalse();
     }
@@ -638,7 +974,7 @@ class AiManagementAppServiceTest {
 
         assertThatThrownBy(() -> service.createLlmService(currentUser(), request))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("LLM 服务标识已存在");
+                .hasMessageContaining("LLM service code already exists");
         assertThat(jdbcTemplate.llmServiceExistsChecked).isTrue();
         assertThat(jdbcTemplate.countQueryCalled).isFalse();
     }

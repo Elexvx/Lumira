@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -20,6 +21,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -179,6 +181,57 @@ class SystemMonitorAppServiceTest {
     }
 
     @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:monitor:service:view")));
+        SystemMonitorAppService service = new SystemMonitorAppService(
+                redisTemplate,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser(Set.of("system:monitor:service:view"));
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemMonitorAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertEquals(null, currentUser.getSimulatedRoleId());
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void serviceMonitorShouldRejectBlankLiveUsernameBeforeProbing() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        SystemMonitorAppService service = new SystemMonitorAppService(
+                redisTemplate,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.getServiceMonitor(currentUser(Set.of("system:monitor:service:view"))));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user username is unavailable"));
+        verify(redisTemplate, never()).execute(org.mockito.ArgumentMatchers.<RedisCallback<Object>>any());
+    }
+
+    @Test
     void serviceMonitorShouldRejectRevokedSessionTicketBeforeProbing() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
@@ -198,6 +251,50 @@ class SystemMonitorAppServiceTest {
     }
 
     @Test
+    void redisMonitorShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        SystemMonitorAppService service = new SystemMonitorAppService(
+                redisTemplate,
+                new ObjectMapper(),
+                null,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.getRedisMonitor(currentUser(Set.of("system:monitor:redis:view")))
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        verify(redisTemplate, never()).execute(org.mockito.ArgumentMatchers.<RedisCallback<Object>>any());
+    }
+
+    @Test
+    void redisMonitorShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        SystemMonitorAppService service = new SystemMonitorAppService(
+                redisTemplate,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.getRedisMonitor(currentUser(Set.of("system:monitor:redis:view")))
+        );
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Trusted user permission snapshot is unavailable"));
+        verify(redisTemplate, never()).execute(org.mockito.ArgumentMatchers.<RedisCallback<Object>>any());
+    }
+
+    @Test
     void serviceMonitorShouldRefreshLiveUsername() {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -206,7 +303,7 @@ class SystemMonitorAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:monitor:service:view")));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "operator-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  operator-live  ", "ENABLED"));
         SystemMonitorAppService service = new SystemMonitorAppService(
                 redisTemplate,
                 new ObjectMapper(),

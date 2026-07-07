@@ -1,5 +1,6 @@
 package com.lumira.payment.controller;
 
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -7,6 +8,7 @@ import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.security.CurrentUser;
@@ -60,44 +62,58 @@ class PaymentV2ControllerTest {
 
     @Test
     void providers_shouldAllowProtectedAdminAndDelegateToManagementService() {
-        CurrentUser admin = currentUser(1001L, "admin", 0L, "payment:settings:view");
+        CurrentUser admin = currentUser(1001L, "admin", 0L, "payment:config:view");
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
-        when(paymentManagementAppService.listProviderSettings()).thenReturn(List.of(settings));
+        when(paymentManagementAppService.listProviderSettings(admin)).thenReturn(List.of(settings));
 
         var response = controller.providers();
 
         assertThat(response.getData()).containsExactly(settings);
-        verify(paymentManagementAppService).listProviderSettings();
-        verify(permissionGuard, never()).requirePermission(admin, "payment:settings:view");
+        verify(paymentManagementAppService).listProviderSettings(admin);
+        verify(permissionGuard, never()).requirePermission(admin, "payment:config:view");
     }
 
     @Test
     void providers_shouldRejectNonAdminBeforeApplicationService() {
-        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser(42L, "alice", "payment:settings:view"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser(42L, "alice", "payment:config:view"));
 
         assertThatThrownBy(() -> controller.providers())
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("仅超级管理员");
 
-        verify(paymentManagementAppService, never()).listProviderSettings();
+        verify(paymentManagementAppService, never()).listProviderSettings(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
     void providers_shouldRejectAdminUsernameWithoutProtectedAdminId() {
-        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser(42L, "admin", "payment:settings:view"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser(42L, "admin", "payment:config:view"));
 
         assertThatThrownBy(() -> controller.providers())
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
-        verify(paymentManagementAppService, never()).listProviderSettings();
+        verify(paymentManagementAppService, never()).listProviderSettings(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void providers_shouldAllowProtectedAdminWithRenamedUsername() {
+        CurrentUser admin = currentUser(1001L, "root-admin", 0L, "payment:config:view");
+        PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
+        settings.setProviderCode("stripe");
+        when(securityContextFacade.getCurrentUser()).thenReturn(admin);
+        when(paymentManagementAppService.listProviderSettings(admin)).thenReturn(List.of(settings));
+
+        var response = controller.providers();
+
+        assertThat(response.getData()).containsExactly(settings);
+        verify(paymentManagementAppService).listProviderSettings(admin);
     }
 
     @Test
     void updateProvider_shouldDelegateWithOperator() {
-        CurrentUser admin = currentUser(1001L, "admin", null, "payment:settings:manage");
+        CurrentUser admin = currentUser(1001L, "admin", null, "payment:config:update");
         PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();
         PaymentProviderSettingsDTO result = new PaymentProviderSettingsDTO();
         result.setProviderCode("stripe");
@@ -287,6 +303,79 @@ class PaymentV2ControllerTest {
 
         assertThat(response).isEqualTo("success");
         verify(paymentWebhookService).handleWebhook("paypal", "{}", Map.of("X-Webhook-Token", "token-1"));
+    }
+
+    @Test
+    void createOrderShouldRejectTrustedUserWhenResolverIsUnavailable() {
+        PaymentV2Controller strictController = new PaymentV2Controller(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard,
+                null
+        );
+        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> strictController.createOrder(request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void createOrder_shouldRejectTrustedUserWhenLiveUsernameIsUnavailable() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PaymentV2Controller strictController = new PaymentV2Controller(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard,
+                systemInternalApi
+        );
+        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subject",
+                100L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(systemInternalApi.findUserIdentityById(42L)).thenReturn(
+                new SystemUserSnapshotDTO(42L, "user-uuid-42", " ", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null)
+        );
+
+        assertThatThrownBy(() -> strictController.createOrder(request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user username is unavailable");
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+        verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {

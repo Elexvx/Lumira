@@ -152,6 +152,63 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
+    void shouldGrantWildcardToProtectedAdminAfterUsernameRename() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setUserId(1001L);
+        session.setUsername("root-admin");
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of());
+        session.setRoleIds(java.util.List.of(1001L));
+        session.setDeptIds(java.util.List.of());
+        session.setDescendantDeptIds(java.util.List.of());
+        session.setDataScopes(java.util.List.of());
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        SessionAuthenticationService.AuthenticatedAccess access = service.authenticateAccessToken("access-token");
+
+        assertEquals(Set.of("*"), access.currentUser().getPermissions());
+        assertEquals("root-admin", access.currentUser().getUsername());
+        assertFalse(access.sessionStateUpdated());
+    }
+
+    @Test
+    void shouldRejectAccessTokenWhenSimulatedRoleGrantIsRevoked() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        permissionSnapshotService.setRoleGranted(false);
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(9001L);
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+        assertTrue(permissionSnapshotService.roleSnapshotLoaded);
+    }
+
+    @Test
     void shouldRejectAccessTokenWhenUsernameDoesNotMatchTrustedSession() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
@@ -819,6 +876,7 @@ class SessionAuthenticationServiceTest {
         private boolean userSnapshotLoaded;
         private boolean roleSnapshotLoaded;
         private boolean trustedActiveUser = true;
+        private boolean roleGranted = true;
         private long currentVersion = 1L;
         private String loadedVersion = "v1:data-scope-cache-v4";
 
@@ -834,6 +892,18 @@ class SessionAuthenticationServiceTest {
 
         @Override
         public PermissionSnapshot loadRoleSnapshot(Long roleId) {
+            roleSnapshotLoaded = true;
+            return new PermissionSnapshot("role-version", Set.of("role:admin", "role:publish"));
+        }
+
+        @Override
+        public boolean isRoleGrantedToUser(Long userId, String userUuid, Long roleId) {
+            roleSnapshotLoaded = true;
+            return roleGranted;
+        }
+
+        @Override
+        public PermissionSnapshot loadGrantedRoleSnapshot(Long userId, String userUuid, Long roleId) {
             roleSnapshotLoaded = true;
             return new PermissionSnapshot("role-version", Set.of("role:admin", "role:publish"));
         }
@@ -859,6 +929,10 @@ class SessionAuthenticationServiceTest {
 
         private void setTrustedActiveUser(boolean trustedActiveUser) {
             this.trustedActiveUser = trustedActiveUser;
+        }
+
+        private void setRoleGranted(boolean roleGranted) {
+            this.roleGranted = roleGranted;
         }
     }
 

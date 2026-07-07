@@ -48,6 +48,7 @@ public class ExportTaskService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public ExportTaskService(
@@ -58,12 +59,25 @@ public class ExportTaskService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(exportTaskMapper, fileInternalApi, objectMapper, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private ExportTaskService(
+            ExportTaskMapper exportTaskMapper,
+            FileInternalApi fileInternalApi,
+            ObjectMapper objectMapper,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.exportTaskMapper = exportTaskMapper;
         this.fileInternalApi = fileInternalApi;
         this.objectMapper = objectMapper;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public ExportTaskService(
@@ -73,11 +87,11 @@ public class ExportTaskService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(exportTaskMapper, fileInternalApi, objectMapper, permissionSnapshotService, null, sessionAuthenticationService);
+        this(exportTaskMapper, fileInternalApi, objectMapper, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     public ExportTaskService(ExportTaskMapper exportTaskMapper, FileInternalApi fileInternalApi, ObjectMapper objectMapper) {
-        this(exportTaskMapper, fileInternalApi, objectMapper, null, null, null);
+        this(exportTaskMapper, fileInternalApi, objectMapper, null, null, null, false);
     }
 
     public ExportTaskService(
@@ -86,7 +100,7 @@ public class ExportTaskService {
             ObjectMapper objectMapper,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(exportTaskMapper, fileInternalApi, objectMapper, permissionSnapshotService, null, null);
+        this(exportTaskMapper, fileInternalApi, objectMapper, permissionSnapshotService, null, null, false);
     }
 
     public ExportTaskEntity createTask(CurrentUser currentUser, String moduleKey, Object request, List<String> selectedFields, long totalCount) {
@@ -116,12 +130,25 @@ public class ExportTaskService {
     }
 
     public void markRunning(CurrentUser currentUser, Long taskId) {
-        requireUserExportPermission(currentUser);
+        requireUserExportPermission(currentUser, false);
         requirePositiveId(taskId, "Export task id");
         ExportTaskEntity update = new ExportTaskEntity();
         update.setStatus(STATUS_RUNNING);
         update.setStartedAt(LocalDateTime.now());
-        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId)
+        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId, false)
+                .eq(ExportTaskEntity::getStatus, STATUS_PENDING));
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Export task changed, please retry");
+        }
+    }
+
+    public void markRunningFromTrustedSnapshot(CurrentUser currentUser, Long taskId) {
+        requireUserExportPermission(currentUser, true);
+        requirePositiveId(taskId, "Export task id");
+        ExportTaskEntity update = new ExportTaskEntity();
+        update.setStatus(STATUS_RUNNING);
+        update.setStartedAt(LocalDateTime.now());
+        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId, true)
                 .eq(ExportTaskEntity::getStatus, STATUS_PENDING));
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Export task changed, please retry");
@@ -129,16 +156,33 @@ public class ExportTaskService {
     }
 
     public void markSuccess(CurrentUser currentUser, Long taskId, FileObjectDTO file, String fileName) {
-        Long userId = requireUserExportPermission(currentUser);
+        Long userId = requireUserExportPermission(currentUser, false);
         requirePositiveId(taskId, "Export task id");
         String normalizedFileName = requireSafeXlsxFileName(fileName);
-        Long fileId = requireTrustedUploadedFile(file, userId, trustedUserUuid(currentUser));
+        Long fileId = requireTrustedUploadedFile(file, userId, trustedUserUuid(currentUser, false));
         ExportTaskEntity update = new ExportTaskEntity();
         update.setStatus(STATUS_SUCCESS);
         update.setFileId(fileId);
         update.setFileName(normalizedFileName);
         update.setFinishedAt(LocalDateTime.now());
-        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId)
+        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId, false)
+                .eq(ExportTaskEntity::getStatus, STATUS_RUNNING));
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Export task changed, please retry");
+        }
+    }
+
+    public void markSuccessFromTrustedSnapshot(CurrentUser currentUser, Long taskId, FileObjectDTO file, String fileName) {
+        Long userId = requireUserExportPermission(currentUser, true);
+        requirePositiveId(taskId, "Export task id");
+        String normalizedFileName = requireSafeXlsxFileName(fileName);
+        Long fileId = requireTrustedUploadedFile(file, userId, trustedUserUuid(currentUser, true));
+        ExportTaskEntity update = new ExportTaskEntity();
+        update.setStatus(STATUS_SUCCESS);
+        update.setFileId(fileId);
+        update.setFileName(normalizedFileName);
+        update.setFinishedAt(LocalDateTime.now());
+        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId, true)
                 .eq(ExportTaskEntity::getStatus, STATUS_RUNNING));
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Export task changed, please retry");
@@ -146,13 +190,27 @@ public class ExportTaskService {
     }
 
     public void markFailed(CurrentUser currentUser, Long taskId, Exception exception) {
-        requireUserExportPermission(currentUser);
+        requireUserExportPermission(currentUser, false);
         requirePositiveId(taskId, "Export task id");
         ExportTaskEntity update = new ExportTaskEntity();
         update.setStatus(STATUS_FAILED);
         update.setErrorMessage(resolveErrorMessage(exception));
         update.setFinishedAt(LocalDateTime.now());
-        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId)
+        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId, false)
+                .in(ExportTaskEntity::getStatus, STATUS_PENDING, STATUS_RUNNING));
+        if (updated <= 0) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Export task changed, please retry");
+        }
+    }
+
+    public void markFailedFromTrustedSnapshot(CurrentUser currentUser, Long taskId, Exception exception) {
+        requireUserExportPermission(currentUser, true);
+        requirePositiveId(taskId, "Export task id");
+        ExportTaskEntity update = new ExportTaskEntity();
+        update.setStatus(STATUS_FAILED);
+        update.setErrorMessage(resolveErrorMessage(exception));
+        update.setFinishedAt(LocalDateTime.now());
+        int updated = exportTaskMapper.update(update, ownerScopedUpdate(currentUser, taskId, true)
                 .in(ExportTaskEntity::getStatus, STATUS_PENDING, STATUS_RUNNING));
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Export task changed, please retry");
@@ -160,15 +218,19 @@ public class ExportTaskService {
     }
 
     private LambdaUpdateWrapper<ExportTaskEntity> ownerScopedUpdate(CurrentUser currentUser, Long taskId) {
+        return ownerScopedUpdate(currentUser, taskId, false);
+    }
+
+    private LambdaUpdateWrapper<ExportTaskEntity> ownerScopedUpdate(CurrentUser currentUser, Long taskId, boolean bypassSessionAuthentication) {
         return new LambdaUpdateWrapper<ExportTaskEntity>()
                 .eq(ExportTaskEntity::getId, taskId)
-                .eq(ExportTaskEntity::getCreatedBy, currentUserId(currentUser))
-                .eq(ExportTaskEntity::getCreatedByUuid, trustedUserUuid(currentUser))
+                .eq(ExportTaskEntity::getCreatedBy, currentUserId(currentUser, bypassSessionAuthentication))
+                .eq(ExportTaskEntity::getCreatedByUuid, trustedUserUuid(currentUser, bypassSessionAuthentication))
                 .eq(ExportTaskEntity::getDeleted, 0);
     }
 
     public FileObjectDTO uploadExportFile(CurrentUser currentUser, byte[] content, String fileName, String category, String tags, String remark) {
-        Long userId = requireUserExportPermission(currentUser);
+        Long userId = requireUserExportPermission(currentUser, false);
         if (content == null || content.length == 0) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Export file content is required");
         }
@@ -184,8 +246,39 @@ public class ExportTaskService {
                 normalizedRemark,
                 null,
                 userId,
-                trustedUserUuid(currentUser),
-                trustedUsername(currentUser)
+                trustedUserUuid(currentUser, false),
+                trustedUsername(currentUser, false),
+                currentUser.getSimulatedRoleId()
+        );
+    }
+
+    public FileObjectDTO uploadExportFileFromTrustedSnapshot(
+            CurrentUser currentUser,
+            byte[] content,
+            String fileName,
+            String category,
+            String tags,
+            String remark
+    ) {
+        Long userId = requireUserExportPermission(currentUser, true);
+        if (content == null || content.length == 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Export file content is required");
+        }
+        String normalizedFileName = requireSafeXlsxFileName(fileName);
+        String normalizedCategory = requireOptionalText(category, "Export file category", MAX_CATEGORY_LENGTH);
+        String normalizedTags = requireOptionalText(tags, "Export file tags", MAX_TAGS_LENGTH);
+        String normalizedRemark = requireOptionalText(remark, "Export file remark", MAX_REMARK_LENGTH);
+        ByteArrayMultipartFile file = new ByteArrayMultipartFile(content, "file", normalizedFileName, XLSX_CONTENT_TYPE);
+        return fileInternalApi.uploadDocumentForUser(
+                file,
+                normalizedCategory,
+                normalizedTags,
+                normalizedRemark,
+                null,
+                userId,
+                trustedUserUuid(currentUser, true),
+                trustedUsername(currentUser, true),
+                currentUser.getSimulatedRoleId()
         );
     }
 
@@ -198,7 +291,7 @@ public class ExportTaskService {
                 .eq(ExportTaskEntity::getCreatedByUuid, trustedUserUuid(currentUser))
                 .eq(ExportTaskEntity::getDeleted, 0));
         if (entity == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "导出任务不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Export task does not exist");
         }
         ExportVO.ExportTaskVO vo = new ExportVO.ExportTaskVO();
         vo.setId(entity.getId());
@@ -218,7 +311,11 @@ public class ExportTaskService {
     }
 
     private Long currentUserId(CurrentUser currentUser) {
-        refreshTrustedCurrentUser(currentUser);
+        return currentUserId(currentUser, false);
+    }
+
+    private Long currentUserId(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        refreshTrustedCurrentUser(currentUser, bypassSessionAuthentication);
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
         }
@@ -226,8 +323,12 @@ public class ExportTaskService {
     }
 
     private Long requireUserExportPermission(CurrentUser currentUser) {
-        Long userId = currentUserId(currentUser);
-        Set<String> permissions = trustedPermissions(currentUser);
+        return requireUserExportPermission(currentUser, false);
+    }
+
+    private Long requireUserExportPermission(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        Long userId = currentUserId(currentUser, bypassSessionAuthentication);
+        Set<String> permissions = trustedPermissions(currentUser, bypassSessionAuthentication);
         if (!permissions.contains("*") && !permissions.contains(PERMISSION_USER_EXPORT)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + PERMISSION_USER_EXPORT);
         }
@@ -235,25 +336,51 @@ public class ExportTaskService {
     }
 
     private String trustedUsername(CurrentUser currentUser) {
-        currentUserId(currentUser);
+        return trustedUsername(currentUser, false);
+    }
+
+    private String trustedUsername(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        currentUserId(currentUser, bypassSessionAuthentication);
         return currentUser.getUsername();
     }
 
     private String trustedUserUuid(CurrentUser currentUser) {
-        currentUserId(currentUser);
+        return trustedUserUuid(currentUser, false);
+    }
+
+    private String trustedUserUuid(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        currentUserId(currentUser, bypassSessionAuthentication);
         return currentUser.getUserUuid();
     }
 
     private Set<String> trustedPermissions(CurrentUser currentUser) {
-        currentUserId(currentUser);
+        return trustedPermissions(currentUser, false);
+    }
+
+    private Set<String> trustedPermissions(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        currentUserId(currentUser, bypassSessionAuthentication);
         return currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
     }
 
     private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser, false);
+    }
+
+    private boolean shouldBypassSessionAuthentication(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        return bypassSessionAuthentication || isAsyncExportSession(currentUser);
+    }
+
+    private boolean isAsyncExportSession(CurrentUser currentUser) {
+        return currentUser != null
+                && currentUser.getSessionId() != null
+                && currentUser.getSessionId().startsWith("internal-export-task-");
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser, boolean bypassSessionAuthentication) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return;
         }
-        if (sessionAuthenticationService != null) {
+        if (!shouldBypassSessionAuthentication(currentUser, bypassSessionAuthentication) && sessionAuthenticationService != null) {
             CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
                     sessionAuthenticationService.authenticateSessionTicket(
                             currentUser.getSessionId(),
@@ -268,6 +395,9 @@ public class ExportTaskService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -287,19 +417,35 @@ public class ExportTaskService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
         currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
@@ -334,7 +480,11 @@ public class ExportTaskService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void requireRequest(Object request, String name) {
@@ -449,7 +599,7 @@ public class ExportTaskService {
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "导出任务参数序列化失败");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Export task parameter serialization failed");
         }
     }
 
@@ -457,7 +607,9 @@ public class ExportTaskService {
         if (exception instanceof BizException bizException && StringUtils.hasText(bizException.getMessage())) {
             return bizException.getMessage();
         }
-        return exception == null || !StringUtils.hasText(exception.getMessage()) ? "导出任务执行失败" : exception.getMessage();
+        return exception == null || !StringUtils.hasText(exception.getMessage())
+                ? "Export task execution failed"
+                : exception.getMessage();
     }
 
 }

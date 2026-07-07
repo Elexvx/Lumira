@@ -95,7 +95,7 @@ class SystemControllerRuntimeAppearanceTest {
                 null
         );
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(fileInternalApi.uploadImageForUser(eq(file), eq("系统图片"), eq("系统配置图片上传"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"))).thenReturn(uploaded);
+        when(fileInternalApi.uploadImageForUser(eq(file), eq("系统图片"), eq("系统配置图片上传"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"), org.mockito.ArgumentMatchers.isNull())).thenReturn(uploaded);
 
         SystemController controller = new SystemController(
                 systemManagementAppService,
@@ -111,7 +111,7 @@ class SystemControllerRuntimeAppearanceTest {
 
         assertThat(response.getData()).isEqualTo("/api/uploads/2026/06/23/logo.png");
         verify(permissionGuard).requirePermission(currentUser, "system:config:update");
-        verify(fileInternalApi).uploadImageForUser(file, "系统图片", "系统配置图片上传", "local", 2001L, "user-uuid-2001", "alice");
+        verify(fileInternalApi).uploadImageForUser(file, "系统图片", "系统配置图片上传", "local", 2001L, "user-uuid-2001", "alice", null);
     }
 
     @Test
@@ -143,7 +143,7 @@ class SystemControllerRuntimeAppearanceTest {
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
-        verify(fileInternalApi, never()).uploadImageForUser(eq(file), eq("绯荤粺鍥剧墖"), eq("绯荤粺閰嶇疆鍥剧墖涓婁紶"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"));
+        verify(fileInternalApi, never()).uploadImageForUser(eq(file), eq("系统图片"), eq("系统配置图片上传"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"), org.mockito.ArgumentMatchers.isNull());
     }
 
     @Test
@@ -177,7 +177,38 @@ class SystemControllerRuntimeAppearanceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
 
         verify(permissionGuard, never()).requirePermission(currentUser, "system:config:update");
-        verify(fileInternalApi, never()).uploadImageForUser(eq(file), eq("绯荤粺鍥剧墖"), eq("绯荤粺閰嶇疆鍥剧墖涓婁紶"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"));
+        verify(fileInternalApi, never()).uploadImageForUser(eq(file), eq("系统图片"), eq("系统配置图片上传"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"), org.mockito.ArgumentMatchers.isNull());
+    }
+
+    @Test
+    void uploadImageShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        MultipartFile file = mock(MultipartFile.class);
+        CurrentUser currentUser = trustedUser(Set.of("system:config:update"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        SystemController controller = new SystemController(
+                systemManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                fileInternalApi,
+                mock(UserExportAppService.class),
+                mock(ExportTaskService.class),
+                mock(DictRuntimeService.class),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.uploadImage(file))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "system:config:update");
+        verify(fileInternalApi, never()).uploadImageForUser(eq(file), eq("系统图片"), eq("系统配置图片上传"), eq("local"), eq(2001L), eq("user-uuid-2001"), eq("alice"), org.mockito.ArgumentMatchers.isNull());
     }
 
     private CurrentUser trustedUser(Set<String> permissions) {

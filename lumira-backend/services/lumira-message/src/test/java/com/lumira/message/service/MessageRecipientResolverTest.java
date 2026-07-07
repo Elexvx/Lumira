@@ -60,6 +60,35 @@ class MessageRecipientResolverTest {
     }
 
     @Test
+    void resolveRecipientsShouldRejectDisabledUserScopeRecipient() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.userIdentitiesByIds(List.of(2001L)))
+                .thenReturn(List.of(user(2001L, "user-uuid-2001", "DISABLED")));
+        MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
+        MessageNoticeDTO notice = new MessageNoticeDTO();
+        notice.setTargetScope("USER");
+        notice.setTargetUserId(2001L);
+        notice.setTargetUserUuid("user-uuid-2001");
+
+        assertThat(resolver.resolveRecipients(notice)).isEmpty();
+    }
+
+    @Test
+    void resolveRecipientUserIdsShouldFilterDisabledRoleRecipients() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.roleUserIdentities(3001L))
+                .thenReturn(List.of(
+                        user(2001L, "user-uuid-2001"),
+                        user(2002L, "user-uuid-2002", "DISABLED"),
+                        user(2003L, "user-uuid-2003")
+                ));
+        MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
+
+        assertThat(resolver.resolveRecipientUserIds(roleNotice(3001L)))
+                .containsExactly(2001L, 2003L);
+    }
+
+    @Test
     void resolveRecipientsShouldRejectUserScopeWithoutTargetUserUuid() {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         MessageRecipientResolver resolver = new MessageRecipientResolver(available(systemInternalApi));
@@ -86,7 +115,11 @@ class MessageRecipientResolverTest {
     }
 
     private SystemUserSnapshotDTO user(Long userId, String userUuid) {
-        return new SystemUserSnapshotDTO(userId, userUuid, "user-" + userId, null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null);
+        return user(userId, userUuid, "ENABLED");
+    }
+
+    private SystemUserSnapshotDTO user(Long userId, String userUuid, String status) {
+        return new SystemUserSnapshotDTO(userId, userUuid, "user-" + userId, null, status, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private ObjectProvider<SystemInternalApi> available(SystemInternalApi systemInternalApi) {

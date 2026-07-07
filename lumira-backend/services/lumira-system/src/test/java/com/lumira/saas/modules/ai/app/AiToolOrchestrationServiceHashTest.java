@@ -134,6 +134,32 @@ class AiToolOrchestrationServiceHashTest {
     }
 
     @Test
+    void proposeShouldRejectTrustedUserWhenNoTrustedResolverIsAvailable() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        AiNativeToolRuntimeService runtimeService = mock(AiNativeToolRuntimeService.class);
+        when(runtimeService.listTools(any(), anyLong())).thenReturn(List.of(tool()));
+        DefaultAiToolOrchestrationService service = new DefaultAiToolOrchestrationService(
+                jdbc,
+                new ObjectMapper(),
+                runtimeService,
+                mock(AiToolPolicyService.class),
+                mock(AiLlmServiceConfigProvider.class),
+                mock(AiChatModelFactory.class),
+                new PermissionGuard(new MutableAuthorizationService(request -> AuthorizationDecision.allow("AUTHZ_ALLOW", "allow"))),
+                new MutableAuthorizationService(request -> AuthorizationDecision.allow("AUTHZ_ALLOW", "allow")),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.propose(currentUser(), propose(Map.of("keyword", "admin"))))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(jdbc.insertSql).isNull();
+    }
+
+    @Test
     void proposeShouldUseLivePermissionSnapshotBeforePlanning() {
         StubQueryOperations jdbc = new StubQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -177,6 +203,28 @@ class AiToolOrchestrationServiceHashTest {
     }
 
     @Test
+    void proposeShouldRejectTrustedUserWhenLiveUsernameIsUnavailableBeforePlanning() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(userSnapshot(100L, " ", "ENABLED"));
+        DefaultAiToolOrchestrationService service = service(
+                jdbc,
+                new MutableAuthorizationService(request -> AuthorizationDecision.allow("AUTHZ_ALLOW", "allow")),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> service.propose(currentUser(), propose(Map.of("keyword", "admin"))))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(jdbc.insertSql).isNull();
+        org.mockito.Mockito.verify(permissionSnapshotService, org.mockito.Mockito.never()).isTrustedActiveUser(100L, "user-uuid-100");
+    }
+
+    @Test
     void proposeShouldRefreshTrustedUsernameFromLiveIdentityBeforePlanning() {
         StubQueryOperations jdbc = new StubQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -217,6 +265,17 @@ class AiToolOrchestrationServiceHashTest {
         assertThat(jdbc.insertArgs[16]).isEqualTo(plan.getArgumentsHash());
         assertThat(jdbc.insertArgs[17]).isEqualTo(plan.getAuthorizationSnapshotJson());
         assertThat(jdbc.insertArgs[18]).isEqualTo(0);
+    }
+
+    @Test
+    void proposeShouldPersistSimulatedRoleIdInAuthorizationSnapshot() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultAiToolOrchestrationService service = service(jdbc, request -> AuthorizationDecision.allow("AUTHZ_ALLOW", "allow"));
+
+        AiVO.ToolPlanVO plan = service.propose(currentUserWithSimulatedRole(9L), propose(Map.of("keyword", "admin")));
+
+        assertThat(plan.getAuthorizationSnapshotJson()).contains("\"simulatedRoleId\":9");
+        assertThat(jdbc.insertArgs[17]).isEqualTo(plan.getAuthorizationSnapshotJson());
     }
 
     @Test
@@ -315,6 +374,19 @@ class AiToolOrchestrationServiceHashTest {
         plan.setToolCode("system.user.delete");
         plan.setPermissionKey("system:user:delete");
         plan.setRiskLevel("HIGH");
+
+        assertThatThrownBy(() -> service.confirm(currentUser(), confirm(plan.getId())))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("authorization snapshot is invalid");
+        assertThat(jdbc.finalStatuses).contains("BLOCKED");
+        assertThat(jdbc.executingClaims).isZero();
+    }
+
+    @Test
+    void confirmRejectsWhenSimulatedRoleContextChangesAfterPropose() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultAiToolOrchestrationService service = service(jdbc, request -> AuthorizationDecision.allow("AUTHZ_ALLOW", "allow"));
+        AiVO.ToolPlanVO plan = service.propose(currentUserWithSimulatedRole(9L), propose(Map.of("keyword", "admin")));
 
         assertThatThrownBy(() -> service.confirm(currentUser(), confirm(plan.getId())))
                 .isInstanceOf(BizException.class)
@@ -469,7 +541,8 @@ class AiToolOrchestrationServiceHashTest {
                 authorizationService,
                 permissionSnapshotService,
                 systemInternalApi,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                false
         );
     }
 
@@ -502,6 +575,12 @@ class AiToolOrchestrationServiceHashTest {
 
     private CurrentUser currentUser() {
         return trusted(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("*", "system:user:view")));
+    }
+
+    private CurrentUser currentUserWithSimulatedRole(Long simulatedRoleId) {
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(simulatedRoleId);
+        return currentUser;
     }
 
     private SystemUserSnapshotDTO userSnapshot(Long userId, String username, String status) {

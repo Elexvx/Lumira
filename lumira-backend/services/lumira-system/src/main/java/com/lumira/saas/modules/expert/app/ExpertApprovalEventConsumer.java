@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @ConditionalOnLumiraControlPlaneEnabled
@@ -90,7 +91,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             userRequest.setStatus("ENABLED");
             Long expertRoleId = findRoleId("EXPERT");
             userRequest.setRoleIds(expertRoleId == null ? List.of() : List.of(expertRoleId));
-            SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUser(operator, userRequest);
+            SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUserFromTrustedSnapshot(operator, userRequest);
             userId = createdUser.getId();
             userUuid = requireCreatedUserUuid(createdUser);
             int linked = jdbcTemplate.update(
@@ -146,6 +147,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         }
         String eventUserUuid = requireEventUserUuid(event);
         String expectedUserUuid = requirePayloadUserUuid(event);
+        Long simulatedRoleId = requirePayloadSimulatedRoleId(event);
         if (!eventUserUuid.equals(expectedUserUuid)) {
             throw new IllegalStateException("EXPERT_APPROVED event operator uuid mismatch");
         }
@@ -154,8 +156,20 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             throw new IllegalStateException("EXPERT_APPROVED event operator uuid mismatch");
         }
         PermissionSnapshotService.PermissionSnapshot permissionSnapshot =
-                permissionSnapshotService.loadSnapshot(operatorRow.userId(), operatorRow.userUuid());
-        if (!permissionSnapshot.getPermissions().contains(REQUIRED_PERMISSION_CREATE_USER)) {
+                simulatedRoleId != null
+                        ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                        operatorRow.userId(),
+                        operatorRow.userUuid(),
+                        simulatedRoleId
+                )
+                        : permissionSnapshotService.loadSnapshot(operatorRow.userId(), operatorRow.userUuid());
+        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.getVersion())) {
+            throw new IllegalStateException("EXPERT_APPROVED event operator permission snapshot is unavailable");
+        }
+        Set<String> permissions = permissionSnapshot.getPermissions() == null
+                ? Set.of()
+                : Set.copyOf(permissionSnapshot.getPermissions());
+        if (!permissions.contains(REQUIRED_PERMISSION_CREATE_USER)) {
             throw new IllegalStateException("EXPERT_APPROVED event operator lacks required permission");
         }
         CurrentUser operator = new CurrentUser();
@@ -166,13 +180,14 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         operator.setSessionVersion(WORKFLOW_OPERATOR_SESSION_VERSION);
         operator.setPermissionsVersion(permissionSnapshot.getVersion());
         operator.setAuthenticated(true);
-        operator.setPermissions(permissionSnapshot.getPermissions());
+        operator.setPermissions(permissions);
         operator.setRoleIds(permissionSnapshot.getRoleIds());
         operator.setPrimaryDeptId(permissionSnapshot.getPrimaryDeptId());
         operator.setDeptIds(permissionSnapshot.getDeptIds());
         operator.setDescendantDeptIds(permissionSnapshot.getDescendantDeptIds());
         operator.setDataScopes(permissionSnapshot.getDataScopes());
         operator.setDefaultHomePath(permissionSnapshot.getDefaultHomePath());
+        operator.setSimulatedRoleId(simulatedRoleId);
         return operator;
     }
 
@@ -378,6 +393,19 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             }
         }
         throw new IllegalStateException("EXPERT_APPROVED event missing business uuid");
+    }
+
+    private Long requirePayloadSimulatedRoleId(PlatformEventOutboxEntity event) {
+        Map<String, Object> payload = payload(event);
+        Long simulatedRoleId = coercePositiveLong(payload.get("simulatedRoleId"));
+        if (simulatedRoleId != null) {
+            return simulatedRoleId;
+        }
+        Object attributes = payload.get("attributes");
+        if (attributes instanceof Map<?, ?> map) {
+            return coercePositiveLong(map.get("simulatedRoleId"));
+        }
+        return null;
     }
 
     private Map<String, Object> payload(PlatformEventOutboxEntity event) {

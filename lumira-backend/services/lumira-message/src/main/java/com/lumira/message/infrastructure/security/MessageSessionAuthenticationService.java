@@ -212,10 +212,11 @@ public class MessageSessionAuthenticationService {
         Set<String> permissions = snapshot.permissions() == null
                 ? Collections.emptySet()
                 : Collections.unmodifiableSet(new LinkedHashSet<>(snapshot.permissions()));
+        String trustedUsername = requireTrustedUsername(snapshot.username(), "Trusted user username is unavailable");
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(snapshot.userId());
         currentUser.setUserUuid(snapshot.userUuid());
-        currentUser.setUsername(snapshot.username());
+        currentUser.setUsername(trustedUsername);
         currentUser.setSessionId(snapshot.sessionId());
         currentUser.setSimulatedRoleId(snapshot.simulatedRoleId());
         currentUser.setSessionVersion(snapshot.sessionVersion());
@@ -230,6 +231,17 @@ public class MessageSessionAuthenticationService {
         currentUser.setRequiresPasswordChange(snapshot.requiresPasswordChange());
         currentUser.setDefaultHomePath(snapshot.defaultHomePath());
         return currentUser;
+    }
+
+    private String requireTrustedUsername(String username, String message) {
+        if (!StringUtils.hasText(username)) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, message);
+        }
+        String normalized = username.trim();
+        if (!StringUtils.hasText(normalized)) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, message);
+        }
+        return normalized;
     }
 
     private Long normalizeSimulatedRoleId(Long simulatedRoleId) {

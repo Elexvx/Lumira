@@ -62,24 +62,32 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         CurrentUser currentUser = securityContextFacade.getCurrentUserOrNull();
-        if (isTrustedCurrentUser(currentUser) && pluginStateService.isEnabled(currentUser)) {
-            Map<String, Object> payload = new LinkedHashMap<>();
-            request.getParameterMap().forEach((key, value) -> {
-                if (value == null) {
-                    payload.put(key, null);
-                } else if (value.length == 1) {
-                    payload.put(key, value[0]);
-                } else {
-                    payload.put(key, value);
+        try {
+            if (isTrustedCurrentUser(currentUser) && pluginStateService.isEnabled(currentUser)) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                request.getParameterMap().forEach((key, value) -> {
+                    if (value == null) {
+                        payload.put(key, null);
+                    } else if (value.length == 1) {
+                        payload.put(key, value[0]);
+                    } else {
+                        payload.put(key, value);
+                    }
+                });
+                SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayload(currentUser, payload);
+                if (result.isBlocked()) {
+                    writeError(response, request, result);
+                    return;
                 }
-            });
-            SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayload(currentUser, payload);
-            if (result.isBlocked()) {
-                writeError(response, request, result);
+            }
+            filterChain.doFilter(request, response);
+        } catch (BizException exception) {
+            if (!response.isCommitted()) {
+                writeBizError(response, request, exception);
                 return;
             }
+            throw exception;
         }
-        filterChain.doFilter(request, response);
     }
 
     private boolean isTrustedCurrentUser(CurrentUser currentUser) {
@@ -90,6 +98,20 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
         String userMessage = sensitiveWordService.formatMatchesForUser(result.getMatches());
         ApiResponse<Void> body = ApiResponse.fail(ErrorCode.VALIDATION_ERROR, userMessage, userMessage, TraceContext.getRequestId(), request.getRequestURI());
         response.setStatus(ErrorCode.VALIDATION_ERROR.getHttpStatus());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+    }
+
+    private void writeBizError(HttpServletResponse response, HttpServletRequest request, BizException exception) throws IOException {
+        ApiResponse<Void> body = ApiResponse.fail(
+                exception.getErrorCode(),
+                exception.getMessage(),
+                exception.getUserMessage(),
+                TraceContext.getRequestId(),
+                request.getRequestURI()
+        );
+        response.setStatus(exception.getErrorCode().getHttpStatus());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(objectMapper.writeValueAsString(body));

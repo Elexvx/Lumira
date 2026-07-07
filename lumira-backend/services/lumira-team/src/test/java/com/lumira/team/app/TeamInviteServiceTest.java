@@ -1,5 +1,6 @@
 package com.lumira.team.app;
 
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.team.dto.TeamDTO;
@@ -7,6 +8,7 @@ import com.lumira.team.repository.TeamInviteRepository;
 import com.lumira.team.repository.TeamJoinRequestRepository;
 import com.lumira.team.vo.TeamVO;
 import org.junit.jupiter.api.Test;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
@@ -32,7 +35,7 @@ class TeamInviteServiceTest {
         TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
         request.setInviteCode("JOIN2026");
 
-        TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L), 2001L, request);
+        TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L, "team:member:invite"), 2001L, request);
 
         assertThat(invite.getRawToken()).isNotBlank();
         assertThat(invite.getInviteUrl()).contains(invite.getRawToken());
@@ -48,7 +51,7 @@ class TeamInviteServiceTest {
         TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
         when(fixtures.permissionService.activeMember(2001L, 3002L, "user-uuid-3002")).thenReturn(null);
 
-        TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L), 2001L, request);
+        TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L, "team:member:invite"), 2001L, request);
         when(fixtures.teamInviteRepository.findByCode(invite.getInviteCode())).thenReturn(invite);
         TeamVO.JoinResult result = fixtures.service.joinByCode(currentUser(3002L), invite.getInviteCode());
 
@@ -170,7 +173,7 @@ class TeamInviteServiceTest {
     void createInviteShouldRejectInvalidRequestBeforePermissionLookup() {
         Fixtures fixtures = fixtures();
 
-        assertThatThrownBy(() -> fixtures.service.createInvite(currentUser(3001L), 2001L, null))
+        assertThatThrownBy(() -> fixtures.service.createInvite(currentUser(3001L, "team:member:invite"), 2001L, null))
                 .isInstanceOf(BizException.class);
 
         verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
@@ -181,7 +184,7 @@ class TeamInviteServiceTest {
     void disableInviteShouldRejectInvalidInviteIdBeforeRepositoryAccess() {
         Fixtures fixtures = fixtures();
 
-        assertThatThrownBy(() -> fixtures.service.disableInvite(currentUser(3001L), 2001L, 0L))
+        assertThatThrownBy(() -> fixtures.service.disableInvite(currentUser(3001L, "team:member:invite"), 2001L, 0L))
                 .isInstanceOf(BizException.class);
 
         verify(fixtures.teamInviteRepository, never()).disableInvite(anyLong(), anyLong(), anyLong(), anyString());
@@ -219,7 +222,7 @@ class TeamInviteServiceTest {
         when(fixtures.teamJoinRequestRepository.findById(2001L, 6001L)).thenReturn(joinRequest());
         when(fixtures.teamJoinRequestRepository.approve(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null)).thenReturn(true);
 
-        TeamVO.JoinRequest reviewed = fixtures.service.approveJoinRequest(currentUser(3001L), 2001L, 6001L, null);
+        TeamVO.JoinRequest reviewed = fixtures.service.approveJoinRequest(currentUser(3001L, "team:member:invite"), 2001L, 6001L, null);
 
         assertThat(reviewed.getStatus()).isEqualTo("PENDING");
         verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", "MEMBER");
@@ -232,9 +235,22 @@ class TeamInviteServiceTest {
         when(fixtures.teamJoinRequestRepository.findById(2001L, 6001L)).thenReturn(joinRequest());
         when(fixtures.teamJoinRequestRepository.reject(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null)).thenReturn(true);
 
-        fixtures.service.rejectJoinRequest(currentUser(3001L), 2001L, 6001L, null);
+        fixtures.service.rejectJoinRequest(currentUser(3001L, "team:member:invite"), 2001L, 6001L, null);
 
         verify(fixtures.teamJoinRequestRepository).reject(2001L, 6001L, 3002L, "user-uuid-3002", 3001L, "user-uuid-3001", null);
+    }
+
+    @Test
+    void createInviteShouldRequireInvitePermissionBeforeRoleLookup() {
+        Fixtures fixtures = fixtures();
+        TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
+
+        assertThatThrownBy(() -> fixtures.service.createInvite(currentUser(3001L), 2001L, request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("team:member:invite");
+
+        verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
+        verify(fixtures.teamInviteRepository, never()).createInvite(anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong(), anyString());
     }
 
     private Fixtures fixtures() {
@@ -268,8 +284,56 @@ class TeamInviteServiceTest {
 
     private TeamAppService teamService() {
         TeamAppService service = mock(TeamAppService.class);
-        when(service.requireUserId(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
-        when(service.requireUserUuid(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
+        when(service.requireUserId(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
+            CurrentUser currentUser = invocation.getArgument(0);
+            if (currentUser == null || !Boolean.TRUE.equals(currentUser.isAuthenticated())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (currentUser.getUserId() == null || currentUser.getUserId() <= 0) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (currentUser.getSessionVersion() == null) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(currentUser.getPermissionsVersion())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(currentUser.getUsername())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            return currentUser.getUserId();
+        });
+        when(service.requireUserUuid(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
+            CurrentUser currentUser = invocation.getArgument(0);
+            if (currentUser == null || !Boolean.TRUE.equals(currentUser.isAuthenticated())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (currentUser.getUserId() == null || currentUser.getUserId() <= 0) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (currentUser.getSessionVersion() == null) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(currentUser.getPermissionsVersion())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(currentUser.getUsername())) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!StringUtils.hasText(currentUser.getUserUuid())) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "User uuid is required");
+            }
+            return currentUser.getUserUuid().trim();
+        });
+        doAnswer(invocation -> {
+            CurrentUser currentUser = invocation.getArgument(0);
+            String permissionKey = invocation.getArgument(1);
+            Set<String> permissions = currentUser == null ? null : currentUser.getPermissions();
+            if (permissions == null || permissions.isEmpty() || (!permissions.contains("*") && !permissions.contains(permissionKey))) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
+            }
+            return null;
+        }).when(service).requirePermission(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         doCallRealMethod().when(service).requirePositiveId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
         when(service.normalizeEnum(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(Set.class), org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
         when(service.trimToNull(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
@@ -290,6 +354,12 @@ class TeamInviteServiceTest {
         user.setSessionVersion(1);
         user.setPermissionsVersion("permissions-1");
         user.setAuthenticated(true);
+        return user;
+    }
+
+    private static CurrentUser currentUser(Long userId, String... permissions) {
+        CurrentUser user = currentUser(userId);
+        user.setPermissions(Set.of(permissions));
         return user;
     }
 

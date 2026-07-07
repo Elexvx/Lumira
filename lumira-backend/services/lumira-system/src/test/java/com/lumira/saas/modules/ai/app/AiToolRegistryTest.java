@@ -17,6 +17,7 @@ import com.lumira.saas.modules.ai.vo.AiVO;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Set;
 
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -149,6 +151,52 @@ class AiToolRegistryTest {
     }
 
     @Test
+    void listRegisteredSkills_shouldRejectTrustedUserWhenNoTrustedResolverIsAvailableBeforeQuery() {
+        AuthorizationService authorizationService = mock(AuthorizationService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        RecordingSkillQueryOperations queryOperations = new RecordingSkillQueryOperations(skill("execute"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser());
+        AiToolRegistry registry = new DefaultAiToolRegistry(
+                queryOperations,
+                authorizationService,
+                securityContextFacade,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> registry.listRegisteredSkills(3001L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+    }
+
+    @Test
+    void listRegisteredSkills_shouldRejectWhenTrustedPermissionSnapshotIsUnavailableBeforeQuery() {
+        AuthorizationService authorizationService = mock(AuthorizationService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        RecordingSkillQueryOperations queryOperations = new RecordingSkillQueryOperations(skill("execute"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser());
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+        AiToolRegistry registry = new DefaultAiToolRegistry(
+                queryOperations,
+                authorizationService,
+                securityContextFacade,
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> registry.listRegisteredSkills(3001L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+    }
+
+    @Test
     void listRegisteredSkills_shouldRejectDisabledTrustedIdentityBeforeQuery() {
         AuthorizationService authorizationService = mock(AuthorizationService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
@@ -158,6 +206,33 @@ class AiToolRegistryTest {
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser());
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "alice-live", "DISABLED"));
+        AiToolRegistry registry = new DefaultAiToolRegistry(
+                queryOperations,
+                authorizationService,
+                securityContextFacade,
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> registry.listRegisteredSkills(3001L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        assertThat(queryOperations.queryCalled).isFalse();
+        verify(permissionSnapshotService, org.mockito.Mockito.never()).isTrustedActiveUser(2001L, "user-uuid-2001");
+    }
+
+    @Test
+    void listRegisteredSkills_shouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeQuery() {
+        AuthorizationService authorizationService = mock(AuthorizationService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        RecordingSkillQueryOperations queryOperations = new RecordingSkillQueryOperations(skill("execute"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser());
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
         AiToolRegistry registry = new DefaultAiToolRegistry(
                 queryOperations,
                 authorizationService,
@@ -208,6 +283,32 @@ class AiToolRegistryTest {
         assertThat(requestCaptor.getValue().currentUser().getUsername()).isEqualTo("alice-live");
         assertThat(requestCaptor.getValue().currentUser().getPermissionsVersion()).isEqualTo("permissions-2");
         assertThat(currentUser.getUsername()).isEqualTo("alice-live");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        AuthorizationService authorizationService = mock(AuthorizationService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:tool:file.search")));
+        DefaultAiToolRegistry registry = new DefaultAiToolRegistry(
+                new StaticSkillQueryOperations(skill("execute")),
+                authorizationService,
+                mock(SecurityContextFacade.class),
+                permissionSnapshotService
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = DefaultAiToolRegistry.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        CurrentUser refreshed = (CurrentUser) method.invoke(registry, currentUser);
+
+        assertThat(refreshed.getSimulatedRoleId()).isNull();
+        assertThat(refreshed.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(2001L, "user-uuid-2001", 0L);
     }
 
     private CurrentUser currentUser() {

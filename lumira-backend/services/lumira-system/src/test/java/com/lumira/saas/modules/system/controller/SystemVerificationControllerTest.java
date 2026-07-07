@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.system.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -13,6 +15,7 @@ import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -150,6 +153,88 @@ class SystemVerificationControllerTest {
     }
 
     @Test
+    void updateSettingsShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        SystemVerificationAppService verificationAppService = mock(SystemVerificationAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        CurrentUser currentUser = currentUser();
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        SystemVerificationController controller = new SystemVerificationController(
+                verificationAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.updateVerificationSettings(new SystemDTO.VerificationSettingsRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+        verify(verificationAppService, never()).updateVerificationSettings(any(CurrentUser.class), any());
+    }
+
+    @Test
+    void updateSettingsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        SystemVerificationAppService verificationAppService = mock(SystemVerificationAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        CurrentUser currentUser = currentUser();
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        SystemVerificationController controller = new SystemVerificationController(
+                verificationAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.updateVerificationSettings(new SystemDTO.VerificationSettingsRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+        verify(verificationAppService, never()).updateVerificationSettings(any(CurrentUser.class), any());
+    }
+
+    @Test
+    void updateSettingsShouldRejectBlankLiveUsernameBeforeDelegating() {
+        SystemVerificationAppService verificationAppService = mock(SystemVerificationAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        CurrentUser currentUser = currentUser();
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        SystemVerificationController controller = new SystemVerificationController(
+                verificationAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> controller.updateVerificationSettings(new SystemDTO.VerificationSettingsRequest()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+        verify(verificationAppService, never()).updateVerificationSettings(any(CurrentUser.class), any());
+    }
+
+    @Test
     void unbindShouldRejectMismatchedFactorCodeBeforeDelegating() {
         SystemVerificationAppService verificationAppService = mock(SystemVerificationAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
@@ -218,6 +303,37 @@ class SystemVerificationControllerTest {
         verify(verificationAppService).unbindCurrentUser(currentUser, "totp", "challenge-1", "123456");
     }
 
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        SystemVerificationAppService verificationAppService = mock(SystemVerificationAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:verification:manage")));
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        SystemVerificationController controller = new SystemVerificationController(
+                verificationAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        Method method = SystemVerificationController.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(controller, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
     private static CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
@@ -229,5 +345,26 @@ class SystemVerificationControllerTest {
         currentUser.setAuthenticated(true);
         currentUser.setPermissions(Set.of("system:config:update"));
         return currentUser;
+    }
+
+    private static SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 }

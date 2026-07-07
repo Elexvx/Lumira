@@ -9,6 +9,7 @@ import com.lumira.common.security.authorization.DelegationGrantDecision;
 import com.lumira.common.security.authorization.DelegationGrantEvaluator;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -22,17 +23,28 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public DefaultDelegationGrantEvaluator(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null);
+        this(jdbcTemplate, null, false);
     }
 
+    @Autowired
     public DefaultDelegationGrantEvaluator(
             MyBatisQueryOperations jdbcTemplate,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, sessionAuthenticationService, true);
+    }
+
+    private DefaultDelegationGrantEvaluator(
+            MyBatisQueryOperations jdbcTemplate,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @Override
@@ -144,6 +156,9 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
             return null;
         }
         if (sessionAuthenticationService == null) {
+            if (enforceTrustedUserResolution) {
+                return null;
+            }
             return currentUser;
         }
         try {

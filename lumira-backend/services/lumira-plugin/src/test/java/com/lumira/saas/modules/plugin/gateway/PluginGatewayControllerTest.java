@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.plugin.gateway;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -57,6 +59,38 @@ class PluginGatewayControllerTest {
     }
 
     @Test
+    void dispatchShouldRejectWhenLiveUsernameIsBlank() {
+        PluginManagementAppService appService = mock(PluginManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PluginGatewayController controller = new PluginGatewayController(
+                appService,
+                securityContextFacade,
+                mock(PermissionGuard.class),
+                mock(PluginRuntimeSecurityPolicy.class),
+                mock(SensitiveErrorMessageSanitizer.class),
+                mock(SecurityAuditEventService.class),
+                systemInternalApi
+        );
+        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        currentUser.setUserUuid("user-uuid-100");
+        currentUser.setPermissionsVersion("permissions-1");
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(request.getRequestURI()).thenReturn("/api/p/test/hello");
+        when(systemInternalApi.findUserIdentityById(100L))
+                .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
+
+        assertThatThrownBy(() -> controller.dispatch(request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(appService, never()).requireRuntime("test");
+    }
+
+    @Test
     void dispatchShouldRejectMissingSessionVersionBeforeLoadingRuntime() {
         PluginManagementAppService appService = mock(PluginManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
@@ -76,6 +110,34 @@ class PluginGatewayControllerTest {
         assertThatThrownBy(() -> controller.dispatch(request))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(appService, never()).requireRuntime("test");
+    }
+
+    @Test
+    void dispatchShouldRejectTrustedUserWhenResolverIsUnavailable() {
+        PluginManagementAppService appService = mock(PluginManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PluginGatewayController controller = new PluginGatewayController(
+                appService,
+                securityContextFacade,
+                mock(PermissionGuard.class),
+                mock(PluginRuntimeSecurityPolicy.class),
+                mock(SensitiveErrorMessageSanitizer.class),
+                mock(SecurityAuditEventService.class),
+                null
+        );
+        CurrentUser currentUser = new CurrentUser(100L, "alice", null, "session-1", 1, true, Set.of("plugin:test:view"));
+        currentUser.setUserUuid("user-uuid-100");
+        currentUser.setPermissionsVersion("permissions-1");
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(request.getRequestURI()).thenReturn("/api/p/test/hello");
+
+        assertThatThrownBy(() -> controller.dispatch(request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
 
         verify(appService, never()).requireRuntime("test");
     }
@@ -360,6 +422,27 @@ class PluginGatewayControllerTest {
                 List.of(new PluginDeclaredPermission("plugin:" + pluginCode + ":view", "View plugin", pluginCode)),
                 List.of(),
                 List.of()
+        );
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

@@ -1,5 +1,8 @@
 package com.lumira.saas.modules.plugin.controller;
 
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
@@ -217,6 +220,48 @@ class PluginV2ControllerTest {
         assertThatThrownBy(() -> controller.definitions())
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("plugin:management:view");
+    }
+
+    @Test
+    void currentPermissionsShouldRejectTrustedUserWhenResolverIsUnavailable() {
+        PluginV2Controller strictController = new PluginV2Controller(
+                pluginManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                runtimeSecurityPolicy,
+                null
+        );
+        CurrentUser currentUser = currentUser("plugin:sms:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(strictController::currentPermissions)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+    }
+
+    @Test
+    void currentPermissionsShouldRejectTrustedUserWhenLiveUsernameIsUnavailable() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PluginV2Controller strictController = new PluginV2Controller(
+                pluginManagementAppService,
+                securityContextFacade,
+                permissionGuard,
+                runtimeSecurityPolicy,
+                systemInternalApi
+        );
+        CurrentUser currentUser = currentUser("plugin:sms:view");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(systemInternalApi.findUserIdentityById(100L)).thenReturn(
+                new SystemUserSnapshotDTO(100L, "user-uuid-100", " ", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null)
+        );
+
+        assertThatThrownBy(strictController::currentPermissions)
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user username is unavailable");
+        verify(systemInternalApi).findUserIdentityById(100L);
+        verify(systemInternalApi, org.mockito.Mockito.never()).permissionSnapshot(100L, "user-uuid-100");
     }
 
     private CurrentUser currentUser(String... permissions) {

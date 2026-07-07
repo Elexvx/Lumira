@@ -15,6 +15,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -111,6 +112,24 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void createCompetitionShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        CompetitionManagementAppService service =
+                new CompetitionManagementAppService(jdbcTemplate, mock(DictRuntimeService.class), permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createCompetition(user("aiadc:competition:create"), publishRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void createCompetitionDraftShouldRefreshLiveUsername() {
         StubOperations jdbcTemplate = new StubOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -149,6 +168,59 @@ class CompetitionManagementAppServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
 
         verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createCompetitionShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        CompetitionManagementAppService service =
+                new CompetitionManagementAppService(jdbcTemplate, mock(DictRuntimeService.class), null, null);
+
+        assertThatThrownBy(() -> service.createCompetition(user("aiadc:competition:create"), publishRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createCompetitionShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        CompetitionManagementAppService service =
+                new CompetitionManagementAppService(jdbcTemplate, mock(DictRuntimeService.class), permissionSnapshotService, null, null);
+
+        assertThatThrownBy(() -> service.createCompetition(user("aiadc:competition:create"), publishRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:competition:view")));
+        CompetitionManagementAppService service =
+                new CompetitionManagementAppService(jdbcTemplate, mock(DictRuntimeService.class), permissionSnapshotService);
+        CurrentUser currentUser = user("aiadc:competition:view");
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = CompetitionManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(1001L, "user-uuid-1001", 0L);
     }
 
     @Test
@@ -510,7 +582,7 @@ class CompetitionManagementAppServiceTest {
         CompetitionDTO.ConfigItemRequest newItem = new CompetitionDTO.ConfigItemRequest();
         newItem.setItemType("CONSENT");
         newItem.setItemKey("new-consent");
-        newItem.setTitle("閻儲鍎忛崥灞惧壈");
+        newItem.setTitle("知情同意");
         newItem.setContentText("Consent content");
         newItem.setRequiredFlag(true);
         newItem.setEnabled(true);

@@ -84,15 +84,22 @@ public class AdaptiveRelayScheduler implements SmartLifecycle {
         if (!running) {
             return;
         }
-
-        RelayRunResult result = relayAll();
-        long nextDelayMs = nextDelayMs(result);
+        long nextDelayMs = normalizedFailureDelayMs();
+        try {
+            RelayRunResult result = relayAll();
+            nextDelayMs = nextDelayMs(result);
+        } catch (VirtualMachineError error) {
+            throw error;
+        } catch (Throwable throwable) {
+            log.warn("adaptive relay scheduler failed before reschedule: {}", throwable.getMessage(), throwable);
+        }
         schedule(nextDelayMs);
     }
 
     private RelayRunResult relayAll() {
         RelayRunResult result = new RelayRunResult();
         result.add(relay("platform", properties.isPlatformEnabled(), backendJobClient::relayOutbox));
+        result.add(relay("system-export", properties.isPlatformEnabled(), backendJobClient::processExportTasks));
         result.add(relay("message", properties.isMessageEnabled(), backendJobClient::relayMessageOutbox));
         result.add(relay("file", properties.isFileEnabled(), backendJobClient::relayFileOutbox));
         result.add(relay("payment", properties.isPaymentEnabled(), backendJobClient::relayPaymentOutbox));

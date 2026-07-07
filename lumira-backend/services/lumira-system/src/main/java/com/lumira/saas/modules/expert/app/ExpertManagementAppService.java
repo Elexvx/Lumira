@@ -53,7 +53,7 @@ public class ExpertManagementAppService {
     private static final int MAX_EMAIL_LENGTH = 128;
     private static final int MAX_URL_LENGTH = 512;
     private static final int MAX_LONG_TEXT_LENGTH = 1000;
-    private static final java.util.regex.Pattern EXPERT_NAME_PATTERN = java.util.regex.Pattern.compile("^[\\p{IsHan}A-Za-z·\\s]{2,64}$");
+    private static final java.util.regex.Pattern EXPERT_NAME_PATTERN = java.util.regex.Pattern.compile("^[\\p{IsHan}A-Za-z鐠虹棆\s]{2,64}$");
     private static final java.util.regex.Pattern PHONE_PATTERN = java.util.regex.Pattern.compile("^(?:1[3-9]\\d{9}|0\\d{2,3}-?\\d{7,8}(?:-\\d{1,6})?)$");
     private static final java.util.regex.Pattern MOBILE_PATTERN = java.util.regex.Pattern.compile("^1[3-9]\\d{9}$");
     private static final java.util.regex.Pattern EMAIL_PATTERN = java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
@@ -63,6 +63,7 @@ public class ExpertManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public ExpertManagementAppService(
@@ -71,7 +72,7 @@ public class ExpertManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, workflowAppService, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, workflowAppService, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     public ExpertManagementAppService(
@@ -81,11 +82,23 @@ public class ExpertManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, workflowAppService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private ExpertManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            WorkflowAppService workflowAppService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.workflowAppService = workflowAppService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public ExpertManagementAppService(
@@ -93,11 +106,11 @@ public class ExpertManagementAppService {
             WorkflowAppService workflowAppService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, workflowAppService, permissionSnapshotService, null);
+        this(jdbcTemplate, workflowAppService, permissionSnapshotService, null, null, false);
     }
 
     public ExpertManagementAppService(MyBatisQueryOperations jdbcTemplate, WorkflowAppService workflowAppService) {
-        this(jdbcTemplate, workflowAppService, null);
+        this(jdbcTemplate, workflowAppService, null, null, null, false);
     }
 
     public PageResponse<ExpertVO.Expert> listExperts(CurrentUser currentUser, String keyword, String status, String approvalStatus, long pageNo, long pageSize) {
@@ -326,17 +339,17 @@ public class ExpertManagementAppService {
                 ? trimRequired(request.getCode(), "Expert code is required", MAX_CODE_LENGTH, "Expert code is too long")
                 : trimRequired(fallbackCode, "Expert code is required", MAX_CODE_LENGTH, "Expert code is too long"));
         normalized.setName(normalizeName(request.getName()));
-        normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", trimOptional(request.getTitle(), MAX_SHORT_TEXT_LENGTH, "Expert title is too long"), "专家头衔"));
+        normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", trimOptional(request.getTitle(), MAX_SHORT_TEXT_LENGTH, "Expert title is too long"), "Expert title"));
         normalized.setOrganization(trimOptional(request.getOrganization(), MAX_SHORT_TEXT_LENGTH, "Expert organization is too long"));
-        normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", trimOptional(request.getPosition(), MAX_SHORT_TEXT_LENGTH, "Expert position is too long"), "职务"));
-        normalized.setExpertise(validateDictValues("aiadc_expert_expertise", trimRequired(request.getExpertise(), "Expertise is required", MAX_EXPERTISE_LENGTH, "Expertise is too long"), "专业领域"));
+        normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", trimOptional(request.getPosition(), MAX_SHORT_TEXT_LENGTH, "Expert position is too long"), "Expert position"));
+        normalized.setExpertise(validateDictValues("aiadc_expert_expertise", trimRequired(request.getExpertise(), "Expertise is required", MAX_EXPERTISE_LENGTH, "Expertise is too long"), "Expert expertise"));
         normalized.setPhone(normalizePhone(request.getPhone()));
         normalized.setMobile(normalizeMobile(request.getMobile()));
         normalized.setIdCardNumber(normalizeIdCardNumber(request.getIdCardNumber()));
         normalized.setEmail(normalizeEmail(request.getEmail()));
         normalized.setAvatarUrl(normalizeUrl(request.getAvatarUrl(), "Expert avatar URL"));
         normalized.setBio(trimOptional(request.getBio(), MAX_LONG_TEXT_LENGTH, "Expert bio is too long"));
-        normalized.setTags(validateDictValues("aiadc_expert_tag", trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Expert tags are too long"), "标签"));
+        normalized.setTags(validateDictValues("aiadc_expert_tag", trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Expert tags are too long"), "Expert tags"));
         normalized.setStatus(StringUtils.hasText(request.getStatus()) ? normalizeStatus(request.getStatus()) : "active");
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
         return normalized;
@@ -425,6 +438,9 @@ public class ExpertManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -443,18 +459,34 @@ public class ExpertManagementAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -476,6 +508,10 @@ public class ExpertManagementAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -492,7 +528,7 @@ public class ExpertManagementAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -581,7 +617,7 @@ public class ExpertManagementAppService {
             return value;
         }
         if (!dictItemExists(dictCode, value)) {
-            throw biz(ErrorCode.VALIDATION_ERROR, label + "必须来自字典管理");
+            throw biz(ErrorCode.VALIDATION_ERROR, label + " contains a dictionary value that does not exist or is disabled");
         }
         return value;
     }
@@ -599,7 +635,7 @@ public class ExpertManagementAppService {
         }
         for (String itemValue : values) {
             if (!dictItemExists(dictCode, itemValue)) {
-                throw biz(ErrorCode.VALIDATION_ERROR, label + "必须来自字典管理");
+                throw biz(ErrorCode.VALIDATION_ERROR, label + " contains a dictionary value that does not exist or is disabled");
             }
         }
         return String.join(",", values);
@@ -637,7 +673,7 @@ public class ExpertManagementAppService {
         }
         normalized = normalized.toUpperCase(Locale.ROOT);
         if (normalized.length() == 18 && !hasValidIdCardChecksum(normalized)) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "请输入有效身份证号码");
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid ID card checksum");
         }
         return normalized;
     }

@@ -15,15 +15,39 @@ public class OnlineSessionEventSubscriber implements MessageListener {
     private final ObjectMapper objectMapper;
     private final OnlineSessionStreamService onlineSessionStreamService;
     private final OnlineSessionEventIdentityVerifier identityVerifier;
+    private final boolean enforceTrustedIdentityVerification;
 
     public OnlineSessionEventSubscriber(
             ObjectMapper objectMapper,
             OnlineSessionStreamService onlineSessionStreamService,
             ObjectProvider<OnlineSessionEventIdentityVerifier> identityVerifierProvider
     ) {
+        this(
+                objectMapper,
+                onlineSessionStreamService,
+                identityVerifierProvider == null ? null : identityVerifierProvider.getIfAvailable(),
+                true
+        );
+    }
+
+    OnlineSessionEventSubscriber(
+            ObjectMapper objectMapper,
+            OnlineSessionStreamService onlineSessionStreamService,
+            OnlineSessionEventIdentityVerifier identityVerifier
+    ) {
+        this(objectMapper, onlineSessionStreamService, identityVerifier, false);
+    }
+
+    private OnlineSessionEventSubscriber(
+            ObjectMapper objectMapper,
+            OnlineSessionStreamService onlineSessionStreamService,
+            OnlineSessionEventIdentityVerifier identityVerifier,
+            boolean enforceTrustedIdentityVerification
+    ) {
         this.objectMapper = objectMapper;
         this.onlineSessionStreamService = onlineSessionStreamService;
-        this.identityVerifier = identityVerifierProvider.getIfAvailable();
+        this.identityVerifier = identityVerifier;
+        this.enforceTrustedIdentityVerification = enforceTrustedIdentityVerification;
     }
 
     @Override
@@ -37,6 +61,9 @@ public class OnlineSessionEventSubscriber implements MessageListener {
             OnlineSessionEventTrustValidator.requireTrustedSerializedEvent(payload);
             OnlineSessionEvent event = objectMapper.readValue(payload, OnlineSessionEvent.class);
             OnlineSessionEventTrustValidator.requireTrustedEvent(event);
+            if (identityVerifier == null && enforceTrustedIdentityVerification) {
+                return;
+            }
             if (identityVerifier != null && !identityVerifier.hasTrustedIdentity(event)) {
                 return;
             }

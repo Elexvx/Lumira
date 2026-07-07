@@ -38,6 +38,10 @@ public class AiReadQueryService {
     private static final long MAX_PAGE_SIZE = 100L;
     private static final int MAX_CONVERSATION_MESSAGES = 500;
     private static final String SCOPE_PLATFORM = "PLATFORM";
+    private static final String AI_VIEW = "ai:view";
+    private static final String AI_CHAT_SEND = "ai:chat:send";
+    private static final String AI_KNOWLEDGE_VIEW = "ai:knowledge:view";
+    private static final String AI_TOOL_VIEW = "ai:tool:view";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
@@ -53,7 +57,7 @@ public class AiReadQueryService {
     }
 
     public PageResponse<AiEmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
-        currentUserId(currentUser);
+        requireAnyPermission(currentUser, AI_VIEW, AI_CHAT_SEND);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiEmployeeVO> records = jdbcTemplate.query(
                 employeeSelect("""
@@ -69,7 +73,7 @@ public class AiReadQueryService {
     }
 
     public AiEmployeeVO getAssistantEmployee(CurrentUser currentUser) {
-        currentUserId(currentUser);
+        requireAnyPermission(currentUser, AI_VIEW, AI_CHAT_SEND);
         return jdbcTemplate.query(
                 employeeSelect("""
                         where e.is_deleted = 0
@@ -82,6 +86,7 @@ public class AiReadQueryService {
     }
 
     public PageResponse<AiConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
+        requirePermission(currentUser, AI_CHAT_SEND);
         Long userId = currentUserId(currentUser);
         String userUuid = currentUserUuid(currentUser);
         PageBounds bounds = pageBounds(pageNo, pageSize);
@@ -129,6 +134,7 @@ public class AiReadQueryService {
     }
 
     public List<AiMessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
+        requirePermission(currentUser, AI_CHAT_SEND);
         Long userId = currentUserId(currentUser);
         requireConversation(userId, currentUserUuid(currentUser), conversationId);
         List<AiMessageVO> messages = jdbcTemplate.query(
@@ -158,6 +164,7 @@ public class AiReadQueryService {
             long pageNo,
             long pageSize
     ) {
+        requirePermission(currentUser, AI_KNOWLEDGE_VIEW);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         StringBuilder where = new StringBuilder(" where kb.is_deleted = 0");
         List<Object> args = new ArrayList<>();
@@ -186,6 +193,7 @@ public class AiReadQueryService {
     }
 
     public AiKnowledgeBaseVO getKnowledgeBase(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, AI_KNOWLEDGE_VIEW);
         StringBuilder where = new StringBuilder(" where kb.id = ? and kb.is_deleted = 0");
         List<Object> args = new ArrayList<>();
         args.add(id);
@@ -208,6 +216,7 @@ public class AiReadQueryService {
     }
 
     public PageResponse<AiKnowledgeDocumentVO> listKnowledgeDocuments(CurrentUser currentUser, Long knowledgeBaseId, long pageNo, long pageSize) {
+        requirePermission(currentUser, AI_KNOWLEDGE_VIEW);
         getKnowledgeBase(currentUser, knowledgeBaseId);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiKnowledgeDocumentVO> records = jdbcTemplate.query(
@@ -230,11 +239,30 @@ public class AiReadQueryService {
     }
 
     public List<AiToolVO> listTools(CurrentUser currentUser) {
-        currentUserId(currentUser);
+        requirePermission(currentUser, AI_TOOL_VIEW);
         return allTools().stream()
                 .filter(tool -> canViewTool(currentUser, tool))
                 .sorted((left, right) -> left.toolCode().compareTo(right.toolCode()))
                 .toList();
+    }
+
+    AiKnowledgeDocumentVO getManageableKnowledgeDocument(CurrentUser currentUser, Long knowledgeBaseId, Long documentId) {
+        requireManageableKnowledgeBase(currentUser, knowledgeBaseId);
+        return jdbcTemplate.query(
+                """
+                        select id, knowledge_base_id, file_id, title, original_file_name, file_extension,
+                               mime_type, file_size_bytes, status, parse_error, extracted_char_count, chunk_count,
+                               created_by, create_time, update_time
+                        from ai_knowledge_document
+                        where knowledge_base_id = ?
+                          and id = ?
+                          and is_deleted = 0
+                        limit 1
+                        """,
+                this::mapKnowledgeDocument,
+                knowledgeBaseId,
+                documentId
+        ).stream().findFirst().orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Knowledge document not found"));
     }
 
     List<AiToolVO> allTools() {
@@ -524,6 +552,26 @@ public class AiReadQueryService {
         return SCOPE_PLATFORM.equals(scope);
     }
 
+    private void requirePermission(CurrentUser currentUser, String permissionKey) {
+        Set<String> permissions = trustedPermissions(currentUser);
+        if (!permissions.contains("*") && !permissions.contains(permissionKey)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permissionKey);
+        }
+    }
+
+    private void requireAnyPermission(CurrentUser currentUser, String... permissionKeys) {
+        Set<String> permissions = trustedPermissions(currentUser);
+        if (permissions.contains("*")) {
+            return;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (permissions.contains(permissionKey)) {
+                return;
+            }
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + String.join(" or ", permissionKeys));
+    }
+
     private String buildAclExistsClause(CurrentUser currentUser, List<Object> args, List<String> permissions) {
         Long actorUserId = currentUserId(currentUser);
         StringBuilder clause = new StringBuilder();
@@ -645,8 +693,11 @@ public class AiReadQueryService {
     }
 
     private void refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApiProvider == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return;
+        }
+        if (systemInternalApiProvider == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
         }
         Long userId = currentUser.getUserId();
         String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
@@ -667,14 +718,22 @@ public class AiReadQueryService {
         if (!StringUtils.hasText(userSnapshot.status()) || !"ENABLED".equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled");
         }
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId, normalizedUserUuid);
+        String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+        if (!StringUtils.hasText(currentUsername)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO snapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, normalizedUserUuid)
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, normalizedUserUuid, simulatedRoleId);
         if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserUuid(normalizedUserUuid);
-        if (StringUtils.hasText(userSnapshot.username())) {
-            currentUser.setUsername(userSnapshot.username().trim());
-        }
+        currentUser.setUsername(currentUsername);
         currentUser.setPermissions(trustedPermissionSet(snapshot.permissions()));
         currentUser.setRoleIds(trustedLongSet(snapshot.roleIds()));
         currentUser.setPrimaryDeptId(snapshot.primaryDeptId());

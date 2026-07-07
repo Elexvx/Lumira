@@ -59,7 +59,7 @@ public class SensitiveWordService {
     private static final String PERMISSION_IMPORT = "plugin:sensitive-words:import";
     private static final String ACTION_BLOCK = "BLOCK";
     private static final String ACTION_LOG_ONLY = "LOG_ONLY";
-    private static final Pattern IMPORT_SPLITTER = Pattern.compile("[\\r\\n,;；、]+");
+    private static final Pattern IMPORT_SPLITTER = Pattern.compile("[\\r\\n,;，；、]+");
     private static final Pattern FIELD_BYPASS_PATTERN = Pattern.compile("(password|secret|token|captcha|verifycode|verificationcode|apikey|privatekey|publickey|accesskey)", Pattern.CASE_INSENSITIVE);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -71,6 +71,7 @@ public class SensitiveWordService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final Map<Class<?>, java.lang.reflect.Field[]> reflectiveFieldCache = new ConcurrentHashMap<>();
 
     @Autowired
@@ -81,7 +82,7 @@ public class SensitiveWordService {
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics
     ) {
-        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, null);
+        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, null, null, null, false);
     }
 
     public SensitiveWordService(
@@ -92,7 +93,7 @@ public class SensitiveWordService {
             SensitiveWordMetrics metrics,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, permissionSnapshotService, null, null);
+        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, permissionSnapshotService, null, null, false);
     }
 
     @Autowired
@@ -106,6 +107,30 @@ public class SensitiveWordService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                jdbcTemplate,
+                textExtractor,
+                pluginStateService,
+                dictionaryCache,
+                metrics,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private SensitiveWordService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiKnowledgeTextExtractor textExtractor,
+            SensitiveWordPluginStateService pluginStateService,
+            SensitiveWordDictionaryCache dictionaryCache,
+            SensitiveWordMetrics metrics,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.textExtractor = textExtractor;
         this.pluginStateService = pluginStateService;
@@ -114,6 +139,7 @@ public class SensitiveWordService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public SensitiveWordService(
@@ -125,7 +151,7 @@ public class SensitiveWordService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, textExtractor, pluginStateService, dictionaryCache, metrics, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     public SensitiveWordService(
@@ -154,7 +180,8 @@ public class SensitiveWordService {
                 new SensitiveWordMetrics(new SimpleMeterRegistry()),
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -401,6 +428,9 @@ public class SensitiveWordService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -420,19 +450,35 @@ public class SensitiveWordService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
         currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
@@ -448,6 +494,10 @@ public class SensitiveWordService {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
         return authenticatedAccess.currentUser();
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
@@ -466,7 +516,7 @@ public class SensitiveWordService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

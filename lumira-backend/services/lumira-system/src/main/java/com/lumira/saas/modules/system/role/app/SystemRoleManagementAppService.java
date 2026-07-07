@@ -80,6 +80,7 @@ public class SystemRoleManagementAppService {
     private final DomainEventPublisher domainEventPublisher;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public SystemRoleManagementAppService(
@@ -87,8 +88,16 @@ public class SystemRoleManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, operationAuditService, event -> {
-        });
+        this(
+                jdbcTemplate,
+                permissionSnapshotService,
+                operationAuditService,
+                event -> {
+                },
+                null,
+                null,
+                true
+        );
     }
 
     public SystemRoleManagementAppService(
@@ -103,7 +112,8 @@ public class SystemRoleManagementAppService {
                 operationAuditService,
                 domainEventPublisher,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -115,12 +125,33 @@ public class SystemRoleManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                jdbcTemplate,
+                permissionSnapshotService,
+                operationAuditService,
+                domainEventPublisher,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private SystemRoleManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.operationAuditService = operationAuditService;
         this.domainEventPublisher = domainEventPublisher;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
@@ -181,7 +212,7 @@ public class SystemRoleManagementAppService {
                 roleId
         );
         if (role == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
         SystemVO.RoleDetailVO detail = new SystemVO.RoleDetailVO();
         copyRole(detail, role);
@@ -245,7 +276,7 @@ public class SystemRoleManagementAppService {
                 roleId
         );
         if (role == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
         requireSafeDefaultRegistrationRole(role);
         upsertConfigValue(
@@ -306,11 +337,11 @@ public class SystemRoleManagementAppService {
         requirePositiveId(roleId, "Role id is required");
         SystemVO.RoleDetailVO role = queryRoleDetail(roleId);
         if (Boolean.TRUE.equals(role.getDefaultRegistrationRole())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "默认注册角色不允许删除");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Default registration role cannot be deleted");
         }
         int userCount = role.getUserCount();
         if (userCount > 0) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "角色已被用户占用，请先移除用户角色关系");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Role is assigned to users; remove user-role bindings first");
         }
         RoleAggregate roleAggregate = new RoleAggregate(roleId, new LinkedHashSet<>(role.getPermissionKeys()));
         roleAggregate.replacePermissions(Set.of(), currentUser.getUserId(), currentUser.getUserUuid());
@@ -489,6 +520,9 @@ public class SystemRoleManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -508,17 +542,33 @@ public class SystemRoleManagementAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             normalizedUserUuid = userSnapshot.userUuid().trim();
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -537,6 +587,10 @@ public class SystemRoleManagementAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -553,7 +607,7 @@ public class SystemRoleManagementAppService {
         target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -663,7 +717,7 @@ public class SystemRoleManagementAppService {
         }
         String normalized = defaultHomePath.trim();
         if (!normalized.startsWith("/") || normalized.startsWith("//") || normalized.length() > 255) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "默认访问页面必须是有效站内路径");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Default home path must be a valid internal route");
         }
         return normalized;
     }
@@ -966,7 +1020,7 @@ public class SystemRoleManagementAppService {
         }
         String normalized = resourceCode.trim();
         if (normalized.length() > 128) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "数据权限资源编码长度不能超过128个字符");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Data-scope resource code cannot exceed 128 characters");
         }
         return normalized;
     }

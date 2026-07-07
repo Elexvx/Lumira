@@ -48,18 +48,27 @@ public class AiManagementAppService {
     private static final int GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES = 2048;
     private static final String GOVERNANCE_OVERVIEW_CACHE_KEY = "global";
     private static final String PERMISSION_AI_VIEW = "ai:view";
-    private static final String PERMISSION_AI_MANAGE = "ai:manage";
+    private static final String PERMISSION_AI_CHAT_SEND = "ai:chat:send";
+    private static final String PERMISSION_AI_EMPLOYEE_CREATE = "ai:employee:create";
+    private static final String PERMISSION_AI_EMPLOYEE_UPDATE = "ai:employee:update";
+    private static final String PERMISSION_AI_EMPLOYEE_DELETE = "ai:employee:delete";
+    private static final String PERMISSION_AI_EMPLOYEE_STATUS = "ai:employee:status";
+    private static final String PERMISSION_AI_EMPLOYEE_SKILLS = "ai:employee:skills";
+    private static final String PERMISSION_AI_LLM_CREATE = "ai:llm:create";
+    private static final String PERMISSION_AI_LLM_UPDATE = "ai:llm:update";
+    private static final String PERMISSION_AI_LLM_DELETE = "ai:llm:delete";
+    private static final String PERMISSION_AI_LLM_STATUS = "ai:llm:status";
     private static final String STATUS_ENABLED = "ENABLED";
     private static final Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private static final String DEFAULT_SYSTEM_PROMPT_TEMPLATE = """
-            你是一名企业级 SaaS 平台中的数字员工。
-            你的目标是：基于当前平台的授权范围，稳妥、专业、清晰地完成用户交办的任务。
-            你必须遵循以下要求：
-            1. 先确认上下文，再执行任务。
-            2. 遵守平台权限边界，不越权访问数据。
-            3. 当任务涉及高风险操作时，先请求二次确认。
-            4. 输出尽量简洁、结构清晰，优先给出可执行结论。
+            你是 Lumira SaaS 平台的数字员工助手。
+            你的目标是基于当前平台授权范围，稳妥、专业、清晰地完成用户交办的任务。
+            请遵守以下规则：
+            1. 只使用已授权的工具和知识库，不越权访问或编造系统数据。
+            2. 涉及新增、修改、删除、启停、导出等高风险操作时，先说明影响并等待确认。
+            3. 当工具返回权限不足、数据为空或系统不可用时，如实说明限制。
+            4. 回复保持简洁，可执行，并优先给出下一步建议。
             """;
 
     private final MyBatisQueryOperations jdbcTemplate;
@@ -73,6 +82,7 @@ public class AiManagementAppService {
     private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
     private final Cache<String, AiVO.GovernanceOverviewVO> governanceOverviewCache;
     private final Cache<String, CompletableFuture<AiVO.GovernanceOverviewVO>> governanceOverviewLoadInFlight;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public AiManagementAppService(
@@ -84,6 +94,30 @@ public class AiManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(
+                jdbcTemplate,
+                operationAuditService,
+                aiSecretCryptoService,
+                aiEmployeeRuntimeService,
+                aiChatModelFactory,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private AiManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            AiSecretCryptoService aiSecretCryptoService,
+            AiEmployeeRuntimeService aiEmployeeRuntimeService,
+            AiChatModelFactory aiChatModelFactory,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
@@ -102,6 +136,7 @@ public class AiManagementAppService {
                 .maximumSize(GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(GOVERNANCE_OVERVIEW_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
                 .build();
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     AiManagementAppService(
@@ -111,7 +146,7 @@ public class AiManagementAppService {
             AiEmployeeRuntimeService aiEmployeeRuntimeService,
             AiChatModelFactory aiChatModelFactory
     ) {
-        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, null, null, null);
+        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, null, null, null, false);
     }
 
     AiManagementAppService(
@@ -122,7 +157,7 @@ public class AiManagementAppService {
             AiChatModelFactory aiChatModelFactory,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, permissionSnapshotService, null, null);
+        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, permissionSnapshotService, null, null, false);
     }
 
     AiManagementAppService(
@@ -134,7 +169,7 @@ public class AiManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, operationAuditService, aiSecretCryptoService, aiEmployeeRuntimeService, aiChatModelFactory, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     public PageResponse<AiVO.EmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -251,7 +286,7 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.EmployeeDetailVO createEmployee(CurrentUser currentUser, AiDTO.EmployeeUpsertRequest request) {
-        requireManagePermission(currentUser);
+        requireEmployeeCreatePermission(currentUser);
         validateEmployeeUsernameAvailable(request.getUsername().trim(), null);
         validateDefaultLlmService(request.getDefaultLlmServiceId());
         LocalDateTime now = LocalDateTime.now();
@@ -284,7 +319,7 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.EmployeeDetailVO updateEmployee(CurrentUser currentUser, Long id, AiDTO.EmployeeUpsertRequest request) {
-        requireManagePermission(currentUser);
+        requireEmployeeUpdatePermission(currentUser);
         AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id);
         validateEmployeeUsernameAvailable(request.getUsername().trim(), id);
         validateDefaultLlmService(request.getDefaultLlmServiceId());
@@ -317,7 +352,7 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean deleteEmployee(CurrentUser currentUser, Long id) {
-        requireManagePermission(currentUser);
+        requireEmployeeDeletePermission(currentUser);
         AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id);
         LocalDateTime now = LocalDateTime.now();
         int employeeDeleted = jdbcTemplate.update(
@@ -354,7 +389,7 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean updateEmployeeEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        requireManagePermission(currentUser);
+        requireEmployeeStatusPermission(currentUser);
         AiVO.EmployeeDetailVO existing = queryEmployeeDetail(id);
         int updated = jdbcTemplate.update(
                 """
@@ -375,6 +410,11 @@ public class AiManagementAppService {
     }
 
     public AiVO.PromptTemplateVO employeeTemplate(CurrentUser currentUser) {
+        requireViewPermission(currentUser);
+        return buildPromptTemplate();
+    }
+
+    private AiVO.PromptTemplateVO buildPromptTemplate() {
         AiVO.PromptTemplateVO template = new AiVO.PromptTemplateVO();
         template.setDefaultSystemPromptTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE);
         return template;
@@ -388,11 +428,11 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean updateEmployeeCapabilities(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeCapabilitiesUpdateRequest request) {
-        requireManagePermission(currentUser);
+        requireEmployeeSkillsPermission(currentUser);
         AiVO.EmployeeDetailVO existing = queryEmployeeDetail(employeeId);
         replaceEmployeeCapabilities(existing, request == null ? List.of() : request.getCapabilities());
         invalidateGovernanceOverviewCache();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工技能权限: " + employeeId);
         return true;
     }
 
@@ -426,7 +466,7 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.LlmServiceVO createLlmService(CurrentUser currentUser, AiDTO.LlmServiceUpsertRequest request) {
-        requireManagePermission(currentUser);
+        requireLlmCreatePermission(currentUser);
         validateLlmServiceCodeAvailable(request.getCode().trim(), null);
         LocalDateTime now = LocalDateTime.now();
         int inserted = jdbcTemplate.update(
@@ -458,7 +498,7 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.LlmServiceVO updateLlmService(CurrentUser currentUser, Long id, AiDTO.LlmServiceUpsertRequest request) {
-        requireManagePermission(currentUser);
+        requireLlmUpdatePermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord existing = requireLlmService(id);
         validateLlmServiceCodeAvailable(request.getCode().trim(), id);
         String encryptedApiKey = StringUtils.hasText(request.getApiKey())
@@ -495,7 +535,7 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean deleteLlmService(CurrentUser currentUser, Long id) {
-        requireManagePermission(currentUser);
+        requireLlmDeletePermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord service = requireLlmService(id);
         Integer refCount = jdbcTemplate.queryForObject(
                 """
@@ -508,7 +548,7 @@ public class AiManagementAppService {
                 id
         );
         if (refCount != null && refCount > 0) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务已被数字员工引用，无法删除");
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM service is referenced by an AI employee and cannot be deleted");
         }
         int deleted = jdbcTemplate.update(
                 """
@@ -530,7 +570,7 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean updateLlmServiceEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        requireManagePermission(currentUser);
+        requireLlmStatusPermission(currentUser);
         AiEntitiesHelper.LlmServiceRecord service = requireLlmService(id);
         int updated = jdbcTemplate.update(
                 """
@@ -552,23 +592,23 @@ public class AiManagementAppService {
     }
 
     public AiVO.LlmServiceTestResultVO testLlmService(CurrentUser currentUser, AiDTO.LlmServiceTestRequest request) {
-        requireManagePermission(currentUser);
+        requireLlmConfigurationPermission(currentUser);
         AiLlmServiceConfig config = buildTestConfig(request);
         AiDTO.ChatRequest chatRequest = new AiDTO.ChatRequest();
-        chatRequest.setMessage("请只回复 OK，用于验证当前 LLM 服务配置是否可用。");
+        chatRequest.setMessage("Please reply with OK only, used to verify whether the current LLM service configuration is available.");
         AiVO.EmployeeDetailVO testEmployee = new AiVO.EmployeeDetailVO();
         testEmployee.setId(0L);
-        testEmployee.setNickname("LLM 服务测试");
-        testEmployee.setSystemPrompt("你是一个连接测试助手。请按用户要求简短响应。");
+        testEmployee.setNickname("LLM Service Test");
+        testEmployee.setSystemPrompt("You are a connection test assistant. Please respond briefly to the user's request.");
 
         long startedAt = System.nanoTime();
         try {
             AiVO.ChatResponseVO response = aiChatModelFactory.create(config).chat(chatRequest, testEmployee, List.of());
             long latencyMs = elapsedMillis(startedAt);
-            operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "测试 LLM 服务: " + safeAuditLabel(config));
+            operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "Test LLM service: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(true);
-            result.setMessage("测试通过");
+            result.setMessage("Test passed");
             result.setProvider(response.getProvider());
             result.setModel(response.getModel());
             result.setLatencyMs(latencyMs);
@@ -577,7 +617,7 @@ public class AiManagementAppService {
         } catch (RuntimeException exception) {
             long latencyMs = elapsedMillis(startedAt);
             String errorMessage = resolveFailureMessage(exception);
-            operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
+            operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "Test LLM service failed: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(false);
             result.setMessage(errorMessage);
@@ -590,7 +630,7 @@ public class AiManagementAppService {
 
     private String resolveFailureMessage(RuntimeException exception) {
         if (exception == null) {
-            return "LLM 服务测试失败";
+            return "LLM service test failed";
         }
         if (exception instanceof BizException bizException) {
             String message = bizException.getMessage();
@@ -598,18 +638,18 @@ public class AiManagementAppService {
                 return message;
             }
             String userMessage = bizException.getUserMessage();
-            return StringUtils.hasText(userMessage) ? userMessage : "LLM 服务测试失败";
+            return StringUtils.hasText(userMessage) ? userMessage : "LLM service test failed";
         }
-        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "LLM 服务测试失败";
+        return StringUtils.hasText(exception.getMessage()) ? exception.getMessage() : "LLM service test failed";
     }
 
     public AiVO.EmployeeVO getAssistantEmployee(CurrentUser currentUser) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         return aiAssistantEmployeeResolver.getOrCreateAssistantEmployee();
     }
 
     public PageResponse<AiVO.ConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         if (employeeId != null) {
             requireEmployee(employeeId);
         }
@@ -617,7 +657,7 @@ public class AiManagementAppService {
                 """
                         select c.id, c.employee_id as employeeId,
                                c.owner_user_id as ownerUserId,
-                               coalesce(e.nickname, e.username, 'AI 助手') as employeeName,
+                               coalesce(e.nickname, e.username, 'AI 数字员工') as employeeName,
                                c.conversation_code as conversationCode, c.title, c.status,
                                c.is_pinned as pinned,
                                (
@@ -657,7 +697,7 @@ public class AiManagementAppService {
     }
 
     public List<AiVO.MessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         CompletableFuture<List<AiVO.MessageVO>> messagesFuture = CompletableFuture.supplyAsync(() -> jdbcTemplate.query(
                 """
@@ -684,7 +724,7 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean updateConversation(CurrentUser currentUser, Long conversationId, AiDTO.ConversationUpdateRequest request) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         String title = request == null ? null : request.getTitle();
         Boolean pinned = request == null ? null : request.getPinned();
@@ -716,14 +756,14 @@ public class AiManagementAppService {
                 "conversation-update",
                 "UPDATE",
                 "SUCCESS",
-                "更新会话: " + conversation.getConversationCode()
+                "更新 AI 会话: " + conversation.getConversationCode()
         );
         return true;
     }
 
     @Transactional
     public boolean deleteConversation(CurrentUser currentUser, Long conversationId) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         int conversationDeleted = jdbcTemplate.update(
@@ -818,7 +858,7 @@ public class AiManagementAppService {
                 "conversation-delete",
                 "DELETE",
                 "SUCCESS",
-                "删除会话: " + conversation.getConversationCode()
+                "删除 AI 会话: " + conversation.getConversationCode()
         );
         return true;
     }
@@ -837,7 +877,7 @@ public class AiManagementAppService {
 
     @Transactional
     public AiVO.ConversationShareVO createConversationShare(CurrentUser currentUser, Long conversationId) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusDays(30);
@@ -881,13 +921,13 @@ public class AiManagementAppService {
                 "conversation-share",
                 "CREATE",
                 "SUCCESS",
-                "创建会话分享: " + conversation.getConversationCode()
+                "创建 AI 会话分享: " + conversation.getConversationCode()
         );
         return share;
     }
 
     public AiVO.ConversationShareDetailVO getConversationShare(CurrentUser currentUser, String shareToken) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         AiVO.ConversationShareVO share = requireConversationShare(shareToken);
         AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), share.getConversationId());
         AiVO.ConversationShareDetailVO detail = new AiVO.ConversationShareDetailVO();
@@ -898,14 +938,14 @@ public class AiManagementAppService {
     }
 
     public AiVO.ConversationExportVO exportConversation(CurrentUser currentUser, Long conversationId, String format) {
-        requireViewPermission(currentUser);
+        requireChatPermission(currentUser);
         AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), currentUser.getUserUuid(), conversationId);
         List<AiVO.MessageVO> messages = listConversationMessages(currentUser, conversationId);
         String normalizedFormat = normalizeExportFormat(format);
         String content = buildConversationExportContent(conversation, messages, normalizedFormat);
         AiVO.ConversationExportVO export = new AiVO.ConversationExportVO();
         export.setConversationId(conversationId);
-        export.setTitle(StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : "会话");
+        export.setTitle(StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : "Conversation");
         export.setFormat(normalizedFormat);
         export.setFileName(buildExportFileName(export.getTitle(), normalizedFormat));
         export.setMimeType("markdown".equals(normalizedFormat) ? "text/markdown;charset=utf-8" : "text/plain;charset=utf-8");
@@ -919,10 +959,6 @@ public class AiManagementAppService {
 
     public AiVO.ChatResponseVO streamChat(CurrentUser currentUser, AiDTO.ChatRequest request, java.util.function.Consumer<AiVO.ChatStreamEventVO> onEvent) {
         return aiEmployeeRuntimeService.streamChat(currentUser, request, onEvent);
-    }
-
-    public AiVO.PromptTemplateVO defaultTemplate() {
-        return employeeTemplate(null);
     }
 
     private List<AiVO.EmployeeCapabilityVO> listEmployeeCapabilities(Long employeeId) {
@@ -974,7 +1010,7 @@ public class AiManagementAppService {
             String capabilityCode = item.getCapabilityCode().trim();
             Boolean readOnly = capabilityReadOnlyMap.get(capabilityCode);
             if (readOnly == null) {
-                throw new BizException(ErrorCode.NOT_FOUND, "能力不存在: " + capabilityCode);
+                throw new BizException(ErrorCode.NOT_FOUND, "AI 技能不存在: " + capabilityCode);
             }
             int inserted = jdbcTemplate.update(
                     """
@@ -1035,7 +1071,12 @@ public class AiManagementAppService {
         if (!Boolean.TRUE.equals(readOnly) && "allow".equals(normalized)) {
             return normalized;
         }
-        throw new BizException(ErrorCode.VALIDATION_ERROR, Boolean.TRUE.equals(readOnly) ? "只读能力仅支持访问或禁用" : "操作能力仅支持允许或禁用");
+        throw new BizException(
+                ErrorCode.VALIDATION_ERROR,
+                Boolean.TRUE.equals(readOnly)
+                        ? "Read-only capability only supports visit or disable"
+                        : "Executable capability only supports allow or disable"
+        );
     }
 
     private boolean toBoolean(Object value) {
@@ -1068,7 +1109,7 @@ public class AiManagementAppService {
                 id
         ).stream().findFirst().orElse(null);
         if (employee == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "数字员工不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "AI employee not found");
         }
         employee.setDefaultSystemPromptTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE);
         return employee;
@@ -1090,7 +1131,7 @@ public class AiManagementAppService {
                 id
         ).stream().findFirst().orElse(null);
         if (service == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "LLM 服务不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "LLM service not found");
         }
         return service;
     }
@@ -1138,7 +1179,7 @@ public class AiManagementAppService {
             return employeeVO;
         }).orElse(null);
         if (employee == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "数字员工不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "AI employee not found");
         }
     }
 
@@ -1181,7 +1222,7 @@ public class AiManagementAppService {
                 conversationId
         ).stream().findFirst().orElse(null);
         if (conversation == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "会话不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Conversation not found");
         }
         return conversation;
     }
@@ -1202,7 +1243,7 @@ public class AiManagementAppService {
                 shareToken
         ).stream().findFirst().orElse(null);
         if (share == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "分享链接不存在或已失效");
+            throw new BizException(ErrorCode.NOT_FOUND, "Share link does not exist or has expired");
         }
         return share;
     }
@@ -1258,28 +1299,28 @@ public class AiManagementAppService {
         return switch (normalized) {
             case "md", "markdown" -> "markdown";
             case "txt", "text" -> "text";
-            default -> throw new BizException(ErrorCode.BIZ_ERROR, "不支持的导出格式");
+            default -> throw new BizException(ErrorCode.BIZ_ERROR, "Unsupported export format");
         };
     }
 
     private String buildConversationExportContent(AiVO.ConversationVO conversation, List<AiVO.MessageVO> messages, String format) {
         StringBuilder builder = new StringBuilder();
         boolean markdown = "markdown".equals(format);
-        String title = StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : "会话";
+        String title = StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : "Conversation";
         if (markdown) {
             builder.append("# ").append(title).append("\n\n");
         } else {
             builder.append(title).append("\n");
         }
         if (StringUtils.hasText(conversation.getEmployeeName())) {
-            builder.append(markdown ? "- " : "").append("AI 员工: ").append(conversation.getEmployeeName()).append("\n");
+            builder.append(markdown ? "- " : "").append("AI Employee: ").append(conversation.getEmployeeName()).append("\n");
         }
         if (conversation.getLatestMessageAt() != null) {
-            builder.append(markdown ? "- " : "").append("更新时间: ").append(conversation.getLatestMessageAt()).append("\n");
+            builder.append(markdown ? "- " : "").append("Updated At: ").append(conversation.getLatestMessageAt()).append("\n");
         }
         builder.append("\n");
         for (AiVO.MessageVO message : messages) {
-            String role = "USER".equalsIgnoreCase(message.getRole()) ? "用户" : "AI";
+            String role = "USER".equalsIgnoreCase(message.getRole()) ? "User" : "AI";
             if (markdown) {
                 builder.append("## ").append(role).append("\n\n");
             } else {
@@ -1290,7 +1331,7 @@ public class AiManagementAppService {
             }
             if (message.getAttachments() != null && !message.getAttachments().isEmpty()) {
                 if (markdown) {
-                    builder.append("\n附件:\n");
+                    builder.append("\nAttachments:\n");
                     for (AiVO.MessageAttachmentVO attachment : message.getAttachments()) {
                         builder.append("- ").append(attachment.getOriginalFileName());
                         if (StringUtils.hasText(attachment.getDownloadUrl())) {
@@ -1299,7 +1340,7 @@ public class AiManagementAppService {
                         builder.append("\n");
                     }
                 } else {
-                    builder.append("附件:\n");
+                    builder.append("Attachments:\n");
                     for (AiVO.MessageAttachmentVO attachment : message.getAttachments()) {
                         builder.append("- ").append(attachment.getOriginalFileName());
                         if (StringUtils.hasText(attachment.getDownloadUrl())) {
@@ -1357,7 +1398,7 @@ public class AiManagementAppService {
                 excludeId
         );
         if (exists) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "用户名已存在");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Username already exists");
         }
     }
 
@@ -1376,7 +1417,7 @@ public class AiManagementAppService {
                 excludeId
         );
         if (exists) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务标识已存在");
+            throw new BizException(ErrorCode.BIZ_ERROR, "LLM service code already exists");
         }
     }
     private void requireLogin(CurrentUser currentUser) {
@@ -1389,8 +1430,48 @@ public class AiManagementAppService {
         requirePermission(currentUser, PERMISSION_AI_VIEW);
     }
 
-    private void requireManagePermission(CurrentUser currentUser) {
-        requirePermission(currentUser, PERMISSION_AI_MANAGE);
+    private void requireChatPermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_CHAT_SEND);
+    }
+
+    private void requireEmployeeCreatePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_EMPLOYEE_CREATE);
+    }
+
+    private void requireEmployeeUpdatePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_EMPLOYEE_UPDATE);
+    }
+
+    private void requireEmployeeDeletePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_EMPLOYEE_DELETE);
+    }
+
+    private void requireEmployeeStatusPermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_EMPLOYEE_STATUS);
+    }
+
+    private void requireEmployeeSkillsPermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_EMPLOYEE_SKILLS);
+    }
+
+    private void requireLlmCreatePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_LLM_CREATE);
+    }
+
+    private void requireLlmUpdatePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_LLM_UPDATE);
+    }
+
+    private void requireLlmDeletePermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_LLM_DELETE);
+    }
+
+    private void requireLlmStatusPermission(CurrentUser currentUser) {
+        requirePermission(currentUser, PERMISSION_AI_LLM_STATUS);
+    }
+
+    private void requireLlmConfigurationPermission(CurrentUser currentUser) {
+        requireAnyPermission(currentUser, PERMISSION_AI_LLM_CREATE, PERMISSION_AI_LLM_UPDATE);
     }
 
     private void requireAiWrite(int updated, String message) {
@@ -1406,6 +1487,23 @@ public class AiManagementAppService {
                 || (!runtimeUser.getPermissions().contains("*") && !runtimeUser.getPermissions().contains(permissionKey))) {
             throw new BizException(ErrorCode.FORBIDDEN, "Permission denied");
         }
+    }
+
+    private void requireAnyPermission(CurrentUser currentUser, String... permissionKeys) {
+        CurrentUser runtimeUser = refreshTrustedCurrentUser(currentUser);
+        requireLogin(runtimeUser);
+        Set<String> permissions = runtimeUser.getPermissions();
+        if (permissions != null && permissions.contains("*")) {
+            return;
+        }
+        if (permissions != null) {
+            for (String permissionKey : permissionKeys) {
+                if (permissions.contains(permissionKey)) {
+                    return;
+                }
+            }
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "Permission denied");
     }
 
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
@@ -1427,6 +1525,9 @@ public class AiManagementAppService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -1447,18 +1548,33 @@ public class AiManagementAppService {
                     || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
             }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(currentUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(userSnapshot.username().trim());
             normalizedUserUuid = currentUserUuid;
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.FORBIDDEN, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -1479,6 +1595,10 @@ public class AiManagementAppService {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -1495,7 +1615,7 @@ public class AiManagementAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -1546,14 +1666,15 @@ public class AiManagementAppService {
         return copy;
     }
 
+    /*
     private AiLlmServiceConfig buildTestConfig(AiDTO.LlmServiceTestRequest request) {
         if (request == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "请填写 LLM 服务配置后再测试");
+            throw new BizException(ErrorCode.BAD_REQUEST, "Please fill in the LLM service configuration before testing");
         }
         AiEntitiesHelper.LlmServiceRecord existing = request.getServiceId() == null ? null : requireLlmService(request.getServiceId());
         String provider = firstText(request.getProvider(), existing == null ? null : existing.getProvider());
         if (!StringUtils.hasText(provider)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "请选择 LLM 类型");
+            throw new BizException(ErrorCode.BAD_REQUEST, "Please select an LLM type");
         }
         boolean reusingStoredApiKey = reusingStoredApiKey(request, existing);
         if (reusingStoredApiKey) {
@@ -1563,7 +1684,35 @@ public class AiManagementAppService {
         config.setId(request.getServiceId());
         config.setProvider(provider);
         config.setCode(firstText(request.getCode(), existing == null ? null : existing.getCode(), "llm-test"));
-        config.setTitle(firstText(request.getTitle(), existing == null ? null : existing.getTitle(), "LLM 服务测试"));
+        config.setTitle(firstText(request.getTitle(), existing == null ? null : existing.getTitle(), "LLM connection test assistant"));
+        config.setBaseUrl(firstText(request.getBaseUrl(), existing == null ? null : existing.getBaseUrl()));
+        config.setDefaultModel(firstText(request.getDefaultModel(), existing == null ? null : existing.getDefaultModel()));
+        config.setApiKey(resolveTestApiKey(request, existing));
+        config.setTimeoutMs(request.getTimeoutMs() == null ? (existing == null ? 60000 : existing.getTimeoutMs()) : request.getTimeoutMs());
+        config.setTemperature(request.getTemperature() == null ? (existing == null ? null : existing.getTemperature()) : request.getTemperature());
+        config.setMaxTokens(request.getMaxTokens() == null ? (existing == null ? 64 : existing.getMaxTokens()) : request.getMaxTokens());
+        return config;
+    }
+    */
+
+    private AiLlmServiceConfig buildTestConfig(AiDTO.LlmServiceTestRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Please fill in the LLM service configuration before testing");
+        }
+        AiEntitiesHelper.LlmServiceRecord existing = request.getServiceId() == null ? null : requireLlmService(request.getServiceId());
+        String provider = firstText(request.getProvider(), existing == null ? null : existing.getProvider());
+        if (!StringUtils.hasText(provider)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Please select an LLM type");
+        }
+        boolean reusingStoredApiKey = reusingStoredApiKey(request, existing);
+        if (reusingStoredApiKey) {
+            rejectStoredSecretEndpointOverride(request, existing);
+        }
+        AiLlmServiceConfig config = new AiLlmServiceConfig();
+        config.setId(request.getServiceId());
+        config.setProvider(provider);
+        config.setCode(firstText(request.getCode(), existing == null ? null : existing.getCode(), "llm-test"));
+        config.setTitle(firstText(request.getTitle(), existing == null ? null : existing.getTitle(), "LLM Service Test"));
         config.setBaseUrl(firstText(request.getBaseUrl(), existing == null ? null : existing.getBaseUrl()));
         config.setDefaultModel(firstText(request.getDefaultModel(), existing == null ? null : existing.getDefaultModel()));
         config.setApiKey(resolveTestApiKey(request, existing));
@@ -1589,7 +1738,7 @@ public class AiManagementAppService {
 
     private void rejectStoredSecretEndpointOverride(AiDTO.LlmServiceTestRequest request, AiEntitiesHelper.LlmServiceRecord existing) {
         if (overridesText(request.getProvider(), existing.getProvider()) || overridesText(request.getBaseUrl(), existing.getBaseUrl())) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "修改 LLM 类型或 Base URL 时请重新输入 API Key 后再测试");
+            throw new BizException(ErrorCode.BAD_REQUEST, "Please re-enter the API key after changing the LLM type or Base URL before testing");
         }
     }
 
@@ -1625,7 +1774,7 @@ public class AiManagementAppService {
     }
 
     private String safeAuditLabel(AiLlmServiceConfig config) {
-        return firstText(config.getCode(), config.getTitle(), config.getProvider(), "未命名服务");
+        return firstText(config.getCode(), config.getTitle(), config.getProvider(), "Unnamed service");
     }
 
     private String truncate(String value, int maxLength) {

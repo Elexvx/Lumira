@@ -51,6 +51,16 @@ class OnlineSessionEventSubscriberTest {
     }
 
     @Test
+    void onMessageShouldIgnoreTrustedIdentityEventWhenVerifierIsUnavailable() throws Exception {
+        OnlineSessionStreamService streamService = mock(OnlineSessionStreamService.class);
+
+        new OnlineSessionEventSubscriber(new ObjectMapper(), streamService, objectProvider(null))
+                .onMessage(message(new ObjectMapper().writeValueAsString(trustedEvent())), null);
+
+        verify(streamService, never()).dispatch(org.mockito.ArgumentMatchers.any(OnlineSessionEvent.class));
+    }
+
+    @Test
     void onMessageShouldDispatchTrustedEvent() throws Exception {
         OnlineSessionStreamService streamService = mock(OnlineSessionStreamService.class);
         OnlineSessionEventIdentityVerifier identityVerifier = mock(OnlineSessionEventIdentityVerifier.class);

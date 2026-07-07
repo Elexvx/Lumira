@@ -13,6 +13,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.activity.dto.ActivityDTO;
 import com.lumira.saas.modules.activity.vo.ActivityVO;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,12 +86,53 @@ class ActivityManagementAppServiceTest {
     }
 
     @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:activity:view")));
+        ActivityManagementAppService service =
+                new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        CurrentUser currentUser = user("aiadc:activity:view");
+        currentUser.setSimulatedRoleId(0L);
+        Method method = ActivityManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(any(), anyString(), any());
+    }
+
+    @Test
     void createActivityShouldRejectDisabledTrustedIdentityBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "operator-live", "DISABLED"));
+        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.updateCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(2001L, "user-uuid-2001");
+    }
+
+    @Test
+    void createActivityShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
         ActivityManagementAppService service = new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
@@ -129,6 +173,19 @@ class ActivityManagementAppServiceTest {
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
         ActivityManagementAppService service =
                 new ActivityManagementAppService(queryOperations, null, sessionAuthenticationService);
+
+        assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.updateCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+    }
+
+    @Test
+    void createActivityShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        ActivityManagementAppService service =
+                new ActivityManagementAppService(queryOperations, null, (SessionAuthenticationService) null);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
                 .isInstanceOf(BizException.class)

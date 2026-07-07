@@ -154,6 +154,31 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void listFiles_shouldRejectWhenTrustedResolverIsUnavailableBeforeMapperAccess() {
+        FileManagementAppService serviceWithoutResolver = new FileManagementAppService(
+                fileObjectMapper,
+                fileStorageSpaceMapper,
+                jdbcTemplate,
+                uploadProperties,
+                documentUploadService,
+                imageUploadService,
+                domainEventPublisher,
+                fileProcessingTaskRequestService,
+                fieldCryptoService,
+                storageMetrics,
+                new SafeUrlValidator(),
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> serviceWithoutResolver.listFiles(currentUser(), null, null, null, null, null, null, 1, 10, null, null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("Trusted acting user resolver is unavailable");
+
+        verifyNoInteractions(fileObjectMapper);
+    }
+
+    @Test
     void listFiles_shouldRejectBlankUsernameBeforeMapperAccess() {
         assertThatThrownBy(() -> service.listFiles(blankUsernameUser(), null, null, null, null, null, null, 1, 10, null, null))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
@@ -205,6 +230,79 @@ class FileManagementAppServiceTest {
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
         verifyNoInteractions(documentUploadService, imageUploadService, fileObjectMapper, fileProcessingTaskRequestService);
+    }
+
+    @Test
+    void uploadFile_shouldRejectWhenLivePermissionsLoseUploadPermissionBeforeStorageWrite() {
+        CurrentUser uploader = currentUser("system:file:upload");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("system:file:view"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.uploadFile(uploader, multipartFile, "docs", null, null, "local", null))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(documentUploadService, imageUploadService, fileObjectMapper, fileProcessingTaskRequestService);
+    }
+
+    @Test
+    void uploadFile_publicScopeShouldRejectWhenLivePermissionsLosePublishPermissionBeforeRecordInsert() {
+        CurrentUser uploader = currentUser("system:file:publish");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(
+                permissionSnapshot(List.of("system:file:publish"), List.of(), List.of(), List.of()),
+                permissionSnapshot(List.of("system:file:upload"), List.of(), List.of(), List.of())
+        );
+        FileStorageSpaceEntity localStorage = storageSpaceEntities(1).getFirst();
+        localStorage.setStorageKey("local");
+        localStorage.setTitle("Local storage");
+        localStorage.setRootPath("storage/uploads/");
+        localStorage.setBucketName("");
+        localStorage.setDefaultFlag(1);
+        localStorage.setAnonymousAccessAllowed(1);
+        localStorage.setAllowedMimeTypes("*");
+        localStorage.setMaxFileSizeMb(20);
+        localStorage.setStatus("ENABLED");
+        when(fileStorageSpaceMapper.findByStorageKey(ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> "local".equals(invocation.getArgument(0)) ? localStorage : null);
+        when(fileStorageSpaceMapper.countDefaultStorage()).thenReturn(1L);
+        when(uploadProperties.getStorageRoot()).thenReturn(tempDir.resolve("uploads").toString());
+        when(uploadProperties.getPublicPath()).thenReturn("/api/uploads");
+        when(documentUploadService.upload(
+                any(MultipartFile.class),
+                any(Path.class),
+                any(String.class),
+                any(Long.class),
+                any(String.class),
+                any(String.class)
+        )).thenReturn(new DocumentUploadService.StoredDocument(
+                "report.pdf",
+                "report.pdf",
+                "pdf",
+                "application/pdf",
+                128L,
+                "2026/06/23/report.pdf",
+                "/api/uploads/2026/06/23/report.pdf",
+                "PDF",
+                true
+        ));
+        when(multipartFile.getOriginalFilename()).thenReturn("report.pdf");
+        when(multipartFile.getContentType()).thenReturn("application/pdf");
+
+        assertThatThrownBy(() -> service.uploadFile(uploader, multipartFile, "docs", null, null, "local", "PUBLIC"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verify(documentUploadService).upload(
+                any(MultipartFile.class),
+                any(Path.class),
+                any(String.class),
+                any(Long.class),
+                any(String.class),
+                any(String.class)
+        );
+        verifyNoInteractions(fileObjectMapper, fileProcessingTaskRequestService);
     }
 
     @Test
@@ -338,6 +436,22 @@ class FileManagementAppServiceTest {
     @Test
     void listStorageSpaces_shouldRejectBlankUsernameBeforeMapperAccess() {
         assertThatThrownBy(() -> service.listStorageSpaces(blankUsernameUser(), 1, 2))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileStorageSpaceMapper);
+    }
+
+    @Test
+    void listStorageSpaces_shouldRejectWhenLivePermissionsLoseManagePermissionBeforeMapperAccess() {
+        CurrentUser currentUser = currentUser("system:file:manage");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("system:file:view"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.listStorageSpaces(currentUser, 1, 2))
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
         verifyNoInteractions(fileStorageSpaceMapper);
@@ -481,6 +595,22 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void deleteStorageSpace_shouldRejectWhenLivePermissionsLoseDeletePermissionBeforePersistence() {
+        CurrentUser currentUser = currentUser("system:file:manage:delete");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("system:file:manage"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.deleteStorageSpace(currentUser, 5L))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileStorageSpaceMapper, fileObjectMapper);
+    }
+
+    @Test
     void storageSpaceWritesShouldBindOriginalProviderKeyStatusAndDefaultFlag() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/file/app/FileManagementAppService.java"));
 
@@ -550,6 +680,13 @@ class FileManagementAppServiceTest {
 
     private CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
+        currentUser.setUserUuid("user-uuid-11");
+        currentUser.setPermissionsVersion("permissions-1");
+        return currentUser;
+    }
+
+    private CurrentUser currentUser(String... permissions) {
+        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of(permissions));
         currentUser.setUserUuid("user-uuid-11");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;

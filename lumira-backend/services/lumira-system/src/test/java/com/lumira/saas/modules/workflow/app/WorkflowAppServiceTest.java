@@ -15,6 +15,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.workflow.dto.WorkflowDTO;
 import com.lumira.saas.modules.workflow.vo.WorkflowVO;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ class WorkflowAppServiceTest {
     void saveDraftShouldRejectMissingSessionIdBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkflowAppService service = service(jdbcTemplate);
-        CurrentUser currentUser = user(1001L, Set.of(), Set.of("workflow:definition:config"));
+        CurrentUser currentUser = user(1001L, Set.of(), Set.of("workflow:config"));
         currentUser.setSessionId(null);
 
         assertThatThrownBy(() -> service.saveDraft(currentUser, "EXPERT_APPLICATION", new WorkflowDTO.DefinitionSaveRequest()))
@@ -153,11 +154,75 @@ class WorkflowAppServiceTest {
     }
 
     @Test
+    void approveTaskShouldRejectTrustedUserIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        WorkflowAppService service = service(jdbcTemplate, permissionSnapshotService, systemInternalApi, null, null);
+
+        assertThatThrownBy(() -> service.approveTask(user(1001L, Set.of(), Set.of("workflow:approve")), 9001L, "ok"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(jdbcTemplate);
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(any(), anyString());
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("workflow:view")));
+        WorkflowAppService service = service(jdbcTemplate, permissionSnapshotService, systemInternalApi, null, null);
+        CurrentUser currentUser = user(1001L, Set.of(), Set.of("workflow:view"));
+        currentUser.setSimulatedRoleId(0L);
+        Method method = WorkflowAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(any(), anyString(), any());
+    }
+
+    @Test
     void publishShouldRequireConfigPermissionBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkflowAppService service = service(jdbcTemplate);
 
         assertThatThrownBy(() -> service.publish(user(1001L, Set.of(), Set.of()), "EXPERT_APPLICATION"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void saveDraftShouldRejectLegacyDefinitionConfigPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        WorkflowAppService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.saveDraft(user(1001L, Set.of(), Set.of("workflow:definition:config")), "EXPERT_APPLICATION", validDefinition()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void publishShouldRejectLegacyDefinitionConfigPermissionBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        WorkflowAppService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.publish(user(1001L, Set.of(), Set.of("workflow:definition:config")), "EXPERT_APPLICATION"))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
@@ -195,6 +260,21 @@ class WorkflowAppServiceTest {
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
         assertThatThrownBy(() -> service.saveDraft(currentUser, "EXPERT_APPLICATION", invalidApprover))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void saveDraftShouldRejectApprovalNodeWithoutApproversBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        WorkflowAppService service = service(jdbcTemplate);
+        WorkflowDTO.DefinitionSaveRequest invalidDefinition = validDefinition();
+        invalidDefinition.getNodes().get(1).setApproverUserIds(List.of());
+        invalidDefinition.getNodes().get(1).setApproverRoleIds(List.of());
+
+        assertThatThrownBy(() -> service.saveDraft(user(1001L, Set.of(), Set.of("workflow:config")), "EXPERT_APPLICATION", invalidDefinition))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
 
@@ -253,7 +333,9 @@ class WorkflowAppServiceTest {
         verify(jdbcTemplate).queryForObject(sql.capture(), eq(Long.class), eq("PENDING"), eq(1001L), eq("user-uuid-1001"));
         assertThat(sql.getValue())
                 .contains("t.approver_user_id = ? and t.approver_user_uuid = ?")
-                .doesNotContain("approver_role_id in");
+                .doesNotContain("approver_role_id in")
+                .doesNotContain("approver_user_id is null")
+                .doesNotContain("approver_role_id is null");
     }
 
     @Test
@@ -369,6 +451,17 @@ class WorkflowAppServiceTest {
     }
 
     @Test
+    void expertApprovalEventPayloadShouldCarrySimulatedRoleIdWhenPresent() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/workflow/app/WorkflowAppService.java"));
+
+        assertThat(source).contains(
+                "Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());",
+                "payload.put(\"userUuid\", userUuid);",
+                "payload.put(\"simulatedRoleId\", simulatedRoleId);"
+        );
+    }
+
+    @Test
     void workflowDefinitionWritesShouldBindBusinessTypeStatusAndVersion() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/workflow/app/WorkflowAppService.java"));
 
@@ -462,6 +555,26 @@ class WorkflowAppServiceTest {
     }
 
     @Test
+    void publishShouldRejectStoredDefinitionWithApprovalNodeMissingApproversBeforeUpdate() {
+        MyBatisQueryOperations jdbcTemplate = runtimeDefinitionWithUnassignedApprovalJdbcTemplate();
+        WorkflowAppService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.publish(user(1001L, Set.of(), Set.of("workflow:config")), "EXPERT_APPLICATION"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
+    void startWorkflowShouldRejectStoredDefinitionWithApprovalNodeMissingApproversBeforeInsert() {
+        MyBatisQueryOperations jdbcTemplate = runtimeDefinitionWithUnassignedApprovalJdbcTemplate();
+        WorkflowAppService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.startWorkflow(user(1001L, Set.of(), Set.of("workflow:view")), "EXPERT_APPLICATION", 501L, "exp-001", "Ada", Map.of()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
     void listLogsShouldRejectUserWithoutInstanceRelationship() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any(), any(), any(), any(), any())).thenReturn(0L);
@@ -508,6 +621,51 @@ class WorkflowAppServiceTest {
         verify(jdbcTemplate, never()).queryForObject(anyString(), eq(Long.class), any());
     }
 
+    @Test
+    void getDefinitionShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        WorkflowAppService service = new WorkflowAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                mock(PlatformEventPublisher.class),
+                mock(OperationAuditService.class),
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.getDefinition(user(1001L, Set.of(), Set.of("workflow:view")), "EXPERT_APPLICATION"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(jdbcTemplate, never()).queryForObject(anyString(), eq(Long.class), any());
+    }
+
+    @Test
+    void getDefinitionShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        WorkflowAppService service = new WorkflowAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                mock(PlatformEventPublisher.class),
+                mock(OperationAuditService.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.getDefinition(user(1001L, Set.of(), Set.of("workflow:view")), "EXPERT_APPLICATION"))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+
+        verify(jdbcTemplate, never()).queryForObject(anyString(), eq(Long.class), any());
+    }
+
     private WorkflowAppService service(MyBatisQueryOperations jdbcTemplate) {
         return service(jdbcTemplate, null);
     }
@@ -531,6 +689,43 @@ class WorkflowAppServiceTest {
             OperationAuditService operationAuditService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        if (sessionAuthenticationService != null && systemInternalApi == null) {
+            return new WorkflowAppService(
+                    jdbcTemplate,
+                    new ObjectMapper(),
+                    mock(PlatformEventPublisher.class),
+                    operationAuditService == null ? mock(OperationAuditService.class) : operationAuditService,
+                    permissionSnapshotService,
+                    sessionAuthenticationService
+            );
+        }
+        if (systemInternalApi != null && sessionAuthenticationService == null) {
+            return new WorkflowAppService(
+                    jdbcTemplate,
+                    new ObjectMapper(),
+                    mock(PlatformEventPublisher.class),
+                    operationAuditService == null ? mock(OperationAuditService.class) : operationAuditService,
+                    permissionSnapshotService,
+                    systemInternalApi
+            );
+        }
+        if (systemInternalApi == null && sessionAuthenticationService == null) {
+            if (permissionSnapshotService == null) {
+                return new WorkflowAppService(
+                        jdbcTemplate,
+                        new ObjectMapper(),
+                        mock(PlatformEventPublisher.class),
+                        operationAuditService == null ? mock(OperationAuditService.class) : operationAuditService
+                );
+            }
+            return new WorkflowAppService(
+                    jdbcTemplate,
+                    new ObjectMapper(),
+                    mock(PlatformEventPublisher.class),
+                    operationAuditService == null ? mock(OperationAuditService.class) : operationAuditService,
+                    permissionSnapshotService
+            );
+        }
         return new WorkflowAppService(
                 jdbcTemplate,
                 new ObjectMapper(),
@@ -774,5 +969,74 @@ class WorkflowAppServiceTest {
                 "target_node_key", "end",
                 "sort_order", 1
         );
+    }
+
+    private MyBatisQueryOperations runtimeDefinitionWithUnassignedApprovalJdbcTemplate() {
+        return new MyBatisQueryOperations() {
+            @Override
+            public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+                try {
+                    if (sql.contains("from workflow_definition")) {
+                        return List.of(rowMapper.mapRow(activeDefinitionRow(), 0));
+                    }
+                    throw new IllegalStateException("Unexpected query: " + sql);
+                } catch (Exception exception) {
+                    throw new IllegalStateException(exception);
+                }
+            }
+
+            @Override
+            public int update(String sql, Object... args) {
+                throw new IllegalStateException("Unexpected update: " + sql);
+            }
+
+            @Override
+            public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+                throw new IllegalStateException("Unexpected queryForObject: " + sql);
+            }
+
+            @Override
+            public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args) {
+                throw new IllegalStateException("Unexpected mapped queryForObject: " + sql);
+            }
+
+            @Override
+            public List<Map<String, Object>> queryForList(String sql, Object... args) {
+                if (sql.contains("from workflow_node")) {
+                    return List.of(
+                            activeStartNodeMap(),
+                            Map.of(
+                                    "id", 102L,
+                                    "node_key", "approval",
+                                    "node_type", "APPROVAL",
+                                    "name", "Review",
+                                    "approver_user_ids_json", "[]",
+                                    "approver_role_ids_json", "[]",
+                                    "approval_mode", "ALL"
+                            ),
+                            activeEndNodeMap()
+                    );
+                }
+                if (sql.contains("from workflow_edge")) {
+                    return List.of(
+                            Map.of(
+                                    "id", 201L,
+                                    "edge_key", "start-approval",
+                                    "source_node_key", "start",
+                                    "target_node_key", "approval",
+                                    "sort_order", 1
+                            ),
+                            Map.of(
+                                    "id", 202L,
+                                    "edge_key", "approval-end",
+                                    "source_node_key", "approval",
+                                    "target_node_key", "end",
+                                    "sort_order", 2
+                            )
+                    );
+                }
+                throw new IllegalStateException("Unexpected queryForList: " + sql);
+            }
+        };
     }
 }

@@ -97,6 +97,7 @@ public class SystemVerificationSettingsAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final Cache<String, Map<String, String>> configSnapshotCache;
     private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
     private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
@@ -119,7 +120,8 @@ public class SystemVerificationSettingsAppService {
                 readModelVersionService,
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -135,6 +137,32 @@ public class SystemVerificationSettingsAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                jdbcTemplate,
+                properties,
+                smtpMailService,
+                wechatLoginSettingsService,
+                fieldCryptoService,
+                readModelVersionService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private SystemVerificationSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            SystemVerificationProperties properties,
+            SmtpMailService smtpMailService,
+            WechatLoginSettingsService wechatLoginSettingsService,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
@@ -144,6 +172,7 @@ public class SystemVerificationSettingsAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.configSnapshotCache = CacheBuilder.newBuilder()
                 .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
                 .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -173,7 +202,8 @@ public class SystemVerificationSettingsAppService {
                 readModelVersionService,
                 permissionSnapshotService,
                 null,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                false
         );
     }
 
@@ -282,11 +312,11 @@ public class SystemVerificationSettingsAppService {
         boolean enabled = request.getEnabled() == null ? isTotpEnabled() : request.getEnabled();
         boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled() : request.getEmailLoginEnabled();
         boolean passwordLoginEnabled = request.getPasswordLoginEnabled() == null ? isPasswordLoginEnabled() : request.getPasswordLoginEnabled();
-        upsertPlatformConfigValue(TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId, operatorUuid);
-        upsertPlatformConfigValue(EMAIL_LOGIN_ENABLED_KEY, "邮箱验证码登录", String.valueOf(emailLoginEnabled), "是否启用邮箱验证码登录", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSWORD_LOGIN_ENABLED_KEY, "密码登录", String.valueOf(passwordLoginEnabled), "是否启用账号密码登录", operatorId, operatorUuid);
+        upsertPlatformConfigValue(TOTP_CONFIG_ENABLED_KEY, "2FA enabled", String.valueOf(enabled), "Whether 2FA login is enabled", operatorId, operatorUuid);
+        upsertPlatformConfigValue(EMAIL_LOGIN_ENABLED_KEY, "Email code login", String.valueOf(emailLoginEnabled), "Whether email code login is enabled", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSWORD_LOGIN_ENABLED_KEY, "Password login", String.valueOf(passwordLoginEnabled), "Whether password login is enabled", operatorId, operatorUuid);
         if (request.getLoginModeOrder() != null) {
-            upsertPlatformConfigValue(LOGIN_MODE_ORDER_KEY, "登录方式排序", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "登录页分段控制器展示顺序", operatorId, operatorUuid);
+            upsertPlatformConfigValue(LOGIN_MODE_ORDER_KEY, "Login mode order", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "Display order of login modes", operatorId, operatorUuid);
         }
         markPublicBootstrapChanged("verification-settings-update");
         return getVerificationSettings();
@@ -307,14 +337,14 @@ public class SystemVerificationSettingsAppService {
         String endpoint = sanitizeText(request.getEndpoint(), current.endpoint());
         String region = sanitizeText(request.getRegion(), current.region());
 
-        upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "短信验证码启用", String.valueOf(Boolean.TRUE.equals(enabled)), "是否启用短信验证码服务", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", provider, "短信验证码服务提供方", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "短信签名", signName, "短信验证码签名", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", templateCode, "短信验证码模板编码", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", accessKeyId, "短信验证码访问密钥 ID", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", accessKeySecret, "短信验证码访问密钥 Secret", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", endpoint, "短信验证码服务端点", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "短信服务地域", region, "短信验证码服务地域", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "SMS verification enabled", String.valueOf(Boolean.TRUE.equals(enabled)), "Whether SMS verification service is enabled", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "SMS provider", provider, "SMS verification provider", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "SMS sign name", signName, "SMS verification sign name", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_TEMPLATE_CODE_KEY, "SMS template code", templateCode, "SMS verification template code", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_ID_KEY, "SMS Access Key ID", accessKeyId, "SMS verification access key id", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "SMS Access Key Secret", accessKeySecret, "SMS verification access key secret", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "SMS endpoint", endpoint, "SMS verification endpoint", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "SMS region", region, "SMS verification region", operatorId, operatorUuid);
 
         markPublicBootstrapChanged("sms-settings-update");
         return getSmsSettings();
@@ -323,14 +353,14 @@ public class SystemVerificationSettingsAppService {
     public SystemVO.SmsVerificationSettingsVO resetSmsSettings(CurrentUser currentUser) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
-        upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "短信验证码启用", "false", "是否启用短信验证码服务", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", "aliyun", "短信验证码服务提供方", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "短信签名", "", "短信验证码签名", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", "", "短信验证码模板编码", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", "", "短信验证码访问密钥 ID", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", "", "短信验证码访问密钥 Secret", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", "", "短信验证码服务端点", operatorId, operatorUuid);
-        upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "短信服务地域", "", "短信验证码服务地域", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "SMS verification enabled", "false", "Whether SMS verification service is enabled", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "SMS provider", "aliyun", "SMS verification provider", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "SMS sign name", "", "SMS verification sign name", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_TEMPLATE_CODE_KEY, "SMS template code", "", "SMS verification template code", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_ID_KEY, "SMS Access Key ID", "", "SMS verification access key id", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "SMS Access Key Secret", "", "SMS verification access key secret", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "SMS endpoint", "", "SMS verification endpoint", operatorId, operatorUuid);
+        upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "SMS region", "", "SMS verification region", operatorId, operatorUuid);
         markPublicBootstrapChanged("sms-settings-reset");
         return getSmsSettings();
     }
@@ -363,13 +393,13 @@ public class SystemVerificationSettingsAppService {
                 .toList();
         int ttl = request.getChallengeTtlSeconds() == null ? current.getChallengeTtlSeconds() : request.getChallengeTtlSeconds();
 
-        upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "通行密钥启用", String.valueOf(enabled), "是否启用通行密钥登录", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", String.valueOf(passwordless), "是否允许发现式凭据无账号登录", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", String.valueOf(selfBinding), "是否允许用户在个人中心自助绑定通行密钥", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_RP_ID_KEY, "通行密钥 RP ID", rpId, "WebAuthn RP ID", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", rpName, "WebAuthn RP 显示名称", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", String.join("\n", origins), "WebAuthn 允许的前端 Origin", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", String.valueOf(ttl), "WebAuthn challenge 有效期秒数", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "Passkey enabled", String.valueOf(enabled), "Whether passkey login is enabled", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "Passkey passwordless login", String.valueOf(passwordless), "Whether discoverable credentials may log in without account input", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "Passkey self binding", String.valueOf(selfBinding), "Whether users may self-bind passkeys in personal settings", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_RP_ID_KEY, "Passkey RP ID", rpId, "WebAuthn RP ID", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "Passkey RP name", rpName, "WebAuthn RP display name", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "Passkey allowed origins", String.join("\\n", origins), "Allowed frontend origins for WebAuthn", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "Passkey challenge TTL", String.valueOf(ttl), "WebAuthn challenge lifetime in seconds", operatorId, operatorUuid);
         markPublicBootstrapChanged("passkey-settings-update");
         return getPasskeySettings();
     }
@@ -377,13 +407,13 @@ public class SystemVerificationSettingsAppService {
     public SystemVO.PasskeySettingsVO resetPasskeySettings(CurrentUser currentUser) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
-        upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "通行密钥启用", "false", "是否启用通行密钥登录", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", "false", "是否允许发现式凭据无账号登录", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", "true", "是否允许用户在个人中心自助绑定通行密钥", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_RP_ID_KEY, "通行密钥 RP ID", "", "WebAuthn RP ID", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", "", "WebAuthn RP 显示名称", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", "", "WebAuthn 允许的前端 Origin", operatorId, operatorUuid);
-        upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", "120", "WebAuthn challenge 有效期秒数", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "Passkey enabled", "false", "Whether passkey login is enabled", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "Passkey passwordless login", "false", "Whether discoverable credentials may log in without account input", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "Passkey self binding", "true", "Whether users may self-bind passkeys in personal settings", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_RP_ID_KEY, "Passkey RP ID", "", "WebAuthn RP ID", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "Passkey RP name", "", "WebAuthn RP display name", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "Passkey allowed origins", "", "Allowed frontend origins for WebAuthn", operatorId, operatorUuid);
+        upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "Passkey challenge TTL", "120", "WebAuthn challenge lifetime in seconds", operatorId, operatorUuid);
         markPublicBootstrapChanged("passkey-settings-reset");
         return getPasskeySettings();
     }
@@ -774,6 +804,9 @@ public class SystemVerificationSettingsAppService {
             return currentUser;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -793,18 +826,33 @@ public class SystemVerificationSettingsAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return currentUser;
+        }
         CurrentUser refreshed = new CurrentUser(
                 userId,
                 currentUser.getUsername(),
@@ -822,7 +870,7 @@ public class SystemVerificationSettingsAppService {
         refreshed.setPermissionsVersion(snapshot.getVersion());
         refreshed.setDefaultHomePath(snapshot.getDefaultHomePath());
         refreshed.setRequiresPasswordChange(currentUser.getRequiresPasswordChange());
-        refreshed.setSimulatedRoleId(currentUser.getSimulatedRoleId());
+        refreshed.setSimulatedRoleId(simulatedRoleId);
         refreshed.setLoginType(currentUser.getLoginType());
         copyTrustedCurrentUser(currentUser, refreshed);
         return currentUser;
@@ -833,6 +881,10 @@ public class SystemVerificationSettingsAppService {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
         return authenticatedAccess.currentUser();
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
@@ -851,7 +903,7 @@ public class SystemVerificationSettingsAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

@@ -23,6 +23,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -60,13 +62,139 @@ class ExportTaskServiceTest {
     }
 
     @Test
+    void markRunningFromTrustedSnapshotShouldBypassRevokedSessionTicketAndUseLiveSnapshot() {
+        ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  alice-live  ", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:user:export")));
+        when(exportTaskMapper.update(any(ExportTaskEntity.class), any(LambdaUpdateWrapper.class))).thenReturn(1);
+        ExportTaskService service = new ExportTaskService(
+                exportTaskMapper,
+                fileInternalApi,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionId("internal-export-task-9001");
+        currentUser.setUsername("alice-stale");
+
+        service.markRunningFromTrustedSnapshot(currentUser, 9001L);
+
+        assertThat(currentUser.getUsername()).isEqualTo("alice-live");
+        verify(exportTaskMapper).update(any(ExportTaskEntity.class), any(LambdaUpdateWrapper.class));
+        verify(sessionAuthenticationService, never()).authenticateSessionTicket(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void markRunningFromTrustedSnapshotShouldRejectBlankLiveUsernameBeforeUpdate() {
+        ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        ExportTaskService service = new ExportTaskService(
+                exportTaskMapper,
+                fileInternalApi,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> service.markRunningFromTrustedSnapshot(currentUser(), 9001L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(exportTaskMapper, never()).update(any(ExportTaskEntity.class), any(LambdaUpdateWrapper.class));
+    }
+
+    @Test
+    void markRunningFromTrustedSnapshotShouldRejectRevokedSimulatedRoleBeforeUpdate() {
+        ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadGrantedRoleSnapshot(1001L, "user-uuid-1001", 77L))
+                .thenThrow(new BizException(ErrorCode.FORBIDDEN, "Trusted simulated role is no longer granted"));
+        ExportTaskService service = new ExportTaskService(
+                exportTaskMapper,
+                fileInternalApi,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionId("internal-export-task-9001");
+        currentUser.setSimulatedRoleId(77L);
+
+        assertThatThrownBy(() -> service.markRunningFromTrustedSnapshot(currentUser, 9001L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(exportTaskMapper, never()).update(any(ExportTaskEntity.class), any(LambdaUpdateWrapper.class));
+    }
+
+    @Test
+    void markRunningFromTrustedSnapshotShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() {
+        ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:user:export")));
+        when(exportTaskMapper.update(any(ExportTaskEntity.class), any(LambdaUpdateWrapper.class))).thenReturn(1);
+        ExportTaskService service = new ExportTaskService(
+                exportTaskMapper,
+                fileInternalApi,
+                new ObjectMapper(),
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSessionId("internal-export-task-9001");
+        currentUser.setSimulatedRoleId(0L);
+
+        service.markRunningFromTrustedSnapshot(currentUser, 9001L);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService, org.mockito.Mockito.atLeastOnce()).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(anyLong(), anyString(), anyLong());
+    }
+
+    @Test
     void uploadExportFileShouldStoreAsPersonalFile() {
         ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         ExportTaskService service = new ExportTaskService(exportTaskMapper, fileInternalApi, new ObjectMapper());
         CurrentUser currentUser = currentUser();
 
-        when(fileInternalApi.uploadDocumentForUser(any(), eq("user-export"), eq("export,user"), eq("report"), eq(null), eq(1001L), eq("user-uuid-1001"), eq("alice")))
+        when(fileInternalApi.uploadDocumentForUser(any(), eq("user-export"), eq("export,user"), eq("report"), eq(null), eq(1001L), eq("user-uuid-1001"), eq("alice"), eq(null)))
                 .thenReturn(fileObject(501L));
 
         FileObjectDTO uploaded = service.uploadExportFile(currentUser, new byte[]{1, 2, 3}, "users.xlsx", "user-export", "export,user", "report");
@@ -80,7 +208,8 @@ class ExportTaskServiceTest {
                 eq(null),
                 eq(1001L),
                 eq("user-uuid-1001"),
-                eq("alice")
+                eq("alice"),
+                eq(null)
         );
     }
 
@@ -132,7 +261,7 @@ class ExportTaskServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:user:export")));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  alice-live  ", "ENABLED"));
         ExportTaskService service = new ExportTaskService(exportTaskMapper, fileInternalApi, new ObjectMapper(), permissionSnapshotService, systemInternalApi, null);
         ArgumentCaptor<ExportTaskEntity> entityCaptor = ArgumentCaptor.forClass(ExportTaskEntity.class);
         when(exportTaskMapper.insert(any(ExportTaskEntity.class))).thenReturn(1);
@@ -156,6 +285,45 @@ class ExportTaskServiceTest {
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "DISABLED"));
         ExportTaskService service = new ExportTaskService(exportTaskMapper, fileInternalApi, new ObjectMapper(), permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createTask(currentUser(), "system:user", new Object(), Set.of("username").stream().toList(), 1L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(exportTaskMapper, never()).insert(any(ExportTaskEntity.class));
+    }
+
+    @Test
+    void createTaskShouldRejectBlankLiveUsernameBeforeInsert() {
+        ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        ExportTaskService service = new ExportTaskService(exportTaskMapper, fileInternalApi, new ObjectMapper(), permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.createTask(currentUser(), "system:user", new Object(), Set.of("username").stream().toList(), 1L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+
+        verify(exportTaskMapper, never()).insert(any(ExportTaskEntity.class));
+    }
+
+    @Test
+    void createTaskShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        ExportTaskMapper exportTaskMapper = mock(ExportTaskMapper.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        ExportTaskService service = new ExportTaskService(
+                exportTaskMapper,
+                fileInternalApi,
+                new ObjectMapper(),
+                null,
+                null,
+                null
+        );
 
         assertThatThrownBy(() -> service.createTask(currentUser(), "system:user", new Object(), Set.of("username").stream().toList(), 1L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -204,8 +372,8 @@ class ExportTaskServiceTest {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/export/ExportTaskService.java"));
 
         assertThat(source)
-                .contains(".eq(ExportTaskEntity::getCreatedBy, currentUserId(currentUser))")
-                .contains(".eq(ExportTaskEntity::getCreatedByUuid, trustedUserUuid(currentUser))")
+                .contains(".eq(ExportTaskEntity::getCreatedBy, currentUserId(currentUser, bypassSessionAuthentication))")
+                .contains(".eq(ExportTaskEntity::getCreatedByUuid, trustedUserUuid(currentUser, bypassSessionAuthentication))")
                 .contains(".eq(ExportTaskEntity::getStatus, STATUS_PENDING)")
                 .contains(".eq(ExportTaskEntity::getStatus, STATUS_RUNNING)")
                 .contains(".in(ExportTaskEntity::getStatus, STATUS_PENDING, STATUS_RUNNING)")

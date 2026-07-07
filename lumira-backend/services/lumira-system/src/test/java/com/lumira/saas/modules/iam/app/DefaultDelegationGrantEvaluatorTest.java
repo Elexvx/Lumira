@@ -151,6 +151,18 @@ class DefaultDelegationGrantEvaluatorTest {
         assertThat(jdbc.subjectLookupCount).isZero();
     }
 
+    @Test
+    void missingTrustedUserResolverFailsClosedInStrictMode() {
+        StubQueryOperations jdbc = new StubQueryOperations();
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc, null);
+
+        DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "LOW", true, true));
+
+        assertThat(decision.verdict()).isEqualTo(AuthorizationVerdict.DENY);
+        assertThat(decision.reasonCode()).isEqualTo("DELEGATION_HUMAN_SUBJECT_UNTRUSTED");
+        assertThat(jdbc.subjectLookupCount).isZero();
+    }
+
     private AuthorizationRequest request(String toolCode, String permissionKey, String riskLevel, boolean confirmed, boolean approvalGranted) {
         CurrentUser user = trustedUser(100L, permissionKey);
         return AuthorizationRequest.aiTool(user, 300L, toolCode, permissionKey, riskLevel, confirmed, approvalGranted, Map.of());

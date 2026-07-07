@@ -1,5 +1,6 @@
 package com.lumira.saas.infrastructure.security.service;
 
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.common.exception.BizException;
@@ -150,6 +151,95 @@ class SecuritySettingsServiceTest {
 
         assertThrows(BizException.class, () -> service.updateSettings(request, trustedOperator(23L, "operator-uuid-23")));
 
+        verify(mapper, never()).listEffectiveValues(eq("PLATFORM"), any());
+        verify(mapper, never()).upsertPlatformConfig(any());
+    }
+
+    @Test
+    void updateSettingsShouldRejectOperatorWithoutConfigUpdatePermissionAfterTrustedRefresh() {
+        SysConfigMapper mapper = mock(SysConfigMapper.class);
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        CurrentUser refreshedOperator = new CurrentUser(
+                23L,
+                "operator-live",
+                "session-23",
+                1,
+                true,
+                Set.of("system:config:view"),
+                Set.of(),
+                null,
+                Set.of(),
+                Set.of(),
+                List.of()
+        );
+        refreshedOperator.setUserUuid("operator-uuid-23");
+        refreshedOperator.setPermissionsVersion("permissions-2");
+        when(sessionAuthenticationService.authenticateSessionTicket("session-23", 23L, "operator-uuid-23", null, 1, "permissions-1"))
+                .thenReturn(new SessionAuthenticationService.AuthenticatedAccess(refreshedOperator, null, false));
+
+        SecuritySettingsService service = new SecuritySettingsService(
+                mapper,
+                new SecurityProperties(),
+                null,
+                sessionAuthenticationService
+        );
+        SecuritySettingsService.SecuritySettingsSnapshot request = new SecuritySettingsService.SecuritySettingsSnapshot();
+        request.setIdleTimeoutSeconds(900L);
+        request.setAccessTokenExpireSeconds(900L);
+        request.setRefreshTokenExpireSeconds(1800L);
+        request.setAllowMultiDeviceLogin(true);
+        request.setCaptchaEnabled(true);
+        request.setCaptchaType("IMAGE");
+        request.setLoginDefenseWindowMinutes(10L);
+        request.setLoginMaxValidationAttempts(5L);
+        request.setLoginMaxFailureCount(5L);
+        request.setVerificationCodeExpireSeconds(300L);
+        request.setVerificationCodeCooldownSeconds(60L);
+        request.setPasswordMinLength(8L);
+        request.setPasswordRequireUppercase(true);
+        request.setPasswordRequireLowercase(true);
+        request.setPasswordRequireSpecialCharacter(true);
+        request.setPasswordAllowConsecutiveCharacters(true);
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateSettings(request, trustedOperator(23L, "operator-uuid-23")));
+
+        assertEquals(ErrorCode.FORBIDDEN, exception.getErrorCode());
+        assertEquals("Missing permission: system:config:update", exception.getMessage());
+        verify(mapper, never()).listEffectiveValues(eq("PLATFORM"), any());
+        verify(mapper, never()).upsertPlatformConfig(any());
+    }
+
+    @Test
+    void updateSettingsShouldRejectTrustedOperatorWhenResolverIsUnavailableInStrictMode() {
+        SysConfigMapper mapper = mock(SysConfigMapper.class);
+        SecuritySettingsService service = new SecuritySettingsService(
+                mapper,
+                new SecurityProperties(),
+                null,
+                null
+        );
+        SecuritySettingsService.SecuritySettingsSnapshot request = new SecuritySettingsService.SecuritySettingsSnapshot();
+        request.setIdleTimeoutSeconds(900L);
+        request.setAccessTokenExpireSeconds(900L);
+        request.setRefreshTokenExpireSeconds(1800L);
+        request.setAllowMultiDeviceLogin(true);
+        request.setCaptchaEnabled(true);
+        request.setCaptchaType("IMAGE");
+        request.setLoginDefenseWindowMinutes(10L);
+        request.setLoginMaxValidationAttempts(5L);
+        request.setLoginMaxFailureCount(5L);
+        request.setVerificationCodeExpireSeconds(300L);
+        request.setVerificationCodeCooldownSeconds(60L);
+        request.setPasswordMinLength(8L);
+        request.setPasswordRequireUppercase(true);
+        request.setPasswordRequireLowercase(true);
+        request.setPasswordRequireSpecialCharacter(true);
+        request.setPasswordAllowConsecutiveCharacters(true);
+
+        BizException exception = assertThrows(BizException.class, () -> service.updateSettings(request, trustedOperator(23L, "operator-uuid-23")));
+
+        assertEquals(ErrorCode.UNAUTHORIZED, exception.getErrorCode());
+        assertEquals("Trusted user resolver is unavailable", exception.getMessage());
         verify(mapper, never()).listEffectiveValues(eq("PLATFORM"), any());
         verify(mapper, never()).upsertPlatformConfig(any());
     }

@@ -40,11 +40,45 @@ class SaasSqlBootstrapCompletenessTest {
         assertThat(permissionKeys)
                 .hasSizeGreaterThanOrEqualTo(130)
                 .contains(
+                        "ai:tool-policy:view",
+                        "ai:tool-policy:manage",
+                        "ai:view",
+                        "ai:chat:send",
+                        "ai:employee:create",
+                        "ai:llm:update",
+                        "ai:knowledge:view",
+                        "ai:knowledge:document:index",
+                        "ai:tool:view",
+                        "ai:tool:execute",
                         "dashboard:view",
+                        "download:center:create",
+                        "download:center:delete",
+                        "localization:create",
+                        "localization:update",
+                        "localization:publish",
+                        "localization:rollback",
+                        "localization:sync",
+                        "message:message:view",
+                        "message:message:read",
+                        "message:message:write",
+                        "message:message:retract",
                         "system:view",
+                        "system:file:manage:delete",
+                        "system:file:publish",
                         "system:menu:view",
+                        "system:notification:write",
                         "system:user:view",
+                        "workflow:view",
+                        "workflow:config",
+                        "workflow:approve",
                         "plugin:management:view",
+                        "plugin:management:upload",
+                        "plugin:management:install",
+                        "plugin:management:upgrade",
+                        "plugin:management:rollback",
+                        "plugin:management:enable",
+                        "plugin:management:disable",
+                        "plugin:management:logs",
                         "aiadc:competition:view",
                         "expert:view",
                         "payment:view"
@@ -63,7 +97,7 @@ class SaasSqlBootstrapCompletenessTest {
 
         assertThat(normalizedSql)
                 .contains("VALUES (1001, 'admin'")
-                .contains("VALUES (1001, 1001, 0, 0, 0)")
+                .contains("VALUES (1001, '*', 'ALL', 0, 0, 0)")
                 .contains("SELECT 1001, p.`permission_key`, 0, 0, 0 FROM `sys_permission` p WHERE p.`deleted` = 0");
         assertThat(normalizedSql)
                 .contains("INSERT INTO `sys_user_role` (`user_id`, `user_uuid`, `role_id`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`)")

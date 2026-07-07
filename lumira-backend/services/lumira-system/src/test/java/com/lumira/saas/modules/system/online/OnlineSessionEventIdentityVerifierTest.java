@@ -5,6 +5,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,15 @@ class OnlineSessionEventIdentityVerifierTest {
     void hasTrustedIdentityShouldRejectDisabledUser() {
         OnlineSessionEventIdentityVerifier verifier = new OnlineSessionEventIdentityVerifier(
                 new FakeQueryOperations(List.of(row("user-uuid-1001", "DISABLED")))
+        );
+
+        assertThat(verifier.hasTrustedIdentity(event("user-uuid-1001"))).isFalse();
+    }
+
+    @Test
+    void hasTrustedIdentityShouldRejectMissingStatus() {
+        OnlineSessionEventIdentityVerifier verifier = new OnlineSessionEventIdentityVerifier(
+                new FakeQueryOperations(List.of(row("user-uuid-1001", null)))
         );
 
         assertThat(verifier.hasTrustedIdentity(event("user-uuid-1001"))).isFalse();
@@ -68,7 +78,10 @@ class OnlineSessionEventIdentityVerifierTest {
     }
 
     private static SqlRow row(String userUuid, String status) {
-        return new SqlRow(Map.of("uuid", userUuid, "status", status));
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("uuid", userUuid);
+        values.put("status", status);
+        return new SqlRow(values);
     }
 
     private static final class FakeQueryOperations extends MyBatisQueryOperations {

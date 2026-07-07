@@ -81,7 +81,6 @@ public class SystemManagementAppService {
 
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
-    private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String STATUS_ENABLED = "ENABLED";
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
@@ -198,14 +197,14 @@ public class SystemManagementAppService {
             ".private-key"
     );
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
-            shortcut("系统管理", "菜单、字典、配置与验证入口", "/settings/menus", "system:menu:view"),
-            shortcut("验证管理", "2FA 开关与短信验证码配置", "/settings/verification", "system:verification:view"),
-            shortcut("在线用户", "实时会话、踢出和封禁", "/user-center/online-users", "system:online-user:view"),
-            shortcut("个性化设置", "站点名称、Logo、Icon 和页脚信息", "/settings/personalization", "system:config:view"),
-            shortcut("安全设置", "空闲超时与 token 生命周期", "/settings/security", "system:config:view"),
-            shortcut("审计中心", "登录和操作日志", "/settings/audit", "audit:view"),
-            shortcut("通知中心", "通知归档与手动发布", "/settings/notifications", "system:notification:view"),
-            shortcut("插件管理", "插件安装、启用和运行态", "/settings/plugins", "plugin:management:view")
+            shortcut("Menu settings", "Manage menus and route permissions", "/settings/menus", "system:menu:view"),
+            shortcut("Verification settings", "Configure 2FA, login verification, and trust checks", "/settings/verification", "system:verification:view"),
+            shortcut("Online users", "View current online users and session activity", "/user-center/online-users", "system:online-user:view"),
+            shortcut("Personalization", "Configure branding, logo, and personal appearance", "/settings/personalization", "system:config:view"),
+            shortcut("Security center", "Review tokens, passwords, and security settings", "/settings/security", "system:config:view"),
+            shortcut("Audit logs", "Inspect audit records and operation history", "/settings/audit", "audit:view"),
+            shortcut("Notifications", "Configure notification channels and delivery rules", "/settings/notifications", "system:notification:view"),
+            shortcut("Plugin settings", "Manage installed plugins and runtime access", "/settings/plugins", "plugin:management:view")
     );
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
@@ -228,6 +227,7 @@ public class SystemManagementAppService {
     private final SystemRoleManagementAppService systemRoleManagementAppService;
     private final FieldCryptoService fieldCryptoService;
     private final ReadModelVersionService readModelVersionService;
+    private boolean enforceTrustedUserResolution;
     private final Cache<String, Integer> menuCountCache;
     private final Cache<String, List<SystemVO.PermissionVO>> permissionCatalogCache;
     private final Cache<Long, List<SystemVO.MenuVO>> menuTreeCache;
@@ -279,6 +279,7 @@ public class SystemManagementAppService {
         this.systemRoleManagementAppService = systemRoleManagementAppService;
         this.fieldCryptoService = fieldCryptoService;
         this.readModelVersionService = new ReadModelVersionService(jdbcTemplate);
+        this.enforceTrustedUserResolution = true;
         this.menuCountCache = CacheBuilder.newBuilder()
                 .maximumSize(MENU_COUNT_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(MENU_COUNT_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -344,6 +345,7 @@ public class SystemManagementAppService {
                 systemRoleManagementAppService,
                 fieldCryptoService
         );
+        this.enforceTrustedUserResolution = false;
     }
 
     public SystemManagementAppService(
@@ -387,6 +389,7 @@ public class SystemManagementAppService {
                 systemRoleManagementAppService,
                 fieldCryptoService
         );
+        this.enforceTrustedUserResolution = false;
     }
 
     public SystemManagementAppService(
@@ -428,6 +431,7 @@ public class SystemManagementAppService {
                 defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
                 null
         );
+        this.enforceTrustedUserResolution = false;
     }
 
     public SystemManagementAppService(
@@ -470,6 +474,7 @@ public class SystemManagementAppService {
                 systemRoleManagementAppService,
                 null
         );
+        this.enforceTrustedUserResolution = false;
     }
 
     public SystemManagementAppService(
@@ -510,6 +515,7 @@ public class SystemManagementAppService {
                 defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
                 null
         );
+        this.enforceTrustedUserResolution = false;
     }
 
     private static SystemUserManagementAppService defaultUserManagementAppService(
@@ -633,15 +639,15 @@ public class SystemManagementAppService {
         String requestedEmail = normalizeNullableText(request.getEmail());
         if (request.getMobile() != null && contactValueChanged(user.getMobile(), requestedMobile)) {
             if (!systemVerificationAppService.isContactBindAvailable("mobile")) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用短信验证码，暂不允许绑定手机号");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Mobile binding is not enabled on this platform");
             }
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "手机号绑定需要验证码，请在已绑定登录方式中修改");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Mobile number changed, please complete mobile verification first");
         }
         if (request.getEmail() != null && contactValueChanged(user.getEmail(), requestedEmail)) {
             if (!systemVerificationAppService.isContactBindAvailable("email")) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Email binding is not enabled on this platform");
             }
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱绑定需要验证码，请在已绑定登录方式中修改");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Email changed, please complete email verification first");
         }
         String persistedMobile = normalizeNullableText(user.getMobile());
         String persistedEmail = normalizeNullableText(user.getEmail());
@@ -673,14 +679,14 @@ public class SystemManagementAppService {
         if (request.getExtraProfileValues() != null) {
             updateCurrentUserExtraProfileValues(currentUser, user.getId(), currentUser.getUserUuid(), request.getExtraProfileValues());
         }
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "Update personal profile");
         return buildCurrentUser(currentUser);
     }
 
     @Transactional
     public CurrentUserVO updateCurrentUserAvatar(CurrentUser currentUser, String avatarUrl) {
         if (!StringUtils.hasText(avatarUrl)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "头像地址不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Avatar URL cannot be blank");
         }
         SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
         String normalizedAvatarUrl = normalizeOptionalProfileUrl(avatarUrl, "Avatar URL");
@@ -699,7 +705,7 @@ public class SystemManagementAppService {
         );
         requireSystemWrite(updated, "User profile changed, please retry");
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "更新个人头像");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "Update profile avatar");
         return buildCurrentUser(currentUser);
     }
 
@@ -713,10 +719,10 @@ public class SystemManagementAppService {
         contactBindRequest.setVerificationCode(request.getVerificationCode());
         String email = normalizeContactValue("email", request.getEmail());
         if (!systemVerificationAppService.isContactBindAvailable("email")) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Email binding is not enabled on this platform");
         }
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Verification challenge and code are required");
         }
         contactBindRequest.setValue(email);
         return updateCurrentUserContactBinding(currentUser, contactBindRequest);
@@ -817,10 +823,10 @@ public class SystemManagementAppService {
         String value = normalizeContactValue(contactType, request.getValue());
 
         if (!systemVerificationAppService.isContactBindAvailable(contactType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用该绑定方式");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Contact binding is not enabled on this platform");
         }
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Verification challenge and code are required");
         }
         systemVerificationAppService.completeContactBind(
                 currentUser.getUserId(),
@@ -862,11 +868,11 @@ public class SystemManagementAppService {
             );
             requireSystemWrite(updated, "User profile changed, please retry");
         } else {
-            throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Contact binding record does not exist");
         }
 
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "Update contact binding");
         return buildCurrentUser(currentUser);
     }
 
@@ -894,7 +900,7 @@ public class SystemManagementAppService {
                 user.getRegion(),
                 locale
         );
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "Update locale settings");
         return buildCurrentUser(currentUser);
     }
 
@@ -910,10 +916,10 @@ public class SystemManagementAppService {
         String confirmPassword = normalizeNullableText(request.getConfirmPassword());
 
         if (!StringUtils.hasText(currentPassword) || !StringUtils.hasText(newPassword) || !StringUtils.hasText(confirmPassword)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入完整的密码信息");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Please enter complete password information");
         }
         if (!newPassword.equals(confirmPassword)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "两次输入的新密码不一致");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "New password and confirmation password do not match");
         }
         String trustedUserUuid = currentUser.getUserUuid();
         String currentPasswordHash = iamUserService.findActiveCredential(user.getId(), trustedUserUuid, "PASSWORD")
@@ -924,7 +930,7 @@ public class SystemManagementAppService {
             currentPasswordHash = user.getPasswordHash();
         }
         if (!StringUtils.hasText(currentPasswordHash) || !passwordEncoder.matches(currentPassword, currentPasswordHash)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "当前密码不正确");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Current password is incorrect");
         }
         if (fallbackToSysUserPassword) {
             iamUserService.upsertPasswordCredential(user.getId(), trustedUserUuid, user.getPasswordHash());
@@ -947,7 +953,7 @@ public class SystemManagementAppService {
         iamUserService.upsertPasswordCredential(user.getId(), trustedUserUuid, encodedPassword);
         authSessionStore.markPasswordChangeResolved(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getSessionId(), true);
         authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getSessionId(), true);
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "Update login password");
         return true;
     }
 
@@ -956,7 +962,7 @@ public class SystemManagementAppService {
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser, String pageKey) {
-        return systemProfileSettingsAppService.getProfileFieldSettings(currentUser, pageKey);
+        return systemProfileSettingsAppService.getProfileFieldSettingsForManagement(currentUser, pageKey);
     }
 
     @Transactional
@@ -1056,6 +1062,7 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
+        requirePermission(currentUser, "system:role:view");
         return listPermissionsByVersion(currentPermissionCatalogVersion());
     }
 
@@ -1094,6 +1101,7 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
+        requirePermission(currentUser, "system:role:view");
         long menuTreeVersion = currentMenuTreeVersion();
         String permissionCatalogVersion = currentPermissionCatalogVersion();
         String cacheKey = permissionTreeCacheKey(menuTreeVersion, permissionCatalogVersion);
@@ -1113,6 +1121,7 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
+        requirePermission(currentUser, "system:menu:view");
         return loadMenusByVersion(currentUser, currentMenuTreeVersion());
     }
 
@@ -1310,7 +1319,7 @@ public class SystemManagementAppService {
                 "reorder",
                 "UPDATE",
                 "SUCCESS",
-                "调整菜单顺序"
+                "Reorder menus"
         );
         bumpMenuTreeReadModelVersion("system.menu.reorder");
         invalidateMenuCountCache();
@@ -1318,20 +1327,8 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.MenuVO getMenu(CurrentUser currentUser, Long menuId) {
-        SystemVO.MenuVO menu = queryOne(
-                """
-                        select id, parent_id as parentId, menu_code as menuCode,
-                               menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
-                               permission_key as permissionKey, status
-                        from sys_menu
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.MenuVO.class,
-                menuId
-        );
-        if (menu == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
-        }
+        requirePermission(currentUser, "system:menu:view");
+        SystemVO.MenuVO menu = loadMenu(menuId);
         ensureEditableMenu(menu);
         return menu;
     }
@@ -1346,7 +1343,7 @@ public class SystemManagementAppService {
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
         bumpMenuTreeReadModelVersion("system.menu.create");
         invalidateMenuCountCache();
-        return getMenu(currentUser, menuId);
+        return loadMenu(menuId);
     }
 
     @Transactional
@@ -1360,12 +1357,12 @@ public class SystemManagementAppService {
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
         bumpMenuTreeReadModelVersion("system.menu.update");
         invalidateMenuCountCache();
-        return getMenu(currentUser, menuId);
+        return loadMenu(menuId);
     }
 
     @Transactional
     public boolean updateMenuStatus(CurrentUser currentUser, Long menuId, String status) {
-        requirePermission(currentUser, "system:menu:update");
+        requirePermission(currentUser, "system:menu:status");
         requirePositiveId(menuId, "Menu id is required");
         SystemVO.MenuVO menu = ensureEditableMenu(menuId);
         int updated = jdbcTemplate.update(
@@ -1399,16 +1396,16 @@ public class SystemManagementAppService {
                 menuId
         );
         if (hasChildMenu) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请先删除子菜单后再删除当前菜单");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "The menu has child menus and cannot be deleted");
         }
-        SystemVO.MenuVO menu = getMenu(currentUser, menuId);
+        SystemVO.MenuVO menu = editableMenu;
         if (StringUtils.hasText(menu.getPermissionKey())) {
             boolean permissionReferenced = jdbcTemplate.exists(
                     "select 1 from sys_role_permission where permission_key = ? and deleted = 0 limit 1",
                     menu.getPermissionKey()
             );
             if (permissionReferenced) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "菜单权限仍被角色引用，请先调整角色权限");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "The menu permission is referenced by roles and cannot be deleted");
             }
         }
         int updated = jdbcTemplate.update(
@@ -1433,6 +1430,7 @@ public class SystemManagementAppService {
     }
 
     public PageResponse<SystemVO.DictTypeVO> listDictTypes(CurrentUser currentUser, String dictCode, String dictName, String status, long pageNo, long pageSize) {
+        requirePermission(currentUser, "system:dict:view");
         String baseSql = """
                 from sys_dict_type t
                 where t.deleted = 0
@@ -1459,20 +1457,8 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.DictTypeVO getDictType(CurrentUser currentUser, Long id) {
-        SystemVO.DictTypeVO type = queryOne(
-                """
-                        select id, dict_code as dictCode, dict_name as dictName,
-                               status, is_system as isSystem, remark
-                        from sys_dict_type
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.DictTypeVO.class,
-                id
-        );
-        if (type == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "字典类型不存在");
-        }
-        return type;
+        requirePermission(currentUser, "system:dict:view");
+        return loadDictType(id);
     }
 
     @Transactional
@@ -1481,7 +1467,7 @@ public class SystemManagementAppService {
         requireRequest(request, "Dict type request is required");
         Long id = upsertDictType(null, request, currentUser.getUserId(), currentUser.getUserUuid());
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "create", "CREATE", "SUCCESS", "创建字典类型: " + request.getDictCode());
-        return getDictType(currentUser, id);
+        return loadDictType(id);
     }
 
     @Transactional
@@ -1489,19 +1475,19 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:dict:update");
         requirePositiveId(id, "Dict type id is required");
         requireRequest(request, "Dict type request is required");
-        SystemVO.DictTypeVO existingType = getDictType(currentUser, id);
+        SystemVO.DictTypeVO existingType = loadDictType(id);
         upsertDictType(id, existingType, request, currentUser.getUserId(), currentUser.getUserUuid());
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "update", "UPDATE", "SUCCESS", "更新字典类型: " + request.getDictCode());
-        return getDictType(currentUser, id);
+        return loadDictType(id);
     }
 
     @Transactional
     public boolean deleteDictType(CurrentUser currentUser, Long id) {
         requirePermission(currentUser, "system:dict:delete");
         requirePositiveId(id, "Dict type id is required");
-        SystemVO.DictTypeVO type = getDictType(currentUser, id);
+        SystemVO.DictTypeVO type = loadDictType(id);
         if (isSystemDictType(type)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "系统字典不允许删除");
+            throw new BizException(ErrorCode.FORBIDDEN, "Built-in dictionary types cannot be deleted");
         }
         int typeDeleted = jdbcTemplate.update(
                 """
@@ -1541,7 +1527,8 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.DictItemVO> listDictItems(CurrentUser currentUser, Long dictTypeId) {
-        getDictType(currentUser, dictTypeId);
+        requirePermission(currentUser, "system:dict:view");
+        loadDictType(dictTypeId);
         return jdbcTemplate.query(
                 """
                         select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
@@ -1556,6 +1543,7 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.DictItemVO> listEnabledDictItemsByCode(CurrentUser currentUser, String dictCode) {
+        requirePermission(currentUser, "system:dict:view");
         if (!StringUtils.hasText(dictCode)) {
             return List.of();
         }
@@ -1580,22 +1568,9 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.DictItemVO getDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
-        getDictType(currentUser, dictTypeId);
-        SystemVO.DictItemVO item = queryOne(
-                """
-                        select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
-                               sort_no as sortNo, status, remark
-                        from sys_dict_item
-                        where id = ? and dict_type_id = ? and deleted = 0
-                        """,
-                SystemVO.DictItemVO.class,
-                itemId,
-                dictTypeId
-        );
-        if (item == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "字典项不存在");
-        }
-        return item;
+        requirePermission(currentUser, "system:dict:view");
+        loadDictType(dictTypeId);
+        return loadDictItem(dictTypeId, itemId);
     }
 
     @Transactional
@@ -1603,10 +1578,10 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:dict:create");
         requirePositiveId(dictTypeId, "Dict type id is required");
         requireRequest(request, "Dict item request is required");
-        getDictType(currentUser, dictTypeId);
+        loadDictType(dictTypeId);
         Long id = upsertDictItem(null, dictTypeId, request, currentUser.getUserId(), currentUser.getUserUuid());
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "item-create", "CREATE", "SUCCESS", "创建字典项: " + request.getItemLabel());
-        return getDictItem(currentUser, dictTypeId, id);
+        return loadDictItem(dictTypeId, id);
     }
 
     @Transactional
@@ -1615,10 +1590,11 @@ public class SystemManagementAppService {
         requirePositiveId(dictTypeId, "Dict type id is required");
         requirePositiveId(itemId, "Dict item id is required");
         requireRequest(request, "Dict item request is required");
-        SystemVO.DictItemVO existingItem = getDictItem(currentUser, dictTypeId, itemId);
+        loadDictType(dictTypeId);
+        SystemVO.DictItemVO existingItem = loadDictItem(dictTypeId, itemId);
         upsertDictItem(itemId, dictTypeId, existingItem, request, currentUser.getUserId(), currentUser.getUserUuid());
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
-        return getDictItem(currentUser, dictTypeId, itemId);
+        return loadDictItem(dictTypeId, itemId);
     }
 
     @Transactional
@@ -1626,7 +1602,8 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:dict:delete");
         requirePositiveId(dictTypeId, "Dict type id is required");
         requirePositiveId(itemId, "Dict item id is required");
-        SystemVO.DictItemVO item = getDictItem(currentUser, dictTypeId, itemId);
+        loadDictType(dictTypeId);
+        SystemVO.DictItemVO item = loadDictItem(dictTypeId, itemId);
         int deleted = jdbcTemplate.update(
                 """
                         update sys_dict_item
@@ -1651,6 +1628,7 @@ public class SystemManagementAppService {
     }
 
     public PageResponse<SystemVO.ConfigVO> listConfigs(CurrentUser currentUser, String configKey, String configName, long pageNo, long pageSize) {
+        requirePermission(currentUser, "system:config:view");
         String baseSql = """
                 from sys_config c
                 where c.deleted = 0
@@ -1674,19 +1652,15 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.ConfigVO getConfig(CurrentUser currentUser, Long id) {
-        SystemVO.ConfigVO config = queryOne(
-                """
-                        select id, config_key as configKey, config_name as configName,
-                               config_value as configValue, is_system as isSystem, remark
-                        from sys_config
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.ConfigVO.class,
-                id
-        );
-        if (config == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "配置不存在");
-        }
+        requirePermission(currentUser, "system:config:view");
+        SystemVO.ConfigVO config = loadConfig(id);
+        maskSensitiveConfigValue(config);
+        return config;
+    }
+
+    public SystemVO.ConfigVO getConfigForUpdate(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, "system:config:update");
+        SystemVO.ConfigVO config = loadConfig(id);
         maskSensitiveConfigValue(config);
         return config;
     }
@@ -1717,7 +1691,7 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:config:update");
         requirePositiveId(id, "Config id is required");
         requireRequest(request, "Config request is required");
-        SystemVO.ConfigVO currentConfig = getConfig(currentUser, id);
+        SystemVO.ConfigVO currentConfig = loadConfig(id);
         int updated = jdbcTemplate.update(
                 """
                         update sys_config
@@ -1743,7 +1717,9 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.BIZ_ERROR, "Config changed, please retry");
         }
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
-        return getConfig(currentUser, id);
+        SystemVO.ConfigVO config = loadConfig(id);
+        maskSensitiveConfigValue(config);
+        return config;
     }
 
     public SystemVO.SmtpSettingsVO getSmtpSettings(CurrentUser currentUser) {
@@ -1869,7 +1845,7 @@ public class SystemManagementAppService {
                 "update",
                 "UPDATE",
                 "SUCCESS",
-                "更新安全设置"
+                "Update security settings"
         );
         return toSecuritySettingsVO(updated);
     }
@@ -1907,7 +1883,7 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.AgreementSettingsVO getAgreementSettings(CurrentUser currentUser) {
-        requireAuthenticatedUser(currentUser);
+        requirePermission(currentUser, "system:config:view");
         return getAgreementSettings();
     }
 
@@ -1965,7 +1941,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        requirePermission(currentUser, "system:audit:view");
+        requireAnyPermission(currentUser, "audit:view", "audit:login:view");
         String baseSql = """
                 from audit_login_log l
                 where 1 = 1
@@ -2046,7 +2022,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        requirePermission(currentUser, "system:audit:view");
+        requireAnyPermission(currentUser, "audit:view", "audit:operation:view");
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -2083,7 +2059,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        requirePermission(currentUser, "system:audit:view");
+        requireAnyPermission(currentUser, "audit:view", "audit:operation:view");
         String baseSql = """
                 from audit_operation_log l
                 where l.deleted = 0
@@ -2129,7 +2105,7 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        requirePermission(currentUser, "system:audit:view");
+        requireAnyPermission(currentUser, "audit:view", "audit:operation:view");
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
@@ -2374,7 +2350,7 @@ public class SystemManagementAppService {
             }
             return LocalDateTime.parse(normalized.replace(" ", "T"));
         } catch (RuntimeException exception) {
-            throw new BizException(ErrorCode.UNPROCESSABLE_ENTITY, "时间参数格式不正确，请使用 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss");
+            throw new BizException(ErrorCode.UNPROCESSABLE_ENTITY, "时间格式不正确，请使用 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss");
         }
     }
 
@@ -2405,8 +2381,8 @@ public class SystemManagementAppService {
         int currentYear = LocalDate.now().getYear();
         int startYear = copyrightStartYear == null ? currentYear : copyrightStartYear;
         String yearLabel = startYear < currentYear ? startYear + "-" + currentYear : String.valueOf(startYear);
-        String owner = StringUtils.hasText(companyName) ? companyName : "宏翔商道";
-        return "Copyright © " + yearLabel + " " + owner + " All Rights Reserved";
+        String owner = StringUtils.hasText(companyName) ? companyName : "Lumira";
+        return "Copyright (c) " + yearLabel + " " + owner + " All Rights Reserved";
     }
 
     private Integer parseInteger(String value, Integer fallback) {
@@ -2513,7 +2489,7 @@ public class SystemManagementAppService {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(
                         ErrorCode.SESSION_EXPIRED,
-                        "会话关联用户不存在: " + currentUser.getUserId(),
+                        "当前用户不存在: " + currentUser.getUserId(),
                         ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                 ));
         String userUuid = currentUser.getUserUuid();
@@ -2565,7 +2541,7 @@ public class SystemManagementAppService {
                     extraJson
             );
         } catch (JsonProcessingException ex) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "自定义资料序列化失败");
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Failed to serialize extra profile values");
         }
     }
 
@@ -2647,7 +2623,7 @@ public class SystemManagementAppService {
     private SysUserEntity requireAuthenticatedUserEntity(CurrentUser currentUser) {
         Long userId = requireAuthenticatedUser(currentUser);
         SysUserEntity user = userDomainService.findById(userId)
-                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
+                .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "User account does not exist"));
         if (!StringUtils.hasText(user.getUuid()) || !user.getUuid().trim().equals(currentUser.getUserUuid().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity mismatch");
         }
@@ -2660,6 +2636,19 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + permission);
         }
         return userId;
+    }
+
+    private Long requireAnyPermission(CurrentUser currentUser, String messagePermission, String... permissions) {
+        Long userId = requireAuthenticatedUser(currentUser);
+        if (hasPermission(currentUser, messagePermission)) {
+            return userId;
+        }
+        for (String permission : permissions) {
+            if (hasPermission(currentUser, permission)) {
+                return userId;
+            }
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + messagePermission);
     }
 
     private boolean hasPermission(CurrentUser currentUser, String permission) {
@@ -2690,8 +2679,22 @@ public class SystemManagementAppService {
         if (userId == null) {
             return PermissionSnapshotService.PermissionSnapshot.empty();
         }
+        if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution && AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
+            return PermissionSnapshotService.PermissionSnapshot.empty();
+        }
         if (simulatedRoleId != null) {
-            return permissionSnapshotService.loadRoleSnapshot(simulatedRoleId);
+            PermissionSnapshotService.PermissionSnapshot roleSnapshot = permissionSnapshotService.loadGrantedRoleSnapshot(
+                    userId,
+                    currentUser.getUserUuid(),
+                    simulatedRoleId
+            );
+            if (roleSnapshot == null && enforceTrustedUserResolution && AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return roleSnapshot == null ? PermissionSnapshotService.PermissionSnapshot.empty() : roleSnapshot;
         }
         PermissionSnapshotService.PermissionSnapshot snapshotFromCurrentUser = snapshotFromCurrentUser(currentUser);
         if (snapshotFromCurrentUser != null) {
@@ -2700,7 +2703,11 @@ public class SystemManagementAppService {
         if (currentUser == null || !StringUtils.hasText(currentUser.getUserUuid())) {
             return PermissionSnapshotService.PermissionSnapshot.empty();
         }
-        return permissionSnapshotService.loadSnapshot(userId, currentUser.getUserUuid());
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(userId, currentUser.getUserUuid());
+        if (snapshot == null && enforceTrustedUserResolution && AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+        }
+        return snapshot == null ? PermissionSnapshotService.PermissionSnapshot.empty() : snapshot;
     }
 
     private void refreshTrustedCurrentUser(CurrentUser currentUser) {
@@ -2722,6 +2729,9 @@ public class SystemManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -2741,17 +2751,33 @@ public class SystemManagementAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
             normalizedUserUuid = userSnapshot.userUuid().trim();
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -2771,6 +2797,10 @@ public class SystemManagementAppService {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -2787,7 +2817,7 @@ public class SystemManagementAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -2990,7 +3020,7 @@ public class SystemManagementAppService {
                 userId
         );
         if (user == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "User does not exist");
         }
         user.setRoleNames(listUserRoleNames(user.getId()));
         return user;
@@ -2999,11 +3029,11 @@ public class SystemManagementAppService {
     private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId, String operatorUuid) {
         String normalizedStatus = normalizeUserStatus(request.getStatus());
         if (userId != null && isProtectedAdminAccount(userId, request.getUsername()) && "DISABLED".equals(normalizedStatus)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被禁用");
+            throw new BizException(ErrorCode.FORBIDDEN, "Protected admin account cannot be disabled");
         }
         if (userId == null) {
             if (!StringUtils.hasText(request.getPassword())) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "初始密码不能为空");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Password is required when creating a user");
             }
             String password = request.getPassword();
             passwordPolicyService.validatePassword(password);
@@ -3090,13 +3120,12 @@ public class SystemManagementAppService {
     }
 
     private boolean isProtectedAdminAccount(Long userId, String username) {
-        return DEFAULT_ADMIN_USER_ID.equals(userId)
-                || (StringUtils.hasText(username) && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username));
+        return DEFAULT_ADMIN_USER_ID.equals(userId);
     }
 
     private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId, String operatorUuid) {
         if (CollectionUtils.isEmpty(roleIds)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户角色不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User role list is required");
         }
         String userUuid = requireUserUuid(userId);
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
@@ -3106,7 +3135,7 @@ public class SystemManagementAppService {
                 distinctRoleIds.toArray()
         );
         if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
         jdbcTemplate.update(
                 """
@@ -3152,18 +3181,18 @@ public class SystemManagementAppService {
             userUuid = null;
         }
         if (!StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "用户身份 UUID 缺失");
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "User UUID is required");
         }
         return userUuid.trim();
     }
 
     private String normalizeUserStatus(String status) {
         if (!StringUtils.hasText(status)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户状态不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User status is required");
         }
         String normalized = status.trim().toUpperCase(Locale.ROOT);
         if (!Set.of("ENABLED", "DISABLED").contains(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户状态只能是 ENABLED 或 DISABLED");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User status must be ENABLED or DISABLED");
         }
         return normalized;
     }
@@ -3227,10 +3256,8 @@ public class SystemManagementAppService {
         return menuId;
     }
 
-    private SystemVO.MenuVO ensureEditableMenu(Long menuId) {
-        if (menuId == null || menuId <= 0) {
-            return null;
-        }
+    private SystemVO.MenuVO loadMenu(Long menuId) {
+        requirePositiveId(menuId, "Menu id is required");
         SystemVO.MenuVO menu = queryOne(
                 """
                         select id, parent_id as parentId, menu_code as menuCode,
@@ -3243,15 +3270,23 @@ public class SystemManagementAppService {
                 menuId
         );
         if (menu == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Menu does not exist");
         }
+        return menu;
+    }
+
+    private SystemVO.MenuVO ensureEditableMenu(Long menuId) {
+        if (menuId == null || menuId <= 0) {
+            return null;
+        }
+        SystemVO.MenuVO menu = loadMenu(menuId);
         ensureEditableMenu(menu);
         return menu;
     }
 
     private void ensureEditableMenu(SystemVO.MenuVO menu) {
         if (menu == null || menu.getId() == null || menu.getId() <= 0 || menu.isBuiltin()) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
+            throw new BizException(ErrorCode.FORBIDDEN, "Built-in menu cannot be edited or deleted");
         }
     }
 
@@ -3260,7 +3295,7 @@ public class SystemManagementAppService {
             return;
         }
         if (parentId < 0) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
+            throw new BizException(ErrorCode.FORBIDDEN, "Built-in menu cannot be edited or deleted");
         }
         ensureEditableMenu(parentId);
     }
@@ -3270,8 +3305,63 @@ public class SystemManagementAppService {
             return;
         }
         if (SystemRouteCatalog.isBuiltInMenuPath(request.getPath()) || SystemRouteCatalog.isBuiltInMenuComponent(request.getComponent())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
+            throw new BizException(ErrorCode.FORBIDDEN, "Built-in menu cannot be edited or deleted");
         }
+    }
+
+    private SystemVO.DictTypeVO loadDictType(Long id) {
+        requirePositiveId(id, "Dict type id is required");
+        SystemVO.DictTypeVO type = queryOne(
+                """
+                        select id, dict_code as dictCode, dict_name as dictName,
+                               status, is_system as isSystem, remark
+                        from sys_dict_type
+                        where id = ? and deleted = 0
+                        """,
+                SystemVO.DictTypeVO.class,
+                id
+        );
+        if (type == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Dictionary type does not exist");
+        }
+        return type;
+    }
+
+    private SystemVO.DictItemVO loadDictItem(Long dictTypeId, Long itemId) {
+        requirePositiveId(itemId, "Dict item id is required");
+        SystemVO.DictItemVO item = queryOne(
+                """
+                        select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
+                               sort_no as sortNo, status, remark
+                        from sys_dict_item
+                        where id = ? and dict_type_id = ? and deleted = 0
+                        """,
+                SystemVO.DictItemVO.class,
+                itemId,
+                dictTypeId
+        );
+        if (item == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Dictionary item does not exist");
+        }
+        return item;
+    }
+
+    private SystemVO.ConfigVO loadConfig(Long id) {
+        requirePositiveId(id, "Config id is required");
+        SystemVO.ConfigVO config = queryOne(
+                """
+                        select id, config_key as configKey, config_name as configName,
+                               config_value as configValue, is_system as isSystem, remark
+                        from sys_config
+                        where id = ? and deleted = 0
+                        """,
+                SystemVO.ConfigVO.class,
+                id
+        );
+        if (config == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Config does not exist");
+        }
+        return config;
     }
 
     private Long upsertDictType(Long id, SystemDTO.DictTypeUpsertRequest request, Long operatorId, String operatorUuid) {
@@ -3608,25 +3698,25 @@ public class SystemManagementAppService {
 
     private String normalizeContactType(String contactType) {
         if (!StringUtils.hasText(contactType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "绑定类型不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Contact type is required");
         }
         String normalized = contactType.trim().toLowerCase(Locale.ROOT);
         if (!"mobile".equals(normalized) && !"email".equals(normalized)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "绑定类型不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Unsupported contact type");
         }
         return normalized;
     }
 
     private String normalizeContactValue(String contactType, String value) {
         if (!StringUtils.hasText(value)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入绑定信息");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Contact value is required");
         }
         String normalized = value.trim();
         if ("mobile".equals(contactType) && !normalized.matches("^1[3-9]\\d{9}$")) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效手机号");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Mobile number format is invalid");
         }
         if ("email".equals(contactType) && !normalized.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效邮箱地址");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Email format is invalid");
         }
         return normalized;
     }

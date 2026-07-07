@@ -13,6 +13,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.competition.dto.CertificateDTO;
 import com.lumira.saas.modules.competition.vo.CertificateVO;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -161,6 +162,75 @@ class CertificateAppServiceTest {
     }
 
     @Test
+    void createTemplateShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        CertificateAppService service = new CertificateAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                mock(FileInternalApi.class),
+                mock(CertificateRenderService.class),
+                null,
+                null
+        );
+        CertificateDTO.TemplateUpsertRequest request = new CertificateDTO.TemplateUpsertRequest();
+        request.setTemplateName("Award");
+
+        assertThatThrownBy(() -> service.createTemplate(user(Set.of("aiadc:certificate-template:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void createTemplateShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        CertificateAppService service = new CertificateAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                mock(FileInternalApi.class),
+                mock(CertificateRenderService.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+        CertificateDTO.TemplateUpsertRequest request = new CertificateDTO.TemplateUpsertRequest();
+        request.setTemplateName("Award");
+
+        assertThatThrownBy(() -> service.createTemplate(user(Set.of("aiadc:certificate-template:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:certificate-template:view")));
+        CertificateAppService service = service(jdbcTemplate, mock(FileInternalApi.class), permissionSnapshotService);
+        CurrentUser currentUser = user(Set.of("aiadc:certificate-template:view"));
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = CertificateAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(1001L, "user-uuid-1001", 0L);
+    }
+
+    @Test
     void listTemplatesShouldRequireTemplateViewPermissionBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         CertificateAppService service = service(jdbcTemplate);
@@ -247,6 +317,26 @@ class CertificateAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "DISABLED"));
+        CertificateAppService service =
+                service(jdbcTemplate, mock(FileInternalApi.class), permissionSnapshotService, systemInternalApi, null);
+        CertificateDTO.TemplateUpsertRequest request = new CertificateDTO.TemplateUpsertRequest();
+        request.setTemplateName("Award");
+
+        assertThatThrownBy(() -> service.createTemplate(user(Set.of("aiadc:certificate-template:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verifyNoInteractions(jdbcTemplate);
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+    }
+
+    @Test
+    void createTemplateShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
         CertificateAppService service =
                 service(jdbcTemplate, mock(FileInternalApi.class), permissionSnapshotService, systemInternalApi, null);
         CertificateDTO.TemplateUpsertRequest request = new CertificateDTO.TemplateUpsertRequest();
@@ -607,6 +697,23 @@ class CertificateAppServiceTest {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        if (systemInternalApi == null && sessionAuthenticationService == null) {
+            if (permissionSnapshotService == null) {
+                return new CertificateAppService(
+                        jdbcTemplate,
+                        new ObjectMapper(),
+                        fileInternalApi,
+                        mock(CertificateRenderService.class)
+                );
+            }
+            return new CertificateAppService(
+                    jdbcTemplate,
+                    new ObjectMapper(),
+                    fileInternalApi,
+                    mock(CertificateRenderService.class),
+                    permissionSnapshotService
+            );
+        }
         return new CertificateAppService(
                 jdbcTemplate,
                 new ObjectMapper(),

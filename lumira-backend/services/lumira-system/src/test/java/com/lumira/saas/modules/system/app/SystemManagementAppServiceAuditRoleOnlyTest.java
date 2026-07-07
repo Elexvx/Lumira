@@ -77,6 +77,50 @@ class SystemManagementAppServiceAuditRoleOnlyTest {
     }
 
     @Test
+    void loginLogsShouldAllowDedicatedLoginAuditPermission() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemManagementAppService service = buildService(queryOperations);
+
+        service.listLoginLogs(currentUser("audit:login:view"), "alice", 1, 10);
+
+        assertNoTenantSurface(queryOperations.lastSql);
+        assertArrayEquals(new Object[]{"%alice%", 10L, 0L}, queryOperations.lastArgs);
+    }
+
+    @Test
+    void operationLogsShouldAllowDedicatedOperationAuditPermission() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemManagementAppService service = buildService(queryOperations);
+
+        service.listOperationLogs(currentUser("audit:operation:view"), "alice", 1, 10);
+
+        assertNoTenantSurface(queryOperations.lastSql);
+        assertArrayEquals(new Object[]{"%alice%", 10L, 0L}, queryOperations.lastArgs);
+    }
+
+    @Test
+    void verificationLogsShouldAllowDedicatedOperationAuditPermission() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemManagementAppService service = buildService(queryOperations);
+
+        service.listVerificationLogs(currentUser("audit:operation:view"), "sms", "login", "SUCCESS", null, null, 1, 10);
+
+        assertNoTenantSurface(queryOperations.lastSql);
+        assertArrayEquals(new Object[]{"SMS", "LOGIN", "SUCCESS", 10L, 0L}, queryOperations.lastArgs);
+    }
+
+    @Test
+    void aiCallLogsShouldAllowDedicatedOperationAuditPermission() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemManagementAppService service = buildService(queryOperations);
+
+        service.listAiCallLogs(currentUser("audit:operation:view"), 42L, "skill", "SUCCESS", null, null, 1, 20);
+
+        assertNoTenantSurface(queryOperations.lastSql);
+        assertArrayEquals(new Object[]{42L, "%skill%", "SUCCESS", 20L, 0L}, queryOperations.lastArgs);
+    }
+
+    @Test
     void loginLogsShouldRejectBlankUsernameBeforeQuery() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SystemManagementAppService service = buildService(queryOperations);

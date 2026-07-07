@@ -52,6 +52,7 @@ public class FileV2Controller {
     private final PermissionGuard permissionGuard;
     private final FileUploadMetrics fileUploadMetrics;
     private final SystemInternalApi systemInternalApi;
+    private final boolean enforceTrustedUserResolution;
 
     public FileV2Controller(
             FileManagementAppService fileManagementAppService,
@@ -59,7 +60,7 @@ public class FileV2Controller {
             PermissionGuard permissionGuard,
             FileUploadMetrics fileUploadMetrics
     ) {
-        this(fileManagementAppService, securityContextFacade, permissionGuard, fileUploadMetrics, null);
+        this(fileManagementAppService, securityContextFacade, permissionGuard, fileUploadMetrics, null, false);
     }
 
     @Autowired
@@ -70,11 +71,23 @@ public class FileV2Controller {
             FileUploadMetrics fileUploadMetrics,
             SystemInternalApi systemInternalApi
     ) {
+        this(fileManagementAppService, securityContextFacade, permissionGuard, fileUploadMetrics, systemInternalApi, true);
+    }
+
+    private FileV2Controller(
+            FileManagementAppService fileManagementAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            FileUploadMetrics fileUploadMetrics,
+            SystemInternalApi systemInternalApi,
+            boolean enforceTrustedUserResolution
+    ) {
         this.fileManagementAppService = fileManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.fileUploadMetrics = fileUploadMetrics;
         this.systemInternalApi = systemInternalApi;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping
@@ -293,7 +306,13 @@ public class FileV2Controller {
     }
 
     private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApi == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            return currentUser;
+        }
+        if (systemInternalApi == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return currentUser;
         }
         Long userId = currentUser.getUserId();
@@ -313,16 +332,22 @@ public class FileV2Controller {
                 || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(
-                userId,
-                userSnapshot.userUuid().trim()
-        );
+        if (!StringUtils.hasText(userSnapshot.username())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username());
+        currentUser.setUsername(userSnapshot.username().trim());
         currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
         currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
         currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());

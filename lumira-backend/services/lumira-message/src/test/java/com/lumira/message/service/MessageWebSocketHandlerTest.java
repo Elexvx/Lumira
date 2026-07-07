@@ -50,4 +50,24 @@ class MessageWebSocketHandlerTest {
         verify(webSocketRegistry, never()).register(session, currentUser);
         verify(connectionSnapshotService, never()).emitSnapshot(currentUser);
     }
+
+    @Test
+    void afterConnectionEstablished_shouldCloseSessionWhenRegistryRejectsLiveSession() throws Exception {
+        MessageWebSocketRegistry webSocketRegistry = mock(MessageWebSocketRegistry.class);
+        MessageConnectionSnapshotService connectionSnapshotService = mock(MessageConnectionSnapshotService.class);
+        MessageWebSocketHandler handler = new MessageWebSocketHandler(webSocketRegistry, connectionSnapshotService);
+        WebSocketSession session = mock(WebSocketSession.class);
+        CurrentUser currentUser = new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setPermissionsVersion("permissions-1");
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put(MessageSessionHandshakeInterceptor.CURRENT_USER_ATTR, currentUser);
+        when(session.getAttributes()).thenReturn(attributes);
+        when(webSocketRegistry.register(session, currentUser)).thenReturn(null);
+
+        handler.afterConnectionEstablished(session);
+
+        verify(session).close();
+        verify(connectionSnapshotService, never()).emitSnapshot(currentUser);
+    }
 }

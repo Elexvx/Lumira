@@ -3,6 +3,7 @@ package com.lumira.saas.modules.ai.app;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -103,11 +104,11 @@ class AiConversationServiceTest {
         AiDTO.ChatAttachmentItem attachment = new AiDTO.ChatAttachmentItem();
         attachment.setFileId(2001L);
 
-        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice", false, false))
+        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice", false, false, null))
                 .thenReturn(file(2001L));
         service.recordMessageAttachments(currentUser(), 10L, 20L, List.of(attachment));
 
-        verify(fileInternalApi).getFileForUser(2001L, 1001L, "user-uuid-1001", "alice", false, false);
+        verify(fileInternalApi).getFileForUser(2001L, 1001L, "user-uuid-1001", "alice", false, false, null);
     }
 
     @Test
@@ -118,7 +119,7 @@ class AiConversationServiceTest {
         AiDTO.ChatAttachmentItem attachment = new AiDTO.ChatAttachmentItem();
         attachment.setFileId(2001L);
 
-        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice", false, false))
+        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice", false, false, null))
                 .thenReturn(file(2001L));
 
         service.recordMessageAttachments(currentUser(), 10L, 20L, List.of(attachment));
@@ -192,6 +193,28 @@ class AiConversationServiceTest {
     }
 
     @Test
+    void messageAttachmentsRejectTrustedUserWhenNoTrustedResolverIsAvailableBeforeFileLookup() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        JdbcAiConversationService service = new JdbcAiConversationService(
+                jdbcTemplate,
+                fileInternalApi,
+                null,
+                null
+        );
+        AiDTO.ChatAttachmentItem attachment = new AiDTO.ChatAttachmentItem();
+        attachment.setFileId(2001L);
+
+        assertThatThrownBy(() -> service.recordMessageAttachments(currentUser(), 10L, 20L, List.of(attachment)))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(fileInternalApi);
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void messageAttachmentsRejectDisabledTrustedIdentityBeforeFileLookup() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
@@ -206,6 +229,31 @@ class AiConversationServiceTest {
         attachment.setFileId(2001L);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "DISABLED"));
+
+        assertThatThrownBy(() -> service.recordMessageAttachments(currentUser(), 10L, 20L, List.of(attachment)))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(fileInternalApi);
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void messageAttachmentsRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeFileLookup() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        JdbcAiConversationService service = new JdbcAiConversationService(
+                jdbcTemplate,
+                fileInternalApi,
+                systemInternalApi,
+                null
+        );
+        AiDTO.ChatAttachmentItem attachment = new AiDTO.ChatAttachmentItem();
+        attachment.setFileId(2001L);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
 
         assertThatThrownBy(() -> service.recordMessageAttachments(currentUser(), 10L, 20L, List.of(attachment)))
                 .isInstanceOf(BizException.class)
@@ -233,13 +281,43 @@ class AiConversationServiceTest {
         currentUser.setUsername("alice-stale");
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
-        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice-live", false, false))
+        when(systemInternalApi.permissionSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot("ai:chat:send"));
+        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice-live", false, false, null))
                 .thenReturn(file(2001L));
 
         service.recordMessageAttachments(currentUser, 10L, 20L, List.of(attachment));
 
-        verify(fileInternalApi).getFileForUser(2001L, 1001L, "user-uuid-1001", "alice-live", false, false);
+        verify(fileInternalApi).getFileForUser(2001L, 1001L, "user-uuid-1001", "alice-live", false, false, null);
         assertThat(currentUser.getUsername()).isEqualTo("alice-live");
+    }
+
+    @Test
+    void messageAttachmentsShouldNormalizeInvalidSimulatedRoleIdBeforeFileLookup() {
+        RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        JdbcAiConversationService service = new JdbcAiConversationService(
+                jdbcTemplate,
+                fileInternalApi,
+                systemInternalApi,
+                null
+        );
+        AiDTO.ChatAttachmentItem attachment = new AiDTO.ChatAttachmentItem();
+        attachment.setFileId(2001L);
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+        when(systemInternalApi.permissionSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot("ai:chat:send"));
+        when(fileInternalApi.getFileForUser(2001L, 1001L, "user-uuid-1001", "alice-live", false, false, null))
+                .thenReturn(file(2001L));
+
+        service.recordMessageAttachments(currentUser, 10L, 20L, List.of(attachment));
+
+        verify(fileInternalApi).getFileForUser(2001L, 1001L, "user-uuid-1001", "alice-live", false, false, null);
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
     }
 
     @Test
@@ -291,6 +369,33 @@ class AiConversationServiceTest {
         currentUser.setPermissionsVersion(" ");
 
         assertThatThrownBy(() -> service.recordMessageAttachments(currentUser, 10L, 20L, List.of(attachment)))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+
+        verifyNoInteractions(fileInternalApi);
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void messageAttachmentsRejectWhenLivePermissionsLoseChatPermissionBeforeFileLookup() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        JdbcAiConversationService service = new JdbcAiConversationService(
+                jdbcTemplate,
+                fileInternalApi,
+                systemInternalApi,
+                null
+        );
+        AiDTO.ChatAttachmentItem attachment = new AiDTO.ChatAttachmentItem();
+        attachment.setFileId(2001L);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
+        when(systemInternalApi.permissionSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot("ai:knowledge:view"));
+
+        assertThatThrownBy(() -> service.recordMessageAttachments(currentUser(), 10L, 20L, List.of(attachment)))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -356,7 +461,7 @@ class AiConversationServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return trusted(new CurrentUser(1001L, "alice", 100L, "session-1", 1, true, Set.of()));
+        return trusted(new CurrentUser(1001L, "alice", 100L, "session-1", 1, true, Set.of("ai:chat:send")));
     }
 
     private CurrentUser unauthenticatedUser() {
@@ -415,6 +520,19 @@ class AiConversationServiceTest {
                 null,
                 null,
                 null,
+                null
+        );
+    }
+
+    private static PermissionSnapshotDTO permissionSnapshot(String... permissions) {
+        return new PermissionSnapshotDTO(
+                "permissions-2",
+                List.of(permissions),
+                List.of(),
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
                 null
         );
     }

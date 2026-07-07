@@ -325,6 +325,52 @@ class PlatformUpdateAppServiceTest {
     }
 
     @Test
+    void installShouldRejectWhenTrustedPermissionSnapshotIsUnavailableInStrictMode() {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper,
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.install(updateUser(Set.of("*", "system:update:install"))));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+        verify(taskMapper, never()).insert(org.mockito.ArgumentMatchers.<PlatformUpdateTaskEntity>any());
+    }
+
+    @Test
+    void installShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeCheckingUpdater() {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper,
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.install(updateUser(Set.of("*", "system:update:install"))));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+        verify(taskMapper, never()).insert(org.mockito.ArgumentMatchers.<PlatformUpdateTaskEntity>any());
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(1001L, "user-uuid-1001");
+    }
+
+    @Test
     void installShouldRejectUnauthenticatedUserBeforeCheckingUpdater() {
         PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
         PlatformUpdateAppService service = new PlatformUpdateAppService(
@@ -394,6 +440,25 @@ class PlatformUpdateAppServiceTest {
         currentUser.setPermissions(Set.of("*", "system:update:install"));
 
         BizException exception = assertThrows(BizException.class, () -> service.install(currentUser));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+        verify(taskMapper, never()).insert(org.mockito.ArgumentMatchers.<PlatformUpdateTaskEntity>any());
+    }
+
+    @Test
+    void installShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper,
+                null,
+                null,
+                null
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> service.install(updateUser(Set.of("*", "system:update:install"))));
 
         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
         verify(taskMapper, never()).insert(org.mockito.ArgumentMatchers.<PlatformUpdateTaskEntity>any());
@@ -604,6 +669,37 @@ class PlatformUpdateAppServiceTest {
         assertThat(error.getCause()).isInstanceOfSatisfying(BizException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
         verify(taskMapper, never()).insert(any(PlatformUpdateTaskEntity.class));
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:update:view")));
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper,
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+        CurrentUser currentUser = updateViewer();
+        currentUser.setSimulatedRoleId(0L);
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(any(), any(), any());
     }
 
     @Test

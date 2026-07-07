@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 public class SystemUserManagementAppService {
 
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
-    private static final String DEFAULT_ADMIN_USERNAME = "admin";
+    private static final String ASYNC_EXPORT_SESSION_PREFIX = "internal-export-task-";
     private static final String STATUS_ENABLED = "ENABLED";
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final long MAX_PAGE_SIZE = 100L;
@@ -70,6 +70,7 @@ public class SystemUserManagementAppService {
     private final OperationAuditService operationAuditService;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
+    private final boolean enforceTrustedUserResolution;
 
     public SystemUserManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -91,7 +92,8 @@ public class SystemUserManagementAppService {
                 onlineSessionManagementAppService,
                 operationAuditService,
                 passwordEncoder,
-                passwordPolicyService
+                passwordPolicyService,
+                false
         );
     }
 
@@ -108,6 +110,34 @@ public class SystemUserManagementAppService {
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService
     ) {
+        this(
+                jdbcTemplate,
+                userDomainService,
+                iamUserService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                onlineSessionManagementAppService,
+                operationAuditService,
+                passwordEncoder,
+                passwordPolicyService,
+                true
+        );
+    }
+
+    private SystemUserManagementAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            IamUserService iamUserService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            OperationAuditService operationAuditService,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.userDomainService = userDomainService;
         this.iamUserService = iamUserService;
@@ -118,6 +148,7 @@ public class SystemUserManagementAppService {
         this.operationAuditService = operationAuditService;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public PageResponse<SystemVO.UserVO> listUsers(
@@ -140,6 +171,97 @@ public class SystemUserManagementAppService {
             long pageSize
     ) {
         assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:user:view");
+        return listUsersAfterAuthentication(
+                currentUser,
+                userId,
+                uid,
+                username,
+                mobile,
+                email,
+                deptId,
+                status,
+                source,
+                registeredStart,
+                registeredEnd,
+                lastLoginStart,
+                lastLoginEnd,
+                cursorId,
+                cursorCreatedAt,
+                pageNo,
+                pageSize,
+                shouldBypassSessionAuthentication(currentUser, false)
+        );
+    }
+
+    public PageResponse<SystemVO.UserVO> listUsersFromTrustedSnapshot(
+            CurrentUser currentUser,
+            Long userId,
+            String uid,
+            String username,
+            String mobile,
+            String email,
+            Long deptId,
+            String status,
+            String source,
+            String registeredStart,
+            String registeredEnd,
+            String lastLoginStart,
+            String lastLoginEnd,
+            Long cursorId,
+            String cursorCreatedAt,
+            long pageNo,
+            long pageSize
+    ) {
+        assertAuthenticatedFromTrustedSnapshot(currentUser);
+        requirePermission(currentUser, "system:user:export");
+        return listUsersAfterAuthentication(
+                currentUser,
+                userId,
+                uid,
+                username,
+                mobile,
+                email,
+                deptId,
+                status,
+                source,
+                registeredStart,
+                registeredEnd,
+                lastLoginStart,
+                lastLoginEnd,
+                cursorId,
+                cursorCreatedAt,
+                pageNo,
+                pageSize,
+                shouldBypassSessionAuthentication(currentUser, true)
+        );
+    }
+
+    private PageResponse<SystemVO.UserVO> listUsersAfterAuthentication(
+            CurrentUser currentUser,
+            Long userId,
+            String uid,
+            String username,
+            String mobile,
+            String email,
+            Long deptId,
+            String status,
+            String source,
+            String registeredStart,
+            String registeredEnd,
+            String lastLoginStart,
+            String lastLoginEnd,
+            Long cursorId,
+            String cursorCreatedAt,
+            long pageNo,
+            long pageSize,
+            boolean bypassSessionAuthentication
+    ) {
+        if (bypassSessionAuthentication) {
+            assertAuthenticatedFromTrustedSnapshot(currentUser);
+        } else {
+            assertAuthenticated(currentUser);
+        }
         String baseSql = """
                 from sys_user u
                 left join iam_user iu
@@ -274,12 +396,17 @@ public class SystemUserManagementAppService {
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
         assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:user:view");
         requireAccessibleUserRecord(currentUser, userId);
-        return buildUserDetail(currentUser, userId);
+        return buildUserDetail(currentUser, userId, false);
     }
 
-    private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId) {
-        assertAuthenticated(currentUser);
+    private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId, boolean bypassSessionAuthentication) {
+        if (bypassSessionAuthentication) {
+            assertAuthenticatedFromTrustedSnapshot(currentUser);
+        } else {
+            assertAuthenticated(currentUser);
+        }
         SystemVO.UserVO user = queryUser(userId);
         boolean canViewSensitive = canViewSensitiveUserInfo(currentUser);
         if (!canViewSensitive) {
@@ -324,7 +451,21 @@ public class SystemUserManagementAppService {
 
     @Transactional
     public SystemVO.UserDetailVO createUser(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
-        assertAuthenticated(currentUser);
+        return createUserAfterAuthentication(currentUser, request, false);
+    }
+
+    @Transactional
+    public SystemVO.UserDetailVO createUserFromTrustedSnapshot(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
+        assertAuthenticatedFromTrustedSnapshot(currentUser);
+        return createUserAfterAuthentication(currentUser, request, true);
+    }
+
+    private SystemVO.UserDetailVO createUserAfterAuthentication(CurrentUser currentUser, SystemDTO.UserUpsertRequest request, boolean bypassSessionAuthentication) {
+        if (bypassSessionAuthentication) {
+            assertAuthenticatedFromTrustedSnapshot(currentUser);
+        } else {
+            assertAuthenticated(currentUser);
+        }
         requirePermission(currentUser, "system:user:create");
         validateUserUpsertRequest(request);
         validateRoleAssignment(currentUser, request.getRoleIds());
@@ -333,8 +474,8 @@ public class SystemUserManagementAppService {
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), true);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "鍒涘缓鐢ㄦ埛: " + request.getUsername());
-        return buildUserDetail(currentUser, userId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
+        return buildUserDetail(currentUser, userId, bypassSessionAuthentication);
     }
 
     @Transactional
@@ -349,14 +490,14 @@ public class SystemUserManagementAppService {
         replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid());
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "鏇存柊鐢ㄦ埛: " + request.getUsername());
-        return buildUserDetail(currentUser, userId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
+        return buildUserDetail(currentUser, userId, false);
     }
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
         assertAuthenticated(currentUser);
-        requirePermission(currentUser, "system:user:update");
+        requirePermission(currentUser, "system:user:status");
         requireAccessibleUserRecord(currentUser, userId);
         String normalizedStatus = normalizeUserStatus(status);
         if (isProtectedAdminAccount(userId, null) && "DISABLED".equals(normalizedStatus)) {
@@ -379,7 +520,7 @@ public class SystemUserManagementAppService {
         if ("DISABLED".equals(normalizedStatus)) {
             onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
         }
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "鏇存柊鐢ㄦ埛鐘舵€? " + userId + " -> " + normalizedStatus);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
         return true;
     }
 
@@ -388,7 +529,7 @@ public class SystemUserManagementAppService {
         assertAuthenticated(currentUser);
         requirePermission(currentUser, "system:user:delete");
         if (currentUser.getUserId().equals(userId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "涓嶈兘鍒犻櫎褰撳墠鐧诲綍鐢ㄦ埛");
+            throw new BizException(ErrorCode.FORBIDDEN, "Current login user cannot be deleted");
         }
         if (isProtectedAdminAccount(userId, null)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Default admin account cannot be deleted");
@@ -397,7 +538,7 @@ public class SystemUserManagementAppService {
         SystemVO.UserVO user = queryUser(userId);
         String userUuid = user.getUserUuid();
         if (!StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "鐢ㄦ埛韬唤 UUID 缂哄け");
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "User identity UUID is unavailable");
         }
         userUuid = userUuid.trim();
         LocalDateTime now = LocalDateTime.now();
@@ -474,12 +615,13 @@ public class SystemUserManagementAppService {
 
         onlineSessionManagementAppService.revokeUserSessions(userId, userUuid);
         permissionSnapshotService.invalidatePermissions();
-        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "鍒犻櫎鐢ㄦ埛: " + user.getUsername());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
         return true;
     }
 
     public List<SystemVO.RoleVO> listUserRoles(CurrentUser currentUser, Long userId) {
         assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:user:view");
         requireAccessibleUserRecord(currentUser, userId);
         String userUuid = requireUserUuid(userId);
         return jdbcTemplate.query(
@@ -531,7 +673,7 @@ public class SystemUserManagementAppService {
         ensureUsernameAvailable(username, userId);
         if (userId == null) {
             if (!StringUtils.hasText(request.getPassword())) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "鍒濆瀵嗙爜涓嶈兘涓虹┖");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Initial password must not be blank");
             }
             String password = request.getPassword();
             passwordPolicyService.validatePassword(password);
@@ -630,7 +772,7 @@ public class SystemUserManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Username must not be blank");
         }
         if (!USERNAME_PATTERN.matcher(normalized).matches()) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛鍚嶅彧鑳藉寘鍚嫳鏂囧瓧姣嶃€佹暟瀛椼€佷笅鍒掔嚎鍜岃繛瀛楃");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Username may contain only letters, numbers, underscores, and hyphens");
         }
         return normalized;
     }
@@ -679,7 +821,7 @@ public class SystemUserManagementAppService {
             return;
         }
         if (roleIds.stream().anyMatch(roleId -> roleId == null || roleId <= 0)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛瑙掕壊ID蹇呴』涓烘鏁存暟");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User role id must be a positive integer");
         }
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
         Long existingRoleCount = jdbcTemplate.queryForObject(
@@ -755,7 +897,7 @@ public class SystemUserManagementAppService {
             return;
         }
         if (deptIds.stream().anyMatch(deptId -> deptId == null || deptId <= 0)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛閮ㄩ棬ID蹇呴』涓烘鏁存暟");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "User department id must be a positive integer");
         }
         List<Long> distinctDeptIds = new ArrayList<>(new LinkedHashSet<>(deptIds));
         Long existingDeptCount = jdbcTemplate.queryForObject(
@@ -854,7 +996,7 @@ public class SystemUserManagementAppService {
             userUuid = null;
         }
         if (!StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "鐢ㄦ埛韬唤 UUID 缂哄け");
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "User identity UUID is unavailable");
         }
         return userUuid.trim();
     }
@@ -1142,8 +1284,7 @@ public class SystemUserManagementAppService {
     }
 
     private boolean isProtectedAdminAccount(Long userId, String username) {
-        return DEFAULT_ADMIN_USER_ID.equals(userId)
-                || (StringUtils.hasText(username) && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username));
+        return DEFAULT_ADMIN_USER_ID.equals(userId);
     }
 
     private String normalizeUserStatus(String status) {
@@ -1152,7 +1293,7 @@ public class SystemUserManagementAppService {
         }
         String normalized = status.trim().toUpperCase(Locale.ROOT);
         if (!Set.of("ENABLED", "DISABLED").contains(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐢ㄦ埛鐘舵€佸彧鑳芥槸 ENABLED 鎴?DISABLED");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "用户状态只能是 ENABLED 或 DISABLED");
         }
         return normalized;
     }
@@ -1174,7 +1315,7 @@ public class SystemUserManagementAppService {
             }
             return LocalDateTime.parse(normalized.replace(" ", "T"));
         } catch (RuntimeException exception) {
-            throw new BizException(ErrorCode.UNPROCESSABLE_ENTITY, "鏃堕棿鍙傛暟鏍煎紡涓嶆纭紝璇蜂娇鐢?yyyy-MM-dd 鎴?yyyy-MM-dd HH:mm:ss");
+            throw new BizException(ErrorCode.UNPROCESSABLE_ENTITY, "时间格式不正确，请使用 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss");
         }
     }
 
@@ -1260,17 +1401,38 @@ public class SystemUserManagementAppService {
     }
 
     private void assertAuthenticated(CurrentUser currentUser) {
-        refreshTrustedCurrentUser(currentUser);
+        refreshTrustedCurrentUser(currentUser, false);
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+    }
+
+    private void assertAuthenticatedFromTrustedSnapshot(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser, true);
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
     }
 
     private void refreshTrustedCurrentUser(CurrentUser currentUser) {
+        refreshTrustedCurrentUser(currentUser, false);
+    }
+
+    private boolean shouldBypassSessionAuthentication(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        return bypassSessionAuthentication || isAsyncExportSession(currentUser);
+    }
+
+    private boolean isAsyncExportSession(CurrentUser currentUser) {
+        return currentUser != null
+                && currentUser.getSessionId() != null
+                && currentUser.getSessionId().startsWith(ASYNC_EXPORT_SESSION_PREFIX);
+    }
+
+    private void refreshTrustedCurrentUser(CurrentUser currentUser, boolean bypassSessionAuthentication) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return;
         }
-        if (sessionAuthenticationService != null) {
+        if (!shouldBypassSessionAuthentication(currentUser, bypassSessionAuthentication) && sessionAuthenticationService != null) {
             CurrentUser refreshedUser = requireTrustedAuthenticatedCurrentUser(
                     sessionAuthenticationService.authenticateSessionTicket(
                             currentUser.getSessionId(),
@@ -1285,6 +1447,9 @@ public class SystemUserManagementAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -1304,20 +1469,34 @@ public class SystemUserManagementAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             currentUser.setUserId(userSnapshot.userId());
             currentUser.setUserUuid(userSnapshot.userUuid().trim());
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
+            userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
         if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
             return;
         }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -1353,7 +1532,7 @@ public class SystemUserManagementAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -1436,19 +1615,15 @@ public class SystemUserManagementAppService {
         if (snapshot == null) {
             snapshot = PermissionSnapshotService.PermissionSnapshot.empty();
         }
-        Set<String> permissions = !snapshot.getPermissions().isEmpty()
-                ? snapshot.getPermissions()
-                : currentUser.getPermissions();
-        Set<Long> deptIdsFromSnapshot = snapshot.getDeptIds();
-        Set<Long> descendantDeptIdsFromSnapshot = snapshot.getDescendantDeptIds();
-        List<DataPermissionRule> dataScopes = !snapshot.getDataScopes().isEmpty()
-                ? snapshot.getDataScopes()
-                : currentUser.getDataScopes();
+        Set<String> permissions = snapshot.getPermissions() == null ? Set.of() : snapshot.getPermissions();
+        Set<Long> deptIdsFromSnapshot = snapshot.getDeptIds() == null ? Set.of() : snapshot.getDeptIds();
+        Set<Long> descendantDeptIdsFromSnapshot = snapshot.getDescendantDeptIds() == null ? Set.of() : snapshot.getDescendantDeptIds();
+        List<DataPermissionRule> dataScopes = snapshot.getDataScopes() == null ? List.of() : snapshot.getDataScopes();
         DataPermissionDecision decision = DataPermissionResolver.resolve(
                 RESOURCE_SYSTEM_USER,
                 currentUser.getUserId(),
-                !deptIdsFromSnapshot.isEmpty() ? deptIdsFromSnapshot : currentUser.getDeptIds(),
-                !descendantDeptIdsFromSnapshot.isEmpty() ? descendantDeptIdsFromSnapshot : currentUser.getDescendantDeptIds(),
+                deptIdsFromSnapshot,
+                descendantDeptIdsFromSnapshot,
                 dataScopes,
                 permissions
         );
@@ -1486,11 +1661,19 @@ public class SystemUserManagementAppService {
     }
 
     private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getSimulatedRoleId() != null) {
-            if (currentUser == null || currentUser.getSimulatedRoleId() == null || currentUser.getUserId() == null) {
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser == null ? null : currentUser.getSimulatedRoleId());
+        if (currentUser != null) {
+            currentUser.setSimulatedRoleId(simulatedRoleId);
+        }
+        if (currentUser == null || simulatedRoleId != null) {
+            if (currentUser == null || simulatedRoleId == null || currentUser.getUserId() == null) {
                 return PermissionSnapshotService.PermissionSnapshot.empty();
             }
-            return permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId());
+            return permissionSnapshotService.loadGrantedRoleSnapshot(
+                    currentUser.getUserId(),
+                    currentUser.getUserUuid(),
+                    simulatedRoleId
+            );
         }
         if (!org.springframework.util.StringUtils.hasText(currentUser.getPermissionsVersion())) {
             if (!org.springframework.util.StringUtils.hasText(currentUser.getUserUuid())) {
@@ -1511,6 +1694,10 @@ public class SystemUserManagementAppService {
                 currentUser.getDataScopes(),
                 currentUser.getDefaultHomePath()
         );
+    }
+
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
     private <T> T queryOne(String sql, Class<T> voClass, Object... params) {

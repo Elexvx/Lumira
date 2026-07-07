@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,7 +44,26 @@ class SystemManagementAppServicePermissionCacheTest {
                 null,
                 null
         );
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot(
+                        "permissions-2",
+                        Set.of("system:role:view"),
+                        Set.of(1L),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of(),
+                        "/dashboard/home"
+                ));
         CurrentUser currentUser = new CurrentUser();
+        currentUser.setUserId(1001L);
+        currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setUsername("admin");
+        currentUser.setAuthenticated(true);
+        currentUser.setSessionId("session-1");
+        currentUser.setSessionVersion(1);
+        currentUser.setPermissionsVersion("permissions-1");
 
         List<SystemVO.PermissionVO> first = service.listPermissions(currentUser);
         List<SystemVO.PermissionVO> second = service.listPermissions(currentUser);

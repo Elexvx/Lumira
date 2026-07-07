@@ -58,27 +58,27 @@ public class SystemProfileSettingsAppService {
     private static final String PROFILE_FIELD_GROUP_CONTACT_KEY = "contact";
     private static final String PROFILE_FIELD_GROUP_IDENTITY_KEY = "identity";
     private static final String PROFILE_FIELD_GROUP_CUSTOM_KEY = "custom";
-    private static final String PROFILE_FIELD_GROUP_CUSTOM_LABEL = "自定义资料";
+    private static final String PROFILE_FIELD_GROUP_CUSTOM_LABEL = "Custom profile";
     private static final String SYSTEM_PROFILE_FIELD_OVERRIDES_KEY = "profile.field.system.overrides";
     private static final String CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY = "profile.field.custom.definitions";
     private static final Set<String> SUPPORTED_CUSTOM_FIELD_TYPES = Set.of("TEXT", "NUMBER", "DATE", "SELECT", "TEXTAREA");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS = List.of(
-            new ProfileFieldDefinition("avatarUrl", "头像", "控制个人中心是否展示头像上传与预览区域", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.avatar.visible", "profile.field.avatar.weight", true, 10, "IMAGE", false, null, 10, false),
-            new ProfileFieldDefinition("realName", "姓名", "控制个人中心是否展示姓名字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.real-name.visible", "profile.field.real-name.weight", true, 15, "TEXT", false, "请输入姓名", 20, false),
-            new ProfileFieldDefinition("mobile", "手机号", "控制个人中心是否展示手机号字段", PROFILE_FIELD_GROUP_CONTACT_KEY, "联系方式", "profile.field.mobile.visible", "profile.field.mobile.weight", true, 15, "MOBILE", false, "请输入手机号", 30, false),
-            new ProfileFieldDefinition("email", "邮箱", "控制个人中心是否展示邮箱字段", PROFILE_FIELD_GROUP_CONTACT_KEY, "联系方式", "profile.field.email.visible", "profile.field.email.weight", true, 15, "EMAIL", false, "请输入邮箱", 40, false),
-            new ProfileFieldDefinition("birthMonth", "出生年月", "控制个人中心是否展示出生年月字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.birth-month.visible", "profile.field.birth-month.weight", true, 10, "MONTH", false, "请选择出生年月", 50, false),
-            new ProfileFieldDefinition("gender", "性别", "控制个人中心是否展示性别字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.gender.visible", "profile.field.gender.weight", true, 10, "SELECT", false, "请选择性别", 60, false),
-            new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.region.visible", "profile.field.region.weight", true, 10, "TEXT", false, "请输入所在地区", 70, false),
-            new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_GROUP_IDENTITY_KEY, "证件信息", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5, "ID_CARD", false, "请输入身份证号码", 80, false)
+            new ProfileFieldDefinition("avatarUrl", "Avatar", "Controls whether profile avatar upload and preview are shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.avatar.visible", "profile.field.avatar.weight", true, 10, "IMAGE", false, null, 10, false),
+            new ProfileFieldDefinition("realName", "Real name", "Controls whether the real-name profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.real-name.visible", "profile.field.real-name.weight", true, 15, "TEXT", false, "Enter real name", 20, false),
+            new ProfileFieldDefinition("mobile", "Mobile", "Controls whether the mobile profile field is shown", PROFILE_FIELD_GROUP_CONTACT_KEY, "Contact", "profile.field.mobile.visible", "profile.field.mobile.weight", true, 15, "MOBILE", false, "Enter mobile number", 30, false),
+            new ProfileFieldDefinition("email", "Email", "Controls whether the email profile field is shown", PROFILE_FIELD_GROUP_CONTACT_KEY, "Contact", "profile.field.email.visible", "profile.field.email.weight", true, 15, "EMAIL", false, "Enter email address", 40, false),
+            new ProfileFieldDefinition("birthMonth", "Birth month", "Controls whether the birth-month profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.birth-month.visible", "profile.field.birth-month.weight", true, 10, "MONTH", false, "Select birth month", 50, false),
+            new ProfileFieldDefinition("gender", "Gender", "Controls whether the gender profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.gender.visible", "profile.field.gender.weight", true, 10, "SELECT", false, "Select gender", 60, false),
+            new ProfileFieldDefinition("region", "Region", "Controls whether the region profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.region.visible", "profile.field.region.weight", true, 10, "TEXT", false, "Enter region", 70, false),
+            new ProfileFieldDefinition("idCardNumber", "ID card number", "Controls whether the ID-card profile field is shown", PROFILE_FIELD_GROUP_IDENTITY_KEY, "Identity", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5, "ID_CARD", false, "Enter ID card number", 80, false)
     );
     private static final List<ProfileFieldDefinition> TEAM_MEMBER_FIELD_DEFINITIONS = List.of(
-            new ProfileFieldDefinition("memberName", "成员姓名", "团队成员姓名", "teamMember", "团队成员", "team.member.field.member-name.visible", "team.member.field.member-name.weight", true, 10, "TEXT", true, "请输入成员姓名", 10, false),
-            new ProfileFieldDefinition("employeeNo", "工号", "团队成员工号或学号", "teamMember", "团队成员", "team.member.field.employee-no.visible", "team.member.field.employee-no.weight", true, 5, "TEXT", false, "请输入工号或学号", 20, false),
-            new ProfileFieldDefinition("departmentName", "所属部门", "团队成员所属部门", "teamMember", "团队成员", "team.member.field.department-name.visible", "team.member.field.department-name.weight", true, 5, "TEXT", false, "请输入所属部门", 30, false),
-            new ProfileFieldDefinition("role", "角色", "团队成员角色", "teamMember", "团队成员", "team.member.field.role.visible", "team.member.field.role.weight", true, 5, "SELECT", false, "请选择角色", 40, false),
-            new ProfileFieldDefinition("remark", "备注", "团队成员备注", "teamMember", "团队成员", "team.member.field.remark.visible", "team.member.field.remark.weight", true, 5, "TEXTAREA", false, "请输入备注", 50, false)
+            new ProfileFieldDefinition("memberName", "Member name", "Team member name", "teamMember", "Team member", "team.member.field.member-name.visible", "team.member.field.member-name.weight", true, 10, "TEXT", true, "Enter member name", 10, false),
+            new ProfileFieldDefinition("employeeNo", "Employee number", "Team member employee or student number", "teamMember", "Team member", "team.member.field.employee-no.visible", "team.member.field.employee-no.weight", true, 5, "TEXT", false, "Enter employee or student number", 20, false),
+            new ProfileFieldDefinition("departmentName", "Department", "Team member department", "teamMember", "Team member", "team.member.field.department-name.visible", "team.member.field.department-name.weight", true, 5, "TEXT", false, "Enter department", 30, false),
+            new ProfileFieldDefinition("role", "Role", "Team member role", "teamMember", "Team member", "team.member.field.role.visible", "team.member.field.role.weight", true, 5, "SELECT", false, "Select role", 40, false),
+            new ProfileFieldDefinition("remark", "Remark", "Team member remark", "teamMember", "Team member", "team.member.field.remark.visible", "team.member.field.remark.weight", true, 5, "TEXTAREA", false, "Enter remark", 50, false)
     );
 
     private final MyBatisQueryOperations jdbcTemplate;
@@ -86,6 +86,7 @@ public class SystemProfileSettingsAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
     private final Cache<String, List<ProfileFieldSettingVO>> profileFieldSettingsCache;
     private final Cache<String, CompletableFuture<List<ProfileFieldSettingVO>>> profileFieldSettingsLoadInFlight;
 
@@ -94,7 +95,7 @@ public class SystemProfileSettingsAppService {
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, null);
+        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, null, false);
     }
 
     @Autowired
@@ -105,11 +106,23 @@ public class SystemProfileSettingsAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, operationAuditService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+    }
+
+    private SystemProfileSettingsAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            OperationAuditService operationAuditService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operationAuditService = operationAuditService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.profileFieldSettingsCache = CacheBuilder.newBuilder()
                 .maximumSize(PROFILE_SETTINGS_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(PROFILE_SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -126,20 +139,20 @@ public class SystemProfileSettingsAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, sessionAuthenticationService);
+        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
-        this(jdbcTemplate, operationAuditService, null, null, null);
+        this(jdbcTemplate, operationAuditService, null, null, null, false);
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
         requireAuthenticated(currentUser);
-        return getProfileFieldSettings(currentUser, PROFILE_PAGE_KEY);
+        return loadProfileFieldSettings(normalizePageKey(PROFILE_PAGE_KEY));
     }
 
-    public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser, String pageKey) {
-        requireAuthenticated(currentUser);
+    public List<ProfileFieldSettingVO> getProfileFieldSettingsForManagement(CurrentUser currentUser, String pageKey) {
+        requirePermission(currentUser, "system:config:view");
         return loadProfileFieldSettings(normalizePageKey(pageKey));
     }
 
@@ -162,7 +175,7 @@ public class SystemProfileSettingsAppService {
         List<ProfileFieldDefinition> customDefinitions = normalizeCustomDefinitions(request.getItems(), requestedSettings.keySet(), builtInDefinitions, normalizedPageKey);
         builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.visibleConfigKey(),
-                definition.fieldLabel() + "展示开关",
+                definition.fieldLabel() + " visibility",
                 String.valueOf(requestedVisibility(requestedSettings.get(definition.fieldKey()), definition.defaultVisible())),
                 definition.fieldDescription(),
                 currentUser.getUserId(),
@@ -202,9 +215,9 @@ public class SystemProfileSettingsAppService {
         );
         upsertConfigValue(
                 customDefinitionsConfigKey(normalizedPageKey),
-                "自定义资料字段定义",
+                "Custom profile field definitions",
                 serializeCustomDefinitions(customDefinitions),
-                "保存个人中心可扩展的自定义资料字段定义",
+                "Stores custom profile field definitions",
                 currentUser.getUserId(),
                 operatorUuid
         );
@@ -248,6 +261,9 @@ public class SystemProfileSettingsAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -267,18 +283,34 @@ public class SystemProfileSettingsAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -298,6 +330,10 @@ public class SystemProfileSettingsAppService {
         return refreshedUser;
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -314,7 +350,7 @@ public class SystemProfileSettingsAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 
@@ -512,7 +548,7 @@ public class SystemProfileSettingsAppService {
             }
             String fieldLabel = normalizeLimitedText(item.getFieldLabel(), 64);
             if (!StringUtils.hasText(fieldLabel)) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "自定义字段名称不能为空");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Custom field label is required");
             }
             String fieldType = normalizeCustomFieldType(item.getFieldType());
             int weight = resolveRequestedWeight(item, 5);
@@ -875,7 +911,7 @@ public class SystemProfileSettingsAppService {
             return "-";
         }
         return switch (fieldKey) {
-            case "avatarUrl" -> completed ? "已上传" : "未上传";
+            case "avatarUrl" -> completed ? "Uploaded" : "Not uploaded";
             case "realName" -> defaultIfBlank(currentUser.getRealName(), "-");
             case "mobile" -> maskMobile(currentUser.getMobile());
             case "email" -> maskEmail(currentUser.getEmail());
@@ -912,25 +948,25 @@ public class SystemProfileSettingsAppService {
 
     private String resolveActionLabel(String fieldKey, boolean mobileBindAvailable, boolean emailBindAvailable) {
         if ("avatarUrl".equals(fieldKey)) {
-            return "去上传";
+            return "Upload";
         }
         if ("mobile".equals(fieldKey)) {
-            return mobileBindAvailable ? "去绑定" : "待开启";
+            return mobileBindAvailable ? "Bind" : "Disabled";
         }
         if ("email".equals(fieldKey)) {
-            return emailBindAvailable ? "去绑定" : "待开启";
+            return emailBindAvailable ? "Bind" : "Disabled";
         }
-        return "去完善";
+        return "Complete";
     }
 
     private String resolveActionHint(String fieldKey, boolean mobileBindAvailable, boolean emailBindAvailable, int scoreContribution) {
         if ("mobile".equals(fieldKey) && !mobileBindAvailable) {
-            return "请先开启短信验证后再补全";
+            return "Enable SMS verification before completing this field";
         }
         if ("email".equals(fieldKey) && !emailBindAvailable) {
-            return "请先开启邮箱验证后再补全";
+            return "Enable email verification before completing this field";
         }
-        return scoreContribution > 0 ? "预计提升 +" + scoreContribution + " 分" : null;
+        return scoreContribution > 0 ? "Estimated +" + scoreContribution + " points" : null;
     }
 
     private String maskMobile(String mobile) {

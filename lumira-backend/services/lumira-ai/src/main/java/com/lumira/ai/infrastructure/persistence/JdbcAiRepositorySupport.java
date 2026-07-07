@@ -7,6 +7,7 @@ import com.lumira.common.security.CurrentUser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.util.StringUtils;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -43,17 +44,25 @@ abstract class JdbcAiRepositorySupport {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
         }
-        return currentUser.getUserId();
+        Long userId = currentUser.getUserId();
+        if (userId == null || userId <= 0) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        return userId;
     }
 
     protected String requireTrustedUserUuid(CurrentUser currentUser) {
         requireTrustedUserId(currentUser);
-        return currentUser.getUserUuid();
+        String userUuid = currentUser == null ? null : currentUser.getUserUuid();
+        if (!StringUtils.hasText(userUuid)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "User context is required");
+        }
+        return userUuid.trim();
     }
 
     protected boolean hasAllPermission(CurrentUser currentUser) {
         requireTrustedUserId(currentUser);
-        return currentUser.getPermissions().contains("*");
+        return currentUser.getPermissions() != null && currentUser.getPermissions().contains("*");
     }
 
     @FunctionalInterface

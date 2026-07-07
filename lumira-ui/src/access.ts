@@ -7,7 +7,7 @@ const hasAnyPermission = (permissions: Set<string>, keys: string[]) => keys.some
 const hasPluginRuntimePermission = (permissions: Set<string>) =>
   Array.from(permissions).some((permission) => permission === '*' || /^plugin:[^:]+:(view|create|manage|import)$/.test(permission));
 
-const AI_ASSISTANT_PERMISSIONS = ['ai:assistant:view', 'ai:chat:send'];
+const AI_ASSISTANT_PERMISSIONS = ['ai:view', 'ai:chat:send'];
 const AI_PERMISSIONS = [...AI_ASSISTANT_PERMISSIONS, 'ai:knowledge:view'];
 const SYSTEM_CONFIG_PERMISSIONS = ['system:config:view', 'system:config:update'];
 const SYSTEM_MENU_PERMISSIONS = ['system:menu:view', 'system:menu:create', 'system:menu:update', 'system:menu:status', 'system:menu:delete'];

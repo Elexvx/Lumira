@@ -122,6 +122,19 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    void upload_shouldRejectWhenLivePermissionsLoseUploadPermission() {
+        when(systemInternalApi.permissionSnapshot(100L, "user-uuid-100"))
+                .thenReturn(permissionSnapshot("permissions-2", "plugin:management:enable"));
+
+        assertThatThrownBy(() -> pluginManagementAppService.upload(null, currentUser()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.FORBIDDEN)
+                .hasMessageContaining("plugin:management:upload");
+
+        verifyNoInteractions(pluginArtifactLoader);
+    }
+
+    @Test
     void enable_shouldInvalidatePermissionSnapshotAfterGlobalBinding() {
         PluginRuntimeDescriptor descriptor = new PluginRuntimeDescriptor(
                 "sms",
@@ -246,6 +259,23 @@ class PluginManagementAppServiceTest {
         assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser()))
                 .isInstanceOf(com.lumira.common.exception.BizException.class)
                 .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.UNAUTHORIZED);
+
+        verifyNoInteractions(pluginPersistenceService, pluginRegistry, transactionManager);
+    }
+
+    @Test
+    void enable_shouldRejectWhenLivePermissionsLoseEnablePermissionBeforePersistence() {
+        when(systemInternalApi.permissionSnapshot(100L, "user-uuid-100"))
+                .thenReturn(permissionSnapshot("permissions-2", "plugin:management:view"));
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("sms");
+        request.setVersion("1.0.0");
+        request.setConfigJson("{}");
+
+        assertThatThrownBy(() -> pluginManagementAppService.enable(request, currentUser()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasFieldOrPropertyWithValue("errorCode", com.lumira.common.enums.ErrorCode.FORBIDDEN)
+                .hasMessageContaining("plugin:management:enable");
 
         verifyNoInteractions(pluginPersistenceService, pluginRegistry, transactionManager);
     }
@@ -850,7 +880,23 @@ class PluginManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(100L, "alice", 1001L, "session-1", 3, true, Set.of("plugin:management:enable"));
+        CurrentUser currentUser = new CurrentUser(
+                100L,
+                "alice",
+                1001L,
+                "session-1",
+                3,
+                true,
+                Set.of(
+                        "plugin:management:view",
+                        "plugin:management:upload",
+                        "plugin:management:install",
+                        "plugin:management:upgrade",
+                        "plugin:management:rollback",
+                        "plugin:management:enable",
+                        "plugin:management:disable"
+                )
+        );
         currentUser.setUserUuid("user-uuid-100");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
@@ -861,9 +907,22 @@ class PluginManagementAppServiceTest {
     }
 
     private PermissionSnapshotDTO permissionSnapshot(String version) {
+        return permissionSnapshot(
+                version,
+                "plugin:management:view",
+                "plugin:management:upload",
+                "plugin:management:install",
+                "plugin:management:upgrade",
+                "plugin:management:rollback",
+                "plugin:management:enable",
+                "plugin:management:disable"
+        );
+    }
+
+    private PermissionSnapshotDTO permissionSnapshot(String version, String... permissions) {
         return new PermissionSnapshotDTO(
                 version,
-                List.of("plugin:management:enable"),
+                List.of(permissions),
                 List.of(31L),
                 41L,
                 List.of(41L),

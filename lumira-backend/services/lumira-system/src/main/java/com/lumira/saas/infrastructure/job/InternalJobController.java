@@ -5,6 +5,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
+import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
 import com.lumira.common.web.InternalJobTokenValidator;
 import org.springframework.beans.factory.ObjectProvider;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -22,15 +24,18 @@ public class InternalJobController {
 
     private final PlatformEventOutboxRelay platformEventOutboxRelay;
     private final ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider;
+    private final UserExportTaskWorkerService userExportTaskWorkerService;
     private final String jobInternalToken;
 
     public InternalJobController(
             PlatformEventOutboxRelay platformEventOutboxRelay,
             ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider,
+            UserExportTaskWorkerService userExportTaskWorkerService,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobInternalToken
     ) {
         this.platformEventOutboxRelay = platformEventOutboxRelay;
         this.onlineSessionStreamServiceProvider = onlineSessionStreamServiceProvider;
+        this.userExportTaskWorkerService = userExportTaskWorkerService;
         this.jobInternalToken = jobInternalToken;
     }
 
@@ -60,6 +65,16 @@ public class InternalJobController {
         return ApiResponse.success(Boolean.TRUE, null);
     }
 
+    @PostMapping("/export/run")
+    public ApiResponse<Integer> processExportTasks(
+            @RequestParam(name = "limit", defaultValue = "20") int limit,
+            @RequestHeader(name = "X-Job-Token", required = false) String token
+    ) {
+        ensureAuthorized(token);
+        requireExportLimit(limit);
+        return ApiResponse.success(userExportTaskWorkerService.processPendingTasks(limit), null);
+    }
+
     private void ensureAuthorized(String token) {
         if (!InternalJobTokenValidator.isConfigured(jobInternalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Internal job token is not configured");
@@ -72,6 +87,12 @@ public class InternalJobController {
     private void requirePositiveId(Long id) {
         if (id == null || id <= 0) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Valid outbox event id is required");
+        }
+    }
+
+    private void requireExportLimit(int limit) {
+        if (limit < 1 || limit > UserExportTaskWorkerService.MAX_CLAIM_LIMIT) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Invalid export task limit");
         }
     }
 }

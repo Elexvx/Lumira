@@ -94,7 +94,7 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
                     if (isTrustedSnapshot(snapshot, claims, trustedSessionId)) {
                         CurrentUser currentUser = new CurrentUser(
                                 snapshot.userId(),
-                                snapshot.username(),
+                                snapshot.username().trim(),
                                 null,
                                 snapshot.sessionId(),
                                 snapshot.sessionVersion(),

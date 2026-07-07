@@ -13,6 +13,7 @@ import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +29,7 @@ import static java.util.Map.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AiToolPolicyServiceTest {
@@ -148,12 +150,60 @@ class AiToolPolicyServiceTest {
     }
 
     @Test
+    void listPoliciesShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        DefaultAiToolPolicyService service = new DefaultAiToolPolicyService(queryOperations, null, (SessionAuthenticationService) null);
+
+        assertThatThrownBy(() -> service.listPolicies(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.observedArgs).isEmpty();
+        assertThat(queryOperations.queryCalled).isFalse();
+    }
+
+    @Test
+    void listPoliciesShouldRejectWhenTrustedPermissionSnapshotIsUnavailableBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100")).thenReturn(null);
+        DefaultAiToolPolicyService service = new DefaultAiToolPolicyService(queryOperations, permissionSnapshotService, null, null);
+
+        assertThatThrownBy(() -> service.listPolicies(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.observedArgs).isEmpty();
+        assertThat(queryOperations.queryCalled).isFalse();
+    }
+
+    @Test
     void listPoliciesShouldRejectDisabledTrustedIdentityBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "DISABLED"));
+        DefaultAiToolPolicyService service =
+                new DefaultAiToolPolicyService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+
+        assertThatThrownBy(() -> service.listPolicies(currentUser(), 1, 10))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(queryOperations.observedArgs).isEmpty();
+        assertThat(queryOperations.queryCalled).isFalse();
+        org.mockito.Mockito.verify(permissionSnapshotService, never()).isTrustedActiveUser(100L, "user-uuid-100");
+    }
+
+    @Test
+    void listPoliciesShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L))
+                .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
         DefaultAiToolPolicyService service =
                 new DefaultAiToolPolicyService(queryOperations, permissionSnapshotService, systemInternalApi, null);
 
@@ -186,6 +236,27 @@ class AiToolPolicyServiceTest {
         assertThat(response.getRecords()).hasSize(1);
         assertThat(currentUser.getUsername()).isEqualTo("admin-live");
         assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("ai:tool-policy:view")));
+        DefaultAiToolPolicyService service = new DefaultAiToolPolicyService(queryOperations, permissionSnapshotService);
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = DefaultAiToolPolicyService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(permissionSnapshotService).loadSnapshot(100L, "user-uuid-100");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(100L, "user-uuid-100", 0L);
     }
 
     @Test

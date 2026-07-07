@@ -48,8 +48,13 @@ public class CompetitionRegistrationAppService {
     private static final String REGISTRATION_DATA_SCOPE_RESOURCE = "competition:registration";
     private static final String REGISTRATION_VIEW_PERMISSION = "aiadc:registration:view";
     private static final String REGISTRATION_CREATE_PERMISSION = "aiadc:registration:create";
+    private static final String REGISTRATION_UPDATE_PERMISSION = "aiadc:registration:update";
+    private static final String REGISTRATION_PAY_PERMISSION = "aiadc:registration:pay";
+    private static final String MATERIAL_VIEW_PERMISSION = "aiadc:material:view";
+    private static final String MATERIAL_SUBMIT_PERMISSION = "aiadc:material:submit";
     private static final String STAGE_VIEW_PERMISSION = "aiadc:stage:view";
     private static final String STAGE_MANAGE_PERMISSION = "aiadc:stage:manage";
+    private static final String PAYMENT_ORDER_VIEW_PERMISSION = "payment:order:view";
     private static final String PAYMENT_ORDER_JOIN_ON =
             "po.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci ";
     private static final Set<String> REGISTRATION_STATUSES = Set.of("DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED", "CANCELLED");
@@ -74,6 +79,7 @@ public class CompetitionRegistrationAppService {
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     @Autowired
     public CompetitionRegistrationAppService(
@@ -85,6 +91,19 @@ public class CompetitionRegistrationAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, permissionSnapshotService, sessionAuthenticationService, true);
+    }
+
+    private CompetitionRegistrationAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            ObjectMapper objectMapper,
+            ObjectProvider<TeamInternalApi> teamInternalApiProvider,
+            ObjectProvider<PaymentInternalApi> paymentInternalApiProvider,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.teamInternalApiProvider = teamInternalApiProvider;
@@ -92,6 +111,7 @@ public class CompetitionRegistrationAppService {
         this.systemInternalApiProvider = systemInternalApiProvider;
         this.permissionSnapshotService = permissionSnapshotService;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public CompetitionRegistrationAppService(
@@ -102,7 +122,7 @@ public class CompetitionRegistrationAppService {
             ObjectProvider<SystemInternalApi> systemInternalApiProvider,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, permissionSnapshotService, null);
+        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, permissionSnapshotService, null, false);
     }
 
     public CompetitionRegistrationAppService(
@@ -112,10 +132,11 @@ public class CompetitionRegistrationAppService {
             ObjectProvider<PaymentInternalApi> paymentInternalApiProvider,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
-        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, null);
+        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, null, null, false);
     }
 
     public PageResponse<CompetitionRegistrationVO.Registration> listRegistrations(CurrentUser currentUser, long pageNo, long pageSize) {
+        requireRegistrationReadPermission(currentUser);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
@@ -152,6 +173,7 @@ public class CompetitionRegistrationAppService {
             String registrationStatus,
             String providerCode
     ) {
+        requirePaymentOrderViewPermission(currentUser);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
@@ -229,6 +251,7 @@ public class CompetitionRegistrationAppService {
     }
 
     public CompetitionRegistrationVO.Registration getRegistration(CurrentUser currentUser, Long id) {
+        requireRegistrationReadPermission(currentUser);
         requirePositiveId(id, "Registration id is required");
         requireUserId(currentUser);
         CompetitionRegistrationVO.Registration registration = findRegistration(id);
@@ -273,7 +296,7 @@ public class CompetitionRegistrationAppService {
 
     @Transactional
     public CompetitionRegistrationVO.Registration createRegistration(CurrentUser currentUser, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
-        Long userId = requireUserId(currentUser);
+        Long userId = requirePermission(currentUser, REGISTRATION_CREATE_PERMISSION);
         String userUuid = requireUserUuid(currentUser);
         requireRequest(request, "Registration request is required");
         validateRegistrationCreateRequest(request);
@@ -318,6 +341,7 @@ public class CompetitionRegistrationAppService {
 
     @Transactional
     public CompetitionRegistrationVO.Registration updateRegistration(CurrentUser currentUser, Long id, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
+        requirePermission(currentUser, REGISTRATION_UPDATE_PERMISSION);
         requirePositiveId(id, "Registration id is required");
         requireRequest(request, "Registration request is required");
         validateRegistrationCreateRequest(request);
@@ -491,7 +515,7 @@ public class CompetitionRegistrationAppService {
 
     @Transactional
     public CompetitionRegistrationVO.Registration submitMaterials(CurrentUser currentUser, Long registrationId, CompetitionRegistrationDTO.MaterialSubmitRequest request) {
-        Long userId = requireUserId(currentUser);
+        Long userId = requirePermission(currentUser, MATERIAL_SUBMIT_PERMISSION);
         String userUuid = requireUserUuid(currentUser);
         requirePositiveId(registrationId, "Registration id is required");
         requireRequest(request, "Material submission request is required");
@@ -618,13 +642,22 @@ public class CompetitionRegistrationAppService {
                     trimToNull(value.getJsonValue())
             );
         }
-        enqueuePaymentOrderIfReady(registration, userId, requireUserUuid(currentUser), "alipay", null, null, null);
+        enqueuePaymentOrderIfReady(
+                registration,
+                userId,
+                requireUserUuid(currentUser),
+                normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
+                "alipay",
+                null,
+                null,
+                null
+        );
         return getRegistration(currentUser, registrationId);
     }
 
     @Transactional
     public CompetitionRegistrationVO.PaymentOrder createPaymentOrder(CurrentUser currentUser, Long registrationId, CompetitionRegistrationDTO.PaymentOrderRequest request) {
-        Long userId = requireUserId(currentUser);
+        Long userId = requirePermission(currentUser, REGISTRATION_PAY_PERMISSION);
         requirePositiveId(registrationId, "Registration id is required");
         CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
         if (!"PENDING_PAYMENT".equals(registration.getStatus())) {
@@ -644,7 +677,16 @@ public class CompetitionRegistrationAppService {
         String clientIp = request == null ? null : request.getClientIp();
         String notifyUrl = request == null ? null : request.getNotifyUrl();
         String returnUrl = request == null ? null : request.getReturnUrl();
-        enqueuePaymentOrderIfReady(registration, userId, requireUserUuid(currentUser), providerCode, clientIp, notifyUrl, returnUrl);
+        enqueuePaymentOrderIfReady(
+                registration,
+                userId,
+                requireUserUuid(currentUser),
+                normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
+                providerCode,
+                clientIp,
+                notifyUrl,
+                returnUrl
+        );
         drainPaymentOrderQueue(5);
         CompetitionRegistrationVO.Registration refreshed = getRegistration(currentUser, registrationId);
         if (StringUtils.hasText(refreshed.getPaymentOrderNo())) {
@@ -661,6 +703,7 @@ public class CompetitionRegistrationAppService {
     }
 
     public CompetitionRegistrationVO.PaymentOrder getPaymentStatus(CurrentUser currentUser, Long registrationId) {
+        requireRegistrationReadPermission(currentUser);
         requirePositiveId(registrationId, "Registration id is required");
         CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
         drainPaymentOrderQueue(5);
@@ -700,6 +743,7 @@ public class CompetitionRegistrationAppService {
             Long registrationId = toLong(task.get("registrationId"));
             String claimToken = String.valueOf(task.get("claimToken"));
             String taskOwnerUserUuid = trimTaskText(task.get("ownerUserUuid"), null);
+            Long taskSimulatedRoleId = normalizeSimulatedRoleId(toLong(task.get("simulatedRoleId")));
             try {
                 CompetitionRegistrationVO.Registration registration = findRegistration(registrationId);
                 if (registration == null || !"PENDING_PAYMENT".equals(registration.getStatus())) {
@@ -713,6 +757,7 @@ public class CompetitionRegistrationAppService {
                     PaymentOrderDTO existingOrder = paymentInternalApi.getOrder(
                             registration.getOwnerUserId(),
                             ownerUserUuid,
+                            taskSimulatedRoleId,
                             registration.getPaymentOrderNo()
                     );
                     assertOrderMatchesRegistration(existingOrder, registration);
@@ -724,6 +769,7 @@ public class CompetitionRegistrationAppService {
                 PaymentOrderDTO order = paymentInternalApi.createOrder(
                         registration.getOwnerUserId(),
                         ownerUserUuid,
+                        taskSimulatedRoleId,
                         new PaymentCreateOrderRequestDTO(
                                 trimTaskText(task.get("providerCode"), "alipay"),
                                 "REG-" + registration.getId(),
@@ -828,10 +874,15 @@ public class CompetitionRegistrationAppService {
         return ownerUserUuid.trim();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void enqueuePaymentOrderIfReady(
             CompetitionRegistrationVO.Registration registration,
             Long operatorId,
             String operatorUuid,
+            Long simulatedRoleId,
             String providerCode,
             String clientIp,
             String notifyUrl,
@@ -851,14 +902,15 @@ public class CompetitionRegistrationAppService {
         int inserted = jdbcTemplate.update(
                 """
                         insert into competition_payment_order_task (
-                            registration_id, provider_code, client_ip, notify_url, return_url, owner_user_uuid,
+                            registration_id, provider_code, client_ip, notify_url, return_url, owner_user_uuid, simulated_role_id,
                             status, retry_count, next_retry_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             provider_code = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then values(provider_code) else provider_code end,
                             client_ip = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then coalesce(values(client_ip), client_ip) else client_ip end,
                             notify_url = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then coalesce(values(notify_url), notify_url) else notify_url end,
                             return_url = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then coalesce(values(return_url), return_url) else return_url end,
+                            simulated_role_id = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then values(simulated_role_id) else simulated_role_id end,
                             status = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) and status in ('FAILED', 'DEAD') then 'PENDING' else status end,
                             next_retry_at = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) and status in ('FAILED', 'DEAD') then values(next_retry_at) else next_retry_at end,
                             updated_by = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then values(updated_by) else updated_by end,
@@ -871,6 +923,7 @@ public class CompetitionRegistrationAppService {
                 trimToNull(notifyUrl),
                 trimToNull(returnUrl),
                 requireRegistrationOwnerUserUuid(registration),
+                normalizeSimulatedRoleId(simulatedRoleId),
                 LocalDateTime.now(),
                 operatorId,
                 operatorUuid,
@@ -920,7 +973,7 @@ public class CompetitionRegistrationAppService {
                 """
                         select id, registration_id as registrationId, provider_code as providerCode,
                                client_ip as clientIp, notify_url as notifyUrl, return_url as returnUrl,
-                               owner_user_uuid as ownerUserUuid, claim_token as claimToken
+                               owner_user_uuid as ownerUserUuid, simulated_role_id as simulatedRoleId, claim_token as claimToken
                         from competition_payment_order_task
                         where deleted = 0
                           and status = 'RUNNING'
@@ -1439,11 +1492,56 @@ public class CompetitionRegistrationAppService {
         return hasPermission(currentUser, STAGE_VIEW_PERMISSION) || hasPermission(currentUser, STAGE_MANAGE_PERMISSION);
     }
 
+    private void requireRegistrationReadPermission(CurrentUser currentUser) {
+        requireAnyPermission(
+                currentUser,
+                REGISTRATION_VIEW_PERMISSION,
+                REGISTRATION_VIEW_PERMISSION,
+                REGISTRATION_CREATE_PERMISSION,
+                REGISTRATION_UPDATE_PERMISSION,
+                REGISTRATION_PAY_PERMISSION,
+                MATERIAL_VIEW_PERMISSION,
+                MATERIAL_SUBMIT_PERMISSION,
+                PAYMENT_ORDER_VIEW_PERMISSION,
+                STAGE_MANAGE_PERMISSION
+        );
+    }
+
     private void requireRegistrationStageReadPermission(CurrentUser currentUser) {
-        if (hasPermission(currentUser, REGISTRATION_VIEW_PERMISSION) || hasPermission(currentUser, REGISTRATION_CREATE_PERMISSION)) {
+        requireAnyPermission(
+                currentUser,
+                STAGE_VIEW_PERMISSION,
+                STAGE_VIEW_PERMISSION,
+                REGISTRATION_VIEW_PERMISSION,
+                REGISTRATION_CREATE_PERMISSION,
+                REGISTRATION_UPDATE_PERMISSION,
+                REGISTRATION_PAY_PERMISSION,
+                MATERIAL_VIEW_PERMISSION,
+                MATERIAL_SUBMIT_PERMISSION,
+                PAYMENT_ORDER_VIEW_PERMISSION,
+                STAGE_MANAGE_PERMISSION
+        );
+    }
+
+    private void requirePaymentOrderViewPermission(CurrentUser currentUser) {
+        requireAnyPermission(currentUser, PAYMENT_ORDER_VIEW_PERMISSION, PAYMENT_ORDER_VIEW_PERMISSION);
+    }
+
+    private void requireAnyPermission(CurrentUser currentUser, String messagePermission, String... permissionKeys) {
+        requireUserId(currentUser);
+        Set<String> permissions = trustedPermissions(currentUser);
+        if (permissions.contains("*")) {
             return;
         }
-        throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + STAGE_VIEW_PERMISSION);
+        if (permissions.contains(messagePermission)) {
+            return;
+        }
+        for (String permissionKey : permissionKeys) {
+            if (permissions.contains(permissionKey)) {
+                return;
+            }
+        }
+        throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + messagePermission);
     }
 
     private boolean canViewAllRegistrations(CurrentUser currentUser) {
@@ -1548,6 +1646,9 @@ public class CompetitionRegistrationAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -1555,13 +1656,50 @@ public class CompetitionRegistrationAppService {
         if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
+        SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
+        if (systemInternalApi != null) {
+            SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
+            String currentUserUuid = userSnapshot == null || !StringUtils.hasText(userSnapshot.userUuid())
+                    ? null
+                    : userSnapshot.userUuid().trim();
+            if (userSnapshot == null
+                    || userSnapshot.userId() == null
+                    || !userId.equals(userSnapshot.userId())
+                    || !StringUtils.hasText(currentUserUuid)
+                    || !normalizedUserUuid.equals(currentUserUuid)) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Login required");
+            }
+            if (!"ENABLED".equalsIgnoreCase(userSnapshot.status())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
+            }
+            if (!StringUtils.hasText(userSnapshot.username())) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
+            userId = userSnapshot.userId();
+            normalizedUserUuid = currentUserUuid;
+            currentUser.setUserId(userId);
+            currentUser.setUserUuid(normalizedUserUuid);
+            currentUser.setUsername(userSnapshot.username().trim());
+        }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
         currentUser.setUserUuid(normalizedUserUuid);
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
@@ -1598,7 +1736,7 @@ public class CompetitionRegistrationAppService {
         target.setPermissionsVersion(source.getPermissionsVersion());
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

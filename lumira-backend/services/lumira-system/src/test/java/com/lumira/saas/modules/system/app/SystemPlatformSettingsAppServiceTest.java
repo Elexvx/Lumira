@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.EmptyResultDataAccessException;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -254,6 +255,76 @@ class SystemPlatformSettingsAppServiceTest {
     }
 
     @Test
+    void updateBrandingSettingsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of());
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        FieldCryptoService fieldCryptoService = mock(FieldCryptoService.class);
+        when(fieldCryptoService.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(fieldCryptoService.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        SystemPlatformSettingsAppService service = new SystemPlatformSettingsAppService(
+                queryOperations,
+                new RecordingAuditLog(),
+                fieldCryptoService,
+                readModelVersionService,
+                null,
+                mock(SmtpMailService.class),
+                null,
+                null,
+                null
+        );
+        SystemDTO.BrandingSettingsRequest request = new SystemDTO.BrandingSettingsRequest();
+        request.setWebsiteName("Lumira");
+        request.setCompanyName("Acme Corp");
+        request.setCopyrightStartYear(2020);
+
+        assertThatThrownBy(() -> service.updateBrandingSettings(currentUser("system:config:update"), request))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.UNAUTHORIZED);
+        assertThat(queryOperations.queryForListCount()).isZero();
+        assertThat(queryOperations.updateCount()).isZero();
+        verify(readModelVersionService, times(0)).bump(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void updateBrandingSettingsShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        CurrentUser currentUser = currentUser("system:config:update");
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of());
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        FieldCryptoService fieldCryptoService = mock(FieldCryptoService.class);
+        when(fieldCryptoService.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(fieldCryptoService.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
+        SystemPlatformSettingsAppService service = new SystemPlatformSettingsAppService(
+                queryOperations,
+                new RecordingAuditLog(),
+                fieldCryptoService,
+                readModelVersionService,
+                null,
+                mock(SmtpMailService.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        SystemDTO.BrandingSettingsRequest request = new SystemDTO.BrandingSettingsRequest();
+        request.setWebsiteName("Lumira");
+        request.setCompanyName("Acme Corp");
+        request.setCopyrightStartYear(2020);
+
+        assertThatThrownBy(() -> service.updateBrandingSettings(currentUser, request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+        assertThat(queryOperations.queryForListCount()).isZero();
+        assertThat(queryOperations.updateCount()).isZero();
+        verify(readModelVersionService, times(0)).bump(anyString(), anyString(), anyString());
+    }
+
+    @Test
     void updateSmtpSettingsShouldRejectBlankUsernameBeforeDatabaseAccess() {
         CurrentUser currentUser = currentUser("*");
         currentUser.setUsername(" ");
@@ -355,6 +426,43 @@ class SystemPlatformSettingsAppServiceTest {
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
+        assertThat(queryOperations.updateCount()).isZero();
+        verify(permissionSnapshotService, times(0)).isTrustedActiveUser(org.mockito.ArgumentMatchers.anyLong(), anyString());
+        verify(readModelVersionService, times(0)).bump(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void updateBrandingSettingsShouldRejectBlankLiveUsernameBeforeDatabaseWrite() {
+        CurrentUser currentUser = currentUser("system:config:update");
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of());
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemPlatformSettingsAppService service = newService(
+                queryOperations,
+                readModelVersionService,
+                null,
+                mock(SmtpMailService.class),
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingAuditLog()
+        );
+
+        SystemDTO.BrandingSettingsRequest request = new SystemDTO.BrandingSettingsRequest();
+        request.setWebsiteName("Lumira");
+        request.setCompanyName("Acme Corp");
+        request.setCopyrightStartYear(2020);
+
+        assertThatThrownBy(() -> service.updateBrandingSettings(currentUser, request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
         assertThat(queryOperations.updateCount()).isZero();
         verify(permissionSnapshotService, times(0)).isTrustedActiveUser(org.mockito.ArgumentMatchers.anyLong(), anyString());
         verify(readModelVersionService, times(0)).bump(anyString(), anyString(), anyString());
@@ -526,7 +634,7 @@ class SystemPlatformSettingsAppServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
-                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "  admin-live  ", "ENABLED"));
         RecordingAuditLog auditLog = new RecordingAuditLog();
         SystemPlatformSettingsAppService service = newService(
                 queryOperations,
@@ -609,6 +717,27 @@ class SystemPlatformSettingsAppServiceTest {
         FieldCryptoService fieldCryptoService = mock(FieldCryptoService.class);
         when(fieldCryptoService.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(fieldCryptoService.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        if (sessionAuthenticationService == null && systemInternalApi == null) {
+            if (permissionSnapshotService == null) {
+                return new SystemPlatformSettingsAppService(
+                        queryOperations,
+                        auditLog,
+                        fieldCryptoService,
+                        readModelVersionService,
+                        ownerRuntimeMetrics,
+                        smtpMailService
+                );
+            }
+            return new SystemPlatformSettingsAppService(
+                    queryOperations,
+                    auditLog,
+                    fieldCryptoService,
+                    readModelVersionService,
+                    ownerRuntimeMetrics,
+                    smtpMailService,
+                    permissionSnapshotService
+            );
+        }
         return new SystemPlatformSettingsAppService(
                 queryOperations,
                 auditLog,
@@ -680,6 +809,39 @@ class SystemPlatformSettingsAppServiceTest {
                 return stream();
             }
         };
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of());
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:config:update")));
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "ENABLED"));
+        SystemPlatformSettingsAppService service = newService(
+                queryOperations,
+                mock(ReadModelVersionService.class),
+                null,
+                mock(SmtpMailService.class),
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingAuditLog()
+        );
+        CurrentUser currentUser = currentUser("system:config:update");
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemPlatformSettingsAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService, org.mockito.Mockito.never())
+                .loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     private static CurrentUser currentUser() {

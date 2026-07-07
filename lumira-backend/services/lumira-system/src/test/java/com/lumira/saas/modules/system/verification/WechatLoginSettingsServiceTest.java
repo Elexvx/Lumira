@@ -211,6 +211,102 @@ class WechatLoginSettingsServiceTest {
     }
 
     @Test
+    void updateSettingsShouldRejectOperatorWithoutManagePermissionAfterTrustedRefresh() {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        SessionAuthenticationService sessionAuthenticationService = Mockito.mock(SessionAuthenticationService.class);
+        CurrentUser refreshedOperator = new CurrentUser(
+                9L,
+                "operator-live",
+                "session-9",
+                1,
+                true,
+                Set.of("system:verification:view"),
+                Set.of(),
+                null,
+                Set.of(),
+                Set.of(),
+                List.of()
+        );
+        refreshedOperator.setUserUuid("operator-uuid-9");
+        refreshedOperator.setPermissionsVersion("permissions-2");
+        when(sessionAuthenticationService.authenticateSessionTicket("session-9", 9L, "operator-uuid-9", null, 1, "permissions-1"))
+                .thenReturn(new SessionAuthenticationService.AuthenticatedAccess(refreshedOperator, null, false));
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService,
+                sessionAuthenticationService
+        );
+        SystemDTO.WechatLoginSettingsRequest request = new SystemDTO.WechatLoginSettingsRequest();
+        request.setEnabled(Boolean.FALSE);
+
+        assertThatThrownBy(() -> service.updateSettings(trustedOperator(9L), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+                    assertThat(exception.getMessage()).contains("Missing permission: system:verification:manage");
+                });
+
+        verify(mapper, never()).listEffectiveValues(eq("PLATFORM"), any());
+        verify(mapper, never()).upsertPlatformConfig(any());
+        verify(readModelVersionService, never()).bump(any(), any(), any());
+    }
+
+    @Test
+    void requireTrustedOperatorShouldNormalizeInvalidSimulatedRoleIdBeforeSessionRefresh() throws Exception {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        SessionAuthenticationService sessionAuthenticationService = Mockito.mock(SessionAuthenticationService.class);
+        CurrentUser refreshedOperator = trustedOperator(9L);
+        refreshedOperator.setPermissionsVersion("permissions-2");
+        when(sessionAuthenticationService.authenticateSessionTicket("session-9", 9L, "operator-uuid-9", null, 1, "permissions-1"))
+                .thenReturn(new SessionAuthenticationService.AuthenticatedAccess(refreshedOperator, null, false));
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService,
+                sessionAuthenticationService
+        );
+        CurrentUser operator = trustedOperator(9L);
+        operator.setSimulatedRoleId(0L);
+        Method method = WechatLoginSettingsService.class.getDeclaredMethod("requireTrustedOperator", CurrentUser.class);
+        method.setAccessible(true);
+
+        CurrentUser result = (CurrentUser) method.invoke(service, operator);
+
+        assertThat(result.getSimulatedRoleId()).isNull();
+        assertThat(operator.getSimulatedRoleId()).isNull();
+        verify(sessionAuthenticationService).authenticateSessionTicket("session-9", 9L, "operator-uuid-9", null, 1, "permissions-1");
+    }
+
+    @Test
+    void updateSettingsShouldRejectTrustedOperatorWhenResolverIsUnavailableInStrictMode() {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService,
+                null
+        );
+        SystemDTO.WechatLoginSettingsRequest request = new SystemDTO.WechatLoginSettingsRequest();
+        request.setEnabled(Boolean.FALSE);
+
+        assertThatThrownBy(() -> service.updateSettings(trustedOperator(9L), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception).hasMessageContaining("Trusted user resolver is unavailable");
+                });
+
+        verify(mapper, never()).listEffectiveValues(eq("PLATFORM"), any());
+        verify(mapper, never()).upsertPlatformConfig(any());
+        verify(readModelVersionService, never()).bump(any(), any(), any());
+    }
+
+    @Test
     void settingsMutationShouldNotExposeNumericOnlyOperatorOperations() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
         ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);

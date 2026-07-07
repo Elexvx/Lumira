@@ -10,8 +10,10 @@ import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.message.app.MessageAppService;
 import com.lumira.message.dto.MessageDTO;
+import com.lumira.message.infrastructure.security.MessageSessionAuthenticationService;
 import com.lumira.message.vo.MessageVO;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,10 +29,32 @@ public class MessageV2Controller {
 
     private final MessageAppService messageAppService;
     private final SecurityContextFacade securityContextFacade;
+    private final MessageSessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public MessageV2Controller(MessageAppService messageAppService, SecurityContextFacade securityContextFacade) {
+        this(messageAppService, securityContextFacade, null, false);
+    }
+
+    @Autowired
+    public MessageV2Controller(
+            MessageAppService messageAppService,
+            SecurityContextFacade securityContextFacade,
+            MessageSessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(messageAppService, securityContextFacade, sessionAuthenticationService, true);
+    }
+
+    private MessageV2Controller(
+            MessageAppService messageAppService,
+            SecurityContextFacade securityContextFacade,
+            MessageSessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.messageAppService = messageAppService;
         this.securityContextFacade = securityContextFacade;
+        this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/messages")
@@ -38,49 +62,76 @@ public class MessageV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        requireAny("message:message:view", "system:notification:view");
-        return ApiResponse.success(messageAppService.listMessages(securityContextFacade.getCurrentUser(), pageNo, pageSize), TraceContext.getRequestId());
+        CurrentUser currentUser = require("message:message:view", "system:notification:view");
+        return ApiResponse.success(messageAppService.listMessages(currentUser, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/archive")
     public ApiResponse<MessageVO.NoticeArchivePageResponse> listArchive(@Valid MessageDTO.MessageArchiveQueryRequest request) {
-        requireAny("message:message:view", "system:notification:view");
-        return ApiResponse.success(messageAppService.listArchive(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("message:message:view", "system:notification:view");
+        return ApiResponse.success(messageAppService.listArchive(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/delivery-logs")
     public ApiResponse<MessageVO.DeliveryLogPageResponse> listDeliveryLogs(@Valid MessageDTO.MessageArchiveQueryRequest request) {
-        requireAny("message:message:view", "system:notification:view");
-        return ApiResponse.success(messageAppService.listDeliveryLogs(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+        CurrentUser currentUser = require("message:message:view", "system:notification:view");
+        return ApiResponse.success(messageAppService.listDeliveryLogs(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/unread-count")
     public ApiResponse<MessageVO.UnreadCountVO> unreadCount() {
-        requireAny("message:message:view", "system:notification:view");
+        CurrentUser currentUser = require("message:message:view", "system:notification:view");
         MessageVO.UnreadCountVO unreadCountVO = new MessageVO.UnreadCountVO();
-        unreadCountVO.setUnreadCount(messageAppService.countUnread(securityContextFacade.getCurrentUser()));
+        unreadCountVO.setUnreadCount(messageAppService.countUnread(currentUser));
         return ApiResponse.success(unreadCountVO, TraceContext.getRequestId());
     }
 
     @PostMapping("/read-all")
     @RepeatSubmit
     public ApiResponse<MessageVO.UnreadCountVO> readAll() {
-        requireAny("message:message:read", "system:notification:view");
-        return ApiResponse.success(messageAppService.markAllRead(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        CurrentUser currentUser = require("message:message:read", "system:notification:view");
+        return ApiResponse.success(messageAppService.markAllRead(currentUser), TraceContext.getRequestId());
     }
 
     @PostMapping("/messages/{id}/read")
     @RepeatSubmit
     public ApiResponse<MessageVO.NoticeVO> readMessage(@PathVariable("id") Long id) {
-        requireAny("message:message:read", "system:notification:view");
-        return ApiResponse.success(messageAppService.markMessageRead(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
+        CurrentUser currentUser = require("message:message:read", "system:notification:view");
+        return ApiResponse.success(messageAppService.markMessageRead(currentUser, id), TraceContext.getRequestId());
     }
 
-    private void requireAny(String... permissionKeys) {
-        var currentUser = securityContextFacade.getCurrentUser();
-        if (AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)
-                && currentUser.getPermissions() != null) {
-            Set<String> permissions = currentUser.getPermissions();
+    private CurrentUser require(String... permissionKeys) {
+        CurrentUser currentUser = requireTrustedCurrentUser(securityContextFacade.getCurrentUser());
+        requireAny(currentUser, permissionKeys);
+        return currentUser;
+    }
+
+    private CurrentUser requireTrustedCurrentUser(CurrentUser currentUser) {
+        if (AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) && sessionAuthenticationService == null
+                && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+        }
+        if (AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) && sessionAuthenticationService != null) {
+            MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess =
+                    sessionAuthenticationService.authenticateSessionTicket(
+                            currentUser.getSessionId(),
+                            currentUser.getUserId(),
+                            currentUser.getUserUuid(),
+                            currentUser.getSimulatedRoleId(),
+                            currentUser.getSessionVersion(),
+                            currentUser.getPermissionsVersion()
+                    );
+            currentUser = authenticatedAccess == null ? null : authenticatedAccess.currentUser();
+        }
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
+        }
+        return currentUser;
+    }
+
+    private void requireAny(CurrentUser currentUser, String... permissionKeys) {
+        Set<String> permissions = currentUser.getPermissions();
+        if (permissions != null) {
             for (String permissionKey : permissionKeys) {
                 if (permissions.contains(permissionKey)) {
                     return;
@@ -90,6 +141,6 @@ public class MessageV2Controller {
                 return;
             }
         }
-        throw new BizException(ErrorCode.FORBIDDEN, "缺少权限: " + String.join(" 或 ", permissionKeys));
+        throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + String.join(" or ", permissionKeys));
     }
 }

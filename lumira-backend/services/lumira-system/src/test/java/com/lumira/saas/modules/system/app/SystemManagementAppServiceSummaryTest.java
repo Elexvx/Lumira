@@ -35,6 +35,7 @@ import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +47,16 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 class SystemManagementAppServiceSummaryTest {
+
+    @Test
+    void defaultAdminProtectionShouldBindToFixedAdminUserId() throws Exception {
+        String source = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java")
+        );
+
+        assertThat(source).contains("return DEFAULT_ADMIN_USER_ID.equals(userId);");
+        assertThat(source).doesNotContain("DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username)");
+    }
 
     @Test
     void dashboardSummaryShouldAssembleIndependentReadsInParallelFriendlyWay() {
@@ -176,6 +187,48 @@ class SystemManagementAppServiceSummaryTest {
     }
 
     @Test
+    void dashboardSummaryShouldRejectBlankLiveUsernameBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(42L))
+                .thenReturn(userSnapshot(42L, "user-uuid-42", " ", "ENABLED"));
+        SystemManagementAppService service = new SystemManagementAppService(
+                env.jdbcTemplate,
+                env.userDomainService,
+                env.permissionSnapshotService,
+                systemInternalApi,
+                null,
+                env.systemPluginViewService,
+                env.onlineSessionManagementAppService,
+                env.systemVerificationAppService,
+                env.systemPlatformSettingsAppService,
+                env.systemProfileSettingsAppService,
+                env.passwordEncoder,
+                env.authSessionStore,
+                env.loginAuditService,
+                env.operationAuditService,
+                env.securitySettingsService,
+                env.passwordPolicyService,
+                env.iamUserService,
+                env.systemUserManagementAppService,
+                env.systemRoleManagementAppService,
+                env.fieldCryptoService
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.dashboardSummary(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.permissionSnapshotService, never()).isTrustedActiveUser(42L, "user-uuid-42");
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    @Test
     void dashboardSummaryShouldRejectRevokedSessionTicketBeforeUserLookup() {
         TestEnvironment env = new TestEnvironment();
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
@@ -211,6 +264,128 @@ class SystemManagementAppServiceSummaryTest {
     }
 
     @Test
+    void dashboardSummaryShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        TestEnvironment env = new TestEnvironment();
+        SystemManagementAppService service = strictService(
+                env.jdbcTemplate,
+                env.userDomainService,
+                null,
+                null,
+                null,
+                env.systemPluginViewService,
+                env.onlineSessionManagementAppService,
+                env.systemVerificationAppService,
+                env.systemPlatformSettingsAppService,
+                env.systemProfileSettingsAppService,
+                env.passwordEncoder,
+                env.authSessionStore,
+                env.loginAuditService,
+                env.operationAuditService,
+                env.securitySettingsService,
+                env.passwordPolicyService,
+                env.iamUserService,
+                env.systemUserManagementAppService,
+                env.systemRoleManagementAppService,
+                env.fieldCryptoService
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.dashboardSummary(buildCurrentUser()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    @Test
+    void dashboardSummaryShouldRejectWhenTrustedPermissionSnapshotIsUnavailableBeforeUserLookup() {
+        TestEnvironment env = new TestEnvironment();
+        when(env.permissionSnapshotService.loadSnapshot(42L, "user-uuid-42")).thenReturn(null);
+        SystemManagementAppService service = strictService(
+                env.jdbcTemplate,
+                env.userDomainService,
+                env.permissionSnapshotService,
+                null,
+                null,
+                env.systemPluginViewService,
+                env.onlineSessionManagementAppService,
+                env.systemVerificationAppService,
+                env.systemPlatformSettingsAppService,
+                env.systemProfileSettingsAppService,
+                env.passwordEncoder,
+                env.authSessionStore,
+                env.loginAuditService,
+                env.operationAuditService,
+                env.securitySettingsService,
+                env.passwordPolicyService,
+                env.iamUserService,
+                env.systemUserManagementAppService,
+                env.systemRoleManagementAppService,
+                env.fieldCryptoService
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.dashboardSummary(buildCurrentUser()))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user permission snapshot is unavailable");
+        verify(env.userDomainService, never()).findById(42L);
+        verify(env.systemPluginViewService, never()).availablePlugins();
+    }
+
+    private static SystemManagementAppService strictService(
+            MyBatisQueryOperations jdbcTemplate,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemPluginViewService systemPluginViewService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService,
+            FieldCryptoService fieldCryptoService
+    ) {
+        try {
+            SystemManagementAppService service = new SystemManagementAppService(
+                    jdbcTemplate,
+                    userDomainService,
+                    permissionSnapshotService,
+                    systemInternalApi,
+                    sessionAuthenticationService,
+                    systemPluginViewService,
+                    onlineSessionManagementAppService,
+                    systemVerificationAppService,
+                    systemPlatformSettingsAppService,
+                    systemProfileSettingsAppService,
+                    passwordEncoder,
+                    authSessionStore,
+                    loginAuditService,
+                    operationAuditService,
+                    securitySettingsService,
+                    passwordPolicyService,
+                    iamUserService,
+                    systemUserManagementAppService,
+                    systemRoleManagementAppService,
+                    fieldCryptoService
+            );
+            Field enforceField = SystemManagementAppService.class.getDeclaredField("enforceTrustedUserResolution");
+            enforceField.setAccessible(true);
+            enforceField.set(service, true);
+            return service;
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("Failed to create strict SystemManagementAppService", ex);
+        }
+    }
+
+    @Test
     void sensitiveUserInfoPermissionShouldRequireTrustedSession() throws Exception {
         TestEnvironment env = new TestEnvironment();
         Method method = SystemManagementAppService.class.getDeclaredMethod("canViewSensitiveUserInfo", CurrentUser.class);
@@ -235,6 +410,22 @@ class SystemManagementAppServiceSummaryTest {
         currentUser.setSessionId(null);
 
         assertThat(method.invoke(env.service, currentUser)).isNull();
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        TestEnvironment env = new TestEnvironment();
+        Method method = SystemManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        method.invoke(env.service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("permissions-2");
+        verify(env.permissionSnapshotService).loadSnapshot(42L, "user-uuid-42");
+        verify(env.permissionSnapshotService, never()).loadGrantedRoleSnapshot(42L, "user-uuid-42", 0L);
     }
 
     @Test
@@ -270,6 +461,31 @@ class SystemManagementAppServiceSummaryTest {
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
         verify(env.securitySettingsService, never()).loadSettings();
+    }
+
+    @Test
+    void agreementSettingsShouldRequireConfigViewBeforeLoadingSettings() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.getAgreementSettings(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        verify(env.systemPlatformSettingsAppService, never()).getAgreementSettings();
+    }
+
+    @Test
+    void agreementSettingsShouldRejectWhenLiveSnapshotRevokesConfigViewBeforeLoadingSettings() {
+        TestEnvironment env = new TestEnvironment();
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setPermissions(Set.of("system:config:view"));
+        when(env.permissionSnapshotService.loadSnapshot(42L, "user-uuid-42"))
+                .thenReturn(env.snapshot(Set.of("dashboard:view")));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> env.service.getAgreementSettings(currentUser))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        verify(env.systemPlatformSettingsAppService, never()).getAgreementSettings();
     }
 
     @Test
@@ -390,7 +606,7 @@ class SystemManagementAppServiceSummaryTest {
         currentUser.setUsername("stale-jane");
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(42L))
-                .thenReturn(userSnapshot(42L, "user-uuid-42", "jane-live", "ENABLED"));
+                .thenReturn(userSnapshot(42L, "user-uuid-42", "  jane-live  ", "ENABLED"));
         when(env.permissionSnapshotService.loadSnapshot(42L, "user-uuid-42"))
                 .thenReturn(env.snapshot(Set.of("dashboard:view", "project:view")));
         SystemManagementAppService service = new SystemManagementAppService(

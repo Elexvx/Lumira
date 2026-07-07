@@ -38,8 +38,13 @@ public class TeamAppService {
     private static final Set<String> JOIN_MODES = Set.of("INVITE_ONLY", "APPLY", "OPEN");
     private static final Set<String> MEMBER_ROLES = Set.of("OWNER", "ADMIN", "MANAGER", "MEMBER");
     private static final String TEAM_VIEW = "team:view";
+    private static final String TEAM_CREATE = "team:create";
     private static final String TEAM_UPDATE = "team:update";
     private static final String TEAM_DELETE = "team:delete";
+    private static final String TEAM_MEMBER_VIEW = "team:member:view";
+    private static final String TEAM_MEMBER_INVITE = "team:member:invite";
+    private static final String TEAM_MEMBER_REMOVE = "team:member:remove";
+    private static final String TEAM_MEMBER_ROLE_UPDATE = "team:member:role-update";
     private static final int MAX_TEAM_NAME_LENGTH = 128;
     private static final int MAX_AVATAR_URL_LENGTH = 512;
     private static final int MAX_DESCRIPTION_LENGTH = 1000;
@@ -97,6 +102,7 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Team createTeam(CurrentUser currentUser, TeamDTO.TeamCreateRequest request) {
+        requirePermission(currentUser, TEAM_CREATE);
         Long userId = requireUserId(currentUser);
         String userUuid = requireUserUuid(currentUser);
         TeamDTO.TeamCreateRequest normalizedRequest = normalizeCreateRequest(request);
@@ -136,6 +142,7 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Team updateTeam(CurrentUser currentUser, Long teamId, TeamDTO.TeamUpdateRequest request) {
+        requirePermission(currentUser, TEAM_UPDATE);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -167,6 +174,7 @@ public class TeamAppService {
 
     @Transactional
     public boolean deleteTeam(CurrentUser currentUser, Long teamId) {
+        requirePermission(currentUser, TEAM_DELETE);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -188,6 +196,7 @@ public class TeamAppService {
     }
 
     public List<TeamVO.Member> listMembers(CurrentUser currentUser, Long teamId) {
+        requirePermission(currentUser, TEAM_MEMBER_VIEW);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -197,6 +206,7 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Member addMember(CurrentUser currentUser, Long teamId, TeamDTO.MemberCreateRequest request) {
+        requirePermission(currentUser, TEAM_MEMBER_INVITE);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -213,6 +223,7 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Member updateMemberRole(CurrentUser currentUser, Long teamId, Long memberId, TeamDTO.MemberRoleRequest request) {
+        requirePermission(currentUser, TEAM_MEMBER_ROLE_UPDATE);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -241,6 +252,7 @@ public class TeamAppService {
 
     @Transactional
     public boolean removeMember(CurrentUser currentUser, Long teamId, Long memberId) {
+        requirePermission(currentUser, TEAM_MEMBER_REMOVE);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -276,6 +288,7 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Team transferOwner(CurrentUser currentUser, Long teamId, TeamDTO.TransferOwnerRequest request) {
+        requirePermission(currentUser, TEAM_MEMBER_ROLE_UPDATE);
         Long actorUserId = requireUserId(currentUser);
         String actorUserUuid = requireUserUuid(currentUser);
         requirePositiveId(teamId, "Team id is required");
@@ -350,7 +363,7 @@ public class TeamAppService {
         return requireText(currentUser.getUserUuid(), "User uuid is required");
     }
 
-    private void requirePermission(CurrentUser currentUser, String permissionKey) {
+    void requirePermission(CurrentUser currentUser, String permissionKey) {
         requireUserId(currentUser);
         Set<String> permissions = currentUser.getPermissions();
         if (permissions == null || permissions.isEmpty() || (!permissions.contains("*") && !permissions.contains(permissionKey))) {
@@ -364,8 +377,11 @@ public class TeamAppService {
     }
 
     private void refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser) || systemInternalApiProvider == null) {
+        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return;
+        }
+        if (systemInternalApiProvider == null) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
         }
         Long userId = currentUser.getUserId();
         String normalizedUserUuid = StringUtils.hasText(currentUser.getUserUuid()) ? currentUser.getUserUuid().trim() : null;
@@ -386,20 +402,29 @@ public class TeamAppService {
         if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim());
+        if (!StringUtils.hasText(userSnapshot.username())) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+        }
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO snapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
             throw biz(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
         }
         currentUser.setUserId(userSnapshot.userId());
         currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username());
+        currentUser.setUsername(userSnapshot.username().trim());
         currentUser.setPermissions(trustedPermissions(snapshot));
         currentUser.setRoleIds(trustedLongSet(snapshot.roleIds()));
         currentUser.setPrimaryDeptId(snapshot.primaryDeptId());
         currentUser.setDeptIds(trustedLongSet(snapshot.deptIds()));
         currentUser.setDescendantDeptIds(trustedLongSet(snapshot.descendantDeptIds()));
         currentUser.setDataScopes(snapshot.dataScopes() == null ? List.of() : List.copyOf(snapshot.dataScopes()));
-        currentUser.setPermissionsVersion(snapshot.version());
+        currentUser.setPermissionsVersion(snapshot.version().trim());
         currentUser.setDefaultHomePath(snapshot.defaultHomePath());
     }
 

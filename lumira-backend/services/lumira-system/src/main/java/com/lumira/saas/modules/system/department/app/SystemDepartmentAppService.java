@@ -36,6 +36,7 @@ public class SystemDepartmentAppService {
     private final OperationAuditService operationAuditService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private final boolean enforceTrustedUserResolution;
 
     public SystemDepartmentAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -47,7 +48,8 @@ public class SystemDepartmentAppService {
                 permissionSnapshotService,
                 operationAuditService,
                 null,
-                null
+                null,
+                false
         );
     }
 
@@ -59,11 +61,30 @@ public class SystemDepartmentAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
+        this(
+                jdbcTemplate,
+                permissionSnapshotService,
+                operationAuditService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                true
+        );
+    }
+
+    private SystemDepartmentAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionSnapshotService = permissionSnapshotService;
         this.operationAuditService = operationAuditService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public SystemDepartmentAppService(
@@ -72,11 +93,11 @@ public class SystemDepartmentAppService {
             OperationAuditService operationAuditService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, operationAuditService, null, sessionAuthenticationService);
+        this(jdbcTemplate, permissionSnapshotService, operationAuditService, null, sessionAuthenticationService, false);
     }
 
     public List<DepartmentVO> listDepartments(CurrentUser currentUser) {
-        assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:department:view");
         List<DepartmentVO> rows = jdbcTemplate.query(
                 """
                         select d.id,
@@ -110,11 +131,11 @@ public class SystemDepartmentAppService {
     }
 
     public DepartmentVO getDepartment(CurrentUser currentUser, Long id) {
-        assertAuthenticated(currentUser);
+        requirePermission(currentUser, "system:department:view");
         requirePositiveId(id, "Department id is required");
-        DepartmentVO department = queryDepartment(id);
+        DepartmentVO department = requireDepartment(id);
         if (department == null) {
-            throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "Department does not exist");
         }
         return department;
     }
@@ -153,7 +174,7 @@ public class SystemDepartmentAppService {
         rebuildClosureForSubtree(id);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
-        return getDepartment(currentUser, id);
+        return requireDepartment(id);
     }
 
     @Transactional
@@ -161,7 +182,7 @@ public class SystemDepartmentAppService {
         requirePermission(currentUser, "system:department:update");
         requirePositiveId(id, "Department id is required");
         requireRequest(request, "Department request is required");
-        DepartmentVO existing = getDepartment(currentUser, id);
+        DepartmentVO existing = requireDepartment(id);
         validateParent(id, request.getParentId());
         validateDeptCodeUnique(id, request.getDeptCode());
         int updated;
@@ -198,25 +219,25 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
         if (updated == 0) {
-            throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "Department does not exist");
         }
         rebuildClosureForSubtree(id);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "update", "UPDATE", "SUCCESS", "更新部门: " + existing.getDeptName());
-        return getDepartment(currentUser, id);
+        return requireDepartment(id);
     }
 
     @Transactional
     public boolean deleteDepartment(CurrentUser currentUser, Long id) {
         requirePermission(currentUser, "system:department:delete");
         requirePositiveId(id, "Department id is required");
-        DepartmentVO existing = getDepartment(currentUser, id);
+        DepartmentVO existing = requireDepartment(id);
         boolean hasChildDepartment = jdbcTemplate.exists(
                 "select 1 from sys_department where parent_id = ? and deleted = 0 limit 1",
                 id
         );
         if (hasChildDepartment) {
-            throw visibleBizException(ErrorCode.BIZ_ERROR, "存在下级部门，不能删除");
+            throw visibleBizException(ErrorCode.BIZ_ERROR, "Department has child departments and cannot be deleted");
         }
         boolean hasAssignedUsers = jdbcTemplate.exists(
                 """
@@ -310,13 +331,13 @@ public class SystemDepartmentAppService {
         }
         DepartmentVO parent = queryDepartment(normalizedParentId);
         if (parent == null) {
-            throw visibleBizException(ErrorCode.NOT_FOUND, "上级部门不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "Parent department does not exist");
         }
         Long cursor = parent.getParentId();
         int guard = 0;
         while (cursor != null && cursor > 0 && guard++ < 32) {
             if (cursor.equals(currentId)) {
-                throw visibleBizException(ErrorCode.VALIDATION_ERROR, "不能把部门移动到自己的下级");
+                throw visibleBizException(ErrorCode.VALIDATION_ERROR, "Department cannot be moved under its own descendant");
             }
             DepartmentVO ancestor = queryDepartment(cursor);
             cursor = ancestor == null ? null : ancestor.getParentId();
@@ -485,6 +506,14 @@ public class SystemDepartmentAppService {
         }
     }
 
+    private DepartmentVO requireDepartment(Long departmentId) {
+        DepartmentVO department = queryDepartment(departmentId);
+        if (department == null) {
+            throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
+        }
+        return department;
+    }
+
     private void requireRequest(Object request, String message) {
         if (request == null) {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, message);
@@ -524,6 +553,9 @@ public class SystemDepartmentAppService {
             return;
         }
         if (permissionSnapshotService == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
+            }
             return;
         }
         Long userId = currentUser.getUserId();
@@ -543,18 +575,34 @@ public class SystemDepartmentAppService {
             if (!STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status())) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
             }
+            String currentUsername = StringUtils.hasText(userSnapshot.username()) ? userSnapshot.username().trim() : null;
+            if (!StringUtils.hasText(currentUsername)) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
+            }
             userId = userSnapshot.userId();
             normalizedUserUuid = userSnapshot.userUuid().trim();
             currentUser.setUserId(userId);
             currentUser.setUserUuid(normalizedUserUuid);
-            currentUser.setUsername(userSnapshot.username());
+            currentUser.setUsername(currentUsername);
         }
         if (!permissionSnapshotService.isTrustedActiveUser(userId, normalizedUserUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = currentUser.getSimulatedRoleId() != null
-                ? permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId())
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = simulatedRoleId != null
+                ? permissionSnapshotService.loadGrantedRoleSnapshot(
+                userId,
+                normalizedUserUuid,
+                simulatedRoleId
+        )
                 : permissionSnapshotService.loadSnapshot(userId, normalizedUserUuid);
+        if (snapshot == null) {
+            if (enforceTrustedUserResolution) {
+                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permission snapshot is unavailable");
+            }
+            return;
+        }
+        currentUser.setSimulatedRoleId(simulatedRoleId);
         currentUser.setUserUuid(normalizedUserUuid);
         currentUser.setPermissions(snapshot.getPermissions() == null ? Set.of() : Set.copyOf(snapshot.getPermissions()));
         currentUser.setRoleIds(snapshot.getRoleIds() == null ? Set.of() : Set.copyOf(snapshot.getRoleIds()));
@@ -573,6 +621,10 @@ public class SystemDepartmentAppService {
         return authenticatedAccess.currentUser();
     }
 
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
     private void copyTrustedCurrentUser(CurrentUser target, CurrentUser source) {
         target.setUserId(source.getUserId());
         target.setUserUuid(source.getUserUuid());
@@ -589,7 +641,7 @@ public class SystemDepartmentAppService {
         target.setDataScopes(source.getDataScopes() == null ? List.of() : List.copyOf(source.getDataScopes()));
         target.setRequiresPasswordChange(source.getRequiresPasswordChange());
         target.setDefaultHomePath(source.getDefaultHomePath());
-        target.setSimulatedRoleId(source.getSimulatedRoleId());
+        target.setSimulatedRoleId(normalizeSimulatedRoleId(source.getSimulatedRoleId()));
         target.setLoginType(source.getLoginType());
     }
 

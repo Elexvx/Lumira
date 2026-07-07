@@ -13,6 +13,7 @@ import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -212,6 +213,62 @@ class AiEmployeeRuntimeServiceTest {
     }
 
     @Test
+    void chatShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableBeforeLoadingEmployeeOrConversation() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiConversationService conversationService = mock(AiConversationService.class);
+        DefaultAiEmployeeRuntimeService service = new DefaultAiEmployeeRuntimeService(
+                jdbcTemplate,
+                mock(AiLlmServiceConfigProvider.class),
+                mock(AiChatModelFactory.class),
+                conversationService,
+                mock(AiToolRegistry.class),
+                mock(AiSkillPermissionChecker.class),
+                mock(AiKnowledgeBaseAppService.class),
+                mock(AiToolOrchestrationService.class),
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.chat(currentUser(), chatRequest(List.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(jdbcTemplate.queryCalled).isFalse();
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+        verify(conversationService, never()).ensureConversation(anyLong(), any(), anyLong(), any(), any());
+    }
+
+    @Test
+    void chatShouldRejectWhenTrustedPermissionSnapshotIsUnavailableBeforeLoadingEmployeeOrConversation() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiConversationService conversationService = mock(AiConversationService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100")).thenReturn(null);
+        DefaultAiEmployeeRuntimeService service = new DefaultAiEmployeeRuntimeService(
+                jdbcTemplate,
+                mock(AiLlmServiceConfigProvider.class),
+                mock(AiChatModelFactory.class),
+                conversationService,
+                mock(AiToolRegistry.class),
+                mock(AiSkillPermissionChecker.class),
+                mock(AiKnowledgeBaseAppService.class),
+                mock(AiToolOrchestrationService.class),
+                permissionSnapshotService,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.chat(currentUser(), chatRequest(List.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(jdbcTemplate.queryCalled).isFalse();
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+        verify(conversationService, never()).ensureConversation(anyLong(), any(), anyLong(), any(), any());
+    }
+
+    @Test
     void chatShouldRejectDisabledTrustedIdentityBeforeLoadingEmployeeOrConversation() {
         StubQueryOperations jdbcTemplate = new StubQueryOperations();
         AiConversationService conversationService = mock(AiConversationService.class);
@@ -219,6 +276,38 @@ class AiEmployeeRuntimeServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(100L))
                 .thenReturn(userSnapshot(100L, "user-uuid-100", "admin-live", "DISABLED"));
+        DefaultAiEmployeeRuntimeService service = newService(
+                jdbcTemplate,
+                mock(AiLlmServiceConfigProvider.class),
+                mock(AiChatModelFactory.class),
+                conversationService,
+                mock(AiToolRegistry.class),
+                mock(AiSkillPermissionChecker.class),
+                mock(AiKnowledgeBaseAppService.class),
+                null,
+                permissionSnapshotService,
+                systemInternalApi,
+                null
+        );
+
+        assertThatThrownBy(() -> service.chat(currentUser(), chatRequest(List.of())))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        assertThat(jdbcTemplate.queryCalled).isFalse();
+        assertThat(jdbcTemplate.lastUpdateSql).isNull();
+        verify(conversationService, never()).ensureConversation(anyLong(), any(), anyLong(), any(), any());
+        verify(permissionSnapshotService, never()).isTrustedActiveUser(100L, "user-uuid-100");
+    }
+
+    @Test
+    void chatShouldRejectTrustedIdentityWhenLiveUsernameIsUnavailableBeforeLoadingEmployeeOrConversation() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiConversationService conversationService = mock(AiConversationService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(100L))
+                .thenReturn(userSnapshot(100L, "user-uuid-100", " ", "ENABLED"));
         DefaultAiEmployeeRuntimeService service = newService(
                 jdbcTemplate,
                 mock(AiLlmServiceConfigProvider.class),
@@ -290,6 +379,37 @@ class AiEmployeeRuntimeServiceTest {
 
         assertThat(currentUser.getUsername()).isEqualTo("admin-live");
         assertThat(currentUser.getPermissionsVersion()).isEqualTo("perm-v2");
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(100L, "user-uuid-100")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(100L, "user-uuid-100"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("perm-v2", Set.of("ai:chat:send")));
+        DefaultAiEmployeeRuntimeService service = newService(
+                jdbcTemplate,
+                mock(AiLlmServiceConfigProvider.class),
+                mock(AiChatModelFactory.class),
+                mock(AiConversationService.class),
+                mock(AiToolRegistry.class),
+                mock(AiSkillPermissionChecker.class),
+                mock(AiKnowledgeBaseAppService.class),
+                null,
+                permissionSnapshotService
+        );
+        CurrentUser currentUser = currentUser();
+        currentUser.setSimulatedRoleId(0L);
+
+        Method method = DefaultAiEmployeeRuntimeService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        assertThat(currentUser.getPermissionsVersion()).isEqualTo("perm-v2");
+        verify(permissionSnapshotService).loadSnapshot(100L, "user-uuid-100");
+        verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(100L, "user-uuid-100", 0L);
     }
 
     @Test
@@ -467,13 +587,13 @@ class AiEmployeeRuntimeServiceTest {
         );
         AiDTO.ChatRequest request = chatRequest(List.of("data.export"));
 
-        doThrow(new BizException(ErrorCode.FORBIDDEN, "鎶€鑳藉凡琚鐢? data.export"))
+        doThrow(new BizException(ErrorCode.FORBIDDEN, "技能已被禁用: data.export"))
                 .when(permissionChecker)
                 .verifyAllowed(anyLong(), eq(List.of("data.export")), eq(false));
 
         assertThatThrownBy(() -> service.chat(currentUser(), request))
                 .isInstanceOf(BizException.class)
-                .hasMessage("鎶€鑳藉凡琚鐢? data.export");
+                .hasMessage("技能已被禁用: data.export");
 
         assertThat(jdbcTemplate.lastUpdateSql).contains("insert into ai_tool_audit_log");
         assertThat(jdbcTemplate.lastUpdateArgs[0]).isNull();
@@ -483,7 +603,7 @@ class AiEmployeeRuntimeServiceTest {
         assertThat(jdbcTemplate.lastUpdateArgs[4]).isEqualTo("data.export");
         assertThat(jdbcTemplate.lastUpdateArgs[6]).isEqualTo("deny");
         assertThat(jdbcTemplate.lastUpdateArgs[9]).isEqualTo("FAIL");
-        assertThat(jdbcTemplate.lastUpdateArgs[10]).isEqualTo("鎶€鑳藉凡琚鐢? data.export");
+        assertThat(jdbcTemplate.lastUpdateArgs[10]).isEqualTo("技能已被禁用: data.export");
     }
 
     @Test
@@ -538,7 +658,7 @@ class AiEmployeeRuntimeServiceTest {
                 orchestrationService
         );
         AiDTO.ChatRequest request = chatRequest(List.of());
-        request.setMessage("鏌ョ湅绯荤粺鏈夊嚑涓敤鎴凤紵");
+        request.setMessage("查看系统有几个用户？");
         AiVO.ToolPlanVO plan = new AiVO.ToolPlanVO();
         plan.setId(9L);
         plan.setStatus("PENDING");
@@ -547,7 +667,7 @@ class AiEmployeeRuntimeServiceTest {
         AiVO.ToolExecuteResultVO toolResult = new AiVO.ToolExecuteResultVO();
         toolResult.setToolCode("system.user.search");
         toolResult.setResultStatus("SUCCESS");
-        toolResult.setMessage("宸ュ叿璋冪敤鎴愬姛");
+        toolResult.setMessage("工具调用成功");
         toolResult.setData(Map.of("total", 3L, "count", 1, "limit", 1));
 
         when(conversationService.ensureConversation(anyLong(), any(), anyLong(), isNull(), any())).thenReturn(10L);
@@ -675,19 +795,39 @@ class AiEmployeeRuntimeServiceTest {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        return new DefaultAiEmployeeRuntimeService(
-                jdbcTemplate,
-                configProvider,
-                chatModelFactory,
-                conversationService,
-                toolRegistry,
-                permissionChecker,
-                knowledgeBaseAppService,
-                orchestrationService,
-                permissionSnapshotService,
-                systemInternalApi,
-                sessionAuthenticationService
-        );
+        try {
+            java.lang.reflect.Constructor<DefaultAiEmployeeRuntimeService> constructor = DefaultAiEmployeeRuntimeService.class.getDeclaredConstructor(
+                    MyBatisQueryOperations.class,
+                    AiLlmServiceConfigProvider.class,
+                    AiChatModelFactory.class,
+                    AiConversationService.class,
+                    AiToolRegistry.class,
+                    AiSkillPermissionChecker.class,
+                    AiKnowledgeBaseAppService.class,
+                    AiToolOrchestrationService.class,
+                    PermissionSnapshotService.class,
+                    SystemInternalApi.class,
+                    SessionAuthenticationService.class,
+                    boolean.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    jdbcTemplate,
+                    configProvider,
+                    chatModelFactory,
+                    conversationService,
+                    toolRegistry,
+                    permissionChecker,
+                    knowledgeBaseAppService,
+                    orchestrationService,
+                    permissionSnapshotService,
+                    systemInternalApi,
+                    sessionAuthenticationService,
+                    false
+            );
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("Failed to create lenient DefaultAiEmployeeRuntimeService", ex);
+        }
     }
 
     private CurrentUser currentUser() {

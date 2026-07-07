@@ -53,15 +53,25 @@ class OnlineSessionStreamServiceTest {
     }
 
     @Test
-    void openStreamShouldRequireOnlineUserViewPermission() {
-        OnlineSessionStreamService service = service(mock(SessionAuthenticationService.class));
+    void openStreamShouldTrustLivePermissionSnapshotOverLocalPermissions() {
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        when(sessionAuthenticationService.authenticateSessionTicket(anyString(), anyLong(), anyString(), anyLong(), anyInt(), anyString()))
+                .thenReturn(authenticatedAccess(Set.of("system:online-user:view")));
+        OnlineSessionStreamService service = new OnlineSessionStreamService(
+                new ObjectMapper(),
+                sessionAuthenticationService,
+                Clock.fixed(Instant.parse("2026-07-06T12:00:00Z"), ZoneOffset.UTC),
+                Duration.ofSeconds(30)
+        );
         CurrentUser currentUser = new CurrentUser(1001L, "alice", null, "session-1", 1, true, Set.of("system:config:view"));
         currentUser.setUserUuid("user-uuid-1001");
+        currentUser.setSimulatedRoleId(9L);
         currentUser.setPermissionsVersion("permissions-1");
 
-        assertThatThrownBy(() -> service.openStream(currentUser))
-                .isInstanceOfSatisfying(BizException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        var emitter = service.openStream(currentUser);
+
+        assertThat(emitter).isNotNull();
+        assertThat(service.subscriberCount()).isEqualTo(1);
     }
 
     @Test
@@ -163,6 +173,27 @@ class OnlineSessionStreamServiceTest {
     }
 
     @Test
+    void dispatchShouldRevalidatePermissionBeforeSendingPrivilegedEvents() {
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        OnlineSessionStreamService service = new OnlineSessionStreamService(
+                new ObjectMapper(),
+                sessionAuthenticationService,
+                Clock.fixed(Instant.parse("2026-07-06T12:00:00Z"), ZoneOffset.UTC),
+                Duration.ofSeconds(30)
+        );
+        when(sessionAuthenticationService.authenticateSessionTicket(anyString(), anyLong(), anyString(), anyLong(), anyInt(), anyString()))
+                .thenReturn(authenticatedAccess(Set.of("system:online-user:view")));
+        service.openStream(trustedCurrentUser());
+        when(sessionAuthenticationService.authenticateSessionTicket(anyString(), anyLong(), anyString(), anyLong(), anyInt(), anyString()))
+                .thenReturn(authenticatedAccess(Set.of("system:config:view")));
+
+        service.dispatch(event("session-2"));
+
+        verify(sessionAuthenticationService, times(2)).authenticateSessionTicket(anyString(), anyLong(), anyString(), anyLong(), anyInt(), anyString());
+        assertThat(service.subscriberCount()).isZero();
+    }
+
+    @Test
     void openStreamShouldRejectWhenLivePermissionIsAlreadyRevoked() {
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         when(sessionAuthenticationService.authenticateSessionTicket(anyString(), anyLong(), anyString(), anyLong(), anyInt(), anyString()))
@@ -234,6 +265,17 @@ class OnlineSessionStreamServiceTest {
         session.setSimulatedRoleId(9L);
         session.setPermissionsVersion("permissions-1");
         return new SessionAuthenticationService.AuthenticatedAccess(currentUser, session, false);
+    }
+
+    private OnlineSessionEvent event(String sessionId) {
+        OnlineSessionEvent event = new OnlineSessionEvent();
+        event.setAction(OnlineSessionEvent.ACTION_UPSERT);
+        event.setUserId(1001L);
+        event.setUserUuid("user-uuid-1001");
+        event.setSessionId(sessionId);
+        event.setOperatorUsername("alice");
+        event.setOccurredAt(Instant.parse("2026-07-06T12:00:05Z"));
+        return event;
     }
 
     private static final class MutableClock extends Clock {

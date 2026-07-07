@@ -186,9 +186,9 @@ public class FileManagementAppService {
             String sortField,
             String sortOrder
     ) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        TrustedCurrentUser actor = requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope));
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("deleted", 0);
         applyFileDataPermission(queryWrapper, actor, sharedScope, downloadCenterScope);
@@ -303,7 +303,12 @@ public class FileManagementAppService {
     }
 
     public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        FileObjectDTO file = queryFile(
+                requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope)),
+                fileId,
+                sharedScope,
+                downloadCenterScope
+        );
         return enrich(file);
     }
 
@@ -327,7 +332,7 @@ public class FileManagementAppService {
             boolean sharedScope,
             int limit
     ) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        TrustedCurrentUser actor = requirePermission(currentUser, resolveReadPermission(sharedScope, false));
         if (limit < 1 || limit > MAX_PAGE_SIZE) {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "Invalid internal file search limit");
         }
@@ -393,9 +398,7 @@ public class FileManagementAppService {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
         }
         String visibilityScope = resolveVisibilityScope(scope);
-        if (VISIBILITY_SCOPE_PUBLIC.equals(visibilityScope)) {
-            requirePermission(currentUser, "system:file:publish");
-        }
+        requirePermission(currentUser, resolveUploadPermission(visibilityScope));
         String uploadBucket = resolveUploadBucket(bucket, scope);
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
@@ -533,10 +536,10 @@ public class FileManagementAppService {
 
     @Transactional
     public void deleteFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        TrustedCurrentUser actor = requirePermission(currentUser, resolveDeletePermission(sharedScope, downloadCenterScope));
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
-        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        FileObjectDTO file = queryFile(actor, fileId, sharedScope, downloadCenterScope);
         if (!shouldRetainStoredFile(file.bucket())) {
             deleteStoredFile(file);
         }
@@ -585,7 +588,7 @@ public class FileManagementAppService {
     }
 
     public PageResponse<StorageSpaceDTO> listStorageSpaces(CurrentUser currentUser, long pageNo, long pageSize) {
-        requireCurrentUser(currentUser);
+        requirePermission(currentUser, "system:file:manage");
         ensureDefaultStorageSpaces();
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
@@ -665,12 +668,12 @@ public class FileManagementAppService {
     }
 
     public StorageSpaceDTO getStorageSpace(CurrentUser currentUser, String storageKey) {
-        requireCurrentUser(currentUser);
+        requirePermission(currentUser, "system:file:manage");
         return queryStorageSpace(normalizeStorageKey(storageKey));
     }
 
     public FileStorageSpaceRequest.TestResult testStorageSpace(CurrentUser currentUser, Long id) {
-        requireCurrentUser(currentUser);
+        requirePermission(currentUser, "system:file:manage");
         FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(id);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "存储空间不存在");
@@ -707,7 +710,7 @@ public class FileManagementAppService {
 
     @Transactional
     public StorageSpaceDTO createStorageSpace(CurrentUser currentUser, FileStorageSpaceRequest request) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        TrustedCurrentUser actor = requirePermission(currentUser, "system:file:manage");
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
         String provider = normalizeProvider(request.getProvider());
@@ -727,7 +730,7 @@ public class FileManagementAppService {
 
     @Transactional
     public StorageSpaceDTO updateStorageSpace(CurrentUser currentUser, Long id, FileStorageSpaceRequest request) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        TrustedCurrentUser actor = requirePermission(currentUser, "system:file:manage");
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
         StorageSpaceDTO existing = queryStorageSpaceById(id);
@@ -768,7 +771,7 @@ public class FileManagementAppService {
 
     @Transactional
     public void deleteStorageSpace(CurrentUser currentUser, Long id) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        TrustedCurrentUser actor = requirePermission(currentUser, "system:file:manage:delete");
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
         StorageSpaceDTO existing = queryStorageSpaceById(id);
@@ -811,7 +814,12 @@ public class FileManagementAppService {
     }
 
     public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        FileObjectDTO file = queryFile(
+                requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope)),
+                fileId,
+                sharedScope,
+                downloadCenterScope
+        );
         Path target = resolveFilePath(file);
         if (target == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件路径无效");
@@ -820,7 +828,12 @@ public class FileManagementAppService {
     }
 
     public FileContentDTO readFileContent(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        FileObjectDTO file = queryFile(
+                requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope)),
+                fileId,
+                sharedScope,
+                downloadCenterScope
+        );
         Path target = resolveFilePath(file);
         if (target == null || !Files.exists(target) || !Files.isRegularFile(target)) {
             storageMetrics.recordMissing("read", file.storageType(), Duration.ZERO);
@@ -858,7 +871,12 @@ public class FileManagementAppService {
         if (!StringUtils.hasText(artifactType)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "文件处理产物类型不能为空");
         }
-        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        FileObjectDTO file = queryFile(
+                requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope)),
+                fileId,
+                sharedScope,
+                downloadCenterScope
+        );
         List<FileProcessingArtifactDTO> artifacts = jdbcTemplate.query(
                 """
                         select id, file_id, task_type, artifact_type, artifact_path,
@@ -892,7 +910,15 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
-        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        return queryFile(
+                requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope)),
+                fileId,
+                sharedScope,
+                downloadCenterScope
+        );
+    }
+
+    private FileObjectDTO queryFile(TrustedCurrentUser actor, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
         if (fileId == null || fileId <= 0) {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "Valid file id is required");
         }
@@ -1078,6 +1104,7 @@ public class FileManagementAppService {
             String remark
     ) {
         TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        requirePermission(actor, resolveUploadPermission(visibilityScope));
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
         String actorUsername = actor.username();
@@ -1172,8 +1199,10 @@ public class FileManagementAppService {
         });
     }
 
-    private void requirePermission(CurrentUser currentUser, String permission) {
-        requirePermission(resolveTrustedCurrentUser(currentUser), permission);
+    private TrustedCurrentUser requirePermission(CurrentUser currentUser, String permission) {
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        requirePermission(actor, permission);
+        return actor;
     }
 
     private void requirePermission(TrustedCurrentUser actor, String permission) {
@@ -1200,6 +1229,37 @@ public class FileManagementAppService {
 
     private boolean hasPermission(TrustedCurrentUser actor, String permission) {
         return actor.permissions().contains("*") || actor.permissions().contains(permission);
+    }
+
+    private String resolveReadPermission(boolean sharedScope, boolean downloadCenterScope) {
+        if (downloadCenterScope) {
+            return "download:center:view";
+        }
+        if (sharedScope) {
+            return "system:file:manage";
+        }
+        return "system:file:view";
+    }
+
+    private String resolveUploadPermission(String visibilityScope) {
+        String normalizedScope = resolveVisibilityScope(visibilityScope);
+        if (VISIBILITY_SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(normalizedScope)) {
+            return "download:center:create";
+        }
+        if (VISIBILITY_SCOPE_PUBLIC.equalsIgnoreCase(normalizedScope)) {
+            return "system:file:publish";
+        }
+        return "system:file:upload";
+    }
+
+    private String resolveDeletePermission(boolean sharedScope, boolean downloadCenterScope) {
+        if (downloadCenterScope) {
+            return "download:center:delete";
+        }
+        if (sharedScope) {
+            return "system:file:manage:delete";
+        }
+        return "system:file:delete";
     }
 
     private void applyFileVisibilityScope(QueryWrapper<FileObjectEntity> queryWrapper, boolean downloadCenterScope) {
@@ -1550,7 +1610,7 @@ public class FileManagementAppService {
             throw visibleBizException(ErrorCode.FORBIDDEN, "Login required");
         }
         if (systemInternalApiProvider == null) {
-            return fallbackTrustedCurrentUser(currentUser);
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }
         SystemInternalApi internalApi = systemInternalApiProvider.getIfAvailable();
         if (internalApi == null) {
@@ -1574,7 +1634,13 @@ public class FileManagementAppService {
         if (!StringUtils.hasText(userSnapshot.username())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user username is unavailable");
         }
-        PermissionSnapshotDTO permissionSnapshot = internalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim());
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? internalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
+                : internalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user permissions are unavailable");
         }
@@ -1588,20 +1654,6 @@ public class FileManagementAppService {
                 trustedLongSet(permissionSnapshot.deptIds()),
                 trustedLongSet(permissionSnapshot.descendantDeptIds()),
                 trustedDataScopes(permissionSnapshot)
-        );
-    }
-
-    private TrustedCurrentUser fallbackTrustedCurrentUser(CurrentUser currentUser) {
-        return new TrustedCurrentUser(
-                currentUser.getUserId(),
-                currentUser.getUserUuid().trim(),
-                currentUser.getUsername().trim(),
-                currentUser.getPermissionsVersion().trim(),
-                trustedStringSet(currentUser.getPermissions()),
-                currentUser.getPrimaryDeptId(),
-                trustedLongSet(currentUser.getDeptIds()),
-                trustedLongSet(currentUser.getDescendantDeptIds()),
-                currentUser.getDataScopes() == null ? List.of() : List.copyOf(currentUser.getDataScopes())
         );
     }
 

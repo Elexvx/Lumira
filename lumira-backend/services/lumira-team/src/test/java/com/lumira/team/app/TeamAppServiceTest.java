@@ -100,11 +100,11 @@ class TeamAppServiceTest {
 
     @Test
     void teamOperationsShouldRejectInvalidResourceIdsBeforePermissionOrRepositoryAccess() {
-        Fixtures fixtures = fixtures("MEMBER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", snapshot(Set.of("team:member:role-update")));
 
         assertThatThrownBy(() -> fixtures.service.getTeam(currentUser(3001L), 0L))
                 .isInstanceOf(BizException.class);
-        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, -1L, new TeamDTO.MemberRoleRequest()))
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L, "team:member:role-update"), 2001L, -1L, new TeamDTO.MemberRoleRequest()))
                 .isInstanceOf(BizException.class);
 
         verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
@@ -114,9 +114,9 @@ class TeamAppServiceTest {
 
     @Test
     void updateMemberRoleShouldRejectInvalidRequestBeforePermissionOrMemberLookup() {
-        Fixtures fixtures = fixtures("OWNER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of("team:member:role-update")));
 
-        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, 2L, null))
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L, "team:member:role-update"), 2001L, 2L, null))
                 .isInstanceOf(BizException.class);
 
         verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
@@ -125,13 +125,13 @@ class TeamAppServiceTest {
 
     @Test
     void createTeamShouldDelegatePersistenceToRepositories() {
-        Fixtures fixtures = fixtures("OWNER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of("team:create")));
         TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
         request.setTeamName("Core Team");
         TeamDTO.DraftMemberRequest draftMember = draftMember("Alice");
         request.setInitialMembers(List.of(draftMember));
 
-        TeamVO.Team team = fixtures.service.createTeam(currentUser(3001L), request);
+        TeamVO.Team team = fixtures.service.createTeam(currentUser(3001L, "team:create"), request);
 
         assertThat(team.getId()).isEqualTo(2001L);
         verify(fixtures.teamRepository).nextTeamCode();
@@ -142,15 +142,29 @@ class TeamAppServiceTest {
     }
 
     @Test
+    void createTeamShouldRejectWhenLiveSnapshotRevokesCreatePermissionBeforeRepositoryAccess() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of()));
+        TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
+        request.setTeamName("Core Team");
+
+        assertThatThrownBy(() -> fixtures.service.createTeam(currentUser(3001L, "team:create"), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(fixtures.teamRepository, never()).createTeam(any(), anyLong(), any(), any());
+        verify(fixtures.teamMemberRepository, never()).addOwner(anyLong(), anyLong(), any());
+    }
+
+    @Test
     void createTeamShouldRejectTooManyInitialMembersBeforeRepositoryAccess() {
-        Fixtures fixtures = fixtures("OWNER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of("team:create")));
         TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
         request.setTeamName("Core Team");
         request.setInitialMembers(IntStream.range(0, 101)
                 .mapToObj(index -> draftMember("Member " + index))
                 .toList());
 
-        assertThatThrownBy(() -> fixtures.service.createTeam(currentUser(3001L), request))
+        assertThatThrownBy(() -> fixtures.service.createTeam(currentUser(3001L, "team:create"), request))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Initial members");
 
@@ -160,7 +174,7 @@ class TeamAppServiceTest {
 
     @Test
     void managerCanAddDraftMemberWithoutRegisteredUser() {
-        Fixtures fixtures = fixtures("MANAGER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MANAGER", snapshot(Set.of("team:member:invite")));
         TeamDTO.MemberCreateRequest request = new TeamDTO.MemberCreateRequest();
         request.setMemberName("External Member");
         request.setEmployeeNo("E001");
@@ -169,7 +183,7 @@ class TeamAppServiceTest {
         when(fixtures.teamMemberRepository.addDraftMember(anyLong(), any())).thenReturn(9L);
         when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, null, "MEMBER"));
 
-        TeamVO.Member member = fixtures.service.addMember(currentUser(3001L), 2001L, request);
+        TeamVO.Member member = fixtures.service.addMember(currentUser(3001L, "team:member:invite"), 2001L, request);
 
         assertThat(member.getId()).isEqualTo(9L);
         verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), any());
@@ -178,7 +192,7 @@ class TeamAppServiceTest {
 
     @Test
     void addDraftMemberNormalizesExtraValues() {
-        Fixtures fixtures = fixtures("MANAGER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MANAGER", snapshot(Set.of("team:member:invite")));
         TeamDTO.MemberCreateRequest request = new TeamDTO.MemberCreateRequest();
         request.setMemberName("External Member");
         request.setRole("MEMBER");
@@ -186,7 +200,7 @@ class TeamAppServiceTest {
         when(fixtures.teamMemberRepository.addDraftMember(anyLong(), any())).thenReturn(9L);
         when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, null, "MEMBER"));
 
-        fixtures.service.addMember(currentUser(3001L), 2001L, request);
+        fixtures.service.addMember(currentUser(3001L, "team:member:invite"), 2001L, request);
 
         ArgumentCaptor<TeamDTO.DraftMemberRequest> captor = ArgumentCaptor.forClass(TeamDTO.DraftMemberRequest.class);
         verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), captor.capture());
@@ -195,14 +209,14 @@ class TeamAppServiceTest {
 
     @Test
     void addDraftMemberShouldRejectUnboundedExtraValuesBeforePersistence() {
-        Fixtures fixtures = fixtures("MANAGER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MANAGER", snapshot(Set.of("team:member:invite")));
         TeamDTO.MemberCreateRequest request = new TeamDTO.MemberCreateRequest();
         request.setMemberName("External Member");
         request.setExtraValues(IntStream.range(0, 21)
                 .boxed()
                 .collect(java.util.stream.Collectors.toMap(index -> "k" + index, index -> "v" + index)));
 
-        assertThatThrownBy(() -> fixtures.service.addMember(currentUser(3001L), 2001L, request))
+        assertThatThrownBy(() -> fixtures.service.addMember(currentUser(3001L, "team:member:invite"), 2001L, request))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Extra values");
 
@@ -231,7 +245,7 @@ class TeamAppServiceTest {
 
     @Test
     void adminTeamsShouldUseRepositoryWhenPermissionIsPresent() {
-        Fixtures fixtures = fixtures("MEMBER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", snapshot(Set.of("team:view")));
 
         List<TeamVO.Team> teams = fixtures.service.listTeamsForAdmin(currentUser(3001L, "team:view"));
 
@@ -253,6 +267,18 @@ class TeamAppServiceTest {
     }
 
     @Test
+    void listMembersShouldRejectWhenLiveSnapshotRevokesMemberViewPermissionBeforeRepositoryAccess() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of()));
+
+        assertThatThrownBy(() -> fixtures.service.listMembers(currentUser(3001L, "team:member:view"), 2001L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(fixtures.teamMemberRepository, never()).listMembers(anyLong());
+        verify(fixtures.permissionService, never()).requireTeamMember(anyLong(), anyLong(), any());
+    }
+
+    @Test
     void myTeamsShouldRejectWhenTrustedUserIsDisabledBeforeRepositoryAccess() {
         Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", null);
         when(fixtures.systemInternalApi.findUserIdentityById(3001L))
@@ -268,28 +294,45 @@ class TeamAppServiceTest {
     }
 
     @Test
+    void myTeamsShouldRejectWhenTrustedUsernameIsUnavailableBeforeRepositoryAccess() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", null);
+        when(fixtures.systemInternalApi.findUserIdentityById(3001L))
+                .thenReturn(userSnapshot(3001L, " ", "ENABLED"));
+
+        assertThatThrownBy(() -> fixtures.service.myTeams(currentUser(3001L)))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+
+        verify(fixtures.teamRepository, never()).listMyTeams(anyLong(), any());
+        verify(fixtures.systemInternalApi, never()).permissionSnapshot(3001L, "user-uuid-3001");
+        verify(fixtures.permissionService, never()).activeRole(anyLong(), anyLong(), any());
+    }
+
+    @Test
     void ownerCanUpdateButMemberCannot() {
         TeamDTO.TeamUpdateRequest request = updateRequest();
-        Fixtures owner = fixtures("OWNER");
-        assertThat(owner.service.updateTeam(currentUser(3001L), 2001L, request).getTeamName()).isEqualTo("Core Team");
+        Fixtures owner = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of("team:update")));
+        assertThat(owner.service.updateTeam(currentUser(3001L, "team:update"), 2001L, request).getTeamName()).isEqualTo("Core Team");
         verify(owner.teamRepository).updateTeamProfile(eq(2001L), any(TeamVO.Team.class), eq(3001L), eq("user-uuid-3001"), any());
 
-        Fixtures member = fixtures("MEMBER");
-        assertThatThrownBy(() -> member.service.updateTeam(currentUser(3001L), 2001L, request))
+        Fixtures member = fixturesWithLiveSnapshot("MEMBER", snapshot(Set.of("team:update")));
+        assertThatThrownBy(() -> member.service.updateTeam(currentUser(3001L, "team:update"), 2001L, request))
                 .isInstanceOf(BizException.class);
     }
 
     @Test
     void adminUpdateBypassesTeamRole() {
-        Fixtures fixtures = fixtures("MEMBER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MEMBER", snapshot(Set.of()));
 
         assertThatThrownBy(() -> fixtures.service.updateTeamForAdmin(currentUser(3001L), 2001L, updateRequest()))
                 .isInstanceOf(BizException.class);
         verify(fixtures.teamRepository, never()).updateTeamProfile(anyLong(), any(), anyLong(), any(), any());
 
-        assertThat(fixtures.service.updateTeamForAdmin(currentUser(3001L, "team:update"), 2001L, updateRequest()).getTeamName()).isEqualTo("Core Team");
+        Fixtures permittedFixtures = fixturesWithLiveSnapshot("MEMBER", snapshot(Set.of("team:update")));
 
-        verify(fixtures.teamRepository).updateTeamProfile(anyLong(), any(TeamVO.Team.class), anyLong(), eq("user-uuid-3001"), any());
+        assertThat(permittedFixtures.service.updateTeamForAdmin(currentUser(3001L, "team:update"), 2001L, updateRequest()).getTeamName()).isEqualTo("Core Team");
+
+        verify(permittedFixtures.teamRepository).updateTeamProfile(anyLong(), any(TeamVO.Team.class), anyLong(), eq("user-uuid-3001"), any());
     }
 
     @Test
@@ -303,11 +346,23 @@ class TeamAppServiceTest {
     }
 
     @Test
+    void removeMemberShouldRejectWhenLiveSnapshotRevokesMemberRemovePermissionBeforeMemberLookup() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("MANAGER", snapshot(Set.of()));
+
+        assertThatThrownBy(() -> fixtures.service.removeMember(currentUser(3001L, "team:member:remove"), 2001L, 9L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(fixtures.permissionService, never()).activeMember(anyLong(), anyLong(), any());
+        verify(fixtures.teamMemberRepository, never()).findMemberById(anyLong(), anyLong());
+    }
+
+    @Test
     void deleteTeamShouldPassTrustedDeletedTeamSnapshotToChildRepositories() {
-        Fixtures fixtures = fixtures("OWNER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of("team:delete")));
         when(fixtures.teamRepository.softDeleteTeam(anyLong(), any(), anyLong(), any())).thenReturn(1);
 
-        assertThat(fixtures.service.deleteTeam(currentUser(3001L), 2001L)).isTrue();
+        assertThat(fixtures.service.deleteTeam(currentUser(3001L, "team:delete"), 2001L)).isTrue();
 
         ArgumentCaptor<TeamVO.Team> teamCaptor = ArgumentCaptor.forClass(TeamVO.Team.class);
         verify(fixtures.teamMemberRepository).removeMembersByTeam(eq(2001L), teamCaptor.capture());
@@ -330,14 +385,14 @@ class TeamAppServiceTest {
 
     @Test
     void managerCanRemoveDraftMemberWithoutRegisteredUser() {
-        Fixtures fixtures = fixtures("MANAGER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("MANAGER", snapshot(Set.of("team:member:remove")));
         when(fixtures.permissionService.activeMember(2001L, 3001L, "user-uuid-3001")).thenReturn(member(1L, 3001L, "MANAGER"));
         when(fixtures.permissionService.canRemoveMember("MANAGER", "MEMBER", false)).thenReturn(true);
         TeamVO.Member target = member(9L, null, "MEMBER");
         when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(target);
         when(fixtures.teamMemberRepository.removeMember(2001L, target)).thenReturn(true);
 
-        assertThat(fixtures.service.removeMember(currentUser(3001L), 2001L, 9L)).isTrue();
+        assertThat(fixtures.service.removeMember(currentUser(3001L, "team:member:remove"), 2001L, 9L)).isTrue();
 
         verify(fixtures.teamMemberRepository).removeMember(2001L, target);
         verify(fixtures.teamMemberRepository).refreshMemberCount(eq(2001L), any(TeamVO.Team.class));
@@ -345,12 +400,12 @@ class TeamAppServiceTest {
 
     @Test
     void adminCannotChangePeerAdminRoles() {
-        Fixtures fixtures = fixtures("ADMIN");
+        Fixtures fixtures = fixturesWithLiveSnapshot("ADMIN", snapshot(Set.of("team:member:role-update")));
         TeamDTO.MemberRoleRequest request = new TeamDTO.MemberRoleRequest();
         request.setRole("MANAGER");
         when(fixtures.teamMemberRepository.findMemberById(2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
 
-        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, 2L, request))
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L, "team:member:role-update"), 2001L, 2L, request))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Only team owner");
 
@@ -359,12 +414,12 @@ class TeamAppServiceTest {
 
     @Test
     void adminCannotPromoteMemberToAdmin() {
-        Fixtures fixtures = fixtures("ADMIN");
+        Fixtures fixtures = fixturesWithLiveSnapshot("ADMIN", snapshot(Set.of("team:member:role-update")));
         TeamDTO.MemberRoleRequest request = new TeamDTO.MemberRoleRequest();
         request.setRole("ADMIN");
         when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, 3009L, "MEMBER"));
 
-        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L), 2001L, 9L, request))
+        assertThatThrownBy(() -> fixtures.service.updateMemberRole(currentUser(3001L, "team:member:role-update"), 2001L, 9L, request))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Only team owner");
 
@@ -373,20 +428,34 @@ class TeamAppServiceTest {
 
     @Test
     void transferOwnerShouldDemotePreviousOwnerThroughRepository() {
-        Fixtures fixtures = fixtures("OWNER");
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of("team:member:role-update")));
         when(fixtures.teamMemberRepository.findMemberById(2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
         TeamDTO.TransferOwnerRequest request = new TeamDTO.TransferOwnerRequest();
         request.setMemberId(2L);
         request.setPreviousOwnerRole("MEMBER");
 
-        fixtures.service.transferOwner(currentUser(3001L), 2001L, request);
+        fixtures.service.transferOwner(currentUser(3001L, "team:member:role-update"), 2001L, request);
 
         verify(fixtures.teamMemberRepository).transferOwner(2001L, 3001L, "user-uuid-3001", "MEMBER", 2L, 3002L, "user-uuid-3002");
         verify(fixtures.teamRepository).transferOwner(2001L, 3001L, "user-uuid-3001", 3002L, "user-uuid-3002", 3001L, "user-uuid-3001");
     }
 
+    @Test
+    void transferOwnerShouldRejectWhenLiveSnapshotRevokesRoleUpdatePermissionBeforeOwnerCheck() {
+        Fixtures fixtures = fixturesWithLiveSnapshot("OWNER", snapshot(Set.of()));
+        TeamDTO.TransferOwnerRequest request = new TeamDTO.TransferOwnerRequest();
+        request.setMemberId(2L);
+
+        assertThatThrownBy(() -> fixtures.service.transferOwner(currentUser(3001L, "team:member:role-update"), 2001L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(fixtures.permissionService, never()).requireTeamOwner(anyLong(), anyLong(), any());
+        verify(fixtures.teamRepository, never()).transferOwner(anyLong(), anyLong(), any(), anyLong(), any(), anyLong(), any());
+    }
+
     private Fixtures fixtures(String role) {
-        return fixtures(role, null);
+        return fixturesWithLiveSnapshot(role, snapshot(Set.of()));
     }
 
     private Fixtures fixturesWithLiveSnapshot(String role, PermissionSnapshotDTO snapshot) {

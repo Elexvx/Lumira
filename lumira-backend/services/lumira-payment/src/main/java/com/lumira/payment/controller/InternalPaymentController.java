@@ -32,20 +32,22 @@ public class InternalPaymentController {
     public PaymentOrderDTO createOrder(
             @RequestParam("operatorId") Long operatorId,
             @RequestParam("operatorUuid") String operatorUuid,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId,
             @RequestBody PaymentCreateOrderRequestDTO request
     ) {
         requireInternalServicePrincipal();
-        return paymentInternalApiService.createOrder(operatorId, operatorUuid, request);
+        return paymentInternalApiService.createOrder(operatorId, operatorUuid, simulatedRoleId, request);
     }
 
     @GetMapping("/orders/{orderNo}")
     public PaymentOrderDTO getOrder(
             @RequestParam("operatorId") Long operatorId,
             @RequestParam("operatorUuid") String operatorUuid,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId,
             @PathVariable String orderNo
     ) {
         requireInternalServicePrincipal();
-        return paymentInternalApiService.getOrder(operatorId, operatorUuid, orderNo);
+        return paymentInternalApiService.getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
     }
 
     private void requireInternalServicePrincipal() {

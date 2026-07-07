@@ -54,22 +54,26 @@ public class FilePlatformEventPublisher {
         TrustedActor actor = trustedActor(currentUser);
         Long userId = actor.userId();
         String userUuid = actor.userUuid();
+        Long simulatedRoleId = actor.simulatedRoleId();
         Long fileId = file == null ? null : file.id();
         platformEventOutboxService.recordAfterCommit(
                 FilePlatformEventTypes.SOURCE_FILE,
                 eventType,
                 userId,
                 buildEventKey(eventType, fileId),
-                buildPayload(userId, userUuid, file)
+                buildPayload(userId, userUuid, simulatedRoleId, file)
         );
     }
 
-    private Map<String, Object> buildPayload(Long userId, String userUuid, FileObjectDTO file) {
+    private Map<String, Object> buildPayload(Long userId, String userUuid, Long simulatedRoleId, FileObjectDTO file) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", SCHEMA_VERSION);
         payload.put("occurredAt", LocalDateTime.now());
         payload.put("userId", userId);
         payload.put("userUuid", userUuid);
+        if (simulatedRoleId != null) {
+            payload.put("simulatedRoleId", simulatedRoleId);
+        }
         payload.put("aggregateType", FilePlatformEventTypes.AGGREGATE_FILE_OBJECT);
         payload.put("aggregateId", file == null ? null : file.id());
         payload.put("attributes", buildAttributes(file));
@@ -104,11 +108,12 @@ public class FilePlatformEventPublisher {
         requireCurrentUser(currentUser);
         Long userId = currentUser.getUserId();
         String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
         if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
         if (systemInternalApiProvider == null) {
-            return new TrustedActor(userId, userUuid);
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted acting user resolver is unavailable");
         }
         SystemInternalApi internalApi = systemInternalApiProvider.getIfAvailable();
         if (internalApi == null) {
@@ -124,9 +129,13 @@ public class FilePlatformEventPublisher {
         if (!StringUtils.hasText(snapshot.status()) || !STATUS_ENABLED.equalsIgnoreCase(snapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Acting user is disabled");
         }
-        return new TrustedActor(snapshot.userId(), snapshot.userUuid().trim());
+        return new TrustedActor(snapshot.userId(), snapshot.userUuid().trim(), simulatedRoleId);
     }
 
-    private record TrustedActor(Long userId, String userUuid) {
+    private Long normalizeSimulatedRoleId(Long simulatedRoleId) {
+        return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
+    }
+
+    private record TrustedActor(Long userId, String userUuid, Long simulatedRoleId) {
     }
 }

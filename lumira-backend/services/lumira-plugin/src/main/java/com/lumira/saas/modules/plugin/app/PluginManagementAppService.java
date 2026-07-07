@@ -92,6 +92,12 @@ public class PluginManagementAppService {
     private static final String READ_MODEL_SCOPE_PLUGIN_BOOTSTRAP = "bootstrap";
     private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
     private static final String READ_MODEL_SCOPE_PLATFORM_MENU_TREE = "menu-tree";
+    private static final String PERMISSION_PLUGIN_MANAGEMENT_UPLOAD = "plugin:management:upload";
+    private static final String PERMISSION_PLUGIN_MANAGEMENT_INSTALL = "plugin:management:install";
+    private static final String PERMISSION_PLUGIN_MANAGEMENT_UPGRADE = "plugin:management:upgrade";
+    private static final String PERMISSION_PLUGIN_MANAGEMENT_ROLLBACK = "plugin:management:rollback";
+    private static final String PERMISSION_PLUGIN_MANAGEMENT_ENABLE = "plugin:management:enable";
+    private static final String PERMISSION_PLUGIN_MANAGEMENT_DISABLE = "plugin:management:disable";
     private final ConcurrentMap<String, CachedAvailablePlugins> availablePluginsCache = new ConcurrentHashMap<>();
     private final ConcurrentMap<MenuCompilationVersion, CachedCompiledMenuTree> compiledMenuTreeCache = new ConcurrentHashMap<>();
     private final ConcurrentMap<VisibleMenuTreeCacheKey, CachedVisibleMenuTree> visibleMenuTreeCache = new ConcurrentHashMap<>();
@@ -159,7 +165,7 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginUploadVO upload(MultipartFile file, CurrentUser currentUser) {
-        TrustedOperator operator = requireTrustedOperator(currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_UPLOAD);
         PluginArtifactLoader.UploadedArtifact artifact = pluginArtifactLoader.stage(file);
         PluginVersionEntity versionEntity = pluginPersistenceService.saveUploadedPackage(
                 artifact.metadata(),
@@ -203,7 +209,7 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginVersionVO install(String pluginCode, String version, CurrentUser currentUser) {
-        TrustedOperator operator = requireTrustedOperator(currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_INSTALL);
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
         PluginDTO.PluginPackageMetadata metadata = parseMetadata(versionEntity);
         validateDependencies(metadata);
@@ -240,8 +246,8 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginVersionVO upgrade(String pluginCode, String version, CurrentUser currentUser) {
-        TrustedOperator operator = requireTrustedOperator(currentUser);
-        ensureLoaded(pluginCode, version, currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_UPGRADE);
+        ensureLoaded(pluginCode, version, currentUser, PERMISSION_PLUGIN_MANAGEMENT_UPGRADE);
         pluginRegistry.activate(pluginCode, version);
         pluginPersistenceService.activateVersion(pluginCode, version, operator.userId(), operator.userUuid());
         bumpBootstrapVersions(pluginCode, "plugin.version.upgraded");
@@ -254,8 +260,8 @@ public class PluginManagementAppService {
 
     @Transactional
     public PluginVO.PluginVersionVO rollback(String pluginCode, String targetVersion, CurrentUser currentUser) {
-        TrustedOperator operator = requireTrustedOperator(currentUser);
-        ensureLoaded(pluginCode, targetVersion, currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_ROLLBACK);
+        ensureLoaded(pluginCode, targetVersion, currentUser, PERMISSION_PLUGIN_MANAGEMENT_ROLLBACK);
         pluginRegistry.activate(pluginCode, targetVersion);
         pluginPersistenceService.activateVersion(pluginCode, targetVersion, operator.userId(), operator.userUuid());
         bumpBootstrapVersions(pluginCode, "plugin.version.rolled-back");
@@ -268,7 +274,7 @@ public class PluginManagementAppService {
 
     public void enable(PluginDTO.EnableRequest request, CurrentUser currentUser) {
         try {
-            TrustedOperator operator = requireTrustedOperator(currentUser);
+            TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_ENABLE);
             String resolvedVersion = request.getVersion();
             if (resolvedVersion == null || resolvedVersion.isBlank()) {
                 resolvedVersion = pluginRegistry.findActiveVersion(request.getPluginCode())
@@ -278,7 +284,7 @@ public class PluginManagementAppService {
                                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "No active plugin version found")));
             }
             final String version = resolvedVersion;
-            ensureLoaded(request.getPluginCode(), version, currentUser);
+            ensureLoaded(request.getPluginCode(), version, currentUser, PERMISSION_PLUGIN_MANAGEMENT_ENABLE);
             enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
             pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), operator.userId(), operator.userUuid());
             transactionTemplate.executeWithoutResult(status -> {
@@ -307,7 +313,7 @@ public class PluginManagementAppService {
 
     @Transactional
     public void disable(PluginDTO.DisableRequest request, CurrentUser currentUser) {
-        TrustedOperator operator = requireTrustedOperator(currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_DISABLE);
         PluginVersionEntity enabledVersion = pluginPersistenceService.findEnabledVersion(request.getPluginCode())
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "Plugin is not enabled"));
         PluginVO.PluginStatusVO pluginStatus = pluginPersistenceService.pluginStatus(request.getPluginCode()).orElse(null);
@@ -425,7 +431,7 @@ public class PluginManagementAppService {
 
     @Transactional
     public void uninstall(String pluginCode, boolean removeData, CurrentUser currentUser) {
-        TrustedOperator operator = requireTrustedOperator(currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_DISABLE);
         if (isBuiltinCorePlugin(pluginCode)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Built-in plugins cannot be uninstalled; disable the plugin instead");
         }
@@ -514,7 +520,7 @@ public class PluginManagementAppService {
         if (!provider.requiresEmail()) {
             return;
         }
-        TrustedOperator operator = requireTrustedOperator(currentUser);
+        TrustedOperator operator = requireTrustedOperator(currentUser, PERMISSION_PLUGIN_MANAGEMENT_ENABLE);
         if (!Boolean.TRUE.equals(systemInternalApi.userHasEmail(operator.userId(), operator.userUuid()))) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Please provide an email before enabling this verification method");
         }
@@ -716,6 +722,10 @@ public class PluginManagementAppService {
     }
 
     private void ensureLoaded(String pluginCode, String version, CurrentUser currentUser) {
+        ensureLoaded(pluginCode, version, currentUser, PERMISSION_PLUGIN_MANAGEMENT_INSTALL);
+    }
+
+    private void ensureLoaded(String pluginCode, String version, CurrentUser currentUser, String requiredPermission) {
         if (isBuiltinCorePlugin(pluginCode)) {
             return;
         }
@@ -730,14 +740,50 @@ public class PluginManagementAppService {
             if (currentUser == null) {
                 throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime files are missing; reinstall the plugin before use");
             }
-            install(pluginCode, version, currentUser);
+            installWithPermission(pluginCode, version, currentUser, requiredPermission);
             return;
         }
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(parseMetadata(versionEntity), Path.of(versionEntity.getArtifactPath()));
         pluginRegistry.register(descriptor);
     }
 
-    private TrustedOperator requireTrustedOperator(CurrentUser currentUser) {
+    private PluginVO.PluginVersionVO installWithPermission(String pluginCode, String version, CurrentUser currentUser, String requiredPermission) {
+        TrustedOperator operator = requireTrustedOperator(currentUser, requiredPermission);
+        PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
+        PluginDTO.PluginPackageMetadata metadata = parseMetadata(versionEntity);
+        validateDependencies(metadata);
+        Path versionHome = pluginArtifactLoader.installToVersionHome(pluginCode, version, Path.of(versionEntity.getStagedPath()));
+        log(pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "Plugin files installed", null, operator);
+        pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, operator.userId(), operator.userUuid());
+        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin private migrations completed", null, operator);
+        PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(metadata, versionHome);
+        pluginRegistry.register(descriptor);
+        pluginPersistenceService.markInstalled(
+                pluginCode,
+                version,
+                versionHome,
+                versionHome.resolve("lumira-ui/manifest.json"),
+                versionHome.resolve("lumira-backend/plugin.jar"),
+                "LOADED",
+                "LOADED",
+                descriptor.getHealthIndicator() == null ? "HEALTHY" : "HEALTHY",
+                1,
+                operator.userId(),
+                operator.userUuid()
+        );
+        if (pluginPersistenceService.listInstalledVersions(pluginCode).stream().noneMatch(item -> item.getIsActive() != null && item.getIsActive() == 1)) {
+            pluginRegistry.activate(pluginCode, version);
+            pluginPersistenceService.activateVersion(pluginCode, version, operator.userId(), operator.userUuid());
+            bumpBootstrapVersions(pluginCode, "plugin.version.auto-activated");
+        }
+        log(pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "Plugin runtime loaded", null, operator);
+        return pluginPersistenceService.listVersions(pluginCode).stream()
+                .filter(item -> version.equals(item.getVersion()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private TrustedOperator requireTrustedOperator(CurrentUser currentUser, String requiredPermission) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted operator is required");
         }
@@ -756,9 +802,19 @@ public class PluginManagementAppService {
         if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
         }
-        PermissionSnapshotDTO permissionSnapshot = systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim());
+        Long simulatedRoleId = currentUser.getSimulatedRoleId();
+        if (simulatedRoleId != null && simulatedRoleId <= 0) {
+            simulatedRoleId = null;
+        }
+        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
+                ? systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim())
+                : systemInternalApi.simulatedRolePermissionSnapshot(userId, snapshot.userUuid().trim(), simulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
+        }
+        List<String> permissions = permissionSnapshot.permissions() == null ? List.of() : permissionSnapshot.permissions();
+        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
         }
         return new TrustedOperator(snapshot.userId(), snapshot.userUuid().trim());
     }

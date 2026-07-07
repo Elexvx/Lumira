@@ -15,6 +15,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -104,6 +105,48 @@ class SystemDepartmentAppServiceTest {
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
         assertThat(queryOperations.existsCallCount).isEqualTo(1);
         assertThat(queryOperations.countQueryCalled).isFalse();
+    }
+
+    @Test
+    void listDepartmentsShouldRequireViewPermissionBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemDepartmentAppService service = new SystemDepartmentAppService(
+                queryOperations,
+                permissionSnapshotService("system:department:create"),
+                new OperationAuditService(null, objectProvider(null)) {
+                    @Override
+                    public void log(Long userId, String userUuid, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+                    }
+                }
+        );
+
+        assertThatThrownBy(() -> service.listDepartments(currentUser("system:department:create")))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        assertThat(queryOperations.queryCallCount).isZero();
+    }
+
+    @Test
+    void getDepartmentShouldRejectWhenLiveSnapshotRevokesViewPermissionBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("system:department:update")));
+        SystemDepartmentAppService service = new SystemDepartmentAppService(
+                queryOperations,
+                permissionSnapshotService,
+                new OperationAuditService(null, objectProvider(null)) {
+                    @Override
+                    public void log(Long userId, String userUuid, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+                    }
+                }
+        );
+
+        assertThatThrownBy(() -> service.getDepartment(currentUser("system:department:view"), 2001L))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        assertThat(queryOperations.queryCallCount).isZero();
     }
 
     @Test
@@ -221,6 +264,61 @@ class SystemDepartmentAppServiceTest {
     }
 
     @Test
+    void createDepartmentShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        SystemDepartmentAppService service = new SystemDepartmentAppService(
+                queryOperations,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                null
+        );
+
+        DepartmentUpsertRequest request = new DepartmentUpsertRequest();
+        request.setDeptCode("RD");
+        request.setDeptName("RD");
+        request.setStatus("ENABLED");
+
+        assertThatThrownBy(() -> service.createDepartment(currentUser("system:department:create"), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+        assertThat(queryOperations.updateCalled).isFalse();
+    }
+
+    @Test
+    void createDepartmentShouldRejectWhenTrustedPermissionSnapshotIsUnavailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
+        SystemDepartmentAppService service = new SystemDepartmentAppService(
+                queryOperations,
+                permissionSnapshotService,
+                new RecordingOperationAuditService(),
+                null,
+                null
+        );
+
+        DepartmentUpsertRequest request = new DepartmentUpsertRequest();
+        request.setDeptCode("RD");
+        request.setDeptName("RD");
+        request.setStatus("ENABLED");
+
+        assertThatThrownBy(() -> service.createDepartment(currentUser("system:department:create"), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user permission snapshot is unavailable");
+                });
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+        assertThat(queryOperations.updateCalled).isFalse();
+    }
+
+    @Test
     void createDepartmentShouldRejectDisabledTrustedUserIdentityBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -243,6 +341,38 @@ class SystemDepartmentAppServiceTest {
         assertThatThrownBy(() -> service.createDepartment(currentUser("system:department:create"), request))
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.queryCallCount).isZero();
+        assertThat(queryOperations.updateCalled).isFalse();
+    }
+
+    @Test
+    void createDepartmentShouldRejectBlankLiveUsernameBeforeDatabaseAccess() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "  ", "ENABLED"));
+        SystemDepartmentAppService service = newService(
+                queryOperations,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+
+        DepartmentUpsertRequest request = new DepartmentUpsertRequest();
+        request.setDeptCode("RD");
+        request.setDeptName("RD");
+        request.setStatus("ENABLED");
+
+        assertThatThrownBy(() -> service.createDepartment(currentUser("system:department:create"), request))
+                .isInstanceOf(BizException.class)
+                .satisfies(error -> {
+                    BizException exception = (BizException) error;
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED);
+                    assertThat(exception.getMessage()).contains("Trusted user username is unavailable");
+                });
         assertThat(queryOperations.existsCallCount).isZero();
         assertThat(queryOperations.queryCallCount).isZero();
         assertThat(queryOperations.updateCalled).isFalse();
@@ -309,7 +439,7 @@ class SystemDepartmentAppServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
-                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "  admin-live  ", "ENABLED"));
         RecordingOperationAuditService auditService = new RecordingOperationAuditService();
         SystemDepartmentAppService service = newService(
                 queryOperations,
@@ -399,6 +529,33 @@ class SystemDepartmentAppServiceTest {
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", permissionSet));
         return permissionSnapshotService;
+    }
+
+    @Test
+    void refreshTrustedCurrentUserShouldNormalizeInvalidSimulatedRoleIdBeforeSnapshotLoad() throws Exception {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        PermissionSnapshotService permissionSnapshotService = permissionSnapshotService("system:department:create");
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(2001L))
+                .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "ENABLED"));
+        SystemDepartmentAppService service = newService(
+                queryOperations,
+                permissionSnapshotService,
+                null,
+                systemInternalApi,
+                new RecordingOperationAuditService()
+        );
+        CurrentUser currentUser = currentUser("system:department:create");
+        currentUser.setSimulatedRoleId(0L);
+        Method method = SystemDepartmentAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
+        method.setAccessible(true);
+
+        method.invoke(service, currentUser);
+
+        assertThat(currentUser.getSimulatedRoleId()).isNull();
+        verify(permissionSnapshotService).loadSnapshot(2001L, "user-uuid-2001");
+        org.mockito.Mockito.verify(permissionSnapshotService, org.mockito.Mockito.never())
+                .loadGrantedRoleSnapshot(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     private SystemDepartmentAppService newService(
@@ -525,7 +682,7 @@ class SystemDepartmentAppServiceTest {
             recordTenantUsage(sql, args);
             queryCallCount += 1;
             if (sql.contains("from sys_department d")) {
-                return castList(List.of(department(2001L, null, "sales", "閿€鍞儴")));
+                return castList(List.of(department(2001L, null, "sales", "销售部")));
             }
             return List.of();
         }

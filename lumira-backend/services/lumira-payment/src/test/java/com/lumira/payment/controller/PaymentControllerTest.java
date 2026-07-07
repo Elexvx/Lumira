@@ -1,8 +1,12 @@
 package com.lumira.payment.controller;
 
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
+import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
+import com.lumira.api.system.PermissionSnapshotDTO;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
@@ -79,13 +83,39 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = trusted(new CurrentUser(42L, "admin", 0L, "session-1", 1, true, Set.of("payment:settings:view")));
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "admin", 0L, "session-1", 1, true, Set.of("payment:config:view")));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
         assertThatThrownBy(controller::providers)
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
-        verify(paymentManagementAppService, never()).listProviderSettings();
+        verify(paymentManagementAppService, never()).listProviderSettings(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void providers_shouldAllowProtectedAdminWithRenamedUsername() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(1001L, "root-admin", 0L, "session-1", 1, true, Set.of("payment:config:view")));
+        PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
+        settings.setProviderCode("stripe");
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentManagementAppService.listProviderSettings(currentUser)).thenReturn(java.util.List.of(settings));
+
+        var response = controller.providers();
+
+        assertThat(response.getData()).containsExactly(settings);
+        verify(paymentManagementAppService).listProviderSettings(currentUser);
     }
 
     @Test
@@ -246,6 +276,87 @@ class PaymentControllerTest {
         verify(paymentWebhookService).handleWebhook("stripe", "{}", headers);
     }
 
+    @Test
+    void createOrderShouldRejectTrustedUserWhenResolverIsUnavailable() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard,
+                null
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subscription",
+                9900L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .satisfies(error -> assertThat(((com.lumira.common.exception.BizException) error).getErrorCode()).isEqualTo(com.lumira.common.enums.ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user resolver is unavailable");
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
+    @Test
+    void createOrderShouldRejectWhenLiveUsernameIsBlank() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard,
+                systemInternalApi
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subscription",
+                9900L,
+                "CNY",
+                null,
+                null,
+                null,
+                Map.of(),
+                "idem-1"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(systemInternalApi.findUserIdentityById(42L))
+                .thenReturn(userSnapshot(42L, "user-uuid-42", " ", "ENABLED"));
+
+        assertThatThrownBy(() -> controller.createOrder(request))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .satisfies(error -> assertThat(((com.lumira.common.exception.BizException) error).getErrorCode()).isEqualTo(com.lumira.common.enums.ErrorCode.UNAUTHORIZED))
+                .hasMessageContaining("Trusted user username is unavailable");
+
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+    }
+
     private HttpServletRequest requestWithHeaders(Map<String, String> headers) {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getHeaderNames()).thenReturn(enumeration(headers.keySet()));
@@ -261,5 +372,26 @@ class PaymentControllerTest {
         currentUser.setUserUuid("user-uuid-" + currentUser.getUserId());
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
+    }
+
+    private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
+        return new SystemUserSnapshotDTO(
+                userId,
+                userUuid,
+                username,
+                null,
+                status,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
     }
 }
