@@ -74,7 +74,6 @@ public class SensitiveWordService {
     private final boolean enforceTrustedUserResolution;
     private final Map<Class<?>, java.lang.reflect.Field[]> reflectiveFieldCache = new ConcurrentHashMap<>();
 
-    @Autowired
     public SensitiveWordService(
             MyBatisQueryOperations jdbcTemplate,
             AiKnowledgeTextExtractor textExtractor,

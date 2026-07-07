@@ -83,7 +83,6 @@ public class PlatformUpdateAppService {
     private volatile PlatformUpdateVO.StatusVO cachedStatus;
     private volatile Path cachedGitDirectory;
 
-    @Autowired
     public PlatformUpdateAppService(
             Environment environment,
             ObjectProvider<BuildProperties> buildPropertiesProvider,

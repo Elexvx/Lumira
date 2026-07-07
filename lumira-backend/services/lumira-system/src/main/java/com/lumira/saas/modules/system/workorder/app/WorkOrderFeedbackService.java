@@ -49,7 +49,6 @@ public class WorkOrderFeedbackService {
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
-    @Autowired
     public WorkOrderFeedbackService(
             MyBatisQueryOperations jdbcTemplate,
             WorkOrderFeedbackPluginStateService pluginStateService,

@@ -72,7 +72,6 @@ public class SystemMonitorAppService {
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
     private final Instant applicationStartInstant = Instant.now();
 
-    @Autowired
     public SystemMonitorAppService(
             StringRedisTemplate stringRedisTemplate,
             ObjectMapper objectMapper,

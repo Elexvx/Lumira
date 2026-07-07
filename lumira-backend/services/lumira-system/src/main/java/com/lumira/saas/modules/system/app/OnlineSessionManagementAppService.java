@@ -64,7 +64,6 @@ public class OnlineSessionManagementAppService {
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
-    @Autowired
     public OnlineSessionManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
             AuthSessionStore authSessionStore,
