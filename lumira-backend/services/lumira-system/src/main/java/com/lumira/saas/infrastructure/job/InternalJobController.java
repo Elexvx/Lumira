@@ -24,18 +24,18 @@ public class InternalJobController {
 
     private final PlatformEventOutboxRelay platformEventOutboxRelay;
     private final ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider;
-    private final UserExportTaskWorkerService userExportTaskWorkerService;
+    private final ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider;
     private final String jobInternalToken;
 
     public InternalJobController(
             PlatformEventOutboxRelay platformEventOutboxRelay,
             ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider,
-            UserExportTaskWorkerService userExportTaskWorkerService,
+            ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobInternalToken
     ) {
         this.platformEventOutboxRelay = platformEventOutboxRelay;
         this.onlineSessionStreamServiceProvider = onlineSessionStreamServiceProvider;
-        this.userExportTaskWorkerService = userExportTaskWorkerService;
+        this.userExportTaskWorkerServiceProvider = userExportTaskWorkerServiceProvider;
         this.jobInternalToken = jobInternalToken;
     }
 
@@ -72,6 +72,10 @@ public class InternalJobController {
     ) {
         ensureAuthorized(token);
         requireExportLimit(limit);
+        UserExportTaskWorkerService userExportTaskWorkerService = userExportTaskWorkerServiceProvider.getIfAvailable();
+        if (userExportTaskWorkerService == null) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "User export task worker is unavailable");
+        }
         return ApiResponse.success(userExportTaskWorkerService.processPendingTasks(limit), null);
     }
 
