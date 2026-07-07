@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.online;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ public class OnlineSessionEventSubscriber implements MessageListener {
     private final OnlineSessionEventIdentityVerifier identityVerifier;
     private final boolean enforceTrustedIdentityVerification;
 
+    @Autowired
     public OnlineSessionEventSubscriber(
             ObjectMapper objectMapper,
             OnlineSessionStreamService onlineSessionStreamService,
