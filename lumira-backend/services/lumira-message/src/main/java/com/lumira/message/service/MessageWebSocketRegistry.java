@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
@@ -55,9 +56,16 @@ public class MessageWebSocketRegistry {
             ObjectMapper objectMapper,
             MessageEventFactory messageEventFactory,
             MeterRegistry meterRegistry,
-            MessageSessionAuthenticationService sessionAuthenticationService
+            ObjectProvider<MessageSessionAuthenticationService> sessionAuthenticationServiceProvider
     ) {
-        this(objectMapper, messageEventFactory, meterRegistry, sessionAuthenticationService, Clock.systemUTC(), DEFAULT_TRUST_REVALIDATION_INTERVAL);
+        this(
+                objectMapper,
+                messageEventFactory,
+                meterRegistry,
+                sessionAuthenticationServiceProvider.getIfAvailable(),
+                Clock.systemUTC(),
+                DEFAULT_TRUST_REVALIDATION_INTERVAL
+        );
     }
 
     MessageWebSocketRegistry(
@@ -259,6 +267,9 @@ public class MessageWebSocketRegistry {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             return null;
         }
+        if (sessionAuthenticationService == null) {
+            return null;
+        }
         MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess;
         try {
             authenticatedAccess = sessionAuthenticationService.authenticateSessionTicket(
@@ -302,6 +313,9 @@ public class MessageWebSocketRegistry {
 
     private CurrentUser authenticateTrustedSubscriber(Subscriber subscriber) {
         if (subscriber == null) {
+            return null;
+        }
+        if (sessionAuthenticationService == null) {
             return null;
         }
         MessageSessionAuthenticationService.AuthenticatedAccess authenticatedAccess;

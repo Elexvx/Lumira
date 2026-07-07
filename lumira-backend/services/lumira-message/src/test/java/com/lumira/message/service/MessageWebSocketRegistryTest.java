@@ -154,6 +154,26 @@ class MessageWebSocketRegistryTest {
     }
 
     @Test
+    void registerShouldRejectWhenSessionAuthenticationServiceIsUnavailable() throws Exception {
+        MessageWebSocketRegistry registry = new MessageWebSocketRegistry(
+                new ObjectMapper().findAndRegisterModules(),
+                new MessageEventFactory(),
+                new SimpleMeterRegistry(),
+                null,
+                Clock.systemUTC(),
+                Duration.ZERO
+        );
+        WebSocketSession session = openSession("session-1");
+
+        CurrentUser trustedCurrentUser = registry.register(session, currentUser("user-uuid-1001"));
+
+        assertThat(trustedCurrentUser).isNull();
+        assertThat(registry.snapshot().activeConnections()).isZero();
+        assertThat(registry.snapshot().userCount()).isZero();
+        verify(session, never()).sendMessage(any(TextMessage.class));
+    }
+
+    @Test
     void sendToUserShouldCloseSubscriberWhenMessagePermissionIsRevokedDuringRevalidation() throws Exception {
         MessageSessionAuthenticationService authenticationService = mock(MessageSessionAuthenticationService.class);
         when(authenticationService.authenticateSessionTicket(any(), any(), any(), any(), any(), any()))
