@@ -28,7 +28,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.lang.reflect.Constructor;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
@@ -334,57 +333,28 @@ class SystemManagementAppServicePasswordTest {
             SystemRoleManagementAppService systemRoleManagementAppService,
             FieldCryptoService fieldCryptoService
     ) {
-        try {
-            Constructor<SystemManagementAppService> constructor = SystemManagementAppService.class.getDeclaredConstructor(
-                    MyBatisQueryOperations.class,
-                    UserDomainService.class,
-                    PermissionSnapshotService.class,
-                    SystemInternalApi.class,
-                    SessionAuthenticationService.class,
-                    SystemPluginViewService.class,
-                    OnlineSessionManagementAppService.class,
-                    SystemVerificationAppService.class,
-                    SystemPlatformSettingsAppService.class,
-                    SystemProfileSettingsAppService.class,
-                    PasswordEncoder.class,
-                    AuthSessionStore.class,
-                    LoginAuditService.class,
-                    OperationAuditService.class,
-                    SecuritySettingsService.class,
-                    PasswordPolicyService.class,
-                    IamUserService.class,
-                    SystemUserManagementAppService.class,
-                    SystemRoleManagementAppService.class,
-                    FieldCryptoService.class,
-                    boolean.class
-            );
-            constructor.setAccessible(true);
-            return constructor.newInstance(
-                    jdbcTemplate,
-                    userDomainService,
-                    permissionSnapshotService,
-                    systemInternalApi,
-                    sessionAuthenticationService,
-                    systemPluginViewService,
-                    onlineSessionManagementAppService,
-                    systemVerificationAppService,
-                    systemPlatformSettingsAppService,
-                    systemProfileSettingsAppService,
-                    passwordEncoder,
-                    authSessionStore,
-                    loginAuditService,
-                    operationAuditService,
-                    securitySettingsService,
-                    passwordPolicyService,
-                    iamUserService,
-                    systemUserManagementAppService,
-                    systemRoleManagementAppService,
-                    fieldCryptoService,
-                    true
-            );
-        } catch (ReflectiveOperationException ex) {
-            throw new AssertionError("Failed to create strict SystemManagementAppService", ex);
-        }
+        return new SystemManagementAppService(
+                jdbcTemplate,
+                userDomainService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                systemPluginViewService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                iamUserService,
+                systemUserManagementAppService,
+                systemRoleManagementAppService,
+                fieldCryptoService
+        );
     }
 
     private static SysUserEntity buildUser(String passwordHash) {

@@ -44,6 +44,8 @@ Team 模块不允许进入本债务清单。本阶段已经要求 `TeamAppServic
 | `SensitiveWordPluginStateService` | direct persistence dependency | 记录债务，后续迁移到 Sensitive Word plugin state repository/persistence adapter |
 | `SystemPlatformSettingsAppService` | direct SQL | 记录债务，后续迁移到 Platform Settings repository/persistence adapter |
 | `SystemProfileSettingsAppService` | direct SQL | 记录债务，后续迁移到 Profile Settings repository/persistence adapter |
+| `SystemInternalApiService` | direct persistence dependency | 记录债务，后续迁移到 System internal query repository/persistence adapter |
+| `UserExportTaskWorkerService` | direct persistence dependency | 记录债务，后续迁移到 User export repository/persistence adapter |
 | `TeamInternalApiService` | direct persistence dependency | 记录债务，后续迁移到 Team repository/persistence adapter；不得扩展到 `TeamAppService` 或 `TeamInviteService` |
 | `TeamPermissionService` | direct persistence dependency | 记录债务，后续迁移到 Team repository/persistence adapter；不得扩展到 `TeamAppService` 或 `TeamInviteService` |
 | `WorkflowAppService` | direct SQL | historical debt; migrate to Workflow repository/persistence adapter |

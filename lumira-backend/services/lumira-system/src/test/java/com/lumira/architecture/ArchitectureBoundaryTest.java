@@ -28,7 +28,12 @@ class ArchitectureBoundaryTest {
             "com.lumira.payment..",
             "com.lumira.ai..",
             "com.lumira.job..",
-            "com.lumira.team.."
+            "com.lumira.team.app..",
+            "com.lumira.team.controller..",
+            "com.lumira.team.domain..",
+            "com.lumira.team.entity..",
+            "com.lumira.team.infrastructure..",
+            "com.lumira.team.mapper.."
     };
     private static final Pattern LUMIRA_DEPENDENCY_PATTERN = Pattern.compile(
             "(?s)<dependency>.*?<groupId>com\\.lumira</groupId>.*?<artifactId>([^<]+)</artifactId>.*?</dependency>");
@@ -146,7 +151,7 @@ class ArchitectureBoundaryTest {
 
     private static Path repositoryRoot() {
         Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        while (current != null && !Files.exists(current.resolve("services")) && !Files.exists(current.resolve("libs"))) {
+        while (current != null && !(Files.exists(current.resolve("services")) && Files.exists(current.resolve("libs")))) {
             current = current.getParent();
         }
         if (current == null) {

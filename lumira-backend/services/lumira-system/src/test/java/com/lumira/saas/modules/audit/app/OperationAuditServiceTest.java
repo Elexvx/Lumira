@@ -5,6 +5,7 @@ import com.lumira.saas.modules.audit.entity.AuditOperationLogEntity;
 import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.ObjectProvider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,7 +20,7 @@ class OperationAuditServiceTest {
     void logRecordsTrustedUserUuid() {
         AuditOperationLogMapper mapper = mock(AuditOperationLogMapper.class);
         when(mapper.insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class))).thenReturn(1);
-        OperationAuditService service = new OperationAuditService(mapper, null);
+        OperationAuditService service = new OperationAuditService(mapper, objectProvider(null));
 
         service.log(1001L, "user-uuid-1001", "admin", "system", "update", "UPDATE", "SUCCESS", "updated");
 
@@ -33,7 +34,7 @@ class OperationAuditServiceTest {
     @Test
     void logShouldRejectPositiveUserIdWithoutUserUuid() {
         AuditOperationLogMapper mapper = mock(AuditOperationLogMapper.class);
-        OperationAuditService service = new OperationAuditService(mapper, null);
+        OperationAuditService service = new OperationAuditService(mapper, objectProvider(null));
 
         assertThatThrownBy(() -> service.log(1001L, null, "admin", "system", "update", "UPDATE", "SUCCESS", "updated"))
                 .isInstanceOf(BizException.class);
@@ -45,10 +46,24 @@ class OperationAuditServiceTest {
     void logShouldRejectWhenAuditInsertMisses() {
         AuditOperationLogMapper mapper = mock(AuditOperationLogMapper.class);
         when(mapper.insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class))).thenReturn(0);
-        OperationAuditService service = new OperationAuditService(mapper, null);
+        OperationAuditService service = new OperationAuditService(mapper, objectProvider(null));
 
         assertThatThrownBy(() -> service.log(1001L, "user-uuid-1001", "admin", "system", "update", "UPDATE", "SUCCESS", "updated"))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Operation audit changed");
+    }
+
+    private static <T> ObjectProvider<T> objectProvider(T value) {
+        return new ObjectProvider<>() {
+            @Override
+            public T getObject() {
+                return value;
+            }
+
+            @Override
+            public T getIfAvailable() {
+                return value;
+            }
+        };
     }
 }

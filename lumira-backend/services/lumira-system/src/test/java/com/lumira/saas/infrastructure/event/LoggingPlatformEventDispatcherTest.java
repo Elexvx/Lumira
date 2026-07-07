@@ -45,7 +45,7 @@ class LoggingPlatformEventDispatcherTest {
         event.setSourceType(PlatformEventTypes.SOURCE_SYSTEM);
         event.setEventType("NOTICE_CREATED");
         event.setEventKey("NOTICE_CREATED:message.notice:9001");
-        event.setPayloadJson("{\"noticeId\":9001}");
+        event.setPayloadJson("{\"noticeId\":9001,\"userUuid\":\"user-uuid-2001\"}");
         event.setCreatedAt(LocalDateTime.of(2026, 5, 3, 22, 30));
         return event;
     }

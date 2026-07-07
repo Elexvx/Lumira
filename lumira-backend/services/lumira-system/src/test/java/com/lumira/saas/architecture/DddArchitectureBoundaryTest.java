@@ -143,7 +143,7 @@ class DddArchitectureBoundaryTest {
                 "services/lumira-message/src/main/java/com/lumira/message/domain/model/MessageDomainModels.java",
                 "services/lumira-file/src/main/java/com/lumira/file/domain/model/FileDomainModels.java",
                 "services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/domain/model/PluginDomainModels.java",
-                "services/lumira-localization/src/main/java/com/lumira/saas/modules/localization/domain/model/LocalizationDomainModels.java",
+                "services/lumira-localization/src/main/java/com/lumira/localization/domain/model/LocalizationDomainModels.java",
                 "services/lumira-payment/src/main/java/com/lumira/payment/domain/model/PaymentDomainModels.java",
                 "services/lumira-team/src/main/java/com/lumira/team/domain/model/TeamDomainModels.java",
                 "services/lumira-system/src/main/java/com/lumira/saas/modules/ai/domain/model/AiAssistantDomainModels.java",

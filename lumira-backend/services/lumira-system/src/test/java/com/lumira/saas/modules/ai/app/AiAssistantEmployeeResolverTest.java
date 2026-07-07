@@ -22,7 +22,7 @@ class AiAssistantEmployeeResolverTest {
         assertThat(employee.getUsername()).isEqualTo("ai-assistant");
         assertThat(jdbcTemplate.queryCount).isEqualTo(2);
         assertThat(jdbcTemplate.lastUpdateSql).contains("insert into ai_employee");
-        assertThat(jdbcTemplate.lastUpdateArgs).contains(1001L, "ai-assistant", "AI Assistant");
+        assertThat(jdbcTemplate.lastUpdateArgs).contains("ai-assistant", "AI Assistant", "General Chat");
     }
 
     private static class StubQueryOperations extends MyBatisQueryOperations {

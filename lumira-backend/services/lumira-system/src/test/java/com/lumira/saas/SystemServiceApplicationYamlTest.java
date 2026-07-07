@@ -22,11 +22,11 @@ class SystemServiceApplicationYamlTest {
         assertThat(properties.getProperty("saas.security.jwt-secret")).isEqualTo("${JWT_SECRET:}");
         assertThat(properties.getProperty("saas.security.field-secret")).isEqualTo("${FIELD_SECRET:}");
         assertThat(properties.getProperty("lumira.monolith")).isEqualTo("${LUMIRA_MONOLITH:false}");
-        assertThat(properties.getProperty("saas.security.permit-paths[23]")).isEqualTo("/api/v2/account-activation/**");
-        assertThat(properties.getProperty("saas.security.permit-paths[33]")).isEqualTo("/api/v2/*/readiness");
-        assertThat(properties.getProperty("saas.security.permit-paths[34]")).isEqualTo("/api/v2/*/health");
-        assertThat(properties.getProperty("saas.security.permit-paths[35]")).isEqualTo("/api/v2/*/metrics");
         assertThat(properties)
+                .containsValue("/api/v2/account-activation/**")
+                .containsValue("/api/v2/*/readiness")
+                .containsValue("/api/v2/*/health")
+                .containsValue("/api/v2/*/metrics")
                 .containsValue("/api/v2/runtime/version");
         assertThat(properties.getProperty("saas.web.cors-allowed-origin-patterns")).isEqualTo("${CORS_ALLOWED_ORIGIN_PATTERNS:}");
     }

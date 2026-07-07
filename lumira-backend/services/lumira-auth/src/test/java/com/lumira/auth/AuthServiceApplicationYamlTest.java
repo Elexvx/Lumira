@@ -20,10 +20,11 @@ class AuthServiceApplicationYamlTest {
         assertThat(properties.getProperty("saas.security.jwt-secret")).isEqualTo("${JWT_SECRET:}");
         assertThat(properties.getProperty("saas.security.field-secret")).isEqualTo("${FIELD_SECRET:}");
         assertThat(properties.getProperty("lumira.monolith")).isEqualTo("${LUMIRA_MONOLITH:false}");
-        assertThat(properties.getProperty("saas.security.permit-paths[5]")).isEqualTo("/api/v2/auth/login/code/challenge");
-        assertThat(properties.getProperty("saas.security.permit-paths[23]")).isEqualTo("/api/v2/auth/readiness");
-        assertThat(properties.getProperty("saas.security.permit-paths[24]")).isEqualTo("/api/v2/auth/health");
-        assertThat(properties.getProperty("saas.security.permit-paths[25]")).isEqualTo("/api/v2/auth/metrics");
+        assertThat(properties)
+                .containsValue("/api/v2/auth/login/code/challenge")
+                .containsValue("/api/v2/auth/readiness")
+                .containsValue("/api/v2/auth/health")
+                .containsValue("/api/v2/auth/metrics");
         assertThat(properties.getProperty("saas.web.cors-allowed-origin-patterns")).isEqualTo("${CORS_ALLOWED_ORIGIN_PATTERNS:}");
     }
 

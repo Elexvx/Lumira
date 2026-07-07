@@ -3,7 +3,9 @@ package com.lumira.saas.modules.system.assembly;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.CaptchaService;
+import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
@@ -31,11 +33,11 @@ class SystemInternalAssemblyTest {
             .withUserConfiguration(TestConfiguration.class);
 
     @Test
-    void monolithKeepsLocalInternalApiButDoesNotExposeController() {
+    void monolithKeepsLocalInternalApiAndControllerAvailable() {
         contextRunner.withPropertyValues("lumira.monolith=true").run(context -> {
             assertThat(context.getBeansOfType(SystemInternalApi.class)).hasSize(1);
             assertThat(context.getBeansOfType(SystemInternalApiService.class)).hasSize(1);
-            assertThat(context.getBeansOfType(InternalSystemController.class)).isEmpty();
+            assertThat(context.getBeansOfType(InternalSystemController.class)).hasSize(1);
         });
     }
 
@@ -103,6 +105,11 @@ class SystemInternalAssemblyTest {
         }
 
         @Bean
+        AuthSessionStore authSessionStore() {
+            return mock(AuthSessionStore.class);
+        }
+
+        @Bean
         OperationAuditService operationAuditService() {
             return mock(OperationAuditService.class);
         }
@@ -110,6 +117,11 @@ class SystemInternalAssemblyTest {
         @Bean
         SecuritySettingsService securitySettingsService() {
             return mock(SecuritySettingsService.class);
+        }
+
+        @Bean
+        PasswordPolicyService passwordPolicyService() {
+            return mock(PasswordPolicyService.class);
         }
 
         @Bean

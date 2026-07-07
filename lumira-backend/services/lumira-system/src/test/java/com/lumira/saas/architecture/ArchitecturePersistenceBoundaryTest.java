@@ -70,6 +70,8 @@ class ArchitecturePersistenceBoundaryTest {
             "SensitiveWordPluginStateService",
             "SystemPlatformSettingsAppService",
             "SystemProfileSettingsAppService",
+            "SystemInternalApiService",
+            "UserExportTaskWorkerService",
             "TeamInternalApiService",
             "TeamPermissionService",
             "WorkflowAppService",

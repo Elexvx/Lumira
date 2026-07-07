@@ -1554,16 +1554,22 @@ class AuthAppServiceTest {
         session.setPermissionsVersion("v0");
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(1L);
-        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(new PermissionSnapshotDTO(
-                "v1",
-                List.of("dashboard:view", "project:view"),
-                List.of(3L),
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                "/dashboard/home"
-        ));
+        CountDownLatch remoteCallStarted = new CountDownLatch(1);
+        CountDownLatch releaseRemoteCall = new CountDownLatch(1);
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenAnswer(invocation -> {
+            remoteCallStarted.countDown();
+            assertTrue(releaseRemoteCall.await(5, TimeUnit.SECONDS));
+            return new PermissionSnapshotDTO(
+                    "v1",
+                    List.of("dashboard:view", "project:view"),
+                    List.of(3L),
+                    null,
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    "/dashboard/home"
+            );
+        });
 
         int threadCount = 24;
         CountDownLatch startSignal = new CountDownLatch(1);
@@ -1581,6 +1587,9 @@ class AuthAppServiceTest {
             }, executor));
         }
         startSignal.countDown();
+        assertTrue(remoteCallStarted.await(5, TimeUnit.SECONDS));
+        TimeUnit.MILLISECONDS.sleep(100);
+        releaseRemoteCall.countDown();
         for (CompletableFuture<CurrentUserDTO> future : futures) {
             future.get(5, TimeUnit.SECONDS);
         }
