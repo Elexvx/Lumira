@@ -554,6 +554,60 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void currentBootstrap_shouldNotReuseVisibleMenusForDifferentPermissionsWithSameSnapshotVersion() throws Exception {
+        MenuNodeDTO settingsRoot = new MenuNodeDTO();
+        settingsRoot.setMenuCode("settings.root");
+        settingsRoot.setName("Settings");
+        settingsRoot.setPath("/settings");
+        settingsRoot.setComponent("@/layouts/SettingsLayout");
+        settingsRoot.setPermissionKey("system:view");
+        settingsRoot.setSortNo(1);
+
+        MenuNodeDTO menuManagementPage = new MenuNodeDTO();
+        menuManagementPage.setMenuCode("settings.menus");
+        menuManagementPage.setName("Menus");
+        menuManagementPage.setPath("/settings/menus");
+        menuManagementPage.setComponent("@/pages/settings/menus");
+        menuManagementPage.setPermissionKey("system:menu:view");
+        menuManagementPage.setSortNo(1);
+        menuManagementPage.setChildren(List.of());
+
+        MenuNodeDTO dictionaryPage = new MenuNodeDTO();
+        dictionaryPage.setMenuCode("settings.dicts");
+        dictionaryPage.setName("Dicts");
+        dictionaryPage.setPath("/settings/dicts");
+        dictionaryPage.setComponent("@/pages/settings/dicts");
+        dictionaryPage.setPermissionKey("system:dict:view");
+        dictionaryPage.setSortNo(2);
+        dictionaryPage.setChildren(List.of());
+
+        settingsRoot.setChildren(List.of(menuManagementPage, dictionaryPage));
+
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L);
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of());
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(settingsRoot));
+
+        Map<String, Object> menuBootstrap = pluginManagementAppService.currentBootstrap(
+                List.of("system:menu:view"),
+                "v7:data-scope-cache-v4"
+        );
+        Map<String, Object> dictBootstrap = pluginManagementAppService.currentBootstrap(
+                List.of("system:dict:view"),
+                "v7:data-scope-cache-v4"
+        );
+
+        assertThat(collectMenuCodes((List<Map<String, Object>>) menuBootstrap.get("menuTree")))
+                .contains("settings.root", "settings.menus")
+                .doesNotContain("settings.dicts");
+        assertThat(collectMenuCodes((List<Map<String, Object>>) dictBootstrap.get("menuTree")))
+                .contains("settings.root", "settings.dicts")
+                .doesNotContain("settings.menus");
+        verify(systemInternalApi, times(1)).builtinMenus();
+    }
+
+    @Test
     void currentAvailablePlugins_shouldFilterMenusByPermissionSnapshot() throws Exception {
         String availablePluginCode = "sms";
         PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);

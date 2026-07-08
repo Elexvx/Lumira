@@ -1100,10 +1100,11 @@ public class PluginManagementAppService {
     }
 
     private String permissionCacheKey(Set<String> permissions, String permissionsVersion) {
+        String permissionSignature = permissionSignature(permissions);
         if (StringUtils.hasText(permissionsVersion)) {
-            return "perm-version:" + permissionsVersion.trim();
+            return "perm-version:" + permissionsVersion.trim() + ":perm-signature:" + permissionSignature;
         }
-        return "perm-signature:" + permissionSignature(permissions);
+        return "perm-signature:" + permissionSignature;
     }
 
     private String permissionSignature(Set<String> permissions) {
