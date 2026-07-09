@@ -7,6 +7,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { LoginFormFields, WechatLoginPanel, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
+import { resolvePresentedLoginMode, resolvePresentedLoginModes } from '@/pages/user/login/utils/loginModePresentation';
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { request } from '@/services/common/request';
 import './Login.css';
@@ -63,7 +64,6 @@ type LoginPageMainSectionProps = {
   setCaptchaProof: (value: string) => void;
   resetCaptchaProof: () => void;
   openPasswordReset: () => void;
-  isMobile: boolean;
 };
 
 const LoginPageMainSection = ({
@@ -102,7 +102,6 @@ const LoginPageMainSection = ({
   setCaptchaProof,
   resetCaptchaProof,
   openPasswordReset,
-  isMobile,
 }: LoginPageMainSectionProps) => (
   <div className="saas-login-page" style={loginPageStyle}>
     <main className="saas-login-page__stage">
@@ -135,8 +134,8 @@ const LoginPageMainSection = ({
           onFinishFailed={handleFinishFailed}
         >
           <LoginFormFields
-            activeLoginMode={isMobile ? activeLoginMode : 'password'}
-            availableLoginModes={isMobile ? availableLoginModes : ['password']}
+            activeLoginMode={activeLoginMode}
+            availableLoginModes={availableLoginModes}
             pendingSecondFactorLogin={pendingSecondFactorLogin}
             pendingSecondFactorPrompt={pendingSecondFactorPrompt}
             agreementSettings={agreementSettings}
@@ -150,7 +149,7 @@ const LoginPageMainSection = ({
             loginCodeCooldownSeconds={loginCodeCooldownSeconds}
             wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
             passkeyLoading={passkeySubmitting}
-            onModeChange={isMobile ? setActiveLoginMode : () => undefined}
+            onModeChange={setActiveLoginMode}
             onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
             onWechatLogin={() => void handleWechatLogin()}
             onPasskeyLogin={() => void handlePasskeyLogin()}
@@ -162,7 +161,7 @@ const LoginPageMainSection = ({
             onOpenAgreementPreview={openAgreementPreview}
             onForgotPassword={openPasswordReset}
           />
-          {((isMobile ? activeLoginMode : 'password') === 'passkey' || (isMobile ? activeLoginMode : 'password') === 'wechat') && !pendingSecondFactorLogin ? null : (
+          {(activeLoginMode === 'passkey' || activeLoginMode === 'wechat') && !pendingSecondFactorLogin ? null : (
             <Button
               block
               size="large"
@@ -400,21 +399,23 @@ const Login = () => {
   const responsive = useResponsive();
   const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
+  const presentedLoginModes = resolvePresentedLoginModes(responsive.isMobile, loginFlow.availableLoginModes);
+  const presentedLoginMode = resolvePresentedLoginMode(responsive.isMobile, loginFlow.activeLoginMode, loginFlow.availableLoginModes);
   const loginSubTitle =
-    loginFlow.activeLoginMode === 'password'
+    presentedLoginMode === 'password'
       ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
-      : loginFlow.activeLoginMode === 'passkey'
+      : presentedLoginMode === 'passkey'
         ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
-        : loginFlow.activeLoginMode === 'wechat'
+        : presentedLoginMode === 'wechat'
           ? formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })
-          : loginFlow.activeLoginMode === 'sms'
+          : presentedLoginMode === 'sms'
             ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
             : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' });
   const submitButtonText = loginFlow.viewState.pendingSecondFactorLogin
     ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
-    : loginFlow.activeLoginMode === 'passkey'
+    : presentedLoginMode === 'passkey'
       ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
-      : loginFlow.activeLoginMode === 'wechat'
+      : presentedLoginMode === 'wechat'
         ? formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })
       : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' });
 
@@ -422,8 +423,8 @@ const Login = () => {
     <>
       <LoginPageMainSection
         loginForm={loginFlow.loginForm}
-        activeLoginMode={loginFlow.activeLoginMode}
-        availableLoginModes={loginFlow.availableLoginModes}
+        activeLoginMode={presentedLoginMode}
+        availableLoginModes={presentedLoginModes}
         pendingSecondFactorLogin={loginFlow.viewState.pendingSecondFactorLogin}
         pendingSecondFactorPrompt={loginFlow.viewState.pendingSecondFactorPrompt}
         agreementSettings={loginFlow.agreementSettings}
@@ -451,7 +452,6 @@ const Login = () => {
         setCaptchaProof={loginFlow.actions.setCaptchaProof}
         resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
         openPasswordReset={() => setPasswordResetOpen(true)}
-        isMobile={responsive.isMobile}
         loginPageStyle={loginFlow.loginPageStyle}
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}
