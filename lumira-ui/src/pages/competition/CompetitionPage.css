@@ -100,6 +100,8 @@
 
 .competition-registration-member-manager {
   width: 100%;
+  max-width: var(--saas-form-control-max-width);
+  align-self: flex-start;
 }
 
 .competition-registration-member-manager__header {
