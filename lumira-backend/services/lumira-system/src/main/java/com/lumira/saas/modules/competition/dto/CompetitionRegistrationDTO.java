@@ -3,6 +3,7 @@ package com.lumira.saas.modules.competition.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
@@ -83,6 +84,7 @@ public final class CompetitionRegistrationDTO {
 
     public static class MemberSnapshotRequest {
         @Size(max = 128)
+        @Pattern(regexp = "^[\\p{IsHan}A-Za-z·]{2,64}$", message = "Member name may only contain Chinese characters, English letters, or a middle dot")
         private String memberName;
         @Size(max = 64)
         private String employeeNo;

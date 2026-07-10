@@ -65,6 +65,7 @@ import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { validateMemberTextField } from './memberFieldValidation';
 import './CompetitionPage.css';
 
 type CompetitionTimeMode = 'CONFIRMED' | 'TBD';
@@ -2948,8 +2949,14 @@ const CompetitionRegistrationPage = () => {
       return { memberName: '请填写成员信息' };
     }
     return effectiveMemberRegistrationFields.reduce<Record<string, string>>((errors, field) => {
-      if (field.required && !hasCollectedValue(getMemberCollectedFieldValue(member, field))) {
+      const value = getMemberCollectedFieldValue(member, field);
+      if (field.required && !hasCollectedValue(value)) {
         errors[field.itemKey] = `请填写${field.title}`;
+        return errors;
+      }
+      const validationError = validateMemberTextField(field.itemKey, field.title, value);
+      if (validationError) {
+        errors[field.itemKey] = validationError;
       }
       return errors;
     }, {});
@@ -3240,7 +3247,7 @@ const CompetitionRegistrationPage = () => {
             <Input
               value={fieldValue == null ? undefined : String(fieldValue)}
               placeholder={placeholder}
-              maxLength={fieldType === 'MOBILE' ? 20 : fieldType === 'EMAIL' ? 128 : undefined}
+              maxLength={fieldType === 'MOBILE' ? 20 : 128}
               onChange={(event) => updateMemberEditorField(field, event.target.value)}
             />
           );
