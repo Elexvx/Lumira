@@ -3424,7 +3424,7 @@ const CompetitionRegistrationPage = () => {
       <section className="competition-registration-team-form">
         <div className="competition-registration-team-form__fields">
           <Typography.Title className="competition-registration-team-form__title" level={5}>
-            团队信息（新建）
+            团队信息
           </Typography.Title>
           <Form.Item name="newTeamName" label={teamNameField.title} rules={buildCollectedFieldRule(teamNameField)}>
             <Input maxLength={128} placeholder={teamNameField.placeholder || teamNameField.title} />
