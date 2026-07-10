@@ -3191,7 +3191,7 @@ const CompetitionRegistrationPage = () => {
   }
 
   const renderRegistrationMemberManager = () => {
-    const memberTableMinWidth = effectiveMemberRegistrationFields.length * 140 + 128;
+    const memberTableMinWidth = effectiveMemberRegistrationFields.length * 140 + 148;
 
     const renderMemberEditorInput = (field: RegistrationCollectedField) => {
       const fieldValue = memberEditorDraft ? getMemberCollectedFieldValue(memberEditorDraft, field) : undefined;
@@ -3276,7 +3276,7 @@ const CompetitionRegistrationPage = () => {
           </td>
         ))}
         <td className="competition-registration-member-manager__actions">
-          <Space size={4} wrap>
+          <Space size={4} wrap={false}>
             <Button type="link" onClick={() => saveMemberEditor()}>
               保存
             </Button>
@@ -3327,7 +3327,7 @@ const CompetitionRegistrationPage = () => {
                       </td>
                     ))}
                     <td className="competition-registration-member-manager__actions">
-                      <Space size={4} wrap>
+                      <Space size={4} wrap={false}>
                         <Button type="link" disabled={memberEditorKey !== undefined} onClick={() => openMemberInlineEditor(index)}>
                           编辑
                         </Button>

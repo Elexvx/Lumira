@@ -152,9 +152,9 @@
   position: sticky;
   right: 0;
   z-index: 1;
-  width: 128px;
-  min-width: 128px !important;
-  max-width: 128px;
+  width: 148px;
+  min-width: 148px !important;
+  max-width: 148px;
   padding-inline: 8px !important;
   background: var(--ant-color-bg-container);
   box-shadow: -1px 0 0 var(--ant-color-border-secondary);
