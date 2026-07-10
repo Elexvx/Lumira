@@ -2524,7 +2524,7 @@ const CompetitionRegistrationPage = () => {
   useEffect(() => {
     let mounted = true;
     const draftCompetitionState = latestRegistrationDraftRef.current;
-    const competitionUuid = selectedCompetition?.uuid
+    const knownCompetitionUuid = selectedCompetition?.uuid
       || (toPositiveId(registrationCompetitionFallback?.id) === toPositiveId(selectedCompetitionId)
         ? registrationCompetitionFallback?.uuid
         : undefined)
@@ -2535,15 +2535,32 @@ const CompetitionRegistrationPage = () => {
     setRegistrationFields([]);
     setStageMaterialConfigs([]);
     resetRegistrationDocumentProgress([]);
-    if (!competitionUuid || viewMode !== 'wizard') {
+    if (viewMode !== 'wizard') {
       setRegistrationDocumentsLoading(false);
       return () => {
         mounted = false;
       };
     }
     setRegistrationDocumentsLoading(true);
-    getCompetitionSettings(competitionUuid)
-      .then((settings) => {
+    const loadRegistrationSettings = async () => {
+      try {
+        let competitionUuid = knownCompetitionUuid;
+        if (!competitionUuid) {
+          const competitionId = toPositiveId(selectedCompetitionId);
+          if (!competitionId) {
+            return;
+          }
+          const competition = await getCompetition(competitionId, API_OPTS.SILENT);
+          if (!mounted) {
+            return;
+          }
+          setRegistrationCompetitionFallback(competition);
+          competitionUuid = competition.uuid;
+        }
+        if (!competitionUuid) {
+          throw new Error('赛事 UUID 缺失，无法加载报名字段配置');
+        }
+        const settings = await getCompetitionSettings(competitionUuid);
         if (!mounted) {
           return;
         }
@@ -2567,17 +2584,17 @@ const CompetitionRegistrationPage = () => {
             .filter((item) => item.enabled !== false)
             .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)),
         );
-      })
-      .catch((error) => {
+      } catch (error) {
         if (mounted) {
           showErrorMessage(error, '报名文书加载失败');
         }
-      })
-      .finally(() => {
+      } finally {
         if (mounted) {
           setRegistrationDocumentsLoading(false);
         }
-      });
+      }
+    };
+    void loadRegistrationSettings();
     return () => {
       mounted = false;
     };
