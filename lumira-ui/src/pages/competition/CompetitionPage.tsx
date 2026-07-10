@@ -2525,6 +2525,9 @@ const CompetitionRegistrationPage = () => {
     let mounted = true;
     const draftCompetitionState = latestRegistrationDraftRef.current;
     const competitionUuid = selectedCompetition?.uuid
+      || (toPositiveId(registrationCompetitionFallback?.id) === toPositiveId(selectedCompetitionId)
+        ? registrationCompetitionFallback?.uuid
+        : undefined)
       || (toPositiveId(draftCompetitionState?.values?.competitionId) === toPositiveId(selectedCompetitionId)
         ? draftCompetitionState?.competitionUuid
         : undefined);
@@ -2578,7 +2581,14 @@ const CompetitionRegistrationPage = () => {
     return () => {
       mounted = false;
     };
-  }, [resetRegistrationDocumentProgress, selectedCompetition?.uuid, selectedCompetitionId, viewMode]);
+  }, [
+    registrationCompetitionFallback?.id,
+    registrationCompetitionFallback?.uuid,
+    resetRegistrationDocumentProgress,
+    selectedCompetition?.uuid,
+    selectedCompetitionId,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (step !== 0 || viewMode !== 'wizard' || activeRegistrationDocumentCountdown <= 0) {
