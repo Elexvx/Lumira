@@ -4051,7 +4051,7 @@ const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number)
   itemKey: `${itemType.toLowerCase()}-${Date.now()}`,
   title: '',
   contentJson: serializeConfigItemMetadata(
-    itemType === 'REGISTRATION_FIELD'
+    ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(itemType)
       ? { fieldScope: itemType, fieldType: 'TEXT', validationRule: 'NONE' }
       : itemType === 'REQUIRED_FILE'
         ? { fileFormat: 'ANY', maxSizeMb: 20, stageCode: 'GENERAL', stageName: '通用' }
@@ -4379,7 +4379,7 @@ const renderFieldSettingsTable = (
         block
         icon={<PlusOutlined />}
         onClick={() => {
-          add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0]);
+          add(toEditableConfigItems([emptyConfigItem('MEMBER_FIELD', (fields.length + 1) * 10)])[0]);
           scheduleSave();
         }}
       >
