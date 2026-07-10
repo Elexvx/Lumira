@@ -287,7 +287,7 @@
   display: flex;
   position: relative;
   width: 100%;
-  max-width: 760px;
+  max-width: var(--saas-form-control-max-width);
   justify-content: center;
   gap: var(--saas-spacing-sm);
   margin: 0 auto;
@@ -593,6 +593,36 @@
   padding: 24px;
 }
 
+.competition-settings-section-header {
+  margin-bottom: var(--saas-spacing-lg);
+}
+
+.competition-settings-section-header > h4.ant-typography {
+  margin: 0 0 var(--saas-spacing-xs);
+}
+
+.competition-settings-section-header > .ant-typography {
+  margin-bottom: 0;
+}
+
+.competition-settings-detail-tabs > .ant-tabs-nav {
+  margin-bottom: var(--saas-spacing-lg);
+}
+
+.competition-settings-review__list {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.competition-settings-review__actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  padding-top: 24px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
 .competition-config-list {
   width: 100%;
 }
@@ -606,7 +636,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: var(--saas-spacing-xs);
 }
 
 .competition-config-module__title {
@@ -614,7 +644,11 @@
 }
 
 .competition-config-module__description {
-  margin-bottom: 16px;
+  margin-bottom: var(--saas-spacing-lg);
+}
+
+.competition-config-item--team-limits {
+  margin-bottom: var(--saas-spacing-md);
 }
 
 .competition-basic-section {

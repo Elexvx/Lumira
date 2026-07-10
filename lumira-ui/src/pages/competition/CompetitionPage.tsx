@@ -1,6 +1,6 @@
 import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
+import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tabs, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
@@ -3730,7 +3730,7 @@ const CompetitionRegistrationPage = () => {
 };
 
 type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
-type CompetitionSettingsModuleKey = 'basic' | CompetitionSettingsConfigModuleKey;
+type CompetitionSettingsModuleKey = 'basic' | 'registration' | 'stages' | 'payments' | 'review';
 
 type CompetitionSettingsModuleConfig = {
   key: CompetitionSettingsConfigModuleKey;
@@ -3824,11 +3824,11 @@ const getCompetitionSettingsModuleDescription = (module: CompetitionSettingsModu
   formatMessage({ id: module.descriptionId, defaultMessage: module.defaultDescription });
 
 const competitionSettingsMenuItems = [
-  {
-    key: 'basic' as const,
-    label: '基础信息',
-  },
-  ...competitionSettingsModules.map((item) => ({ key: item.key, label: getCompetitionSettingsModuleLabel(item) })),
+  { key: 'basic' as const, label: '基础信息' },
+  { key: 'registration' as const, label: '报名设置' },
+  { key: 'stages' as const, label: '赛程与材料' },
+  { key: 'payments' as const, label: '费用设置' },
+  { key: 'review' as const, label: '预览与发布' },
 ];
 
 const parseConfigItemMetadata = (contentJson?: string | null): ConfigItemMetadata => {
@@ -3999,7 +3999,7 @@ const fileFormatOptions = [
 ];
 
 const fileStageOptions = [
-  { label: '通用', value: 'GENERAL' },
+  { label: '报名后初赛提交', value: 'GENERAL' },
   { label: '初赛', value: 'PRELIMINARY' },
   { label: '决赛', value: 'FINAL' },
 ];
@@ -4260,8 +4260,8 @@ const renderConfigItemFields = (
         <Form.Item name={[fieldName, 'metadata', 'stageCode']} label="适用阶段" rules={[{ required: true, message: '请选择适用阶段' }]}>
           <Select options={fileStageOptions} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'itemKey']} label="文件标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入文件标识' }]}>
-          <Input placeholder="例如 work、authorization" maxLength={64} />
+        <Form.Item name={[fieldName, 'itemKey']} hidden normalize={normalizeConfigKey}>
+          <Input />
         </Form.Item>
         <Form.Item name={[fieldName, 'title']} label="文件名称" rules={[{ required: true, message: '请输入文件名称' }]}>
           <Input placeholder="例如 参赛作品、授权证明" maxLength={64} />
@@ -4477,7 +4477,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       </Typography.Paragraph>
       <Form form={form} layout="vertical" initialValues={getInitialValues()} onValuesChange={scheduleSave}>
         {module.key === 'fields' ? (
-          <Card className="competition-config-item" size="small" title="团队人数设置">
+          <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
             <div className="competition-config-grid">
               <Form.Item
                 name="teamMinMembers"
@@ -4568,7 +4568,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                       <Form.Item name={[field.name, 'enabled']} label={module.key === 'documents' ? '报名前展示' : formatMessage({ id: 'page.competition.settings.item.enabled', defaultMessage: 'Enabled' })} valuePropName="checked">
                         <Switch checkedChildren="启用" unCheckedChildren="停用" />
                       </Form.Item>
-                      {module.key !== 'fields' && module.key !== 'timeline' ? (
+                      {module.key !== 'fields' && module.key !== 'timeline' && module.key !== 'files' ? (
                         <Form.Item name={[field.name, 'sortOrder']} label={formatMessage({ id: 'page.competition.settings.item.sort', defaultMessage: 'Sort' })}>
                           <InputNumber min={0} style={{ width: 120 }} />
                         </Form.Item>
@@ -5018,6 +5018,8 @@ const CompetitionSettingsPage = () => {
   const competitionUuid = params.competitionUuid || '';
   const [settings, setSettings] = useState<CompetitionSettingsRecord>();
   const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('basic');
+  const [registrationDetail, setRegistrationDetail] = useState<'documents' | 'fields'>('fields');
+  const [stageDetail, setStageDetail] = useState<'timeline' | 'files'>('files');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
@@ -5050,9 +5052,16 @@ const CompetitionSettingsPage = () => {
     };
   }, [competitionUuid]);
 
-  const activeModule = activeKey === 'basic' || activeKey === 'timeline'
-    ? undefined
-    : competitionSettingsModules.find((item) => item.key === activeKey) || competitionSettingsModules[0];
+  const activeConfigModuleKey: CompetitionSettingsConfigModuleKey | undefined = activeKey === 'registration'
+    ? registrationDetail
+    : activeKey === 'stages'
+      ? stageDetail
+      : activeKey === 'payments'
+        ? 'payments'
+        : undefined;
+  const activeModule = activeConfigModuleKey && activeConfigModuleKey !== 'timeline'
+    ? competitionSettingsModules.find((item) => item.key === activeConfigModuleKey)
+    : undefined;
 
   const flushActivePanel = useCallback(async () => {
     await activePanelRef.current?.flushPendingSave();
@@ -5070,6 +5079,16 @@ const CompetitionSettingsPage = () => {
     await flushActivePanel();
     setActiveKey(nextKey);
   }, [activeKey, flushActivePanel]);
+
+  const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
+    await flushActivePanel();
+    setRegistrationDetail(nextKey as 'documents' | 'fields');
+  }, [flushActivePanel]);
+
+  const handleStageDetailChange = useCallback(async (nextKey: string) => {
+    await flushActivePanel();
+    setStageDetail(nextKey as 'timeline' | 'files');
+  }, [flushActivePanel]);
 
   const publish = async () => {
     if (!settings) {
@@ -5092,14 +5111,9 @@ const CompetitionSettingsPage = () => {
     <ManagementPage
       title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: 'Competition Settings' })}
       extra={
-        <Space>
-          <Button onClick={() => void handleBack()}>
-            {formatMessage({ id: 'page.competition.settings.back', defaultMessage: 'Back' })}
-          </Button>
-          <Button type="primary" loading={publishing} onClick={() => void publish()}>
-            {formatMessage({ id: 'page.competition.settings.publish', defaultMessage: 'Publish' })}
-          </Button>
-        </Space>
+        <Button onClick={() => void handleBack()}>
+          {formatMessage({ id: 'page.competition.settings.back', defaultMessage: 'Back' })}
+        </Button>
       }
     >
       <ManagementPageBody>
@@ -5131,13 +5145,67 @@ const CompetitionSettingsPage = () => {
                   levelOptions={levelOptions as Array<{ label: string; value: string }>}
                   onSaved={(competition) => setSettings({ ...settings, competition })}
                 />
-              ) : activeKey === 'timeline' ? (
-                <CompetitionTimelineSettingsPanel
-                  ref={activePanelRef}
-                  competition={settings.competition}
-                  onSaved={(competition) => setSettings({ ...settings, competition })}
-                />
-              ) : activeModule ? (
+              ) : activeKey === 'registration' ? (
+                <>
+                  <header className="competition-settings-section-header">
+                    <Typography.Title level={4}>报名设置</Typography.Title>
+                    <Typography.Paragraph type="secondary">集中配置参赛者需要阅读的文书，以及报名、团队、成员和项目信息。</Typography.Paragraph>
+                  </header>
+                  <Tabs
+                    className="competition-settings-detail-tabs"
+                    activeKey={registrationDetail}
+                    items={[
+                      { key: 'fields', label: '报名与团队字段' },
+                      { key: 'documents', label: '报名须知与文书' },
+                    ]}
+                    onChange={(key) => void handleRegistrationDetailChange(key)}
+                  />
+                  {activeModule ? (
+                    <ConfigModulePanel
+                      key={activeModule.key}
+                      ref={activePanelRef}
+                      competitionUuid={settings.competition.uuid || competitionUuid}
+                      module={activeModule}
+                      items={getModuleItems(settings, activeModule.key)}
+                      storageSpaceOptions={storageSpaceOptions}
+                      onSaved={setSettings}
+                    />
+                  ) : null}
+                </>
+              ) : activeKey === 'stages' ? (
+                <>
+                  <header className="competition-settings-section-header">
+                    <Typography.Title level={4}>赛程与材料</Typography.Title>
+                    <Typography.Paragraph type="secondary">按比赛阶段配置时间和参赛者需要提交的材料。</Typography.Paragraph>
+                  </header>
+                  <Tabs
+                    className="competition-settings-detail-tabs"
+                    activeKey={stageDetail}
+                    items={[
+                      { key: 'files', label: '阶段提交材料' },
+                      { key: 'timeline', label: '阶段时间' },
+                    ]}
+                    onChange={(key) => void handleStageDetailChange(key)}
+                  />
+                  {stageDetail === 'timeline' ? (
+                    <CompetitionTimelineSettingsPanel
+                      ref={activePanelRef}
+                      competition={settings.competition}
+                      onSaved={(competition) => setSettings({ ...settings, competition })}
+                    />
+                  ) : activeModule ? (
+                    <ConfigModulePanel
+                      key={activeModule.key}
+                      ref={activePanelRef}
+                      competitionUuid={settings.competition.uuid || competitionUuid}
+                      module={activeModule}
+                      items={getModuleItems(settings, activeModule.key)}
+                      storageSpaceOptions={storageSpaceOptions}
+                      onSaved={setSettings}
+                    />
+                  ) : null}
+                </>
+              ) : activeKey === 'payments' && activeModule ? (
                 <ConfigModulePanel
                   key={activeModule.key}
                   ref={activePanelRef}
@@ -5147,6 +5215,42 @@ const CompetitionSettingsPage = () => {
                   storageSpaceOptions={storageSpaceOptions}
                   onSaved={setSettings}
                 />
+              ) : activeKey === 'review' ? (
+                <section className="competition-settings-review">
+                  <header className="competition-settings-section-header">
+                    <Typography.Title level={4}>预览与发布</Typography.Title>
+                    <Typography.Paragraph type="secondary">发布前确认参赛者将看到的报名流程和阶段材料。</Typography.Paragraph>
+                  </header>
+                  <div className="competition-settings-review__list">
+                    <Alert type="success" showIcon message="基础信息" description="赛事名称、报名范围和时间已保存。" />
+                    <Alert
+                      type={settings.fields.length ? 'success' : 'warning'}
+                      showIcon
+                      message="报名设置"
+                      description={settings.fields.length ? `已配置 ${settings.fields.length} 项报名与团队设置。` : '尚未配置报名字段，将使用系统默认字段。'}
+                    />
+                    <Alert
+                      type={settings.files.length + settings.stageMaterials.length ? 'success' : 'warning'}
+                      showIcon
+                      message="赛程与材料"
+                      description={settings.files.length + settings.stageMaterials.length
+                        ? `已配置 ${settings.files.length + settings.stageMaterials.length} 项提交材料，发布后将自动生成参赛表单。`
+                        : '尚未配置提交材料，参赛者可直接进入费用确认。'}
+                    />
+                    <Alert
+                      type={settings.payments.length ? 'success' : 'info'}
+                      showIcon
+                      message="费用设置"
+                      description={settings.payments.length ? `已启用 ${settings.payments.length} 种支付方式。` : '未配置支付渠道，请确认赛事是否免费。'}
+                    />
+                  </div>
+                  <Space className="competition-settings-review__actions">
+                    <Button onClick={() => setActiveKey('registration')}>返回修改</Button>
+                    <Button type="primary" loading={publishing} onClick={() => void publish()}>
+                      检查并发布
+                    </Button>
+                  </Space>
+                </section>
               ) : null}
             </main>
           </div>
