@@ -2524,11 +2524,13 @@ const CompetitionRegistrationPage = () => {
   useEffect(() => {
     let mounted = true;
     const draftCompetitionState = latestRegistrationDraftRef.current;
+    const activeCompetitionId = toPositiveId(selectedCompetitionId)
+      || toPositiveId(draftCompetitionState?.values?.competitionId);
     const knownCompetitionUuid = selectedCompetition?.uuid
-      || (toPositiveId(registrationCompetitionFallback?.id) === toPositiveId(selectedCompetitionId)
+      || (toPositiveId(registrationCompetitionFallback?.id) === activeCompetitionId
         ? registrationCompetitionFallback?.uuid
         : undefined)
-      || (toPositiveId(draftCompetitionState?.values?.competitionId) === toPositiveId(selectedCompetitionId)
+      || (toPositiveId(draftCompetitionState?.values?.competitionId) === activeCompetitionId
         ? draftCompetitionState?.competitionUuid
         : undefined);
     setRegistrationDocuments([]);
@@ -2546,11 +2548,10 @@ const CompetitionRegistrationPage = () => {
       try {
         let competitionUuid = knownCompetitionUuid;
         if (!competitionUuid) {
-          const competitionId = toPositiveId(selectedCompetitionId);
-          if (!competitionId) {
+          if (!activeCompetitionId) {
             return;
           }
-          const competition = await getCompetition(competitionId, API_OPTS.SILENT);
+          const competition = await getCompetition(activeCompetitionId, API_OPTS.SILENT);
           if (!mounted) {
             return;
           }
@@ -2570,7 +2571,7 @@ const CompetitionRegistrationPage = () => {
         setRegistrationDocuments(nextDocuments);
         resetRegistrationDocumentProgress(nextDocuments);
         const currentDraft = latestRegistrationDraftRef.current;
-        if (currentDraft && toPositiveId(currentDraft.values?.competitionId) === toPositiveId(selectedCompetitionId)) {
+        if (currentDraft && toPositiveId(currentDraft.values?.competitionId) === activeCompetitionId) {
           const nextDocumentKeys = nextDocuments.map((item, index) => getRegistrationDocumentKey(item, index));
           setAcceptedDocumentKeys((currentDraft.acceptedDocumentKeys || []).filter((key) => nextDocumentKeys.includes(key)));
         }
@@ -2601,6 +2602,7 @@ const CompetitionRegistrationPage = () => {
   }, [
     registrationCompetitionFallback?.id,
     registrationCompetitionFallback?.uuid,
+    registrationDraftHydrated,
     resetRegistrationDocumentProgress,
     selectedCompetition?.uuid,
     selectedCompetitionId,
