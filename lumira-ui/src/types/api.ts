@@ -341,6 +341,20 @@ export interface RefreshTokenResponse {
   permissionsVersion?: string;
 }
 
+export interface SandboxSimulationOrderRecord {
+  orderNo: string;
+  targetUserId: number;
+  username?: string | null;
+  nickname?: string | null;
+  realName?: string | null;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  localOnly: boolean;
+  cloudRequestSent: boolean;
+}
+
 export interface SimulatedRoleSwitchResponse {
   currentUser: CurrentUser;
   accessToken: string;

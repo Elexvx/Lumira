@@ -23,6 +23,8 @@ import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -164,6 +166,33 @@ public class PaymentController {
                 paymentTransactionService.createSandboxOrder(currentUser, request),
                 TraceContext.getRequestId()
         );
+    }
+
+    @GetMapping("/sandbox/simulations")
+    public ApiResponse<List<PaymentTransactionService.SandboxSimulationOrder>> sandboxSimulations() {
+        CurrentUser currentUser = requireManage();
+        return ApiResponse.success(
+                paymentTransactionService.listLocalSandboxSimulations(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/sandbox/simulations")
+    @RepeatSubmit
+    public ApiResponse<PaymentTransactionService.SandboxSimulationOrder> createSandboxSimulation(
+            @Valid @RequestBody SandboxSimulationRequest request
+    ) {
+        CurrentUser currentUser = requireManage();
+        return ApiResponse.success(
+                paymentTransactionService.createLocalSandboxSimulation(currentUser, request.targetUserId(), request.amountMinor()),
+                TraceContext.getRequestId()
+        );
+    }
+
+    public record SandboxSimulationRequest(
+            @NotNull Long targetUserId,
+            @NotNull @Positive Long amountMinor
+    ) {
     }
 
     @GetMapping("/orders/{orderNo}")

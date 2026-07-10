@@ -40,6 +40,7 @@ public class PaymentTransactionService {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
     private static final String SANDBOX_ENVIRONMENT = "SANDBOX";
+    private static final String LOCAL_SANDBOX_PROVIDER = "LOCAL_SANDBOX";
     private static final String PERMISSION_PAYMENT_ORDER_CREATE = "payment:order:create";
     private static final String PERMISSION_PAYMENT_ORDER_VIEW = "payment:order:view";
     private static final String PERMISSION_PAYMENT_REFUND_CREATE = "payment:refund:create";
@@ -107,6 +108,151 @@ public class PaymentTransactionService {
                 request,
                 resolveProviderSettings(request, true)
         );
+    }
+
+    @Transactional
+    public SandboxSimulationOrder createLocalSandboxSimulation(CurrentUser currentUser, Long targetUserId, Long amountMinor) {
+        Actor operator = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE);
+        requirePositiveAmount(amountMinor, "Payment amount");
+        if (targetUserId == null || targetUserId <= 0) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Target account is required");
+        }
+        SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
+        if (systemInternalApi == null) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Local account resolver is unavailable");
+        }
+        SystemUserSnapshotDTO target = systemInternalApi.findUserIdentityById(targetUserId);
+        if (target == null || target.userId() == null || !target.userId().equals(targetUserId)
+                || !StringUtils.hasText(target.userUuid())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Target account does not exist");
+        }
+        if (!"ENABLED".equalsIgnoreCase(target.status())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Target account is disabled");
+        }
+
+        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT);
+        String orderNo = "SIM-" + System.currentTimeMillis() + "-" + token.substring(0, 6);
+        String providerOrderNo = "LOCAL-" + token;
+        String accountName = firstText(target.realName(), target.nickname(), target.username(), String.valueOf(targetUserId));
+        LocalDateTime now = LocalDateTime.now();
+        String requestJson = serialize(Map.of(
+                "simulation", true,
+                "networkMode", "LOCAL_ONLY",
+                "targetUserId", targetUserId,
+                "targetUserUuid", target.userUuid().trim(),
+                "operatorUserId", operator.userId()
+        ));
+        String responseJson = serialize(Map.of(
+                "simulated", true,
+                "cloudRequestSent", false,
+                "providerOrderNo", providerOrderNo
+        ));
+        int inserted = jdbcTemplate.update(
+                """
+                        insert into payment_order (
+                            order_no, provider_code, provider_order_no, subject, amount_minor, currency,
+                            status, payment_url, request_json, response_json, idempotency_key, expires_at,
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, 'CNY', 'SIMULATED', null, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                orderNo,
+                LOCAL_SANDBOX_PROVIDER,
+                providerOrderNo,
+                "模拟订单 - " + accountName,
+                amountMinor,
+                requestJson,
+                responseJson,
+                "local-sandbox:" + orderNo,
+                now.plusHours(2),
+                targetUserId,
+                target.userUuid().trim(),
+                operator.userId(),
+                operator.userUuid()
+        );
+        requireSinglePaymentUpdate(inserted, "Sandbox simulation order changed, please retry");
+        return findLocalSandboxSimulation(orderNo);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SandboxSimulationOrder> listLocalSandboxSimulations(CurrentUser currentUser) {
+        trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_VIEW);
+        return jdbcTemplate.query(
+                """
+                        select po.order_no, po.amount_minor, po.currency, po.status, po.created_at,
+                               po.created_by as target_user_id, su.username, su.nickname, su.real_name
+                        from payment_order po
+                        left join sys_user su on su.id = po.created_by and su.deleted = 0
+                        where po.provider_code = ? and po.deleted = 0
+                        order by po.id desc
+                        limit 100
+                        """,
+                (rs, rowNum) -> new SandboxSimulationOrder(
+                        rs.getString("order_no"),
+                        rs.getLong("target_user_id"),
+                        rs.getString("username"),
+                        rs.getString("nickname"),
+                        rs.getString("real_name"),
+                        rs.getLong("amount_minor"),
+                        rs.getString("currency"),
+                        rs.getString("status"),
+                        rs.getTimestamp("created_at").toLocalDateTime(),
+                        true,
+                        false
+                ),
+                LOCAL_SANDBOX_PROVIDER
+        );
+    }
+
+    private SandboxSimulationOrder findLocalSandboxSimulation(String orderNo) {
+        return jdbcTemplate.queryForObject(
+                """
+                        select po.order_no, po.amount_minor, po.currency, po.status, po.created_at,
+                               po.created_by as target_user_id, su.username, su.nickname, su.real_name
+                        from payment_order po
+                        left join sys_user su on su.id = po.created_by and su.deleted = 0
+                        where po.order_no = ? and po.provider_code = ? and po.deleted = 0
+                        limit 1
+                        """,
+                (rs, rowNum) -> new SandboxSimulationOrder(
+                        rs.getString("order_no"),
+                        rs.getLong("target_user_id"),
+                        rs.getString("username"),
+                        rs.getString("nickname"),
+                        rs.getString("real_name"),
+                        rs.getLong("amount_minor"),
+                        rs.getString("currency"),
+                        rs.getString("status"),
+                        rs.getTimestamp("created_at").toLocalDateTime(),
+                        true,
+                        false
+                ),
+                orderNo,
+                LOCAL_SANDBOX_PROVIDER
+        );
+    }
+
+    private String firstText(String... values) {
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    public record SandboxSimulationOrder(
+            String orderNo,
+            Long targetUserId,
+            String username,
+            String nickname,
+            String realName,
+            Long amountMinor,
+            String currency,
+            String status,
+            LocalDateTime createdAt,
+            boolean localOnly,
+            boolean cloudRequestSent
+    ) {
     }
 
     private PaymentOrderDTO createOrder(Actor actor, PaymentCreateOrderRequestDTO request, PaymentProviderSettingsDTO settings) {

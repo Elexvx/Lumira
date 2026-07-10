@@ -1,291 +1,231 @@
-import { Alert, Button, Card, Descriptions, Form, Input, InputNumber, Select, Space, Tag, Typography } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
-import { message } from '@/theme/antdFeedbackBridge';
-import type { PaymentCreateOrderRequest, PaymentOrderRecord, PaymentProviderSettings } from '@/types/api';
-import { createSandboxPaymentOrder } from '@/services/payment/api';
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Alert, Button, Drawer, Form, InputNumber, Select, Space, Table, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { request } from '@/services/common/request';
+import { createSandboxSimulationOrder, listSandboxSimulationOrders } from '@/services/payment/api';
+import { message } from '@/theme/antdFeedbackBridge';
+import type { PagedResult, PaymentProviderSettings, SandboxSimulationOrderRecord, UserRecord } from '@/types/api';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
-const SANDBOX_ENVIRONMENT = 'SANDBOX';
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'processing',
-  CREATED: 'processing',
-  PAID: 'success',
-  SUCCESS: 'success',
-  FAILED: 'error',
-  CANCELLED: 'default',
-};
-
-type ManualSandboxOrderFormValues = {
-  providerCode: string;
-  orderNo: string;
-  subject: string;
+type SimulationFormValues = {
+  targetUserId: number;
   amountYuan: number;
-  currency: string;
-  notifyUrl?: string;
-  returnUrl?: string;
-  metadataText?: string;
 };
 
-const buildSandboxOrderNo = () => {
-  const now = new Date();
-  const timestamp = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-    String(now.getHours()).padStart(2, '0'),
-    String(now.getMinutes()).padStart(2, '0'),
-    String(now.getSeconds()).padStart(2, '0'),
-  ].join('');
-  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `SANDBOX-${timestamp}-${suffix}`;
-};
+const accountName = (record: SandboxSimulationOrderRecord) =>
+  record.realName || record.nickname || record.username || `#${record.targetUserId}`;
 
-const formatAmount = (amountMinor?: number | null, currency?: string | null) => {
-  if (typeof amountMinor !== 'number') {
-    return '-';
-  }
-  return `${(amountMinor / 100).toFixed(2)} ${currency || 'CNY'}`;
+const userLabel = (user: UserRecord) => {
+  const name = user.realName || user.nickname || user.username;
+  const contact = user.mobile || user.email;
+  return contact ? `${name} · ${contact}` : `${name} · ${user.username}`;
 };
-
-const formatTime = (value?: string | null) => (value ? value.replace('T', ' ') : '-');
 
 export const SandboxPaymentOrderTab = ({
-  paymentSettings,
+  paymentSettings: _paymentSettings,
   canCreateOrders,
 }: {
   paymentSettings: PaymentProviderSettings[];
   canCreateOrders: boolean;
 }) => {
-  const [form] = Form.useForm<ManualSandboxOrderFormValues>();
+  const [form] = Form.useForm<SimulationFormValues>();
+  const [orders, setOrders] = useState<SandboxSimulationOrderRecord[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [userLoading, setUserLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [createdOrder, setCreatedOrder] = useState<PaymentOrderRecord>();
-  const selectedProviderCode = Form.useWatch('providerCode', form);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const sandboxProviders = useMemo(
-    () =>
-      paymentSettings.filter((item) =>
-        item.persisted
-        && item.enabled
-        && item.configured
-        && item.environment?.trim().toUpperCase() === SANDBOX_ENVIRONMENT,
-      ),
-    [paymentSettings],
-  );
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      setOrders(await listSandboxSimulationOrders());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const providerMap = useMemo(
-    () => new Map(sandboxProviders.map((item) => [String(item.providerCode), item])),
-    [sandboxProviders],
-  );
-
-  const selectedProvider = selectedProviderCode ? providerMap.get(String(selectedProviderCode)) : undefined;
+  const loadUsers = useCallback(async (keyword?: string) => {
+    setUserLoading(true);
+    try {
+      const result = await request<PagedResult<UserRecord>>('/v1/system/users', {
+        method: 'GET',
+        params: {
+          current: 1,
+          pageSize: 20,
+          keyword: keyword?.trim() || undefined,
+          status: 'ENABLED',
+          _t: Date.now(),
+        },
+      });
+      setUsers(result.records || []);
+    } finally {
+      setUserLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!sandboxProviders.length) {
-      form.resetFields(['providerCode', 'currency']);
-      return;
-    }
-    const currentProviderCode = form.getFieldValue('providerCode');
-    const hasCurrentProvider = currentProviderCode && providerMap.has(String(currentProviderCode));
-    const nextProvider = hasCurrentProvider ? providerMap.get(String(currentProviderCode)) : sandboxProviders[0];
-    form.setFieldsValue({
-      providerCode: String(nextProvider?.providerCode || ''),
-      currency: nextProvider?.currency || 'CNY',
-    });
-  }, [form, providerMap, sandboxProviders]);
+    void loadOrders();
+  }, [loadOrders]);
 
-  useEffect(() => {
-    if (!selectedProvider) {
-      return;
-    }
-    form.setFieldValue('currency', selectedProvider.currency || 'CNY');
-  }, [form, selectedProvider]);
-
-  useEffect(() => {
-    if (!form.getFieldValue('orderNo')) {
-      form.setFieldValue('orderNo', buildSandboxOrderNo());
-    }
-  }, [form]);
-
-  const handleRefreshOrderNo = () => {
-    form.setFieldValue('orderNo', buildSandboxOrderNo());
+  const openDrawer = () => {
+    form.resetFields();
+    form.setFieldValue('amountYuan', 0.01);
+    setDrawerOpen(true);
+    void loadUsers();
   };
 
-  const handleSubmit = async () => {
+  const submit = async () => {
     try {
       setSubmitting(true);
       const values = await form.validateFields();
-      const metadata = values.metadataText?.trim() ? JSON.parse(values.metadataText) : undefined;
-      const requestPayload: PaymentCreateOrderRequest = {
-        providerCode: values.providerCode.trim(),
-        orderNo: values.orderNo.trim(),
-        subject: values.subject.trim(),
+      await createSandboxSimulationOrder({
+        targetUserId: values.targetUserId,
         amountMinor: Math.round(values.amountYuan * 100),
-        currency: values.currency.trim().toUpperCase(),
-        notifyUrl: values.notifyUrl?.trim() || undefined,
-        returnUrl: values.returnUrl?.trim() || undefined,
-        metadata,
-        idempotencyKey: `sandbox:${values.orderNo.trim()}`,
-      };
-      const order = await createSandboxPaymentOrder(requestPayload);
-      setCreatedOrder(order);
-      message.success(t('沙箱支付订单已生成', 'Sandbox payment order created'));
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        message.error(t('扩展参数必须是合法的 JSON', 'Extra config must be valid JSON'));
-      }
+      });
+      message.success(t('模拟订单已生成，全程未调用云端支付平台', 'Simulation order created without calling a cloud payment provider'));
+      setDrawerOpen(false);
+      await loadOrders();
     } finally {
       setSubmitting(false);
     }
   };
 
-  const providerOptions = sandboxProviders.map((item) => ({
-    label: `${item.providerName} (${item.providerCode})`,
-    value: String(item.providerCode),
-  }));
-
-  const isFormDisabled = !canCreateOrders || !sandboxProviders.length;
+  const columns = useMemo<ColumnsType<SandboxSimulationOrderRecord>>(() => [
+    {
+      title: t('订单号', 'Order number'),
+      dataIndex: 'orderNo',
+      width: 250,
+      render: (value: string) => <Typography.Text copyable>{value}</Typography.Text>,
+    },
+    {
+      title: t('账户', 'Account'),
+      width: 220,
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <Typography.Text>{accountName(record)}</Typography.Text>
+          <Typography.Text type="secondary">{record.username || `ID ${record.targetUserId}`}</Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: t('订单价格', 'Amount'),
+      dataIndex: 'amountMinor',
+      width: 150,
+      render: (value: number, record) => `${(value / 100).toFixed(2)} ${record.currency || 'CNY'}`,
+    },
+    {
+      title: t('模式', 'Mode'),
+      width: 150,
+      render: (_, record) => (
+        <Tag color={record.localOnly && !record.cloudRequestSent ? 'green' : 'red'}>
+          {record.localOnly && !record.cloudRequestSent ? t('本地沙箱', 'Local sandbox') : t('异常', 'Invalid')}
+        </Tag>
+      ),
+    },
+    {
+      title: t('状态', 'Status'),
+      dataIndex: 'status',
+      width: 130,
+      render: () => <Tag color="processing">{t('已模拟', 'Simulated')}</Tag>,
+    },
+    {
+      title: t('生成时间', 'Created at'),
+      dataIndex: 'createdAt',
+      width: 190,
+      render: (value: string) => value ? value.replace('T', ' ') : '-',
+    },
+  ], []);
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Alert
         showIcon
         type="info"
-        message={t('这里的手动下单已写死为“仅沙箱环境”', 'Manual orders here are hard-coded to sandbox only')}
+        message={t('本页面仅生成本地沙箱模拟订单', 'This page creates local sandbox simulations only')}
         description={t(
-          '第二个 tab 只会使用已启用且已配置完成的沙箱支付平台，正式环境配置不会从这里发起下单。',
-          'This tab only uses enabled and fully configured sandbox payment providers. Production configurations cannot create orders here.',
+          '不会读取正式支付配置，不会调用支付平台 SDK、网关或任何云端下单接口。',
+          'Production payment settings, provider SDKs, gateways, and cloud order APIs are never used.',
         )}
       />
       {!canCreateOrders ? (
+        <Alert showIcon type="warning" message={t('当前账号没有生成模拟订单的权限', 'You cannot create simulation orders')} />
+      ) : null}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div>
+          <Typography.Title level={5} style={{ margin: 0 }}>{t('模拟订单', 'Simulation orders')}</Typography.Title>
+          <Typography.Text type="secondary">{t('最近生成的 100 条本地沙箱记录', 'The latest 100 local sandbox records')}</Typography.Text>
+        </div>
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()} loading={loading}>
+            {t('刷新', 'Refresh')}
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openDrawer} disabled={!canCreateOrders}>
+            {t('生成模拟订单', 'Create simulation order')}
+          </Button>
+        </Space>
+      </div>
+      <Table<SandboxSimulationOrderRecord>
+        rowKey="orderNo"
+        columns={columns}
+        dataSource={orders}
+        loading={loading}
+        pagination={false}
+        scroll={{ x: 1090 }}
+        locale={{ emptyText: t('暂无模拟订单', 'No simulation orders') }}
+      />
+      <Drawer
+        title={t('生成模拟订单', 'Create simulation order')}
+        width={480}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        destroyOnClose
+        extra={(
+          <Space>
+            <Button onClick={() => setDrawerOpen(false)}>{t('取消', 'Cancel')}</Button>
+            <Button type="primary" loading={submitting} onClick={() => void submit()}>{t('生成订单', 'Create order')}</Button>
+          </Space>
+        )}
+      >
         <Alert
           showIcon
-          type="warning"
-          message={t('当前账号没有创建支付订单权限', 'The current account cannot create payment orders')}
+          type="success"
+          message={t('本地模拟，不会产生真实扣款', 'Local simulation with no real charge')}
+          style={{ marginBottom: 20 }}
         />
-      ) : null}
-      {!sandboxProviders.length ? (
-        <Alert
-          showIcon
-          type="warning"
-          message={t('暂无可用的沙箱支付平台', 'No sandbox payment providers are available')}
-          description={t(
-            '请先在“支付设置”tab 中启用并完成至少一个沙箱环境支付平台的配置。',
-            'Please enable and complete at least one sandbox payment provider in the Payment settings tab first.',
-          )}
-        />
-      ) : null}
-      <Card title={t('手动生成支付订单', 'Create payment order manually')}>
-        <Form<ManualSandboxOrderFormValues> form={form} layout="vertical" disabled={isFormDisabled}>
+        <Form<SimulationFormValues> form={form} layout="vertical">
           <Form.Item
-            name="providerCode"
-            label={t('支付平台', 'Payment platform')}
-            rules={[{ required: true, message: t('请选择支付平台', 'Please select a payment platform') }]}
+            name="targetUserId"
+            label={t('选择账户', 'Select account')}
+            rules={[{ required: true, message: t('请选择需要生成订单的账户', 'Select an account') }]}
           >
-            <Select options={providerOptions} placeholder={t('请选择一个沙箱支付平台', 'Select a sandbox payment provider')} />
-          </Form.Item>
-          <Form.Item
-            name="orderNo"
-            label={t('订单号', 'Order number')}
-            rules={[{ required: true, message: t('请输入订单号', 'Please enter an order number') }]}
-          >
-            <Input
-              placeholder={t('建议保留系统生成值，避免重复', 'Use the generated value to avoid duplicates')}
-              addonAfter={
-                <Button type="link" size="small" onClick={handleRefreshOrderNo}>
-                  {t('刷新', 'Refresh')}
-                </Button>
-              }
+            <Select
+              showSearch
+              filterOption={false}
+              loading={userLoading}
+              placeholder={t('搜索用户名、姓名、手机号或邮箱', 'Search username, name, mobile, or email')}
+              options={users.map((user) => ({ label: userLabel(user), value: user.id }))}
+              onSearch={(value) => void loadUsers(value)}
+              notFoundContent={userLoading ? t('加载中…', 'Loading…') : t('未找到启用账户', 'No enabled accounts found')}
             />
           </Form.Item>
           <Form.Item
-            name="subject"
-            label={t('订单标题', 'Order subject')}
-            rules={[{ required: true, message: t('请输入订单标题', 'Please enter an order subject') }]}
-          >
-            <Input placeholder={t('例如：赛事报名测试订单', 'e.g. competition registration sandbox order')} maxLength={128} />
-          </Form.Item>
-          <Form.Item
             name="amountYuan"
-            label={t('金额（元）', 'Amount')}
+            label={t('订单价格（元）', 'Order amount (CNY)')}
             rules={[
-              { required: true, message: t('请输入金额', 'Please enter the amount') },
-              { type: 'number', min: 0.01, message: t('金额必须大于 0', 'Amount must be greater than 0') },
+              { required: true, message: t('请输入订单价格', 'Enter an order amount') },
+              { type: 'number', min: 0.01, message: t('订单价格必须大于 0', 'Amount must be greater than zero') },
             ]}
           >
-            <InputNumber min={0.01} precision={2} style={{ width: '100%' }} placeholder="0.01" />
+            <InputNumber min={0.01} precision={2} step={1} style={{ width: '100%' }} addonAfter="CNY" />
           </Form.Item>
-          <Form.Item
-            name="currency"
-            label={t('币种', 'Currency')}
-            rules={[{ required: true, message: t('请输入币种', 'Please enter the currency') }]}
-          >
-            <Input maxLength={16} placeholder={selectedProvider?.currency || 'CNY'} />
-          </Form.Item>
-          <Form.Item name="notifyUrl" label={t('异步通知地址', 'Notify URL')}>
-            <Input placeholder="https://example.com/payment/notify" />
-          </Form.Item>
-          <Form.Item name="returnUrl" label={t('同步跳转地址', 'Return URL')}>
-            <Input placeholder="https://example.com/payment/result" />
-          </Form.Item>
-          <Form.Item
-            name="metadataText"
-            label={t('扩展参数', 'Metadata')}
-            extra={t('可选，填写 JSON 对象，例如 {"scene":"manual-sandbox"}', 'Optional JSON object, for example {"scene":"manual-sandbox"}')}
-            rules={[
-              {
-                validator: async (_, value) => {
-                  if (!value || !String(value).trim()) {
-                    return;
-                  }
-                  JSON.parse(String(value));
-                },
-              },
-            ]}
-          >
-            <Input.TextArea autoSize={{ minRows: 3, maxRows: 8 }} placeholder='{"scene":"manual-sandbox"}' />
-          </Form.Item>
-          <Space>
-            <Button type="primary" loading={submitting} onClick={() => void handleSubmit()} disabled={isFormDisabled}>
-              {t('生成沙箱支付订单', 'Create sandbox payment order')}
-            </Button>
-          </Space>
         </Form>
-      </Card>
-      {createdOrder ? (
-        <Card title={t('最近生成结果', 'Latest order result')}>
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label={t('订单号', 'Order number')}>
-              <Typography.Text copyable>{createdOrder.orderNo}</Typography.Text>
-            </Descriptions.Item>
-            <Descriptions.Item label={t('支付平台', 'Payment platform')}>
-              {createdOrder.providerCode}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('状态', 'Status')}>
-              <Tag color={STATUS_COLORS[createdOrder.status] || 'default'}>{createdOrder.status}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label={t('金额', 'Amount')}>
-              {formatAmount(createdOrder.amountMinor, createdOrder.currency)}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('支付链接', 'Payment URL')}>
-              {createdOrder.paymentUrl ? (
-                <Typography.Link href={createdOrder.paymentUrl} target="_blank" rel="noreferrer">
-                  {createdOrder.paymentUrl}
-                </Typography.Link>
-              ) : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('创建时间', 'Created at')}>
-              {formatTime(createdOrder.createdAt)}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('失败信息', 'Failure message')}>
-              {createdOrder.failureMessage || createdOrder.failureCode || '-'}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
-      ) : null}
+      </Drawer>
     </Space>
   );
 };
