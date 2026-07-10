@@ -3187,7 +3187,7 @@ const CompetitionRegistrationPage = () => {
   }
 
   const renderRegistrationMemberManager = () => {
-    const memberTableMinWidth = Math.max(760, effectiveMemberRegistrationFields.length * 180 + 180);
+    const memberTableMinWidth = Math.max(760, effectiveMemberRegistrationFields.length * 180 + 148);
 
     const renderMemberEditorInput = (field: RegistrationCollectedField) => {
       const fieldValue = memberEditorDraft ? getMemberCollectedFieldValue(memberEditorDraft, field) : undefined;
