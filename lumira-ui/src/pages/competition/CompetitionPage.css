@@ -123,15 +123,15 @@
 
 .competition-registration-member-manager__table {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: separate;
   border-spacing: 0;
 }
 
 .competition-registration-member-manager__table th,
 .competition-registration-member-manager__table td {
-  min-width: 160px;
-  padding: 16px 18px;
+  min-width: 120px;
+  padding: 14px 16px;
   border-top: 1px solid var(--ant-color-border-secondary);
   vertical-align: top;
   text-align: left;
@@ -152,9 +152,9 @@
   position: sticky;
   right: 0;
   z-index: 1;
-  width: 148px;
-  min-width: 148px !important;
-  max-width: 148px;
+  width: 128px;
+  min-width: 128px !important;
+  max-width: 128px;
   padding-inline: 8px !important;
   background: var(--ant-color-bg-container);
   box-shadow: -1px 0 0 var(--ant-color-border-secondary);

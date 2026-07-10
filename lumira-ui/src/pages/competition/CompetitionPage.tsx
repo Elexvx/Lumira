@@ -2934,7 +2934,16 @@ const CompetitionRegistrationPage = () => {
 
   const updateMemberEditorField = useCallback((field: RegistrationCollectedField, value: unknown) => {
     setMemberEditorDraft((current) => (current ? setMemberCollectedFieldValue(current, field, value) : current));
+    const validationError = field.required && !hasCollectedValue(value)
+      ? `请填写${field.title}`
+      : validateMemberTextField(field.itemKey, field.title, value);
     setMemberEditorErrors((current) => {
+      if (validationError) {
+        if (current[field.itemKey] === validationError) {
+          return current;
+        }
+        return { ...current, [field.itemKey]: validationError };
+      }
       if (!current[field.itemKey]) {
         return current;
       }
@@ -3182,7 +3191,7 @@ const CompetitionRegistrationPage = () => {
   }
 
   const renderRegistrationMemberManager = () => {
-    const memberTableMinWidth = Math.max(760, effectiveMemberRegistrationFields.length * 180 + 148);
+    const memberTableMinWidth = effectiveMemberRegistrationFields.length * 140 + 128;
 
     const renderMemberEditorInput = (field: RegistrationCollectedField) => {
       const fieldValue = memberEditorDraft ? getMemberCollectedFieldValue(memberEditorDraft, field) : undefined;

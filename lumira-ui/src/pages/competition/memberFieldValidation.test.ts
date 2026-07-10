@@ -16,7 +16,8 @@ describe('validateMemberTextField', () => {
 
   it('recognizes configured school fields and rejects dirty values', () => {
     expect(validateMemberTextField('custom-school', '学校', '清华大学')).toBeUndefined();
+    expect(validateMemberTextField('custom-school', '学校', 'Peking University')).toBeUndefined();
     expect(validateMemberTextField('custom-school', '学校', '++++++')).toContain('只能输入');
-    expect(validateMemberTextField('custom-school', '学校', 'Peking University')).toContain('空格');
+    expect(validateMemberTextField('custom-school', '学校', 'Peking  University')).toContain('连续空格');
   });
 });
