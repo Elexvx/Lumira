@@ -4612,30 +4612,11 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
-  const [uploadingQrCode, setUploadingQrCode] = useState(false);
-  const contactQrCodeUrl = Form.useWatch('contactQrCodeUrl', form);
-  const qrPreviewUrl = normalizeUploadUrl(contactQrCodeUrl);
 
   useEffect(() => {
     form.resetFields();
     form.setFieldsValue({ ...defaultCompetitionFormValues, ...recordToFormValues(competition) });
   }, [competition, form]);
-
-  const handleQrCodeUpload = async (file: File) => {
-    setUploadingQrCode(true);
-    try {
-      const uploadedUrl = await uploadCompetitionImage(file);
-      if (uploadedUrl) {
-        form.setFieldValue('contactQrCodeUrl', uploadedUrl);
-        scheduleSave();
-        message.success('联系方式二维码已上传');
-      }
-    } catch (error) {
-      showErrorMessage(error, '二维码上传失败');
-    } finally {
-      setUploadingQrCode(false);
-    }
-  };
 
   const save = useCallback(async () => {
     const values = form.getFieldsValue(true);
@@ -4772,67 +4753,6 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
             </Form.Item>
             <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
               <Select mode="multiple" maxTagCount="responsive" options={localeOptions} />
-            </Form.Item>
-            <Form.Item className="competition-basic-section__full" label="上传联系方式二维码">
-              <Space direction="vertical" size={8} className="competition-qr-upload">
-                <ImgCrop
-                  modalTitle="Crop QR Code"
-                  rotationSlider
-                  aspect={1}
-                  beforeCrop={(file) => {
-                    if (!file.type.startsWith('image/')) {
-                      message.error('请上传图片文件');
-                      return false;
-                    }
-                    return true;
-                  }}
-                >
-                  <Upload
-                    accept="image/*"
-                    showUploadList={false}
-                    disabled={uploadingQrCode}
-                    beforeUpload={async (file) => {
-                      await handleQrCodeUpload(file);
-                      return Upload.LIST_IGNORE;
-                    }}
-                  >
-                    <div
-                      className={`competition-qr-upload__preview${uploadingQrCode ? ' is-uploading' : ''}${qrPreviewUrl ? ' has-image' : ''}`}
-                      role="button"
-                      aria-label="Upload contact QR code"
-                      tabIndex={uploadingQrCode ? -1 : 0}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          event.currentTarget.click();
-                        }
-                      }}
-                    >
-                      {qrPreviewUrl ? (
-                        <Image width={144} height={144} src={qrPreviewUrl} preview={false} />
-                      ) : (
-                        <Space direction="vertical" size={6} align="center">
-                          <UploadOutlined />
-                          <Typography.Text type="secondary">点击上传二维码</Typography.Text>
-                        </Space>
-                      )}
-                      {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '上传中...' : '点击更换二维码'}</span> : null}
-                    </div>
-                  </Upload>
-                </ImgCrop>
-                <Button
-                  disabled={!contactQrCodeUrl || uploadingQrCode}
-                  onClick={() => {
-                    form.setFieldValue('contactQrCodeUrl', undefined);
-                    scheduleSave();
-                  }}
-                >
-                  清空二维码
-                </Button>
-                <Form.Item name="contactQrCodeUrl" hidden>
-                  <Input />
-                </Form.Item>
-              </Space>
             </Form.Item>
             <Form.Item className="competition-basic-section__full" name="homepageContent" label="竞赛主页">
               <AgreementMarkdownEditor placeholder="请输入竞赛主页内容，支持 Markdown 富文本" />
