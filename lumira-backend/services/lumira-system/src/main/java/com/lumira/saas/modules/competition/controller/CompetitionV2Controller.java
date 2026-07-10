@@ -136,7 +136,7 @@ public class CompetitionV2Controller {
 
     @GetMapping("/{id}")
     public ApiResponse<CompetitionVO.Competition> competition(@PathVariable("id") Long id) {
-        CurrentUser currentUser = require(VIEW);
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
         return ApiResponse.success(competitionManagementAppService.getCompetition(currentUser, id), TraceContext.getRequestId());
     }
 

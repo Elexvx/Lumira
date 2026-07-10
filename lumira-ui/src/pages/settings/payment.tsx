@@ -5,9 +5,10 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { usePaymentManagement } from './components/payment/hooks/usePaymentManagement';
+import { SandboxPaymentOrderTab } from './components/payment/SandboxPaymentOrderTab';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, Tabs } from 'antd';
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
@@ -32,6 +33,7 @@ const SystemPaymentPage = () => {
   const actionPermission = useActionPermission();
   const canUpdateSettings = actionPermission.can('payment:config:update');
   const canTestSettings = actionPermission.can('payment:config:test');
+  const canCreateSandboxOrder = actionPermission.can('payment:order:create');
   const { tablePack, drawerPack } = usePaymentManagement({
     canUpdateSettings,
     canTestSettings,
@@ -41,26 +43,48 @@ const SystemPaymentPage = () => {
   return (
     <ManagementPage title={t('支付设置', 'Payment settings')}>
       <ManagementPageBody>
-        <ManagementTable
-          columns={tablePack.paymentColumns}
-          isMobile={tablePack.isMobile}
-          loading={tablePack.paymentLoading}
-          dataSource={tablePack.paymentRows}
-          rowKey="key"
-          pagination={false}
-          search={false}
-          onRefresh={tablePack.onRefresh}
-          toolBarRender={() => [
-            <Dropdown
-              key="payment-add"
-              trigger={['click']}
-              menu={{ items: tablePack.toolbarProps.addPaymentProviderItems }}
-              placement="bottomRight"
-            >
-              <Button type="primary" disabled={!tablePack.toolbarProps.canUpdateSettings || !tablePack.toolbarProps.addPaymentProviderItems?.length} icon={<PlusOutlined />}>
-                {t('添加', 'Add')} <DownOutlined />
-              </Button>
-            </Dropdown>,
+        <Tabs
+          defaultActiveKey="settings"
+          destroyInactiveTabPane
+          items={[
+            {
+              key: 'settings',
+              label: t('支付设置', 'Payment settings'),
+              children: (
+                <ManagementTable
+                  columns={tablePack.paymentColumns}
+                  isMobile={tablePack.isMobile}
+                  loading={tablePack.paymentLoading}
+                  dataSource={tablePack.paymentRows}
+                  rowKey="key"
+                  pagination={false}
+                  search={false}
+                  onRefresh={tablePack.onRefresh}
+                  toolBarRender={() => [
+                    <Dropdown
+                      key="payment-add"
+                      trigger={['click']}
+                      menu={{ items: tablePack.toolbarProps.addPaymentProviderItems }}
+                      placement="bottomRight"
+                    >
+                      <Button type="primary" disabled={!tablePack.toolbarProps.canUpdateSettings || !tablePack.toolbarProps.addPaymentProviderItems?.length} icon={<PlusOutlined />}>
+                        {t('添加', 'Add')} <DownOutlined />
+                      </Button>
+                    </Dropdown>,
+                  ]}
+                />
+              ),
+            },
+            {
+              key: 'sandbox-orders',
+              label: t('手动生成支付订单', 'Manual payment order'),
+              children: (
+                <SandboxPaymentOrderTab
+                  paymentSettings={tablePack.paymentSettingsData}
+                  canCreateOrders={canCreateSandboxOrder}
+                />
+              ),
+            },
           ]}
         />
       </ManagementPageBody>

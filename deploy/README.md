@@ -7,10 +7,10 @@
 ```text
 用户浏览器
   -> Vercel 前端
-    -> /api/** rewrite 到 https://saas.elexvx.com/api/**
-    -> /ws/**  rewrite 到 https://saas.elexvx.com/ws/**
+    -> /api/** rewrite 到 https://bm.aiadc.org.cn/api/**
+    -> /ws/**  rewrite 到 https://bm.aiadc.org.cn/ws/**
 
-saas.elexvx.com / HTTPS / CDN / WAF
+bm.aiadc.org.cn / HTTPS / CDN / WAF
   -> 服务器 edge-proxy Nginx (80/443)
     -> /api/** 反向代理到 lumira-api-proxy
     -> /ws/** 反向代理到 lumira-api-proxy
@@ -91,8 +91,8 @@ node bin/install-platform.mjs --yes
 
 ```bash
 node bin/install-platform.mjs \
-  --api-domain=saas.elexvx.com \
-  --lumira-ui-origin=https://saas.elexvx.com \
+  --api-domain=bm.aiadc.org.cn \
+  --lumira-ui-origin=https://bm.aiadc.org.cn \
   --yes
 ```
 
@@ -191,9 +191,9 @@ OCR 同样由 File owner 的异步处理任务执行；抽取到文本时会写�
 
 部署完成后脚本会自动检查：
 
-- 对外入口：`https://saas.elexvx.com/health`
-- API 健康检查：`https://saas.elexvx.com/api/health`
-- 版本检查：`https://saas.elexvx.com/api/version`
+- 对外入口：`https://bm.aiadc.org.cn/health`
+- API 健康检查：`https://bm.aiadc.org.cn/api/health`
+- 版本检查：`https://bm.aiadc.org.cn/api/version`
 - 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/lumira/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
 - 平台手动更新：推荐配置 `PLATFORM_UPDATE_MANIFEST_URL` 指向官方 release manifest。后台发现新版本后，可通过宿主机侧 `lumira-updater` 手动安装。业务容器只调用本机 updater，不直接执行 Docker 或 shell。
 - 启动 updater 示例：
@@ -214,8 +214,8 @@ PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token
 ```bash
 LUMIRA_UPDATER_DRY_RUN=true node bin/lumira-updater.mjs --dry-run
 ```
-- lumira-server 鍋ュ悍妫€鏌ワ細`http://127.0.0.1:8080/actuator/health`
-- 公开登录配置接口：`https://saas.elexvx.com/api/v1/public/login-capabilities`
+- lumira-server 健康检查：`http://127.0.0.1:8080/actuator/health`
+- 公开登录配置接口：`https://bm.aiadc.org.cn/api/v1/public/login-capabilities`
 
 ## 可观测性闭环
 
@@ -250,7 +250,7 @@ Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Lumira Obser
 部署后可以跑一个轻量压力冒烟：
 
 ```bash
-LOAD_SMOKE_BASE_URL=https://saas.elexvx.com \
+LOAD_SMOKE_BASE_URL=https://bm.aiadc.org.cn \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
@@ -260,7 +260,7 @@ node bin/load-smoke.mjs
 如果需要验证登录后的首屏接口，准备一个不需要二次验证和强制改密的测试账号后运行：
 
 ```bash
-AUTH_LOAD_BASE_URL=https://saas.elexvx.com \
+AUTH_LOAD_BASE_URL=https://bm.aiadc.org.cn \
 AUTH_LOAD_USERNAME=admin \
 AUTH_LOAD_PASSWORD='replace-with-test-password' \
 AUTH_LOAD_DURATION_MS=30000 \
@@ -272,7 +272,7 @@ node bin/auth-load-smoke.mjs
 公网域名检查：
 
 ```bash
-LOAD_SMOKE_BASE_URL=https://saas.elexvx.com \
+LOAD_SMOKE_BASE_URL=https://bm.aiadc.org.cn \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
@@ -286,14 +286,14 @@ node bin/load-smoke.mjs
 ```json
 {
   "source": "/api/:path*",
-  "destination": "https://saas.elexvx.com/api/:path*"
+  "destination": "https://bm.aiadc.org.cn/api/:path*"
 }
 ```
 
 前端默认使用同源 `/api`。如果不使用 Vercel rewrites，也可以在 Vercel 环境变量中配置：
 
 ```text
-UMI_APP_API_BASE_URL=https://saas.elexvx.com
+UMI_APP_API_BASE_URL=https://bm.aiadc.org.cn
 ```
 
 ## 服务器域名和 HTTPS
@@ -301,7 +301,7 @@ UMI_APP_API_BASE_URL=https://saas.elexvx.com
 推荐让主机 Nginx、1Panel、负载均衡器、CDN 或 WAF 负责 HTTPS，并反向代理到容器 edge proxy。
 
 ```text
-https://saas.elexvx.com -> http://127.0.0.1:80
+https://bm.aiadc.org.cn -> http://127.0.0.1:80
 ```
 
 默认对外只暴露 80/443；`API_PROXY_BIND` 和 `FRONTEND_BIND` 只保留本机调试用途。
@@ -353,7 +353,7 @@ DRY_RUN=1 bash deploy/restore-platform.sh backups/20260520-120000
 如果要检查公网后端域名：
 
 ```bash
-DEPLOY_CHECK_BASE_URL=https://saas.elexvx.com \
+DEPLOY_CHECK_BASE_URL=https://bm.aiadc.org.cn \
 DEPLOY_CHECK_BACKEND_URL=http://127.0.0.1:8080 \
 node bin/check-deployment.mjs
 ```
@@ -389,7 +389,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node bin/deploy-container.mjs --reset
 ## 安全配置
 
 - `deploy/.env` 不要提交到 Git。
-- 对外只暴露 `https://saas.elexvx.com`，容器内部服务端口只在内网访问。
+- 对外只暴露 `https://bm.aiadc.org.cn`，容器内部服务端口只在内网访问。
 - `DB_PASSWORD`、`JWT_SECRET`、`FIELD_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_INTERNAL_SYSTEM_TOKEN`、`SAAS_INTERNAL_AUTH_TOKEN`、`SAAS_INTERNAL_AUTH_SYSTEM_TOKEN`、`SAAS_INTERNAL_FILE_TOKEN`、`SAAS_INTERNAL_MESSAGE_TOKEN`、`SAAS_INTERNAL_PAYMENT_TOKEN`、`SAAS_INTERNAL_PLUGIN_TOKEN`、`SAAS_INTERNAL_TEAM_TOKEN`、`SAAS_INTERNAL_JOB_TOKEN` 必须使用强随机值。
 - 独立部署插件服务时配置 `SAAS_JOB_PLUGIN_SERVICE_BASE_URL`，聚合部署可沿用默认的 lumira-server 地址。
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
@@ -401,7 +401,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node bin/deploy-container.mjs --reset
 ## 入口约定
 
 - 前端访问入口：Vercel 域名
-- 后端公网入口：`https://saas.elexvx.com`
+- 后端公网入口：`https://bm.aiadc.org.cn`
 - 前端请求后端：`/api`
 - WebSocket：`/ws`
 - 本机 API proxy：`http://127.0.0.1:8000`

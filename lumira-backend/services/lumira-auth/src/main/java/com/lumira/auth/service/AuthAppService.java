@@ -34,6 +34,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -74,6 +75,7 @@ public class AuthAppService {
     private static final Pattern SAFE_SESSION_ID_PATTERN = Pattern.compile("^[A-Za-z0-9._:@/-]{1,128}$");
     private static final long CURRENT_USER_CACHE_TTL_MILLIS = 60_000L;
     private static final long BOOTSTRAP_READ_MODEL_VERSION_CACHE_TTL_MILLIS = 2_000L;
+    private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private final SystemInternalApi systemInternalApi;
@@ -543,7 +545,8 @@ public class AuthAppService {
     }
 
     public boolean keepalive() {
-        requireAuthenticatedCurrentUser();
+        CurrentUser currentUser = requireAuthenticatedCurrentUser();
+        refreshSessionActivityIfNeeded(requireActiveSessionById(currentUser.getSessionId()));
         return true;
     }
 
@@ -557,19 +560,10 @@ public class AuthAppService {
             if (claims.getTokenType() != JwtTokenType.REFRESH) {
                 throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
             }
-            AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+            AuthSession session = requireActiveSessionById(claims.getSessionId());
             validateRefreshTokenClaims(claims, session);
-            AuthSessionAggregate sessionAggregate = new AuthSessionAggregate(
-                    session.getSessionId(),
-                    session.getUserId(),
-                    session.getUserUuid(),
-                    session.getLastActivityAt()
-            );
-            sessionAggregate.touch(Instant.now());
             String refreshTokenId = UUID.randomUUID().toString();
             session.setRefreshTokenId(refreshTokenId);
-            session.setLastActivityAt(Instant.now());
             authSessionStore.save(session, true);
             return new RefreshTokenResponseDTO(
                     jwtTokenService.generateAccessToken(session),
@@ -608,8 +602,8 @@ public class AuthAppService {
         long start = System.nanoTime();
         try {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
-            AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+            AuthSession session = requireActiveSessionById(currentUser.getSessionId());
+            refreshSessionActivityIfNeeded(session);
             CurrentUserDTO cached = getCachedCurrentUser(currentUser, session);
             if (cached != null) {
                 return cached;
@@ -624,8 +618,7 @@ public class AuthAppService {
 
     public CurrentUserDTO currentUserBySessionId(String sessionId) {
         String normalizedSessionId = requireSessionId(sessionId);
-        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
-                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+        AuthSession session = requireActiveSessionById(normalizedSessionId);
         return resolveCurrentUserFromSession(session);
     }
 
@@ -636,8 +629,7 @@ public class AuthAppService {
         String normalizedSessionId = requireSessionId(sessionId);
         Long normalizedExpectedUserId = normalizeExpectedUserId(expectedUserId);
         Integer normalizedExpectedSessionVersion = normalizeExpectedSessionVersion(expectedSessionVersion);
-        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
-                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+        AuthSession session = requireActiveSessionById(normalizedSessionId);
         if (normalizedExpectedUserId != null && !Objects.equals(normalizedExpectedUserId, session.getUserId())) {
             throw new BizException(ErrorCode.SESSION_EXPIRED, "Token user does not match session");
         }
@@ -661,8 +653,7 @@ public class AuthAppService {
         Integer normalizedExpectedSessionVersion = requireExpectedSessionVersion(expectedSessionVersion);
         String normalizedExpectedPermissionsVersion = requireExpectedText(expectedPermissionsVersion, "Expected permissions version is required");
         Long normalizedExpectedSimulatedRoleId = normalizeSimulatedRoleId(expectedSimulatedRoleId);
-        AuthSession session = authSessionStore.findBySessionId(normalizedSessionId)
-                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session expired"));
+        AuthSession session = requireActiveSessionById(normalizedSessionId);
         if (!Objects.equals(normalizedExpectedUserId, session.getUserId())) {
             throw new BizException(ErrorCode.SESSION_EXPIRED, "token/session user mismatch");
         }
@@ -686,8 +677,7 @@ public class AuthAppService {
         long start = System.nanoTime();
         try {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
-            AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+            AuthSession session = requireActiveSessionById(currentUser.getSessionId());
             SystemUserSnapshotDTO user = requireTrustedActiveSessionProfile(session);
             Long requestedRoleId = normalizeSimulatedRoleId(request == null ? null : request.roleId());
             PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(requestedRoleId == null
@@ -721,8 +711,8 @@ public class AuthAppService {
         long start = System.nanoTime();
         try {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
-            AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
-                    .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+            AuthSession session = requireActiveSessionById(currentUser.getSessionId());
+            refreshSessionActivityIfNeeded(session);
 
             reconcileInitialPasswordState(session);
             ResolvedAuthBootstrapCacheKey authBootstrapCacheKey = resolveAuthBootstrapCacheKey(session);
@@ -1233,6 +1223,50 @@ public class AuthAppService {
         if (StringUtils.hasText(key) && currentUser != null) {
             currentUserCache.put(key, currentUser);
         }
+    }
+
+    private AuthSession requireActiveSessionById(String sessionId) {
+        AuthSession session = authSessionStore.findBySessionId(sessionId)
+                .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
+        assertSessionWithinIdleTimeout(session);
+        return session;
+    }
+
+    private void assertSessionWithinIdleTimeout(AuthSession session) {
+        if (session == null) {
+            throw new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired");
+        }
+        if (!AuthSessionIdlePolicy.isIdleExpired(session, securitySettingsService.getIdleTimeoutSeconds(), Instant.now())) {
+            return;
+        }
+        invalidateAuthBootstrapCache(session);
+        authSessionStore.remove(session, true);
+        throw new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired");
+    }
+
+    private void refreshSessionActivityIfNeeded(AuthSession session) {
+        if (session == null) {
+            return;
+        }
+        Instant now = Instant.now();
+        if (!shouldRefreshSessionActivity(session, now)) {
+            return;
+        }
+        session.setLastActivityAt(now);
+        authSessionStore.save(session, false);
+    }
+
+    private boolean shouldRefreshSessionActivity(AuthSession session, Instant now) {
+        Instant lastActivityAt = session.getLastActivityAt();
+        if (lastActivityAt == null) {
+            return true;
+        }
+        Duration elapsed = Duration.between(lastActivityAt, now);
+        long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
+        long throttleSeconds = idleTimeoutSeconds > 0
+                ? Math.min(LAST_ACTIVITY_WRITE_THROTTLE_SECONDS, Math.max(5L, idleTimeoutSeconds / 2))
+                : LAST_ACTIVITY_WRITE_THROTTLE_SECONDS;
+        return elapsed.compareTo(Duration.ofSeconds(throttleSeconds)) >= 0;
     }
 
     private String currentUserCacheKey(CurrentUser currentUser) {

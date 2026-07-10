@@ -5,17 +5,20 @@ import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.auth.model.AuthSession;
 import com.lumira.auth.service.AuthSessionStore;
 import com.lumira.auth.service.JwtTokenService;
+import com.lumira.auth.service.SecuritySettingsService;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,7 +34,18 @@ class AuthJwtAuthFilterTest {
     private final JwtTokenService jwtTokenService = mock(JwtTokenService.class);
     private final AuthSessionStore authSessionStore = mock(AuthSessionStore.class);
     private final SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-    private final AuthJwtAuthFilter filter = new AuthJwtAuthFilter(jwtTokenService, authSessionStore, systemInternalApi);
+    private final SecuritySettingsService securitySettingsService = mock(SecuritySettingsService.class);
+    private final AuthJwtAuthFilter filter = new AuthJwtAuthFilter(
+            jwtTokenService,
+            authSessionStore,
+            systemInternalApi,
+            securitySettingsService
+    );
+
+    @BeforeEach
+    void setUp() {
+        when(securitySettingsService.getIdleTimeoutSeconds()).thenReturn(1800L);
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -313,6 +327,29 @@ class AuthJwtAuthFilterTest {
         filter.doFilterInternal(request, response, chain);
 
         assertThat(chainInvoked).isTrue();
+    }
+
+    @Test
+    void rejectsIdleExpiredSessionBeforeAuthenticatingSecurityContext() throws Exception {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        AuthSession session = session("session-1", 42L, "alice", 3);
+        session.setLastActivityAt(Instant.now().minusSeconds(1801));
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/current-user");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+        FilterChain chain = (servletRequest, servletResponse) -> {
+            chainInvoked.set(true);
+            assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        };
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(chainInvoked).isTrue();
+        verify(authSessionStore).remove(session, true);
+        verify(systemInternalApi, never()).findUserById(42L);
     }
 
     private JwtTokenClaims accessClaims(String sessionId, Long userId, String username, Integer sessionVersion) {

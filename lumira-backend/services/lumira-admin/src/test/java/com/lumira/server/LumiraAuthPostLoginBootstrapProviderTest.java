@@ -5,13 +5,17 @@ import com.lumira.api.auth.CurrentUserDTO;
 import com.lumira.auth.service.AuthPostLoginBootstrapProvider;
 import com.lumira.saas.modules.plugin.app.PluginManagementAppService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
+import com.lumira.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class LumiraAuthPostLoginBootstrapProviderTest {
 
@@ -117,6 +121,35 @@ class LumiraAuthPostLoginBootstrapProviderTest {
         assertThat(payload.availablePlugins()).isEmpty();
         assertThat(payload.runtimeAppearanceSettings()).isEmpty();
         verifyNoInteractions(pluginManagementAppService, systemManagementAppService);
+    }
+
+    @Test
+    void loadShouldUsePublicRuntimeAppearanceSettingsForTrustedUsers() {
+        PluginManagementAppService pluginManagementAppService = mock(PluginManagementAppService.class);
+        when(pluginManagementAppService.currentBootstrap(List.of("*"), "permissions-1", null, null))
+                .thenReturn(Map.of(
+                        "menuTree", List.of(Map.of("menuCode", "dashboard.home")),
+                        "availablePlugins", List.of(Map.of("pluginCode", "feedback"))
+                ));
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SystemVO.RuntimeAppearanceSettingsVO runtimeAppearanceSettings = new SystemVO.RuntimeAppearanceSettingsVO();
+        runtimeAppearanceSettings.setBrandingSettings(new SystemVO.BrandingSettingsVO());
+        runtimeAppearanceSettings.setWatermarkSettings(new SystemVO.WatermarkSettingsVO());
+        runtimeAppearanceSettings.setFloatingWindowSettings(new SystemVO.FloatingWindowSettingsVO());
+        when(systemManagementAppService.getPublicRuntimeAppearanceSettings()).thenReturn(runtimeAppearanceSettings);
+
+        LumiraAuthPostLoginBootstrapProvider provider = new LumiraAuthPostLoginBootstrapProvider(
+                pluginManagementAppService,
+                systemManagementAppService,
+                new ObjectMapper()
+        );
+
+        AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload payload = provider.load(trustedCurrentUser("user-uuid", "permissions-1"));
+
+        assertThat(payload.menuTree()).hasSize(1);
+        assertThat(payload.availablePlugins()).hasSize(1);
+        assertThat(payload.runtimeAppearanceSettings()).containsKeys("brandingSettings", "watermarkSettings", "floatingWindowSettings");
+        verify(systemManagementAppService).getPublicRuntimeAppearanceSettings();
     }
 
     private static CurrentUserDTO trustedCurrentUser(String userUuid, String permissionsVersion) {

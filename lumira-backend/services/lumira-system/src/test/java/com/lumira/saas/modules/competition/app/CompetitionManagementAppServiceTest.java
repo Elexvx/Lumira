@@ -305,6 +305,29 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void getCompetitionAllowsRegistrationCreatePermissionForPublishedCompetition() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("published")));
+
+        CompetitionVO.Competition competition = service.getCompetition(user("aiadc:registration:create"), 11L);
+
+        assertThat(competition).isNotNull();
+        assertThat(competition.getStatus()).isEqualTo("published");
+    }
+
+    @Test
+    void getCompetitionHidesDraftCompetitionFromRegistrationPermission() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("draft")));
+
+        assertThatThrownBy(() -> service.getCompetition(user("aiadc:registration:create"), 11L))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+    }
+
+    @Test
     void deleteCompetitionRejectsCompetitionWithRegistrations() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         CompetitionManagementAppService service = service(jdbcTemplate);

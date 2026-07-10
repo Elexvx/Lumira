@@ -163,6 +163,16 @@ public class PaymentV2Controller {
         );
     }
 
+    @PostMapping("/sandbox/orders")
+    @RepeatSubmit
+    public ApiResponse<PaymentOrderDTO> createSandboxOrder(@Valid @RequestBody PaymentCreateOrderRequestDTO request) {
+        CurrentUser currentUser = requireSettingsAdmin();
+        return ApiResponse.success(
+                paymentTransactionService.createSandboxOrder(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/orders/{orderNo}")
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
         CurrentUser currentUser = requirePermission("payment:order:view");

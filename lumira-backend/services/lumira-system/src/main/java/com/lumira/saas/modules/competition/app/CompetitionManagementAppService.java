@@ -194,10 +194,18 @@ public class CompetitionManagementAppService {
     }
 
     public CompetitionVO.Competition getCompetition(CurrentUser currentUser, Long id) {
-        requirePermission(currentUser, COMPETITION_VIEW);
         requirePositiveId(id, "Competition id is required");
+        requireUserId(currentUser);
+        boolean canViewCompetition = hasPermission(currentUser, COMPETITION_VIEW);
+        boolean canAccessPublishedCompetition = hasPermission(currentUser, REGISTRATION_VIEW) || hasPermission(currentUser, REGISTRATION_CREATE);
+        if (!canViewCompetition && !canAccessPublishedCompetition) {
+            throw biz(ErrorCode.FORBIDDEN, "Missing permission: " + COMPETITION_VIEW);
+        }
         CompetitionVO.Competition competition = findCompetition(id);
         if (competition == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Competition not found");
+        }
+        if (!canViewCompetition && !"published".equals(competition.getStatus())) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
         return competition;

@@ -114,6 +114,7 @@ export interface WechatAuthorizeUrl {
   scope?: string;
   redirectUri?: string;
   encodedRedirectUri?: string;
+  stateExpireMinutes?: number;
 }
 
 export type CaptchaType = 'IMAGE' | 'SLIDER';

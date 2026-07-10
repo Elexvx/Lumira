@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   messageError: vi.fn(),
   buildUnauthorizedRuntimeState: vi.fn(),
   shouldSuppressUnauthorizedSideEffects: vi.fn(),
+  performLogout: vi.fn(),
 }));
 
 vi.mock('@/theme/antdFeedbackBridge', () => ({
@@ -26,6 +27,10 @@ vi.mock('@/auth/unauthorized', () => ({
 
 vi.mock('@/auth/unauthorizedDecision', () => ({
   shouldSuppressUnauthorizedSideEffects: mocks.shouldSuppressUnauthorizedSideEffects,
+}));
+
+vi.mock('@/auth/sessionLifecycle', () => ({
+  performLogout: mocks.performLogout,
 }));
 
 const baseAuthSnapshot: AuthRequestSnapshot = {
@@ -51,6 +56,12 @@ const forbiddenError = () =>
     httpStatus: 403,
   });
 
+const sessionExpiredError = () =>
+  new ApiRequestError(ErrorCode.SESSION_EXPIRED, 'session expired', {
+    userMessage: 'session expired',
+    httpStatus: 401,
+  });
+
 const handle = (pathname: string, authSnapshot: AuthRequestSnapshot = baseAuthSnapshot, options: RequestOptions = {}) => {
   mocks.buildUnauthorizedRuntimeState.mockReturnValue(runtimeAt(pathname));
   handleApiError(forbiddenError(), options, authSnapshot);
@@ -63,6 +74,7 @@ describe('handleApiError', () => {
     mocks.messageError.mockReset();
     mocks.buildUnauthorizedRuntimeState.mockReset();
     mocks.shouldSuppressUnauthorizedSideEffects.mockReset();
+    mocks.performLogout.mockReset();
     mocks.shouldSuppressUnauthorizedSideEffects.mockReturnValue(false);
   });
 
@@ -87,5 +99,50 @@ describe('handleApiError', () => {
     handleApiError(forbiddenError(), {}, baseAuthSnapshot);
 
     expect(mocks.messageWarning).not.toHaveBeenCalled();
+  });
+
+  it('forces logout when the active session is expired', async () => {
+    const authSnapshot: AuthRequestSnapshot = {
+      skipAuth: false,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+      authSessionEpoch: 1,
+      tokenGeneration: 1,
+    };
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(sessionExpiredError(), {}, authSnapshot);
+
+    expect(mocks.messageInfo).toHaveBeenCalledWith('session expired');
+    await vi.waitFor(() => {
+      expect(mocks.performLogout).toHaveBeenCalledWith({ reason: 'forced_expired' });
+    });
+  });
+
+  it('does not force logout when unauthorized side effects are suppressed', () => {
+    mocks.shouldSuppressUnauthorizedSideEffects.mockReturnValue(true);
+
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'stale-token',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
+  it('honors requests that explicitly disable unauthorized redirects', () => {
+    handleApiError(sessionExpiredError(), { autoRedirectOnUnauthorized: false }, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    expect(mocks.performLogout).not.toHaveBeenCalled();
   });
 });

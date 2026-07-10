@@ -164,7 +164,7 @@
 .saas-login-page__form {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 34px 40px 36px;
   font-size: 14px;
 }
@@ -236,6 +236,8 @@
 
 .saas-login-page__mode-header {
   width: 100%;
+  min-height: 38px;
+  flex: 0 0 38px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;

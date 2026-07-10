@@ -112,7 +112,7 @@ node bin/check-deployment.mjs
 公网后端检查：
 
 ```bash
-DEPLOY_CHECK_BASE_URL=https://saas.elexvx.com \
+DEPLOY_CHECK_BASE_URL=https://bm.aiadc.org.cn \
 DEPLOY_CHECK_GATEWAY_URL=http://127.0.0.1:8000 \
 node bin/check-deployment.mjs
 ```

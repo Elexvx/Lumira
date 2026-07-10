@@ -153,6 +153,32 @@ class PaymentV2ControllerTest {
     }
 
     @Test
+    void createSandboxOrder_shouldRequireProtectedAdminAndDelegateToSandboxTransactionService() {
+        CurrentUser admin = currentUser(1001L, "admin", 0L, "payment:config:update");
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-SANDBOX-1",
+                "沙箱支付订单",
+                1999L,
+                "USD",
+                null,
+                null,
+                null,
+                Map.of("scene", "settings-manual"),
+                "sandbox-idem-1"
+        );
+        PaymentOrderDTO order = new PaymentOrderDTO("ORD-SANDBOX-1", "stripe", "po_1", "沙箱支付订单", 1999L, "USD", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(admin);
+        when(paymentTransactionService.createSandboxOrder(admin, request)).thenReturn(order);
+
+        var response = controller.createSandboxOrder(request);
+
+        assertThat(response.getData()).isSameAs(order);
+        verify(paymentTransactionService).createSandboxOrder(admin, request);
+        verify(permissionGuard, never()).requirePermission(admin, "payment:order:create");
+    }
+
+    @Test
     void createOrder_shouldRejectUnauthenticatedUserBeforePermissionAndService() {
         CurrentUser currentUser = new CurrentUser(42L, "alice", 1001L, "session-1", 1, false, Set.of("payment:order:create"));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(

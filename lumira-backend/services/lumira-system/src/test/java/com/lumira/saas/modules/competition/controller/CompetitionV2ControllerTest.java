@@ -25,6 +25,24 @@ import static org.mockito.Mockito.when;
 class CompetitionV2ControllerTest {
 
     @Test
+    void competitionShouldAllowRegistrationCreatePermissionForPublishedCompetitionLookup() {
+        CompetitionManagementAppService appService = mock(CompetitionManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        when(securityContextFacade.getCurrentUser()).thenReturn(registrationCurrentUser());
+        when(appService.getCompetition(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.eq(11L)))
+                .thenReturn(new com.lumira.saas.modules.competition.vo.CompetitionVO.Competition());
+        CompetitionV2Controller controller = new CompetitionV2Controller(
+                appService,
+                securityContextFacade,
+                mock(PermissionGuard.class)
+        );
+
+        controller.competition(11L);
+
+        verify(appService).getCompetition(org.mockito.ArgumentMatchers.any(CurrentUser.class), org.mockito.ArgumentMatchers.eq(11L));
+    }
+
+    @Test
     void competitionSettingsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         CompetitionManagementAppService appService = mock(CompetitionManagementAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
@@ -132,6 +150,12 @@ class CompetitionV2ControllerTest {
         currentUser.setPermissionsVersion("permissions-1");
         currentUser.setAuthenticated(true);
         currentUser.setPermissions(Set.of("aiadc:competition:view"));
+        return currentUser;
+    }
+
+    private static CurrentUser registrationCurrentUser() {
+        CurrentUser currentUser = trustedCurrentUser();
+        currentUser.setPermissions(Set.of("aiadc:registration:create"));
         return currentUser;
     }
 }

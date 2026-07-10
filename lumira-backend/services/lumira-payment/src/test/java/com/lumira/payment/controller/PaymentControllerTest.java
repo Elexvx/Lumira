@@ -70,6 +70,44 @@ class PaymentControllerTest {
     }
 
     @Test
+    void createSandboxOrder_shouldAllowProtectedAdminAndUseSandboxTransactionService() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(1001L, "root-admin", 0L, "session-1", 1, true, Set.of("payment:config:update", "payment:order:create")));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-SANDBOX-1",
+                "sandbox order",
+                1999L,
+                "USD",
+                null,
+                null,
+                null,
+                Map.of("scene", "settings-manual"),
+                "sandbox-idem-1"
+        );
+        PaymentOrderDTO order = new PaymentOrderDTO("ORD-SANDBOX-1", "stripe", "po_1", "sandbox order", 1999L, "USD", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentTransactionService.createSandboxOrder(currentUser, request)).thenReturn(order);
+
+        var response = controller.createSandboxOrder(request);
+
+        assertThat(response.getData()).isSameAs(order);
+        verify(paymentTransactionService).createSandboxOrder(currentUser, request);
+        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+    }
+
+    @Test
     void providers_shouldRejectAdminUsernameWithoutProtectedAdminId() {
         PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
         PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);

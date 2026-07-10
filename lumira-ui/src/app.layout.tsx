@@ -14,6 +14,7 @@ import { isLoggedIn } from '@/auth/sessionLifecycle';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
 import { isTrustedCurrentUser, mergeTrustedCurrentUser } from '@/auth/sessionState';
 import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
+import { resolveTokenRefreshDelayMs } from '@/auth/sessionRefreshTiming';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
@@ -81,7 +82,6 @@ const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const MOUSE_MOVE_THROTTLE_MS = 1000;
 const KEEPALIVE_THROTTLE_MS = 60_000;
-const TOKEN_REFRESH_SKEW_MS = 60_000;
 const KEEPALIVE_ENDPOINTS = {
   v2: '/v2/auth/session/keepalive',
   v1: '/v1/auth/session/keepalive',
@@ -174,7 +174,7 @@ const useSessionActivityTimers = ({ securitySettings }: { securitySettings: Secu
     }
 
     const remainingMs = tokenState.expiresAt - Date.now();
-    const refreshDelayMs = Math.max(0, remainingMs - TOKEN_REFRESH_SKEW_MS);
+    const refreshDelayMs = resolveTokenRefreshDelayMs(remainingMs);
 
     if (remainingMs <= 0 || refreshDelayMs === 0) {
       void refreshAccessToken();
@@ -199,16 +199,19 @@ const useSessionActivityTimers = ({ securitySettings }: { securitySettings: Secu
     redirectingRef.current = false;
   }, []);
 
-  return {
-    clearTimer,
-    clearTokenExpireTimer,
-    forceLogout,
-    scheduleTimeout,
-    scheduleTokenExpiration,
-    setLastActivityAt,
-    getLastActivityAt,
-    resetLogoutGuard,
-  };
+  return useMemo(
+    () => ({
+      clearTimer,
+      clearTokenExpireTimer,
+      forceLogout,
+      scheduleTimeout,
+      scheduleTokenExpiration,
+      setLastActivityAt,
+      getLastActivityAt,
+      resetLogoutGuard,
+    }),
+    [clearTimer, clearTokenExpireTimer, forceLogout, scheduleTimeout, scheduleTokenExpiration, setLastActivityAt, getLastActivityAt, resetLogoutGuard],
+  );
 };
 
 const useSessionActivityController = ({ securitySettings }: { securitySettings: SecuritySettings }) => {
@@ -216,7 +219,6 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
   const lastBroadcastRef = useRef(0);
   const lastKeepaliveRef = useRef(0);
   const keepaliveInFlightRef = useRef(false);
-  const lastActivityRef = useRef<number>(Date.now());
 
   const pingSession = useCallback(async () => {
     if (keepaliveInFlightRef.current) {
@@ -259,7 +261,7 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
       }
 
       lastBroadcastRef.current = now;
-      lastActivityRef.current = now;
+      timers.setLastActivityAt(now);
       persistSessionActivity(now);
       timers.scheduleTimeout(now);
       void pingSession();
@@ -269,7 +271,7 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
 
   const applyExternalActivityAt = useCallback(
     (activityAt: number) => {
-      lastActivityRef.current = activityAt;
+      timers.setLastActivityAt(activityAt);
       timers.scheduleTimeout(activityAt);
     },
     [timers],
@@ -280,19 +282,20 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
     if (!getStoredSessionActivityAt()) {
       persistSessionActivity(storedActivityAt);
     }
-    lastActivityRef.current = storedActivityAt;
+    timers.setLastActivityAt(storedActivityAt);
     return storedActivityAt;
-  }, []);
+  }, [timers]);
 
-  const getLastActivityAt = useCallback(() => lastActivityRef.current, []);
-
-  return {
-    ...timers,
-    recordActivity,
-    applyExternalActivityAt,
-    primeStoredActivity,
-    getLastActivityAt,
-  };
+  return useMemo(
+    () => ({
+      ...timers,
+      recordActivity,
+      applyExternalActivityAt,
+      primeStoredActivity,
+      getLastActivityAt: timers.getLastActivityAt,
+    }),
+    [applyExternalActivityAt, primeStoredActivity, recordActivity, timers],
+  );
 };
 
 const resolveSiderMenuMode = (pathname: string, _initialState: AppInitialState | undefined) =>

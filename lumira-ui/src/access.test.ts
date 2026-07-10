@@ -144,6 +144,15 @@ describe('access', () => {
     expect(result.canVisitActivityRegister).toBe(false);
   });
 
+  it('allows activity registration with create permission without exposing activity management', () => {
+    const result = access({ currentUser: commonUserWithPermissions(['aiadc:activity:create']) });
+
+    expect(result.canVisitActivityRegister).toBe(true);
+    expect(result.canVisitActivities).toBe(false);
+    expect(result.canVisitDataManagement).toBe(false);
+    expect(result.canVisitQueryCenter).toBe(false);
+  });
+
   it('keeps the default common user surface to dashboard, registration, and personal center', () => {
     const result = access({
       currentUser: commonUserWithPermissions([
@@ -155,6 +164,7 @@ describe('access', () => {
         'aiadc:registration:create',
         'aiadc:registration:update',
         'aiadc:registration:pay',
+        'aiadc:activity:create',
         'aiadc:material:view',
         'aiadc:material:submit',
         'aiadc:stage:view',
@@ -163,10 +173,10 @@ describe('access', () => {
 
     expect(result.canVisitDashboard).toBe(true);
     expect(result.canVisitCompetitionRegister).toBe(true);
+    expect(result.canVisitActivityRegister).toBe(true);
     expect(result.canVisitProfile).toBe(true);
     expect(result.canVisitPersonalCenter).toBe(true);
     expect(result.canVisitSystemMyFiles).toBe(true);
-    expect(result.canVisitActivityRegister).toBe(false);
     expect(result.canVisitDataManagement).toBe(false);
     expect(result.canVisitDownloadCenter).toBe(false);
     expect(result.canVisitQueryCenter).toBe(false);

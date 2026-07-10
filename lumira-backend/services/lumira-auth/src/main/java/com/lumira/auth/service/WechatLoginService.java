@@ -85,7 +85,15 @@ public class WechatLoginService {
                 + "&scope=" + SCOPE
                 + "&state=" + state
                 + "#wechat_redirect";
-        return new WechatAuthorizeUrlDTO(authorizeUrl, state, settings.appId().trim(), SCOPE, rawRedirectUri, redirectUri);
+        return new WechatAuthorizeUrlDTO(
+                authorizeUrl,
+                state,
+                settings.appId().trim(),
+                SCOPE,
+                rawRedirectUri,
+                redirectUri,
+                settings.stateExpireMinutes()
+        );
     }
 
     public WechatOAuthUser exchangeCode(String code, String state) {

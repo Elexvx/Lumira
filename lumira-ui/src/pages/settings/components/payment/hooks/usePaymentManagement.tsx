@@ -176,6 +176,7 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
       paymentRows,
       paymentColumns,
       paymentLoading: paymentSettingsQuery.isLoading,
+      paymentSettingsData: paymentSettingsQuery.data || [],
       onRefresh: paymentSettingsQuery.refetch,
       isMobile,
       toolbarProps: {

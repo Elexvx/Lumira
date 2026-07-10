@@ -15,6 +15,12 @@ const shouldSuppressLoginPageForbiddenFeedback = (error: ApiRequestError, authSn
   return runtime.pathname === '/user/login' || runtime.loginInProgress;
 };
 
+const triggerForcedSessionLogout = () => {
+  void import('@/auth/sessionLifecycle')
+    .then(({ performLogout }) => performLogout({ reason: 'forced_expired' }))
+    .catch(() => undefined);
+};
+
 export const handleApiError = (error: ApiRequestError, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
   if (shouldSuppressLoginPageForbiddenFeedback(error, authSnapshot)) {
     return;
@@ -53,4 +59,5 @@ export const handleApiError = (error: ApiRequestError, options: RequestOptions, 
   if (!options.silent) {
     notify();
   }
+  triggerForcedSessionLogout();
 };

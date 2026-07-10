@@ -16,10 +16,12 @@
 
 ### 3.1 当前模块结构
 
-根 `pom.xml` 与各模块结构表明，当前项目包含如下主要模块：
+`lumira-backend/pom.xml` 与各模块结构表明，当前项目包含如下主要模块：
 
-- 启动聚合：`services/lumira-admin`
-- 业务服务：`system-service`、`auth-service`、`file-service`、`message-service`、`plugin-service`、`localization-service`、`payment-service`、`job-executor`
+- 启动聚合：`lumira-backend/services/lumira-admin`
+- 业务模块目录：`lumira-system`、`lumira-auth`、`lumira-file`、`lumira-message`、`lumira-plugin`、`lumira-localization`、`lumira-payment`、`lumira-ai`、`lumira-team`、`lumira-quartz`
+- 后台运行模块：`lumira-async`
+- 上述目录对应的 Maven artifactId 仍使用 `system-service`、`auth-service`、`file-service`、`message-service`、`plugin-service`、`localization-service`、`payment-service`、`ai-service`、`team-service`、`job-executor` 等名称；artifactId 不是目录路径。
 - 公共库：`common-core`、`common-domain`、`common-web`、`common-security`、`lumira-api`、`plugin-api`
 
 ### 3.2 当前技术栈
@@ -51,7 +53,7 @@
 
 ### 3.4 单体微服务运行基线
 
-当前仓库主线采用“单体微服务”模式：运行时收敛为一个后端进程 `services/lumira-admin`，工程内继续保留 `services/*-service` 的模块边界、契约边界和数据 owner。
+当前仓库主线采用“单体微服务”模式：同步请求运行时收敛为后端进程 `lumira-backend/services/lumira-admin`，工程内继续保留 `lumira-backend/services/lumira-*` 的模块边界、契约边界和数据 owner。
 
 这意味着：
 

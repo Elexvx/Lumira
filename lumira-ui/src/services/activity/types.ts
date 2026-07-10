@@ -22,6 +22,22 @@ export interface ActivityRecord {
   updatedAt?: string | null;
 }
 
+export interface PublicActivityRecord {
+  id: number;
+  locale: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  tags?: string | null;
+  ctaLabel?: string | null;
+  ctaHref?: string | null;
+  activityDate: string;
+  activityTime: string;
+  location: string;
+  featured: boolean;
+}
+
 export interface ActivityUpsertPayload {
   code?: string;
   locale: string;

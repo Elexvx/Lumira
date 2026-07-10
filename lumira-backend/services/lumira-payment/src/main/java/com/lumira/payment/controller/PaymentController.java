@@ -156,6 +156,16 @@ public class PaymentController {
         );
     }
 
+    @PostMapping("/sandbox/orders")
+    @RepeatSubmit
+    public ApiResponse<PaymentOrderDTO> createSandboxOrder(@Valid @RequestBody PaymentCreateOrderRequestDTO request) {
+        CurrentUser currentUser = requireManage();
+        return ApiResponse.success(
+                paymentTransactionService.createSandboxOrder(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/orders/{orderNo}")
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
         CurrentUser currentUser = requireOrderView();

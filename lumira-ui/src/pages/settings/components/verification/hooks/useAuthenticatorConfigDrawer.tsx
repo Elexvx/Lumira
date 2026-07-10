@@ -68,6 +68,7 @@ const smtpTestInitialValues: SmtpTestPayload = {
 const SMS_ACCESS_KEY_SECRET_MASK = '********';
 const SMTP_PASSWORD_MASK = '********';
 const WECHAT_APP_SECRET_MASK = '********';
+// Retain the retired host only as a migration sentinel for saved Passkey settings.
 const LEGACY_PASSKEY_RP_ID = 'saas.elexvx.com';
 const LEGACY_PASSKEY_ORIGIN = 'https://saas.elexvx.com';
 const LOCAL_PASSKEY_RP_IDS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);

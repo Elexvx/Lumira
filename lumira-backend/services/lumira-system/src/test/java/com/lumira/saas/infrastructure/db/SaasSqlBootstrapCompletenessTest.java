@@ -118,6 +118,7 @@ class SaasSqlBootstrapCompletenessTest {
                         "aiadc:registration:create",
                         "aiadc:registration:update",
                         "aiadc:registration:pay",
+                        "aiadc:activity:create",
                         "aiadc:material:view",
                         "aiadc:material:submit",
                         "aiadc:stage:view"

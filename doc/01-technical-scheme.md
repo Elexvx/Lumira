@@ -6,7 +6,7 @@
 
 目标是构建一套可长期运营、可维护、可扩展、可容灾的中后台系统底座，支持多租户隔离、多端访问、高可用、灰度发布、可观测运维和业务快速扩展。
 
-当前仓库已经从早期的“多进程微服务演进设想”收敛为“单体微服务”主线：正式后端入口为 `services/lumira-admin`，同步配套 `lumira-async` 和 `lumira-job-executor` 两个后台运行时，通过 `api-proxy` 统一暴露 `/api`、`/ws` 和 `/health`；代码层仍保留 `services/*-service` 模块边界，为后续物理拆分预留条件。
+当前仓库已经从早期的“多进程微服务演进设想”收敛为“单体微服务”主线：正式后端入口为 `lumira-backend/services/lumira-admin`，同步配套 `lumira-async` 和 `lumira-job-executor` 两个后台运行时，通过 `api-proxy` 统一暴露 `/api`、`/ws` 和 `/health`；代码层仍保留 `lumira-backend/services/lumira-*` 模块边界，为后续物理拆分预留条件。
 
 ## 2. 建设目标
 

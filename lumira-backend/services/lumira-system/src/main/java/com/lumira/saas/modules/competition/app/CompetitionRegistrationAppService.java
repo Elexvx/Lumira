@@ -302,7 +302,7 @@ public class CompetitionRegistrationAppService {
         validateRegistrationCreateRequest(request);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
-        ProjectSnapshot project = requireProjectSnapshot(request.getProjectId());
+        ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         int memberCount = team.members().size();
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
         int inserted = jdbcTemplate.update(
@@ -348,7 +348,7 @@ public class CompetitionRegistrationAppService {
         CompetitionRegistrationVO.Registration existing = getRegistration(currentUser, id);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
-        ProjectSnapshot project = requireProjectSnapshot(request.getProjectId());
+        ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         int memberCount = team.members().size();
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
         if (!Set.of("DRAFT", "PENDING_PAYMENT").contains(existing.getStatus())) {
@@ -1120,14 +1120,17 @@ public class CompetitionRegistrationAppService {
     }
 
     private TeamSnapshot resolveTeamSnapshot(CurrentUser currentUser, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
+        TeamSnapshot snapshot;
         if (hasInlineRegistrationTeam(request)) {
-            return inlineTeamSnapshot(request);
+            snapshot = inlineTeamSnapshot(request);
+        } else {
+            Long teamId = request.getTeamId();
+            if (teamId == null || teamId <= 0) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Team information is required");
+            }
+            snapshot = resolveTeamSnapshot(requireUserId(currentUser), requireUserUuid(currentUser), teamId);
         }
-        Long teamId = request.getTeamId();
-        if (teamId == null || teamId <= 0) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Team information is required");
-        }
-        return resolveTeamSnapshot(requireUserId(currentUser), requireUserUuid(currentUser), teamId);
+        return appendRegistrationExtraValues(snapshot, request.getRegistrationExtraValues());
     }
 
     private boolean hasInlineRegistrationTeam(CompetitionRegistrationDTO.RegistrationCreateRequest request) {
@@ -1159,6 +1162,16 @@ public class CompetitionRegistrationAppService {
         }
         summary.entrySet().removeIf((entry) -> entry.getValue() == null);
         return new TeamSnapshot(request.getTeamId() == null ? 0L : request.getTeamId(), summary, members);
+    }
+
+    private TeamSnapshot appendRegistrationExtraValues(TeamSnapshot snapshot, Map<String, Object> registrationExtraValues) {
+        if (registrationExtraValues == null || registrationExtraValues.isEmpty()) {
+            return snapshot;
+        }
+        requireJsonSize(registrationExtraValues, "Registration extra values are too large");
+        Map<String, Object> summary = new LinkedHashMap<>(toMutableMap(snapshot.summary()));
+        summary.put("registrationExtraValues", registrationExtraValues);
+        return new TeamSnapshot(snapshot.teamId(), summary, snapshot.members());
     }
 
     private List<Map<String, Object>> normalizeInlineMembers(List<CompetitionRegistrationDTO.MemberSnapshotRequest> members) {
@@ -1232,7 +1245,7 @@ public class CompetitionRegistrationAppService {
         return new TeamSnapshot(teamId, team, members);
     }
 
-    private ProjectSnapshot requireProjectSnapshot(Long projectId) {
+    private ProjectSnapshot requireProjectSnapshot(Long projectId, CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshotRequest) {
         requirePositiveId(projectId, "Project id is required");
         Map<String, Object> project = singleRow(
                 """
@@ -1246,6 +1259,11 @@ public class CompetitionRegistrationAppService {
         );
         if (project == null) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
+        }
+        if (projectSnapshotRequest != null && projectSnapshotRequest.getExtraValues() != null && !projectSnapshotRequest.getExtraValues().isEmpty()) {
+            requireJsonSize(projectSnapshotRequest.getExtraValues(), "Project extra values are too large");
+            project = new LinkedHashMap<>(project);
+            project.put("extraValues", projectSnapshotRequest.getExtraValues());
         }
         return new ProjectSnapshot(projectId, project);
     }
@@ -1476,6 +1494,15 @@ public class CompetitionRegistrationAppService {
     private Map<String, Object> singleRow(String sql, Object... params) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private Map<String, Object> toMutableMap(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> normalized = new LinkedHashMap<>();
+            map.forEach((key, item) -> normalized.put(String.valueOf(key), item));
+            return normalized;
+        }
+        return new LinkedHashMap<>();
     }
 
     private boolean canAccessRegistration(CurrentUser currentUser, CompetitionRegistrationVO.Registration registration) {

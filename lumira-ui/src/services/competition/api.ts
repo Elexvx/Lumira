@@ -26,6 +26,12 @@ export const listCompetitions = (params: CompetitionQueryParams) =>
     params: { ...params },
   });
 
+export const getCompetition = (id: number, options: RequestOptions = {}) =>
+  request<CompetitionRecord>(`${COMPETITION_API}/${id}`, {
+    ...options,
+    method: 'GET',
+  });
+
 export const createCompetition = (data: CompetitionUpsertPayload) =>
   request<CompetitionRecord>(COMPETITION_API, {
     method: 'POST',
@@ -108,9 +114,11 @@ export type RegistrationSnapshotTeamPayload = {
   teamName?: string;
   teamType?: string;
   avatarUrl?: string;
-  visibility?: string;
-  joinMode?: string;
   description?: string;
+  extraValues?: Record<string, unknown>;
+};
+
+export type RegistrationProjectSnapshotPayload = {
   extraValues?: Record<string, unknown>;
 };
 
@@ -118,7 +126,9 @@ export type RegistrationUpsertPayload = {
   competitionId: number;
   teamId?: number;
   projectId: number;
+  registrationExtraValues?: Record<string, unknown>;
   teamSnapshot?: RegistrationSnapshotTeamPayload;
+  projectSnapshot?: RegistrationProjectSnapshotPayload;
   members?: RegistrationSnapshotMemberPayload[];
 };
 

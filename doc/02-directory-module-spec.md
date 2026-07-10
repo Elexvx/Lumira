@@ -6,7 +6,7 @@
 
 它的目标不是“目录好看”，而是保证系统在长期演进中仍然具备高可维护性、高可读性、高复用性和高可靠性。
 
-当前仓库以实际目录为准：前端主工程位于 `lumira-ui/src/`，后端正式运行入口位于 `services/lumira-admin/`，其余 `services/*-service` 为聚合运行下的模块边界与未来拆分预留。
+当前仓库以实际目录为准：前端主工程位于 `lumira-ui/src/`，后端正式运行入口位于 `lumira-backend/services/lumira-admin/`，其余 `lumira-backend/services/lumira-*` 为聚合运行下的模块边界与未来拆分预留。
 
 ## 2. 总体拆分原则
 
@@ -109,7 +109,7 @@
 
 正式 Spring Boot 启动入口，对外统一承载系统、认证、文件、消息、插件、本地化、支付和任务模块。
 
-### 5.2 `services/*-service`
+### 5.2 `services/lumira-*`
 
 按业务域拆分的 Maven 模块。当前默认不独立对外启动，但继续承担边界隔离、代码归属和未来拆分预留。
 
@@ -119,7 +119,7 @@
 
 ### 5.4 `modules`
 
-`system-service` 内的核心业务模块当前主要包括：
+`services/lumira-system`（Maven artifactId 为 `system-service`）内的核心业务模块当前主要包括：
 
 - `auth/`
 - `user/`

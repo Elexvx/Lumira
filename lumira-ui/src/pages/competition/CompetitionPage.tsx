@@ -1,7 +1,7 @@
 import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
-import type { FormInstance } from 'antd';
+import type { FormInstance, SelectProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -24,6 +24,7 @@ import {
   createRegistration,
   createRegistrationPaymentOrder,
   deleteCompetition,
+  getCompetition,
   getRegistration,
   getCompetitionSettings,
   getCompetitionStageForm,
@@ -37,6 +38,7 @@ import {
   updateCompetitionDraft,
   updateRegistration,
   type RegistrationSnapshotMemberPayload,
+  type RegistrationProjectSnapshotPayload,
   type RegistrationSnapshotTeamPayload,
   type RegistrationUpsertPayload,
 } from '@/services/competition/api';
@@ -56,7 +58,8 @@ import { request } from '@/services/common/request';
 import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult } from '@/types/api';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
-import { isBasicSettingsPageReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
+import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
+import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -86,12 +89,14 @@ type CompetitionFormValues = Omit<Partial<CompetitionUpsertPayload>, 'locale'> &
 
 type RegistrationFormValues = {
   competitionId?: number;
+  registrationExtraValues?: Record<string, unknown>;
   teamId?: number;
   newTeamName?: string;
   newTeam?: RegistrationTeamDraft;
   projectId?: number;
   newProjectTitle?: string;
   newProjectDescription?: string;
+  newProjectExtraValues?: Record<string, unknown>;
   materials?: Record<string, unknown>;
 };
 
@@ -113,31 +118,34 @@ type RegistrationTeamDraft = RegistrationSnapshotTeamPayload & {
 };
 
 type RegistrationMemberRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
+type RegistrationMemberEditorKey = number | 'new';
 const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
 
 const registrationTeamRoleOptions: RegistrationMemberRole[] = ['ADMIN', 'MANAGER', 'MEMBER'];
-const registrationTeamRoleLabel: Record<string, string> = {
+const zhRegistrationTeamRoleLabel: Record<string, string> = {
+  ADMIN: '管理员',
+  MANAGER: '协作者',
+  MEMBER: '成员',
+};
+const enRegistrationTeamRoleLabel: Record<string, string> = {
   ADMIN: 'Admin',
   MANAGER: 'Manager',
   MEMBER: 'Member',
 };
-const fallbackRegistrationTeamTypeOptions = [
+const zhFallbackRegistrationTeamTypeOptions = [
+  { value: 'GENERAL', label: '通用团队' },
+  { value: 'DEV', label: '开发团队' },
+  { value: 'COMPETITION', label: '竞赛团队' },
+  { value: 'CLUB', label: '社团组织' },
+  { value: 'OTHER', label: '其他' },
+];
+const enFallbackRegistrationTeamTypeOptions = [
   { value: 'GENERAL', label: 'General' },
   { value: 'DEV', label: 'Development' },
   { value: 'COMPETITION', label: 'Competition' },
   { value: 'CLUB', label: 'Club' },
   { value: 'OTHER', label: 'Other' },
 ];
-const fallbackRegistrationTeamVisibilityOptions = [
-  { value: 'PRIVATE', label: 'Private' },
-  { value: 'PUBLIC', label: 'Public' },
-];
-const fallbackRegistrationTeamJoinModeOptions = [
-  { value: 'INVITE_ONLY', label: 'Invite only' },
-  { value: 'APPLY', label: 'Apply' },
-  { value: 'OPEN', label: 'Open' },
-];
-
 const emptyRegistrationTeamMember = (): RegistrationTeamMemberDraft => ({
   memberName: '',
   employeeNo: '',
@@ -165,6 +173,8 @@ type CompetitionCreateDraftStorage = {
 };
 
 type CompetitionRegistrationDraftStorage = {
+  competitionTitle?: string;
+  competitionUuid?: string;
   registrationId?: number;
   currentStep?: number;
   acceptedDocumentKeys?: string[];
@@ -183,8 +193,6 @@ const COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY = 'lumira.registration.create.d
 const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
   newTeam: {
     teamType: 'GENERAL',
-    visibility: 'PRIVATE',
-    joinMode: 'INVITE_ONLY',
     initialMembers: [],
   },
 };
@@ -227,6 +235,8 @@ const useCompetitionDictFallbackOptions = () => {
   return useMemo(() => ({
     categoryOptions: isEnglish ? enCategoryOptions : zhCategoryOptions,
     levelOptions: isEnglish ? enLevelOptions : zhLevelOptions,
+    registrationTeamRoleLabel: isEnglish ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel,
+    registrationTeamTypeOptions: isEnglish ? enFallbackRegistrationTeamTypeOptions : zhFallbackRegistrationTeamTypeOptions,
   }), [isEnglish]);
 };
 
@@ -801,10 +811,12 @@ const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationForm
   const materials = values.materials || {};
   return Boolean(
     toPositiveId(values.competitionId)
+      || Object.values(values.registrationExtraValues || {}).some((value) => value !== undefined && value !== null && String(value).trim())
       || toPositiveId(values.teamId)
       || trimOptional(values.newTeamName)
       || trimOptional(values.newTeam?.avatarUrl)
       || trimOptional(values.newTeam?.description)
+      || Object.values(values.newTeam?.extraValues || {}).some((value) => value !== undefined && value !== null && String(value).trim())
       || members.some((member) => (
         trimOptional(member.memberName)
         || trimOptional(member.employeeNo)
@@ -815,6 +827,7 @@ const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationForm
       || toPositiveId(values.projectId)
       || trimOptional(values.newProjectTitle)
       || trimOptional(values.newProjectDescription)
+      || Object.values(values.newProjectExtraValues || {}).some((value) => value !== undefined && value !== null && String(value).trim())
       || Object.values(materials).some((value) => value !== undefined && value !== null && String(value).trim())
   );
 };
@@ -1726,26 +1739,33 @@ const MaterialFileUploadInput = ({
 };
 
 type RegistrationCollectedField = {
+  scope?: Extract<CompetitionConfigItemType, 'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'>;
   itemKey: string;
   title: string;
   fieldType?: string;
   placeholder?: string;
   required?: boolean;
   options?: string;
-  standardMemberKey?: keyof RegistrationTeamMemberDraft;
+};
+
+type RegistrationCollectedFieldSplit = {
+  allFields: RegistrationCollectedField[];
+  customFields: RegistrationCollectedField[];
+  overrides: Map<string, RegistrationCollectedField>;
 };
 
 const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
-  { itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', required: true, standardMemberKey: 'memberName' },
-  { itemKey: 'employeeNo', title: '工号', fieldType: 'TEXT', standardMemberKey: 'employeeNo' },
-  { itemKey: 'departmentName', title: '部门', fieldType: 'TEXT', standardMemberKey: 'departmentName' },
-  { itemKey: 'role', title: '角色', fieldType: 'ROLE', standardMemberKey: 'role' },
-  { itemKey: 'remark', title: '备注', fieldType: 'TEXTAREA', standardMemberKey: 'remark' },
+  { scope: 'MEMBER_FIELD', itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', required: true },
+  { scope: 'MEMBER_FIELD', itemKey: 'employeeNo', title: '工号', fieldType: 'TEXT' },
+  { scope: 'MEMBER_FIELD', itemKey: 'departmentName', title: '部门', fieldType: 'TEXT' },
+  { scope: 'MEMBER_FIELD', itemKey: 'role', title: '角色', fieldType: 'ROLE' },
+  { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '备注', fieldType: 'TEXTAREA' },
 ];
 
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
   const metadata = parseConfigItemMetadata(item.contentJson);
   return {
+    scope: item.itemType as RegistrationCollectedField['scope'],
     itemKey: item.itemKey,
     title: item.title || item.itemKey,
     fieldType: metadata.fieldType || 'TEXT',
@@ -1755,6 +1775,81 @@ const toRegistrationCollectedField = (item: CompetitionConfigItem): Registration
   };
 };
 
+const normalizeCollectedFieldConfigKey = (value?: string) => (value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+const standardFieldAliasMap = {
+  TEAM_FIELD: {
+    teamName: ['teamname', 'name'],
+    teamType: ['teamtype', 'type'],
+    avatarUrl: ['avatarurl', 'avatar'],
+    description: ['description', 'teamdescription', 'intro'],
+  },
+  MEMBER_FIELD: {
+    memberName: ['membername', 'name'],
+    employeeNo: ['employeeno', 'studentno', 'memberno'],
+    departmentName: ['departmentname', 'department'],
+    role: ['role'],
+    remark: ['remark', 'note'],
+  },
+  PROJECT_FIELD: {
+    title: ['projecttitle', 'projectname', 'title', 'name'],
+    description: ['projectdescription', 'description', 'intro'],
+  },
+} as const;
+
+const resolveStandardCollectedFieldKey = (
+  scope: keyof typeof standardFieldAliasMap,
+  itemKey?: string,
+) => {
+  const normalizedItemKey = normalizeCollectedFieldConfigKey(itemKey);
+  return Object.entries(standardFieldAliasMap[scope]).find(([, aliases]) => aliases.includes(normalizedItemKey))?.[0];
+};
+
+const mergeCollectedField = (
+  fallbackField: RegistrationCollectedField,
+  override?: RegistrationCollectedField,
+): RegistrationCollectedField => ({
+  ...fallbackField,
+  ...(override || {}),
+  itemKey: fallbackField.itemKey,
+  title: override?.title || fallbackField.title,
+  fieldType: override?.fieldType || fallbackField.fieldType,
+  placeholder: override?.placeholder || fallbackField.placeholder,
+  required: override?.required ?? fallbackField.required,
+  options: override?.options || fallbackField.options,
+});
+
+const splitConfiguredRegistrationFields = (
+  items: CompetitionConfigItem[],
+  scope: Extract<CompetitionConfigItemType, 'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'>,
+): RegistrationCollectedFieldSplit => {
+  const configuredFields = items
+    .filter((item) => item.enabled !== false && item.itemType === scope)
+    .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+    .map(toRegistrationCollectedField);
+
+  if (scope === 'REGISTRATION_FIELD') {
+    return {
+      allFields: configuredFields,
+      customFields: configuredFields,
+      overrides: new Map(),
+    };
+  }
+
+  const overrides = new Map<string, RegistrationCollectedField>();
+  const customFields: RegistrationCollectedField[] = [];
+  configuredFields.forEach((field) => {
+    const standardKey = resolveStandardCollectedFieldKey(scope, field.itemKey);
+    if (standardKey) {
+      overrides.set(standardKey, field);
+      return;
+    }
+    customFields.push(field);
+  });
+
+  return { allFields: configuredFields, customFields, overrides };
+};
+
 const parseConfigFieldOptions = (options?: string) =>
   (options || '')
     .split(/\r?\n/)
@@ -1762,11 +1857,22 @@ const parseConfigFieldOptions = (options?: string) =>
     .filter(Boolean)
     .map((item) => ({ label: item, value: item }));
 
-const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField) => {
+const buildCollectedFieldRule = (field: RegistrationCollectedField) =>
+  field.required ? [{ required: true, message: `请输入${field.title}` }] : undefined;
+
+const renderRegistrationCollectedFieldInput = (
+  field: RegistrationCollectedField,
+  options?: { teamTypeOptions?: SelectProps['options'] },
+) => {
   const placeholder = field.placeholder || field.title || undefined;
+  if (normalizeCollectedFieldConfigKey(field.itemKey) === 'teamtype' && options?.teamTypeOptions?.length) {
+    return <Select options={options.teamTypeOptions} placeholder={placeholder} />;
+  }
   switch ((field.fieldType || 'TEXT').toUpperCase()) {
-    case 'ROLE':
-      return <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />;
+    case 'ROLE': {
+      const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
+      return <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }))} />;
+    }
     case 'NUMBER':
       return <InputNumber min={0} style={{ width: '100%' }} placeholder={placeholder} />;
     case 'TEXTAREA':
@@ -1784,22 +1890,45 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
   }
 };
 
-const renderRegistrationTeamMemberExtraInput = (field: {
-  fieldKey: string;
-  fieldLabel: string;
-  fieldType?: string;
-  placeholder?: string;
-  required?: boolean;
-  options?: string;
-}) =>
-  renderRegistrationCollectedFieldInput({
-    itemKey: field.fieldKey,
-    title: field.fieldLabel,
-    fieldType: field.fieldType,
-    placeholder: field.placeholder,
-    required: field.required,
-    options: field.options,
-  });
+const resolveMemberStandardFieldKey = (itemKey?: string) =>
+  resolveStandardCollectedFieldKey('MEMBER_FIELD', itemKey) as keyof Pick<
+    RegistrationTeamMemberDraft,
+    'memberName' | 'employeeNo' | 'departmentName' | 'role' | 'remark'
+  > | undefined;
+
+const resolveMemberFieldFormName = (field: RegistrationCollectedField) => {
+  const standardFieldKey = resolveMemberStandardFieldKey(field.itemKey);
+  return standardFieldKey || ['extraValues', field.itemKey];
+};
+
+const getMemberCollectedFieldValue = (member: RegistrationTeamMemberDraft, field: RegistrationCollectedField) => {
+  const standardFieldKey = resolveMemberStandardFieldKey(field.itemKey);
+  return standardFieldKey ? member[standardFieldKey] : member.extraValues?.[field.itemKey];
+};
+
+const setMemberCollectedFieldValue = (
+  member: RegistrationTeamMemberDraft,
+  field: RegistrationCollectedField,
+  value: unknown,
+): RegistrationTeamMemberDraft => {
+  const standardFieldKey = resolveMemberStandardFieldKey(field.itemKey);
+  if (standardFieldKey) {
+    return {
+      ...member,
+      [standardFieldKey]: value,
+    } as RegistrationTeamMemberDraft;
+  }
+  const nextExtraValues = { ...(member.extraValues || {}) };
+  if (value === undefined || value === null || (typeof value === 'string' && !value.trim())) {
+    delete nextExtraValues[field.itemKey];
+  } else {
+    nextExtraValues[field.itemKey] = value;
+  }
+  return {
+    ...member,
+    extraValues: nextExtraValues,
+  };
+};
 
 const normalizeSnapshotValue = (value: unknown): unknown => {
   if (value == null) {
@@ -1929,6 +2058,22 @@ const createRegistrationWizardSearch = (stepIndex: number) => {
   return `?${params.toString()}`;
 };
 
+const sanitizeRegistrationTeamDraft = (teamDraft?: RegistrationTeamDraft): RegistrationTeamDraft | undefined => {
+  if (!teamDraft) {
+    return undefined;
+  }
+  const { visibility: _visibility, joinMode: _joinMode, ...rest } = teamDraft as RegistrationTeamDraft & {
+    visibility?: string;
+    joinMode?: string;
+  };
+  return rest;
+};
+
+const sanitizeRegistrationFormValues = (values: Partial<RegistrationFormValues>): Partial<RegistrationFormValues> => ({
+  ...values,
+  newTeam: sanitizeRegistrationTeamDraft(values.newTeam),
+});
+
 const getAllowedRegistrationWizardStep = (
   requestedStep: number,
   values: Partial<RegistrationFormValues>,
@@ -1963,6 +2108,7 @@ const CompetitionRegistrationPage = () => {
   const location = useLocation();
   const responsive = useResponsive();
   const registrationActionPermission = useActionPermission();
+  const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const registrationActionRef = useRef<ActionType | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
@@ -1979,6 +2125,7 @@ const CompetitionRegistrationPage = () => {
   const [paymentStatus, setPaymentStatus] = useState<string>();
   const [registrationDraftSavedAt, setRegistrationDraftSavedAt] = useState<number>();
   const [registrationDraftHydrated, setRegistrationDraftHydrated] = useState(false);
+  const [registrationCompetitionFallback, setRegistrationCompetitionFallback] = useState<CompetitionRecord>();
   const [teamAvatarUploading, setTeamAvatarUploading] = useState(false);
   const confirmedTeamIdRef = useRef<number | undefined>(undefined);
   const confirmedProjectIdRef = useRef<number | undefined>(undefined);
@@ -1988,37 +2135,76 @@ const CompetitionRegistrationPage = () => {
   const [memberForm] = Form.useForm<RegistrationTeamMemberDraft>();
   const [memberModalOpen, setMemberModalOpen] = useState(false);
   const [editingMemberIndex, setEditingMemberIndex] = useState<number | undefined>(undefined);
-  const { options: teamTypeOptions } = useDictOptions('team_type', fallbackRegistrationTeamTypeOptions);
-  const { options: visibilityOptions } = useDictOptions('team_visibility', fallbackRegistrationTeamVisibilityOptions);
-  const { options: joinModeOptions } = useDictOptions('team_join_mode', fallbackRegistrationTeamJoinModeOptions);
+  const [memberEditorKey, setMemberEditorKey] = useState<RegistrationMemberEditorKey>();
+  const [memberEditorDraft, setMemberEditorDraft] = useState<RegistrationTeamMemberDraft>();
+  const [memberEditorErrors, setMemberEditorErrors] = useState<Record<string, string>>({});
+  const { options: teamTypeOptions } = useDictOptions('team_type', fallbackDictOptions.registrationTeamTypeOptions);
   const selectedCompetitionId = Form.useWatch('competitionId', form);
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], form) || []) as RegistrationTeamMemberDraft[];
+  const registrationCompetitionOptions = useMemo(
+    () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
+    [competitions, registrationCompetitionFallback],
+  );
   const fields = useMemo(
     () => enrichCompetitionStageFormFields(parseFormFields(stageForm), stageMaterialConfigs),
     [stageForm, stageMaterialConfigs],
   );
-  const selectedCompetition = competitions.find((item) => item.id === toPositiveId(selectedCompetitionId));
-  const memberRegistrationFields = useMemo(() => {
-    const configuredFields = registrationFields
-      .filter((item) => item.enabled !== false && item.itemType === 'MEMBER_FIELD')
-      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
-      .map(toRegistrationCollectedField);
-    return configuredFields.length ? configuredFields : fallbackRegistrationMemberFields;
-  }, [registrationFields]);
-  const customTeamMemberFields = useMemo(
-    () =>
-      memberRegistrationFields === fallbackRegistrationMemberFields
-        ? []
-        : memberRegistrationFields.map((field) => ({
-            fieldKey: field.itemKey,
-            fieldLabel: field.title,
-            fieldType: field.fieldType,
-            placeholder: field.placeholder,
-            required: field.required,
-            options: field.options,
-          })),
-    [memberRegistrationFields],
+  const selectedCompetition = registrationCompetitionOptions.find((item) => item.id === toPositiveId(selectedCompetitionId));
+  const registrationScopeFields = useMemo(
+    () => splitConfiguredRegistrationFields(registrationFields, 'REGISTRATION_FIELD').customFields,
+    [registrationFields],
+  );
+  const teamFieldSplit = useMemo(
+    () => splitConfiguredRegistrationFields(registrationFields, 'TEAM_FIELD'),
+    [registrationFields],
+  );
+  const memberFieldSplit = useMemo(
+    () => splitConfiguredRegistrationFields(registrationFields, 'MEMBER_FIELD'),
+    [registrationFields],
+  );
+  const projectFieldSplit = useMemo(
+    () => splitConfiguredRegistrationFields(registrationFields, 'PROJECT_FIELD'),
+    [registrationFields],
+  );
+  const defaultMemberRegistrationFields = useMemo(
+    () => [
+      ...fallbackRegistrationMemberFields.map((field) => mergeCollectedField(field, memberFieldSplit.overrides.get(field.itemKey))),
+      ...memberFieldSplit.customFields,
+    ],
+    [memberFieldSplit.customFields, memberFieldSplit.overrides],
+  );
+  const effectiveMemberRegistrationFields = useMemo(
+    () => (memberFieldSplit.allFields.length ? memberFieldSplit.allFields : defaultMemberRegistrationFields),
+    [defaultMemberRegistrationFields, memberFieldSplit.allFields],
+  );
+  const memberRoleOptions = useMemo(() => {
+    const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
+    return registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }));
+  }, []);
+  const teamNameField = useMemo(
+    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', fieldType: 'TEXT', required: true }, teamFieldSplit.overrides.get('teamName')),
+    [teamFieldSplit.overrides],
+  );
+  const teamTypeField = useMemo(
+    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'teamType', title: '团队类型', fieldType: 'SELECT' }, teamFieldSplit.overrides.get('teamType')),
+    [teamFieldSplit.overrides],
+  );
+  const teamAvatarField = useMemo(
+    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'avatarUrl', title: '团队头像' }, teamFieldSplit.overrides.get('avatarUrl')),
+    [teamFieldSplit.overrides],
+  );
+  const teamDescriptionField = useMemo(
+    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'description', title: '团队简介', fieldType: 'TEXTAREA' }, teamFieldSplit.overrides.get('description')),
+    [teamFieldSplit.overrides],
+  );
+  const projectTitleField = useMemo(
+    () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', required: true }, projectFieldSplit.overrides.get('title')),
+    [projectFieldSplit.overrides],
+  );
+  const projectDescriptionField = useMemo(
+    () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA' }, projectFieldSplit.overrides.get('description')),
+    [projectFieldSplit.overrides],
   );
   const registrationDocumentStates = useMemo(
     () =>
@@ -2073,7 +2259,7 @@ const CompetitionRegistrationPage = () => {
     'aiadc:stage:manage',
     'payment:order:view',
   ]);
-  const collectRegistrationValues = useCallback(() => ({
+  const collectRegistrationValues = useCallback(() => sanitizeRegistrationFormValues({
     ...defaultRegistrationFormValues,
     ...(form.getFieldsValue(true) as Partial<RegistrationFormValues>),
   }), [form]);
@@ -2085,7 +2271,10 @@ const CompetitionRegistrationPage = () => {
     nextPaymentStatus = paymentStatus,
   ) => {
     const savedAt = Date.now();
+    const latestDraft = latestRegistrationDraftRef.current;
     const draftState: CompetitionRegistrationDraftStorage = {
+      competitionTitle: selectedCompetition?.title || latestDraft?.competitionTitle,
+      competitionUuid: selectedCompetition?.uuid || latestDraft?.competitionUuid,
       registrationId: nextRegistrationId,
       currentStep: nextStep,
       acceptedDocumentKeys: nextAcceptedDocumentKeys,
@@ -2093,15 +2282,15 @@ const CompetitionRegistrationPage = () => {
       confirmedProjectId: confirmedProjectIdRef.current,
       paymentStatus: nextPaymentStatus,
       savedAt,
-      values: {
+      values: sanitizeRegistrationFormValues({
         ...defaultRegistrationFormValues,
         ...nextValues,
-      },
+      }),
     };
     writeCompetitionRegistrationDraft(draftState);
     setRegistrationDraftSavedAt(savedAt);
     return draftState;
-  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationId, step]);
+  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationId, selectedCompetition?.title, selectedCompetition?.uuid, step]);
   const persistRegistrationDraft = useCallback((
     nextValues: Partial<RegistrationFormValues> = collectRegistrationValues(),
     nextStep = step,
@@ -2145,10 +2334,10 @@ const CompetitionRegistrationPage = () => {
     writeCurrentRegistrationDraftState,
   ]);
   const hydrateRegistrationDraft = useCallback((draft?: CompetitionRegistrationDraftStorage) => {
-    const values = {
+    const values = sanitizeRegistrationFormValues({
       ...defaultRegistrationFormValues,
       ...(draft?.values || {}),
-    };
+    });
     form.resetFields();
     form.setFieldsValue(values);
     confirmedTeamIdRef.current = draft?.confirmedTeamId;
@@ -2157,6 +2346,13 @@ const CompetitionRegistrationPage = () => {
     setPaymentStatus(draft?.paymentStatus);
     setAcceptedDocumentKeys(draft?.acceptedDocumentKeys || []);
     setRegistrationDraftSavedAt(draft?.savedAt);
+    setRegistrationCompetitionFallback(buildRegistrationCompetitionFallback(
+      toPositiveId(values.competitionId),
+      {
+        competitionUuid: draft?.competitionUuid,
+        competitionTitle: draft?.competitionTitle,
+      },
+    ));
     latestRegistrationDraftRef.current = draft;
     return values;
   }, [form]);
@@ -2281,10 +2477,57 @@ const CompetitionRegistrationPage = () => {
     registrationId,
   ]);
 
+  useEffect(() => {
+    let mounted = true;
+    const competitionId = toPositiveId(selectedCompetitionId);
+    if (!competitionId) {
+      setRegistrationCompetitionFallback(undefined);
+      return () => {
+        mounted = false;
+      };
+    }
+    if (competitions.some((item) => item.id === competitionId)) {
+      setRegistrationCompetitionFallback(undefined);
+      return () => {
+        mounted = false;
+      };
+    }
+    const persistedFallback = buildRegistrationCompetitionFallback(competitionId, {
+      competitionUuid: latestRegistrationDraftRef.current?.competitionUuid,
+      competitionTitle: latestRegistrationDraftRef.current?.competitionTitle,
+    });
+    if (persistedFallback) {
+      setRegistrationCompetitionFallback(persistedFallback);
+      if (persistedFallback.uuid) {
+        return () => {
+          mounted = false;
+        };
+      }
+    }
+    void getCompetition(competitionId, API_OPTS.SILENT)
+      .then((competition) => {
+        if (mounted) {
+          setRegistrationCompetitionFallback(competition);
+        }
+      })
+      .catch(() => {
+        if (mounted && !persistedFallback) {
+          setRegistrationCompetitionFallback(undefined);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [competitions, selectedCompetitionId]);
+
 
   useEffect(() => {
     let mounted = true;
-    const competitionUuid = selectedCompetition?.uuid;
+    const draftCompetitionState = latestRegistrationDraftRef.current;
+    const competitionUuid = selectedCompetition?.uuid
+      || (toPositiveId(draftCompetitionState?.values?.competitionId) === toPositiveId(selectedCompetitionId)
+        ? draftCompetitionState?.competitionUuid
+        : undefined);
     setRegistrationDocuments([]);
     setRegistrationFields([]);
     setStageMaterialConfigs([]);
@@ -2405,6 +2648,7 @@ const CompetitionRegistrationPage = () => {
     setStageForm(undefined);
     setMemberModalOpen(false);
     setEditingMemberIndex(undefined);
+    cancelMemberInlineEditor();
     setWizardStep(draft?.currentStep || 0, false, {
       acceptedDocumentKeys: draft?.acceptedDocumentKeys || [],
       registrationId: draft?.registrationId,
@@ -2451,7 +2695,7 @@ const CompetitionRegistrationPage = () => {
     setLoading(true);
     try {
       if (step === 0) {
-        await form.validateFields(['competitionId']);
+        await form.validateFields();
         if (registrationDocumentsLoading) {
           message.info('报名文书仍在加载，请稍后');
           return;
@@ -2459,7 +2703,7 @@ const CompetitionRegistrationPage = () => {
         if (!allRegistrationDocumentsAccepted) {
           message.info(
             activeRegistrationDocumentCountdown > 0
-              ? `Please finish reading the terms. ${activeRegistrationDocumentCountdown}s remaining before confirmation.`
+              ? `请先完成文书阅读，还需等待 ${activeRegistrationDocumentCountdown} 秒后才能确认。`
               : '请先确认阅读文书条款',
           );
           return;
@@ -2474,17 +2718,22 @@ const CompetitionRegistrationPage = () => {
           message.error('请输入团队名称');
           return;
         }
+        if (memberEditorKey !== undefined) {
+          message.error('请先保存当前正在编辑的成员信息');
+          return;
+        }
         const members = normalizeRegistrationMembers(form.getFieldValue(['newTeam', 'initialMembers']) as RegistrationTeamMemberDraft[]);
         if (!members.length) {
           message.error('请至少填写一位参赛成员信息');
           return;
         }
         form.setFieldValue(['newTeam', 'initialMembers'], members);
-        await form.validateFields([['newTeamName']]);
+        await form.validateFields();
         form.setFieldValue('teamId', undefined);
         confirmedTeamIdRef.current = undefined;
         setWizardStep(2);
       } else if (step === 2) {
+        await form.validateFields();
         let projectId = toPositiveId(form.getFieldValue('projectId')) || confirmedProjectIdRef.current;
         if (!projectId) {
           const title = form.getFieldValue('newProjectTitle')?.trim();
@@ -2509,19 +2758,24 @@ const CompetitionRegistrationPage = () => {
           return;
         }
         const teamDraft = (form.getFieldValue('newTeam') || {}) as RegistrationTeamDraft;
+        const registrationExtraValues = normalizeSnapshotValue(form.getFieldValue('registrationExtraValues')) as Record<string, unknown> | undefined;
+        const projectExtraValues = normalizeSnapshotValue(form.getFieldValue('newProjectExtraValues')) as Record<string, unknown> | undefined;
         const teamSnapshot: RegistrationSnapshotTeamPayload = {
           teamName: form.getFieldValue('newTeamName')?.trim(),
           teamType: normalizeSnapshotValue(teamDraft.teamType) as string | undefined,
           avatarUrl: normalizeSnapshotValue(teamDraft.avatarUrl) as string | undefined,
-          visibility: normalizeSnapshotValue(teamDraft.visibility) as string | undefined,
-          joinMode: normalizeSnapshotValue(teamDraft.joinMode) as string | undefined,
           description: normalizeSnapshotValue(teamDraft.description) as string | undefined,
           extraValues: normalizeSnapshotValue(teamDraft.extraValues) as Record<string, unknown> | undefined,
         };
+        const projectSnapshot: RegistrationProjectSnapshotPayload | undefined = projectExtraValues && Object.keys(projectExtraValues).length
+          ? { extraValues: projectExtraValues }
+          : undefined;
         const registrationPayload: RegistrationUpsertPayload = {
           competitionId,
           projectId,
+          registrationExtraValues,
           teamSnapshot,
+          projectSnapshot,
           members: normalizeRegistrationMembers(teamDraft.initialMembers),
         };
         const registration = registrationId
@@ -2581,13 +2835,18 @@ const CompetitionRegistrationPage = () => {
     }
   };
 
-  const openMemberModal = (index?: number) => {
+  const resetMemberEditor = useCallback(() => {
+    setMemberEditorKey(undefined);
+    setMemberEditorDraft(undefined);
+    setMemberEditorErrors({});
+  }, []);
+
+  const openMemberEditor = useCallback((key: RegistrationMemberEditorKey) => {
     const currentMembers = (form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[];
-    setEditingMemberIndex(index);
-    memberForm.resetFields();
-    memberForm.setFieldsValue(index === undefined ? emptyRegistrationTeamMember() : currentMembers[index] || emptyRegistrationTeamMember());
-    setMemberModalOpen(true);
-  };
+    setMemberEditorKey(key);
+    setMemberEditorDraft(key === 'new' ? emptyRegistrationTeamMember() : currentMembers[key] || emptyRegistrationTeamMember());
+    setMemberEditorErrors({});
+  }, [form]);
 
   const confirmMemberModal = async () => {
     const values = await memberForm.validateFields();
@@ -2628,9 +2887,20 @@ const CompetitionRegistrationPage = () => {
     });
   };
 
+  const getMemberDisplayValues = (member: RegistrationTeamMemberDraft) =>
+    Array.from(
+      new Set(
+        effectiveMemberRegistrationFields
+          .map((field) => normalizeDisplayText(getMemberCollectedFieldValue(member, field)))
+          .filter(Boolean),
+      ),
+    ) as string[];
+
   const getMemberSummary = (member: RegistrationTeamMemberDraft, index: number) => {
+    const displayValues = getMemberDisplayValues(member);
     const extraValues = member.extraValues || {};
     return (
+      displayValues[0] ||
       normalizeDisplayText(member.memberName) ||
       normalizeDisplayText(extraValues.name) ||
       normalizeDisplayText(extraValues.memberName) ||
@@ -2639,9 +2909,109 @@ const CompetitionRegistrationPage = () => {
     );
   };
 
+  const getMemberDescription = (member: RegistrationTeamMemberDraft) => {
+    const displayValues = getMemberDisplayValues(member);
+    return displayValues.slice(1).join(' / ') || '已填写报名采集信息';
+  };
+
+  const updateMemberEditorField = useCallback((field: RegistrationCollectedField, value: unknown) => {
+    setMemberEditorDraft((current) => (current ? setMemberCollectedFieldValue(current, field, value) : current));
+    setMemberEditorErrors((current) => {
+      if (!current[field.itemKey]) {
+        return current;
+      }
+      const nextErrors = { ...current };
+      delete nextErrors[field.itemKey];
+      return nextErrors;
+    });
+  }, []);
+
+  const validateMemberDraft = useCallback((member?: RegistrationTeamMemberDraft) => {
+    if (!member) {
+      return { memberName: '请填写成员信息' };
+    }
+    return effectiveMemberRegistrationFields.reduce<Record<string, string>>((errors, field) => {
+      if (field.required && !hasCollectedValue(getMemberCollectedFieldValue(member, field))) {
+        errors[field.itemKey] = `请填写${field.title}`;
+      }
+      return errors;
+    }, {});
+  }, [effectiveMemberRegistrationFields]);
+
+  const saveMemberEditor = useCallback(() => {
+    const nextErrors = validateMemberDraft(memberEditorDraft);
+    if (Object.keys(nextErrors).length) {
+      setMemberEditorErrors(nextErrors);
+      return;
+    }
+    const [member] = normalizeRegistrationMembers(memberEditorDraft ? [memberEditorDraft] : []);
+    if (!member) {
+      message.error('请填写成员信息');
+      return;
+    }
+    const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
+    if (memberEditorKey === 'new') {
+      currentMembers.push(member);
+    } else if (memberEditorKey !== undefined) {
+      currentMembers[memberEditorKey] = member;
+    }
+    form.setFieldValue(['newTeam', 'initialMembers'], currentMembers);
+    persistRegistrationDraft({
+      ...collectRegistrationValues(),
+      newTeam: {
+        ...(form.getFieldValue('newTeam') || {}),
+        initialMembers: currentMembers,
+      },
+    });
+    setMemberEditorKey(undefined);
+    setMemberEditorDraft(undefined);
+    setMemberEditorErrors({});
+  }, [collectRegistrationValues, form, memberEditorDraft, memberEditorKey, persistRegistrationDraft, validateMemberDraft]);
+
+  const openMemberInlineEditor = useCallback((key: RegistrationMemberEditorKey) => {
+    const currentMembers = (form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[];
+    setMemberEditorKey(key);
+    setMemberEditorDraft(key === 'new' ? emptyRegistrationTeamMember() : currentMembers[key] || emptyRegistrationTeamMember());
+    setMemberEditorErrors({});
+  }, [form]);
+
+  const cancelMemberInlineEditor = useCallback(() => {
+    setMemberEditorKey(undefined);
+    setMemberEditorDraft(undefined);
+    setMemberEditorErrors({});
+  }, []);
+
+  const removeMemberInline = useCallback((index: number) => {
+    removeMember(index);
+    setMemberEditorKey((current) => {
+      if (current === undefined || current === 'new') {
+        return current;
+      }
+      return current > index ? current - 1 : current;
+    });
+  }, [removeMember]);
+
+  useEffect(() => {
+    if (typeof memberEditorKey === 'number' && memberEditorKey >= registrationMembers.length) {
+      cancelMemberInlineEditor();
+    }
+  }, [cancelMemberInlineEditor, memberEditorKey, registrationMembers.length]);
+
+  const getMemberFieldDisplayText = useCallback((member: RegistrationTeamMemberDraft, field: RegistrationCollectedField) => {
+    const fieldValue = getMemberCollectedFieldValue(member, field);
+    const fieldType = (field.fieldType || 'TEXT').toUpperCase();
+    if (fieldType === 'ROLE') {
+      return resolveOptionLabel(buildOptionLabelMap(memberRoleOptions), fieldValue) || '-';
+    }
+    if (fieldType === 'SELECT') {
+      return resolveOptionLabel(buildOptionLabelMap(parseConfigFieldOptions(field.options)), fieldValue) || '-';
+    }
+    return normalizeDisplayText(fieldValue) || '-';
+  }, [memberRoleOptions]);
+
   const competitionTitleMap = useMemo(
-    () => new Map(competitions.map((item) => [item.id, item.title || item.code])),
-    [competitions],
+    () => new Map(registrationCompetitionOptions.map((item) => [item.id, item.title || item.code])),
+    [registrationCompetitionOptions],
   );
   const canViewAllRegistrations = useMemo(() => {
     const matchedScopes = (initialState?.currentUser?.dataScopes || []).filter(
@@ -2652,7 +3022,7 @@ const CompetitionRegistrationPage = () => {
   const nextButtonDisabled = step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted);
   const canAdvanceRegistration = step <= 2 ? canCreateRegistration : canUpdateRegistration;
   const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
-    ? `Next (${pendingRegistrationDocumentCount} remaining)`
+    ? `下一步（剩余 ${pendingRegistrationDocumentCount} 项）`
     : '\u4e0b\u4e00\u6b65';
 
   const registrationColumns = useMemo<ProColumns<CompetitionRegistrationRecord>[]>(
@@ -2787,97 +3157,246 @@ const CompetitionRegistrationPage = () => {
     );
   }
 
+  const renderRegistrationMemberManager = () => {
+    const memberTableMinWidth = Math.max(760, effectiveMemberRegistrationFields.length * 180 + 180);
+
+    const renderMemberEditorInput = (field: RegistrationCollectedField) => {
+      const fieldValue = memberEditorDraft ? getMemberCollectedFieldValue(memberEditorDraft, field) : undefined;
+      const placeholder = field.placeholder || field.title || undefined;
+      const fieldType = (field.fieldType || 'TEXT').toUpperCase();
+
+      switch (fieldType) {
+        case 'ROLE':
+          return (
+            <Select
+              value={normalizeOptionValue(fieldValue)}
+              options={memberRoleOptions}
+              placeholder={placeholder}
+              onChange={(value) => updateMemberEditorField(field, value)}
+            />
+          );
+        case 'NUMBER': {
+          const parsedNumber = typeof fieldValue === 'number'
+            ? fieldValue
+            : fieldValue === undefined || fieldValue === null || fieldValue === ''
+              ? undefined
+              : Number(fieldValue);
+          return (
+            <InputNumber
+              min={0}
+              style={{ width: '100%' }}
+              value={typeof parsedNumber === 'number' && Number.isFinite(parsedNumber) ? parsedNumber : undefined}
+              placeholder={placeholder}
+              onChange={(value) => updateMemberEditorField(field, value ?? undefined)}
+            />
+          );
+        }
+        case 'TEXTAREA':
+          return (
+            <Input.TextArea
+              autoSize={{ minRows: 1, maxRows: 3 }}
+              value={fieldValue == null ? undefined : String(fieldValue)}
+              placeholder={placeholder}
+              onChange={(event) => updateMemberEditorField(field, event.target.value)}
+            />
+          );
+        case 'DATE':
+          return (
+            <DatePicker
+              style={{ width: '100%' }}
+              value={dayjs.isDayjs(fieldValue) ? fieldValue : (typeof fieldValue === 'string' ? parseDateTime(fieldValue) : undefined)}
+              placeholder={placeholder}
+              onChange={(value) => updateMemberEditorField(field, value ?? undefined)}
+            />
+          );
+        case 'SELECT':
+          return (
+            <Select
+              value={normalizeOptionValue(fieldValue)}
+              options={parseConfigFieldOptions(field.options)}
+              placeholder={placeholder}
+              onChange={(value) => updateMemberEditorField(field, value)}
+            />
+          );
+        default:
+          return (
+            <Input
+              value={fieldValue == null ? undefined : String(fieldValue)}
+              placeholder={placeholder}
+              maxLength={fieldType === 'MOBILE' ? 20 : fieldType === 'EMAIL' ? 128 : undefined}
+              onChange={(event) => updateMemberEditorField(field, event.target.value)}
+            />
+          );
+      }
+    };
+
+    const renderMemberEditorRow = (rowKey: string | number) => (
+      <tr key={rowKey}>
+        {effectiveMemberRegistrationFields.map((field) => (
+          <td key={`${rowKey}-${field.itemKey}`}>
+            <div className="competition-registration-member-manager__editor">
+              {renderMemberEditorInput(field)}
+              {memberEditorErrors[field.itemKey] ? (
+                <div className="competition-registration-member-manager__cell-error">{memberEditorErrors[field.itemKey]}</div>
+              ) : null}
+            </div>
+          </td>
+        ))}
+        <td className="competition-registration-member-manager__actions">
+          <Space size={4} wrap>
+            <Button type="link" onClick={() => saveMemberEditor()}>
+              保存
+            </Button>
+            <Button type="link" onClick={cancelMemberInlineEditor}>
+              取消
+            </Button>
+          </Space>
+        </td>
+      </tr>
+    );
+
+    return (
+      <div className="competition-registration-member-manager">
+        <div className="competition-registration-member-manager__header">
+          <div>
+            <Typography.Title className="competition-registration-member-manager__title" level={5}>
+              成员管理
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              成员字段跟随赛事管理中的报名字段配置，支持逐行添加和编辑。
+            </Typography.Text>
+          </div>
+        </div>
+        <div className="competition-registration-member-manager__table-scroll">
+          <table className="competition-registration-member-manager__table" style={{ minWidth: `${memberTableMinWidth}px` }}>
+            <thead>
+              <tr>
+                {effectiveMemberRegistrationFields.map((field) => (
+                  <th key={field.itemKey}>
+                    {field.required ? <span className="competition-registration-member-manager__required">*</span> : null}
+                    {field.title}
+                  </th>
+                ))}
+                <th className="competition-registration-member-manager__actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registrationMembers.map((member, index) => (
+                memberEditorKey === index ? (
+                  renderMemberEditorRow(index)
+                ) : (
+                  <tr key={`member-${index}`}>
+                    {effectiveMemberRegistrationFields.map((field) => (
+                      <td key={`member-${index}-${field.itemKey}`}>
+                        <div className="competition-registration-member-manager__cell-text">
+                          {getMemberFieldDisplayText(member, field)}
+                        </div>
+                      </td>
+                    ))}
+                    <td className="competition-registration-member-manager__actions">
+                      <Space size={4} wrap>
+                        <Button type="link" disabled={memberEditorKey !== undefined} onClick={() => openMemberInlineEditor(index)}>
+                          编辑
+                        </Button>
+                        <Button danger type="link" disabled={memberEditorKey !== undefined} onClick={() => removeMemberInline(index)}>
+                          移除
+                        </Button>
+                      </Space>
+                    </td>
+                  </tr>
+                )
+              ))}
+              {memberEditorKey === 'new' ? renderMemberEditorRow('new-member') : null}
+              {!registrationMembers.length && memberEditorKey !== 'new' ? (
+                <tr>
+                  <td className="competition-registration-member-manager__empty" colSpan={effectiveMemberRegistrationFields.length + 1}>
+                    请先添加参赛成员，逐个确认成员信息。
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+        <Button
+          block
+          type="dashed"
+          className="competition-registration-member-manager__add"
+          disabled={memberEditorKey !== undefined}
+          icon={<PlusOutlined />}
+          onClick={() => openMemberInlineEditor('new')}
+        >
+          添加一位成员
+        </Button>
+      </div>
+    );
+  };
+
   const renderTeamForm = () => (
     <>
       <section className="competition-registration-team-form">
-        <Typography.Title className="competition-registration-team-form__title" level={5}>
-          团队信息（新建）
-        </Typography.Title>
-        <Form.Item name="newTeamName" label="团队名称" rules={[{ required: true, message: '请输入团队名称' }]}>
-          <Input maxLength={128} />
-        </Form.Item>
-        <Form.Item name={["newTeam", "teamType"]} label="团队类型">
-          <Select options={teamTypeOptions} />
-        </Form.Item>
-        <Form.Item name={["newTeam", "avatarUrl"]} hidden>
-          <Input />
-        </Form.Item>
-        <Form.Item label="团队头像">
-          <Space>
-            <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
-            <Upload
-              accept="image/*"
-              showUploadList={false}
-              disabled={teamAvatarUploading}
-              beforeUpload={async (file) => {
-                await uploadRegistrationTeamAvatar(file);
-                return Upload.LIST_IGNORE;
-              }}
-            >
-              <Button icon={<UploadOutlined />} loading={teamAvatarUploading}>
-                上传
-              </Button>
-            </Upload>
-            {newTeamAvatarUrl ? (
-              <Button
-                type="link"
-                onClick={() => {
-                  form.setFieldValue(["newTeam", "avatarUrl"], undefined);
-                  persistRegistrationDraft({
-                    ...collectRegistrationValues(),
-                    newTeam: {
-                      ...(form.getFieldValue('newTeam') || {}),
-                      avatarUrl: undefined,
-                    },
-                  });
+        <div className="competition-registration-team-form__fields">
+          <Typography.Title className="competition-registration-team-form__title" level={5}>
+            团队信息（新建）
+          </Typography.Title>
+          <Form.Item name="newTeamName" label={teamNameField.title} rules={buildCollectedFieldRule(teamNameField)}>
+            <Input maxLength={128} placeholder={teamNameField.placeholder || teamNameField.title} />
+          </Form.Item>
+          <Form.Item name={["newTeam", "teamType"]} label={teamTypeField.title} rules={buildCollectedFieldRule(teamTypeField)}>
+            {renderRegistrationCollectedFieldInput(teamTypeField, { teamTypeOptions })}
+          </Form.Item>
+          <Form.Item name={["newTeam", "avatarUrl"]} hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item label={teamAvatarField.title}>
+            <Space>
+              <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                disabled={teamAvatarUploading}
+                beforeUpload={async (file) => {
+                  await uploadRegistrationTeamAvatar(file);
+                  return Upload.LIST_IGNORE;
                 }}
               >
-                移除
-              </Button>
-            ) : null}
-          </Space>
-        </Form.Item>
-        <Form.Item name={["newTeam", "visibility"]} label="可见性">
-          <Select options={visibilityOptions} />
-        </Form.Item>
-        <Form.Item name={["newTeam", "joinMode"]} label="加入方式">
-          <Select options={joinModeOptions} />
-        </Form.Item>
-        <Form.Item name={["newTeam", "description"]} label="团队简介">
-          <Input.TextArea rows={3} maxLength={1000} />
-        </Form.Item>
-        <Form.Item label="参赛成员" required>
-          <Space direction="vertical" style={{ width: '100%' }} size={12}>
-            {registrationMembers.length ? (
-              registrationMembers.map((member, index) => (
-                <Card
-                  key={`${index}-${getMemberSummary(member, index)}`}
-                  size="small"
-                  title={getMemberSummary(member, index)}
-                  extra={
-                    <Space>
-                      <Button type="link" onClick={() => openMemberModal(index)}>
-                        编辑
-                      </Button>
-                      <Button danger type="link" onClick={() => removeMember(index)}>
-                        移除
-                      </Button>
-                    </Space>
-                  }
+                <Button icon={<UploadOutlined />} loading={teamAvatarUploading}>
+                  上传
+                </Button>
+              </Upload>
+              {newTeamAvatarUrl ? (
+                <Button
+                  type="link"
+                  onClick={() => {
+                    form.setFieldValue(["newTeam", "avatarUrl"], undefined);
+                    persistRegistrationDraft({
+                      ...collectRegistrationValues(),
+                      newTeam: {
+                        ...(form.getFieldValue('newTeam') || {}),
+                        avatarUrl: undefined,
+                      },
+                    });
+                  }}
                 >
-                  <Typography.Text type="secondary">
-                    {[member.employeeNo, member.departmentName, member.role, member.remark].map(normalizeDisplayText).filter(Boolean).join(' / ') || '已填写报名采集信息'}
-                  </Typography.Text>
-                </Card>
-              ))
-            ) : (
-              <Alert type="info" showIcon message="请点击添加成员，逐个确认参赛成员信息。" />
-            )}
-            <Button block icon={<PlusOutlined />} onClick={() => openMemberModal()}>
-              添加成员
-            </Button>
-          </Space>
-        </Form.Item>
+                  移除
+                </Button>
+              ) : null}
+            </Space>
+          </Form.Item>
+          <Form.Item name={["newTeam", "description"]} label={teamDescriptionField.title} rules={buildCollectedFieldRule(teamDescriptionField)}>
+            <Input.TextArea rows={3} maxLength={1000} placeholder={teamDescriptionField.placeholder || teamDescriptionField.title} />
+          </Form.Item>
+          {teamFieldSplit.customFields.map((field) => (
+            <Form.Item
+              key={field.itemKey}
+              name={['newTeam', 'extraValues', field.itemKey]}
+              label={field.title}
+              rules={buildCollectedFieldRule(field)}
+            >
+              {renderRegistrationCollectedFieldInput(field)}
+            </Form.Item>
+          ))}
+        </div>
+        {renderRegistrationMemberManager()}
         <div style={{ display: 'none' }}>
         <Form.List name={["newTeam", "initialMembers"]}>
           {(memberFields, { add, remove }) => (
@@ -2893,31 +3412,19 @@ const CompetitionRegistrationPage = () => {
                     </Button>
                   }
                 >
-                  <Form.Item name={[memberField.name, "memberName"]} label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
-                    <Input maxLength={128} />
-                  </Form.Item>
-                  <Form.Item name={[memberField.name, "employeeNo"]} label="工号">
-                    <Input maxLength={64} />
-                  </Form.Item>
-                  <Form.Item name={[memberField.name, "departmentName"]} label="部门">
-                    <Input maxLength={128} />
-                  </Form.Item>
-                  <Form.Item name={[memberField.name, "role"]} label="角色">
-                    <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
-                  </Form.Item>
-                  <Form.Item name={[memberField.name, "remark"]} label="备注">
-                    <Input.TextArea rows={2} maxLength={512} />
-                  </Form.Item>
-                  {customTeamMemberFields.map((field) => (
-                    <Form.Item
-                      key={field.fieldKey}
-                      name={[memberField.name, "extraValues", field.fieldKey]}
-                      label={field.fieldLabel}
-                      rules={[{ required: Boolean(field.required), message: `请输入${field.fieldLabel}` }]}
-                    >
-                      {renderRegistrationTeamMemberExtraInput(field)}
-                    </Form.Item>
-                  ))}
+                  {effectiveMemberRegistrationFields.map((field) => {
+                    const fieldName = resolveMemberFieldFormName(field);
+                    return (
+                      <Form.Item
+                        key={`${memberField.key}-${field.itemKey}`}
+                        name={Array.isArray(fieldName) ? [memberField.name, ...fieldName] : [memberField.name, fieldName]}
+                        label={field.title}
+                        rules={buildCollectedFieldRule(field)}
+                      >
+                        {renderRegistrationCollectedFieldInput(field)}
+                      </Form.Item>
+                    );
+                  })}
                 </Card>
               ))}
               <Button block icon={<PlusOutlined />} onClick={() => add(emptyRegistrationTeamMember())}>
@@ -2940,36 +3447,16 @@ const CompetitionRegistrationPage = () => {
         onOk={() => void confirmMemberModal()}
       >
         <Form<RegistrationTeamMemberDraft> form={memberForm} layout="vertical">
-          {customTeamMemberFields.length ? (
-            customTeamMemberFields.map((field) => (
-              <Form.Item
-                key={field.fieldKey}
-                name={['extraValues', field.fieldKey]}
-                label={field.fieldLabel}
-                rules={[{ required: Boolean(field.required), message: `请输入${field.fieldLabel}` }]}
-              >
-                {renderRegistrationTeamMemberExtraInput(field)}
-              </Form.Item>
-            ))
-          ) : (
-            <>
-              <Form.Item name="memberName" label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
-                <Input maxLength={128} />
-              </Form.Item>
-              <Form.Item name="employeeNo" label="工号">
-                <Input maxLength={64} />
-              </Form.Item>
-              <Form.Item name="departmentName" label="部门">
-                <Input maxLength={128} />
-              </Form.Item>
-              <Form.Item name="role" label="角色">
-                <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
-              </Form.Item>
-              <Form.Item name="remark" label="备注">
-                <Input.TextArea rows={2} maxLength={512} />
-              </Form.Item>
-            </>
-          )}
+          {effectiveMemberRegistrationFields.map((field) => (
+            <Form.Item
+              key={field.itemKey}
+              name={resolveMemberFieldFormName(field)}
+              label={field.title}
+              rules={buildCollectedFieldRule(field)}
+            >
+              {renderRegistrationCollectedFieldInput(field)}
+            </Form.Item>
+          ))}
         </Form>
       </Modal>
     </>
@@ -3000,7 +3487,7 @@ const CompetitionRegistrationPage = () => {
               {step === 0 ? (
                 <>
                   <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
-                    <Select options={competitions.map((item) => ({ label: item.title, value: item.id }))} />
+                    <Select options={registrationCompetitionOptions.map((item) => ({ label: item.title, value: item.id }))} />
                   </Form.Item>
                   {selectedCompetitionId ? (
                     <div className="competition-registration-documents">
@@ -3043,7 +3530,7 @@ const CompetitionRegistrationPage = () => {
                             <Alert
                               type="warning"
                               showIcon
-                              message={`Please finish ${pendingRegistrationDocumentCount} remaining agreements before continuing.`}
+                              message={`请先完成剩余 ${pendingRegistrationDocumentCount} 份协议确认后再继续。`}
                             />
                           ) : (
                             <Alert type="success" showIcon message="阅读文书条款已确认，可进入下一步。" />
@@ -3054,17 +3541,37 @@ const CompetitionRegistrationPage = () => {
                       )}
                     </div>
                   ) : null}
+                  {registrationScopeFields.map((field) => (
+                    <Form.Item
+                      key={field.itemKey}
+                      name={['registrationExtraValues', field.itemKey]}
+                      label={field.title}
+                      rules={buildCollectedFieldRule(field)}
+                    >
+                      {renderRegistrationCollectedFieldInput(field)}
+                    </Form.Item>
+                  ))}
                 </>
               ) : null}
               {step === 1 ? renderTeamForm() : null}
               {step === 2 ? (
                 <>
-                  <Form.Item name="newProjectTitle" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
-                    <Input maxLength={128} />
+                  <Form.Item name="newProjectTitle" label={projectTitleField.title} rules={buildCollectedFieldRule(projectTitleField)}>
+                    <Input maxLength={128} placeholder={projectTitleField.placeholder || projectTitleField.title} />
                   </Form.Item>
-                  <Form.Item name="newProjectDescription" label="项目简介">
-                    <Input.TextArea rows={3} maxLength={1000} />
+                  <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
+                    <Input.TextArea rows={3} maxLength={1000} placeholder={projectDescriptionField.placeholder || projectDescriptionField.title} />
                   </Form.Item>
+                  {projectFieldSplit.customFields.map((field) => (
+                    <Form.Item
+                      key={field.itemKey}
+                      name={['newProjectExtraValues', field.itemKey]}
+                      label={field.title}
+                      rules={buildCollectedFieldRule(field)}
+                    >
+                      {renderRegistrationCollectedFieldInput(field)}
+                    </Form.Item>
+                  ))}
                 </>
               ) : null}
               {step === 3 ? (
@@ -3741,6 +4248,9 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   const save = useCallback(async () => {
     const values = form.getFieldsValue(true);
+    if (!isConfigModuleReadyToSave(module.key, values.items || [])) {
+      return;
+    }
     try {
       const configItems = toConfigItems(values.items || []);
       const saved = module.key === 'files'

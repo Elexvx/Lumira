@@ -19,8 +19,11 @@ public final class CompetitionRegistrationDTO {
         private Long teamId;
         @NotNull
         private Long projectId;
+        private Map<String, Object> registrationExtraValues;
         @Valid
         private TeamSnapshotRequest teamSnapshot;
+        @Valid
+        private ProjectSnapshotRequest projectSnapshot;
         @Valid
         private List<MemberSnapshotRequest> members = new ArrayList<>();
 
@@ -30,8 +33,12 @@ public final class CompetitionRegistrationDTO {
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getProjectId() { return projectId; }
         public void setProjectId(Long projectId) { this.projectId = projectId; }
+        public Map<String, Object> getRegistrationExtraValues() { return registrationExtraValues; }
+        public void setRegistrationExtraValues(Map<String, Object> registrationExtraValues) { this.registrationExtraValues = registrationExtraValues; }
         public TeamSnapshotRequest getTeamSnapshot() { return teamSnapshot; }
         public void setTeamSnapshot(TeamSnapshotRequest teamSnapshot) { this.teamSnapshot = teamSnapshot; }
+        public ProjectSnapshotRequest getProjectSnapshot() { return projectSnapshot; }
+        public void setProjectSnapshot(ProjectSnapshotRequest projectSnapshot) { this.projectSnapshot = projectSnapshot; }
         public List<MemberSnapshotRequest> getMembers() { return members; }
         public void setMembers(List<MemberSnapshotRequest> members) { this.members = members == null ? new ArrayList<>() : members; }
     }
@@ -63,6 +70,13 @@ public final class CompetitionRegistrationDTO {
         public void setJoinMode(String joinMode) { this.joinMode = joinMode; }
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+        public Map<String, Object> getExtraValues() { return extraValues; }
+        public void setExtraValues(Map<String, Object> extraValues) { this.extraValues = extraValues; }
+    }
+
+    public static class ProjectSnapshotRequest {
+        private Map<String, Object> extraValues;
+
         public Map<String, Object> getExtraValues() { return extraValues; }
         public void setExtraValues(Map<String, Object> extraValues) { this.extraValues = extraValues; }
     }

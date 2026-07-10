@@ -8,6 +8,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
+import { normalizeAuthenticatedMenuTree } from '@/auth/authenticatedMenuTree';
 import { createLoginSessionBroadcastListener, resolveAuthorizedLoginRedirectTarget, resolveLoginPageRuntimeRedirectTarget } from '@/auth/loginRedirect';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
@@ -404,7 +405,10 @@ const useLoginFlowInteractions = ({
               };
             });
       const resources = {
-        menuTree: sessionResult.menuTree || initialState?.menuTree || [],
+        menuTree: normalizeAuthenticatedMenuTree(
+          sessionResult.menuTree || initialState?.menuTree || [],
+          sessionResult.currentUser,
+        ),
         availablePlugins: sessionResult.availablePlugins || initialState?.availablePlugins || [],
         ...baseAppearanceResources,
       };
@@ -435,7 +439,10 @@ const useLoginFlowInteractions = ({
 
       if (pluginBootstrapPromise) {
         void pluginBootstrapPromise.then((pluginBootstrap) => {
-          const nextMenuTree = pluginBootstrap.menuTree || resources.menuTree;
+          const nextMenuTree = normalizeAuthenticatedMenuTree(
+            pluginBootstrap.menuTree || resources.menuTree,
+            sessionResult.currentUser,
+          );
           const nextAvailablePlugins = pluginBootstrap.availablePlugins || resources.availablePlugins;
           setInitialState((prev: AppInitialState | undefined) =>
             prev
@@ -1447,18 +1454,25 @@ export const useLoginFlowRuntime = ({
               ...prev,
               currentUser: restoredSession.currentUser,
               securitySettings: restoredSession.securitySettings,
-              menuTree: restoredSession.menuTree ?? prev.menuTree,
+              menuTree:
+                restoredSession.menuTree !== undefined
+                  ? normalizeAuthenticatedMenuTree(restoredSession.menuTree, restoredSession.currentUser)
+                  : prev.menuTree,
               availablePlugins: restoredSession.availablePlugins ?? prev.availablePlugins,
             }
           : prev,
       );
+
+      const restoredMenuTree = restoredSession.menuTree !== undefined
+        ? normalizeAuthenticatedMenuTree(restoredSession.menuTree, restoredSession.currentUser)
+        : (initialState?.menuTree || []);
 
       if (!restoredSession.currentUser.requiresPasswordChange) {
         flowState.setRestoredPasswordChangeRequired(false);
         flowState.setPendingPasswordChangeLogin(null);
         flowState.setPendingPasswordChangeCurrentPassword('');
         flowState.forcedPasswordChangeForm.resetFields();
-        history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, restoredSession.menuTree || initialState?.menuTree || []));
+        history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, restoredMenuTree));
         return;
       }
 
@@ -1495,16 +1509,24 @@ export const useLoginFlowRuntime = ({
         return;
       }
       if (restoredSession?.currentUser && !restoredSession.currentUser.requiresPasswordChange) {
+        const restoredMenuTree = restoredSession.menuTree !== undefined
+          ? normalizeAuthenticatedMenuTree(restoredSession.menuTree, restoredSession.currentUser)
+          : (initialState?.menuTree || []);
         setInitialState((prev: AppInitialState | undefined) =>
           prev
             ? {
                 ...prev,
                 currentUser: restoredSession.currentUser,
                 securitySettings: restoredSession.securitySettings,
+                menuTree:
+                  restoredSession.menuTree !== undefined
+                    ? restoredMenuTree
+                    : prev.menuTree,
+                availablePlugins: restoredSession.availablePlugins ?? prev.availablePlugins,
               }
             : prev,
         );
-        history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, initialState?.menuTree || []));
+        history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, restoredMenuTree));
         return;
       }
       if (!restoredSession?.currentUser) {

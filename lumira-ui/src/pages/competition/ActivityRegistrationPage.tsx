@@ -6,8 +6,8 @@ import { history, useLocation, useModel } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { listActivities } from '@/services/activity/api';
-import type { ActivityRecord } from '@/services/activity/types';
+import { listPublicActivities } from '@/services/activity/api';
+import type { PublicActivityRecord } from '@/services/activity/types';
 import type { RoleDataScope } from '@/types/api';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
@@ -109,7 +109,7 @@ const ActivityRegistrationPage = () => {
   const [form] = Form.useForm<ActivityRegistrationValues>();
   const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
-  const [activities, setActivities] = useState<ActivityRecord[]>([]);
+  const [activities, setActivities] = useState<PublicActivityRecord[]>([]);
   const [records, setRecords] = useState<ActivityApplicationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [applicationNo, setApplicationNo] = useState<string>();
@@ -160,7 +160,7 @@ const ActivityRegistrationPage = () => {
     const loadActivities = async () => {
       setLoading(true);
       try {
-        const response = await listActivities({ status: 'published', pageNo: 1, pageSize: 100 });
+        const response = await listPublicActivities({ status: 'published', pageNo: 1, pageSize: 100 });
         setActivities(response.records);
       } catch (error) {
         showErrorMessage(error, '活动列表加载失败');

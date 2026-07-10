@@ -3,8 +3,10 @@ package com.lumira.auth.config;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.auth.model.AuthSession;
+import com.lumira.auth.service.AuthSessionIdlePolicy;
 import com.lumira.auth.service.AuthSessionStore;
 import com.lumira.auth.service.JwtTokenService;
+import com.lumira.auth.service.SecuritySettingsService;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
@@ -23,6 +25,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -42,11 +45,18 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final AuthSessionStore authSessionStore;
     private final SystemInternalApi systemInternalApi;
+    private final SecuritySettingsService securitySettingsService;
 
-    public AuthJwtAuthFilter(JwtTokenService jwtTokenService, AuthSessionStore authSessionStore, SystemInternalApi systemInternalApi) {
+    public AuthJwtAuthFilter(
+            JwtTokenService jwtTokenService,
+            AuthSessionStore authSessionStore,
+            SystemInternalApi systemInternalApi,
+            SecuritySettingsService securitySettingsService
+    ) {
         this.jwtTokenService = jwtTokenService;
         this.authSessionStore = authSessionStore;
         this.systemInternalApi = systemInternalApi;
+        this.securitySettingsService = securitySettingsService;
     }
 
     @Override
@@ -73,6 +83,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
                     String trustedSessionId = normalizeSessionId(claims.getSessionId());
                     authSessionStore.findBySessionId(trustedSessionId)
                             .filter(session -> isTrustedSession(session, claims))
+                            .filter(this::isSessionWithinIdleTimeout)
                             .filter(this::isTrustedActiveSessionUser)
                             .ifPresent(session -> authenticate(request, authorization, session));
                 }
@@ -133,6 +144,14 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
                 && user.userUuid().trim().equals(session.getUserUuid().trim())
                 && StringUtils.hasText(user.status())
                 && "ENABLED".equalsIgnoreCase(user.status().trim());
+    }
+
+    private boolean isSessionWithinIdleTimeout(AuthSession session) {
+        if (!AuthSessionIdlePolicy.isIdleExpired(session, securitySettingsService.getIdleTimeoutSeconds(), Instant.now())) {
+            return true;
+        }
+        authSessionStore.remove(session, true);
+        return false;
     }
 
     private void authenticate(HttpServletRequest request, String authorization, AuthSession session) {

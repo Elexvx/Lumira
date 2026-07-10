@@ -7,6 +7,7 @@ import com.lumira.api.auth.LoginCodeChallengeRequest;
 import com.lumira.api.auth.LoginCodeChallengeDTO;
 import com.lumira.api.auth.PasswordResetCompleteRequest;
 import com.lumira.api.auth.RefreshTokenRequest;
+import com.lumira.api.auth.RefreshTokenResponseDTO;
 import com.lumira.api.auth.SecondFactorCompleteRequest;
 import com.lumira.api.auth.SimulatedRoleSwitchRequest;
 import com.lumira.api.auth.SimulatedRoleSwitchResponseDTO;
@@ -41,6 +42,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.lang.reflect.Field;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +120,7 @@ class AuthAppServiceTest {
                 .thenReturn(false);
         when(systemInternalApi.verifyPasswordLogin(anyString(), anyString()))
                 .thenAnswer(invocation -> verifiedPasswordLogin(enabledUser(42L), true, false));
+        when(securitySettingsService.getIdleTimeoutSeconds()).thenReturn(1800L);
         SecuritySettingsDTO securitySettings = new SecuritySettingsDTO(
                 1800L,
                 7200L,
@@ -239,6 +242,59 @@ class AuthAppServiceTest {
 
         verify(jwtTokenService, never()).parseToken(anyString());
         verify(authSessionStore, never()).findBySessionId(anyString());
+    }
+
+    @Test
+    void refreshTokenShouldRejectIdleExpiredSession() {
+        AuthSession session = cachedSession();
+        session.setLastActivityAt(Instant.now().minusSeconds(1801));
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getPermissionsVersion());
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        verify(authSessionStore).remove(session, true);
+        verify(authSessionStore, never()).save(any(), anyBoolean());
+    }
+
+    @Test
+    void refreshTokenShouldRotateTokenWithoutAdvancingLastActivity() {
+        AuthSession session = cachedSession();
+        Instant originalLastActivityAt = Instant.now().minusSeconds(120);
+        session.setLastActivityAt(originalLastActivityAt);
+        session.setRefreshTokenId("current-refresh-id");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getPermissionsVersion());
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        when(jwtTokenService.generateAccessToken(session)).thenReturn("access-token-2");
+        when(jwtTokenService.generateRefreshToken(eq(session), anyString())).thenReturn("refresh-token-2");
+        when(jwtTokenService.getAccessTokenExpireSeconds()).thenReturn(1800L);
+
+        RefreshTokenResponseDTO response = authAppService.refreshToken(new RefreshTokenRequest("refresh-token"));
+
+        assertEquals("access-token-2", response.accessToken());
+        assertEquals("refresh-token-2", response.refreshToken());
+        assertEquals(originalLastActivityAt, session.getLastActivityAt());
+        verify(authSessionStore).save(session, true);
     }
 
     @Test
@@ -737,6 +793,26 @@ class AuthAppServiceTest {
     }
 
     @Test
+    void currentUserRefreshesSessionActivityWhenTheSessionIsStale() {
+        AuthSession session = cachedSession();
+        session.setLastActivityAt(Instant.now().minusSeconds(31));
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(trustedJaneCurrentUser(
+                Set.of("dashboard:view"),
+                Set.of(7L),
+                9L,
+                Set.of(9L),
+                Set.of(10L)
+        ));
+        seedPermissionVersionCache(42L, "v1");
+
+        CurrentUserDTO currentUser = authAppService.currentUser();
+
+        assertEquals(42L, currentUser.userId());
+        verify(authSessionStore).save(session, false);
+    }
+
+    @Test
     void currentUserRejectsDisabledUserBeforeServingCachedCurrentUserSnapshot() {
         AuthSession session = cachedSession();
         CurrentUser currentUser = new CurrentUser(
@@ -900,12 +976,16 @@ class AuthAppServiceTest {
     }
 
     @Test
-    void keepaliveReturnsTrueForTrustedCurrentUserWithoutSessionLookup() {
+    void keepaliveRefreshesSessionActivityWhenTheSessionIsStale() {
+        AuthSession session = cachedSession();
+        session.setLastActivityAt(Instant.now().minusSeconds(31));
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         when(securityContextFacade.getCurrentUser()).thenReturn(trustedJaneCurrentUser());
 
         assertTrue(authAppService.keepalive());
 
-        verify(authSessionStore, never()).findBySessionId(anyString());
+        verify(authSessionStore).findBySessionId("session-1");
+        verify(authSessionStore).save(session, false);
     }
 
     @Test
@@ -1271,6 +1351,19 @@ class AuthAppServiceTest {
 
         verify(systemInternalApi, times(1)).findUserProfileById(42L);
         verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+    }
+
+    @Test
+    void currentUserBySessionIdRejectsIdleExpiredSession() {
+        AuthSession session = cachedSession();
+        session.setLastActivityAt(Instant.now().minusSeconds(1801));
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+
+        BizException exception = assertThrows(BizException.class, () -> authAppService.currentUserBySessionId("session-1"));
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        verify(authSessionStore).remove(session, true);
+        verify(systemInternalApi, never()).findUserProfileById(42L);
     }
 
     @Test
@@ -1704,12 +1797,17 @@ class AuthAppServiceTest {
     }
 
     private AuthSession cachedSession() {
+        Instant now = Instant.now();
         AuthSession session = new AuthSession();
         session.setSessionId("session-1");
         session.setUserId(42L);
         session.setUserUuid("user-uuid-42");
         session.setUsername("jane");
+        session.setLoginTime(now.minusSeconds(10));
+        session.setLastActivityAt(now);
+        session.setExpireTime(now.plusSeconds(129600));
         session.setSessionVersion(1);
+        session.setRefreshTokenId("refresh-token-1");
         session.setPermissionsVersion("v1");
         session.setPermissions(List.of("dashboard:view"));
         session.setRoleIds(List.of(3L));

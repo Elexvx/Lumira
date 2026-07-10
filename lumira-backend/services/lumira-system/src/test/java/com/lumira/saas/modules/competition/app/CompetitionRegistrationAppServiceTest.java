@@ -117,6 +117,27 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationPersistsRegistrationAndProjectExtraValues() throws Exception {
+        RegistrationSql sql = new RegistrationSql();
+        sql.competitionFeeMode = "MEMBER";
+        sql.competitionEntryFeeMinor = 5_000L;
+        CompetitionRegistrationAppService service = service(sql, teamApiRejectingLookup());
+        CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
+        request.setRegistrationExtraValues(Map.of("contactName", "张三", "school", "AIADC University"));
+        CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshot = new CompetitionRegistrationDTO.ProjectSnapshotRequest();
+        projectSnapshot.setExtraValues(Map.of("advisor", "李老师"));
+        request.setProjectSnapshot(projectSnapshot);
+
+        CompetitionRegistrationVO.Registration registration = service.createRegistration(student(), request);
+
+        JsonNode team = objectMapper.readTree(registration.getTeamSnapshotJson());
+        JsonNode project = objectMapper.readTree(registration.getProjectSnapshotJson());
+        assertThat(team.path("registrationExtraValues").path("contactName").asText()).isEqualTo("张三");
+        assertThat(team.path("registrationExtraValues").path("school").asText()).isEqualTo("AIADC University");
+        assertThat(project.path("extraValues").path("advisor").asText()).isEqualTo("李老师");
+    }
+
+    @Test
     void createRegistrationShouldRejectOversizedInlineTeamBeforeDatabaseOrTeamLookup() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         CompetitionRegistrationAppService service = service(sql, teamApiRejectingLookup());

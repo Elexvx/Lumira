@@ -1,6 +1,6 @@
 # 单体微服务与未来拆分边界
 
-当前后端正式运行形态是单体微服务：只保留 `services/lumira-admin` 作为 Spring Boot 启动入口，`services/*-service` 目录作为业务模块 jar 被聚合进同一个进程。
+当前后端正式运行形态是模块化单体加独立后台运行时：`lumira-backend/services/lumira-admin` 是同步请求的 Spring Boot 聚合入口，`lumira-backend/services/lumira-*` 业务模块以 jar 依赖聚合进该进程；`lumira-async` 与 `lumira-job-executor` 分别承担异步消费和调度执行。
 
 ## 当前约束
 

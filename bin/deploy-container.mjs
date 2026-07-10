@@ -530,7 +530,7 @@ function generatedEnvDefaults() {
     GRAFANA_ALERT_WEBHOOK_URL: '',
     LUMIRA_SERVER_IMAGE: 'ghcr.io/elexvx/lumira/lumira-server:main',
     LUMIRA_FRONTEND_IMAGE: 'ghcr.io/elexvx/lumira/lumira-ui:main',
-    CORS_ALLOWED_ORIGIN_PATTERNS: 'https://saas.elexvx.com',
+    CORS_ALLOWED_ORIGIN_PATTERNS: 'https://bm.aiadc.org.cn',
     REDIS_MAXMEMORY: '256mb',
     REDIS_MEM_LIMIT: '384m',
     JAVA_OPTS: '-XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom',

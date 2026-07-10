@@ -102,10 +102,7 @@ const INFERRED_PAGE_PERMISSIONS = new Map<
   [
     '/activities/register',
     {
-      permissionKey: 'aiadc:activity:view',
-      actionPermissions: [
-        { permissionKey: 'aiadc:activity:create', permissionName: '创建活动报名' },
-      ],
+      permissionKey: 'aiadc:activity:create',
     },
   ],
 ]);
@@ -239,13 +236,10 @@ export const normalizePermissionTree = (
         pageKey: 'activity.registration.synthetic',
         pageName: resolveBuiltinMessage('nav.activities.activityRegister', '\u6d3b\u52a8\u62a5\u540d'),
         routePath: '/activities/register',
-        permissionKey: 'aiadc:activity:view',
+        permissionKey: 'aiadc:activity:create',
         permissionGroup: 'aiadc',
         selectable: true,
         routeMatched: true,
-        actionPermissions: [
-          { permissionKey: 'aiadc:activity:create', permissionName: '创建活动报名' },
-        ],
       });
     }
 

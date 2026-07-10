@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isBasicSettingsPageReadyToSave, isTimelineSettingsPageReadyToSave } from './competitionSettingsSave';
+import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from './competitionSettingsSave';
 
 describe('competition settings page-level save guards', () => {
   it('allows the basic page to save without timeline fields', () => {
@@ -42,5 +42,25 @@ describe('competition settings page-level save guards', () => {
       registrationRange: ['2026.07.01 09:00', '2026.07.31 18:00'],
       schedules: [{ timeMode: 'CONFIRMED', title: 'Final' }],
     })).toBe(false);
+  });
+
+  it('keeps field-module autosave quiet while a new row title is still blank', () => {
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        title: '',
+        itemKey: 'registration_field-1783613006',
+        metadata: { fieldType: 'TEXT' },
+      },
+    ])).toBe(false);
+  });
+
+  it('allows field-module autosave after the new row becomes complete', () => {
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        title: '学校',
+        itemKey: 'school',
+        metadata: { fieldType: 'TEXT' },
+      },
+    ])).toBe(true);
   });
 });

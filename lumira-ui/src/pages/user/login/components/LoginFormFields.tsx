@@ -18,6 +18,7 @@ import { MailOutlined, MobileOutlined } from '@ant-design/icons';
 import { LOGIN_SLIDER_CAPTCHA_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import type { AgreementSettings, WechatAuthorizeUrl } from '@/types/api';
 import { request } from '@/services/common/request';
+import { resolveWechatQrRefreshDelayMs } from '@/pages/user/login/utils/wechatQrRefreshTiming';
 
 declare global {
   interface Window {
@@ -109,7 +110,7 @@ const LoginModeSwitcher = ({
   return (
     <>
       {showModeControl ? (
-        <div className="saas-login-page__mode-header">
+        <div className="saas-login-page__mode-header" data-testid="login-mode-switcher">
           <div className="saas-login-page__mode-tabs" role="tablist" aria-label={formatMessage({ id: 'page.login.modeTabs', defaultMessage: 'Login method' })}>
             {modeOptions.map((option) => (
               <button
@@ -353,6 +354,7 @@ const OfficialWechatLoginPanel = ({
   showCopy?: boolean;
 }) => {
   const containerIdRef = useRef(`wechat-login-${Math.random().toString(36).slice(2)}`);
+  const refreshTimerRef = useRef<number | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
@@ -362,6 +364,12 @@ const OfficialWechatLoginPanel = ({
 
     let disposed = false;
     const containerId = containerIdRef.current;
+    const clearRefreshTimer = () => {
+      if (refreshTimerRef.current !== null) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
     const loadWechatScript = () =>
       new Promise<void>((resolve, reject) => {
         if (window.WxLogin) {
@@ -383,6 +391,20 @@ const OfficialWechatLoginPanel = ({
         document.head.appendChild(script);
       });
 
+    const scheduleQrRefresh = (stateExpireMinutes?: number) => {
+      clearRefreshTimer();
+      if (disposed) {
+        return;
+      }
+      refreshTimerRef.current = window.setTimeout(() => {
+        void renderWechatLogin().catch(() => {
+          if (!disposed) {
+            setLoadFailed(true);
+          }
+        });
+      }, resolveWechatQrRefreshDelayMs(stateExpireMinutes));
+    };
+
     const renderWechatLogin = async () => {
       setLoadFailed(false);
       const container = document.getElementById(containerId);
@@ -395,6 +417,7 @@ const OfficialWechatLoginPanel = ({
         silent: true,
         skipAuth: true,
       });
+      scheduleQrRefresh(config.stateExpireMinutes);
       await loadWechatScript();
       if (disposed || !window.WxLogin || !config.appId || !config.encodedRedirectUri) {
         return;
@@ -420,6 +443,7 @@ const OfficialWechatLoginPanel = ({
 
     return () => {
       disposed = true;
+      clearRefreshTimer();
     };
   }, [available]);
 

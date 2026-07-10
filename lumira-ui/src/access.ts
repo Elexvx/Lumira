@@ -35,7 +35,7 @@ const COMPETITION_REGISTER_PERMISSIONS = [
   'aiadc:stage:manage',
   'payment:order:view',
 ];
-const ACTIVITY_REGISTER_PERMISSIONS = ['aiadc:activity:view'];
+const ACTIVITY_REGISTER_PERMISSIONS = ['aiadc:activity:create', 'aiadc:activity:view'];
 const USER_CENTER_MANAGEMENT_PERMISSIONS = ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: PluginAvailability[] }) {

@@ -3185,6 +3185,7 @@ WHERE `role_id` = 1002
       'aiadc:registration:create',
       'aiadc:registration:update',
       'aiadc:registration:pay',
+      'aiadc:activity:create',
       'aiadc:material:view',
       'aiadc:material:submit',
       'aiadc:stage:view'
@@ -3214,6 +3215,7 @@ WHERE p.`deleted` = 0
       'aiadc:registration:create',
       'aiadc:registration:update',
       'aiadc:registration:pay',
+      'aiadc:activity:create',
       'aiadc:material:view',
       'aiadc:material:submit',
       'aiadc:stage:view'

@@ -6,9 +6,10 @@ public record WechatAuthorizeUrlDTO(
         String appId,
         String scope,
         String redirectUri,
-        String encodedRedirectUri
+        String encodedRedirectUri,
+        Integer stateExpireMinutes
 ) {
     public WechatAuthorizeUrlDTO(String authorizeUrl, String state) {
-        this(authorizeUrl, state, null, null, null, null);
+        this(authorizeUrl, state, null, null, null, null, null);
     }
 }

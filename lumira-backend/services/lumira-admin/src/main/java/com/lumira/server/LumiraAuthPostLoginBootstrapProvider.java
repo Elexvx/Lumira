@@ -65,7 +65,7 @@ public class LumiraAuthPostLoginBootstrapProvider implements AuthPostLoginBootst
         );
         CompletableFuture<Map<String, Object>> runtimeAppearanceSettingsFuture = CompletableFuture.supplyAsync(
                 () -> objectMapper.convertValue(
-                        systemManagementAppService.getRuntimeAppearanceSettings(authenticatedCurrentUser),
+                        systemManagementAppService.getPublicRuntimeAppearanceSettings(),
                         MAP_TYPE
                 ),
                 BLOCKING_IO_EXECUTOR

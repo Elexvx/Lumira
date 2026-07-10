@@ -378,13 +378,13 @@ function defaultFrontendOrigin(existingEnv) {
     .split(',')
     .map((item) => item.trim())
     .find((item) => /^https?:\/\//.test(item) && !item.includes('localhost') && !item.includes('127.0.0.1'));
-  return normalizeOrigin(fromCors || 'https://saas.elexvx.com');
+  return normalizeOrigin(fromCors || 'https://bm.aiadc.org.cn');
 }
 
 async function collectInstallOptions(existingEnv, capacity) {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const apiDomainDefault = argMap.get('api-domain') || existingEnv.API_DOMAIN || 'saas.elexvx.com';
+    const apiDomainDefault = argMap.get('api-domain') || existingEnv.API_DOMAIN || 'bm.aiadc.org.cn';
     const frontendOriginDefault = defaultFrontendOrigin(existingEnv);
     const apiDomain = await ask(rl, '后端 API 域名', apiDomainDefault);
     const frontendOrigin = normalizeOrigin(await ask(rl, '前端访问域名或 Origin', frontendOriginDefault));

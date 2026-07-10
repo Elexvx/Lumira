@@ -244,6 +244,23 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void createSandboxOrderShouldRejectNonSandboxProviderBeforeOrderLookup() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        var settings = providerSettings();
+        settings.setEnvironment("PRODUCTION");
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(settings);
+        PaymentTransactionService service = service(jdbcTemplate, managementAppService);
+
+        assertThatThrownBy(() -> service.createSandboxOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.BIZ_ERROR);
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void createOrderShouldScopeIdempotencyLookupToCreator() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);

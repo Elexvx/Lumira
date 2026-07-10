@@ -39,6 +39,7 @@ public class PaymentTransactionService {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
+    private static final String SANDBOX_ENVIRONMENT = "SANDBOX";
     private static final String PERMISSION_PAYMENT_ORDER_CREATE = "payment:order:create";
     private static final String PERMISSION_PAYMENT_ORDER_VIEW = "payment:order:view";
     private static final String PERMISSION_PAYMENT_REFUND_CREATE = "payment:refund:create";
@@ -92,13 +93,24 @@ public class PaymentTransactionService {
 
     @Transactional
     public PaymentOrderDTO createOrder(CurrentUser currentUser, PaymentCreateOrderRequestDTO request) {
-        return createOrder(trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE), request);
+        return createOrder(
+                trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE),
+                request,
+                resolveProviderSettings(request, false)
+        );
     }
 
-    private PaymentOrderDTO createOrder(Actor actor, PaymentCreateOrderRequestDTO request) {
+    @Transactional
+    public PaymentOrderDTO createSandboxOrder(CurrentUser currentUser, PaymentCreateOrderRequestDTO request) {
+        return createOrder(
+                trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE),
+                request,
+                resolveProviderSettings(request, true)
+        );
+    }
+
+    private PaymentOrderDTO createOrder(Actor actor, PaymentCreateOrderRequestDTO request, PaymentProviderSettingsDTO settings) {
         Long actorUserId = actor.userId();
-        requireOrderRequest(request);
-        PaymentProviderSettingsDTO settings = paymentManagementAppService.getRequiredProviderSettings(request.providerCode());
         if (!settings.isEnabled()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Payment provider is disabled");
         }
@@ -188,6 +200,24 @@ public class PaymentTransactionService {
         orderAggregate.recordCreated(row.getProviderCode(), row.getCurrency(), actorUserId, actor.userUuid());
         domainEventPublisher.publishAll(orderAggregate.pullDomainEvents());
         return toOrderDto(findOrderByOrderNo(row.getOrderNo()));
+    }
+
+    private PaymentProviderSettingsDTO resolveProviderSettings(PaymentCreateOrderRequestDTO request, boolean sandboxOnly) {
+        requireOrderRequest(request);
+        PaymentProviderSettingsDTO settings = paymentManagementAppService.getRequiredProviderSettings(request.providerCode());
+        if (sandboxOnly) {
+            requireSandboxEnvironment(settings);
+        }
+        return settings;
+    }
+
+    private void requireSandboxEnvironment(PaymentProviderSettingsDTO settings) {
+        String normalizedEnvironment = settings.getEnvironment() == null
+                ? ""
+                : settings.getEnvironment().trim().toUpperCase(Locale.ROOT);
+        if (!SANDBOX_ENVIRONMENT.equals(normalizedEnvironment)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Manual payment orders are sandbox-only");
+        }
     }
 
     @Transactional(readOnly = true)

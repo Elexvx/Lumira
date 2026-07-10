@@ -14,6 +14,17 @@ export type CompetitionSettingsScheduleFormItem = {
   timeRange?: [Dayjs, Dayjs] | [string, string];
 };
 
+export type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'files' | 'timeline';
+
+export type CompetitionSettingsConfigItemDraft = {
+  title?: string | null;
+  itemKey?: string | null;
+  metadata?: {
+    fieldType?: string | null;
+    stageCode?: string | null;
+  } | null;
+};
+
 export type CompetitionSettingsFormValues = Omit<Partial<CompetitionUpsertPayload>, 'locale'> & {
   locale?: CompetitionLocale[];
   registrationRange?: [Dayjs, Dayjs] | [string, string];
@@ -73,3 +84,26 @@ export const isBasicSettingsPageReadyToSave = (values: Partial<CompetitionSettin
 
 export const isTimelineSettingsPageReadyToSave = (values: Partial<CompetitionSettingsFormValues>) =>
   Boolean(hasCompleteTimeRange(values.registrationRange) && hasCompleteSchedules(values.schedules));
+
+const hasText = (value?: string | null) => Boolean(trimOptional(value));
+
+export const isConfigModuleReadyToSave = (
+  moduleKey: CompetitionSettingsConfigModuleKey,
+  items: CompetitionSettingsConfigItemDraft[],
+) => {
+  if (!items.length) {
+    return true;
+  }
+  return items.every((item) => {
+    if (moduleKey === 'documents') {
+      return hasText(item.title);
+    }
+    if (moduleKey === 'fields') {
+      return hasText(item.title) && hasText(item.itemKey) && hasText(item.metadata?.fieldType);
+    }
+    if (moduleKey === 'files') {
+      return hasText(item.title) && hasText(item.itemKey) && hasText(item.metadata?.stageCode);
+    }
+    return hasText(item.title) && hasText(item.itemKey);
+  });
+};

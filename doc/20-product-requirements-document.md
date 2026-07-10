@@ -27,7 +27,7 @@
 
 Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React、TypeScript、Umi Max、Ant Design、Java 21、Spring Boot、MySQL、Redis、Docker 等技术为基础，提供认证、权限、系统管理、AI 助手、知识库、文件中心、消息中心、插件中心、国际化、支付配置、审计监控和容器化部署等能力。
 
-当前项目已经从早期“多进程微服务”收敛为“单体微服务”运行模式：生产和本地默认只启动 `services/lumira-admin` 一个后端入口，由它聚合系统、认证、文件、消息、插件、本地化、支付和任务能力；代码仍按 `services/*-service` 和 `libs/*` 保留模块边界，为后续物理拆分预留条件。
+当前项目已经从早期“多进程微服务”收敛为“单体微服务”运行模式：生产和本地以 `lumira-backend/services/lumira-admin` 作为同步后端入口，由它聚合系统、认证、文件、消息、插件、本地化、支付和团队能力，并配套独立的异步与调度运行时；代码仍按 `lumira-backend/services/lumira-*` 和 `lumira-backend/libs/*` 保留模块边界，为后续物理拆分预留条件。
 
 ## 3. 产品定位
 
@@ -810,7 +810,7 @@ Lumira 项目定位为企业级 SaaS 智能应用平台底座。项目以 React�
 ### 12.3 可维护性
 
 1. 前端按 `pages`、`services`、`auth`、`theme`、`plugins` 等职责组织。
-2. 后端按 `services/*-service` 和 `libs/*` 组织，禁止跨模块随意穿透内部实现。
+2. 后端按 `lumira-backend/services/lumira-*` 和 `lumira-backend/libs/*` 组织，禁止跨模块随意穿透内部实现。
 3. 新增业务能力必须明确模块 owner、表归属、API 契约和权限标识。
 4. 数据库变更必须通过迁移脚本管理。
 5. 文档、脚本、监控和部署说明默认以 `lumira-server` 为同步请求入口，并显式说明 `lumira-async`、`lumira-job-executor` 的后台职责。
