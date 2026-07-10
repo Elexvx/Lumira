@@ -155,6 +155,7 @@
   width: 148px;
   min-width: 148px !important;
   max-width: 148px;
+  padding-inline: 8px !important;
   background: var(--ant-color-bg-container);
   box-shadow: -1px 0 0 var(--ant-color-border-secondary);
   white-space: nowrap;
