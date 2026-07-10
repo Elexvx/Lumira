@@ -1,4 +1,4 @@
-import { Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
+import { Checkbox, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
@@ -82,6 +82,16 @@ const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldCo
   ],
 };
 
+const PAYMENT_SCENE_LABELS: Record<string, string> = {
+  NATIVE: t('电脑二维码支付', 'Desktop QR payment'),
+  H5: t('手机浏览器支付', 'Mobile browser payment'),
+  JSAPI: t('微信内支付', 'WeChat in-app browser payment'),
+  PC_WEB: t('电脑网站支付', 'Desktop web payment'),
+  WAP: t('手机网站支付', 'Mobile web payment'),
+  QR_CODE: t('扫码支付', 'QR code payment'),
+  CHECKOUT: t('托管收银台', 'Hosted checkout'),
+};
+
 type PaymentFormValidationError = {
   errorFields?: Array<{
     name?: (string | number)[];
@@ -117,6 +127,9 @@ const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSett
   webhookId: settings.webhookId ?? '',
   currency: settings.currency ?? '',
   extraConfig: settings.extraConfig ?? '',
+  displayName: settings.displayName || settings.providerName,
+  sortOrder: settings.sortOrder ?? 100,
+  enabledScenes: settings.enabledScenes?.length ? settings.enabledScenes : settings.supportedScenes || [],
   sandboxEnabled: settings.sandboxEnabled ?? false,
 });
 
@@ -267,6 +280,18 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
             extra={t('选择沙箱时，系统会自动按沙箱配置保存。', 'Sandbox environment is saved as sandbox configuration automatically.')}
           >
             <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canUpdateSettings} />
+          </Form.Item>
+          <Form.Item name="displayName" label={t('前台展示名称', 'Checkout display name')} rules={[{ required: true, message: t('请输入前台展示名称', 'Please enter the checkout display name') }]}>
+            <Input disabled={!canUpdateSettings} maxLength={64} />
+          </Form.Item>
+          <Form.Item name="sortOrder" label={t('展示排序', 'Display order')}>
+            <InputNumber disabled={!canUpdateSettings} min={0} precision={0} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="enabledScenes" label={t('可用支付场景', 'Enabled payment scenes')} rules={[{ required: true, message: t('请至少启用一种支付场景', 'Enable at least one payment scene') }]}>
+            <Checkbox.Group
+              disabled={!canUpdateSettings}
+              options={(currentProviderSettings?.supportedScenes || []).map((scene) => ({ label: PAYMENT_SCENE_LABELS[scene] || scene, value: scene }))}
+            />
           </Form.Item>
           <Form.Item name="currency" label={t('结算币种', 'Currency')} extra={t('留空时使用平台默认币种。', 'Leave blank to use the platform default currency.')}>
             <Input disabled={!canUpdateSettings} maxLength={16} placeholder={t('例如：CNY', 'e.g. CNY')} />

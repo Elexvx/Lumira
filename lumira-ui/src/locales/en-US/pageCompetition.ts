@@ -20,8 +20,10 @@ export default {
 
   'page.competition.settings.module.documents': 'Documents',
   'page.competition.settings.module.documents.description': 'Commitment, informed consent and other required reading documents.',
-  'page.competition.settings.module.fields': 'Collected Fields',
-  'page.competition.settings.module.fields.description': 'Registration, team, member and project fields collected from participants.',
+  'page.competition.settings.module.fields': 'Team Management',
+  'page.competition.settings.module.fields.description': 'Configure team size limits and the registration, team, member, and project fields collected from participants.',
+  'page.competition.settings.module.payments': 'Payment Methods',
+  'page.competition.settings.module.payments.description': 'Choose the payment providers available for this competition and their display order.',
   'page.competition.settings.module.files': 'Required Files',
   'page.competition.settings.module.files.description': 'Files participants must upload, including works, proof and authorization files.',
   'page.competition.settings.module.stageMaterials': 'Stage Materials',

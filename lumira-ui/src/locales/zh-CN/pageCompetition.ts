@@ -20,8 +20,10 @@ export default {
 
   'page.competition.settings.module.documents': '文书配置',
   'page.competition.settings.module.documents.description': '承诺书、知情同意书等参赛前必须阅读和确认的文书。',
-  'page.competition.settings.module.fields': '收集字段',
-  'page.competition.settings.module.fields.description': '报名、团队、成员和项目等参赛者需要填写的字段。',
+  'page.competition.settings.module.fields': '团队管理',
+  'page.competition.settings.module.fields.description': '配置团队人数限制，以及报名、团队、成员和项目需要填写的字段。',
+  'page.competition.settings.module.payments': '支付方式',
+  'page.competition.settings.module.payments.description': '选择本赛事允许使用的支付渠道及展示顺序。',
   'page.competition.settings.module.files': '上传文件',
   'page.competition.settings.module.files.description': '参赛者必须上传的作品、证明、授权等文件。',
   'page.competition.settings.module.stageMaterials': '阶段材料',

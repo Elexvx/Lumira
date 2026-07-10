@@ -117,6 +117,7 @@ public final class CompetitionVO {
         private ConfigSet activeConfigSet;
         private java.util.List<ConfigItem> documents = java.util.List.of();
         private java.util.List<ConfigItem> fields = java.util.List.of();
+        private java.util.List<ConfigItem> payments = java.util.List.of();
         private java.util.List<ConfigItem> files = java.util.List.of();
         private java.util.List<ConfigItem> stageMaterials = java.util.List.of();
         private java.util.List<ConfigItem> timeline = java.util.List.of();
@@ -129,6 +130,8 @@ public final class CompetitionVO {
         public void setDocuments(java.util.List<ConfigItem> documents) { this.documents = documents; }
         public java.util.List<ConfigItem> getFields() { return fields; }
         public void setFields(java.util.List<ConfigItem> fields) { this.fields = fields; }
+        public java.util.List<ConfigItem> getPayments() { return payments; }
+        public void setPayments(java.util.List<ConfigItem> payments) { this.payments = payments; }
         public java.util.List<ConfigItem> getFiles() { return files; }
         public void setFiles(java.util.List<ConfigItem> files) { this.files = files; }
         public java.util.List<ConfigItem> getStageMaterials() { return stageMaterials; }

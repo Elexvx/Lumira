@@ -14,7 +14,7 @@ export type CompetitionSettingsScheduleFormItem = {
   timeRange?: [Dayjs, Dayjs] | [string, string];
 };
 
-export type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'files' | 'timeline';
+export type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
 
 export type CompetitionSettingsConfigItemDraft = {
   title?: string | null;

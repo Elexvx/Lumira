@@ -56,13 +56,16 @@ public class CompetitionManagementAppService {
             "TEAM_FIELD",
             "MEMBER_FIELD",
             "PROJECT_FIELD",
+            "TEAM_SETTINGS",
+            "PAYMENT_SETTINGS",
             "REQUIRED_FILE",
             "STAGE_MATERIAL",
             "TIMELINE"
     );
     private static final Map<String, Set<String>> SETTINGS_MODULE_TYPES = Map.of(
             "documents", Set.of("AGREEMENT", "CONSENT"),
-            "fields", Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"),
+            "fields", Set.of("TEAM_SETTINGS", "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"),
+            "payments", Set.of("PAYMENT_SETTINGS"),
             "files", Set.of("REQUIRED_FILE"),
             "stage-materials", Set.of("STAGE_MATERIAL"),
             "timeline", Set.of("TIMELINE")
@@ -219,6 +222,7 @@ public class CompetitionManagementAppService {
         settings.setActiveConfigSet(configSet);
         settings.setDocuments(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("documents")));
         settings.setFields(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("fields")));
+        settings.setPayments(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("payments")));
         settings.setFiles(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("files")));
         settings.setStageMaterials(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("stage-materials")));
         settings.setTimeline(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("timeline")));
@@ -767,6 +771,8 @@ public class CompetitionManagementAppService {
         return switch (itemType == null ? "" : itemType) {
             case "AGREEMENT", "CONSENT" -> "document";
             case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD" -> "field";
+            case "TEAM_SETTINGS" -> "team settings";
+            case "PAYMENT_SETTINGS" -> "payment settings";
             case "REQUIRED_FILE" -> "file";
             case "STAGE_MATERIAL" -> "stage material";
             case "TIMELINE" -> "timeline";

@@ -3,6 +3,7 @@ package com.lumira.payment.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
+import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -96,6 +97,9 @@ public class PaymentManagementAppService {
         for (PaymentProviderCatalog.PaymentProviderDefinition definition : providerCatalog.definitions()) {
             settings.add(loadProviderSettings(definition.providerCode()));
         }
+        settings.sort(java.util.Comparator
+                .comparing((PaymentProviderSettingsDTO item) -> item.getSortOrder() == null ? 100 : item.getSortOrder())
+                .thenComparing(PaymentProviderSettingsDTO::getProviderCode));
         List<PaymentProviderSettingsDTO> immutableSettings = List.copyOf(settings);
         providerListCache = new CachedProviderList(immutableSettings, now.plus(PROVIDER_LIST_CACHE_TTL));
         return immutableSettings;
@@ -268,6 +272,10 @@ public class PaymentManagementAppService {
         PaymentProviderSettingsDTO response = new PaymentProviderSettingsDTO();
         response.setProviderCode(definition.providerCode());
         response.setProviderName(definition.providerName());
+        response.setDisplayName(resolveText(stored.getDisplayName(), definition.providerName()));
+        response.setSortOrder(stored.getSortOrder() == null ? 100 : stored.getSortOrder());
+        response.setSupportedScenes(providerCatalog.supportedScenes(definition.providerCode()));
+        response.setEnabledScenes(normalizeEnabledScenes(definition.providerCode(), stored.getEnabledScenes()));
         response.setEnabled(row.getEnabled() != null && row.getEnabled() == 1);
         response.setConfigured(row.getConfigured() != null && row.getConfigured() == 1);
         response.setPersisted(true);
@@ -367,6 +375,10 @@ public class PaymentManagementAppService {
         PaymentProviderSettingsDTO merged = new PaymentProviderSettingsDTO();
         merged.setProviderCode(definition.providerCode());
         merged.setProviderName(definition.providerName());
+        merged.setDisplayName(resolveText(request == null ? null : request.getDisplayName(), resolveText(current.getDisplayName(), definition.providerName())));
+        merged.setSortOrder(request == null || request.getSortOrder() == null ? (current.getSortOrder() == null ? 100 : current.getSortOrder()) : Math.max(0, request.getSortOrder()));
+        merged.setSupportedScenes(providerCatalog.supportedScenes(definition.providerCode()));
+        merged.setEnabledScenes(normalizeEnabledScenes(definition.providerCode(), request == null ? current.getEnabledScenes() : request.getEnabledScenes()));
         merged.setEnabled(request == null ? current.isEnabled() : request.isEnabled());
         merged.setEnvironment(resolveText(request == null ? null : request.getEnvironment(), current.getEnvironment()));
         merged.setCurrency(resolveText(request == null ? null : request.getCurrency(), current.getCurrency()));
@@ -401,6 +413,9 @@ public class PaymentManagementAppService {
         PaymentProviderSettingsDTO stored = new PaymentProviderSettingsDTO();
         stored.setProviderCode(merged.getProviderCode());
         stored.setProviderName(merged.getProviderName());
+        stored.setDisplayName(merged.getDisplayName());
+        stored.setSortOrder(merged.getSortOrder());
+        stored.setEnabledScenes(merged.getEnabledScenes());
         stored.setEnabled(merged.isEnabled());
         stored.setConfigured(merged.isConfigured());
         stored.setEnvironment(merged.getEnvironment());
@@ -435,6 +450,9 @@ public class PaymentManagementAppService {
 
     private void copyProviderValues(PaymentProviderSettingsDTO target, PaymentProviderSettingsDTO source, boolean maskSecrets) {
         target.setAppId(source.getAppId());
+        target.setDisplayName(source.getDisplayName());
+        target.setSortOrder(source.getSortOrder());
+        target.setEnabledScenes(source.getEnabledScenes());
         target.setMerchantId(source.getMerchantId());
         target.setMerchantSerialNo(source.getMerchantSerialNo());
         target.setPlatformCertSerialNo(maskSecrets ? "" : source.getPlatformCertSerialNo());
@@ -468,9 +486,42 @@ public class PaymentManagementAppService {
         if (!missing.isEmpty()) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Missing required payment fields: " + String.join(", ", missing));
         }
+        if (settings.getEnabledScenes().isEmpty()) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "At least one payment scene must be enabled");
+        }
         if (StringUtils.hasText(settings.getApiBaseUrl())) {
             validatePublicHttpUrl(settings.getApiBaseUrl(), "API base URL");
         }
+    }
+
+    public List<PaymentCheckoutOptionDTO> listCheckoutOptions() {
+        return listProviderSettingsInternal().stream()
+                .filter(PaymentProviderSettingsDTO::isEnabled)
+                .filter(PaymentProviderSettingsDTO::isConfigured)
+                .filter(item -> item.getEnabledScenes() != null && !item.getEnabledScenes().isEmpty())
+                .map(item -> new PaymentCheckoutOptionDTO(
+                        item.getProviderCode(),
+                        resolveText(item.getDisplayName(), item.getProviderName()),
+                        item.getSortOrder(),
+                        item.getCurrency(),
+                        List.copyOf(item.getEnabledScenes())
+                ))
+                .toList();
+    }
+
+    private List<String> normalizeEnabledScenes(String providerCode, List<String> requestedScenes) {
+        List<String> supported = providerCatalog.supportedScenes(providerCode);
+        if (requestedScenes == null || requestedScenes.isEmpty()) {
+            return supported;
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String scene : requestedScenes) {
+            String value = scene == null ? "" : scene.trim().toUpperCase(Locale.ROOT);
+            if (supported.contains(value)) {
+                normalized.add(value);
+            }
+        }
+        return new ArrayList<>(normalized);
     }
 
     private String performConnectivityProbe(PaymentProviderSettingsDTO settings) {

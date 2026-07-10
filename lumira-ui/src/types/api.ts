@@ -143,6 +143,10 @@ export type PaymentProviderCode = 'alipay' | 'wechat_pay' | 'stripe' | 'paypal';
 export interface PaymentProviderSettings {
   providerCode: PaymentProviderCode | string;
   providerName: string;
+  displayName?: string | null;
+  sortOrder?: number | null;
+  supportedScenes?: string[];
+  enabledScenes?: string[];
   enabled: boolean;
   configured: boolean;
   persisted?: boolean;

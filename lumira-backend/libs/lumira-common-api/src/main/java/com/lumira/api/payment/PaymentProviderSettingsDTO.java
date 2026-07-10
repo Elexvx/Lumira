@@ -8,6 +8,10 @@ public class PaymentProviderSettingsDTO {
 
     private String providerCode;
     private String providerName;
+    private String displayName;
+    private Integer sortOrder;
+    private List<String> supportedScenes = new ArrayList<>();
+    private List<String> enabledScenes = new ArrayList<>();
     private boolean enabled;
     private boolean configured;
     private boolean persisted;
@@ -54,6 +58,14 @@ public class PaymentProviderSettingsDTO {
     public void setProviderName(String providerName) {
         this.providerName = providerName;
     }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public List<String> getSupportedScenes() { return supportedScenes; }
+    public void setSupportedScenes(List<String> supportedScenes) { this.supportedScenes = supportedScenes == null ? new ArrayList<>() : new ArrayList<>(supportedScenes); }
+    public List<String> getEnabledScenes() { return enabledScenes; }
+    public void setEnabledScenes(List<String> enabledScenes) { this.enabledScenes = enabledScenes == null ? new ArrayList<>() : new ArrayList<>(enabledScenes); }
 
     public boolean isEnabled() {
         return enabled;

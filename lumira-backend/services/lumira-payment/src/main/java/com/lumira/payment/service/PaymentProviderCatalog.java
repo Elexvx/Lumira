@@ -71,6 +71,10 @@ public final class PaymentProviderCatalog {
         PaymentProviderSettingsDTO dto = new PaymentProviderSettingsDTO();
         dto.setProviderCode(definition.providerCode());
         dto.setProviderName(definition.providerName());
+        dto.setDisplayName(definition.providerName());
+        dto.setSortOrder(100);
+        dto.setSupportedScenes(supportedScenes(providerCode));
+        dto.setEnabledScenes(supportedScenes(providerCode));
         dto.setEnabled(false);
         dto.setConfigured(false);
         dto.setPersisted(false);
@@ -103,6 +107,15 @@ public final class PaymentProviderCatalog {
 
     public String providerName(String providerCode) {
         return requireDefinition(providerCode).providerName();
+    }
+
+    public List<String> supportedScenes(String providerCode) {
+        return switch (normalize(providerCode)) {
+            case "wechat_pay" -> List.of("NATIVE", "H5", "JSAPI");
+            case "alipay" -> List.of("PC_WEB", "WAP", "QR_CODE");
+            case "stripe", "paypal" -> List.of("CHECKOUT");
+            default -> List.of();
+        };
     }
 
     public String normalize(String providerCode) {

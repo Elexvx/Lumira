@@ -6,6 +6,7 @@ import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
+import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -64,6 +65,8 @@ public class CompetitionRegistrationAppService {
     private static final Set<String> FIELD_TYPES = Set.of("input", "textarea", "file");
     private static final long MAX_PAGE_SIZE = 100L;
     private static final int MAX_INLINE_MEMBERS = 20;
+    private static final int DEFAULT_TEAM_MIN_MEMBERS = 1;
+    private static final int DEFAULT_TEAM_MAX_MEMBERS = 20;
     private static final int MAX_SHORT_TEXT_LENGTH = 64;
     private static final int MAX_NAME_LENGTH = 128;
     private static final int MAX_DESCRIPTION_LENGTH = 1000;
@@ -304,6 +307,7 @@ public class CompetitionRegistrationAppService {
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         int memberCount = team.members().size();
+        validateTeamMemberCount(competition.id(), memberCount);
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
         int inserted = jdbcTemplate.update(
                 """
@@ -350,6 +354,7 @@ public class CompetitionRegistrationAppService {
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         int memberCount = team.members().size();
+        validateTeamMemberCount(competition.id(), memberCount);
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
         if (!Set.of("DRAFT", "PENDING_PAYMENT").contains(existing.getStatus())) {
             throw biz(ErrorCode.BIZ_ERROR, "Paid registrations cannot be changed");
@@ -642,16 +647,6 @@ public class CompetitionRegistrationAppService {
                     trimToNull(value.getJsonValue())
             );
         }
-        enqueuePaymentOrderIfReady(
-                registration,
-                userId,
-                requireUserUuid(currentUser),
-                normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
-                "alipay",
-                null,
-                null,
-                null
-        );
         return getRegistration(currentUser, registrationId);
     }
 
@@ -673,7 +668,16 @@ public class CompetitionRegistrationAppService {
             freeOrder.setStatus("CONFIRMED");
             return freeOrder;
         }
-        String providerCode = request != null && StringUtils.hasText(request.getProviderCode()) ? request.getProviderCode().trim() : "alipay";
+        List<CompetitionRegistrationVO.PaymentOption> availableOptions = request != null && StringUtils.hasText(request.getClientType())
+                ? listPaymentOptions(currentUser, registrationId, request.getClientType())
+                : List.of();
+        String providerCode = request != null && StringUtils.hasText(request.getProviderCode())
+                ? request.getProviderCode().trim()
+                : availableOptions.stream().findFirst().map(CompetitionRegistrationVO.PaymentOption::getProviderCode).orElse("alipay");
+        boolean providerAvailable = availableOptions.stream().anyMatch(option -> option.getProviderCode().equalsIgnoreCase(providerCode == null ? "" : providerCode));
+        if (!availableOptions.isEmpty() && !providerAvailable) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Selected payment provider is unavailable for this device");
+        }
         String clientIp = request == null ? null : request.getClientIp();
         String notifyUrl = request == null ? null : request.getNotifyUrl();
         String returnUrl = request == null ? null : request.getReturnUrl();
@@ -700,6 +704,99 @@ public class CompetitionRegistrationAppService {
         queuedOrder.setCurrency(refreshed.getCurrency());
         queuedOrder.setStatus("QUEUED");
         return queuedOrder;
+    }
+
+    public List<CompetitionRegistrationVO.PaymentOption> listPaymentOptions(CurrentUser currentUser, Long registrationId, String clientType) {
+        requirePermission(currentUser, REGISTRATION_PAY_PERMISSION);
+        requirePositiveId(registrationId, "Registration id is required");
+        CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
+        PaymentInternalApi api = paymentInternalApiProvider.getIfAvailable();
+        if (api == null) {
+            return List.of();
+        }
+        String normalizedClientType = normalizePaymentClientType(clientType);
+        List<PaymentCheckoutOptionDTO> configured = api.listCheckoutOptions(
+                requireUserId(currentUser),
+                requireUserUuid(currentUser),
+                normalizeSimulatedRoleId(currentUser.getSimulatedRoleId())
+        );
+        Set<String> allowedProviders = findCompetitionPaymentProviders(registration.getCompetitionId());
+        return (configured == null ? List.<PaymentCheckoutOptionDTO>of() : configured).stream()
+                .filter(option -> allowedProviders.isEmpty() || allowedProviders.contains(option.providerCode()))
+                .filter(option -> !StringUtils.hasText(option.currency())
+                        || option.currency().equalsIgnoreCase(registration.getCurrency()))
+                .map(option -> toPaymentOption(option, normalizedClientType))
+                .filter(java.util.Objects::nonNull)
+                .sorted(java.util.Comparator.comparing(option -> option.getSortOrder() == null ? 100 : option.getSortOrder()))
+                .toList();
+    }
+
+    private Set<String> findCompetitionPaymentProviders(Long competitionId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                """
+                        select cci.item_key as providerCode
+                        from aiadc_competition c
+                        join competition_config_set ccs
+                          on ccs.competition_uuid = c.uuid
+                         and ccs.status in ('DRAFT', 'PUBLISHED')
+                         and ccs.deleted = 0
+                        join competition_config_item cci
+                          on cci.competition_uuid = c.uuid
+                         and cci.config_set_id = ccs.id
+                         and cci.item_type = 'PAYMENT_SETTINGS'
+                         and cci.enabled = 1
+                         and cci.deleted = 0
+                        where c.id = ? and c.deleted = 0
+                          and ccs.id = (
+                            select max(latest.id)
+                            from competition_config_set latest
+                            where latest.competition_uuid = c.uuid
+                              and latest.status in ('DRAFT', 'PUBLISHED')
+                              and latest.deleted = 0
+                          )
+                        order by cci.sort_order asc, cci.id asc
+                        """,
+                competitionId
+        );
+        return rows.stream()
+                .map(row -> row.get("providerCode"))
+                .filter(java.util.Objects::nonNull)
+                .map(String::valueOf)
+                .map(value -> value.trim().toLowerCase(Locale.ROOT))
+                .filter(StringUtils::hasText)
+                .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+    }
+
+    private CompetitionRegistrationVO.PaymentOption toPaymentOption(PaymentCheckoutOptionDTO configured, String clientType) {
+        String scene = resolvePaymentScene(configured.providerCode(), configured.enabledScenes(), clientType);
+        if (!StringUtils.hasText(scene)) {
+            return null;
+        }
+        CompetitionRegistrationVO.PaymentOption option = new CompetitionRegistrationVO.PaymentOption();
+        option.setProviderCode(configured.providerCode());
+        option.setDisplayName(configured.displayName());
+        option.setPaymentScene(scene);
+        option.setSortOrder(configured.sortOrder());
+        return option;
+    }
+
+    private String normalizePaymentClientType(String clientType) {
+        String normalized = StringUtils.hasText(clientType) ? clientType.trim().toUpperCase(Locale.ROOT) : "DESKTOP";
+        return Set.of("DESKTOP", "MOBILE", "WECHAT").contains(normalized) ? normalized : "DESKTOP";
+    }
+
+    private String resolvePaymentScene(String providerCode, List<String> enabledScenes, String clientType) {
+        Set<String> scenes = enabledScenes == null ? Set.of() : enabledScenes.stream()
+                .filter(StringUtils::hasText)
+                .map(scene -> scene.trim().toUpperCase(Locale.ROOT))
+                .collect(java.util.stream.Collectors.toSet());
+        String provider = providerCode == null ? "" : providerCode.trim().toLowerCase(Locale.ROOT);
+        List<String> preferred = switch (clientType) {
+            case "WECHAT" -> "wechat_pay".equals(provider) ? List.of("JSAPI") : List.of();
+            case "MOBILE" -> "wechat_pay".equals(provider) ? List.of("H5") : "alipay".equals(provider) ? List.of("WAP") : List.of("CHECKOUT");
+            default -> "wechat_pay".equals(provider) ? List.of("NATIVE") : "alipay".equals(provider) ? List.of("PC_WEB", "QR_CODE") : List.of("CHECKOUT");
+        };
+        return preferred.stream().filter(scenes::contains).findFirst().orElse(null);
     }
 
     public CompetitionRegistrationVO.PaymentOrder getPaymentStatus(CurrentUser currentUser, Long registrationId) {
@@ -1494,6 +1591,56 @@ public class CompetitionRegistrationAppService {
     private Map<String, Object> singleRow(String sql, Object... params) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private void validateTeamMemberCount(Long competitionId, int memberCount) {
+        int minMembers = DEFAULT_TEAM_MIN_MEMBERS;
+        int maxMembers = DEFAULT_TEAM_MAX_MEMBERS;
+        List<Map<String, Object>> settingsRows = jdbcTemplate.queryForList(
+                """
+                        select cci.content_json as contentJson
+                        from aiadc_competition c
+                        join competition_config_set ccs
+                          on ccs.competition_uuid = c.uuid
+                         and ccs.status in ('DRAFT', 'PUBLISHED')
+                         and ccs.deleted = 0
+                        join competition_config_item cci
+                          on cci.competition_uuid = c.uuid
+                         and cci.config_set_id = ccs.id
+                         and cci.item_type = 'TEAM_SETTINGS'
+                         and cci.item_key = 'team-size-limits'
+                         and cci.enabled = 1
+                         and cci.deleted = 0
+                        where c.id = ? and c.deleted = 0
+                        order by ccs.id desc
+                        limit 1
+                        """,
+                competitionId
+        );
+        if (!settingsRows.isEmpty()) {
+            Object contentJson = settingsRows.get(0).get("contentJson");
+            try {
+                JsonNode metadata = objectMapper.readTree(contentJson == null ? "{}" : String.valueOf(contentJson));
+                minMembers = normalizeConfiguredMemberLimit(metadata.path("teamMinMembers").asInt(DEFAULT_TEAM_MIN_MEMBERS), DEFAULT_TEAM_MIN_MEMBERS);
+                maxMembers = normalizeConfiguredMemberLimit(metadata.path("teamMaxMembers").asInt(DEFAULT_TEAM_MAX_MEMBERS), DEFAULT_TEAM_MAX_MEMBERS);
+            } catch (Exception ignored) {
+                minMembers = DEFAULT_TEAM_MIN_MEMBERS;
+                maxMembers = DEFAULT_TEAM_MAX_MEMBERS;
+            }
+        }
+        if (minMembers > maxMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid team member limits");
+        }
+        if (memberCount < minMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Team requires at least " + minMembers + " members");
+        }
+        if (memberCount > maxMembers) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Team allows at most " + maxMembers + " members");
+        }
+    }
+
+    private int normalizeConfiguredMemberLimit(int value, int fallback) {
+        return value >= 1 && value <= MAX_INLINE_MEMBERS ? value : fallback;
     }
 
     private Map<String, Object> toMutableMap(Object value) {

@@ -189,6 +189,8 @@ public final class CompetitionRegistrationDTO {
     public static class PaymentOrderRequest {
         @Size(max = 64)
         private String providerCode;
+        @Size(max = 32)
+        private String clientType;
         @Size(max = 64)
         private String clientIp;
         @Size(max = 1024)
@@ -198,6 +200,8 @@ public final class CompetitionRegistrationDTO {
 
         public String getProviderCode() { return providerCode; }
         public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
+        public String getClientType() { return clientType; }
+        public void setClientType(String clientType) { this.clientType = clientType; }
         public String getClientIp() { return clientIp; }
         public void setClientIp(String clientIp) { this.clientIp = clientIp; }
         public String getNotifyUrl() { return notifyUrl; }

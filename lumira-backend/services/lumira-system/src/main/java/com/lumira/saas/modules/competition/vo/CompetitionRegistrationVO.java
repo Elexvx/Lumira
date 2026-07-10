@@ -136,6 +136,22 @@ public final class CompetitionRegistrationVO {
         public void setPaymentUrl(String paymentUrl) { this.paymentUrl = paymentUrl; }
     }
 
+    public static class PaymentOption {
+        private String providerCode;
+        private String displayName;
+        private String paymentScene;
+        private Integer sortOrder;
+
+        public String getProviderCode() { return providerCode; }
+        public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
+        public String getDisplayName() { return displayName; }
+        public void setDisplayName(String displayName) { this.displayName = displayName; }
+        public String getPaymentScene() { return paymentScene; }
+        public void setPaymentScene(String paymentScene) { this.paymentScene = paymentScene; }
+        public Integer getSortOrder() { return sortOrder; }
+        public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    }
+
     public static class PaymentRecord {
         private Long registrationId;
         private String registrationNo;

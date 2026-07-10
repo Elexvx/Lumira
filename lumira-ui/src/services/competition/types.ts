@@ -46,6 +46,8 @@ export type CompetitionConfigItemType =
   | 'TEAM_FIELD'
   | 'MEMBER_FIELD'
   | 'PROJECT_FIELD'
+  | 'TEAM_SETTINGS'
+  | 'PAYMENT_SETTINGS'
   | 'REQUIRED_FILE'
   | 'STAGE_MATERIAL'
   | 'TIMELINE';
@@ -84,6 +86,7 @@ export interface CompetitionSettingsRecord {
   files: CompetitionConfigItem[];
   stageMaterials: CompetitionConfigItem[];
   timeline: CompetitionConfigItem[];
+  payments: CompetitionConfigItem[];
 }
 
 export interface CompetitionUpsertPayload {
@@ -237,6 +240,13 @@ export interface CompetitionPaymentOrderRecord {
   currency: string;
   status: string;
   paymentUrl?: string | null;
+}
+
+export interface CompetitionPaymentOptionRecord {
+  providerCode: string;
+  displayName: string;
+  paymentScene: string;
+  sortOrder?: number;
 }
 
 export interface CompetitionMaterialValueRecord {

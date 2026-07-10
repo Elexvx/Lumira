@@ -205,6 +205,15 @@ public class CompetitionRegistrationV2Controller {
         );
     }
 
+    @GetMapping("/registrations/{id}/payment-options")
+    public ApiResponse<List<CompetitionRegistrationVO.PaymentOption>> paymentOptions(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "clientType", required = false) String clientType
+    ) {
+        CurrentUser currentUser = require(REGISTRATION_PAY);
+        return ApiResponse.success(registrationAppService.listPaymentOptions(currentUser, id, clientType), TraceContext.getRequestId());
+    }
+
     @GetMapping("/registrations/{id}/payment-status")
     public ApiResponse<CompetitionRegistrationVO.PaymentOrder> paymentStatus(@PathVariable("id") Long id) {
         CurrentUser currentUser = requireRegistrationReadAccess();

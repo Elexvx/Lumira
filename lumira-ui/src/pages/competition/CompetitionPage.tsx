@@ -31,6 +31,7 @@ import {
   listCompetitionStages,
   listCompetitions,
   listRegistrations,
+  listRegistrationPaymentOptions,
   publishCompetitionSettings,
   saveCompetitionSettingsModule,
   submitRegistrationMaterials,
@@ -42,6 +43,7 @@ import {
   type RegistrationSnapshotTeamPayload,
   type RegistrationUpsertPayload,
 } from '@/services/competition/api';
+import type { CompetitionPaymentOptionRecord } from '@/services/competition/types';
 import type {
   CompetitionFeeMode,
   CompetitionLocale,
@@ -69,6 +71,17 @@ import { validateMemberTextField } from './memberFieldValidation';
 import './CompetitionPage.css';
 
 type CompetitionTimeMode = 'CONFIRMED' | 'TBD';
+
+const detectPaymentClientType = (): 'DESKTOP' | 'MOBILE' | 'WECHAT' => {
+  if (typeof navigator === 'undefined') {
+    return 'DESKTOP';
+  }
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (/micromessenger/.test(userAgent)) {
+    return 'WECHAT';
+  }
+  return /android|iphone|ipad|ipod|mobile/.test(userAgent) ? 'MOBILE' : 'DESKTOP';
+};
 
 type CompetitionOrganizerFormItem = {
   role?: string;
@@ -2110,6 +2123,10 @@ const CompetitionRegistrationPage = () => {
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
   const [registrationDocuments, setRegistrationDocuments] = useState<CompetitionConfigItem[]>([]);
   const [registrationFields, setRegistrationFields] = useState<CompetitionConfigItem[]>([]);
+  const [teamMemberLimits, setTeamMemberLimits] = useState({
+    minMembers: DEFAULT_TEAM_MIN_MEMBERS,
+    maxMembers: DEFAULT_TEAM_MAX_MEMBERS,
+  });
   const [stageMaterialConfigs, setStageMaterialConfigs] = useState<CompetitionConfigItem[]>([]);
   const [registrationDocumentsLoading, setRegistrationDocumentsLoading] = useState(false);
   const [documentReadingCountdowns, setDocumentReadingCountdowns] = useState<Record<string, number>>({});
@@ -2117,6 +2134,8 @@ const CompetitionRegistrationPage = () => {
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
   const [registrationId, setRegistrationId] = useState<number>();
   const [paymentStatus, setPaymentStatus] = useState<string>();
+  const [paymentOptions, setPaymentOptions] = useState<CompetitionPaymentOptionRecord[]>([]);
+  const [selectedPaymentProvider, setSelectedPaymentProvider] = useState<string>();
   const [registrationDraftSavedAt, setRegistrationDraftSavedAt] = useState<number>();
   const [registrationDraftHydrated, setRegistrationDraftHydrated] = useState(false);
   const [registrationCompetitionFallback, setRegistrationCompetitionFallback] = useState<CompetitionRecord>();
@@ -2524,6 +2543,7 @@ const CompetitionRegistrationPage = () => {
         : undefined);
     setRegistrationDocuments([]);
     setRegistrationFields([]);
+    setTeamMemberLimits({ minMembers: DEFAULT_TEAM_MIN_MEMBERS, maxMembers: DEFAULT_TEAM_MAX_MEMBERS });
     setStageMaterialConfigs([]);
     resetRegistrationDocumentProgress([]);
     if (viewMode !== 'wizard') {
@@ -2566,9 +2586,10 @@ const CompetitionRegistrationPage = () => {
         }
         setRegistrationFields(
           (settings.fields || [])
-            .filter((item) => item.enabled !== false)
+            .filter((item) => item.itemType !== 'TEAM_SETTINGS' && item.enabled !== false)
             .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)),
         );
+        setTeamMemberLimits(getTeamMemberLimits(settings.fields || []));
         setStageMaterialConfigs(
           ([...(settings.files || []), ...(settings.stageMaterials || [])])
             .filter((item) => item.enabled !== false)
@@ -2741,8 +2762,12 @@ const CompetitionRegistrationPage = () => {
           return;
         }
         const members = normalizeRegistrationMembers(form.getFieldValue(['newTeam', 'initialMembers']) as RegistrationTeamMemberDraft[]);
-        if (!members.length) {
-          message.error('请至少填写一位参赛成员信息');
+        if (members.length < teamMemberLimits.minMembers) {
+          message.error(`团队至少需要 ${teamMemberLimits.minMembers} 位成员`);
+          return;
+        }
+        if (members.length > teamMemberLimits.maxMembers) {
+          message.error(`团队最多只能有 ${teamMemberLimits.maxMembers} 位成员`);
           return;
         }
         form.setFieldValue(['newTeam', 'initialMembers'], members);
@@ -2835,7 +2860,14 @@ const CompetitionRegistrationPage = () => {
     }
     setLoading(true);
     try {
-      const order = await createRegistrationPaymentOrder(registrationId, { providerCode: 'alipay' });
+      if (!selectedPaymentProvider) {
+        message.error('请选择支付方式');
+        return;
+      }
+      const order = await createRegistrationPaymentOrder(registrationId, {
+        providerCode: selectedPaymentProvider,
+        clientType: detectPaymentClientType(),
+      });
       setPaymentStatus(order.status || 'QUEUED');
       registrationActionRef.current?.reload();
       clearCompetitionRegistrationDraft();
@@ -2904,6 +2936,23 @@ const CompetitionRegistrationPage = () => {
       },
     });
   };
+
+  useEffect(() => {
+    if (step !== 4 || !registrationId || paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID') {
+      return;
+    }
+    let active = true;
+    void listRegistrationPaymentOptions(registrationId, detectPaymentClientType())
+      .then((options) => {
+        if (!active) return;
+        setPaymentOptions(options || []);
+        setSelectedPaymentProvider((current) => current && options.some((item) => item.providerCode === current)
+          ? current
+          : options[0]?.providerCode);
+      })
+      .catch((error) => showErrorMessage(error, '支付方式加载失败'));
+    return () => { active = false; };
+  }, [paymentStatus, registrationId, step]);
 
   const getMemberDisplayValues = (member: RegistrationTeamMemberDraft) =>
     Array.from(
@@ -2984,6 +3033,10 @@ const CompetitionRegistrationPage = () => {
     }
     const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
     if (memberEditorKey === 'new') {
+      if (currentMembers.length >= teamMemberLimits.maxMembers) {
+        message.error(`团队最多只能添加 ${teamMemberLimits.maxMembers} 位成员`);
+        return;
+      }
       currentMembers.push(member);
     } else if (memberEditorKey !== undefined) {
       currentMembers[memberEditorKey] = member;
@@ -2999,7 +3052,7 @@ const CompetitionRegistrationPage = () => {
     setMemberEditorKey(undefined);
     setMemberEditorDraft(undefined);
     setMemberEditorErrors({});
-  }, [collectRegistrationValues, form, memberEditorDraft, memberEditorKey, persistRegistrationDraft, validateMemberDraft]);
+  }, [collectRegistrationValues, form, memberEditorDraft, memberEditorKey, persistRegistrationDraft, teamMemberLimits.maxMembers, validateMemberDraft]);
 
   const openMemberInlineEditor = useCallback((key: RegistrationMemberEditorKey) => {
     const currentMembers = (form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[];
@@ -3354,11 +3407,13 @@ const CompetitionRegistrationPage = () => {
           block
           type="dashed"
           className="competition-registration-member-manager__add"
-          disabled={memberEditorKey !== undefined}
+          disabled={memberEditorKey !== undefined || registrationMembers.length >= teamMemberLimits.maxMembers}
           icon={<PlusOutlined />}
           onClick={() => openMemberInlineEditor('new')}
         >
-          添加一位成员
+          {registrationMembers.length >= teamMemberLimits.maxMembers
+            ? `已达上限（${teamMemberLimits.maxMembers} 人）`
+            : `添加一位成员（${registrationMembers.length}/${teamMemberLimits.maxMembers}）`}
         </Button>
       </div>
     );
@@ -3627,11 +3682,27 @@ const CompetitionRegistrationPage = () => {
                 )
               ) : null}
               {step === 4 ? (
-                <Alert
-                  type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
-                  showIcon
-                  message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请确认报名并使用模拟接口支付。'}
-                />
+                <Space direction="vertical" style={{ width: '100%' }} size={16}>
+                  <Alert
+                    type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
+                    showIcon
+                    message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请选择支付方式。'}
+                  />
+                  {paymentStatus !== 'CONFIRMED' && paymentStatus !== 'PAID' ? (
+                    paymentOptions.length ? (
+                      <Radio.Group value={selectedPaymentProvider} onChange={(event) => setSelectedPaymentProvider(event.target.value)}>
+                        <Space direction="vertical">
+                          {paymentOptions.map((option) => (
+                            <Radio key={option.providerCode} value={option.providerCode}>
+                              {option.displayName}
+                              <Typography.Text type="secondary"> {option.paymentScene}</Typography.Text>
+                            </Radio>
+                          ))}
+                        </Space>
+                      </Radio.Group>
+                    ) : <Alert type="warning" showIcon message="当前设备暂无可用支付方式，请联系管理员。" />
+                  ) : null}
+                </Space>
               ) : null}
             </div>
           </Form>
@@ -3647,8 +3718,8 @@ const CompetitionRegistrationPage = () => {
                 {nextButtonText}
               </Button>
             ) : (
-              <Button type="primary" loading={loading} disabled={!canPayRegistration} onClick={() => void pay()}>
-                模拟支付
+              <Button type="primary" loading={loading} disabled={!canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
+                立即支付
               </Button>
             )}
           </div>
@@ -3658,7 +3729,7 @@ const CompetitionRegistrationPage = () => {
   );
 };
 
-type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'files' | 'timeline';
+type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
 type CompetitionSettingsModuleKey = 'basic' | CompetitionSettingsConfigModuleKey;
 
 type CompetitionSettingsModuleConfig = {
@@ -3690,6 +3761,8 @@ type ConfigItemMetadata = {
   timelineKind?: string;
   startAt?: string;
   endAt?: string;
+  teamMinMembers?: number;
+  teamMaxMembers?: number;
 };
 
 type EditableCompetitionConfigItem = CompetitionConfigItem & {
@@ -3713,10 +3786,18 @@ const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
   {
     key: 'fields',
     labelId: 'page.competition.settings.module.fields',
-    defaultLabel: 'Collected Fields',
+    defaultLabel: 'Team Management',
     descriptionId: 'page.competition.settings.module.fields.description',
-    defaultDescription: 'Registration, team, member and project fields collected from participants.',
-    itemTypes: ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'],
+    defaultDescription: 'Configure team size limits and registration fields.',
+    itemTypes: ['TEAM_SETTINGS', 'REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'],
+  },
+  {
+    key: 'payments',
+    labelId: 'page.competition.settings.module.payments',
+    defaultLabel: 'Payment Methods',
+    descriptionId: 'page.competition.settings.module.payments.description',
+    defaultDescription: 'Choose the payment providers available for this competition.',
+    itemTypes: ['PAYMENT_SETTINGS'],
   },
   {
     key: 'files',
@@ -3768,6 +3849,36 @@ const serializeConfigItemMetadata = (metadata?: ConfigItemMetadata) => {
   );
   return JSON.stringify(cleaned, null, 2);
 };
+
+const TEAM_SETTINGS_ITEM_KEY = 'team-size-limits';
+const DEFAULT_TEAM_MIN_MEMBERS = 1;
+const DEFAULT_TEAM_MAX_MEMBERS = 20;
+
+const normalizeTeamMemberLimit = (value: unknown, fallback: number) => {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : fallback;
+};
+
+const getTeamMemberLimits = (items: CompetitionConfigItem[]) => {
+  const settingsItem = items.find((item) => item.itemType === 'TEAM_SETTINGS' && item.itemKey === TEAM_SETTINGS_ITEM_KEY);
+  const metadata = parseConfigItemMetadata(settingsItem?.contentJson);
+  const minMembers = normalizeTeamMemberLimit(metadata.teamMinMembers, DEFAULT_TEAM_MIN_MEMBERS);
+  const maxMembers = normalizeTeamMemberLimit(metadata.teamMaxMembers, DEFAULT_TEAM_MAX_MEMBERS);
+  return {
+    minMembers: Math.min(minMembers, maxMembers),
+    maxMembers: Math.max(minMembers, maxMembers),
+  };
+};
+
+const buildTeamSettingsConfigItem = (minMembers: number, maxMembers: number): CompetitionConfigItem => ({
+  itemType: 'TEAM_SETTINGS',
+  itemKey: TEAM_SETTINGS_ITEM_KEY,
+  title: '团队人数限制',
+  contentJson: serializeConfigItemMetadata({ teamMinMembers: minMembers, teamMaxMembers: maxMembers }),
+  sortOrder: 0,
+  requiredFlag: false,
+  enabled: true,
+});
 
 const normalizeReadingSeconds = (value?: number | string | null) => {
   const numericValue = Number(value);
@@ -3920,6 +4031,13 @@ const fieldScopeOptions = [
   { label: '项目信息', value: 'PROJECT_FIELD' },
 ];
 
+const paymentProviderOptions = [
+  { label: '微信支付', value: 'wechat_pay' },
+  { label: '支付宝', value: 'alipay' },
+  { label: 'Stripe', value: 'stripe' },
+  { label: 'PayPal', value: 'paypal' },
+];
+
 const timelineKindOptions = [
   { label: '报名时间', value: 'REGISTRATION' },
   { label: '比赛时间', value: 'COMPETITION' },
@@ -3963,6 +4081,9 @@ const getModuleItems = (settings: CompetitionSettingsRecord | undefined, key: Co
   }
   if (key === 'files') {
     return [...settings.files, ...settings.stageMaterials].sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
+  }
+  if (key === 'payments') {
+    return settings.payments || [];
   }
   return settings.timeline;
 };
@@ -4120,6 +4241,19 @@ const renderConfigItemFields = (
     );
   }
 
+  if (module.key === 'payments') {
+    return (
+      <div className="competition-config-grid">
+        <Form.Item name={[fieldName, 'itemKey']} label="支付渠道" rules={[{ required: true, message: '请选择支付渠道' }]}>
+          <Select options={paymentProviderOptions} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'title']} label="前台名称" rules={[{ required: true, message: '请输入前台名称' }]}>
+          <Input maxLength={64} placeholder="例如：微信支付" />
+        </Form.Item>
+      </div>
+    );
+  }
+
   if (module.key === 'files') {
     return (
       <div className="competition-config-grid">
@@ -4270,19 +4404,49 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   storageSpaceOptions,
   onSaved,
 }, ref) => {
-  const [form] = Form.useForm<{ items: EditableCompetitionConfigItem[] }>();
+  const [form] = Form.useForm<{
+    items: EditableCompetitionConfigItem[];
+    teamMinMembers?: number;
+    teamMaxMembers?: number;
+  }>();
+
+  const getInitialValues = useCallback(() => {
+    const limits = getTeamMemberLimits(items);
+    return {
+      items: toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS')),
+      teamMinMembers: limits.minMembers,
+      teamMaxMembers: limits.maxMembers,
+    };
+  }, [items]);
 
   useEffect(() => {
-    form.setFieldsValue({ items: toEditableConfigItems(items) });
-  }, [form, items]);
+    form.setFieldsValue(getInitialValues());
+  }, [form, getInitialValues]);
 
   const save = useCallback(async () => {
     const values = form.getFieldsValue(true);
     if (!isConfigModuleReadyToSave(module.key, values.items || [])) {
       return;
     }
+    if (module.key === 'fields') {
+      const minMembers = Number(values.teamMinMembers);
+      const maxMembers = Number(values.teamMaxMembers);
+      if (!Number.isInteger(minMembers) || !Number.isInteger(maxMembers)
+        || minMembers < 1 || maxMembers > 20 || minMembers > maxMembers) {
+        return;
+      }
+    }
     try {
-      const configItems = toConfigItems(values.items || []);
+      const fieldItems = toConfigItems(values.items || []);
+      const configItems = module.key === 'fields'
+        ? [
+            buildTeamSettingsConfigItem(
+              normalizeTeamMemberLimit(values.teamMinMembers, DEFAULT_TEAM_MIN_MEMBERS),
+              normalizeTeamMemberLimit(values.teamMaxMembers, DEFAULT_TEAM_MAX_MEMBERS),
+            ),
+            ...fieldItems,
+          ]
+        : fieldItems;
       const saved = module.key === 'files'
         ? await (async () => {
             const groupedItems = splitFileConfigItemsByModule(configItems);
@@ -4311,7 +4475,44 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
         {getCompetitionSettingsModuleDescription(module)}
       </Typography.Paragraph>
-      <Form form={form} layout="vertical" initialValues={{ items: toEditableConfigItems(items) }} onValuesChange={scheduleSave}>
+      <Form form={form} layout="vertical" initialValues={getInitialValues()} onValuesChange={scheduleSave}>
+        {module.key === 'fields' ? (
+          <Card className="competition-config-item" size="small" title="团队人数设置">
+            <div className="competition-config-grid">
+              <Form.Item
+                name="teamMinMembers"
+                label="团队最小人数"
+                dependencies={['teamMaxMembers']}
+                rules={[
+                  { required: true, message: '请输入团队最小人数' },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => Number(value) <= Number(getFieldValue('teamMaxMembers'))
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('最小人数不能大于最大人数')),
+                  }),
+                ]}
+              >
+                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="teamMaxMembers"
+                label="团队最大人数"
+                dependencies={['teamMinMembers']}
+                rules={[
+                  { required: true, message: '请输入团队最大人数' },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => Number(value) >= Number(getFieldValue('teamMinMembers'))
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('最大人数不能小于最小人数')),
+                  }),
+                ]}
+              >
+                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+            <Typography.Text type="secondary">报名时团队成员数必须在该范围内。</Typography.Text>
+          </Card>
+        ) : null}
         <Form.List name="items">
           {(fields, { add, remove }) =>
             module.key === 'fields' ? (

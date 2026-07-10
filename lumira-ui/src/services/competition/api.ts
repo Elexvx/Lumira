@@ -182,10 +182,16 @@ export const submitRegistrationMaterials = (
 export const listRegistrationMaterials = (registrationId: number) =>
   request<CompetitionMaterialSubmissionRecord[]>(`/v2/aiadc/registrations/${registrationId}/materials`);
 
-export const createRegistrationPaymentOrder = (registrationId: number, data: { providerCode?: string } = {}) =>
+export const createRegistrationPaymentOrder = (registrationId: number, data: { providerCode?: string; clientType?: string } = {}) =>
   request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-order`, {
     method: 'POST',
     data,
+  });
+
+export const listRegistrationPaymentOptions = (registrationId: number, clientType: 'DESKTOP' | 'MOBILE' | 'WECHAT') =>
+  request<import('./types').CompetitionPaymentOptionRecord[]>(`/v2/aiadc/registrations/${registrationId}/payment-options`, {
+    method: 'GET',
+    params: { clientType },
   });
 
 export const getRegistrationPaymentStatus = (registrationId: number) =>

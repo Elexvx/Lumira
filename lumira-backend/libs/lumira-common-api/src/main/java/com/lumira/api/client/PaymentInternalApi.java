@@ -1,6 +1,7 @@
 package com.lumira.api.client;
 
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,9 +10,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
+import java.util.List;
 
 @HttpExchange(accept = MediaType.APPLICATION_JSON_VALUE)
 public interface PaymentInternalApi {
+
+    @GetExchange("/internal/payment/checkout-options")
+    default List<PaymentCheckoutOptionDTO> listCheckoutOptions(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
+    ) {
+        return List.of();
+    }
 
     default PaymentOrderDTO createOrder(
             Long operatorId,

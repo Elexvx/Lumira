@@ -3,6 +3,7 @@ package com.lumira.payment.service;
 import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -12,10 +13,12 @@ import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 
 @Service("paymentInternalApi")
 @Primary
@@ -24,14 +27,34 @@ public class PaymentInternalApiService implements PaymentInternalApi {
     private static final int MAX_ORDER_NO_LENGTH = 64;
 
     private final PaymentTransactionService paymentTransactionService;
+    private final PaymentManagementAppService paymentManagementAppService;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+
+    @Autowired
+    public PaymentInternalApiService(
+            PaymentTransactionService paymentTransactionService,
+            PaymentManagementAppService paymentManagementAppService,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+    ) {
+        this.paymentTransactionService = paymentTransactionService;
+        this.paymentManagementAppService = paymentManagementAppService;
+        this.systemInternalApiProvider = systemInternalApiProvider;
+    }
 
     public PaymentInternalApiService(
             PaymentTransactionService paymentTransactionService,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
-        this.paymentTransactionService = paymentTransactionService;
-        this.systemInternalApiProvider = systemInternalApiProvider;
+        this(paymentTransactionService, null, systemInternalApiProvider);
+    }
+
+    @Override
+    public List<PaymentCheckoutOptionDTO> listCheckoutOptions(Long operatorId, String operatorUuid, Long simulatedRoleId) {
+        resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
+        if (paymentManagementAppService == null) {
+            return List.of();
+        }
+        return paymentManagementAppService.listCheckoutOptions();
     }
 
     @Override

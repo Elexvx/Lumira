@@ -2,6 +2,7 @@ package com.lumira.payment.controller;
 
 import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/internal/payment")
@@ -37,6 +39,16 @@ public class InternalPaymentController {
     ) {
         requireInternalServicePrincipal();
         return paymentInternalApiService.createOrder(operatorId, operatorUuid, simulatedRoleId, request);
+    }
+
+    @GetMapping("/checkout-options")
+    public List<PaymentCheckoutOptionDTO> listCheckoutOptions(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
+    ) {
+        requireInternalServicePrincipal();
+        return paymentInternalApiService.listCheckoutOptions(operatorId, operatorUuid, simulatedRoleId);
     }
 
     @GetMapping("/orders/{orderNo}")
