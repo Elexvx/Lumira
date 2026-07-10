@@ -4326,7 +4326,9 @@ const renderFieldSettingsTable = (
     <Space className="competition-config-list" direction="vertical" size={16}>
       <div className="competition-field-table">
         <div className="competition-field-table__head">
-          <span>字段</span>
+          <span>字段名称</span>
+          <span>字段标识</span>
+          <span>适用范围</span>
           <span>类型</span>
           <span>占位提示</span>
           <span>必填</span>
@@ -4336,17 +4338,15 @@ const renderFieldSettingsTable = (
         </div>
         {fields.map((field) => (
           <div className="competition-field-table__row" key={field.key}>
-            <div className="competition-field-table__field">
-              <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入字段名称' }]}>
-                <Input placeholder="字段名称" maxLength={64} />
-              </Form.Item>
-              <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
-                <Input placeholder="字段标识" maxLength={64} />
-              </Form.Item>
-              <Form.Item name={[field.name, 'metadata', 'fieldScope']} initialValue="REGISTRATION_FIELD">
-                <Select options={fieldScopeOptions} />
-              </Form.Item>
-            </div>
+            <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入字段名称' }]}>
+              <Input placeholder="字段名称" maxLength={64} />
+            </Form.Item>
+            <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
+              <Input placeholder="字段标识" maxLength={64} />
+            </Form.Item>
+            <Form.Item name={[field.name, 'metadata', 'fieldScope']} initialValue="REGISTRATION_FIELD">
+              <Select options={fieldScopeOptions} />
+            </Form.Item>
             <Form.Item name={[field.name, 'metadata', 'fieldType']} rules={[{ required: true, message: '请选择字段类型' }]}>
               <Select options={fieldTypeOptions} />
             </Form.Item>

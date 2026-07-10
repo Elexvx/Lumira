@@ -801,12 +801,21 @@
 .competition-field-table__head,
 .competition-field-table__row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.4fr) minmax(112px, 0.9fr) minmax(140px, 1fr) 64px 96px 64px 72px;
+  grid-template-columns:
+    minmax(140px, 1fr)
+    minmax(180px, 1.25fr)
+    minmax(120px, 0.85fr)
+    minmax(112px, 0.8fr)
+    minmax(140px, 1fr)
+    64px
+    80px
+    64px
+    72px;
   gap: 10px;
   align-items: center;
   box-sizing: border-box;
   width: 100%;
-  min-width: 0;
+  min-width: 1120px;
   padding: 12px;
 }
 
@@ -834,12 +843,6 @@
 
 .competition-field-table__row:last-child {
   border-bottom: 0;
-}
-
-.competition-field-table__field {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
 }
 
 .competition-field-table .ant-form-item {
