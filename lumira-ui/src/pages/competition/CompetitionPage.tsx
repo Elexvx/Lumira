@@ -1,7 +1,7 @@
 import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
-import type { FormInstance, SelectProps } from 'antd';
+import type { FormInstance } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -1860,14 +1860,8 @@ const parseConfigFieldOptions = (options?: string) =>
 const buildCollectedFieldRule = (field: RegistrationCollectedField) =>
   field.required ? [{ required: true, message: `请输入${field.title}` }] : undefined;
 
-const renderRegistrationCollectedFieldInput = (
-  field: RegistrationCollectedField,
-  options?: { teamTypeOptions?: SelectProps['options'] },
-) => {
+const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField) => {
   const placeholder = field.placeholder || field.title || undefined;
-  if (normalizeCollectedFieldConfigKey(field.itemKey) === 'teamtype' && options?.teamTypeOptions?.length) {
-    return <Select options={options.teamTypeOptions} placeholder={placeholder} />;
-  }
   switch ((field.fieldType || 'TEXT').toUpperCase()) {
     case 'ROLE': {
       const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
@@ -2108,7 +2102,6 @@ const CompetitionRegistrationPage = () => {
   const location = useLocation();
   const responsive = useResponsive();
   const registrationActionPermission = useActionPermission();
-  const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const registrationActionRef = useRef<ActionType | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
@@ -2138,7 +2131,6 @@ const CompetitionRegistrationPage = () => {
   const [memberEditorKey, setMemberEditorKey] = useState<RegistrationMemberEditorKey>();
   const [memberEditorDraft, setMemberEditorDraft] = useState<RegistrationTeamMemberDraft>();
   const [memberEditorErrors, setMemberEditorErrors] = useState<Record<string, string>>({});
-  const { options: teamTypeOptions } = useDictOptions('team_type', fallbackDictOptions.registrationTeamTypeOptions);
   const selectedCompetitionId = Form.useWatch('competitionId', form);
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], form) || []) as RegistrationTeamMemberDraft[];
@@ -2184,10 +2176,6 @@ const CompetitionRegistrationPage = () => {
   }, []);
   const teamNameField = useMemo(
     () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', fieldType: 'TEXT', required: true }, teamFieldSplit.overrides.get('teamName')),
-    [teamFieldSplit.overrides],
-  );
-  const teamTypeField = useMemo(
-    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'teamType', title: '团队类型', fieldType: 'SELECT' }, teamFieldSplit.overrides.get('teamType')),
     [teamFieldSplit.overrides],
   );
   const teamAvatarField = useMemo(
@@ -3369,9 +3357,6 @@ const CompetitionRegistrationPage = () => {
           </Typography.Title>
           <Form.Item name="newTeamName" label={teamNameField.title} rules={buildCollectedFieldRule(teamNameField)}>
             <Input maxLength={128} placeholder={teamNameField.placeholder || teamNameField.title} />
-          </Form.Item>
-          <Form.Item name={["newTeam", "teamType"]} label={teamTypeField.title} rules={buildCollectedFieldRule(teamTypeField)}>
-            {renderRegistrationCollectedFieldInput(teamTypeField, { teamTypeOptions })}
           </Form.Item>
           <Form.Item name={["newTeam", "avatarUrl"]} hidden>
             <Input />
