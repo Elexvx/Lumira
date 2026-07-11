@@ -7,6 +7,7 @@ import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import { buildSystemPaymentWebhookUrl } from '../paymentWebhookUrl';
 import { requestPaymentApi } from '../paymentAuthenticatedRequest';
+import { localizePaymentMessage } from '../paymentMessage';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -263,7 +264,13 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
         const result = await requestPaymentApi<PaymentProviderTestResult>(`/v1/payment/providers/${code}/test`, {
           method: 'POST',
         });
-        message.success(result.message || t('支付连通性测试完成', 'Payment connectivity test completed'));
+        const feedback = localizePaymentMessage(result.message, isEnglishLocale())
+          || t('支付连通性测试完成', 'Payment connectivity test completed');
+        if (result.success) {
+          message.success(feedback);
+        } else {
+          message.warning(feedback);
+        }
         await onRefetch();
       } finally {
         setTesting(false);
