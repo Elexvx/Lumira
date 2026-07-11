@@ -103,7 +103,7 @@ export const isConfigModuleReadyToSave = (
       return hasText(item.title)
         && hasText(item.itemKey)
         && hasText(item.metadata?.fieldType)
-        && (item.metadata?.fieldType !== 'SELECT' || hasText(item.metadata?.options));
+        && (!['SELECT', 'MULTI_SELECT'].includes(item.metadata?.fieldType || '') || hasText(item.metadata?.options));
     }
     if (moduleKey === 'files') {
       return hasText(item.title) && hasText(item.itemKey) && hasText(item.metadata?.stageCode);

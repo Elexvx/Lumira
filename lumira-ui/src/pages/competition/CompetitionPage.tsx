@@ -1890,6 +1890,8 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
       return <DatePicker style={{ width: '100%' }} placeholder={placeholder} />;
     case 'SELECT':
       return <Select options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
+    case 'MULTI_SELECT':
+      return <Select mode="multiple" options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
     case 'MOBILE':
       return <Input placeholder={placeholder} maxLength={20} />;
     case 'EMAIL':
@@ -3085,7 +3087,7 @@ const CompetitionRegistrationPage = () => {
     if (fieldType === 'ROLE') {
       return resolveOptionLabel(buildOptionLabelMap(memberRoleOptions), fieldValue) || '-';
     }
-    if (fieldType === 'SELECT') {
+    if (fieldType === 'SELECT' || fieldType === 'MULTI_SELECT') {
       return resolveOptionLabel(buildOptionLabelMap(parseConfigFieldOptions(field.options)), fieldValue) || '-';
     }
     return normalizeDisplayText(fieldValue) || '-';
@@ -3295,6 +3297,18 @@ const CompetitionRegistrationPage = () => {
           return (
             <Select
               value={normalizeOptionValue(fieldValue)}
+              options={parseConfigFieldOptions(field.options)}
+              placeholder={placeholder}
+              onChange={(value) => updateMemberEditorField(field, value)}
+            />
+          );
+        case 'MULTI_SELECT':
+          return (
+            <Select
+              mode="multiple"
+              value={Array.isArray(fieldValue)
+                ? fieldValue.map(normalizeOptionValue).filter((value): value is string => Boolean(value))
+                : []}
               options={parseConfigFieldOptions(field.options)}
               placeholder={placeholder}
               onChange={(value) => updateMemberEditorField(field, value)}
@@ -3976,6 +3990,7 @@ const fieldTypeOptions = [
   { label: '数字', value: 'NUMBER' },
   { label: '日期', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
+  { label: '多选', value: 'MULTI_SELECT' },
   { label: '手机号', value: 'MOBILE' },
   { label: '邮箱', value: 'EMAIL' },
 ];
@@ -4353,7 +4368,9 @@ const renderFieldSettingsTable = (
             <Form.Item noStyle shouldUpdate={(previous, current) => (
               previous?.items?.[field.name]?.metadata?.fieldType !== current?.items?.[field.name]?.metadata?.fieldType
             )}>
-              {({ getFieldValue }) => getFieldValue(['items', field.name, 'metadata', 'fieldType']) === 'SELECT' ? (
+              {({ getFieldValue }) => ['SELECT', 'MULTI_SELECT'].includes(
+                getFieldValue(['items', field.name, 'metadata', 'fieldType']),
+              ) ? (
                 <Form.Item
                   name={[field.name, 'metadata', 'options']}
                   rules={[{ required: true, whitespace: true, message: '请配置至少一个下拉选项' }]}

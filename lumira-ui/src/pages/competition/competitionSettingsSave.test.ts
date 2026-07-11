@@ -81,4 +81,22 @@ describe('competition settings page-level save guards', () => {
       },
     ])).toBe(true);
   });
+
+  it('requires configured options for a multi-select field', () => {
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        title: '兴趣方向',
+        itemKey: 'interests',
+        metadata: { fieldType: 'MULTI_SELECT', options: '' },
+      },
+    ])).toBe(false);
+
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        title: '兴趣方向',
+        itemKey: 'interests',
+        metadata: { fieldType: 'MULTI_SELECT', options: '人工智能\n机器人' },
+      },
+    ])).toBe(true);
+  });
 });
