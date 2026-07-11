@@ -60,25 +60,6 @@ public class PaymentTransactionService {
             PaymentManagementAppService paymentManagementAppService,
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
-            @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
-    ) {
-        this(
-                jdbcTemplate,
-                objectMapper,
-                paymentManagementAppService,
-                providerCatalog,
-                outboxService,
-                domainEventPublisher,
-                null
-        );
-    }
-
-    public PaymentTransactionService(
-            JdbcTemplate jdbcTemplate,
-            ObjectMapper objectMapper,
-            PaymentManagementAppService paymentManagementAppService,
-            PaymentProviderCatalog providerCatalog,
-            PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
