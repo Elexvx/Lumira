@@ -1,0 +1,78 @@
+export const competitionSettingsSectionKeys = [
+  'basic',
+  'registration',
+  'stages',
+  'payments',
+  'review',
+] as const;
+
+export type CompetitionSettingsSectionKey = (typeof competitionSettingsSectionKeys)[number];
+
+export type CompetitionSettingsRegistrationTab =
+  | 'REGISTRATION_FIELD'
+  | 'TEAM_AND_MEMBER'
+  | 'PROJECT_FIELD'
+  | 'documents';
+
+export type CompetitionSettingsStageTab = 'timeline' | 'files';
+
+export type CompetitionSettingsNavigation = {
+  section: CompetitionSettingsSectionKey;
+  registrationTab: CompetitionSettingsRegistrationTab;
+  stageTab: CompetitionSettingsStageTab;
+};
+
+const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistrationTab> = {
+  registration: 'REGISTRATION_FIELD',
+  'team-members': 'TEAM_AND_MEMBER',
+  project: 'PROJECT_FIELD',
+  documents: 'documents',
+};
+
+const registrationQueryValueByTab: Record<CompetitionSettingsRegistrationTab, string> = {
+  REGISTRATION_FIELD: 'registration',
+  TEAM_AND_MEMBER: 'team-members',
+  PROJECT_FIELD: 'project',
+  documents: 'documents',
+};
+
+const isSectionKey = (value: string | null): value is CompetitionSettingsSectionKey =>
+  competitionSettingsSectionKeys.includes(value as CompetitionSettingsSectionKey);
+
+export const parseCompetitionSettingsNavigation = (search: string): CompetitionSettingsNavigation => {
+  const params = new URLSearchParams(search);
+  const sectionValue = params.get('section');
+  const section = isSectionKey(sectionValue) ? sectionValue : 'basic';
+  const tabValue = params.get('tab') || '';
+
+  return {
+    section,
+    registrationTab: section === 'registration'
+      ? registrationTabByQueryValue[tabValue] || 'REGISTRATION_FIELD'
+      : 'REGISTRATION_FIELD',
+    stageTab: section === 'stages' && tabValue === 'timeline' ? 'timeline' : 'files',
+  };
+};
+
+export const createCompetitionSettingsSearch = (
+  currentSearch: string,
+  section: CompetitionSettingsSectionKey,
+  detail?: CompetitionSettingsRegistrationTab | CompetitionSettingsStageTab,
+) => {
+  const params = new URLSearchParams(currentSearch);
+  params.set('section', section);
+
+  if (section === 'registration') {
+    const registrationTab = detail && detail in registrationQueryValueByTab
+      ? detail as CompetitionSettingsRegistrationTab
+      : 'REGISTRATION_FIELD';
+    params.set('tab', registrationQueryValueByTab[registrationTab]);
+  } else if (section === 'stages') {
+    params.set('tab', detail === 'timeline' ? 'timeline' : 'files');
+  } else {
+    params.delete('tab');
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : '';
+};

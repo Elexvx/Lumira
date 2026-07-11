@@ -64,6 +64,13 @@ import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSe
 import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
+import {
+  createCompetitionSettingsSearch,
+  parseCompetitionSettingsNavigation,
+  type CompetitionSettingsRegistrationTab,
+  type CompetitionSettingsSectionKey,
+  type CompetitionSettingsStageTab,
+} from '@/pages/competition/utils/competitionSettingsNavigation';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message, modal } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -3740,7 +3747,7 @@ const CompetitionRegistrationPage = () => {
 };
 
 type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
-type CompetitionSettingsModuleKey = 'basic' | 'registration' | 'stages' | 'payments' | 'review';
+type CompetitionSettingsModuleKey = CompetitionSettingsSectionKey;
 
 type CompetitionSettingsModuleConfig = {
   key: CompetitionSettingsConfigModuleKey;
@@ -5079,11 +5086,13 @@ CompetitionTimelineSettingsPanel.displayName = 'CompetitionTimelineSettingsPanel
 
 const CompetitionSettingsPage = () => {
   const params = useParams<{ competitionUuid: string }>();
+  const location = useLocation();
   const competitionUuid = params.competitionUuid || '';
+  const initialNavigation = parseCompetitionSettingsNavigation(location.search);
   const [settings, setSettings] = useState<CompetitionSettingsRecord>();
-  const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('basic');
-  const [registrationDetail, setRegistrationDetail] = useState<'REGISTRATION_FIELD' | 'TEAM_AND_MEMBER' | 'PROJECT_FIELD' | 'documents'>('REGISTRATION_FIELD');
-  const [stageDetail, setStageDetail] = useState<'timeline' | 'files'>('files');
+  const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>(initialNavigation.section);
+  const [registrationDetail, setRegistrationDetail] = useState<CompetitionSettingsRegistrationTab>(initialNavigation.registrationTab);
+  const [stageDetail, setStageDetail] = useState<CompetitionSettingsStageTab>(initialNavigation.stageTab);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
@@ -5091,6 +5100,37 @@ const CompetitionSettingsPage = () => {
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
   const { options: levelOptions } = useDictOptions(COMPETITION_LEVEL_DICT, fallbackDictOptions.levelOptions);
+
+  const updateNavigationUrl = useCallback((
+    section: CompetitionSettingsModuleKey,
+    detail?: CompetitionSettingsRegistrationTab | CompetitionSettingsStageTab,
+    replace = false,
+  ) => {
+    const nextSearch = createCompetitionSettingsSearch(location.search, section, detail);
+    if (nextSearch === location.search) {
+      return;
+    }
+    const nextLocation = { pathname: location.pathname, search: nextSearch };
+    if (replace) {
+      history.replace(nextLocation);
+    } else {
+      history.push(nextLocation);
+    }
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const navigation = parseCompetitionSettingsNavigation(location.search);
+    setActiveKey(navigation.section);
+    setRegistrationDetail(navigation.registrationTab);
+    setStageDetail(navigation.stageTab);
+
+    const detail = navigation.section === 'registration'
+      ? navigation.registrationTab
+      : navigation.section === 'stages'
+        ? navigation.stageTab
+        : undefined;
+    updateNavigationUrl(navigation.section, detail, true);
+  }, [location.search, updateNavigationUrl]);
 
   useEffect(() => {
     let mounted = true;
@@ -5142,17 +5182,25 @@ const CompetitionSettingsPage = () => {
     }
     await flushActivePanel();
     setActiveKey(nextKey);
-  }, [activeKey, flushActivePanel]);
+    updateNavigationUrl(
+      nextKey,
+      nextKey === 'registration' ? registrationDetail : nextKey === 'stages' ? stageDetail : undefined,
+    );
+  }, [activeKey, flushActivePanel, registrationDetail, stageDetail, updateNavigationUrl]);
 
   const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
     await flushActivePanel();
-    setRegistrationDetail(nextKey as 'REGISTRATION_FIELD' | 'TEAM_AND_MEMBER' | 'PROJECT_FIELD' | 'documents');
-  }, [flushActivePanel]);
+    const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
+    setRegistrationDetail(nextDetail);
+    updateNavigationUrl('registration', nextDetail);
+  }, [flushActivePanel, updateNavigationUrl]);
 
   const handleStageDetailChange = useCallback(async (nextKey: string) => {
     await flushActivePanel();
-    setStageDetail(nextKey as 'timeline' | 'files');
-  }, [flushActivePanel]);
+    const nextDetail = nextKey as CompetitionSettingsStageTab;
+    setStageDetail(nextDetail);
+    updateNavigationUrl('stages', nextDetail);
+  }, [flushActivePanel, updateNavigationUrl]);
 
   const publish = async () => {
     if (!settings) {
@@ -5317,7 +5365,7 @@ const CompetitionSettingsPage = () => {
                     />
                   </div>
                   <Space className="competition-settings-review__actions">
-                    <Button onClick={() => setActiveKey('registration')}>返回修改</Button>
+                    <Button onClick={() => void handleModuleChange('registration')}>返回修改</Button>
                     <Button type="primary" loading={publishing} onClick={() => void publish()}>
                       检查并发布
                     </Button>
