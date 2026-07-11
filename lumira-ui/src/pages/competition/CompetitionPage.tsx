@@ -4435,6 +4435,7 @@ type ConfigModulePanelProps = {
   module: CompetitionSettingsModuleConfig;
   items: CompetitionConfigItem[];
   storageSpaceOptions: StorageSpaceOption[];
+  fieldScope?: RegistrationFieldScope;
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
 
@@ -4443,6 +4444,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   module,
   items,
   storageSpaceOptions,
+  fieldScope,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<{
@@ -4545,8 +4547,9 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           {(fields, { add, remove }) =>
             module.key === 'fields' ? (
               <Tabs
-                className="competition-field-scope-tabs"
-                items={fieldScopeOptions.map((scopeOption) => {
+                className={fieldScope ? 'competition-field-scope-tabs competition-field-scope-tabs--embedded' : 'competition-field-scope-tabs'}
+                activeKey={fieldScope}
+                items={fieldScopeOptions.filter((scopeOption) => !fieldScope || scopeOption.value === fieldScope).map((scopeOption) => {
                   const scopedFields = fields.filter((field) => {
                     const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
                     return (item?.metadata?.fieldScope || item?.itemType) === scopeOption.value;
@@ -5054,7 +5057,7 @@ const CompetitionSettingsPage = () => {
   const competitionUuid = params.competitionUuid || '';
   const [settings, setSettings] = useState<CompetitionSettingsRecord>();
   const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('basic');
-  const [registrationDetail, setRegistrationDetail] = useState<'documents' | 'fields'>('fields');
+  const [registrationDetail, setRegistrationDetail] = useState<RegistrationFieldScope | 'documents'>('REGISTRATION_FIELD');
   const [stageDetail, setStageDetail] = useState<'timeline' | 'files'>('files');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -5089,7 +5092,7 @@ const CompetitionSettingsPage = () => {
   }, [competitionUuid]);
 
   const activeConfigModuleKey: CompetitionSettingsConfigModuleKey | undefined = activeKey === 'registration'
-    ? registrationDetail
+    ? registrationDetail === 'documents' ? 'documents' : 'fields'
     : activeKey === 'stages'
       ? stageDetail
       : activeKey === 'payments'
@@ -5118,7 +5121,7 @@ const CompetitionSettingsPage = () => {
 
   const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
     await flushActivePanel();
-    setRegistrationDetail(nextKey as 'documents' | 'fields');
+    setRegistrationDetail(nextKey as RegistrationFieldScope | 'documents');
   }, [flushActivePanel]);
 
   const handleStageDetailChange = useCallback(async (nextKey: string) => {
@@ -5183,19 +5186,19 @@ const CompetitionSettingsPage = () => {
                 />
               ) : activeKey === 'registration' ? (
                 <>
-                  <header className="competition-settings-section-header">
-                    <Typography.Title level={4}>报名设置</Typography.Title>
-                    <Typography.Paragraph type="secondary">集中配置参赛者需要阅读的文书，以及报名、团队、成员和项目信息。</Typography.Paragraph>
-                  </header>
                   <Tabs
-                    className="competition-settings-detail-tabs"
+                    className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
                     activeKey={registrationDetail}
                     items={[
-                      { key: 'fields', label: '报名与团队字段' },
+                      ...fieldScopeOptions.map((option) => ({ key: option.value, label: option.label })),
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
                     onChange={(key) => void handleRegistrationDetailChange(key)}
                   />
+                  <header className="competition-settings-section-header">
+                    <Typography.Title level={4}>报名设置</Typography.Title>
+                    <Typography.Paragraph type="secondary">集中配置参赛者需要阅读的文书，以及报名、团队、成员和项目信息。</Typography.Paragraph>
+                  </header>
                   {activeModule ? (
                     <ConfigModulePanel
                       key={activeModule.key}
@@ -5204,6 +5207,7 @@ const CompetitionSettingsPage = () => {
                       module={activeModule}
                       items={getModuleItems(settings, activeModule.key)}
                       storageSpaceOptions={storageSpaceOptions}
+                      fieldScope={registrationDetail === 'documents' ? undefined : registrationDetail}
                       onSaved={setSettings}
                     />
                   ) : null}

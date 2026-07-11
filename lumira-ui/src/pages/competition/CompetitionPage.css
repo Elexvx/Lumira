@@ -609,6 +609,14 @@
   margin-bottom: var(--saas-spacing-lg);
 }
 
+.competition-settings-detail-tabs--top > .ant-tabs-nav {
+  margin-top: calc(var(--saas-spacing-sm) * -1);
+}
+
+.competition-field-scope-tabs--embedded > .ant-tabs-nav {
+  display: none;
+}
+
 .competition-settings-review__list {
   display: grid;
   gap: 12px;
