@@ -1,4 +1,4 @@
-import { Checkbox, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
+import { Checkbox, Form, Input, InputNumber, Select, Space, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
@@ -229,6 +229,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
         : values.notifyUrl;
       const payload = {
         ...values,
+        enabled: true,
         notifyUrl: systemManagedNotifyUrl,
         sandboxEnabled: resolveSandboxEnabled(values.environment),
       };
@@ -304,9 +305,9 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
           <Form.Item name="providerName" hidden>
             <Input />
           </Form.Item>
-          <Form.Item name="enabled" label={t('启用', 'Enabled')} valuePropName="checked" extra={t('停用后，新的支付和退款请求将被拦截。', 'When disabled, new payment and refund requests will be blocked.')}>
-            <Switch disabled={!canUpdateSettings} />
-          </Form.Item>
+          <Typography.Paragraph type="secondary">
+            {t('必填配置完整后，保存即自动启用；配置不完整时保持待配置状态。', 'A complete configuration is enabled automatically when saved; incomplete configurations remain pending.')}
+          </Typography.Paragraph>
           <Form.Item
             name="environment"
             label={t('环境', 'Environment')}

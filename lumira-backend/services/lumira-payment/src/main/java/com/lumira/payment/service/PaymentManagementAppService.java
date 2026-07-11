@@ -114,7 +114,9 @@ public class PaymentManagementAppService {
 
     private PaymentProviderSettingsDTO updatePaymentProviderSettings(Actor actor, String providerCode, PaymentProviderSettingsDTO request) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        PaymentProviderSettingsDTO current = loadProviderSettings(providerCode);
+        // Updates must merge against the decrypted configuration. The public view masks
+        // secrets, which would otherwise make an unchanged masked value erase the key.
+        PaymentProviderSettingsDTO current = loadProviderSettings(providerCode, false);
         PaymentProviderSettingsDTO merged = mergeSettings(definition, current, request);
         merged.setProviderCode(definition.providerCode());
         merged.setProviderName(definition.providerName());
@@ -123,9 +125,8 @@ public class PaymentManagementAppService {
         validateProviderUrls(merged);
         merged.setConfigured(isConfigured(definition, merged));
         merged.setConfiguredFields(resolveConfiguredFields(definition, merged));
-        if (!merged.isConfigured()) {
-            merged.setEnabled(false);
-        }
+        // A complete saved configuration is immediately usable; incomplete drafts stay disabled.
+        merged.setEnabled(merged.isConfigured());
 
         LocalDateTime eventVersion = LocalDateTime.now();
         upsertProviderConfig(actor, definition, merged, current);

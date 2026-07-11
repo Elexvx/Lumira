@@ -342,6 +342,37 @@ class PaymentManagementAppServiceTest {
     }
 
     @Test
+    void updateProviderSettingsShouldRetainMaskedSecretsAndAutoEnableCompleteConfig() {
+        PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
+        PaymentProviderConfigRow row = providerRow();
+        JdbcTemplate jdbcTemplate = new ExistingSuccessJdbcTemplate(row);
+        PaymentProviderSettingsDTO stored = stripeSettings("stored-webhook-secret");
+        stored.setSecretKey("stored-secret-key");
+        doReturn(stored).when(cryptoService).decryptJson("encrypted", PaymentProviderSettingsDTO.class);
+        doReturn("encrypted-updated").when(cryptoService).encryptJson(any());
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                cryptoService,
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi())
+        );
+        PaymentProviderSettingsDTO request = stripeSettings("********");
+        request.setSecretKey("********");
+        request.setEnabled(false);
+
+        service.updatePaymentProviderSettings(currentUser(), "stripe", request);
+
+        ArgumentCaptor<PaymentProviderSettingsDTO> storedPayload = ArgumentCaptor.forClass(PaymentProviderSettingsDTO.class);
+        verify(cryptoService).encryptJson(storedPayload.capture());
+        assertThat(storedPayload.getValue().getSecretKey()).isEqualTo("stored-secret-key");
+        assertThat(storedPayload.getValue().getWebhookSecret()).isEqualTo("stored-webhook-secret");
+        assertThat(storedPayload.getValue().isConfigured()).isTrue();
+        assertThat(storedPayload.getValue().isEnabled()).isTrue();
+    }
+
+    @Test
     void testPaymentProviderShouldRejectWhenResultWriteMisses() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
@@ -634,6 +665,30 @@ class PaymentManagementAppServiceTest {
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             return null;
+        }
+    }
+
+    private static class ExistingSuccessJdbcTemplate extends JdbcTemplate {
+        private final PaymentProviderConfigRow row;
+
+        private ExistingSuccessJdbcTemplate(PaymentProviderConfigRow row) {
+            this.row = row;
+        }
+
+        @Override
+        public int update(String sql, Object... args) {
+            return 1;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args) {
+            return (T) row;
+        }
+
+        @Override
+        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            return requiredType.cast(row.getId());
         }
     }
 }
