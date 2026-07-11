@@ -838,7 +838,6 @@
   grid-template-columns:
     minmax(140px, 1fr)
     minmax(180px, 1.25fr)
-    minmax(120px, 0.85fr)
     minmax(112px, 0.8fr)
     minmax(140px, 1fr)
     minmax(180px, 1.25fr)
@@ -850,7 +849,7 @@
   align-items: center;
   box-sizing: border-box;
   width: 100%;
-  min-width: 1320px;
+  min-width: 1180px;
   padding: 12px;
 }
 
