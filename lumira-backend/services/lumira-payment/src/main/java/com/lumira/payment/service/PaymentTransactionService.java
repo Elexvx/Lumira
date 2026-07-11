@@ -9,11 +9,9 @@ import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
-import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
@@ -53,6 +51,7 @@ public class PaymentTransactionService {
     private final PaymentOutboxService outboxService;
     private final DomainEventPublisher domainEventPublisher;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final PaymentActorResolver actorResolver;
 
     @Autowired
     public PaymentTransactionService(
@@ -90,6 +89,7 @@ public class PaymentTransactionService {
         this.outboxService = outboxService;
         this.domainEventPublisher = domainEventPublisher;
         this.systemInternalApiProvider = systemInternalApiProvider;
+        this.actorResolver = new PaymentActorResolver();
     }
 
     @Transactional
@@ -119,7 +119,7 @@ public class PaymentTransactionService {
         }
         SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Local account resolver is unavailable");
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Local account resolver is unavailable");
         }
         SystemUserSnapshotDTO target = systemInternalApi.findUserIdentityById(targetUserId);
         if (target == null || target.userId() == null || !target.userId().equals(targetUserId)
@@ -511,46 +511,8 @@ public class PaymentTransactionService {
     }
 
     private Actor trustedActor(CurrentUser currentUser, String requiredPermission) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
-        }
-        if (systemInternalApiProvider == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
-        }
-        Long userId = currentUser.getUserId();
-        String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
-        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
-        }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
-        if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
-        }
-        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(userId);
-        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(userId)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
-        }
-        if (!StringUtils.hasText(snapshot.userUuid()) || !snapshot.userUuid().trim().equals(userUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator identity mismatch");
-        }
-        if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
-        }
-        Long simulatedRoleId = currentUser.getSimulatedRoleId();
-        if (simulatedRoleId != null && simulatedRoleId <= 0) {
-            simulatedRoleId = null;
-        }
-        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
-                ? systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim())
-                : systemInternalApi.simulatedRolePermissionSnapshot(userId, snapshot.userUuid().trim(), simulatedRoleId);
-        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
-        }
-        List<String> permissions = permissionSnapshot.permissions() == null ? List.of() : permissionSnapshot.permissions();
-        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
-        }
-        return new Actor(snapshot.userId(), snapshot.userUuid().trim());
+        PaymentActorResolver.Actor actor = actorResolver.require(currentUser, requiredPermission);
+        return new Actor(actor.userId(), actor.userUuid());
     }
 
     private Actor trustedLookupActor(Long userId, String userUuid) {

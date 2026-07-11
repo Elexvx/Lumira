@@ -206,14 +206,14 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
-    void createOrderShouldRejectDisabledTrustedOperatorBeforeProviderLookup() {
+    void createOrderShouldRejectUntrustedRequestContextBeforeProviderLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "tester", "DISABLED"));
         PaymentTransactionService service = service(jdbcTemplate, managementAppService, mock(PaymentOutboxService.class), mock(DomainEventPublisher.class), provider(systemInternalApi));
 
-        assertThatThrownBy(() -> service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+        assertThatThrownBy(() -> service.createOrder(untrustedUser(), orderRequest("ORD-1", "idem-1")))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
@@ -234,7 +234,7 @@ class PaymentTransactionServiceTest {
                 provider(enabledSystemInternalApi(), "payment:refund:create")
         );
 
-        assertThatThrownBy(() -> service.createOrder(currentUser(), orderRequest("ORD-1", "idem-1")))
+        assertThatThrownBy(() -> service.createOrder(currentUser("payment:refund:create"), orderRequest("ORD-1", "idem-1")))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -452,7 +452,7 @@ class PaymentTransactionServiceTest {
         );
 
         assertThatThrownBy(() -> service.createRefund(
-                currentUser(),
+                currentUser("payment:order:view"),
                 "ORD-1",
                 new PaymentCreateRefundRequestDTO("REF-1", 50L, "CNY", "duplicate", Map.of(), null)
         ))
@@ -585,7 +585,7 @@ class PaymentTransactionServiceTest {
                 provider(enabledSystemInternalApi(), "payment:refund:create")
         );
 
-        assertThatThrownBy(() -> service.getOrderForUser(currentUser(), "ORD-1"))
+        assertThatThrownBy(() -> service.getOrderForUser(currentUser("payment:refund:create"), "ORD-1"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -604,7 +604,7 @@ class PaymentTransactionServiceTest {
                 provider(enabledSystemInternalApi(), "payment:refund:create")
         );
 
-        assertThatThrownBy(() -> service.getRefundForUser(currentUser(), "REF-1"))
+        assertThatThrownBy(() -> service.getRefundForUser(currentUser("payment:refund:create"), "REF-1"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -704,6 +704,10 @@ class PaymentTransactionServiceTest {
     }
 
     private CurrentUser currentUser() {
+        return currentUser("payment:order:create", "payment:order:view", "payment:refund:create", "payment:refund:view");
+    }
+
+    private CurrentUser currentUser(String... permissions) {
         CurrentUser currentUser = new CurrentUser(
                 1001L,
                 "tester",
@@ -711,7 +715,7 @@ class PaymentTransactionServiceTest {
                 "session-1",
                 1,
                 true,
-                Set.of("payment:order:create", "payment:order:view", "payment:refund:create", "payment:refund:view")
+                Set.of(permissions)
         );
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
