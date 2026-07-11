@@ -92,6 +92,20 @@ const PAYMENT_SCENE_LABELS: Record<string, string> = {
   CHECKOUT: t('托管收银台', 'Hosted checkout'),
 };
 
+const PAYMENT_PROVIDER_SCENES: Record<PaymentProviderCode, string[]> = {
+  alipay: ['PC_WEB', 'WAP', 'QR_CODE'],
+  wechat_pay: ['NATIVE', 'H5', 'JSAPI'],
+  stripe: ['CHECKOUT'],
+  paypal: ['CHECKOUT'],
+};
+
+const resolveSupportedScenes = (
+  providerCode: PaymentProviderCode,
+  settings?: PaymentProviderSettings,
+) => settings?.supportedScenes?.length
+  ? settings.supportedScenes
+  : PAYMENT_PROVIDER_SCENES[providerCode];
+
 type PaymentFormValidationError = {
   errorFields?: Array<{
     name?: (string | number)[];
@@ -173,10 +187,13 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
   const openConfigDrawer = useCallback(
     (providerCode: PaymentProviderCode) => {
       const provider = paymentSettingsData?.find((item) => item.providerCode === providerCode);
+      const supportedScenes = resolveSupportedScenes(providerCode, provider);
       setEditingProviderCode(providerCode);
       form.setFieldsValue(buildFormValues(provider || {
         providerCode,
         providerName: PAYMENT_PROVIDER_TITLES[providerCode],
+        supportedScenes,
+        enabledScenes: supportedScenes,
         enabled: false,
         configured: false,
         environment: 'SANDBOX',
@@ -257,6 +274,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
 
     const providerFields = PAYMENT_PROVIDER_FIELD_SCHEMAS[editingProviderCode];
     const configuredFields = new Set(currentProviderSettings?.configuredFields || []);
+    const supportedScenes = resolveSupportedScenes(editingProviderCode, currentProviderSettings);
 
     return (
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
@@ -290,7 +308,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
           <Form.Item name="enabledScenes" label={t('可用支付场景', 'Enabled payment scenes')} rules={[{ required: true, message: t('请至少启用一种支付场景', 'Enable at least one payment scene') }]}>
             <Checkbox.Group
               disabled={!canUpdateSettings}
-              options={(currentProviderSettings?.supportedScenes || []).map((scene) => ({ label: PAYMENT_SCENE_LABELS[scene] || scene, value: scene }))}
+              options={supportedScenes.map((scene) => ({ label: PAYMENT_SCENE_LABELS[scene] || scene, value: scene }))}
             />
           </Form.Item>
           <Form.Item name="currency" label={t('结算币种', 'Currency')} extra={t('留空时使用平台默认币种。', 'Leave blank to use the platform default currency.')}>
