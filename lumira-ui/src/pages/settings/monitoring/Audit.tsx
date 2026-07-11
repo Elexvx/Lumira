@@ -327,7 +327,7 @@ const AuditOverviewPage = () => {
   }, []);
 
   const detailProps = useDetailProDescriptionsProps<AuditRecord>({
-    column: responsive.isMobile ? 1 : 2,
+    column: 1,
     dataSource: selectedRecord || undefined,
   });
   const detailExtraProps = useDetailProDescriptionsProps<AuditRecord>({
