@@ -23,15 +23,28 @@ export const clearAuthSession = () => {
   clearSessionActivity();
 };
 
+export const buildLogoutRedirectTarget = (
+  reason: LogoutReason,
+  location: Pick<Location, 'pathname' | 'search' | 'hash'> = window.location,
+) => {
+  if (reason !== 'forced_expired' || location.pathname === LOGIN_PATH) {
+    return LOGIN_PATH;
+  }
+
+  const redirect = `${location.pathname}${location.search}${location.hash}`;
+  return `${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`;
+};
+
 export const performLogout = async (options: { reason?: LogoutReason; hardReload?: boolean } = {}) => {
   const reason = options.reason || 'user_initiated';
+  const loginTarget = buildLogoutRedirectTarget(reason);
   const redirectToLogin = () => {
     if (options.hardReload) {
-      window.location.replace(LOGIN_PATH);
+      window.location.replace(loginTarget);
       return;
     }
 
-    history.replace(LOGIN_PATH);
+    history.replace(loginTarget);
   };
 
   if (reason === 'user_initiated' && isLoggedIn()) {
