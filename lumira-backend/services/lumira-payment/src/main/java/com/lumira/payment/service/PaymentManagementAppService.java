@@ -154,7 +154,9 @@ public class PaymentManagementAppService {
 
     private PaymentProviderTestResultDTO testPaymentProvider(Actor actor, String providerCode) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode);
+        // Connectivity validation needs the decrypted secrets. The public settings view
+        // deliberately masks them and would make a valid provider look incomplete.
+        PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode, false);
         LocalDateTime checkedAt = LocalDateTime.now();
         boolean success = false;
         String message;
@@ -410,9 +412,6 @@ public class PaymentManagementAppService {
 
     private void copyProviderValues(PaymentProviderSettingsDTO target, PaymentProviderSettingsDTO source, boolean maskSecrets) {
         target.setAppId(source.getAppId());
-        target.setDisplayName(source.getDisplayName());
-        target.setSortOrder(source.getSortOrder());
-        target.setEnabledScenes(source.getEnabledScenes());
         target.setMerchantId(source.getMerchantId());
         target.setMerchantSerialNo(source.getMerchantSerialNo());
         target.setPlatformCertSerialNo(maskSecrets ? "" : source.getPlatformCertSerialNo());

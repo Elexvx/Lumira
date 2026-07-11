@@ -2,10 +2,12 @@ const PAYMENT_MESSAGE_TRANSLATIONS: Record<string, string> = {
   'Payment provider is disabled': '支付服务商已停用',
   'Payment provider is not configured': '支付服务商尚未完成配置',
   'Payment provider test failed': '支付服务商测试失败',
+  'Payment provider is ready': '支付服务商配置可用',
   'Payment connectivity test passed': '支付连通性测试通过',
 };
 
 const PAYMENT_MESSAGE_PREFIX_TRANSLATIONS: Array<[string, string]> = [
+  ['Missing required payment fields: ', '缺少必填支付字段：'],
   ['Payment connectivity test failed: ', '支付连通性测试失败：'],
 ];
 

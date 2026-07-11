@@ -373,6 +373,30 @@ class PaymentManagementAppServiceTest {
     }
 
     @Test
+    void testProviderShouldValidateWithDecryptedSecrets() {
+        PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
+        PaymentProviderConfigRow row = providerRow();
+        JdbcTemplate jdbcTemplate = new ExistingSuccessJdbcTemplate(row);
+        PaymentProviderSettingsDTO stored = stripeSettings("stored-webhook-secret");
+        stored.setSecretKey("stored-secret-key");
+        stored.setApiBaseUrl(null);
+        doReturn(stored).when(cryptoService).decryptJson("encrypted", PaymentProviderSettingsDTO.class);
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                cryptoService,
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi())
+        );
+
+        var result = service.testPaymentProvider(currentUser(), "stripe");
+
+        assertThat(result.success()).as(result.message()).isTrue();
+        assertThat(result.message()).isEqualTo("Payment provider is ready");
+    }
+
+    @Test
     void testPaymentProviderShouldRejectWhenResultWriteMisses() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
