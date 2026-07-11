@@ -1,6 +1,5 @@
 package com.lumira.payment.controller;
 
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -8,8 +7,6 @@ import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
-import com.lumira.api.system.PermissionSnapshotDTO;
-import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -24,8 +21,6 @@ import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,22 +34,18 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v2/payment")
 public class PaymentV2Controller {
 
     private static final Long PROTECTED_ADMIN_ID = 1001L;
-    private static final String STATUS_ENABLED = "ENABLED";
 
     private final PaymentManagementAppService paymentManagementAppService;
     private final PaymentTransactionService paymentTransactionService;
     private final PaymentWebhookService paymentWebhookService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
-    private final SystemInternalApi systemInternalApi;
-    private final boolean enforceTrustedUserResolution;
 
     public PaymentV2Controller(
             PaymentManagementAppService paymentManagementAppService,
@@ -63,53 +54,11 @@ public class PaymentV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
-        this(
-                paymentManagementAppService,
-                paymentTransactionService,
-                paymentWebhookService,
-                securityContextFacade,
-                permissionGuard,
-                null,
-                false
-        );
-    }
-
-    @Autowired
-    public PaymentV2Controller(
-            PaymentManagementAppService paymentManagementAppService,
-            PaymentTransactionService paymentTransactionService,
-            PaymentWebhookService paymentWebhookService,
-            SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi
-    ) {
-        this(
-                paymentManagementAppService,
-                paymentTransactionService,
-                paymentWebhookService,
-                securityContextFacade,
-                permissionGuard,
-                systemInternalApi,
-                true
-        );
-    }
-
-    private PaymentV2Controller(
-            PaymentManagementAppService paymentManagementAppService,
-            PaymentTransactionService paymentTransactionService,
-            PaymentWebhookService paymentWebhookService,
-            SecurityContextFacade securityContextFacade,
-            PermissionGuard permissionGuard,
-            SystemInternalApi systemInternalApi,
-            boolean enforceTrustedUserResolution
-    ) {
         this.paymentManagementAppService = paymentManagementAppService;
         this.paymentTransactionService = paymentTransactionService;
         this.paymentWebhookService = paymentWebhookService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
-        this.systemInternalApi = systemInternalApi;
-        this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     @GetMapping("/providers")
@@ -247,62 +196,6 @@ public class PaymentV2Controller {
         if (!isAuthenticatedUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return refreshTrustedCurrentUser(currentUser);
-    }
-
-    private CurrentUser refreshTrustedCurrentUser(CurrentUser currentUser) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
-            return currentUser;
-        }
-        if (systemInternalApi == null) {
-            if (enforceTrustedUserResolution) {
-                throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user resolver is unavailable");
-            }
-            return currentUser;
-        }
-        Long userId = currentUser.getUserId();
-        String normalizedUserUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
-        if (userId == null || userId <= 0 || !StringUtils.hasText(normalizedUserUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
-        }
-        SystemUserSnapshotDTO userSnapshot = systemInternalApi.findUserIdentityById(userId);
-        if (userSnapshot == null || userSnapshot.userId() == null || !userId.equals(userSnapshot.userId())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
-        }
-        if (!StringUtils.hasText(userSnapshot.userUuid())
-                || !normalizedUserUuid.equals(userSnapshot.userUuid().trim())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user identity is required");
-        }
-        if (!StringUtils.hasText(userSnapshot.status())
-                || !STATUS_ENABLED.equalsIgnoreCase(userSnapshot.status().trim())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user is disabled or no longer active");
-        }
-        if (!StringUtils.hasText(userSnapshot.username())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user username is unavailable");
-        }
-        Long simulatedRoleId = currentUser.getSimulatedRoleId();
-        if (simulatedRoleId != null && simulatedRoleId <= 0) {
-            simulatedRoleId = null;
-        }
-        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
-                ? systemInternalApi.permissionSnapshot(userId, userSnapshot.userUuid().trim())
-                : systemInternalApi.simulatedRolePermissionSnapshot(userId, userSnapshot.userUuid().trim(), simulatedRoleId);
-        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted user permissions are unavailable");
-        }
-        currentUser.setUserId(userSnapshot.userId());
-        currentUser.setUserUuid(userSnapshot.userUuid().trim());
-        currentUser.setUsername(userSnapshot.username().trim());
-        currentUser.setPermissions(permissionSnapshot.permissions() == null ? Set.of() : Set.copyOf(permissionSnapshot.permissions()));
-        currentUser.setRoleIds(permissionSnapshot.roleIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.roleIds()));
-        currentUser.setPrimaryDeptId(permissionSnapshot.primaryDeptId());
-        currentUser.setDeptIds(permissionSnapshot.deptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.deptIds()));
-        currentUser.setDescendantDeptIds(
-                permissionSnapshot.descendantDeptIds() == null ? Set.of() : Set.copyOf(permissionSnapshot.descendantDeptIds())
-        );
-        currentUser.setDataScopes(permissionSnapshot.dataScopes() == null ? List.of() : List.copyOf(permissionSnapshot.dataScopes()));
-        currentUser.setPermissionsVersion(permissionSnapshot.version().trim());
-        currentUser.setDefaultHomePath(permissionSnapshot.defaultHomePath());
         return currentUser;
     }
 

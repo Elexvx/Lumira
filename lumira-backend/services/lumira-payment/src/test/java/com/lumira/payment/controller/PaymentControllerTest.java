@@ -1,12 +1,9 @@
 package com.lumira.payment.controller;
 
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
-import com.lumira.api.system.PermissionSnapshotDTO;
-import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
@@ -315,7 +312,7 @@ class PaymentControllerTest {
     }
 
     @Test
-    void createOrderShouldRejectTrustedUserWhenResolverIsUnavailable() {
+    void createOrderShouldUseAuthenticatedRequestContextWithoutControllerResolver() {
         PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
         PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
         PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
@@ -326,8 +323,7 @@ class PaymentControllerTest {
                 paymentTransactionService,
                 paymentWebhookService,
                 securityContextFacade,
-                permissionGuard,
-                null
+                permissionGuard
         );
         CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
@@ -344,30 +340,25 @@ class PaymentControllerTest {
         );
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
-        assertThatThrownBy(() -> controller.createOrder(request))
-                .isInstanceOf(com.lumira.common.exception.BizException.class)
-                .satisfies(error -> assertThat(((com.lumira.common.exception.BizException) error).getErrorCode()).isEqualTo(com.lumira.common.enums.ErrorCode.UNAUTHORIZED))
-                .hasMessageContaining("Trusted user resolver is unavailable");
+        controller.createOrder(request);
 
-        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).createOrder(currentUser, request);
     }
 
     @Test
-    void createOrderShouldRejectWhenLiveUsernameIsBlank() {
+    void createOrderShouldNotResolveUserSnapshotAgain() {
         PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
         PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
         PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
         PermissionGuard permissionGuard = mock(PermissionGuard.class);
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         PaymentController controller = new PaymentController(
                 paymentManagementAppService,
                 paymentTransactionService,
                 paymentWebhookService,
                 securityContextFacade,
-                permissionGuard,
-                systemInternalApi
+                permissionGuard
         );
         CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
@@ -383,16 +374,10 @@ class PaymentControllerTest {
                 "idem-1"
         );
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(systemInternalApi.findUserIdentityById(42L))
-                .thenReturn(userSnapshot(42L, "user-uuid-42", " ", "ENABLED"));
+        controller.createOrder(request);
 
-        assertThatThrownBy(() -> controller.createOrder(request))
-                .isInstanceOf(com.lumira.common.exception.BizException.class)
-                .satisfies(error -> assertThat(((com.lumira.common.exception.BizException) error).getErrorCode()).isEqualTo(com.lumira.common.enums.ErrorCode.UNAUTHORIZED))
-                .hasMessageContaining("Trusted user username is unavailable");
-
-        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).createOrder(currentUser, request);
     }
 
     private HttpServletRequest requestWithHeaders(Map<String, String> headers) {
@@ -412,24 +397,4 @@ class PaymentControllerTest {
         return currentUser;
     }
 
-    private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
-        return new SystemUserSnapshotDTO(
-                userId,
-                userUuid,
-                username,
-                null,
-                status,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-    }
 }

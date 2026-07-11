@@ -5,9 +5,6 @@ import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
-import com.lumira.api.system.PermissionSnapshotDTO;
-import com.lumira.api.system.SystemUserSnapshotDTO;
-import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -49,7 +46,7 @@ public class PaymentManagementAppService {
     private final PaymentConfigCryptoService cryptoService;
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
-    private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
+    private final PaymentActorResolver actorResolver;
     private volatile CachedProviderList providerListCache;
 
     @Autowired
@@ -76,7 +73,7 @@ public class PaymentManagementAppService {
         this.cryptoService = cryptoService;
         this.providerCatalog = providerCatalog;
         this.outboxService = outboxService;
-        this.systemInternalApiProvider = systemInternalApiProvider;
+        this.actorResolver = new PaymentActorResolver();
     }
 
     public List<PaymentProviderSettingsDTO> listProviderSettings(CurrentUser currentUser) {
@@ -191,46 +188,8 @@ public class PaymentManagementAppService {
     }
 
     private Actor trustedActor(CurrentUser currentUser, String requiredPermission) {
-        if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
-        }
-        if (systemInternalApiProvider == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
-        }
-        Long userId = currentUser.getUserId();
-        String userUuid = currentUser.getUserUuid() == null ? null : currentUser.getUserUuid().trim();
-        if (userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
-        }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider.getIfAvailable();
-        if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
-        }
-        SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(userId);
-        if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(userId)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator does not exist");
-        }
-        if (!StringUtils.hasText(snapshot.userUuid()) || !snapshot.userUuid().trim().equals(userUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator identity mismatch");
-        }
-        if (!StringUtils.hasText(snapshot.status()) || !"ENABLED".equalsIgnoreCase(snapshot.status().trim())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator is disabled");
-        }
-        Long simulatedRoleId = currentUser.getSimulatedRoleId();
-        if (simulatedRoleId != null && simulatedRoleId <= 0) {
-            simulatedRoleId = null;
-        }
-        PermissionSnapshotDTO permissionSnapshot = simulatedRoleId == null
-                ? systemInternalApi.permissionSnapshot(userId, snapshot.userUuid().trim())
-                : systemInternalApi.simulatedRolePermissionSnapshot(userId, snapshot.userUuid().trim(), simulatedRoleId);
-        if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
-        }
-        List<String> permissions = permissionSnapshot.permissions() == null ? List.of() : permissionSnapshot.permissions();
-        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
-        }
-        return new Actor(snapshot.userId(), snapshot.userUuid().trim());
+        PaymentActorResolver.Actor actor = actorResolver.require(currentUser, requiredPermission);
+        return new Actor(actor.userId(), actor.userUuid());
     }
 
     private Map<String, Object> actorPayload(Actor actor, Map<String, Object> payload) {

@@ -1,6 +1,5 @@
 package com.lumira.payment.controller;
 
-import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
@@ -8,7 +7,6 @@ import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
-import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.security.CurrentUser;
@@ -332,14 +330,13 @@ class PaymentV2ControllerTest {
     }
 
     @Test
-    void createOrderShouldRejectTrustedUserWhenResolverIsUnavailable() {
+    void createOrderShouldUseAuthenticatedRequestContextWithoutControllerResolver() {
         PaymentV2Controller strictController = new PaymentV2Controller(
                 paymentManagementAppService,
                 paymentTransactionService,
                 paymentWebhookService,
                 securityContextFacade,
-                permissionGuard,
-                null
+                permissionGuard
         );
         CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
@@ -356,25 +353,20 @@ class PaymentV2ControllerTest {
         );
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
 
-        assertThatThrownBy(() -> strictController.createOrder(request))
-                .isInstanceOf(BizException.class)
-                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
-                .hasMessageContaining("Trusted user resolver is unavailable");
+        strictController.createOrder(request);
 
-        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService, never()).createOrder(currentUser, request);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).createOrder(currentUser, request);
     }
 
     @Test
-    void createOrder_shouldRejectTrustedUserWhenLiveUsernameIsUnavailable() {
-        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+    void createOrder_shouldNotResolveUserSnapshotAgain() {
         PaymentV2Controller strictController = new PaymentV2Controller(
                 paymentManagementAppService,
                 paymentTransactionService,
                 paymentWebhookService,
                 securityContextFacade,
-                permissionGuard,
-                systemInternalApi
+                permissionGuard
         );
         CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
@@ -390,18 +382,10 @@ class PaymentV2ControllerTest {
                 "idem-1"
         );
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(systemInternalApi.findUserIdentityById(42L)).thenReturn(
-                new SystemUserSnapshotDTO(42L, "user-uuid-42", " ", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null)
-        );
+        strictController.createOrder(request);
 
-        assertThatThrownBy(() -> strictController.createOrder(request))
-                .isInstanceOf(BizException.class)
-                .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
-                .hasMessageContaining("Trusted user username is unavailable");
-
-        verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService, never()).createOrder(currentUser, request);
-        verify(systemInternalApi, never()).permissionSnapshot(42L, "user-uuid-42");
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).createOrder(currentUser, request);
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {

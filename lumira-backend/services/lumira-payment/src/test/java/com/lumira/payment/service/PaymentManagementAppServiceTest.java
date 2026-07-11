@@ -99,7 +99,7 @@ class PaymentManagementAppServiceTest {
     }
 
     @Test
-    void updateProviderSettingsShouldRejectDisabledTrustedOperatorBeforePersisting() {
+    void updateProviderSettingsShouldRejectUntrustedRequestContextBeforePersisting() {
         InsertSuccessJdbcTemplate jdbcTemplate = new InsertSuccessJdbcTemplate();
         PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
@@ -113,7 +113,9 @@ class PaymentManagementAppServiceTest {
                 provider(systemInternalApi)
         );
 
-        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret")))
+        CurrentUser untrusted = currentUser();
+        untrusted.setUserUuid(null);
+        assertThatThrownBy(() -> service.updatePaymentProviderSettings(untrusted, "stripe", stripeSettings("secret")))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED));
 
@@ -132,7 +134,7 @@ class PaymentManagementAppServiceTest {
                 provider(enabledSystemInternalApi(), "payment:config:update")
         );
 
-        assertThatThrownBy(() -> service.listProviderSettings(currentUser()))
+        assertThatThrownBy(() -> service.listProviderSettings(currentUser("payment:config:update")))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -149,7 +151,7 @@ class PaymentManagementAppServiceTest {
                 provider(enabledSystemInternalApi(), "payment:config:update")
         );
 
-        assertThatThrownBy(() -> service.paymentProviderSettings(currentUser(), "stripe"))
+        assertThatThrownBy(() -> service.paymentProviderSettings(currentUser("payment:config:update"), "stripe"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -168,7 +170,7 @@ class PaymentManagementAppServiceTest {
                 provider(enabledSystemInternalApi(), "payment:config:view")
         );
 
-        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret")))
+        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser("payment:config:view"), "stripe", stripeSettings("secret")))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -188,7 +190,7 @@ class PaymentManagementAppServiceTest {
                 provider(enabledSystemInternalApi(), "payment:config:update")
         );
 
-        assertThatThrownBy(() -> service.testPaymentProvider(currentUser(), "stripe"))
+        assertThatThrownBy(() -> service.testPaymentProvider(currentUser("payment:config:update"), "stripe"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -205,7 +207,7 @@ class PaymentManagementAppServiceTest {
                 provider(enabledSystemInternalApi(), "payment:settings:view")
         );
 
-        assertThatThrownBy(() -> service.listProviderSettings(currentUser()))
+        assertThatThrownBy(() -> service.listProviderSettings(currentUser("payment:settings:view")))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -222,7 +224,7 @@ class PaymentManagementAppServiceTest {
                 provider(enabledSystemInternalApi(), "payment:settings:manage")
         );
 
-        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret")))
+        assertThatThrownBy(() -> service.updatePaymentProviderSettings(currentUser("payment:settings:manage"), "stripe", stripeSettings("secret")))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -564,7 +566,11 @@ class PaymentManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of("payment:config:view", "payment:config:update", "payment:config:test"));
+        return currentUser("payment:config:view", "payment:config:update", "payment:config:test");
+    }
+
+    private CurrentUser currentUser(String... permissions) {
+        CurrentUser currentUser = new CurrentUser(1001L, "admin", null, "session-1", 1, true, Set.of(permissions));
         currentUser.setUserUuid("user-uuid-1001");
         currentUser.setPermissionsVersion("permissions-1");
         return currentUser;
