@@ -7,6 +7,7 @@ import { API_OPTS } from '@/utils/errorMessage';
 import type { PaymentProviderSettings, PaymentProviderTestResult } from '@/types/api';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { buildSystemPaymentWebhookUrl } from '../paymentWebhookUrl';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -22,6 +23,7 @@ type PaymentFieldConfig = {
   required?: boolean;
   password?: boolean;
   inputMode?: 'text' | 'number' | 'textarea';
+  systemManaged?: boolean;
 };
 
 const MASKED_SECRET = '********';
@@ -44,7 +46,7 @@ const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldCo
     { name: 'appId', label: t('App ID', 'App ID'), required: true, placeholder: t('支付宝应用 ID', 'Alipay app ID') },
     { name: 'publicKey', label: t('公钥', 'Public key'), required: true, placeholder: t('平台公钥', 'Platform public key') },
     { name: 'privateKey', label: t('私钥', 'Private key'), required: true, placeholder: t('留空则保持现有密钥', 'Leave blank to keep the current key'), password: true, inputMode: 'textarea' },
-    { name: 'notifyUrl', label: t('异步通知地址', 'Async notification URL'), required: true, placeholder: 'https://example.com/payment/alipay/notify' },
+    { name: 'notifyUrl', label: t('异步通知地址', 'Async notification URL'), required: true, systemManaged: true },
     { name: 'returnUrl', label: t('同步跳转地址', 'Return URL'), placeholder: 'https://example.com/payment/result' },
     { name: 'apiBaseUrl', label: t('API 基地址', 'API base URL'), placeholder: t('例如：https://openapi.alipay.com', 'e.g. https://openapi.alipay.com') },
   ],
@@ -55,7 +57,7 @@ const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldCo
     { name: 'apiV3Key', label: 'APIv3 Key', required: true, placeholder: t('留空则保持现有密钥', 'Leave blank to keep the current key'), password: true },
     { name: 'platformCertSerialNo', label: t('平台证书序列号', 'Platform certificate serial number'), required: true, placeholder: t('平台证书序列号', 'Platform certificate serial number') },
     { name: 'privateKey', label: t('私钥', 'Private key'), required: true, placeholder: t('留空则保持现有密钥', 'Leave blank to keep the current key'), password: true, inputMode: 'textarea' },
-    { name: 'notifyUrl', label: t('异步通知地址', 'Async notification URL'), required: true, placeholder: 'https://example.com/payment/wechat/notify' },
+    { name: 'notifyUrl', label: t('异步通知地址', 'Async notification URL'), required: true, systemManaged: true },
     { name: 'refundNotifyUrl', label: t('退款通知地址', 'Refund notification URL'), placeholder: 'https://example.com/payment/wechat/refund-notify' },
     { name: 'apiBaseUrl', label: t('API 基地址', 'API base URL'), placeholder: t('例如：https://api.mch.weixin.qq.com', 'e.g. https://api.mch.weixin.qq.com') },
   ],
@@ -132,7 +134,9 @@ const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSett
   privateKey: settings.configuredFields?.includes('privateKey') ? MASKED_SECRET : '',
   publicKey: settings.publicKey ?? '',
   apiBaseUrl: settings.apiBaseUrl ?? '',
-  notifyUrl: settings.notifyUrl ?? '',
+  notifyUrl: PAYMENT_PROVIDER_FIELD_SCHEMAS[settings.providerCode as PaymentProviderCode]?.some((field) => field.name === 'notifyUrl' && field.systemManaged)
+    ? buildSystemPaymentWebhookUrl(settings.providerCode)
+    : settings.notifyUrl ?? '',
   returnUrl: settings.returnUrl ?? '',
   refundNotifyUrl: settings.refundNotifyUrl ?? '',
   successUrl: settings.successUrl ?? '',
@@ -148,6 +152,9 @@ const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSett
 });
 
 const renderFieldControl = (field: PaymentFieldConfig, canManageSettings: boolean) => {
+  if (field.systemManaged) {
+    return <Input readOnly placeholder={field.placeholder} />;
+  }
   if (field.name === 'extraConfig') {
     return <Input.TextArea disabled={!canManageSettings} autoSize={{ minRows: 3, maxRows: 8 }} placeholder={field.placeholder} />;
   }
@@ -216,8 +223,13 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
     try {
       setSaving(true);
       const values = await form.validateFields();
+      const providerFields = PAYMENT_PROVIDER_FIELD_SCHEMAS[editingProviderCode];
+      const systemManagedNotifyUrl = providerFields.some((field) => field.name === 'notifyUrl' && field.systemManaged)
+        ? buildSystemPaymentWebhookUrl(editingProviderCode)
+        : values.notifyUrl;
       const payload = {
         ...values,
+        notifyUrl: systemManagedNotifyUrl,
         sandboxEnabled: resolveSandboxEnabled(values.environment),
       };
       await request<PaymentProviderSettings>(`/v1/payment/providers/${editingProviderCode}`, {
@@ -316,7 +328,9 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
           </Form.Item>
           {providerFields.map((field) => {
             const extraMessage =
-              field.password && configuredFields.has(field.name)
+              field.systemManaged
+                ? t('由系统根据当前站点自动生成，固定为支付平台回调地址。', 'Generated automatically from the current site and fixed as the payment provider callback URL.')
+                : field.password && configuredFields.has(field.name)
                 ? t('留空则保留现有密钥', 'Leave blank to keep the current key')
                 : field.password
                   ? t('请输入新密钥，或保留空值', 'Enter a new key or leave blank')
