@@ -2,12 +2,11 @@ import { Checkbox, Form, Input, InputNumber, Select, Space, Switch, Typography }
 import { useCallback, useMemo, useState } from 'react';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
-import { request } from '@/services/common/request';
-import { API_OPTS } from '@/utils/errorMessage';
 import type { PaymentProviderSettings, PaymentProviderTestResult } from '@/types/api';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import { buildSystemPaymentWebhookUrl } from '../paymentWebhookUrl';
+import { requestPaymentApi } from '../paymentAuthenticatedRequest';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -232,10 +231,9 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
         notifyUrl: systemManagedNotifyUrl,
         sandboxEnabled: resolveSandboxEnabled(values.environment),
       };
-      await request<PaymentProviderSettings>(`/v1/payment/providers/${editingProviderCode}`, {
+      await requestPaymentApi<PaymentProviderSettings>(`/v1/payment/providers/${editingProviderCode}`, {
         method: 'PUT',
         data: payload,
-        ...API_OPTS.NO_REDIRECT,
       });
       message.success(t('支付配置已保存', 'Payment configuration saved'));
       await onRefetch();
@@ -262,9 +260,8 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
 
       try {
         setTesting(true);
-        const result = await request<PaymentProviderTestResult>(`/v1/payment/providers/${code}/test`, {
+        const result = await requestPaymentApi<PaymentProviderTestResult>(`/v1/payment/providers/${code}/test`, {
           method: 'POST',
-          ...API_OPTS.NO_REDIRECT,
         });
         message.success(result.message || t('支付连通性测试完成', 'Payment connectivity test completed'));
         await onRefetch();

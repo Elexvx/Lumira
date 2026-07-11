@@ -4,12 +4,11 @@ import type { MenuProps } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { request } from '@/services/common/request';
-import { API_OPTS } from '@/utils/errorMessage';
 import { usePaymentConfigDrawer, type PaymentProviderCode } from './usePaymentConfigDrawer';
 import type { PaymentProviderSettings } from '@/types/api';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { requestPaymentApi } from '../paymentAuthenticatedRequest';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -58,9 +57,8 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
   const paymentSettingsQuery = useQuery({
     queryKey: ['payment-provider-settings'],
     queryFn: async () =>
-      request<PaymentProviderSettings[]>('/v1/payment/providers', {
+      requestPaymentApi<PaymentProviderSettings[]>('/v1/payment/providers', {
         method: 'GET',
-        ...API_OPTS.NO_REDIRECT,
       }),
   });
 
