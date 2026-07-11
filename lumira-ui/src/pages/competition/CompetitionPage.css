@@ -714,7 +714,7 @@
 
 .competition-settings-content .competition-organizer-list .competition-dynamic-list__row {
   display: grid;
-  grid-template-columns: minmax(160px, 0.75fr) minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(160px, 0.75fr) minmax(240px, 1fr) 72px;
   align-items: start;
   gap: 0 24px;
 }
@@ -729,8 +729,8 @@
 .competition-settings-content .competition-organizer-list .competition-dynamic-list__actions {
   display: flex;
   gap: 8px;
-  width: auto;
-  min-width: max-content;
+  width: 72px;
+  min-width: 72px;
   justify-content: flex-end;
   margin-top: 0;
 }
@@ -745,7 +745,7 @@
   }
 
   .competition-settings-content .competition-organizer-list .competition-dynamic-list__row {
-    grid-template-columns: minmax(160px, 1fr) minmax(220px, 1fr) auto;
+    grid-template-columns: minmax(160px, 1fr) minmax(220px, 1fr) 72px;
     gap: 8px 12px;
   }
 }
