@@ -4436,6 +4436,7 @@ type ConfigModulePanelProps = {
   items: CompetitionConfigItem[];
   storageSpaceOptions: StorageSpaceOption[];
   fieldScope?: RegistrationFieldScope;
+  includeMemberFields?: boolean;
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
 
@@ -4445,6 +4446,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   items,
   storageSpaceOptions,
   fieldScope,
+  includeMemberFields = false,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<{
@@ -4554,6 +4556,12 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
                     return (item?.metadata?.fieldScope || item?.itemType) === scopeOption.value;
                   });
+                  const memberFields = includeMemberFields && scopeOption.value === 'TEAM_FIELD'
+                    ? fields.filter((field) => {
+                        const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
+                        return (item?.metadata?.fieldScope || item?.itemType) === 'MEMBER_FIELD';
+                      })
+                    : [];
                   return {
                     key: scopeOption.value,
                     label: scopeOption.label,
@@ -4608,6 +4616,23 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                             value: options || '',
                           }),
                         )}
+                        {includeMemberFields && scopeOption.value === 'TEAM_FIELD' ? (
+                          <>
+                            <Typography.Title level={5}>成员信息字段</Typography.Title>
+                            {renderFieldSettingsTable(
+                              memberFields,
+                              add,
+                              remove,
+                              'MEMBER_FIELD',
+                              scheduleSave,
+                              (fieldName, fieldTitle, options) => setOptionsEditor({
+                                fieldName,
+                                fieldTitle,
+                                value: options || '',
+                              }),
+                            )}
+                          </>
+                        ) : null}
                       </Space>
                     ),
                   };
@@ -5057,7 +5082,7 @@ const CompetitionSettingsPage = () => {
   const competitionUuid = params.competitionUuid || '';
   const [settings, setSettings] = useState<CompetitionSettingsRecord>();
   const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('basic');
-  const [registrationDetail, setRegistrationDetail] = useState<RegistrationFieldScope | 'documents'>('REGISTRATION_FIELD');
+  const [registrationDetail, setRegistrationDetail] = useState<'REGISTRATION_FIELD' | 'TEAM_AND_MEMBER' | 'PROJECT_FIELD' | 'documents'>('REGISTRATION_FIELD');
   const [stageDetail, setStageDetail] = useState<'timeline' | 'files'>('files');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -5121,7 +5146,7 @@ const CompetitionSettingsPage = () => {
 
   const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
     await flushActivePanel();
-    setRegistrationDetail(nextKey as RegistrationFieldScope | 'documents');
+    setRegistrationDetail(nextKey as 'REGISTRATION_FIELD' | 'TEAM_AND_MEMBER' | 'PROJECT_FIELD' | 'documents');
   }, [flushActivePanel]);
 
   const handleStageDetailChange = useCallback(async (nextKey: string) => {
@@ -5190,7 +5215,9 @@ const CompetitionSettingsPage = () => {
                     className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
                     activeKey={registrationDetail}
                     items={[
-                      ...fieldScopeOptions.map((option) => ({ key: option.value, label: option.label })),
+                      { key: 'REGISTRATION_FIELD', label: '报名信息' },
+                      { key: 'TEAM_AND_MEMBER', label: '团队与成员信息' },
+                      { key: 'PROJECT_FIELD', label: '项目信息' },
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
                     onChange={(key) => void handleRegistrationDetailChange(key)}
@@ -5207,7 +5234,12 @@ const CompetitionSettingsPage = () => {
                       module={activeModule}
                       items={getModuleItems(settings, activeModule.key)}
                       storageSpaceOptions={storageSpaceOptions}
-                      fieldScope={registrationDetail === 'documents' ? undefined : registrationDetail}
+                      fieldScope={registrationDetail === 'documents'
+                        ? undefined
+                        : registrationDetail === 'TEAM_AND_MEMBER'
+                          ? 'TEAM_FIELD'
+                          : registrationDetail}
+                      includeMemberFields={registrationDetail === 'TEAM_AND_MEMBER'}
                       onSaved={setSettings}
                     />
                   ) : null}
