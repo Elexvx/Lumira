@@ -153,6 +153,7 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
     title: t('手机号', 'Mobile number'),
     dataIndex: 'mobile',
     search: true,
+    responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
     render: (_, record) => {
       const content = maskMobile(record.mobile) || '';
@@ -182,6 +183,7 @@ const userListStatusColumns: ProColumns<UserRecord>[] = [
   {
     title: t('状态', 'Status'),
     dataIndex: 'status',
+    responsive: ['lg', 'xl', 'xxl'],
     valueEnum: {
       ENABLED: { text: t('启用', 'Enabled'), status: 'Success' },
       DISABLED: { text: t('禁用', 'Disabled'), status: 'Default' },

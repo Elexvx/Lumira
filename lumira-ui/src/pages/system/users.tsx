@@ -405,6 +405,8 @@ const UserManagementPage = () => {
           <div className="saas-user-management-main">
             <ManagementTable
               actionRef={actionRef}
+              adaptiveSpacing
+              containerResponsive
               rowKey="id"
               columns={columns}
               isMobile={responsive.isMobile}

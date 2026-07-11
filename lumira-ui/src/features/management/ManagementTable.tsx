@@ -1,6 +1,8 @@
 import { ProTable, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
 import { Button, type TablePaginationConfig, type TableProps } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
+import { isResponsiveColumnVisible } from './managementTableLayout';
 
 type ManagementTableOptions = Exclude<ProTableProps<object, Record<string, unknown>>['options'], false | undefined>;
 
@@ -148,6 +150,19 @@ const normalizeFixedColumnOrder = <RecordType extends object>(columns: ProColumn
   return [...leadingIndexColumns, ...leftFixedColumns, ...regularColumns, ...rightFixedColumns];
 };
 
+const filterColumnsByContainerWidth = <RecordType extends object>(
+  columns: ProColumns<RecordType>[],
+  containerWidth: number,
+): ProColumns<RecordType>[] =>
+  columns
+    .filter((column) => isResponsiveColumnVisible(column.responsive, containerWidth))
+    .map((column) => ({
+      ...column,
+      children: Array.isArray(column.children)
+        ? filterColumnsByContainerWidth(column.children as ProColumns<RecordType>[], containerWidth)
+        : column.children,
+    }));
+
 const buildMobilePagination = (pagination: MobilePagination | boolean, isMobile: boolean): MobilePagination => {
   if (!pagination || !isMobile) {
     return normalizePaginationDefaults(pagination as MobilePagination);
@@ -191,6 +206,8 @@ export interface ManagementTableProps<RecordType extends object = object, Params
   columns: ProColumns<RecordType>[];
   isMobile: boolean;
   autoContentWidth?: boolean;
+  adaptiveSpacing?: boolean;
+  containerResponsive?: boolean;
   onRefresh?: () => void | Promise<unknown>;
 }
 
@@ -241,7 +258,9 @@ const buildManagementToolbar = <
 
 export const ManagementTable = <RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>({
   autoContentWidth = false,
+  adaptiveSpacing = false,
   columns,
+  containerResponsive = false,
   isMobile,
   pagination = { showSizeChanger: true, defaultPageSize: DEFAULT_TABLE_PAGE_SIZE },
   options,
@@ -250,16 +269,42 @@ export const ManagementTable = <RecordType extends object = object, Params exten
   tableLayout,
   toolBarRender,
   ...props
-}: ManagementTableProps<RecordType, Params>) => (
-  <div className="saas-table-wrap">
-    <ProTable<RecordType, Params>
-      {...props}
-      columns={normalizeFixedColumnOrder(buildAutoWidthColumns(columns, autoContentWidth))}
-      options={buildManagementTableOptions(options)}
-      pagination={buildMobilePagination(pagination, isMobile) as ProTableProps<RecordType, Params>['pagination']}
-      scroll={buildAutoWidthScroll(scroll, buildTableScroll(columns, isMobile), autoContentWidth)}
-      tableLayout={tableLayout}
-      toolBarRender={buildManagementToolbar(toolBarRender, onRefresh)}
-    />
-  </div>
-);
+}: ManagementTableProps<RecordType, Params>) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!containerResponsive || !wrapperRef.current || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      const nextWidth = Math.round(entry?.contentRect.width || 0);
+      setContainerWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
+    });
+    observer.observe(wrapperRef.current);
+    return () => observer.disconnect();
+  }, [containerResponsive]);
+
+  const visibleColumns = useMemo(
+    () => containerResponsive ? filterColumnsByContainerWidth(columns, containerWidth) : columns,
+    [columns, containerResponsive, containerWidth],
+  );
+  const wrapperClassName = adaptiveSpacing
+    ? 'saas-table-wrap saas-table-wrap--adaptive-spacing'
+    : 'saas-table-wrap';
+
+  return (
+    <div ref={wrapperRef} className={wrapperClassName}>
+      <ProTable<RecordType, Params>
+        {...props}
+        columns={normalizeFixedColumnOrder(buildAutoWidthColumns(visibleColumns, autoContentWidth))}
+        options={buildManagementTableOptions(options)}
+        pagination={buildMobilePagination(pagination, isMobile) as ProTableProps<RecordType, Params>['pagination']}
+        scroll={buildAutoWidthScroll(scroll, buildTableScroll(visibleColumns, isMobile), autoContentWidth)}
+        tableLayout={tableLayout}
+        toolBarRender={buildManagementToolbar(toolBarRender, onRefresh)}
+      />
+    </div>
+  );
+};

@@ -391,6 +391,24 @@ body,
   white-space: nowrap;
 }
 
+.saas-table-wrap--adaptive-spacing {
+  container-type: inline-size;
+  --saas-table-cell-inline-padding: clamp(var(--saas-spacing-xs), 1.4cqi, var(--saas-spacing-md));
+}
+
+.saas-table-wrap--adaptive-spacing .ant-table-thead > tr > th,
+.saas-table-wrap--adaptive-spacing .ant-table-tbody > tr > td {
+  padding-inline: var(--saas-table-cell-inline-padding);
+}
+
+.saas-table-wrap--adaptive-spacing .ant-table-middle {
+  --saas-table-cell-inline-padding: clamp(var(--saas-spacing-xs), 1.1cqi, var(--saas-spacing-sm));
+}
+
+.saas-table-wrap--adaptive-spacing .ant-table-small {
+  --saas-table-cell-inline-padding: clamp(var(--saas-spacing-6), 0.8cqi, var(--saas-spacing-xs));
+}
+
 .saas-table-action-bar {
   width: 100%;
   max-width: 100%;
