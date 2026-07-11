@@ -496,6 +496,7 @@ const OnlineUsersPage = () => {
         {selectedRecord ? (
           <ProDescriptions<OnlineSessionRecord>
             {...detailProps}
+            column={1}
             columns={detailColumns}
           />
         ) : null}
