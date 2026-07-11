@@ -65,7 +65,7 @@ import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptio
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
-import { message } from '@/theme/antdFeedbackBridge';
+import { message, modal } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
@@ -4035,7 +4035,12 @@ const loadStorageSpaceOptions = async () => {
   return buildStorageSpaceOptions(result.records || []);
 };
 
-const fieldScopeOptions = [
+type RegistrationFieldScope = Extract<
+  CompetitionConfigItemType,
+  'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'
+>;
+
+const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }> = [
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
   { label: '团队信息', value: 'TEAM_FIELD' },
   { label: '成员信息', value: 'MEMBER_FIELD' },
@@ -4330,7 +4335,7 @@ const renderFieldSettingsTable = (
   fields: Array<{ key: number; name: number }>,
   add: (defaultValue?: EditableCompetitionConfigItem) => void,
   remove: (index: number | number[]) => void,
-  module: CompetitionSettingsModuleConfig,
+  scope: RegistrationFieldScope,
   scheduleSave: () => void,
 ) => {
   return (
@@ -4339,7 +4344,6 @@ const renderFieldSettingsTable = (
         <div className="competition-field-table__head">
           <span>字段名称</span>
           <span>字段标识</span>
-          <span>适用范围</span>
           <span>类型</span>
           <span>占位提示</span>
           <span>下拉选项</span>
@@ -4355,9 +4359,6 @@ const renderFieldSettingsTable = (
             </Form.Item>
             <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
               <Input placeholder="字段标识" maxLength={64} />
-            </Form.Item>
-            <Form.Item name={[field.name, 'metadata', 'fieldScope']} initialValue="REGISTRATION_FIELD">
-              <Select options={fieldScopeOptions} />
             </Form.Item>
             <Form.Item name={[field.name, 'metadata', 'fieldType']} rules={[{ required: true, message: '请选择字段类型' }]}>
               <Select options={fieldTypeOptions} />
@@ -4409,11 +4410,11 @@ const renderFieldSettingsTable = (
         block
         icon={<PlusOutlined />}
         onClick={() => {
-          add(toEditableConfigItems([emptyConfigItem('MEMBER_FIELD', (fields.length + 1) * 10)])[0]);
+          add(toEditableConfigItems([emptyConfigItem(scope, (fields.length + 1) * 10)])[0]);
           scheduleSave();
         }}
       >
-        新增字段
+        新增{fieldScopeOptions.find((option) => option.value === scope)?.label}字段
       </Button>
     </Space>
   );
@@ -4506,47 +4507,64 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         {getCompetitionSettingsModuleDescription(module)}
       </Typography.Paragraph>
       <Form form={form} layout="vertical" initialValues={getInitialValues()} onValuesChange={scheduleSave}>
-        {module.key === 'fields' ? (
-          <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
-            <div className="competition-config-grid">
-              <Form.Item
-                name="teamMinMembers"
-                label="团队最小人数"
-                dependencies={['teamMaxMembers']}
-                rules={[
-                  { required: true, message: '请输入团队最小人数' },
-                  ({ getFieldValue }) => ({
-                    validator: (_, value) => Number(value) <= Number(getFieldValue('teamMaxMembers'))
-                      ? Promise.resolve()
-                      : Promise.reject(new Error('最小人数不能大于最大人数')),
-                  }),
-                ]}
-              >
-                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item
-                name="teamMaxMembers"
-                label="团队最大人数"
-                dependencies={['teamMinMembers']}
-                rules={[
-                  { required: true, message: '请输入团队最大人数' },
-                  ({ getFieldValue }) => ({
-                    validator: (_, value) => Number(value) >= Number(getFieldValue('teamMinMembers'))
-                      ? Promise.resolve()
-                      : Promise.reject(new Error('最大人数不能小于最小人数')),
-                  }),
-                ]}
-              >
-                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </div>
-            <Typography.Text type="secondary">报名时团队成员数必须在该范围内。</Typography.Text>
-          </Card>
-        ) : null}
         <Form.List name="items">
           {(fields, { add, remove }) =>
             module.key === 'fields' ? (
-              renderFieldSettingsTable(fields, add, remove, module, scheduleSave)
+              <Tabs
+                className="competition-field-scope-tabs"
+                items={fieldScopeOptions.map((scopeOption) => {
+                  const scopedFields = fields.filter((field) => {
+                    const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
+                    return (item?.metadata?.fieldScope || item?.itemType) === scopeOption.value;
+                  });
+                  return {
+                    key: scopeOption.value,
+                    label: scopeOption.label,
+                    children: (
+                      <Space className="competition-config-list" direction="vertical" size={16}>
+                        {scopeOption.value === 'TEAM_FIELD' ? (
+                          <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
+                            <div className="competition-config-grid">
+                              <Form.Item
+                                name="teamMinMembers"
+                                label="团队最小人数"
+                                dependencies={['teamMaxMembers']}
+                                rules={[
+                                  { required: true, message: '请输入团队最小人数' },
+                                  ({ getFieldValue }) => ({
+                                    validator: (_, value) => Number(value) <= Number(getFieldValue('teamMaxMembers'))
+                                      ? Promise.resolve()
+                                      : Promise.reject(new Error('最小人数不能大于最大人数')),
+                                  }),
+                                ]}
+                              >
+                                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
+                              </Form.Item>
+                              <Form.Item
+                                name="teamMaxMembers"
+                                label="团队最大人数"
+                                dependencies={['teamMinMembers']}
+                                rules={[
+                                  { required: true, message: '请输入团队最大人数' },
+                                  ({ getFieldValue }) => ({
+                                    validator: (_, value) => Number(value) >= Number(getFieldValue('teamMinMembers'))
+                                      ? Promise.resolve()
+                                      : Promise.reject(new Error('最大人数不能小于最小人数')),
+                                  }),
+                                ]}
+                              >
+                                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
+                              </Form.Item>
+                            </div>
+                            <Typography.Text type="secondary">报名时团队成员数必须在该范围内。</Typography.Text>
+                          </Card>
+                        ) : null}
+                        {renderFieldSettingsTable(scopedFields, add, remove, scopeOption.value, scheduleSave)}
+                      </Space>
+                    ),
+                  };
+                })}
+              />
             ) : (
               <Space className="competition-config-list" direction="vertical" size={16}>
               {fields.map((field, index) => (
@@ -5416,7 +5434,7 @@ const CompetitionPage = () => {
                     return;
                   }
 
-                  Modal.confirm({
+                  modal.confirm({
                     title: '确认发布该赛事？',
                     content: `发布后，赛事「${record.title}」将出现在学生报名入口中。`,
                     okText: '确认发布',
@@ -5447,7 +5465,7 @@ const CompetitionPage = () => {
                 permission: 'aiadc:competition:delete',
                 danger: true,
                 onClick: () => {
-                  Modal.confirm({
+                  modal.confirm({
                     title: '确认删除该赛事？',
                     content: `删除后赛事「${record.title}」不会再出现在赛事列表中。`,
                     okButtonProps: { danger: true },
