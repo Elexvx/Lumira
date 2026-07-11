@@ -44,8 +44,8 @@ const PAYMENT_PROVIDER_TITLES: Record<PaymentProviderCode, string> = {
 const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldConfig[]> = {
   alipay: [
     { name: 'appId', label: t('App ID', 'App ID'), required: true, placeholder: t('支付宝应用 ID', 'Alipay app ID') },
-    { name: 'publicKey', label: t('公钥', 'Public key'), required: true, placeholder: t('平台公钥', 'Platform public key') },
-    { name: 'privateKey', label: t('私钥', 'Private key'), required: true, placeholder: t('留空则保持现有密钥', 'Leave blank to keep the current key'), password: true, inputMode: 'textarea' },
+    { name: 'publicKey', label: t('支付宝公钥', 'Alipay public key'), required: true, placeholder: t('支付宝公钥', 'Alipay public key') },
+    { name: 'privateKey', label: t('应用私钥', 'Application private key'), required: true, placeholder: t('留空则保持现有密钥', 'Leave blank to keep the current key'), password: true, inputMode: 'textarea' },
     { name: 'notifyUrl', label: t('异步通知地址', 'Async notification URL'), required: true, systemManaged: true },
     { name: 'returnUrl', label: t('同步跳转地址', 'Return URL'), placeholder: 'https://example.com/payment/result' },
     { name: 'apiBaseUrl', label: t('API 基地址', 'API base URL'), placeholder: t('例如：https://openapi.alipay.com', 'e.g. https://openapi.alipay.com') },
