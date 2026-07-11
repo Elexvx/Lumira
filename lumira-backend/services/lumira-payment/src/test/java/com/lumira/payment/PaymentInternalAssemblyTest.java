@@ -4,6 +4,7 @@ import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.payment.controller.InternalPaymentController;
 import com.lumira.payment.service.PaymentInternalApiService;
+import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -44,6 +45,11 @@ class PaymentInternalAssemblyTest {
         @Bean
         PaymentTransactionService paymentTransactionService() {
             return mock(PaymentTransactionService.class);
+        }
+
+        @Bean
+        PaymentManagementAppService paymentManagementAppService() {
+            return mock(PaymentManagementAppService.class);
         }
 
         @Bean
