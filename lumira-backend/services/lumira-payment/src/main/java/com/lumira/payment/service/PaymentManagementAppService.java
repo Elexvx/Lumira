@@ -176,6 +176,7 @@ public class PaymentManagementAppService {
         }
 
         updateProviderTestResult(actor, providerCode, success, message, checkedAt, settings.isPersisted());
+        providerListCache = null;
         outboxService.recordAfterCommit(
                 outboxUserId(actor),
                 "payment",
