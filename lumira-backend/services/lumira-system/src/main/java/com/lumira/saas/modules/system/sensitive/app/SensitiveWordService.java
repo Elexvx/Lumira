@@ -360,8 +360,17 @@ public class SensitiveWordService {
         return buildCheckResult(text, fieldPath, dictionaryCache.getMatcher());
     }
 
+    public SensitiveWordVO.CheckResult checkTextForSubmission(CurrentUser currentUser, String text, String fieldPath) {
+        pluginStateService.ensureEnabled(currentUser);
+        return buildCheckResult(text, fieldPath, dictionaryCache.getMatcher());
+    }
+
     public SensitiveWordVO.CheckResult checkPayload(CurrentUser currentUser, Object payload) {
         requirePermission(currentUser, PERMISSION_VIEW);
+        return checkPayloadForSubmission(currentUser, payload);
+    }
+
+    public SensitiveWordVO.CheckResult checkPayloadForSubmission(CurrentUser currentUser, Object payload) {
         if (!pluginStateService.isEnabled(currentUser)) {
             return new SensitiveWordVO.CheckResult(false, List.of());
         }

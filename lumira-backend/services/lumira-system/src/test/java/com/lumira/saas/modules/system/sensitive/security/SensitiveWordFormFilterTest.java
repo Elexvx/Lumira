@@ -46,7 +46,7 @@ class SensitiveWordFormFilterTest {
 
         verify(filterChain).doFilter(request, response);
         verify(pluginStateService, never()).isEnabled(currentUser);
-        verify(sensitiveWordService, never()).checkPayload(currentUser, java.util.Map.of("title", "sensitive"));
+        verify(sensitiveWordService, never()).checkPayloadForSubmission(currentUser, java.util.Map.of("title", "sensitive"));
     }
 
     @Test
@@ -72,7 +72,7 @@ class SensitiveWordFormFilterTest {
 
         verify(filterChain).doFilter(request, response);
         verify(pluginStateService, never()).isEnabled(currentUser);
-        verify(sensitiveWordService, never()).checkPayload(currentUser, java.util.Map.of("title", "sensitive"));
+        verify(sensitiveWordService, never()).checkPayloadForSubmission(currentUser, java.util.Map.of("title", "sensitive"));
     }
 
     @Test
@@ -102,7 +102,7 @@ class SensitiveWordFormFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(ErrorCode.UNAUTHORIZED.getHttpStatus());
         verify(filterChain, never()).doFilter(request, response);
-        verify(sensitiveWordService, never()).checkPayload(currentUser, java.util.Map.of("title", "sensitive"));
+        verify(sensitiveWordService, never()).checkPayloadForSubmission(currentUser, java.util.Map.of("title", "sensitive"));
     }
 
     private CurrentUser trustedCurrentUser() {

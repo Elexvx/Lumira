@@ -39,7 +39,7 @@ class SensitiveWordRequestBodyAdviceTest {
 
         assertThat(result).isSameAs(body);
         verify(pluginStateService, never()).isEnabled(currentUser);
-        verify(sensitiveWordService, never()).checkPayload(currentUser, body);
+        verify(sensitiveWordService, never()).checkPayloadForSubmission(currentUser, body);
     }
 
     @Test
@@ -60,7 +60,7 @@ class SensitiveWordRequestBodyAdviceTest {
 
         assertThat(result).isSameAs(body);
         verify(pluginStateService, never()).isEnabled(currentUser);
-        verify(sensitiveWordService, never()).checkPayload(currentUser, body);
+        verify(sensitiveWordService, never()).checkPayloadForSubmission(currentUser, body);
     }
 
     @Test
@@ -82,7 +82,7 @@ class SensitiveWordRequestBodyAdviceTest {
         assertThatThrownBy(() -> advice.afterBodyRead(body, mock(HttpInputMessage.class), null, mock(Type.class), null))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Trusted user resolver is unavailable");
-        verify(sensitiveWordService, never()).checkPayload(currentUser, body);
+        verify(sensitiveWordService, never()).checkPayloadForSubmission(currentUser, body);
     }
 
     private CurrentUser trustedCurrentUser() {

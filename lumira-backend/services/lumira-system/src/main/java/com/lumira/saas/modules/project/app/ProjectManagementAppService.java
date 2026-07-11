@@ -178,7 +178,7 @@ public class ProjectManagementAppService {
     @Transactional
     public ProjectVO.Project createProject(CurrentUser currentUser, ProjectDTO.ProjectUpsertRequest request) {
         Long userId = requireAnyPermission(currentUser, CREATE, REGISTRATION_CREATE);
-        String userUuid = requireUserUuid(currentUser);
+        String userUuid = currentUser.getUserUuid().trim();
         requireRequest(request);
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
         int inserted = jdbcTemplate.update(
@@ -210,7 +210,11 @@ public class ProjectManagementAppService {
         );
         requireProjectWrite(inserted);
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        return getProject(currentUser, id);
+        ProjectVO.Project createdProject = findProject(id);
+        if (createdProject == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Project not found");
+        }
+        return createdProject;
     }
 
     @Transactional

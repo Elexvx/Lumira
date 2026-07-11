@@ -40,13 +40,13 @@ class SensitiveWordControllerTest {
     @Test
     void checkShouldForwardNullBodyToServiceWithoutDereferencingRequest() {
         Fixtures fixtures = fixtures();
-        when(fixtures.sensitiveWordService.checkText(fixtures.currentUser, null, null))
+        when(fixtures.sensitiveWordService.checkTextForSubmission(fixtures.currentUser, null, null))
                 .thenReturn(new SensitiveWordVO.CheckResult(false, List.of()));
 
         fixtures.controller.check(null);
 
-        verify(fixtures.permissionGuard).requirePermission(fixtures.currentUser, "plugin:sensitive-words:view");
-        verify(fixtures.sensitiveWordService).checkText(fixtures.currentUser, null, null);
+        verify(fixtures.permissionGuard, never()).requirePermission(fixtures.currentUser, "plugin:sensitive-words:view");
+        verify(fixtures.sensitiveWordService).checkTextForSubmission(fixtures.currentUser, null, null);
     }
 
     @Test

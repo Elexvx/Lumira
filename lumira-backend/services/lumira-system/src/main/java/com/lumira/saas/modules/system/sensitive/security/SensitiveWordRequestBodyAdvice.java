@@ -55,7 +55,7 @@ public class SensitiveWordRequestBodyAdvice extends RequestBodyAdviceAdapter {
         if (inputMessage instanceof ServletServerHttpRequest request && shouldSkip(request)) {
             return body;
         }
-        SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayload(currentUser, body);
+        SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayloadForSubmission(currentUser, body);
         if (result.isBlocked()) {
             throw buildException(result);
         }

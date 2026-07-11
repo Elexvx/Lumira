@@ -45,7 +45,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,7 +57,6 @@ public class SystemUserManagementAppService {
     private static final String RESOURCE_SYSTEM_USER = "system:user";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
-    private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
@@ -415,37 +413,21 @@ public class SystemUserManagementAppService {
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
         String userUuid = user.getUserUuid();
-        CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId, userUuid), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId, userUuid), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId, userUuid), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId, userUuid), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<UserDetailVO.UserIdentityVO>> identitiesFuture = CompletableFuture.supplyAsync(
-                () -> iamUserService.listIdentities(userId, userUuid).stream()
-                        .map(identity -> toUserIdentityVO(identity, canViewSensitive))
-                        .toList(),
-                BLOCKING_IO_EXECUTOR
-        );
-        CompletableFuture<List<UserDetailVO.UserDeviceVO>> devicesFuture = CompletableFuture.supplyAsync(
-                () -> iamUserService.listRecentDevices(userId, userUuid, 10).stream()
-                        .map(device -> toUserDeviceVO(device, canViewSensitive))
-                        .toList(),
-                BLOCKING_IO_EXECUTOR
-        );
-        CompletableFuture<UserDetailVO.UserSecuritySettingVO> securitySettingFuture = CompletableFuture.supplyAsync(
-                () -> iamUserService.findSecuritySetting(userId, userUuid)
-                        .map(this::toUserSecuritySettingVO)
-                        .orElse(null),
-                BLOCKING_IO_EXECUTOR
-        );
-        detail.setRoleIds(roleIdsFuture.join());
-        List<Long> deptIds = deptIdsFuture.join();
+        detail.setRoleIds(listUserRoleIds(userId, userUuid));
+        List<Long> deptIds = listUserDeptIds(userId, userUuid);
         detail.setDeptIds(deptIds);
         detail.setPrimaryDeptId(deptIds.isEmpty() ? null : deptIds.get(0));
-        detail.setRoleNames(roleNamesFuture.join());
-        detail.setDeptNames(deptNamesFuture.join());
-        detail.setIdentities(identitiesFuture.join());
-        detail.setRecentDevices(devicesFuture.join());
-        detail.setSecuritySetting(securitySettingFuture.join());
+        detail.setRoleNames(listUserRoleNames(userId, userUuid));
+        detail.setDeptNames(listUserDeptNames(userId, userUuid));
+        detail.setIdentities(iamUserService.listIdentities(userId, userUuid).stream()
+                .map(identity -> toUserIdentityVO(identity, canViewSensitive))
+                .toList());
+        detail.setRecentDevices(iamUserService.listRecentDevices(userId, userUuid, 10).stream()
+                .map(device -> toUserDeviceVO(device, canViewSensitive))
+                .toList());
+        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId, userUuid)
+                .map(this::toUserSecuritySettingVO)
+                .orElse(null));
         return detail;
     }
 
@@ -825,7 +807,7 @@ public class SystemUserManagementAppService {
         }
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
         Long existingRoleCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_role where deleted = 0 and status = 'ENABLED' and id in (" + placeholders(distinctRoleIds.size()) + ")",
+                "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
                 Long.class,
                 distinctRoleIds.toArray()
         );
@@ -850,12 +832,12 @@ public class SystemUserManagementAppService {
                             insert into sys_user_role (user_id, user_uuid, role_id, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
                             select ?, ?, r.id, ?, ?, ?, ?, 0
                             from sys_role r
-                            where r.id = ? and r.status = 'ENABLED' and r.deleted = 0
+                            where r.id = ? and r.deleted = 0
                             on duplicate key update
-                                deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then 0 else deleted end,
-                                updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then values(updated_by) else updated_by end,
-                                updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then values(updated_by_uuid) else updated_by_uuid end,
-                                updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then current_timestamp else updated_at end
+                                deleted = case when sys_user_role.user_id = values(user_id) and sys_user_role.user_uuid = values(user_uuid) and sys_user_role.role_id = values(role_id) then 0 else sys_user_role.deleted end,
+                                updated_by = case when sys_user_role.user_id = values(user_id) and sys_user_role.user_uuid = values(user_uuid) and sys_user_role.role_id = values(role_id) then values(updated_by) else sys_user_role.updated_by end,
+                                updated_by_uuid = case when sys_user_role.user_id = values(user_id) and sys_user_role.user_uuid = values(user_uuid) and sys_user_role.role_id = values(role_id) then values(updated_by_uuid) else sys_user_role.updated_by_uuid end,
+                                updated_at = case when sys_user_role.user_id = values(user_id) and sys_user_role.user_uuid = values(user_uuid) and sys_user_role.role_id = values(role_id) then current_timestamp else sys_user_role.updated_at end
                             """,
                     userId,
                     userUuid,
@@ -919,11 +901,11 @@ public class SystemUserManagementAppService {
                             from sys_department d
                             where d.id = ? and d.status = 'ENABLED' and d.deleted = 0
                             on duplicate key update
-                                primary_flag = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then values(primary_flag) else primary_flag end,
-                                deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then 0 else deleted end,
-                                updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then values(updated_by) else updated_by end,
-                                updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then values(updated_by_uuid) else updated_by_uuid end,
-                                updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) and dept_id = values(dept_id) then current_timestamp else updated_at end
+                                primary_flag = case when sys_user_department.user_id = values(user_id) and sys_user_department.user_uuid = values(user_uuid) and sys_user_department.dept_id = values(dept_id) then values(primary_flag) else sys_user_department.primary_flag end,
+                                deleted = case when sys_user_department.user_id = values(user_id) and sys_user_department.user_uuid = values(user_uuid) and sys_user_department.dept_id = values(dept_id) then 0 else sys_user_department.deleted end,
+                                updated_by = case when sys_user_department.user_id = values(user_id) and sys_user_department.user_uuid = values(user_uuid) and sys_user_department.dept_id = values(dept_id) then values(updated_by) else sys_user_department.updated_by end,
+                                updated_by_uuid = case when sys_user_department.user_id = values(user_id) and sys_user_department.user_uuid = values(user_uuid) and sys_user_department.dept_id = values(dept_id) then values(updated_by_uuid) else sys_user_department.updated_by_uuid end,
+                                updated_at = case when sys_user_department.user_id = values(user_id) and sys_user_department.user_uuid = values(user_uuid) and sys_user_department.dept_id = values(dept_id) then current_timestamp else sys_user_department.updated_at end
                             """,
                     userId,
                     userUuid,

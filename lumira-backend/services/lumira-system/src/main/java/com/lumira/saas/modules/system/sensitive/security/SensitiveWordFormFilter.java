@@ -74,7 +74,7 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
                         payload.put(key, value);
                     }
                 });
-                SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayload(currentUser, payload);
+                SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayloadForSubmission(currentUser, payload);
                 if (result.isBlocked()) {
                     writeError(response, request, result);
                     return;

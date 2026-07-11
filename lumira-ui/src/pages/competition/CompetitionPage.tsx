@@ -62,6 +62,7 @@ import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPa
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
 import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
+import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -203,7 +204,6 @@ type CompetitionRegistrationDraftStorage = {
 const COMPETITION_CATEGORY_DICT = 'aiadc_competition_category';
 const COMPETITION_LEVEL_DICT = 'aiadc_competition_level';
 const COMPETITION_CREATE_DRAFT_STORAGE_KEY = 'lumira.competition.create.draft.v1';
-const COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY = 'lumira.registration.create.draft.v1';
 
 const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
   newTeam: {
@@ -795,30 +795,30 @@ const clearCompetitionCreateDraft = () => {
   window.localStorage.removeItem(COMPETITION_CREATE_DRAFT_STORAGE_KEY);
 };
 
-const readCompetitionRegistrationDraft = () => {
+const readCompetitionRegistrationDraft = (storageKey: string) => {
   if (typeof window === 'undefined') {
     return undefined;
   }
   try {
-    const stored = window.localStorage.getItem(COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY);
+    const stored = window.localStorage.getItem(storageKey);
     return stored ? (JSON.parse(stored) as CompetitionRegistrationDraftStorage) : undefined;
   } catch {
     return undefined;
   }
 };
 
-const writeCompetitionRegistrationDraft = (draft: CompetitionRegistrationDraftStorage) => {
+const writeCompetitionRegistrationDraft = (storageKey: string, draft: CompetitionRegistrationDraftStorage) => {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  window.localStorage.setItem(storageKey, JSON.stringify(draft));
 };
 
-const clearCompetitionRegistrationDraft = () => {
+const clearCompetitionRegistrationDraft = (storageKey: string) => {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.removeItem(COMPETITION_REGISTRATION_DRAFT_STORAGE_KEY);
+  window.localStorage.removeItem(storageKey);
 };
 
 const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationFormValues>) => {
@@ -2114,6 +2114,10 @@ const getAllowedRegistrationWizardStep = (
 
 const CompetitionRegistrationPage = () => {
   const { initialState } = useModel('@@initialState');
+  const registrationDraftStorageKey = useMemo(
+    () => buildRegistrationDraftStorageKey(initialState?.currentUser?.userId),
+    [initialState?.currentUser?.userId],
+  );
   const location = useLocation();
   const responsive = useResponsive();
   const registrationActionPermission = useActionPermission();
@@ -2296,10 +2300,10 @@ const CompetitionRegistrationPage = () => {
         ...nextValues,
       }),
     };
-    writeCompetitionRegistrationDraft(draftState);
+    writeCompetitionRegistrationDraft(registrationDraftStorageKey, draftState);
     setRegistrationDraftSavedAt(savedAt);
     return draftState;
-  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationId, selectedCompetition?.title, selectedCompetition?.uuid, step]);
+  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationDraftStorageKey, registrationId, selectedCompetition?.title, selectedCompetition?.uuid, step]);
   const persistRegistrationDraft = useCallback((
     nextValues: Partial<RegistrationFormValues> = collectRegistrationValues(),
     nextStep = step,
@@ -2313,7 +2317,7 @@ const CompetitionRegistrationPage = () => {
       && !hasCompetitionRegistrationDraftContent(nextValues)
       && nextStep <= 0
     ) {
-      clearCompetitionRegistrationDraft();
+      clearCompetitionRegistrationDraft(registrationDraftStorageKey);
       latestRegistrationDraftRef.current = undefined;
       setRegistrationDraftSavedAt(undefined);
       return;
@@ -2338,6 +2342,7 @@ const CompetitionRegistrationPage = () => {
     acceptedDocumentKeys,
     collectRegistrationValues,
     paymentStatus,
+    registrationDraftStorageKey,
     registrationId,
     step,
     writeCurrentRegistrationDraftState,
@@ -2440,9 +2445,9 @@ const CompetitionRegistrationPage = () => {
   }, [canLoadRegistrationCompetitions, canViewRegistrationList, viewMode]);
 
   useEffect(() => {
-    hydrateRegistrationDraft(readCompetitionRegistrationDraft());
+    hydrateRegistrationDraft(readCompetitionRegistrationDraft(registrationDraftStorageKey));
     setRegistrationDraftHydrated(true);
-  }, [hydrateRegistrationDraft]);
+  }, [hydrateRegistrationDraft, registrationDraftStorageKey]);
 
   useEffect(() => () => {
     if (registrationDraftSaveTimerRef.current) {
@@ -2673,7 +2678,7 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   const startNewRegistration = () => {
-    const draft = readCompetitionRegistrationDraft();
+    const draft = readCompetitionRegistrationDraft(registrationDraftStorageKey);
     hydrateRegistrationDraft(draft);
     setStageForm(undefined);
     setMemberModalOpen(false);
@@ -2861,7 +2866,7 @@ const CompetitionRegistrationPage = () => {
       });
       setPaymentStatus(order.status || 'QUEUED');
       registrationActionRef.current?.reload();
-      clearCompetitionRegistrationDraft();
+      clearCompetitionRegistrationDraft(registrationDraftStorageKey);
       latestRegistrationDraftRef.current = undefined;
       setRegistrationDraftSavedAt(undefined);
       if (order.paymentUrl) {

@@ -174,18 +174,14 @@ public class ProjectV2Controller {
     }
 
     private CurrentUser requireAny(String... permissionKeys) {
-        RuntimeException lastError = null;
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
         for (String permissionKey : permissionKeys) {
-            try {
-                return require(permissionKey);
-            } catch (RuntimeException error) {
-                lastError = error;
+            if (permissionGuard.hasPermission(currentUser, permissionKey)) {
+                return currentUser;
             }
         }
-        if (lastError != null) {
-            throw lastError;
-        }
-        return require(permissionKeys.length == 0 ? null : permissionKeys[0]);
+        permissionGuard.requirePermission(currentUser, permissionKeys.length == 0 ? null : permissionKeys[0]);
+        return currentUser;
     }
 
     private CurrentUser requireTrustedUser(CurrentUser currentUser) {

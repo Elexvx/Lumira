@@ -164,11 +164,11 @@ public class SensitiveWordController {
 
     @PostMapping("/check")
     public ApiResponse<SensitiveWordVO.CheckResult> check(@RequestBody SensitiveWordDTO.CheckRequest request) {
-        CurrentUser currentUser = require("plugin:sensitive-words:view");
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
         String text = request == null ? null : request.getText();
         String fieldPath = request == null ? null : request.getFieldPath();
         return ApiResponse.success(
-                sensitiveWordService.checkText(currentUser, text, fieldPath),
+                sensitiveWordService.checkTextForSubmission(currentUser, text, fieldPath),
                 TraceContext.getRequestId()
         );
     }
