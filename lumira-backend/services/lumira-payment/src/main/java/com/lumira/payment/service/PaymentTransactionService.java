@@ -119,7 +119,7 @@ public class PaymentTransactionService {
         }
         SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Local account resolver is unavailable");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Local account resolver is unavailable");
         }
         SystemUserSnapshotDTO target = systemInternalApi.findUserIdentityById(targetUserId);
         if (target == null || target.userId() == null || !target.userId().equals(targetUserId)
