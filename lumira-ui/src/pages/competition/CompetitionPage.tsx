@@ -4337,6 +4337,7 @@ const renderFieldSettingsTable = (
   remove: (index: number | number[]) => void,
   scope: RegistrationFieldScope,
   scheduleSave: () => void,
+  openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void,
 ) => {
   return (
     <Space className="competition-config-list" direction="vertical" size={16}>
@@ -4372,16 +4373,25 @@ const renderFieldSettingsTable = (
               {({ getFieldValue }) => ['SELECT', 'MULTI_SELECT'].includes(
                 getFieldValue(['items', field.name, 'metadata', 'fieldType']),
               ) ? (
-                <Form.Item
-                  name={[field.name, 'metadata', 'options']}
-                  rules={[{ required: true, whitespace: true, message: '请配置至少一个下拉选项' }]}
-                >
-                  <Input.TextArea
-                    autoSize={{ minRows: 1, maxRows: 4 }}
-                    placeholder={'每行一个选项\n例如：男\n女'}
-                    maxLength={500}
-                  />
-                </Form.Item>
+                <>
+                  <Form.Item name={[field.name, 'metadata', 'options']} hidden>
+                    <Input />
+                  </Form.Item>
+                  <Button
+                    icon={<SettingOutlined />}
+                    onClick={() => openOptionsEditor(
+                      field.name,
+                      getFieldValue(['items', field.name, 'title']),
+                      getFieldValue(['items', field.name, 'metadata', 'options']),
+                    )}
+                  >
+                    {String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
+                      .split('\n').filter((option) => option.trim()).length > 0
+                      ? `已设置 ${String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
+                          .split('\n').filter((option) => option.trim()).length} 项`
+                      : '设置选项'}
+                  </Button>
+                </>
               ) : <Typography.Text type="secondary">—</Typography.Text>}
             </Form.Item>
             <Form.Item name={[field.name, 'requiredFlag']} valuePropName="checked">
@@ -4440,6 +4450,11 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     teamMinMembers?: number;
     teamMaxMembers?: number;
   }>();
+  const [optionsEditor, setOptionsEditor] = useState<{
+    fieldName: number;
+    fieldTitle?: string;
+    value: string;
+  }>();
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
@@ -4491,6 +4506,25 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     }
   }, [competitionUuid, form, module.key, onSaved]);
   const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+
+  const confirmOptionsEditor = useCallback(() => {
+    if (!optionsEditor) {
+      return;
+    }
+    const normalizedOptions = optionsEditor.value
+      .split('\n')
+      .map((option) => option.trim())
+      .filter(Boolean)
+      .filter((option, index, allOptions) => allOptions.indexOf(option) === index)
+      .join('\n');
+    if (!normalizedOptions) {
+      message.warning('请至少填写一个选项');
+      return;
+    }
+    form.setFieldValue(['items', optionsEditor.fieldName, 'metadata', 'options'], normalizedOptions);
+    setOptionsEditor(undefined);
+    scheduleSave();
+  }, [form, optionsEditor, scheduleSave]);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave,
@@ -4559,7 +4593,18 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                             <Typography.Text type="secondary">报名时团队成员数必须在该范围内。</Typography.Text>
                           </Card>
                         ) : null}
-                        {renderFieldSettingsTable(scopedFields, add, remove, scopeOption.value, scheduleSave)}
+                        {renderFieldSettingsTable(
+                          scopedFields,
+                          add,
+                          remove,
+                          scopeOption.value,
+                          scheduleSave,
+                          (fieldName, fieldTitle, options) => setOptionsEditor({
+                            fieldName,
+                            fieldTitle,
+                            value: options || '',
+                          }),
+                        )}
                       </Space>
                     ),
                   };
@@ -4640,6 +4685,29 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           }
         </Form.List>
       </Form>
+      <Modal
+        title={`设置下拉选项${optionsEditor?.fieldTitle ? ` · ${optionsEditor.fieldTitle}` : ''}`}
+        open={Boolean(optionsEditor)}
+        okText="保存选项"
+        cancelText="取消"
+        onOk={confirmOptionsEditor}
+        onCancel={() => setOptionsEditor(undefined)}
+        destroyOnHidden
+      >
+        <Typography.Paragraph type="secondary">
+          每行填写一个选项；保存时会自动移除空行和重复项。
+        </Typography.Paragraph>
+        <Input.TextArea
+          autoFocus
+          rows={8}
+          maxLength={500}
+          placeholder={'例如：\n男\n女'}
+          value={optionsEditor?.value || ''}
+          onChange={(event) => setOptionsEditor((current) => current
+            ? { ...current, value: event.target.value }
+            : current)}
+        />
+      </Modal>
     </section>
   );
 });
