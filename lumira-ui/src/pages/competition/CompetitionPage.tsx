@@ -62,6 +62,7 @@ import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPa
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
 import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
+import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -2668,17 +2669,7 @@ const CompetitionRegistrationPage = () => {
   };
 
   const loadStageFormForCompetition = useCallback(async (competitionId: number) => {
-    const stages = await listCompetitionStages(competitionId);
-    const preliminary = stages.find((item) => item.stageCode === 'PRELIMINARY') || stages[0];
-    if (!preliminary) {
-      setStageForm(undefined);
-      return;
-    }
-    try {
-      setStageForm(await getCompetitionStageForm(preliminary.id));
-    } catch {
-      setStageForm(undefined);
-    }
+    setStageForm(await loadOptionalPreliminaryStageForm(competitionId, listCompetitionStages, getCompetitionStageForm));
   }, []);
 
   const startNewRegistration = () => {
@@ -2825,8 +2816,8 @@ const CompetitionRegistrationPage = () => {
           ? await updateRegistration(registrationId, registrationPayload)
           : await createRegistration(registrationPayload);
         setRegistrationId(registration.id);
-        await loadStageFormForCompetition(competitionId);
         setWizardStep(3, true, { registrationId: registration.id, paymentStatus: registration.status });
+        await loadStageFormForCompetition(competitionId);
       } else if (step === 3) {
         if (registrationId && stageForm) {
           const materialValues = form.getFieldValue('materials') || {};
