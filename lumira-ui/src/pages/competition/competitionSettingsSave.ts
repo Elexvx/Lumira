@@ -21,6 +21,7 @@ export type CompetitionSettingsConfigItemDraft = {
   itemKey?: string | null;
   metadata?: {
     fieldType?: string | null;
+    options?: string | null;
     stageCode?: string | null;
   } | null;
 };
@@ -99,7 +100,10 @@ export const isConfigModuleReadyToSave = (
       return hasText(item.title);
     }
     if (moduleKey === 'fields') {
-      return hasText(item.title) && hasText(item.itemKey) && hasText(item.metadata?.fieldType);
+      return hasText(item.title)
+        && hasText(item.itemKey)
+        && hasText(item.metadata?.fieldType)
+        && (item.metadata?.fieldType !== 'SELECT' || hasText(item.metadata?.options));
     }
     if (moduleKey === 'files') {
       return hasText(item.title) && hasText(item.itemKey) && hasText(item.metadata?.stageCode);

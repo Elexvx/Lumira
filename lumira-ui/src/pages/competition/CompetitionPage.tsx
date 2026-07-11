@@ -4327,6 +4327,7 @@ const renderFieldSettingsTable = (
           <span>适用范围</span>
           <span>类型</span>
           <span>占位提示</span>
+          <span>下拉选项</span>
           <span>必填</span>
           <span>排序</span>
           <span>启用</span>
@@ -4348,6 +4349,22 @@ const renderFieldSettingsTable = (
             </Form.Item>
             <Form.Item name={[field.name, 'metadata', 'placeholder']}>
               <Input placeholder="占位提示" maxLength={120} />
+            </Form.Item>
+            <Form.Item noStyle shouldUpdate={(previous, current) => (
+              previous?.items?.[field.name]?.metadata?.fieldType !== current?.items?.[field.name]?.metadata?.fieldType
+            )}>
+              {({ getFieldValue }) => getFieldValue(['items', field.name, 'metadata', 'fieldType']) === 'SELECT' ? (
+                <Form.Item
+                  name={[field.name, 'metadata', 'options']}
+                  rules={[{ required: true, whitespace: true, message: '请配置至少一个下拉选项' }]}
+                >
+                  <Input.TextArea
+                    autoSize={{ minRows: 1, maxRows: 4 }}
+                    placeholder={'每行一个选项\n例如：男\n女'}
+                    maxLength={500}
+                  />
+                </Form.Item>
+              ) : <Typography.Text type="secondary">—</Typography.Text>}
             </Form.Item>
             <Form.Item name={[field.name, 'requiredFlag']} valuePropName="checked">
               <Switch />

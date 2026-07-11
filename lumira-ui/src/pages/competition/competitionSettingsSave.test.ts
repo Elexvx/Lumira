@@ -63,4 +63,22 @@ describe('competition settings page-level save guards', () => {
       },
     ])).toBe(true);
   });
+
+  it('requires configured options for a select field', () => {
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        title: '性别',
+        itemKey: 'gender',
+        metadata: { fieldType: 'SELECT', options: '' },
+      },
+    ])).toBe(false);
+
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        title: '性别',
+        itemKey: 'gender',
+        metadata: { fieldType: 'SELECT', options: '男\n女' },
+      },
+    ])).toBe(true);
+  });
 });
