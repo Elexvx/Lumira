@@ -25,7 +25,9 @@ export const clearAuthSession = () => {
 
 export const buildLogoutRedirectTarget = (
   reason: LogoutReason,
-  location: Pick<Location, 'pathname' | 'search' | 'hash'> = window.location,
+  location: Pick<Location, 'pathname' | 'search' | 'hash'> = typeof window === 'undefined'
+    ? { pathname: LOGIN_PATH, search: '', hash: '' }
+    : window.location,
 ) => {
   if (reason !== 'forced_expired' || location.pathname === LOGIN_PATH) {
     return LOGIN_PATH;

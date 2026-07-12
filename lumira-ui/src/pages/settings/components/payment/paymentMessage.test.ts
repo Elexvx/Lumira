@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localizePaymentMessage } from './paymentMessage';
+import { localizePaymentMessage, paymentConnectivityStatusDisplayName } from './paymentMessage';
 
 describe('localizePaymentMessage', () => {
   it('translates known payment messages for Chinese', () => {
@@ -19,5 +19,13 @@ describe('localizePaymentMessage', () => {
 
   it('keeps unknown server messages unchanged', () => {
     expect(localizePaymentMessage('Unexpected gateway response', false)).toBe('Unexpected gateway response');
+  });
+
+  it('uses concise labels for connectivity status', () => {
+    expect(paymentConnectivityStatusDisplayName(true, false)).toBe('可用');
+    expect(paymentConnectivityStatusDisplayName(false, false)).toBe('不可用');
+    expect(paymentConnectivityStatusDisplayName(null, false)).toBe('未测试');
+    expect(paymentConnectivityStatusDisplayName(true, true)).toBe('Available');
+    expect(paymentConnectivityStatusDisplayName(false, true)).toBe('Unavailable');
   });
 });
