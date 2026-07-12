@@ -18,11 +18,10 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Normalize Maven wrapper line endings
-        run: sed -i 's/\r$//' ./mvnw
       - name: Run backend core tests
         run: >
-          bash ./mvnw
+          mvn
+          -f pom.xml
           -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment
           -am
           test
