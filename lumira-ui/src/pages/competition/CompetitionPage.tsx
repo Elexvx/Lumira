@@ -4007,6 +4007,11 @@ const normalizeFileStageCode = (value?: string): NonNullable<ConfigItemMetadata[
       ? 'FINAL'
       : 'GENERAL';
 
+const getFileConfigItemStageCode = (item: CompetitionConfigItem) => {
+  const metadata = parseConfigItemMetadata(item.contentJson);
+  return normalizeFileStageCode(metadata.stageCode || metadata.stageName);
+};
+
 const resolveFileStageName = (stageCode: NonNullable<ConfigItemMetadata['stageCode']>) =>
   fileStageOptions.find((option) => option.value === stageCode)?.label || '通用';
 
@@ -4534,6 +4539,7 @@ type ConfigModulePanelProps = {
   fieldScope?: RegistrationFieldScope;
   fieldGroupLabel?: string;
   includeMemberFields?: boolean;
+  fileStageCode?: 'PRELIMINARY' | 'FINAL';
   paymentProviderOptions?: PaymentProviderOption[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
@@ -4546,6 +4552,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   fieldScope,
   fieldGroupLabel,
   includeMemberFields = false,
+  fileStageCode,
   paymentProviderOptions = [],
   onSaved,
 }, ref) => {
@@ -4573,7 +4580,25 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
-    const editableItems = toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS'));
+    const sourceItems = items.filter((item) => item.itemType !== 'TEAM_SETTINGS');
+    const stageItems = fileStageCode
+      ? sourceItems.filter((item) => getFileConfigItemStageCode(item) === fileStageCode)
+      : [];
+    const legacySharedItems = fileStageCode && !stageItems.length
+      ? sourceItems.filter((item) => getFileConfigItemStageCode(item) === 'GENERAL')
+      : [];
+    const editableItems = toEditableConfigItems(fileStageCode
+      ? (stageItems.length ? stageItems : legacySharedItems).map((item) => ({
+          ...item,
+          itemType: 'STAGE_MATERIAL' as const,
+          contentJson: serializeConfigItemMetadata({
+            ...parseConfigItemMetadata(item.contentJson),
+            stageCode: fileStageCode,
+            stageName: resolveFileStageName(fileStageCode),
+            materialType: 'FILE',
+          }),
+        }))
+      : sourceItems);
     const initialItems = module.key === 'payments'
       ? [
           ...paymentProviderOptions.map((provider, index) => {
@@ -4595,7 +4620,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       teamMinMembers: limits.minMembers,
       teamMaxMembers: limits.maxMembers,
     };
-  }, [items, module.key, paymentProviderOptions]);
+  }, [fileStageCode, items, module.key, paymentProviderOptions]);
 
   useEffect(() => {
     form.setFieldsValue(getInitialValues());
@@ -4627,7 +4652,21 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         : fieldItems;
       const saved = module.key === 'files'
         ? await (async () => {
-            const groupedItems = splitFileConfigItemsByModule(configItems);
+            const oppositeStageCode = fileStageCode === 'PRELIMINARY' ? 'FINAL' : 'PRELIMINARY';
+            const hasOppositeStageItems = fileStageCode && items.some((item) => (
+              getFileConfigItemStageCode(item) === oppositeStageCode
+            ));
+            const preservedItems = fileStageCode
+              ? items.filter((item) => {
+                  const itemStageCode = getFileConfigItemStageCode(item);
+                  if (itemStageCode === fileStageCode) return false;
+                  if (itemStageCode === 'GENERAL') return !hasOppositeStageItems;
+                  return true;
+                })
+              : [];
+            const groupedItems = splitFileConfigItemsByModule(fileStageCode
+              ? [...preservedItems, ...configItems]
+              : configItems);
             await saveCompetitionSettingsModule(competitionUuid, 'files', groupedItems.files, API_OPTS.SILENT);
             return saveCompetitionSettingsModule(competitionUuid, 'stage-materials', groupedItems.stageMaterials, API_OPTS.SILENT);
           })()
@@ -4636,7 +4675,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     } catch (error) {
       showErrorMessage(error, formatMessage({ id: 'page.competition.settings.item.saveFailed', defaultMessage: 'Settings save failed' }));
     }
-  }, [competitionUuid, form, module.key, onSaved]);
+  }, [competitionUuid, fileStageCode, form, items, module.key, onSaved]);
   const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
 
   const confirmOptionsEditor = useCallback(() => {
@@ -4666,13 +4705,17 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     <section className="competition-config-module">
       <div className="competition-config-module__header">
         <Typography.Title className="competition-config-module__title" level={4}>
-          {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
+          {module.key === 'files' && fileStageCode
+            ? `${resolveFileStageName(fileStageCode)}材料`
+            : module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
             ? (fieldGroupLabel || '项目信息')
             : getCompetitionSettingsModuleLabel(module)}
         </Typography.Title>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
+        {module.key === 'files' && fileStageCode
+          ? `配置${resolveFileStageName(fileStageCode)}阶段参赛团队需要提交或补充的作品、证明及授权文件。`
+          : module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
           ? fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
             ? '配置报名时需要收集的知识产权、权利状态及分布区域信息。下拉和多选内容可通过“设置选项”动态调整。'
             : '配置报名时需要收集的项目名称、项目简介及其他项目基础信息。'
@@ -4925,7 +4968,18 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                 block
                 icon={<PlusOutlined />}
                 onClick={() => {
-                  add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0]);
+                  const nextItem = toEditableConfigItems([emptyConfigItem(
+                    fileStageCode ? 'STAGE_MATERIAL' : module.itemTypes[0],
+                    (fields.length + 1) * 10,
+                  )])[0];
+                  if (fileStageCode) {
+                    nextItem.metadata = {
+                      ...nextItem.metadata,
+                      stageCode: fileStageCode,
+                      stageName: resolveFileStageName(fileStageCode),
+                    };
+                  }
+                  add(nextItem);
                   scheduleSave();
                 }}
               >
@@ -5358,10 +5412,11 @@ CompetitionTimelineSettingsPanel.displayName = 'CompetitionTimelineSettingsPanel
 
 type CompetitionStageWindowsPanelProps = {
   competitionId: number;
+  stageCode: 'PRELIMINARY' | 'FINAL';
   onStagesChange: (stages: CompetitionStageRecord[]) => void;
 };
 
-const CompetitionStageWindowsPanel = ({ competitionId, onStagesChange }: CompetitionStageWindowsPanelProps) => {
+const CompetitionStageWindowsPanel = ({ competitionId, stageCode, onStagesChange }: CompetitionStageWindowsPanelProps) => {
   const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<number>();
@@ -5383,24 +5438,28 @@ const CompetitionStageWindowsPanel = ({ competitionId, onStagesChange }: Competi
     void loadStages();
   }, [loadStages]);
 
-  const initializeStages = async () => {
+  const initializeStage = async () => {
     setLoading(true);
     try {
       const existingCodes = new Set(stages.map((stage) => stage.stageCode));
-      if (!existingCodes.has('PRELIMINARY')) {
-        await createCompetitionStage(competitionId, { stageCode: 'PRELIMINARY', stageName: '初赛', status: 'DRAFT', sort: 10 });
-      }
-      if (!existingCodes.has('FINAL')) {
-        await createCompetitionStage(competitionId, { stageCode: 'FINAL', stageName: '决赛', status: 'DRAFT', sort: 20 });
+      if (!existingCodes.has(stageCode)) {
+        await createCompetitionStage(competitionId, {
+          stageCode,
+          stageName: stageCode === 'PRELIMINARY' ? '初赛' : '决赛',
+          status: 'DRAFT',
+          sort: stageCode === 'PRELIMINARY' ? 10 : 20,
+        });
       }
       await loadStages();
-      message.success('初赛、决赛阶段已初始化');
+      message.success(`${stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}阶段已初始化`);
     } catch (error) {
       showErrorMessage(error, '阶段初始化失败');
     } finally {
       setLoading(false);
     }
   };
+
+  const currentStage = stages.find((stage) => stage.stageCode === stageCode);
 
   const updateLocalStage = (stageId: number, patch: Partial<CompetitionStageRecord>) => {
     setStages((current) => current.map((stage) => stage.id === stageId ? { ...stage, ...patch } : stage));
@@ -5513,21 +5572,29 @@ const CompetitionStageWindowsPanel = ({ competitionId, onStagesChange }: Competi
     <section className="competition-config-module">
       <div className="competition-config-module__header">
         <div>
-          <Typography.Title className="competition-config-module__title" level={4}>阶段时间与权限</Typography.Title>
+          <Typography.Title className="competition-config-module__title" level={4}>
+            {stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}设置
+          </Typography.Title>
           <Typography.Paragraph type="secondary">
-            先设置每个阶段的材料修改和评审时间。决赛阶段自动与“评审与晋级”结果联动。
+            {stageCode === 'PRELIMINARY'
+              ? '设置初赛材料修改、评审时间和晋级规则。'
+              : '设置决赛材料修改和评审时间；参赛范围自动与“评审与晋级”结果联动。'}
           </Typography.Paragraph>
         </div>
-        <Button onClick={() => void initializeStages()}>初始化初赛与决赛</Button>
+        {!currentStage ? (
+          <Button type="primary" onClick={() => void initializeStage()}>
+            初始化{stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}
+          </Button>
+        ) : null}
       </div>
       <Table
         rowKey="id"
         loading={loading}
         pagination={false}
-        dataSource={stages}
+        dataSource={currentStage ? [currentStage] : []}
         columns={columns}
         scroll={{ x: 1610 }}
-        locale={{ emptyText: '请先初始化比赛阶段' }}
+        locale={{ emptyText: `请先初始化${stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}阶段` }}
       />
     </section>
   );
@@ -5536,6 +5603,7 @@ const CompetitionStageWindowsPanel = ({ competitionId, onStagesChange }: Competi
 type CompetitionStageAndMaterialPanelProps = {
   competition: CompetitionRecord;
   competitionUuid: string;
+  activeTab: CompetitionSettingsStageTab;
   module: CompetitionSettingsModuleConfig;
   items: CompetitionConfigItem[];
   storageSpaceOptions: StorageSpaceOption[];
@@ -5546,6 +5614,7 @@ type CompetitionStageAndMaterialPanelProps = {
 const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHandle, CompetitionStageAndMaterialPanelProps>(({
   competition,
   competitionUuid,
+  activeTab,
   module,
   items,
   storageSpaceOptions,
@@ -5555,32 +5624,44 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
   const timelineRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const materialsRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
-  const sharedMaterialItems = useMemo(() => Array.from(new Map(items.map((item) => {
-    const metadata = parseConfigItemMetadata(item.contentJson);
-    const sharedItem: CompetitionConfigItem = {
-      ...item,
-      itemType: 'REQUIRED_FILE',
-      contentJson: serializeConfigItemMetadata({ ...metadata, stageCode: 'GENERAL', stageName: undefined }),
-    };
-    return [sharedItem.itemKey, sharedItem];
-  })).values()), [items]);
-  const sharedStageFormSchema = useMemo(() => JSON.stringify({
-    fields: sharedMaterialItems
-      .filter((item) => item.enabled !== false)
-      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
-      .map((item) => {
-        const metadata = parseConfigItemMetadata(item.contentJson);
-        return {
-          key: item.itemKey,
-          label: item.title,
-          type: 'file',
-          required: Boolean(item.requiredFlag),
-          fileFormat: normalizeFileFormat(metadata.fileFormat),
-          maxSizeMb: metadata.maxSizeMb || 20,
-          storageKey: metadata.storageKey,
-        };
-      }),
-  }), [sharedMaterialItems]);
+  const activeStageCode = activeTab === 'final' ? 'FINAL' : 'PRELIMINARY';
+
+  const syncStageForms = useCallback(async (
+    materialItems: CompetitionConfigItem[],
+    currentStages: CompetitionStageRecord[],
+  ) => {
+    await Promise.all(currentStages.map((stage) => {
+      const exactItems = materialItems.filter((item) => (
+        getFileConfigItemStageCode(item) === stage.stageCode
+      ));
+      const fallbackItems = materialItems.filter((item) => (
+        getFileConfigItemStageCode(item) === 'GENERAL'
+      ));
+      const stageItems = exactItems.length ? exactItems : fallbackItems;
+      const formSchemaJson = JSON.stringify({
+        fields: stageItems
+          .filter((item) => item.enabled !== false)
+          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+          .map((item) => {
+            const metadata = parseConfigItemMetadata(item.contentJson);
+            return {
+              key: item.itemKey,
+              label: item.title,
+              type: 'file',
+              required: Boolean(item.requiredFlag),
+              fileFormat: normalizeFileFormat(metadata.fileFormat),
+              maxSizeMb: metadata.maxSizeMb || 20,
+              storageKey: metadata.storageKey,
+            };
+          }),
+      });
+      return upsertCompetitionStageForm(stage.id, {
+        formName: `${stage.stageName}参赛材料`,
+        formSchemaJson,
+        status: 'ENABLED',
+      });
+    }));
+  }, []);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave: async () => {
@@ -5591,51 +5672,35 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
 
   useEffect(() => {
     if (!stages.length) return;
-    void Promise.all(stages.map((stage) => upsertCompetitionStageForm(stage.id, {
-      formName: '统一参赛材料',
-      formSchemaJson: sharedStageFormSchema,
-      status: 'ENABLED',
-    }))).catch((error) => showErrorMessage(error, '阶段材料模板同步失败'));
-  }, [sharedStageFormSchema, stages]);
+    void syncStageForms(items, stages).catch((error) => showErrorMessage(error, '阶段材料模板同步失败'));
+  }, [items, stages, syncStageForms]);
 
-  const syncSharedStageForm = useCallback(async (saved: CompetitionSettingsRecord) => {
+  const handleMaterialsSaved = useCallback(async (saved: CompetitionSettingsRecord) => {
     onSettingsSaved(saved);
     const materialItems = [...saved.files, ...saved.stageMaterials]
       .filter((item) => item.enabled !== false)
       .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
-    const schema = JSON.stringify({ fields: materialItems.map((item) => {
-      const metadata = parseConfigItemMetadata(item.contentJson);
-      return {
-        key: item.itemKey, label: item.title, type: 'file', required: Boolean(item.requiredFlag),
-        fileFormat: normalizeFileFormat(metadata.fileFormat), maxSizeMb: metadata.maxSizeMb || 20,
-        storageKey: metadata.storageKey,
-      };
-    }) });
-    await Promise.all(stages.map((stage) => upsertCompetitionStageForm(stage.id, {
-      formName: '统一参赛材料',
-      formSchemaJson: schema,
-      status: 'ENABLED',
-    })));
-  }, [onSettingsSaved, stages]);
+    await syncStageForms(materialItems, stages);
+  }, [onSettingsSaved, stages, syncStageForms]);
 
-  return (
+  return activeTab === 'timeline' ? (
+    <CompetitionTimelineSettingsPanel ref={timelineRef} competition={competition} onSaved={onCompetitionSaved} />
+  ) : (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
-      <CompetitionTimelineSettingsPanel ref={timelineRef} competition={competition} onSaved={onCompetitionSaved} />
-      <CompetitionStageWindowsPanel competitionId={competition.id} onStagesChange={setStages} />
-      <section>
-        <Typography.Title level={4}>统一材料模板</Typography.Title>
-        <Typography.Paragraph type="secondary">
-          初赛和决赛使用同一套材料字段；每个阶段只控制可修改时间，决赛另受晋级名单限制。
-        </Typography.Paragraph>
-        <ConfigModulePanel
-          ref={materialsRef}
-          competitionUuid={competitionUuid}
-          module={module}
-          items={sharedMaterialItems}
-          storageSpaceOptions={storageSpaceOptions}
-          onSaved={(saved) => void syncSharedStageForm(saved)}
-        />
-      </section>
+      <CompetitionStageWindowsPanel
+        competitionId={competition.id}
+        stageCode={activeStageCode}
+        onStagesChange={setStages}
+      />
+      <ConfigModulePanel
+        ref={materialsRef}
+        competitionUuid={competitionUuid}
+        module={module}
+        items={items}
+        storageSpaceOptions={storageSpaceOptions}
+        fileStageCode={activeStageCode}
+        onSaved={(saved) => void handleMaterialsSaved(saved)}
+      />
     </Space>
   );
 });
@@ -5756,7 +5821,7 @@ const CompetitionSettingsPage = () => {
     updateNavigationUrl('registration', nextDetail);
   }, [flushActivePanel, updateNavigationUrl]);
 
-  const _handleStageDetailChange = useCallback(async (nextKey: string) => {
+  const handleStageDetailChange = useCallback(async (nextKey: string) => {
     await flushActivePanel();
     const nextDetail = nextKey as CompetitionSettingsStageTab;
     setStageDetail(nextDetail);
@@ -5860,16 +5925,29 @@ const CompetitionSettingsPage = () => {
                 </>
               ) : activeKey === 'stages' ? (
                 activeModule ? (
-                  <CompetitionStageAndMaterialPanel
-                    ref={activePanelRef}
-                    competition={settings.competition}
-                    competitionUuid={settings.competition.uuid || competitionUuid}
-                    module={activeModule}
-                    items={getModuleItems(settings, activeModule.key)}
-                    storageSpaceOptions={storageSpaceOptions}
-                    onCompetitionSaved={(competition) => setSettings((current) => current ? { ...current, competition } : current)}
-                    onSettingsSaved={setSettings}
-                  />
+                  <>
+                    <Tabs
+                      className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
+                      activeKey={stageDetail}
+                      items={[
+                        { key: 'timeline', label: '时间设置' },
+                        { key: 'preliminary', label: '初赛' },
+                        { key: 'final', label: '决赛' },
+                      ]}
+                      onChange={(key) => void handleStageDetailChange(key)}
+                    />
+                    <CompetitionStageAndMaterialPanel
+                      ref={activePanelRef}
+                      activeTab={stageDetail}
+                      competition={settings.competition}
+                      competitionUuid={settings.competition.uuid || competitionUuid}
+                      module={activeModule}
+                      items={getModuleItems(settings, activeModule.key)}
+                      storageSpaceOptions={storageSpaceOptions}
+                      onCompetitionSaved={(competition) => setSettings((current) => current ? { ...current, competition } : current)}
+                      onSettingsSaved={setSettings}
+                    />
+                  </>
                 ) : null
               ) : activeKey === 'payments' && activeModule ? (
                 <CompetitionPaymentSettingsPanel

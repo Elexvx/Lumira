@@ -9,7 +9,7 @@ describe('competition settings URL navigation', () => {
     expect(parseCompetitionSettingsNavigation('')).toEqual({
       section: 'basic',
       registrationTab: 'PROJECT_FIELD',
-      stageTab: 'files',
+      stageTab: 'preliminary',
     });
   });
 
@@ -17,7 +17,7 @@ describe('competition settings URL navigation', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration&tab=team-members')).toEqual({
       section: 'registration',
       registrationTab: 'TEAM_AND_MEMBER',
-      stageTab: 'files',
+      stageTab: 'preliminary',
     });
   });
 
@@ -25,7 +25,7 @@ describe('competition settings URL navigation', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration&tab=registration')).toEqual({
       section: 'registration',
       registrationTab: 'PROJECT_FIELD',
-      stageTab: 'files',
+      stageTab: 'preliminary',
     });
   });
 
@@ -33,7 +33,7 @@ describe('competition settings URL navigation', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration&tab=other-fields')).toEqual({
       section: 'registration',
       registrationTab: 'PROJECT_FIELD',
-      stageTab: 'files',
+      stageTab: 'preliminary',
     });
   });
 
@@ -41,7 +41,7 @@ describe('competition settings URL navigation', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration')).toEqual({
       section: 'registration',
       registrationTab: 'PROJECT_FIELD',
-      stageTab: 'files',
+      stageTab: 'preliminary',
     });
   });
 
@@ -53,6 +53,12 @@ describe('competition settings URL navigation', () => {
     });
   });
 
+  it('restores each competition stage tab from the URL', () => {
+    expect(parseCompetitionSettingsNavigation('?section=stages&tab=preliminary').stageTab).toBe('preliminary');
+    expect(parseCompetitionSettingsNavigation('?section=stages&tab=final').stageTab).toBe('final');
+    expect(parseCompetitionSettingsNavigation('?section=stages&tab=files').stageTab).toBe('preliminary');
+  });
+
   it('keeps unrelated query parameters and removes irrelevant tab values', () => {
     expect(createCompetitionSettingsSearch('?from=list&tab=timeline', 'payments')).toBe('?from=list&section=payments');
   });
@@ -61,5 +67,7 @@ describe('competition settings URL navigation', () => {
     expect(createCompetitionSettingsSearch('', 'registration', 'TEAM_AND_MEMBER')).toBe('?section=registration&tab=team-members');
     expect(createCompetitionSettingsSearch('', 'registration', 'INTELLECTUAL_PROPERTY')).toBe('?section=registration&tab=intellectual-property');
     expect(createCompetitionSettingsSearch('', 'stages', 'timeline')).toBe('?section=stages&tab=timeline');
+    expect(createCompetitionSettingsSearch('', 'stages', 'preliminary')).toBe('?section=stages&tab=preliminary');
+    expect(createCompetitionSettingsSearch('', 'stages', 'final')).toBe('?section=stages&tab=final');
   });
 });
