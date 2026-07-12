@@ -1791,6 +1791,25 @@ const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
   { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '备注', fieldType: 'TEXTAREA' },
 ];
 
+const fallbackRegistrationIntellectualPropertyFields: RegistrationCollectedField[] = [
+  {
+    scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', required: true,
+    options: '发明专利\n实用新型专利\n外观设计专利\n软件著作权\n作品著作权\n商标\n其他',
+  },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', required: true },
+  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT' },
+  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', required: true },
+  {
+    scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT',
+    options: '申请中\n已受理\n已授权\n已登记\n已失效\n其他',
+  },
+  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE' },
+  {
+    scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', required: true,
+    options: '中国大陆\n中国香港\n中国澳门\n中国台湾\n海外',
+  },
+];
+
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
   const metadata = parseConfigItemMetadata(item.contentJson);
   return {
@@ -2235,6 +2254,14 @@ const CompetitionRegistrationPage = () => {
     () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA' }, projectFieldSplit.overrides.get('description')),
     [projectFieldSplit.overrides],
   );
+  const intellectualPropertyFields = useMemo(() => {
+    const configuredByKey = new Map(projectFieldSplit.customFields.map((field) => [field.itemKey, field]));
+    const standardKeys = new Set(fallbackRegistrationIntellectualPropertyFields.map((field) => field.itemKey));
+    return [
+      ...fallbackRegistrationIntellectualPropertyFields.map((field) => mergeCollectedField(field, configuredByKey.get(field.itemKey))),
+      ...projectFieldSplit.customFields.filter((field) => !standardKeys.has(field.itemKey)),
+    ];
+  }, [projectFieldSplit.customFields]);
   const registrationDocumentStates = useMemo(
     () =>
       registrationDocuments.map((item, index) => {
@@ -2736,16 +2763,16 @@ const CompetitionRegistrationPage = () => {
 
   const removePendingRegistration = useCallback((record: CompetitionRegistrationRecord) => {
     modal.confirm({
-      title: '确认删除该报名记录？',
+      title: '确认取消该报名？',
       content: record.paymentOrderNo
-        ? '删除后将同步取消已生成的待支付订单，且无法恢复。'
-        : '删除后该待支付报名记录将无法恢复。',
-      okText: '确认删除',
+        ? '取消报名后将同步关闭已生成的待支付订单，且无法恢复。'
+        : '取消后该待支付报名将无法恢复。',
+      okText: '确认取消',
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: async () => {
         await deleteRegistration(record.id);
-        message.success(record.paymentOrderNo ? '报名记录与待支付订单已取消' : '报名记录已删除');
+        message.success(record.paymentOrderNo ? '报名与待支付订单已取消' : '报名已取消');
         registrationActionRef.current?.reload();
       },
     });
@@ -3206,7 +3233,7 @@ const CompetitionRegistrationPage = () => {
             </Button>
             {record.status === 'PENDING_PAYMENT' ? (
               <Button danger type="text" icon={<DeleteOutlined />} onClick={() => removePendingRegistration(record)}>
-                删除
+                取消报名
               </Button>
             ) : null}
           </Space>
@@ -3592,7 +3619,7 @@ const CompetitionRegistrationPage = () => {
             items={[
               { title: '选择赛事' },
               { title: '创建团队' },
-              { title: '选择/创建项目' },
+              { title: '项目与知识产权' },
               { title: '初赛材料' },
               { title: '确认支付' },
             ]}
@@ -3676,13 +3703,17 @@ const CompetitionRegistrationPage = () => {
               {step === 1 ? renderTeamForm() : null}
               {step === 2 ? (
                 <>
+                  <Typography.Title level={5}>项目与知识产权信息</Typography.Title>
+                  <Typography.Paragraph type="secondary">
+                    请填写项目基本信息及已申请、已登记或已授权的知识产权，并标明知识产权分布区域。
+                  </Typography.Paragraph>
                   <Form.Item name="newProjectTitle" label={projectTitleField.title} rules={buildCollectedFieldRule(projectTitleField)}>
                     <Input maxLength={128} placeholder={projectTitleField.placeholder || projectTitleField.title} />
                   </Form.Item>
                   <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
                     <Input.TextArea rows={3} maxLength={1000} placeholder={projectDescriptionField.placeholder || projectDescriptionField.title} />
                   </Form.Item>
-                  {projectFieldSplit.customFields.map((field) => (
+                  {intellectualPropertyFields.map((field) => (
                     <Form.Item
                       key={field.itemKey}
                       name={['newProjectExtraValues', field.itemKey]}
@@ -4018,6 +4049,8 @@ const normalizeConfigKey = (value: string) => value.trim().replace(/[^A-Za-z0-9_
 const fieldTypeOptions = [
   { label: '单行文本', value: 'TEXT' },
   { label: '多行文本', value: 'TEXTAREA' },
+  { label: '图片上传', value: 'IMAGE' },
+  { label: '成员角色', value: 'ROLE' },
   { label: '数字', value: 'NUMBER' },
   { label: '日期', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
@@ -4075,7 +4108,7 @@ const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }>
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
   { label: '团队信息', value: 'TEAM_FIELD' },
   { label: '成员信息', value: 'MEMBER_FIELD' },
-  { label: '项目信息', value: 'PROJECT_FIELD' },
+  { label: '知识产权信息', value: 'PROJECT_FIELD' },
 ];
 
 const loadConfiguredPaymentProviderOptions = async (): Promise<PaymentProviderOption[]> => {
@@ -4122,6 +4155,67 @@ const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number)
   requiredFlag: false,
   enabled: true,
 });
+
+const standardRegistrationFieldDefinitions: Array<{
+  scope: RegistrationFieldScope;
+  itemKey: string;
+  title: string;
+  fieldType: string;
+  placeholder?: string;
+  required?: boolean;
+  sortOrder: number;
+}> = [
+  { scope: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', fieldType: 'TEXT', placeholder: '请输入团队名称', required: true, sortOrder: 10 },
+  { scope: 'TEAM_FIELD', itemKey: 'avatarUrl', title: '团队头像', fieldType: 'IMAGE', placeholder: '请上传团队头像', sortOrder: 20 },
+  { scope: 'TEAM_FIELD', itemKey: 'description', title: '团队简介', fieldType: 'TEXTAREA', placeholder: '请输入团队简介', sortOrder: 30 },
+  { scope: 'MEMBER_FIELD', itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', placeholder: '请输入成员姓名', required: true, sortOrder: 110 },
+  { scope: 'MEMBER_FIELD', itemKey: 'employeeNo', title: '工号/学号', fieldType: 'TEXT', placeholder: '请输入工号或学号', sortOrder: 120 },
+  { scope: 'MEMBER_FIELD', itemKey: 'departmentName', title: '部门/院系', fieldType: 'TEXT', placeholder: '请输入部门或院系', sortOrder: 130 },
+  { scope: 'MEMBER_FIELD', itemKey: 'role', title: '成员角色', fieldType: 'ROLE', required: true, sortOrder: 140 },
+  { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '成员备注', fieldType: 'TEXTAREA', placeholder: '请输入成员备注', sortOrder: 150 },
+  { scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', placeholder: '请输入项目名称', required: true, sortOrder: 210 },
+  { scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA', placeholder: '请输入项目简介', sortOrder: 220 },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', placeholder: '请选择知识产权类型', required: true, sortOrder: 230 },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', placeholder: '请输入知识产权名称', required: true, sortOrder: 240 },
+  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT', placeholder: '请输入申请号或登记号', sortOrder: 250 },
+  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', placeholder: '请输入权利人', required: true, sortOrder: 260 },
+  { scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT', placeholder: '请选择法律状态', sortOrder: 270 },
+  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE', placeholder: '请选择授权或登记日期', sortOrder: 280 },
+  { scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', placeholder: '请选择知识产权分布区域', required: true, sortOrder: 290 },
+];
+
+const standardRegistrationFieldKeys = new Set(
+  standardRegistrationFieldDefinitions.map((field) => `${field.scope}:${field.itemKey}`),
+);
+
+const buildStandardRegistrationFieldItems = (): EditableCompetitionConfigItem[] =>
+  standardRegistrationFieldDefinitions.map((field) => ({
+    ...emptyConfigItem(field.scope, field.sortOrder),
+    itemKey: field.itemKey,
+    title: field.title,
+    requiredFlag: Boolean(field.required),
+    metadata: {
+      fieldScope: field.scope,
+      fieldType: field.fieldType,
+      placeholder: field.placeholder,
+      validationRule: 'NONE',
+      options: field.itemKey === 'intellectualPropertyType'
+        ? '发明专利\n实用新型专利\n外观设计专利\n软件著作权\n作品著作权\n商标\n其他'
+        : field.itemKey === 'legalStatus'
+          ? '申请中\n已受理\n已授权\n已登记\n已失效\n其他'
+          : field.itemKey === 'distributionRegions'
+            ? '中国大陆\n中国香港\n中国澳门\n中国台湾\n海外'
+            : undefined,
+    },
+  }));
+
+const mergeStandardRegistrationFieldItems = (items: EditableCompetitionConfigItem[]) => {
+  const configuredKeys = new Set(items.map((item) => `${item.metadata?.fieldScope || item.itemType}:${item.itemKey}`));
+  return [
+    ...buildStandardRegistrationFieldItems().filter((item) => !configuredKeys.has(`${item.metadata?.fieldScope}:${item.itemKey}`)),
+    ...items,
+  ].sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
+};
 
 const getModuleItems = (settings: CompetitionSettingsRecord | undefined, key: CompetitionSettingsConfigModuleKey) => {
   if (!settings) {
@@ -4441,16 +4535,26 @@ const renderFieldSettingsTable = (
             <Form.Item name={[field.name, 'enabled']} valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Button
-              danger
-              type="link"
-              onClick={() => {
-                remove(field.name);
-                scheduleSave();
+            <Form.Item noStyle shouldUpdate>
+              {({ getFieldValue }) => {
+                const itemKey = getFieldValue(['items', field.name, 'itemKey']);
+                const isStandardField = standardRegistrationFieldKeys.has(`${scope}:${itemKey}`);
+                return (
+                  <Button
+                    danger
+                    disabled={isStandardField}
+                    title={isStandardField ? '标准字段请使用启用开关控制' : '删除字段'}
+                    type="link"
+                    onClick={() => {
+                      remove(field.name);
+                      scheduleSave();
+                    }}
+                  >
+                    删除
+                  </Button>
+                );
               }}
-            >
-              删除
-            </Button>
+            </Form.Item>
           </div>
         ))}
       </div>
@@ -4514,6 +4618,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
     const editableItems = toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS'));
+    const fieldItems = module.key === 'fields' ? mergeStandardRegistrationFieldItems(editableItems) : editableItems;
     const initialItems = module.key === 'payments'
       ? [
           ...paymentProviderOptions.map((provider, index) => {
@@ -4529,7 +4634,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           }),
           ...editableItems.filter((item) => !paymentProviderOptions.some((provider) => provider.value === item.itemKey)),
         ]
-      : editableItems;
+      : fieldItems;
     return {
       items: initialItems,
       teamMinMembers: limits.minMembers,
@@ -4606,11 +4711,15 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     <section className="competition-config-module">
       <div className="competition-config-module__header">
         <Typography.Title className="competition-config-module__title" level={4}>
-          {getCompetitionSettingsModuleLabel(module)}
+          {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
+            ? '知识产权信息'
+            : getCompetitionSettingsModuleLabel(module)}
         </Typography.Title>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        {getCompetitionSettingsModuleDescription(module)}
+        {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
+          ? '配置报名时需要收集的项目知识产权、权利状态及分布区域信息。下拉和多选内容可通过“设置选项”动态调整。'
+          : getCompetitionSettingsModuleDescription(module)}
       </Typography.Paragraph>
       {module.key === 'payments' && !paymentProviderOptions.length ? (
         <Alert
@@ -5748,9 +5857,9 @@ const CompetitionSettingsPage = () => {
                     className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
                     activeKey={registrationDetail}
                     items={[
-                      { key: 'REGISTRATION_FIELD', label: '报名信息' },
                       { key: 'TEAM_AND_MEMBER', label: '团队与成员信息' },
-                      { key: 'PROJECT_FIELD', label: '项目信息' },
+                      { key: 'PROJECT_FIELD', label: '知识产权信息' },
+                      { key: 'REGISTRATION_FIELD', label: '其他报名字段' },
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
                     onChange={(key) => void handleRegistrationDetailChange(key)}
