@@ -111,7 +111,7 @@ type PaymentFormValidationError = {
 const isFormValidationError = (error: unknown): error is PaymentFormValidationError =>
   Boolean(error && typeof error === 'object' && 'errorFields' in error);
 
-const resolveSandboxEnabled = (environment?: string | null) => environment?.trim().toUpperCase() === 'SANDBOX';
+const resolveSandboxEnabled = (environment?: string | null) => normalizePaymentEnvironment(environment) === 'SANDBOX';
 
 const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSettings => ({
   ...settings,
