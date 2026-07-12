@@ -125,6 +125,7 @@ type RegistrationFormValues = {
   newTeam?: RegistrationTeamDraft;
   projectId?: number;
   newProjectTitle?: string;
+  newProjectImageUrl?: string;
   newProjectDescription?: string;
   newProjectExtraValues?: Record<string, unknown>;
   materials?: Record<string, unknown>;
@@ -855,6 +856,7 @@ const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationForm
       ))
       || toPositiveId(values.projectId)
       || trimOptional(values.newProjectTitle)
+      || trimOptional(values.newProjectImageUrl)
       || trimOptional(values.newProjectDescription)
       || Object.values(values.newProjectExtraValues || {}).some((value) => value !== undefined && value !== null && String(value).trim())
       || Object.values(materials).some((value) => value !== undefined && value !== null && String(value).trim())
@@ -1841,6 +1843,7 @@ const standardFieldAliasMap = {
   },
   PROJECT_FIELD: {
     title: ['projecttitle', 'projectname', 'title', 'name'],
+    imageUrl: ['imageurl', 'projectimage', 'projectavatar', 'logourl', 'logo'],
     description: ['projectdescription', 'description', 'intro'],
   },
 } as const;
@@ -2180,6 +2183,7 @@ const CompetitionRegistrationPage = () => {
   const [registrationDraftHydrated, setRegistrationDraftHydrated] = useState(false);
   const [registrationCompetitionFallback, setRegistrationCompetitionFallback] = useState<CompetitionRecord>();
   const [teamAvatarUploading, setTeamAvatarUploading] = useState(false);
+  const [projectAvatarUploading, setProjectAvatarUploading] = useState(false);
   const confirmedTeamIdRef = useRef<number | undefined>(undefined);
   const confirmedProjectIdRef = useRef<number | undefined>(undefined);
   const registrationDraftSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -2193,6 +2197,7 @@ const CompetitionRegistrationPage = () => {
   const [memberEditorErrors, setMemberEditorErrors] = useState<Record<string, string>>({});
   const selectedCompetitionId = Form.useWatch('competitionId', form);
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
+  const newProjectImageUrl = Form.useWatch('newProjectImageUrl', form);
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], form) || []) as RegistrationTeamMemberDraft[];
   const registrationCompetitionOptions = useMemo(
     () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
@@ -2248,6 +2253,10 @@ const CompetitionRegistrationPage = () => {
   );
   const projectTitleField = useMemo(
     () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', required: true }, projectFieldSplit.overrides.get('title')),
+    [projectFieldSplit.overrides],
+  );
+  const projectImageField = useMemo(
+    () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'imageUrl', title: '项目头像', fieldType: 'IMAGE' }, projectFieldSplit.overrides.get('imageUrl')),
     [projectFieldSplit.overrides],
   );
   const projectDescriptionField = useMemo(
@@ -2716,6 +2725,39 @@ const CompetitionRegistrationPage = () => {
     }
   };
 
+  const uploadRegistrationProjectAvatar = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      message.error('请上传图片文件');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      message.error('请上传小于 20MB 的图片');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    setProjectAvatarUploading(true);
+    try {
+      const uploadedUrl = await request<string>('/v1/system/uploads/image', {
+        method: 'POST',
+        headers: {},
+        data: formData,
+      });
+      if (uploadedUrl) {
+        form.setFieldValue('newProjectImageUrl', uploadedUrl);
+        persistRegistrationDraft({
+          ...collectRegistrationValues(),
+          newProjectImageUrl: uploadedUrl,
+        });
+        message.success('项目头像上传成功');
+      }
+    } catch (error) {
+      showErrorMessage(error, '项目头像上传失败');
+    } finally {
+      setProjectAvatarUploading(false);
+    }
+  };
+
   const loadStageFormForCompetition = useCallback(async (competitionId: number) => {
     setStageForm(await loadOptionalPreliminaryStageForm(competitionId, listCompetitionStages, getCompetitionStageForm));
   }, []);
@@ -2846,6 +2888,7 @@ const CompetitionRegistrationPage = () => {
             category: 'INNOVATION',
             ownerName: '',
             description: form.getFieldValue('newProjectDescription'),
+            imageUrl: form.getFieldValue('newProjectImageUrl'),
           });
           form.setFieldValue('projectId', project.id);
           confirmedProjectIdRef.current = project.id;
@@ -3710,6 +3753,44 @@ const CompetitionRegistrationPage = () => {
                   <Form.Item name="newProjectTitle" label={projectTitleField.title} rules={buildCollectedFieldRule(projectTitleField)}>
                     <Input maxLength={128} placeholder={projectTitleField.placeholder || projectTitleField.title} />
                   </Form.Item>
+                  <Form.Item name="newProjectImageUrl" hidden>
+                    <Input />
+                  </Form.Item>
+                  <Form.Item label={projectImageField.title} required={projectImageField.required}>
+                    <Space>
+                      <Avatar
+                        shape="square"
+                        size={64}
+                        src={normalizeUploadUrl(newProjectImageUrl) || undefined}
+                        icon={<EyeOutlined />}
+                      />
+                      <Upload
+                        accept="image/*"
+                        showUploadList={false}
+                        disabled={projectAvatarUploading}
+                        beforeUpload={async (file) => {
+                          await uploadRegistrationProjectAvatar(file);
+                          return Upload.LIST_IGNORE;
+                        }}
+                      >
+                        <Button icon={<UploadOutlined />} loading={projectAvatarUploading}>上传</Button>
+                      </Upload>
+                      {newProjectImageUrl ? (
+                        <Button
+                          type="link"
+                          onClick={() => {
+                            form.setFieldValue('newProjectImageUrl', undefined);
+                            persistRegistrationDraft({
+                              ...collectRegistrationValues(),
+                              newProjectImageUrl: undefined,
+                            });
+                          }}
+                        >
+                          移除
+                        </Button>
+                      ) : null}
+                    </Space>
+                  </Form.Item>
                   <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
                     <Input.TextArea rows={3} maxLength={1000} placeholder={projectDescriptionField.placeholder || projectDescriptionField.title} />
                   </Form.Item>
@@ -4186,14 +4267,15 @@ const standardRegistrationFieldDefinitions: Array<{
   { scope: 'MEMBER_FIELD', itemKey: 'role', title: '成员角色', fieldType: 'ROLE', required: true, sortOrder: 140 },
   { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '成员备注', fieldType: 'TEXTAREA', placeholder: '请输入成员备注', sortOrder: 150 },
   { scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', placeholder: '请输入项目名称', required: true, sortOrder: 210 },
-  { scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA', placeholder: '请输入项目简介', sortOrder: 220 },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', placeholder: '请选择知识产权类型', required: true, sortOrder: 230, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', placeholder: '请输入知识产权名称', required: true, sortOrder: 240, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT', placeholder: '请输入申请号或登记号', sortOrder: 250, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', placeholder: '请输入权利人', required: true, sortOrder: 260, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT', placeholder: '请选择法律状态', sortOrder: 270, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE', placeholder: '请选择授权或登记日期', sortOrder: 280, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', placeholder: '请选择知识产权分布区域', required: true, sortOrder: 290, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'imageUrl', title: '项目头像', fieldType: 'IMAGE', placeholder: '请上传项目头像', sortOrder: 220 },
+  { scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA', placeholder: '请输入项目简介', sortOrder: 230 },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', placeholder: '请选择知识产权类型', required: true, sortOrder: 310, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', placeholder: '请输入知识产权名称', required: true, sortOrder: 320, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT', placeholder: '请输入申请号或登记号', sortOrder: 330, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', placeholder: '请输入权利人', required: true, sortOrder: 340, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT', placeholder: '请选择法律状态', sortOrder: 350, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE', placeholder: '请选择授权或登记日期', sortOrder: 360, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', placeholder: '请选择知识产权分布区域', required: true, sortOrder: 370, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
 ];
 
 const standardRegistrationFieldKeys = new Set(
