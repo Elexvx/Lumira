@@ -9,7 +9,7 @@ import type { PaymentProviderSettings } from '@/types/api';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import { requestPaymentApi } from '../paymentAuthenticatedRequest';
-import { localizePaymentMessage } from '../paymentMessage';
+import { paymentConnectivityStatusDisplayName } from '../paymentMessage';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -135,7 +135,7 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
           <Space direction="vertical" size={2}>
             <Typography.Text>{formatDateTime(record.lastTestedAt)}</Typography.Text>
             <Typography.Text type={record.lastTestSuccess === false ? 'danger' : 'secondary'}>
-              {localizePaymentMessage(record.lastTestMessage, isEnglishLocale()) || t('暂无测试记录', 'No test history')}
+              {paymentConnectivityStatusDisplayName(record.lastTestSuccess, isEnglishLocale())}
             </Typography.Text>
           </Space>
         ),

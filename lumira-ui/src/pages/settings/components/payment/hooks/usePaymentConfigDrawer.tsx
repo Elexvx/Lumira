@@ -29,8 +29,7 @@ type PaymentFieldConfig = {
 const MASKED_SECRET = '********';
 
 const PAYMENT_ENVIRONMENT_OPTIONS = [
-  { label: t('沙箱', 'Sandbox'), value: 'SANDBOX' },
-  { label: t('测试', 'Test'), value: 'TEST' },
+  { label: t('测试', 'Test'), value: 'SANDBOX' },
   { label: t('正式', 'Production'), value: 'PRODUCTION' },
 ];
 
@@ -118,10 +117,16 @@ type PaymentFormValidationError = {
 const isFormValidationError = (error: unknown): error is PaymentFormValidationError =>
   Boolean(error && typeof error === 'object' && 'errorFields' in error);
 
-const resolveSandboxEnabled = (environment?: string | null) => environment?.trim().toUpperCase() === 'SANDBOX';
+const normalizePaymentEnvironment = (environment?: string | null) => {
+  const normalized = environment?.trim().toUpperCase() || '';
+  return normalized === 'TEST' ? 'SANDBOX' : normalized;
+};
+
+const resolveSandboxEnabled = (environment?: string | null) => normalizePaymentEnvironment(environment) === 'SANDBOX';
 
 const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSettings => ({
   ...settings,
+  environment: normalizePaymentEnvironment(settings.environment),
   appId: settings.appId ?? '',
   merchantId: settings.merchantId ?? '',
   merchantSerialNo: settings.merchantSerialNo ?? '',
@@ -312,7 +317,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
             name="environment"
             label={t('环境', 'Environment')}
             rules={[{ required: true, message: t('请选择环境', 'Please select an environment') }]}
-            extra={t('选择沙箱时，系统会自动按沙箱配置保存。', 'Sandbox environment is saved as sandbox configuration automatically.')}
+            extra={t('测试环境使用测试配置保存，不会发起正式交易。', 'Test environment uses test configuration and does not create production transactions.')}
           >
             <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canUpdateSettings} />
           </Form.Item>

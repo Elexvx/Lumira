@@ -64,6 +64,7 @@ import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSe
 import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
+import { resolveRegistrationFieldScope } from '@/pages/competition/utils/registrationFieldScope';
 import {
   createCompetitionSettingsSearch,
   parseCompetitionSettingsNavigation,
@@ -1787,7 +1788,7 @@ const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
   const metadata = parseConfigItemMetadata(item.contentJson);
   return {
-    scope: item.itemType as RegistrationCollectedField['scope'],
+    scope: resolveRegistrationFieldScope(item),
     itemKey: item.itemKey,
     title: item.title || item.itemKey,
     fieldType: metadata.fieldType || 'TEXT',
@@ -1846,7 +1847,7 @@ const splitConfiguredRegistrationFields = (
   scope: Extract<CompetitionConfigItemType, 'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'>,
 ): RegistrationCollectedFieldSplit => {
   const configuredFields = items
-    .filter((item) => item.enabled !== false && item.itemType === scope)
+    .filter((item) => item.enabled !== false && resolveRegistrationFieldScope(item) === scope)
     .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
     .map(toRegistrationCollectedField);
 
@@ -3924,7 +3925,7 @@ const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetit
           ? normalizeFileFormat(metadata.fileFormat)
           : undefined,
         fieldScope: ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType)
-          ? item.itemType
+          ? resolveRegistrationFieldScope(item)
           : undefined,
         documentKind: item.itemType === 'AGREEMENT' || item.itemType === 'CONSENT' ? item.itemType : undefined,
         readingSeconds: item.itemType === 'AGREEMENT' || item.itemType === 'CONSENT'

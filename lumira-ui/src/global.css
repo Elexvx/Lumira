@@ -393,6 +393,8 @@ body,
 
 .saas-table-wrap--adaptive-spacing {
   container-type: inline-size;
+
+  /* stylelint-disable-next-line unit-no-unknown */
   --saas-table-cell-inline-padding: clamp(var(--saas-spacing-xs), 1.4cqi, var(--saas-spacing-md));
 }
 
@@ -402,10 +404,14 @@ body,
 }
 
 .saas-table-wrap--adaptive-spacing .ant-table-middle {
+
+  /* stylelint-disable-next-line unit-no-unknown */
   --saas-table-cell-inline-padding: clamp(var(--saas-spacing-xs), 1.1cqi, var(--saas-spacing-sm));
 }
 
 .saas-table-wrap--adaptive-spacing .ant-table-small {
+
+  /* stylelint-disable-next-line unit-no-unknown */
   --saas-table-cell-inline-padding: clamp(var(--saas-spacing-6), 0.8cqi, var(--saas-spacing-xs));
 }
 
