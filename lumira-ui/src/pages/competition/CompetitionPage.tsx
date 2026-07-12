@@ -5828,7 +5828,9 @@ const CompetitionSettingsPage = () => {
         ) : settings ? (
           <div className="competition-settings-layout">
             <aside className="competition-settings-sidebar">
-              <Typography.Title level={5}>{settings.competition.title}</Typography.Title>
+              <Typography.Title level={5} ellipsis={{ tooltip: settings.competition.title }}>
+                {settings.competition.title}
+              </Typography.Title>
               <Typography.Text type="secondary">
                 {formatMessage(
                   { id: 'page.competition.settings.no', defaultMessage: 'No. {competitionNo}' },

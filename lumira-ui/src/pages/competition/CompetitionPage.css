@@ -578,6 +578,10 @@
 
 .competition-settings-sidebar h5.ant-typography {
   margin: 0 0 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .competition-settings-sidebar .ant-menu {
