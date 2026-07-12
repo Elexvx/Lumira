@@ -2776,7 +2776,7 @@ const CompetitionRegistrationPage = () => {
       } else if (step === 1) {
         const teamName = form.getFieldValue('newTeamName')?.trim();
         if (!teamName) {
-          message.error('请输入团队名称');
+          message.error(`请输入${teamNameField.title}`);
           return;
         }
         if (memberEditorKey !== undefined) {
