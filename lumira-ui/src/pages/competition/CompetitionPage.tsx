@@ -4290,7 +4290,7 @@ const renderConfigItemFields = (
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
         </div>
-        <Form.Item name={[fieldName, 'contentText']} label="文书内容">
+        <Form.Item className="competition-config-document-content" name={[fieldName, 'contentText']} label="文书内容">
           <AgreementMarkdownEditor placeholder="请输入承诺书、知情同意书等内容，支持 Markdown" />
         </Form.Item>
       </>

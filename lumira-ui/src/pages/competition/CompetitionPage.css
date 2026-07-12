@@ -803,6 +803,19 @@
   width: 100%;
 }
 
+.competition-config-document-content .ant-form-item-control,
+.competition-config-document-content .ant-form-item-control-input,
+.competition-config-document-content .ant-form-item-control-input-content,
+.competition-config-document-content .agreement-markdown-editor {
+  width: 100%;
+  max-width: 100%;
+}
+
+.saas-management-page .competition-config-document-content .ant-form-item-control {
+  flex: 1 1 100%;
+  max-width: 100%;
+}
+
 .competition-config-switches {
   display: flex;
   flex-wrap: wrap;
