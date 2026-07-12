@@ -1785,31 +1785,6 @@ type RegistrationCollectedFieldSplit = {
   overrides: Map<string, RegistrationCollectedField>;
 };
 
-const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
-  { scope: 'MEMBER_FIELD', itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', required: true },
-];
-
-const removedStandardMemberFieldKeys = new Set(['employeeNo', 'departmentName', 'role', 'remark']);
-
-const fallbackRegistrationIntellectualPropertyFields: RegistrationCollectedField[] = [
-  {
-    scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', required: true,
-    options: '发明专利\n实用新型专利\n外观设计专利\n软件著作权\n作品著作权\n商标\n其他',
-  },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', required: true },
-  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT' },
-  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', required: true },
-  {
-    scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT',
-    options: '申请中\n已受理\n已授权\n已登记\n已失效\n其他',
-  },
-  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE' },
-  {
-    scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', required: true,
-    options: '中国大陆\n中国香港\n中国澳门\n中国台湾\n海外',
-  },
-];
-
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
   const metadata = parseConfigItemMetadata(item.contentJson);
   return {
@@ -1854,29 +1829,12 @@ const resolveStandardCollectedFieldKey = (
   return Object.entries(standardFieldAliasMap[scope]).find(([, aliases]) => aliases.includes(normalizedItemKey))?.[0];
 };
 
-const mergeCollectedField = (
-  fallbackField: RegistrationCollectedField,
-  override?: RegistrationCollectedField,
-): RegistrationCollectedField => ({
-  ...fallbackField,
-  ...(override || {}),
-  itemKey: fallbackField.itemKey,
-  title: override?.title || fallbackField.title,
-  fieldType: override?.fieldType || fallbackField.fieldType,
-  placeholder: override?.placeholder || fallbackField.placeholder,
-  required: override?.required ?? fallbackField.required,
-  options: override?.options || fallbackField.options,
-});
-
 const splitConfiguredRegistrationFields = (
   items: CompetitionConfigItem[],
   scope: Extract<CompetitionConfigItemType, 'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'>,
 ): RegistrationCollectedFieldSplit => {
   const configuredFields = items
     .filter((item) => item.enabled !== false && resolveRegistrationFieldScope(item) === scope)
-    .filter((item) => scope !== 'MEMBER_FIELD' || !removedStandardMemberFieldKeys.has(
-      resolveStandardCollectedFieldKey('MEMBER_FIELD', item.itemKey) || item.itemKey,
-    ))
     .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
     .map(toRegistrationCollectedField);
 
@@ -2225,53 +2183,18 @@ const CompetitionRegistrationPage = () => {
     () => splitConfiguredRegistrationFields(registrationFields, 'PROJECT_FIELD'),
     [registrationFields],
   );
-  const defaultMemberRegistrationFields = useMemo(
-    () => [
-      ...fallbackRegistrationMemberFields.map((field) => mergeCollectedField(field, memberFieldSplit.overrides.get(field.itemKey))),
-      ...memberFieldSplit.customFields,
-    ],
-    [memberFieldSplit.customFields, memberFieldSplit.overrides],
-  );
-  const effectiveMemberRegistrationFields = useMemo(
-    () => (memberFieldSplit.allFields.length ? memberFieldSplit.allFields : defaultMemberRegistrationFields),
-    [defaultMemberRegistrationFields, memberFieldSplit.allFields],
-  );
+  const effectiveMemberRegistrationFields = memberFieldSplit.allFields;
   const memberRoleOptions = useMemo(() => {
     const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
     return registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }));
   }, []);
-  const teamNameField = useMemo(
-    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', fieldType: 'TEXT', required: true }, teamFieldSplit.overrides.get('teamName')),
-    [teamFieldSplit.overrides],
-  );
-  const teamAvatarField = useMemo(
-    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'avatarUrl', title: '团队头像' }, teamFieldSplit.overrides.get('avatarUrl')),
-    [teamFieldSplit.overrides],
-  );
-  const teamDescriptionField = useMemo(
-    () => mergeCollectedField({ scope: 'TEAM_FIELD', itemKey: 'description', title: '团队简介', fieldType: 'TEXTAREA' }, teamFieldSplit.overrides.get('description')),
-    [teamFieldSplit.overrides],
-  );
-  const projectTitleField = useMemo(
-    () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', required: true }, projectFieldSplit.overrides.get('title')),
-    [projectFieldSplit.overrides],
-  );
-  const projectImageField = useMemo(
-    () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'imageUrl', title: '项目头像', fieldType: 'IMAGE' }, projectFieldSplit.overrides.get('imageUrl')),
-    [projectFieldSplit.overrides],
-  );
-  const projectDescriptionField = useMemo(
-    () => mergeCollectedField({ scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA' }, projectFieldSplit.overrides.get('description')),
-    [projectFieldSplit.overrides],
-  );
-  const intellectualPropertyFields = useMemo(() => {
-    const configuredByKey = new Map(projectFieldSplit.customFields.map((field) => [field.itemKey, field]));
-    const standardKeys = new Set(fallbackRegistrationIntellectualPropertyFields.map((field) => field.itemKey));
-    return [
-      ...fallbackRegistrationIntellectualPropertyFields.map((field) => mergeCollectedField(field, configuredByKey.get(field.itemKey))),
-      ...projectFieldSplit.customFields.filter((field) => !standardKeys.has(field.itemKey)),
-    ];
-  }, [projectFieldSplit.customFields]);
+  const teamNameField = teamFieldSplit.overrides.get('teamName')!;
+  const teamAvatarField = teamFieldSplit.overrides.get('avatarUrl')!;
+  const teamDescriptionField = teamFieldSplit.overrides.get('description')!;
+  const projectTitleField = projectFieldSplit.overrides.get('title')!;
+  const projectImageField = projectFieldSplit.overrides.get('imageUrl')!;
+  const projectDescriptionField = projectFieldSplit.overrides.get('description')!;
+  const intellectualPropertyFields = projectFieldSplit.customFields;
   const registrationDocumentStates = useMemo(
     () =>
       registrationDocuments.map((item, index) => {
@@ -3897,6 +3820,7 @@ type ConfigItemMetadata = {
   placeholder?: string;
   description?: string;
   groupLabel?: string;
+  standardField?: boolean;
   validationRule?: string;
   options?: string;
   weight?: number;
@@ -4187,15 +4111,6 @@ type RegistrationFieldScope = Extract<
 >;
 
 const INTELLECTUAL_PROPERTY_GROUP_LABEL = '知识产权信息';
-const intellectualPropertyFieldKeys = new Set([
-  'intellectualPropertyType',
-  'intellectualPropertyName',
-  'registrationNumber',
-  'rightsHolder',
-  'legalStatus',
-  'grantDate',
-  'distributionRegions',
-]);
 
 const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }> = [
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
@@ -4248,66 +4163,6 @@ const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number)
   requiredFlag: false,
   enabled: true,
 });
-
-const standardRegistrationFieldDefinitions: Array<{
-  scope: RegistrationFieldScope;
-  itemKey: string;
-  title: string;
-  fieldType: string;
-  placeholder?: string;
-  required?: boolean;
-  sortOrder: number;
-  groupLabel?: string;
-}> = [
-  { scope: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', fieldType: 'TEXT', placeholder: '请输入团队名称', required: true, sortOrder: 10 },
-  { scope: 'TEAM_FIELD', itemKey: 'avatarUrl', title: '团队头像', fieldType: 'IMAGE', placeholder: '请上传团队头像', sortOrder: 20 },
-  { scope: 'TEAM_FIELD', itemKey: 'description', title: '团队简介', fieldType: 'TEXTAREA', placeholder: '请输入团队简介', sortOrder: 30 },
-  { scope: 'MEMBER_FIELD', itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', placeholder: '请输入成员姓名', required: true, sortOrder: 110 },
-  { scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', placeholder: '请输入项目名称', required: true, sortOrder: 210 },
-  { scope: 'PROJECT_FIELD', itemKey: 'imageUrl', title: '项目头像', fieldType: 'IMAGE', placeholder: '请上传项目头像', sortOrder: 220 },
-  { scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA', placeholder: '请输入项目简介', sortOrder: 230 },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', placeholder: '请选择知识产权类型', required: true, sortOrder: 310, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', placeholder: '请输入知识产权名称', required: true, sortOrder: 320, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT', placeholder: '请输入申请号或登记号', sortOrder: 330, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', placeholder: '请输入权利人', required: true, sortOrder: 340, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT', placeholder: '请选择法律状态', sortOrder: 350, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE', placeholder: '请选择授权或登记日期', sortOrder: 360, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-  { scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', placeholder: '请选择知识产权分布区域', required: true, sortOrder: 370, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
-];
-
-const standardRegistrationFieldKeys = new Set(
-  standardRegistrationFieldDefinitions.map((field) => `${field.scope}:${field.itemKey}`),
-);
-
-const buildStandardRegistrationFieldItems = (): EditableCompetitionConfigItem[] =>
-  standardRegistrationFieldDefinitions.map((field) => ({
-    ...emptyConfigItem(field.scope, field.sortOrder),
-    itemKey: field.itemKey,
-    title: field.title,
-    requiredFlag: Boolean(field.required),
-    metadata: {
-      fieldScope: field.scope,
-      fieldType: field.fieldType,
-      placeholder: field.placeholder,
-      groupLabel: field.groupLabel,
-      validationRule: 'NONE',
-      options: field.itemKey === 'intellectualPropertyType'
-        ? '发明专利\n实用新型专利\n外观设计专利\n软件著作权\n作品著作权\n商标\n其他'
-        : field.itemKey === 'legalStatus'
-          ? '申请中\n已受理\n已授权\n已登记\n已失效\n其他'
-          : field.itemKey === 'distributionRegions'
-            ? '中国大陆\n中国香港\n中国澳门\n中国台湾\n海外'
-            : undefined,
-    },
-  }));
-
-const mergeStandardRegistrationFieldItems = (items: EditableCompetitionConfigItem[]) => {
-  const configuredKeys = new Set(items.map((item) => `${item.metadata?.fieldScope || item.itemType}:${item.itemKey}`));
-  return [
-    ...buildStandardRegistrationFieldItems().filter((item) => !configuredKeys.has(`${item.metadata?.fieldScope}:${item.itemKey}`)),
-    ...items,
-  ].sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
-};
 
 const getModuleItems = (settings: CompetitionSettingsRecord | undefined, key: CompetitionSettingsConfigModuleKey) => {
   if (!settings) {
@@ -4630,8 +4485,7 @@ const renderFieldSettingsTable = (
             </Form.Item>
             <Form.Item noStyle shouldUpdate>
               {({ getFieldValue }) => {
-                const itemKey = getFieldValue(['items', field.name, 'itemKey']);
-                const isStandardField = standardRegistrationFieldKeys.has(`${scope}:${itemKey}`);
+                const isStandardField = Boolean(getFieldValue(['items', field.name, 'metadata', 'standardField']));
                 return (
                   <Button
                     danger
@@ -4719,13 +4573,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
-    const editableItems = toEditableConfigItems(items.filter((item) => (
-      item.itemType !== 'TEAM_SETTINGS'
-      && !(resolveRegistrationFieldScope(item) === 'MEMBER_FIELD' && removedStandardMemberFieldKeys.has(
-        resolveStandardCollectedFieldKey('MEMBER_FIELD', item.itemKey) || item.itemKey,
-      ))
-    )));
-    const fieldItems = module.key === 'fields' ? mergeStandardRegistrationFieldItems(editableItems) : editableItems;
+    const editableItems = toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS'));
     const initialItems = module.key === 'payments'
       ? [
           ...paymentProviderOptions.map((provider, index) => {
@@ -4741,7 +4589,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           }),
           ...editableItems.filter((item) => !paymentProviderOptions.some((provider) => provider.value === item.itemKey)),
         ]
-      : fieldItems;
+      : editableItems;
     return {
       items: initialItems,
       teamMinMembers: limits.minMembers,
@@ -4855,8 +4703,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     if (scopeOption.value !== 'PROJECT_FIELD' || !fieldGroupLabel) {
                       return true;
                     }
-                    const isIntellectualProperty = item?.metadata?.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
-                      || intellectualPropertyFieldKeys.has(item?.itemKey || '');
+                    const isIntellectualProperty = item?.metadata?.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL;
                     return fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
                       ? isIntellectualProperty
                       : !isIntellectualProperty;

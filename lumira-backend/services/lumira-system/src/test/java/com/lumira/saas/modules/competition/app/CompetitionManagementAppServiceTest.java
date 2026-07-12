@@ -287,6 +287,10 @@ class CompetitionManagementAppServiceTest {
         assertThat(settings.getCompetition()).isNotNull();
         assertThat(settings.getCompetition().getStatus()).isEqualTo("published");
         assertThat(settings.getActiveConfigSet()).isNotNull();
+        assertThat(settings.getFields())
+                .extracting(CompetitionVO.ConfigItem::getItemKey)
+                .contains("teamName", "avatarUrl", "memberName", "title", "imageUrl", "intellectualPropertyType", "distributionRegions")
+                .doesNotContain("employeeNo", "departmentName", "role", "remark");
     }
 
     @Test

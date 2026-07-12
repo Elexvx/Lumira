@@ -2,6 +2,7 @@ package com.lumira.saas.modules.competition.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -70,6 +71,26 @@ public class CompetitionManagementAppService {
             "files", Set.of("REQUIRED_FILE"),
             "stage-materials", Set.of("STAGE_MATERIAL"),
             "timeline", Set.of("TIMELINE")
+    );
+    private static final Set<String> REMOVED_STANDARD_MEMBER_FIELD_KEYS = Set.of(
+            "employeeNo", "departmentName", "role", "remark"
+    );
+    private static final List<StandardConfigItem> STANDARD_REGISTRATION_CONFIG_ITEMS = List.of(
+            new StandardConfigItem("TEAM_SETTINGS", "team-size-limits", "团队人数限制", "{\"teamMinMembers\":1,\"teamMaxMembers\":20,\"standardField\":true}", 0, false),
+            new StandardConfigItem("TEAM_FIELD", "teamName", "团队名称", "{\"fieldType\":\"TEXT\",\"placeholder\":\"请输入团队名称\",\"validationRule\":\"NONE\",\"standardField\":true}", 10, true),
+            new StandardConfigItem("TEAM_FIELD", "avatarUrl", "团队头像", "{\"fieldType\":\"IMAGE\",\"placeholder\":\"请上传团队头像\",\"validationRule\":\"NONE\",\"standardField\":true}", 20, false),
+            new StandardConfigItem("TEAM_FIELD", "description", "团队简介", "{\"fieldType\":\"TEXTAREA\",\"placeholder\":\"请输入团队简介\",\"validationRule\":\"NONE\",\"standardField\":true}", 30, false),
+            new StandardConfigItem("MEMBER_FIELD", "memberName", "成员姓名", "{\"fieldType\":\"TEXT\",\"placeholder\":\"请输入成员姓名\",\"validationRule\":\"NONE\",\"standardField\":true}", 110, true),
+            new StandardConfigItem("PROJECT_FIELD", "title", "项目名称", "{\"fieldType\":\"TEXT\",\"placeholder\":\"请输入项目名称\",\"validationRule\":\"NONE\",\"standardField\":true}", 210, true),
+            new StandardConfigItem("PROJECT_FIELD", "imageUrl", "项目头像", "{\"fieldType\":\"IMAGE\",\"placeholder\":\"请上传项目头像\",\"validationRule\":\"NONE\",\"standardField\":true}", 220, false),
+            new StandardConfigItem("PROJECT_FIELD", "description", "项目简介", "{\"fieldType\":\"TEXTAREA\",\"placeholder\":\"请输入项目简介\",\"validationRule\":\"NONE\",\"standardField\":true}", 230, false),
+            new StandardConfigItem("PROJECT_FIELD", "intellectualPropertyType", "知识产权类型", "{\"fieldType\":\"SELECT\",\"placeholder\":\"请选择知识产权类型\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true,\"options\":\"发明专利\\n实用新型专利\\n外观设计专利\\n软件著作权\\n作品著作权\\n商标\\n其他\"}", 310, true),
+            new StandardConfigItem("PROJECT_FIELD", "intellectualPropertyName", "知识产权名称", "{\"fieldType\":\"TEXT\",\"placeholder\":\"请输入知识产权名称\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true}", 320, true),
+            new StandardConfigItem("PROJECT_FIELD", "registrationNumber", "申请号/登记号", "{\"fieldType\":\"TEXT\",\"placeholder\":\"请输入申请号或登记号\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true}", 330, false),
+            new StandardConfigItem("PROJECT_FIELD", "rightsHolder", "权利人", "{\"fieldType\":\"TEXT\",\"placeholder\":\"请输入权利人\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true}", 340, true),
+            new StandardConfigItem("PROJECT_FIELD", "legalStatus", "法律状态", "{\"fieldType\":\"SELECT\",\"placeholder\":\"请选择法律状态\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true,\"options\":\"申请中\\n已受理\\n已授权\\n已登记\\n已失效\\n其他\"}", 350, false),
+            new StandardConfigItem("PROJECT_FIELD", "grantDate", "授权/登记日期", "{\"fieldType\":\"DATE\",\"placeholder\":\"请选择授权或登记日期\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true}", 360, false),
+            new StandardConfigItem("PROJECT_FIELD", "distributionRegions", "知识产权分布区域", "{\"fieldType\":\"MULTI_SELECT\",\"placeholder\":\"请选择知识产权分布区域\",\"validationRule\":\"NONE\",\"groupLabel\":\"知识产权信息\",\"standardField\":true,\"options\":\"中国大陆\\n中国香港\\n中国澳门\\n中国台湾\\n海外\"}", 370, true)
     );
     private static final String COMPETITION_CATEGORY_DICT = "aiadc_competition_category";
     private static final String COMPETITION_LEVEL_DICT = "aiadc_competition_level";
@@ -222,7 +243,11 @@ public class CompetitionManagementAppService {
         settings.setCompetition(competition);
         settings.setActiveConfigSet(configSet);
         settings.setDocuments(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("documents")));
-        settings.setFields(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("fields")));
+        settings.setFields(withStandardRegistrationConfigItems(
+                competition.getUuid(),
+                configSet.getId(),
+                listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("fields"))
+        ));
         settings.setPayments(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("payments")));
         settings.setFiles(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("files")));
         settings.setStageMaterials(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("stage-materials")));
@@ -1200,6 +1225,73 @@ public class CompetitionManagementAppService {
                 new BeanPropertyRowMapper<>(CompetitionVO.ConfigItem.class),
                 concat(new Object[]{competitionUuid, configSetId}, itemTypes.toArray())
         );
+    }
+
+    private List<CompetitionVO.ConfigItem> withStandardRegistrationConfigItems(
+            String competitionUuid,
+            Long configSetId,
+            List<CompetitionVO.ConfigItem> configuredItems
+    ) {
+        Map<String, CompetitionVO.ConfigItem> merged = new LinkedHashMap<>();
+        for (CompetitionVO.ConfigItem item : configuredItems) {
+            if ("MEMBER_FIELD".equals(item.getItemType()) && REMOVED_STANDARD_MEMBER_FIELD_KEYS.contains(item.getItemKey())) {
+                continue;
+            }
+            merged.put(configItemIdentity(item), item);
+        }
+        for (StandardConfigItem standard : STANDARD_REGISTRATION_CONFIG_ITEMS) {
+            String identity = standard.itemType() + "\u0000" + standard.itemKey();
+            CompetitionVO.ConfigItem existing = merged.get(identity);
+            if (existing == null) {
+                merged.put(identity, standard.toConfigItem(competitionUuid, configSetId));
+            } else {
+                existing.setContentJson(mergeStandardMetadata(standard.contentJson(), existing.getContentJson()));
+            }
+        }
+        return merged.values().stream()
+                .sorted(java.util.Comparator
+                        .comparing((CompetitionVO.ConfigItem item) -> item.getSortOrder() == null ? 0 : item.getSortOrder())
+                        .thenComparing(item -> item.getId() == null ? Long.MAX_VALUE : item.getId()))
+                .toList();
+    }
+
+    private String mergeStandardMetadata(String standardJson, String configuredJson) {
+        try {
+            ObjectNode merged = (ObjectNode) OBJECT_MAPPER.readTree(standardJson);
+            if (StringUtils.hasText(configuredJson)) {
+                JsonNode configured = OBJECT_MAPPER.readTree(configuredJson);
+                if (configured != null && configured.isObject()) {
+                    configured.fields().forEachRemaining(entry -> merged.set(entry.getKey(), entry.getValue()));
+                }
+            }
+            merged.put("standardField", true);
+            return OBJECT_MAPPER.writeValueAsString(merged);
+        } catch (Exception ignored) {
+            return standardJson;
+        }
+    }
+
+    private record StandardConfigItem(
+            String itemType,
+            String itemKey,
+            String title,
+            String contentJson,
+            int sortOrder,
+            boolean required
+    ) {
+        private CompetitionVO.ConfigItem toConfigItem(String competitionUuid, Long configSetId) {
+            CompetitionVO.ConfigItem item = new CompetitionVO.ConfigItem();
+            item.setCompetitionUuid(competitionUuid);
+            item.setConfigSetId(configSetId);
+            item.setItemType(itemType);
+            item.setItemKey(itemKey);
+            item.setTitle(title);
+            item.setContentJson(contentJson);
+            item.setSortOrder(sortOrder);
+            item.setRequiredFlag(required);
+            item.setEnabled(true);
+            return item;
+        }
     }
 
     private CompetitionDTO.ConfigItemRequest normalizeConfigItem(CompetitionDTO.ConfigItemRequest request) {
