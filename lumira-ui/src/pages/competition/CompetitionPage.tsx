@@ -5829,7 +5829,6 @@ const CompetitionSettingsPage = () => {
                       { key: 'PROJECT_FIELD', label: '项目信息' },
                       { key: 'TEAM_AND_MEMBER', label: '团队与成员信息' },
                       { key: 'INTELLECTUAL_PROPERTY', label: '知识产权信息' },
-                      { key: 'REGISTRATION_FIELD', label: '其他报名字段' },
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
                     onChange={(key) => void handleRegistrationDetailChange(key)}

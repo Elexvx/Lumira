@@ -9,7 +9,6 @@ export const competitionSettingsSectionKeys = [
 export type CompetitionSettingsSectionKey = (typeof competitionSettingsSectionKeys)[number];
 
 export type CompetitionSettingsRegistrationTab =
-  | 'REGISTRATION_FIELD'
   | 'TEAM_AND_MEMBER'
   | 'PROJECT_FIELD'
   | 'INTELLECTUAL_PROPERTY'
@@ -26,14 +25,13 @@ export type CompetitionSettingsNavigation = {
 const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistrationTab> = {
   registration: 'PROJECT_FIELD',
   'team-members': 'TEAM_AND_MEMBER',
-  'other-fields': 'REGISTRATION_FIELD',
+  'other-fields': 'PROJECT_FIELD',
   project: 'PROJECT_FIELD',
   'intellectual-property': 'INTELLECTUAL_PROPERTY',
   documents: 'documents',
 };
 
 const registrationQueryValueByTab: Record<CompetitionSettingsRegistrationTab, string> = {
-  REGISTRATION_FIELD: 'other-fields',
   TEAM_AND_MEMBER: 'team-members',
   PROJECT_FIELD: 'project',
   INTELLECTUAL_PROPERTY: 'intellectual-property',
@@ -53,7 +51,7 @@ export const parseCompetitionSettingsNavigation = (search: string): CompetitionS
     section,
     registrationTab: section === 'registration'
       ? registrationTabByQueryValue[tabValue] || 'PROJECT_FIELD'
-      : 'REGISTRATION_FIELD',
+      : 'PROJECT_FIELD',
     stageTab: section === 'stages' && tabValue === 'timeline' ? 'timeline' : 'files',
   };
 };
