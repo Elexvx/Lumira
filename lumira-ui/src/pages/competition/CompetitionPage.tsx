@@ -1787,11 +1787,9 @@ type RegistrationCollectedFieldSplit = {
 
 const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
   { scope: 'MEMBER_FIELD', itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', required: true },
-  { scope: 'MEMBER_FIELD', itemKey: 'employeeNo', title: '工号', fieldType: 'TEXT' },
-  { scope: 'MEMBER_FIELD', itemKey: 'departmentName', title: '部门', fieldType: 'TEXT' },
-  { scope: 'MEMBER_FIELD', itemKey: 'role', title: '角色', fieldType: 'ROLE' },
-  { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '备注', fieldType: 'TEXTAREA' },
 ];
+
+const removedStandardMemberFieldKeys = new Set(['employeeNo', 'departmentName', 'role', 'remark']);
 
 const fallbackRegistrationIntellectualPropertyFields: RegistrationCollectedField[] = [
   {
@@ -1876,6 +1874,9 @@ const splitConfiguredRegistrationFields = (
 ): RegistrationCollectedFieldSplit => {
   const configuredFields = items
     .filter((item) => item.enabled !== false && resolveRegistrationFieldScope(item) === scope)
+    .filter((item) => scope !== 'MEMBER_FIELD' || !removedStandardMemberFieldKeys.has(
+      resolveStandardCollectedFieldKey('MEMBER_FIELD', item.itemKey) || item.itemKey,
+    ))
     .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
     .map(toRegistrationCollectedField);
 
@@ -4262,10 +4263,6 @@ const standardRegistrationFieldDefinitions: Array<{
   { scope: 'TEAM_FIELD', itemKey: 'avatarUrl', title: '团队头像', fieldType: 'IMAGE', placeholder: '请上传团队头像', sortOrder: 20 },
   { scope: 'TEAM_FIELD', itemKey: 'description', title: '团队简介', fieldType: 'TEXTAREA', placeholder: '请输入团队简介', sortOrder: 30 },
   { scope: 'MEMBER_FIELD', itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', placeholder: '请输入成员姓名', required: true, sortOrder: 110 },
-  { scope: 'MEMBER_FIELD', itemKey: 'employeeNo', title: '工号/学号', fieldType: 'TEXT', placeholder: '请输入工号或学号', sortOrder: 120 },
-  { scope: 'MEMBER_FIELD', itemKey: 'departmentName', title: '部门/院系', fieldType: 'TEXT', placeholder: '请输入部门或院系', sortOrder: 130 },
-  { scope: 'MEMBER_FIELD', itemKey: 'role', title: '成员角色', fieldType: 'ROLE', required: true, sortOrder: 140 },
-  { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '成员备注', fieldType: 'TEXTAREA', placeholder: '请输入成员备注', sortOrder: 150 },
   { scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', placeholder: '请输入项目名称', required: true, sortOrder: 210 },
   { scope: 'PROJECT_FIELD', itemKey: 'imageUrl', title: '项目头像', fieldType: 'IMAGE', placeholder: '请上传项目头像', sortOrder: 220 },
   { scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA', placeholder: '请输入项目简介', sortOrder: 230 },
@@ -4722,7 +4719,12 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
-    const editableItems = toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS'));
+    const editableItems = toEditableConfigItems(items.filter((item) => (
+      item.itemType !== 'TEAM_SETTINGS'
+      && !(resolveRegistrationFieldScope(item) === 'MEMBER_FIELD' && removedStandardMemberFieldKeys.has(
+        resolveStandardCollectedFieldKey('MEMBER_FIELD', item.itemKey) || item.itemKey,
+      ))
+    )));
     const fieldItems = module.key === 'fields' ? mergeStandardRegistrationFieldItems(editableItems) : editableItems;
     const initialItems = module.key === 'payments'
       ? [
