@@ -4104,11 +4104,22 @@ type RegistrationFieldScope = Extract<
   'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'
 >;
 
+const INTELLECTUAL_PROPERTY_GROUP_LABEL = '知识产权信息';
+const intellectualPropertyFieldKeys = new Set([
+  'intellectualPropertyType',
+  'intellectualPropertyName',
+  'registrationNumber',
+  'rightsHolder',
+  'legalStatus',
+  'grantDate',
+  'distributionRegions',
+]);
+
 const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }> = [
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
   { label: '团队信息', value: 'TEAM_FIELD' },
   { label: '成员信息', value: 'MEMBER_FIELD' },
-  { label: '知识产权信息', value: 'PROJECT_FIELD' },
+  { label: '项目信息', value: 'PROJECT_FIELD' },
 ];
 
 const loadConfiguredPaymentProviderOptions = async (): Promise<PaymentProviderOption[]> => {
@@ -4164,6 +4175,7 @@ const standardRegistrationFieldDefinitions: Array<{
   placeholder?: string;
   required?: boolean;
   sortOrder: number;
+  groupLabel?: string;
 }> = [
   { scope: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称', fieldType: 'TEXT', placeholder: '请输入团队名称', required: true, sortOrder: 10 },
   { scope: 'TEAM_FIELD', itemKey: 'avatarUrl', title: '团队头像', fieldType: 'IMAGE', placeholder: '请上传团队头像', sortOrder: 20 },
@@ -4175,13 +4187,13 @@ const standardRegistrationFieldDefinitions: Array<{
   { scope: 'MEMBER_FIELD', itemKey: 'remark', title: '成员备注', fieldType: 'TEXTAREA', placeholder: '请输入成员备注', sortOrder: 150 },
   { scope: 'PROJECT_FIELD', itemKey: 'title', title: '项目名称', fieldType: 'TEXT', placeholder: '请输入项目名称', required: true, sortOrder: 210 },
   { scope: 'PROJECT_FIELD', itemKey: 'description', title: '项目简介', fieldType: 'TEXTAREA', placeholder: '请输入项目简介', sortOrder: 220 },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', placeholder: '请选择知识产权类型', required: true, sortOrder: 230 },
-  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', placeholder: '请输入知识产权名称', required: true, sortOrder: 240 },
-  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT', placeholder: '请输入申请号或登记号', sortOrder: 250 },
-  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', placeholder: '请输入权利人', required: true, sortOrder: 260 },
-  { scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT', placeholder: '请选择法律状态', sortOrder: 270 },
-  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE', placeholder: '请选择授权或登记日期', sortOrder: 280 },
-  { scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', placeholder: '请选择知识产权分布区域', required: true, sortOrder: 290 },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyType', title: '知识产权类型', fieldType: 'SELECT', placeholder: '请选择知识产权类型', required: true, sortOrder: 230, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'intellectualPropertyName', title: '知识产权名称', fieldType: 'TEXT', placeholder: '请输入知识产权名称', required: true, sortOrder: 240, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'registrationNumber', title: '申请号/登记号', fieldType: 'TEXT', placeholder: '请输入申请号或登记号', sortOrder: 250, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'rightsHolder', title: '权利人', fieldType: 'TEXT', placeholder: '请输入权利人', required: true, sortOrder: 260, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'legalStatus', title: '法律状态', fieldType: 'SELECT', placeholder: '请选择法律状态', sortOrder: 270, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'grantDate', title: '授权/登记日期', fieldType: 'DATE', placeholder: '请选择授权或登记日期', sortOrder: 280, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
+  { scope: 'PROJECT_FIELD', itemKey: 'distributionRegions', title: '知识产权分布区域', fieldType: 'MULTI_SELECT', placeholder: '请选择知识产权分布区域', required: true, sortOrder: 290, groupLabel: INTELLECTUAL_PROPERTY_GROUP_LABEL },
 ];
 
 const standardRegistrationFieldKeys = new Set(
@@ -4198,6 +4210,7 @@ const buildStandardRegistrationFieldItems = (): EditableCompetitionConfigItem[] 
       fieldScope: field.scope,
       fieldType: field.fieldType,
       placeholder: field.placeholder,
+      groupLabel: field.groupLabel,
       validationRule: 'NONE',
       options: field.itemKey === 'intellectualPropertyType'
         ? '发明专利\n实用新型专利\n外观设计专利\n软件著作权\n作品著作权\n商标\n其他'
@@ -4470,6 +4483,7 @@ const renderFieldSettingsTable = (
   scope: RegistrationFieldScope,
   scheduleSave: () => void,
   openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void,
+  fieldGroupLabel?: string,
 ) => {
   return (
     <Space className="competition-config-list" direction="vertical" size={16}>
@@ -4562,11 +4576,18 @@ const renderFieldSettingsTable = (
         block
         icon={<PlusOutlined />}
         onClick={() => {
-          add(toEditableConfigItems([emptyConfigItem(scope, (fields.length + 1) * 10)])[0]);
+          const nextItem = toEditableConfigItems([emptyConfigItem(scope, (fields.length + 1) * 10)])[0];
+          nextItem.metadata = {
+            ...nextItem.metadata,
+            groupLabel: fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+              ? INTELLECTUAL_PROPERTY_GROUP_LABEL
+              : undefined,
+          };
+          add(nextItem);
           scheduleSave();
         }}
       >
-        新增{fieldScopeOptions.find((option) => option.value === scope)?.label}字段
+        新增{fieldGroupLabel || fieldScopeOptions.find((option) => option.value === scope)?.label}字段
       </Button>
     </Space>
   );
@@ -4578,6 +4599,7 @@ type ConfigModulePanelProps = {
   items: CompetitionConfigItem[];
   storageSpaceOptions: StorageSpaceOption[];
   fieldScope?: RegistrationFieldScope;
+  fieldGroupLabel?: string;
   includeMemberFields?: boolean;
   paymentProviderOptions?: PaymentProviderOption[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
@@ -4589,6 +4611,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   items,
   storageSpaceOptions,
   fieldScope,
+  fieldGroupLabel,
   includeMemberFields = false,
   paymentProviderOptions = [],
   onSaved,
@@ -4712,13 +4735,15 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       <div className="competition-config-module__header">
         <Typography.Title className="competition-config-module__title" level={4}>
           {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
-            ? '知识产权信息'
+            ? (fieldGroupLabel || '项目信息')
             : getCompetitionSettingsModuleLabel(module)}
         </Typography.Title>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
         {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
-          ? '配置报名时需要收集的项目知识产权、权利状态及分布区域信息。下拉和多选内容可通过“设置选项”动态调整。'
+          ? fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+            ? '配置报名时需要收集的知识产权、权利状态及分布区域信息。下拉和多选内容可通过“设置选项”动态调整。'
+            : '配置报名时需要收集的项目名称、项目简介及其他项目基础信息。'
           : getCompetitionSettingsModuleDescription(module)}
       </Typography.Paragraph>
       {module.key === 'payments' && !paymentProviderOptions.length ? (
@@ -4740,7 +4765,17 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                 items={fieldScopeOptions.filter((scopeOption) => !fieldScope || scopeOption.value === fieldScope).map((scopeOption) => {
                   const scopedFields = fields.filter((field) => {
                     const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
-                    return (item?.metadata?.fieldScope || item?.itemType) === scopeOption.value;
+                    if ((item?.metadata?.fieldScope || item?.itemType) !== scopeOption.value) {
+                      return false;
+                    }
+                    if (scopeOption.value !== 'PROJECT_FIELD' || !fieldGroupLabel) {
+                      return true;
+                    }
+                    const isIntellectualProperty = item?.metadata?.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+                      || intellectualPropertyFieldKeys.has(item?.itemKey || '');
+                    return fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+                      ? isIntellectualProperty
+                      : !isIntellectualProperty;
                   });
                   const memberFields = includeMemberFields && scopeOption.value === 'TEAM_FIELD'
                     ? fields.filter((field) => {
@@ -4750,7 +4785,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     : [];
                   return {
                     key: scopeOption.value,
-                    label: scopeOption.label,
+                    label: fieldGroupLabel || scopeOption.label,
                     children: (
                       <Space className="competition-config-list" direction="vertical" size={16}>
                         {scopeOption.value === 'TEAM_FIELD' ? (
@@ -4801,6 +4836,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                             fieldTitle,
                             value: options || '',
                           }),
+                          fieldGroupLabel,
                         )}
                         {includeMemberFields && scopeOption.value === 'TEAM_FIELD' ? (
                           <>
@@ -5859,8 +5895,9 @@ const CompetitionSettingsPage = () => {
                     className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
                     activeKey={registrationDetail}
                     items={[
+                      { key: 'PROJECT_FIELD', label: '项目信息' },
                       { key: 'TEAM_AND_MEMBER', label: '团队与成员信息' },
-                      { key: 'PROJECT_FIELD', label: '知识产权信息' },
+                      { key: 'INTELLECTUAL_PROPERTY', label: '知识产权信息' },
                       { key: 'REGISTRATION_FIELD', label: '其他报名字段' },
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
@@ -5878,7 +5915,14 @@ const CompetitionSettingsPage = () => {
                         ? undefined
                         : registrationDetail === 'TEAM_AND_MEMBER'
                           ? 'TEAM_FIELD'
-                          : registrationDetail}
+                          : registrationDetail === 'INTELLECTUAL_PROPERTY'
+                            ? 'PROJECT_FIELD'
+                            : registrationDetail}
+                      fieldGroupLabel={registrationDetail === 'INTELLECTUAL_PROPERTY'
+                        ? INTELLECTUAL_PROPERTY_GROUP_LABEL
+                        : registrationDetail === 'PROJECT_FIELD'
+                          ? '项目信息'
+                          : undefined}
                       includeMemberFields={registrationDetail === 'TEAM_AND_MEMBER'}
                       onSaved={setSettings}
                     />

@@ -21,18 +21,18 @@ describe('competition settings URL navigation', () => {
     });
   });
 
-  it('keeps the legacy registration tab URL on the team and member settings', () => {
+  it('keeps the legacy registration tab URL on project settings', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration&tab=registration')).toEqual({
       section: 'registration',
-      registrationTab: 'TEAM_AND_MEMBER',
+      registrationTab: 'PROJECT_FIELD',
       stageTab: 'files',
     });
   });
 
-  it('uses team and member settings as the registration section default', () => {
+  it('uses project settings as the registration section default', () => {
     expect(parseCompetitionSettingsNavigation('?section=registration')).toEqual({
       section: 'registration',
-      registrationTab: 'TEAM_AND_MEMBER',
+      registrationTab: 'PROJECT_FIELD',
       stageTab: 'files',
     });
   });
@@ -51,6 +51,7 @@ describe('competition settings URL navigation', () => {
 
   it('writes stable query values for nested settings tabs', () => {
     expect(createCompetitionSettingsSearch('', 'registration', 'TEAM_AND_MEMBER')).toBe('?section=registration&tab=team-members');
+    expect(createCompetitionSettingsSearch('', 'registration', 'INTELLECTUAL_PROPERTY')).toBe('?section=registration&tab=intellectual-property');
     expect(createCompetitionSettingsSearch('', 'registration', 'REGISTRATION_FIELD')).toBe('?section=registration&tab=other-fields');
     expect(createCompetitionSettingsSearch('', 'stages', 'timeline')).toBe('?section=stages&tab=timeline');
   });
