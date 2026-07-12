@@ -55,4 +55,12 @@ public interface PaymentInternalApi {
             @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId,
             @PathVariable("orderNo") String orderNo
     );
+
+    @PostExchange("/internal/payment/orders/{orderNo}/cancel")
+    PaymentOrderDTO cancelOrder(
+            @RequestParam("operatorId") Long operatorId,
+            @RequestParam("operatorUuid") String operatorUuid,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId,
+            @PathVariable("orderNo") String orderNo
+    );
 }

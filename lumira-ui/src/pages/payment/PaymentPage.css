@@ -1,5 +1,6 @@
 .payment-record-title {
-  max-width: 280px;
+  width: 100%;
+  max-width: 210px;
 }
 
 .payment-record-title .ant-typography {

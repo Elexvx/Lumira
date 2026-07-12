@@ -52,15 +52,33 @@ public final class PaymentDomainModels {
         }
 
         public void markPaid(String providerTxnId) {
+            markPaid(providerTxnId, null, null, null);
+        }
+
+        public void markPaid(String providerTxnId, Long userId, String userUuid, Long registrationId) {
             if ("PAID".equals(status)) {
                 return;
             }
+            if (userId != null && (userId <= 0 || userUuid == null || userUuid.isBlank())) {
+                throw new IllegalArgumentException("trusted payment owner identity is required");
+            }
             status = "PAID";
+            Map<String, Object> attributes = new LinkedHashMap<>();
+            attributes.put("amount", amount);
+            attributes.put("providerTxnId", providerTxnId == null ? "" : providerTxnId);
+            if (userId != null) {
+                attributes.put("userId", userId);
+                attributes.put("userUuid", userUuid.trim());
+            }
+            if (registrationId != null && registrationId > 0) {
+                attributes.put("registrationId", registrationId);
+                attributes.put("bizType", "competition_registration");
+            }
             registerEvent(StandardDomainEvent.of(
                     "PAYMENT_ORDER_PAID",
                     "payment.order",
                     id().value(),
-                    Map.of("amount", amount, "providerTxnId", providerTxnId == null ? "" : providerTxnId)
+                    attributes
             ));
         }
     }

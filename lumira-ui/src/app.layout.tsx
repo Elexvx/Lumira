@@ -18,7 +18,7 @@ import { resolveTokenRefreshDelayMs } from '@/auth/sessionRefreshTiming';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
-import { performLogout, tryRefreshToken } from '@/auth/sessionLifecycle';
+import { performLogout, tryRefreshTokenOutcome } from '@/auth/sessionLifecycle';
 import { request } from '@/services/common/request';
 import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
@@ -82,6 +82,7 @@ const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const MOUSE_MOVE_THROTTLE_MS = 1000;
 const KEEPALIVE_THROTTLE_MS = 60_000;
+const TOKEN_REFRESH_RETRY_MS = 5_000;
 const KEEPALIVE_ENDPOINTS = {
   v2: '/v2/auth/session/keepalive',
   v1: '/v1/auth/session/keepalive',
@@ -156,15 +157,22 @@ const useSessionActivityTimers = ({ securitySettings }: { securitySettings: Secu
       return false;
     }
 
-    const refreshed = await tryRefreshToken();
-    if (!refreshed) {
+    const refreshOutcome = await tryRefreshTokenOutcome();
+    if (refreshOutcome === 'session_expired') {
       forceLogout('token_expired');
+      return false;
+    }
+    if (refreshOutcome === 'temporarily_unavailable') {
+      clearTokenExpireTimer();
+      tokenExpireTimerRef.current = window.setTimeout(() => {
+        void refreshAccessToken();
+      }, TOKEN_REFRESH_RETRY_MS);
       return false;
     }
     scheduleTokenExpirationRef.current();
     scheduleTimeout(lastActivityRef.current);
     return true;
-  }, [forceLogout, scheduleTimeout]);
+  }, [clearTokenExpireTimer, forceLogout, scheduleTimeout]);
 
   const scheduleTokenExpiration = useCallback(() => {
     clearTokenExpireTimer();

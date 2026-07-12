@@ -12,6 +12,8 @@ import type {
   CompetitionStageFormRecord,
   CompetitionStageRecord,
   CompetitionStageUpsertPayload,
+  CompetitionStageReviewCandidateRecord,
+  CompetitionStageReviewDecisionPayload,
   CompetitionUpsertPayload,
   PageResponse,
   ProjectRecord,
@@ -152,6 +154,11 @@ export const updateRegistration = (id: number, data: RegistrationUpsertPayload) 
     data,
   });
 
+export const deleteRegistration = (id: number) =>
+  request<boolean>(`/v2/aiadc/registrations/${id}`, {
+    method: 'DELETE',
+  });
+
 export const listCompetitionStages = (competitionId: number) =>
   request<CompetitionStageRecord[]>(`/v2/aiadc/competitions/${competitionId}/stages`);
 
@@ -186,6 +193,29 @@ export const createRegistrationPaymentOrder = (registrationId: number, data: { p
   request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-order`, {
     method: 'POST',
     data,
+  });
+
+export const updateCompetitionStage = (stageId: number, data: CompetitionStageUpsertPayload) =>
+  request<CompetitionStageRecord>(`/v2/aiadc/stages/${stageId}`, {
+    method: 'PUT',
+    data,
+  });
+
+export const listCompetitionStageReviewCandidates = (stageId: number) =>
+  request<CompetitionStageReviewCandidateRecord[]>(`/v2/aiadc/stages/${stageId}/review-candidates`);
+
+export const saveCompetitionStageReviewDecision = (
+  stageId: number,
+  registrationId: number,
+  data: CompetitionStageReviewDecisionPayload,
+) => request<CompetitionStageReviewCandidateRecord>(`/v2/aiadc/stages/${stageId}/review-candidates/${registrationId}`, {
+  method: 'PUT',
+  data,
+});
+
+export const applyCompetitionStagePromotionRule = (stageId: number) =>
+  request<CompetitionStageReviewCandidateRecord[]>(`/v2/aiadc/stages/${stageId}/apply-promotion-rule`, {
+    method: 'POST',
   });
 
 export const listRegistrationPaymentOptions = (registrationId: number, clientType: 'DESKTOP' | 'MOBILE' | 'WECHAT') =>

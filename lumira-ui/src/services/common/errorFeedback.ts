@@ -39,7 +39,11 @@ const WARNING_ERROR_CODES = new Set<string>([
   ErrorCode.PLUGIN_NOT_ENABLED,
 ]);
 
-const ERROR_ERROR_CODES = new Set<string>([ErrorCode.SYSTEM_ERROR, ErrorCode.PLUGIN_RUNTIME_ERROR]);
+const ERROR_ERROR_CODES = new Set<string>([
+  ErrorCode.SYSTEM_ERROR,
+  ErrorCode.DEPENDENCY_UNAVAILABLE,
+  ErrorCode.PLUGIN_RUNTIME_ERROR,
+]);
 
 export const resolveApiErrorFeedback = (error: ApiErrorLike, hasAuthToken = true): ErrorFeedback => {
   const message = error.userMessage || error.message || resolveBuiltinMessage('common.failure', '操作失败，请稍后重试');

@@ -204,7 +204,7 @@ export const useProfileCenterPageAccess = () => {
       return { ...factor, factorName: formatMessage({ id: 'page.profile.bind.currentFactor.email', defaultMessage: 'Email verification code' }) };
     }
     return factor;
-  }, [currentUser, formatMessage, loginCapabilities, providersQuery.data]);
+  }, [currentUser, loginCapabilities, providersQuery.data]);
   const [unbindProvider, setUnbindProvider] = useState<SecondFactorProviderStatus | null>(null);
   const [unbindChallenge, setUnbindChallenge] = useState<SecondFactorChallenge | null>(null);
   const [unbindChallengeLoading, setUnbindChallengeLoading] = useState(false);
@@ -269,7 +269,7 @@ export const useProfileCenterPageAccess = () => {
       verificationCode: undefined,
     });
     setBindModalOpen(true);
-  }, [bindVerificationForm, formatMessage]);
+  }, [bindVerificationForm]);
   const requestBindVerificationChallenge = useCallback(
     async (provider: SecondFactorProviderStatus | null = bindingVerificationFactor) => {
       if (!provider) {
@@ -294,7 +294,7 @@ export const useProfileCenterPageAccess = () => {
         setBindingVerificationChallengeLoading(false);
       }
     },
-    [bindVerificationForm, bindingVerificationFactor, formatMessage],
+    [bindVerificationForm, bindingVerificationFactor],
   );
   useEffect(() => {
     if (!bindModalOpen || !bindingVerificationFactor || bindingChallenge || bindingVerificationChallenge || bindingVerificationChallengeLoading) {
@@ -325,7 +325,7 @@ export const useProfileCenterPageAccess = () => {
         setBindingLoading(false);
       }
     },
-    [bindVerificationForm, formatMessage],
+    [bindVerificationForm],
   );
   const retryBindChallenge = useCallback(async () => {
     if (!bindingProvider) {
@@ -379,7 +379,7 @@ export const useProfileCenterPageAccess = () => {
         currentVerificationCode: verificationCode,
       });
     },
-    [bindingProvider, bindingVerificationChallenge, bindingVerificationFactor, formatMessage, requestBindChallenge, requestBindVerificationChallenge],
+    [bindingProvider, bindingVerificationChallenge, bindingVerificationFactor, requestBindChallenge, requestBindVerificationChallenge],
   );
   const handleVerifyBind = useCallback(
     async (values: { verificationCode?: string }) => {
@@ -544,7 +544,7 @@ export const useProfileCenterPageAccess = () => {
       return { ...factor, factorName: formatMessage({ id: 'page.profile.bind.currentFactor.email', defaultMessage: 'Email verification code' }) };
     }
     return factor;
-  }, [currentUser, formatMessage, loginCapabilities, providersQuery.data]);
+  }, [currentUser, loginCapabilities, providersQuery.data]);
   const passkeyVerificationFactor = useMemo<SecondFactorProviderStatus | null>(() => {
     const factor = resolvePreferredCurrentVerificationFactor(providersQuery.data || [], currentUser, loginCapabilities);
     if (!factor) {
@@ -557,7 +557,7 @@ export const useProfileCenterPageAccess = () => {
       return { ...factor, factorName: formatMessage({ id: 'page.profile.passkey.currentFactor.email', defaultMessage: 'Email verification code' }) };
     }
     return factor;
-  }, [currentUser, formatMessage, loginCapabilities, providersQuery.data]);
+  }, [currentUser, loginCapabilities, providersQuery.data]);
   const contactBindFormProps = useStandardFormProps({
     form: contactBindForm,
     initialValues: { value: '', verificationCode: '', currentVerificationCode: '', currentPassword: '' },
@@ -658,7 +658,7 @@ export const useProfileCenterPageAccess = () => {
         setContactBindCurrentChallengeLoading(false);
       }
     },
-    [contactBindCurrentFactor, contactBindForm, formatMessage],
+    [contactBindCurrentFactor, contactBindForm],
   );
   useEffect(() => {
     if (!contactBindType || !contactBindCurrentFactor || contactBindCurrentChallenge || contactBindCurrentChallengeLoading) {
@@ -720,7 +720,7 @@ export const useProfileCenterPageAccess = () => {
         setContactBindChallengeLoading(false);
       }
     },
-    [contactBindCurrentChallenge, contactBindCurrentFactor, contactBindForm, contactBindType, formatMessage, requestContactBindCurrentChallenge],
+    [contactBindCurrentChallenge, contactBindCurrentFactor, contactBindForm, contactBindType, requestContactBindCurrentChallenge],
   );
 
   const prepareContactBindSubmission = useCallback(async () => {
@@ -866,7 +866,7 @@ export const useProfileCenterPageAccess = () => {
         setPasskeyVerificationChallengeLoading(false);
       }
     },
-    [formatMessage, passkeyVerificationFactor, passkeyVerificationForm],
+    [passkeyVerificationFactor, passkeyVerificationForm],
   );
   useEffect(() => {
     if (!passkeyVerificationAction || !passkeyVerificationFactor || passkeyVerificationChallenge || passkeyVerificationChallengeLoading) {
@@ -1092,7 +1092,7 @@ export const useProfileCenterPageAccess = () => {
       return;
     }
     openPasskeyVerificationModal('bind');
-  }, [formatMessage, openPasskeyVerificationModal, passkeyBinding, passkeyLoginAvailable, passkeyVerificationSubmitting]);
+  }, [openPasskeyVerificationModal, passkeyBinding, passkeyLoginAvailable, passkeyVerificationSubmitting]);
   const handleRenamePasskey = useCallback(
     async (id: number, currentLabel?: string) => {
       if (passkeyVerificationSubmitting) {
@@ -1104,7 +1104,7 @@ export const useProfileCenterPageAccess = () => {
       }
       openPasskeyVerificationModal('rename', id, label.trim());
     },
-    [formatMessage, openPasskeyVerificationModal, passkeyVerificationSubmitting],
+    [openPasskeyVerificationModal, passkeyVerificationSubmitting],
   );
   const handleDeletePasskey = useCallback(
     async (id: number) => {
@@ -1217,7 +1217,6 @@ export const useProfileCenterPageAccess = () => {
       }
     },
     [
-      formatMessage,
       passkeyQuery,
       passkeyVerificationAction,
       passkeyVerificationChallenge?.challengeId,

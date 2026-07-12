@@ -7,13 +7,16 @@ import { clearClientRuntimeState } from '@/auth/clientRuntimeState';
 import { beginBootstrapFlow, endBootstrapFlow } from '@/auth/loginFlowState';
 import { persistSessionMeta } from '@/auth/sessionState';
 import type { RefreshTokenResponse } from '@/types/api';
+import { ErrorCode } from '@/enums/errorCode';
+import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 
 export type LogoutReason = 'user_initiated' | 'forced_expired';
+export type TokenRefreshOutcome = 'refreshed' | 'session_expired' | 'temporarily_unavailable';
 
 const AUTH_LOGOUT_PATH = '/v1/auth/logout';
 const AUTH_REFRESH_TOKEN_PATH = '/v1/auth/refresh-token';
 
-let refreshTokenPromise: Promise<boolean> | null = null;
+let refreshTokenPromise: Promise<TokenRefreshOutcome> | null = null;
 
 export const isLoggedIn = () => tokenManager.hasToken();
 
@@ -25,7 +28,9 @@ export const clearAuthSession = () => {
 
 export const buildLogoutRedirectTarget = (
   reason: LogoutReason,
-  location: Pick<Location, 'pathname' | 'search' | 'hash'> = window.location,
+  location: Pick<Location, 'pathname' | 'search' | 'hash'> = typeof window === 'undefined'
+    ? { pathname: LOGIN_PATH, search: '', hash: '' }
+    : window.location,
 ) => {
   if (reason !== 'forced_expired' || location.pathname === LOGIN_PATH) {
     return LOGIN_PATH;
@@ -78,7 +83,13 @@ const revokeServerSession = async () => {
   }
 };
 
-const refreshTokenRequest = async () => {
+const isConfirmedRefreshSessionExpiry = (error: unknown) =>
+  error instanceof ApiRequestError &&
+  error.httpStatus === 401 &&
+  (error.code === ErrorCode.SESSION_EXPIRED || error.code === ErrorCode.UNAUTHORIZED);
+
+const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
+  let v2Error: unknown;
   try {
     const response = await request<RefreshTokenResponse>('/v2/auth/refresh-token', {
       method: 'POST',
@@ -96,8 +107,9 @@ const refreshTokenRequest = async () => {
       sessionVersion: response.sessionVersion,
       permissionsVersion: response.permissionsVersion,
     });
-    return true;
-  } catch {
+    return 'refreshed';
+  } catch (error) {
+    v2Error = error;
     try {
       const response = await request<RefreshTokenResponse>(AUTH_REFRESH_TOKEN_PATH, {
         method: 'POST',
@@ -115,15 +127,16 @@ const refreshTokenRequest = async () => {
         sessionVersion: response.sessionVersion,
         permissionsVersion: response.permissionsVersion,
       });
-      return true;
-    } catch {
-      return false;
+      return 'refreshed';
+    } catch (legacyError) {
+      return isConfirmedRefreshSessionExpiry(v2Error) || isConfirmedRefreshSessionExpiry(legacyError)
+        ? 'session_expired'
+        : 'temporarily_unavailable';
     }
   }
 };
 
-
-export const tryRefreshToken = async (): Promise<boolean> => {
+export const tryRefreshTokenOutcome = async (): Promise<TokenRefreshOutcome> => {
   if (refreshTokenPromise) {
     return refreshTokenPromise;
   }
@@ -136,7 +149,9 @@ export const tryRefreshToken = async (): Promise<boolean> => {
   }
 };
 
-const refreshTokenOnce = async (): Promise<boolean> => {
+export const tryRefreshToken = async (): Promise<boolean> => (await tryRefreshTokenOutcome()) === 'refreshed';
+
+const refreshTokenOnce = async (): Promise<TokenRefreshOutcome> => {
   return refreshTokenRequest();
 };
 

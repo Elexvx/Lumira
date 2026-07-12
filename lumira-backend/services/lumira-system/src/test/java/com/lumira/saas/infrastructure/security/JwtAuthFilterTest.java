@@ -12,6 +12,10 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
+import com.lumira.common.security.AccessTokenAuthenticationPort;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -193,6 +197,37 @@ class JwtAuthFilterTest {
 
         assertEquals(0, fixture.jwtTokenService.parseCount);
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, fixture.response.getStatus());
+    }
+
+    @Test
+    void shouldPreferAuthOwnerPortWithoutCallingLegacySessionAuthenticator() throws Exception {
+        Fixture fixture = buildFixture();
+        AccessTokenAuthenticationPort port = org.mockito.Mockito.mock(AccessTokenAuthenticationPort.class);
+        CurrentUser currentUser = new CurrentUser(2001L, "admin", "session-auth", 1, true, Set.of("session:read"));
+        currentUser.setUserUuid("user-uuid-2001");
+        currentUser.setPermissionsVersion("permissions-1");
+        org.mockito.Mockito.when(port.authenticateAccessToken("owner-token")).thenReturn(currentUser);
+        fixture.filter.setAccessTokenAuthenticationPort(port);
+
+        executeFilter(fixture, "owner-token");
+
+        assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+        assertEquals(0, fixture.jwtTokenService.parseCount);
+        org.mockito.Mockito.verify(port).authenticateAccessToken("owner-token");
+    }
+
+    @Test
+    void shouldPreserveDependencyUnavailableFromAuthOwnerWithoutLegacyFallback() throws Exception {
+        Fixture fixture = buildFixture();
+        AccessTokenAuthenticationPort port = org.mockito.Mockito.mock(AccessTokenAuthenticationPort.class);
+        org.mockito.Mockito.when(port.authenticateAccessToken("owner-token"))
+                .thenThrow(new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Auth dependency unavailable"));
+        fixture.filter.setAccessTokenAuthenticationPort(port);
+
+        executeFilter(fixture, "owner-token");
+
+        assertEquals(HttpServletResponse.SC_SERVICE_UNAVAILABLE, fixture.response.getStatus());
+        assertEquals(0, fixture.jwtTokenService.parseCount);
     }
 
     private void executeFilter(Fixture fixture, String accessToken) throws Exception {

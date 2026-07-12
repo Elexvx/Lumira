@@ -6,7 +6,12 @@ import { ErrorCode } from '@/enums/errorCode';
 import type { RequestOptions } from './requestInternalsTypes';
 import { ApiRequestError } from './requestInternalsTypes';
 
-const shouldSuppressLoginPageForbiddenFeedback = (error: ApiRequestError, authSnapshot: AuthRequestSnapshot) => {
+export interface ApiErrorHandlingContext {
+  authenticatedRefreshSucceeded?: boolean;
+  refreshTemporarilyUnavailable?: boolean;
+}
+
+const shouldSuppressLoginPageForbiddenFeedback = (error: ApiRequestError) => {
   if (error.code !== ErrorCode.FORBIDDEN) {
     return false;
   }
@@ -21,8 +26,13 @@ const triggerForcedSessionLogout = () => {
     .catch(() => undefined);
 };
 
-export const handleApiError = (error: ApiRequestError, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
-  if (shouldSuppressLoginPageForbiddenFeedback(error, authSnapshot)) {
+export const handleApiError = (
+  error: ApiRequestError,
+  options: RequestOptions,
+  authSnapshot: AuthRequestSnapshot,
+  context: ApiErrorHandlingContext = {},
+) => {
+  if (shouldSuppressLoginPageForbiddenFeedback(error)) {
     return;
   }
 
@@ -51,8 +61,13 @@ export const handleApiError = (error: ApiRequestError, options: RequestOptions, 
   if (
     options.allowUnauthorizedWithoutRedirect === true ||
     options.autoRedirectOnUnauthorized === false ||
+    context.authenticatedRefreshSucceeded === true ||
+    context.refreshTemporarilyUnavailable === true ||
     shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())
   ) {
+    if (!options.silent && (context.authenticatedRefreshSucceeded || context.refreshTemporarilyUnavailable)) {
+      message.warning(feedback.message);
+    }
     return;
   }
 

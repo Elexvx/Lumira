@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.competition.vo;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 public final class CompetitionRegistrationVO {
     private CompetitionRegistrationVO() {
@@ -77,6 +78,15 @@ public final class CompetitionRegistrationVO {
         private String stageName;
         private String status;
         private Integer sort;
+        private LocalDateTime materialSubmitStart;
+        private LocalDateTime materialSubmitEnd;
+        private LocalDateTime reviewStart;
+        private LocalDateTime reviewEnd;
+        private String promotionRuleType;
+        private BigDecimal promotionRuleValue;
+        private String promotionTiePolicy;
+        private Boolean materialEditable;
+        private String materialAccessReason;
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
@@ -90,6 +100,61 @@ public final class CompetitionRegistrationVO {
         public void setStatus(String status) { this.status = status; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
+        public LocalDateTime getMaterialSubmitStart() { return materialSubmitStart; }
+        public void setMaterialSubmitStart(LocalDateTime materialSubmitStart) { this.materialSubmitStart = materialSubmitStart; }
+        public LocalDateTime getMaterialSubmitEnd() { return materialSubmitEnd; }
+        public void setMaterialSubmitEnd(LocalDateTime materialSubmitEnd) { this.materialSubmitEnd = materialSubmitEnd; }
+        public LocalDateTime getReviewStart() { return reviewStart; }
+        public void setReviewStart(LocalDateTime reviewStart) { this.reviewStart = reviewStart; }
+        public LocalDateTime getReviewEnd() { return reviewEnd; }
+        public void setReviewEnd(LocalDateTime reviewEnd) { this.reviewEnd = reviewEnd; }
+        public String getPromotionRuleType() { return promotionRuleType; }
+        public void setPromotionRuleType(String promotionRuleType) { this.promotionRuleType = promotionRuleType; }
+        public BigDecimal getPromotionRuleValue() { return promotionRuleValue; }
+        public void setPromotionRuleValue(BigDecimal promotionRuleValue) { this.promotionRuleValue = promotionRuleValue; }
+        public String getPromotionTiePolicy() { return promotionTiePolicy; }
+        public void setPromotionTiePolicy(String promotionTiePolicy) { this.promotionTiePolicy = promotionTiePolicy; }
+        public Boolean getMaterialEditable() { return materialEditable; }
+        public void setMaterialEditable(Boolean materialEditable) { this.materialEditable = materialEditable; }
+        public String getMaterialAccessReason() { return materialAccessReason; }
+        public void setMaterialAccessReason(String materialAccessReason) { this.materialAccessReason = materialAccessReason; }
+    }
+
+    public static class StageReviewCandidate {
+        private Long registrationId;
+        private String registrationNo;
+        private Long competitionId;
+        private Long stageId;
+        private String teamName;
+        private String projectTitle;
+        private BigDecimal score;
+        private String decision;
+        private String reviewComment;
+        private LocalDateTime publishedAt;
+        private LocalDateTime submittedAt;
+
+        public Long getRegistrationId() { return registrationId; }
+        public void setRegistrationId(Long registrationId) { this.registrationId = registrationId; }
+        public String getRegistrationNo() { return registrationNo; }
+        public void setRegistrationNo(String registrationNo) { this.registrationNo = registrationNo; }
+        public Long getCompetitionId() { return competitionId; }
+        public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
+        public Long getStageId() { return stageId; }
+        public void setStageId(Long stageId) { this.stageId = stageId; }
+        public String getTeamName() { return teamName; }
+        public void setTeamName(String teamName) { this.teamName = teamName; }
+        public String getProjectTitle() { return projectTitle; }
+        public void setProjectTitle(String projectTitle) { this.projectTitle = projectTitle; }
+        public BigDecimal getScore() { return score; }
+        public void setScore(BigDecimal score) { this.score = score; }
+        public String getDecision() { return decision; }
+        public void setDecision(String decision) { this.decision = decision; }
+        public String getReviewComment() { return reviewComment; }
+        public void setReviewComment(String reviewComment) { this.reviewComment = reviewComment; }
+        public LocalDateTime getPublishedAt() { return publishedAt; }
+        public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+        public LocalDateTime getSubmittedAt() { return submittedAt; }
+        public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
     }
 
     public static class StageForm {

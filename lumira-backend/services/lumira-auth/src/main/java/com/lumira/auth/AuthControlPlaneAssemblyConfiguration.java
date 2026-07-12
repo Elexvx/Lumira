@@ -2,6 +2,7 @@ package com.lumira.auth;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.auth.config.AuthBeansConfiguration;
+import com.lumira.auth.config.AuthJwtAuthFilter;
 import com.lumira.auth.config.AuthSecurityProperties;
 import com.lumira.auth.controller.AuthController;
 import com.lumira.auth.controller.AuthInternalController;
@@ -21,12 +22,15 @@ import com.lumira.auth.service.WechatLoginService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnLumiraControlPlaneEnabled
 @EnableConfigurationProperties(AuthSecurityProperties.class)
 @Import({
         AuthBeansConfiguration.class,
+        AuthJwtAuthFilter.class,
         AuthController.class,
         AuthInternalController.class,
         AuthReadinessV2Controller.class,
@@ -44,4 +48,11 @@ import org.springframework.context.annotation.Import;
         WechatLoginService.class
 })
 public class AuthControlPlaneAssemblyConfiguration {
+
+    @Bean
+    FilterRegistrationBean<AuthJwtAuthFilter> disableAuthJwtServletFilterRegistration(AuthJwtAuthFilter filter) {
+        FilterRegistrationBean<AuthJwtAuthFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
 }

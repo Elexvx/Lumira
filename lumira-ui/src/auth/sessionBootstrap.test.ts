@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn(),
   loadSecuritySettings: vi.fn(),
   clearAuthSession: vi.fn(),
-  tryRefreshToken: vi.fn(),
+  tryRefreshTokenOutcome: vi.fn(),
   withBootstrapFlow: vi.fn((fn: () => Promise<unknown>) => fn()),
   persistCurrentUser: vi.fn((user) => user),
   buildFallbackCurrentUser: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock('@/auth/sessionSecurity', () => ({
 
 vi.mock('@/auth/sessionLifecycle', () => ({
   clearAuthSession: mocks.clearAuthSession,
-  tryRefreshToken: mocks.tryRefreshToken,
+  tryRefreshTokenOutcome: mocks.tryRefreshTokenOutcome,
   withBootstrapFlow: mocks.withBootstrapFlow,
 }));
 
@@ -63,7 +63,7 @@ describe('sessionBootstrap', () => {
     mocks.request.mockReset();
     mocks.loadSecuritySettings.mockReset();
     mocks.clearAuthSession.mockReset();
-    mocks.tryRefreshToken.mockReset();
+    mocks.tryRefreshTokenOutcome.mockReset();
     mocks.withBootstrapFlow.mockReset();
     mocks.persistCurrentUser.mockReset();
     mocks.buildFallbackCurrentUser.mockReset();
@@ -115,7 +115,7 @@ describe('sessionBootstrap', () => {
     });
     expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));
     expect(mocks.loadSecuritySettings).not.toHaveBeenCalled();
-    expect(mocks.tryRefreshToken).not.toHaveBeenCalled();
+    expect(mocks.tryRefreshTokenOutcome).not.toHaveBeenCalled();
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   });
 
@@ -180,7 +180,7 @@ describe('sessionBootstrap', () => {
     const availablePlugins = [{ pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }];
 
     mocks.hasToken.mockReturnValue(false);
-    mocks.tryRefreshToken.mockResolvedValue(true);
+    mocks.tryRefreshTokenOutcome.mockResolvedValue('refreshed');
     mocks.request.mockResolvedValue({
       currentUser: bootstrapUser,
       securitySettings,
@@ -198,7 +198,7 @@ describe('sessionBootstrap', () => {
       menuTree,
       availablePlugins,
     });
-    expect(mocks.tryRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mocks.tryRefreshTokenOutcome).toHaveBeenCalledTimes(1);
     expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   });
@@ -250,7 +250,7 @@ describe('sessionBootstrap', () => {
     );
     expect(mocks.request).toHaveBeenCalledWith('/v2/auth/current-user', expect.objectContaining({ method: 'GET' }));
     expect(mocks.request).toHaveBeenCalledWith('/v1/auth/current-user', expect.objectContaining({ method: 'GET' }));
-    expect(mocks.tryRefreshToken).not.toHaveBeenCalled();
+    expect(mocks.tryRefreshTokenOutcome).not.toHaveBeenCalled();
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   });
 
@@ -283,7 +283,7 @@ describe('sessionBootstrap', () => {
       }
       throw new Error(`Unexpected request: ${url}`);
     });
-    mocks.tryRefreshToken.mockResolvedValue(true);
+    mocks.tryRefreshTokenOutcome.mockResolvedValue('refreshed');
     const securitySettings = { captchaEnabled: true };
     mocks.loadSecuritySettings.mockResolvedValue(securitySettings);
 
@@ -295,7 +295,7 @@ describe('sessionBootstrap', () => {
       currentUser: secondCurrentUserResponse,
       securitySettings,
     });
-    expect(mocks.tryRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mocks.tryRefreshTokenOutcome).toHaveBeenCalledTimes(1);
     expect(mocks.loadSecuritySettings).toHaveBeenCalledTimes(1);
     expect(mocks.request).toHaveBeenCalledTimes(4);
     expect(mocks.persistCurrentUser).toHaveBeenCalledWith(secondCurrentUserResponse);

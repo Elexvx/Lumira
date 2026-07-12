@@ -1,110 +1,92 @@
-# system-service 模块边界
+# 模块边界与新模块模板
 
-## 1. 定位
+Lumira 以模块化单体运行：`services/lumira-admin` 聚合业务模块，但每个模块仍独立拥有代码、数据、契约和业务规则。本文是新增模块与跨模块协作的统一准则。
 
-`system-service` 是当前平台核心服务，但不能继续无限吸收所有业务能力。它的职责是维护平台控制面：用户、组织、权限、菜单、配置、审计、AI 管理和系统级运行视图。
+## 1. 三层模块
 
-新增能力进入 `system-service` 前，必须先判断它是不是平台控制面能力；如果是独立业务域、独立数据生命周期或高流量处理链路，应优先规划为独立服务或至少保持内部模块边界清晰。
+| 层 | 组成 | 职责 |
+| --- | --- | --- |
+| 基础层 | `libs/lumira-common-*`、`libs/lumira-*-api` | 稳定契约、安全原语、通用类型和基础能力；不得依赖业务模块 |
+| 平台层 | auth、system、file、message、plugin、localization、payment、ai、quartz | 认证、IAM、配置、文件、消息、插件等平台能力 |
+| 业务层 | 当前 Team；未来 Competition、Registration、Schedule、Score、Certificate、Project 等 | 产品业务规则、用例、数据、事件和权限策略 |
 
-## 2. 内部边界
+`lumira-system` 只负责 IAM、权限、菜单、配置、审计和平台治理，不是所有业务代码的默认容器。
 
-| 模块 | 目录 | Owner 职责 | 不应承担 |
-| --- | --- | --- | --- |
-| IAM / 用户中心 | `modules/iam`、`modules/user`、`modules/system/user` | 用户主数据、身份资料、用户安全设置、用户组织关系 | 登录协议细节、第三方认证回调 |
-| 权限 / 角色 / 菜单 | `modules/system/permission`、`modules/system/role`、`modules/system/menu` | RBAC、权限快照、菜单树、数据范围 | 网关路由规则、前端私有权限字符串 |
-| 系统配置 / 字典 | `modules/system/config`、`modules/system/dict` | 平台配置、租户配置、字典项、配置审计 | 各业务服务私有配置的直接表操作 |
-| 审计 | `modules/audit`、`modules/system/audit` | 操作日志、登录日志、高风险动作审计 | 业务流程编排和消息实时投递 |
-| AI | `modules/ai` | 数字员工、LLM 服务、AI 技能、知识库、会话、检索日志 | 通用文件存储、消息投递、长任务执行器 |
-| 监控 | `modules/system/monitor` | 服务健康、Redis、网关和基础运行视图 | 替代专业日志/指标平台 |
-| 在线会话 | `modules/system/online` | 在线用户、踢下线、会话同步 | 登录协议本身 |
-| 插件视图 | `modules/system/plugin`、`modules/plugin` | 平台菜单、权限展示和兼容视图 | 插件包安装、运行时隔离、插件网关主流程 |
+## 2. 当前运行约束
 
-## 3. 允许的依赖方向
+- `services/lumira-admin` 是同步请求的唯一 Spring Boot 启动入口。
+- 应用级端口、数据库、Redis、Flyway、Actuator 等运行配置集中在聚合入口。
+- `lumira-async` 与 `lumira-job-executor` 是独立后台运行时，不拥有被处理业务的数据。
+- 前端、Nginx、Docker 和脚本只面向 `lumira-server`，不直接绑定内部模块地址。
+- 聚合运行不放宽 Maven 依赖、表 owner、包可见性或权限边界。
 
-```text
-controller -> app/service -> domain -> infrastructure/mapper
-```
+## 3. 允许和禁止的协作方式
 
 允许：
 
-- `controller` 做参数接收、权限入口和统一响应。
-- `app` 编排用例、调用基础设施、写审计和发布事件。
-- `domain` 放业务规则和状态约束。
-- `infrastructure` 封装数据库、Redis、外部 API、Outbox、文件、任务。
+- 同步查询或命令：Internal API / Facade。
+- 异步协调：领域事件、集成事件和 Outbox。
+- 跨域搜索或报表：owner 查询接口或专用读模型。
 
-不允许：
+禁止：
 
-- controller 直接操作 mapper。
-- AI、IAM、审计等模块互相直接改表。
-- 为了一个页面在模块里复制权限判断、菜单判断或用户解析逻辑。
-- 新模块绕开 `CurrentUser`、`TraceContext`、`ApiResponse`、统一异常和审计约定。
+- import 其他模块的 Mapper、Entity 或 Service 实现。
+- 直接读写其他模块的 owner 表。
+- 从 `common-*` 或 `*-api` 反向依赖业务实现。
+- 让 Quartz、AI Tool Runtime、Controller 或消息消费者绕过 owner 的应用服务写表。
 
-## 4. 四个重点模块的边界
+例如，竞赛模块需要团队成员信息时，应调用 `TeamInternalApi` 或读取 Team 投影，不能查询 `team_member`。
 
-### 4.1 IAM
+## 4. 新业务模块模板
 
-IAM 是用户和身份的主数据域。它维护用户、账号身份、安全设置、组织归属和数据权限基础。
+```text
+services/lumira-{domain}/
+├─ pom.xml
+└─ src/
+   ├─ main/java/com/lumira/{domain}/
+   │  ├─ controller/    HTTP 适配
+   │  ├─ app/           用例、事务、权限、审计
+   │  ├─ domain/        聚合、值对象和领域规则
+   │  ├─ repository/    持久化端口与实现
+   │  ├─ entity/        模块私有持久化实体
+   │  ├─ mapper/        模块私有数据访问
+   │  ├─ dto/           命令和请求数据
+   │  ├─ vo/            响应对象
+   │  ├─ event/         领域/集成事件
+   │  └─ security/      业务权限策略
+   ├─ main/resources/db/migration/
+   └─ test/java/com/lumira/{domain}/
+```
 
-IAM 可以提供：
+共享契约确有多个消费者时，可增加 `libs/lumira-{domain}-api`。不要为了形式完整创建没有职责的空层。
 
-- 当前用户摘要。
-- 用户权限快照。
-- 组织和数据范围。
-- 用户状态校验。
+## 5. 新模块必须先定义
 
-IAM 不负责：
+- 业务边界：模块解决什么问题，不解决什么问题。
+- 表归属：拥有哪些表，如何从旧 owner 迁移。
+- API 契约：哪些同步能力向其他模块开放。
+- 权限：permission key、租户、角色和数据范围。
+- 审计：哪些写操作需要记录 actor、resource、result 和 requestId。
+- 事件：哪些事实需要可靠发布，消费者如何幂等。
+- 测试：应用服务、Controller、架构边界和关键工作流测试。
 
-- 登录协议本身。
-- JWT 签发和刷新。
-- 文件、消息、AI 等业务资源权限的细节实现。
+## 6. 何时物理拆分
 
-### 4.2 AI
+模块满足以下至少两项时，才进入独立服务评估：
 
-AI 模块是可演进为独立 `ai-service` 的业务增强域。当前留在 `system-service` 中，但必须保持边界。
+- 有独立表族和生命周期。
+- 有独立的高频读写或异步链路。
+- 需要独立扩容或发布。
+- 与平台模块主要通过稳定契约协作。
+- 故障不应影响系统管理主链路。
 
-AI 可以拥有：
+物理拆分的最小步骤：
 
-- `ai_employee`
-- `ai_llm_service`
-- `ai_knowledge_base`
-- `ai_knowledge_document`
-- `ai_knowledge_chunk`
-- `ai_conversation`
-- `ai_message`
+1. 确认 API、数据和事件边界已经稳定。
+2. 增加独立启动类与运行配置。
+3. 分离数据库迁移、缓存和可观测配置。
+4. 将聚合进程内调用替换为内部 API 或消息协作。
+5. 在 Docker Compose 和代理层增加服务与路由。
+6. 保持前端 `/api` 路径不变，并完成回滚演练。
 
-AI 只能通过 `file-service` 接收文件对象，通过 Outbox 发布索引、删除、重建等异步事件。AI 不直接维护文件服务的表。
-
-### 4.3 系统配置
-
-系统配置是平台控制面，不是每个业务服务的私有配置中心。
-
-规则：
-
-- 运行密钥和环境配置走环境变量或密钥系统。
-- 业务可配置项走配置表，但读取入口要统一。
-- 敏感字段必须使用字段级加密，并记录修改审计。
-- 其他服务需要配置时，通过 API、配置快照或 Nacos 读取，不直接查 `sys_config`。
-
-### 4.4 审计
-
-审计模块记录事实，不编排业务。
-
-应记录：
-
-- 用户、角色、权限、菜单、配置变化。
-- AI 知识库、LLM 服务、数字员工配置变化。
-- 文件删除、插件安装、消息撤回等高风险动作。
-
-审计事件来源可以是同步调用，也可以是 Outbox 消费投影。
-
-## 5. 拆分判断
-
-模块满足以下任意两项时，应进入独立服务评估：
-
-- 拥有独立表族和生命周期。
-- 有独立的高频读写或异步处理链路。
-- 需要独立扩容或独立发布。
-- 与 `system-service` 的依赖主要通过用户、权限、配置等平台能力完成。
-- 故障不应该影响系统管理主链路。
-
-当前最接近拆分评估的是 AI、插件、本地化和文件存储空间治理。
+物理拆分是运行决策，不应成为清理代码边界的前置条件。

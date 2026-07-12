@@ -9,10 +9,10 @@ import com.lumira.api.payment.PaymentCreateRefundRequestDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
-import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.vo.PageResponse;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -38,7 +38,6 @@ public class PaymentTransactionService {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
     private static final String SANDBOX_ENVIRONMENT = "SANDBOX";
-    private static final String LOCAL_SANDBOX_PROVIDER = "LOCAL_SANDBOX";
     private static final String PERMISSION_PAYMENT_ORDER_CREATE = "payment:order:create";
     private static final String PERMISSION_PAYMENT_ORDER_VIEW = "payment:order:view";
     private static final String PERMISSION_PAYMENT_REFUND_CREATE = "payment:refund:create";
@@ -52,6 +51,7 @@ public class PaymentTransactionService {
     private final DomainEventPublisher domainEventPublisher;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private final PaymentActorResolver actorResolver;
+    private final AlipayPagePayService alipayPagePayService;
 
     @Autowired
     public PaymentTransactionService(
@@ -71,6 +71,7 @@ public class PaymentTransactionService {
         this.domainEventPublisher = domainEventPublisher;
         this.systemInternalApiProvider = systemInternalApiProvider;
         this.actorResolver = new PaymentActorResolver();
+        this.alipayPagePayService = new AlipayPagePayService(objectMapper);
     }
 
     @Transactional
@@ -91,149 +92,48 @@ public class PaymentTransactionService {
         );
     }
 
-    @Transactional
-    public SandboxSimulationOrder createLocalSandboxSimulation(CurrentUser currentUser, Long targetUserId, Long amountMinor) {
-        Actor operator = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE);
-        requirePositiveAmount(amountMinor, "Payment amount");
-        if (targetUserId == null || targetUserId <= 0) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "Target account is required");
-        }
-        SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
-        if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Local account resolver is unavailable");
-        }
-        SystemUserSnapshotDTO target = systemInternalApi.findUserIdentityById(targetUserId);
-        if (target == null || target.userId() == null || !target.userId().equals(targetUserId)
-                || !StringUtils.hasText(target.userUuid())) {
-            throw new BizException(ErrorCode.NOT_FOUND, "Target account does not exist");
-        }
-        if (!"ENABLED".equalsIgnoreCase(target.status())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Target account is disabled");
-        }
-
-        String token = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT);
-        String orderNo = "SIM-" + System.currentTimeMillis() + "-" + token.substring(0, 6);
-        String providerOrderNo = "LOCAL-" + token;
-        String accountName = firstText(target.realName(), target.nickname(), target.username(), String.valueOf(targetUserId));
-        LocalDateTime now = LocalDateTime.now();
-        String requestJson = serialize(Map.of(
-                "simulation", true,
-                "networkMode", "LOCAL_ONLY",
-                "targetUserId", targetUserId,
-                "targetUserUuid", target.userUuid().trim(),
-                "operatorUserId", operator.userId()
-        ));
-        String responseJson = serialize(Map.of(
-                "simulated", true,
-                "cloudRequestSent", false,
-                "providerOrderNo", providerOrderNo
-        ));
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into payment_order (
-                            order_no, provider_code, provider_order_no, subject, amount_minor, currency,
-                            status, payment_url, request_json, response_json, idempotency_key, expires_at,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, 'CNY', 'SIMULATED', null, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
-                orderNo,
-                LOCAL_SANDBOX_PROVIDER,
-                providerOrderNo,
-                "模拟订单 - " + accountName,
-                amountMinor,
-                requestJson,
-                responseJson,
-                "local-sandbox:" + orderNo,
-                now.plusHours(2),
-                targetUserId,
-                target.userUuid().trim(),
-                operator.userId(),
-                operator.userUuid()
-        );
-        requireSinglePaymentUpdate(inserted, "Sandbox simulation order changed, please retry");
-        return findLocalSandboxSimulation(orderNo);
-    }
-
     @Transactional(readOnly = true)
-    public List<SandboxSimulationOrder> listLocalSandboxSimulations(CurrentUser currentUser) {
+    public PageResponse<PaymentOrderDTO> listSandboxOrders(CurrentUser currentUser, int pageNo, int pageSize) {
         trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_VIEW);
-        return jdbcTemplate.query(
+        int normalizedPageNo = Math.max(pageNo, 1);
+        int normalizedPageSize = Math.min(Math.max(pageSize, 1), 100);
+        int offset = (normalizedPageNo - 1) * normalizedPageSize;
+        Long total = jdbcTemplate.queryForObject(
                 """
-                        select po.order_no, po.amount_minor, po.currency, po.status, po.created_at,
-                               po.created_by as target_user_id, su.username, su.nickname, su.real_name
-                        from payment_order po
-                        left join sys_user su on su.id = po.created_by and su.deleted = 0
-                        where po.provider_code = ? and po.deleted = 0
-                        order by po.id desc
-                        limit 100
+                        select count(*)
+                        from payment_order
+                        where provider_code = ? and order_no like 'SBX-%' and deleted = 0
                         """,
-                (rs, rowNum) -> new SandboxSimulationOrder(
-                        rs.getString("order_no"),
-                        rs.getLong("target_user_id"),
-                        rs.getString("username"),
-                        rs.getString("nickname"),
-                        rs.getString("real_name"),
-                        rs.getLong("amount_minor"),
-                        rs.getString("currency"),
-                        rs.getString("status"),
-                        rs.getTimestamp("created_at").toLocalDateTime(),
-                        true,
-                        false
-                ),
-                LOCAL_SANDBOX_PROVIDER
+                Long.class,
+                "alipay"
         );
-    }
-
-    private SandboxSimulationOrder findLocalSandboxSimulation(String orderNo) {
-        return jdbcTemplate.queryForObject(
+        List<PaymentOrderDTO> records = jdbcTemplate.query(
                 """
-                        select po.order_no, po.amount_minor, po.currency, po.status, po.created_at,
-                               po.created_by as target_user_id, su.username, su.nickname, su.real_name
-                        from payment_order po
-                        left join sys_user su on su.id = po.created_by and su.deleted = 0
-                        where po.order_no = ? and po.provider_code = ? and po.deleted = 0
-                        limit 1
+                        select id, order_no as orderNo, provider_code as providerCode,
+                               provider_order_no as providerOrderNo, subject, amount_minor as amountMinor,
+                               currency, status, payment_url as paymentUrl, client_ip as clientIp,
+                               notify_url as notifyUrl, return_url as returnUrl, request_json as requestJson,
+                               response_json as responseJson, idempotency_key as idempotencyKey,
+                               failure_code as failureCode, failure_message as failureMessage,
+                               expires_at as expiresAt, paid_at as paidAt, created_by as createdBy,
+                               created_by_uuid as createdByUuid, created_at as createdAt,
+                               updated_by as updatedBy, updated_at as updatedAt, deleted
+                        from payment_order
+                        where provider_code = ? and order_no like 'SBX-%' and deleted = 0
+                        order by created_at desc, id desc
+                        limit ? offset ?
                         """,
-                (rs, rowNum) -> new SandboxSimulationOrder(
-                        rs.getString("order_no"),
-                        rs.getLong("target_user_id"),
-                        rs.getString("username"),
-                        rs.getString("nickname"),
-                        rs.getString("real_name"),
-                        rs.getLong("amount_minor"),
-                        rs.getString("currency"),
-                        rs.getString("status"),
-                        rs.getTimestamp("created_at").toLocalDateTime(),
-                        true,
-                        false
-                ),
-                orderNo,
-                LOCAL_SANDBOX_PROVIDER
-        );
-    }
-
-    private String firstText(String... values) {
-        for (String value : values) {
-            if (StringUtils.hasText(value)) {
-                return value.trim();
-            }
-        }
-        return "";
-    }
-
-    public record SandboxSimulationOrder(
-            String orderNo,
-            Long targetUserId,
-            String username,
-            String nickname,
-            String realName,
-            Long amountMinor,
-            String currency,
-            String status,
-            LocalDateTime createdAt,
-            boolean localOnly,
-            boolean cloudRequestSent
-    ) {
+                new BeanPropertyRowMapper<>(PaymentOrderRow.class),
+                "alipay",
+                normalizedPageSize,
+                offset
+        ).stream().map(this::toOrderDto).toList();
+        PageResponse<PaymentOrderDTO> response = new PageResponse<>();
+        response.setPageNo(normalizedPageNo);
+        response.setPageSize(normalizedPageSize);
+        response.setTotal(total == null ? 0 : total);
+        response.setRecords(records);
+        return response;
     }
 
     private PaymentOrderDTO createOrder(Actor actor, PaymentCreateOrderRequestDTO request, PaymentProviderSettingsDTO settings) {
@@ -270,10 +170,10 @@ public class PaymentTransactionService {
         row.setAmountMinor(request.amountMinor());
         row.setCurrency(normalizeText(request.currency()).toUpperCase(Locale.ROOT));
         row.setStatus("PENDING");
-        row.setPaymentUrl(buildPaymentUrl(settings, row.getOrderNo()));
         row.setClientIp(normalizeText(request.clientIp()));
         row.setNotifyUrl(resolveText(request.notifyUrl(), settings.getNotifyUrl()));
         row.setReturnUrl(resolveText(request.returnUrl(), settings.getReturnUrl()));
+        row.setPaymentUrl(buildPaymentUrl(settings, row));
         row.setRequestJson(serialize(Map.of(
                 "providerCode", row.getProviderCode(),
                 "orderNo", row.getOrderNo(),
@@ -374,6 +274,41 @@ public class PaymentTransactionService {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
         }
         return toOrderDto(row);
+    }
+
+    @Transactional
+    public PaymentOrderDTO cancelPendingOrderForUser(CurrentUser currentUser, String orderNo) {
+        Actor actor = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE);
+        PaymentOrderRow row = findOrderByOrderNoAndCreatedBy(normalizeIdentifier(orderNo), actor);
+        if (row == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
+        }
+        if (List.of("PAID", "SUCCESS", "SETTLED", "REFUNDING", "REFUNDED").contains(row.getStatus())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Paid payment orders cannot be cancelled");
+        }
+        if ("CANCELLED".equals(row.getStatus())) {
+            return toOrderDto(row);
+        }
+        if ("alipay".equalsIgnoreCase(row.getProviderCode())) {
+            alipayPagePayService.closeTrade(
+                    paymentManagementAppService.getRequiredProviderSettings(row.getProviderCode()),
+                    row.getOrderNo()
+            );
+        }
+        int updated = jdbcTemplate.update(
+                """
+                        update payment_order
+                        set status = 'CANCELLED', payment_url = null, failure_code = 'ORDER_CANCELLED',
+                            failure_message = 'Registration was deleted before payment',
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and order_no = ? and created_by = ? and created_by_uuid = ?
+                          and status in ('CREATED', 'PENDING') and deleted = 0
+                        """,
+                actor.userId(), actor.userUuid(), LocalDateTime.now(),
+                row.getId(), row.getOrderNo(), actor.userId(), actor.userUuid()
+        );
+        requireSinglePaymentUpdate(updated, "Payment order state changed, please retry");
+        return toOrderDto(findOrderByOrderNo(row.getOrderNo()));
     }
 
     @Transactional
@@ -877,11 +812,21 @@ public class PaymentTransactionService {
         return providerCatalog.normalize(providerCode) + "-refund-" + normalizeIdentifier(refundNo) + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
-    private String buildPaymentUrl(PaymentProviderSettingsDTO settings, String orderNo) {
-        if (StringUtils.hasText(settings.getApiBaseUrl())) {
-            return resolveText(settings.getApiBaseUrl(), "") + "/checkout/" + orderNo;
+    private String buildPaymentUrl(PaymentProviderSettingsDTO settings, PaymentOrderRow order) {
+        if ("alipay".equals(order.getProviderCode())) {
+            return alipayPagePayService.buildPagePayUrl(
+                    settings,
+                    order.getOrderNo(),
+                    order.getSubject(),
+                    order.getAmountMinor(),
+                    order.getNotifyUrl(),
+                    order.getReturnUrl()
+            );
         }
-        return "/api/v1/payment/orders/" + orderNo;
+        if (StringUtils.hasText(settings.getApiBaseUrl())) {
+            return resolveText(settings.getApiBaseUrl(), "") + "/checkout/" + order.getOrderNo();
+        }
+        return "/api/v1/payment/orders/" + order.getOrderNo();
     }
 
     private String normalizeIdentifier(String value) {

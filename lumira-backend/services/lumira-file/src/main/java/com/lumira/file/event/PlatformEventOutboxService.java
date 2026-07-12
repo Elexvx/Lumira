@@ -63,22 +63,7 @@ public class PlatformEventOutboxService {
     }
 
     public void recordAfterCommit(String sourceType, String eventType, Long userId, String eventKey, Object payload) {
-        Runnable recordAction = () -> record(sourceType, eventType, userId, eventKey, payload);
-        if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
-            recordAction.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    recordAction.run();
-                } catch (RuntimeException exception) {
-                    logger.warn("文件事件 outbox 记录失败: {}", exception.getMessage(), exception);
-                }
-            }
-        });
+        record(sourceType, eventType, userId, eventKey, payload);
     }
 
     public PlatformEventOutboxEntity record(String sourceType, String eventType, Long userId, String eventKey, Object payload) {

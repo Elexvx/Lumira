@@ -26,6 +26,7 @@ import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -619,8 +620,168 @@ public class CompetitionManagementAppService {
                 competition.getUuid(),
                 current.getId()
         );
+        synchronizeStageForms(competition, current, userId, userUuid);
         recordConfigAudit(currentUser, competition.getUuid(), "PUBLISH_SETTINGS", "PUBLISH", "Published current config");
         return requireConfigSet(current.getId());
+    }
+
+    private void synchronizeStageForms(
+            CompetitionVO.Competition competition,
+            CompetitionVO.ConfigSet configSet,
+            Long userId,
+            String userUuid
+    ) {
+        List<CompetitionVO.ConfigItem> configuredMaterials = listConfigItems(
+                competition.getUuid(),
+                configSet.getId(),
+                Set.of("REQUIRED_FILE", "STAGE_MATERIAL")
+        ).stream().filter(item -> !Boolean.FALSE.equals(item.getEnabled())).toList();
+        List<CompetitionVO.ConfigItem> preliminary = configuredMaterials.stream()
+                .filter(item -> {
+                    String stageCode = metadataValue(item, "stageCode");
+                    return !StringUtils.hasText(stageCode)
+                            || "GENERAL".equalsIgnoreCase(stageCode)
+                            || "PRELIMINARY".equalsIgnoreCase(stageCode);
+                })
+                .toList();
+        List<CompetitionVO.ConfigItem> finals = configuredMaterials.stream()
+                .filter(item -> "FINAL".equalsIgnoreCase(metadataValue(item, "stageCode")))
+                .toList();
+        synchronizeStageForm(competition.getId(), "PRELIMINARY", "初赛", preliminary, 10, userId, userUuid);
+        synchronizeStageForm(competition.getId(), "FINAL", "决赛", finals, 20, userId, userUuid);
+    }
+
+    private void synchronizeStageForm(
+            Long competitionId,
+            String stageCode,
+            String stageName,
+            List<CompetitionVO.ConfigItem> items,
+            int sort,
+            Long userId,
+            String userUuid
+    ) {
+        Long stageId = jdbcTemplate.queryForObject(
+                "select id from competition_stage where competition_id = ? and stage_code = ? and deleted = 0 order by id asc limit 1",
+                Long.class,
+                competitionId,
+                stageCode
+        );
+        if (items.isEmpty()) {
+            if (stageId != null) {
+                jdbcTemplate.update(
+                        "update competition_stage_form set status = 'DISABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where stage_id = ? and deleted = 0",
+                        userId,
+                        userUuid,
+                        LocalDateTime.now(),
+                        stageId
+                );
+                jdbcTemplate.update(
+                        "update competition_stage set status = 'DISABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and competition_id = ? and deleted = 0",
+                        userId,
+                        userUuid,
+                        LocalDateTime.now(),
+                        stageId,
+                        competitionId
+                );
+            }
+            return;
+        }
+        if (stageId == null) {
+            int inserted = jdbcTemplate.update(
+                    "insert into competition_stage (competition_id, stage_code, stage_name, status, sort, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted) values (?, ?, ?, 'ENABLED', ?, ?, ?, ?, ?, 0)",
+                    competitionId,
+                    stageCode,
+                    stageName,
+                    sort,
+                    userId,
+                    userUuid,
+                    userId,
+                    userUuid
+            );
+            requireCompetitionWrite(inserted, "Competition stage changed, please retry");
+            stageId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        } else {
+            jdbcTemplate.update(
+                    "update competition_stage set stage_name = ?, status = 'ENABLED', sort = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and competition_id = ? and deleted = 0",
+                    stageName,
+                    sort,
+                    userId,
+                    userUuid,
+                    LocalDateTime.now(),
+                    stageId,
+                    competitionId
+            );
+        }
+
+        String formSchemaJson = buildStageFormSchema(items);
+        Long formId = jdbcTemplate.queryForObject(
+                "select id from competition_stage_form where stage_id = ? and deleted = 0 order by version desc, id desc limit 1",
+                Long.class,
+                stageId
+        );
+        if (formId == null) {
+            int inserted = jdbcTemplate.update(
+                    "insert into competition_stage_form (competition_id, stage_id, form_name, form_schema_json, version, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted) values (?, ?, ?, ?, 1, 'ENABLED', ?, ?, ?, ?, 0)",
+                    competitionId,
+                    stageId,
+                    stageName + "材料",
+                    formSchemaJson,
+                    userId,
+                    userUuid,
+                    userId,
+                    userUuid
+            );
+            requireCompetitionWrite(inserted, "Competition stage form changed, please retry");
+            return;
+        }
+        int updated = jdbcTemplate.update(
+                "update competition_stage_form set form_name = ?, form_schema_json = ?, version = version + 1, status = 'ENABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and stage_id = ? and deleted = 0",
+                stageName + "材料",
+                formSchemaJson,
+                userId,
+                userUuid,
+                LocalDateTime.now(),
+                formId,
+                stageId
+        );
+        requireCompetitionWrite(updated, "Competition stage form changed, please retry");
+    }
+
+    private String buildStageFormSchema(List<CompetitionVO.ConfigItem> items) {
+        Map<String, CompetitionVO.ConfigItem> uniqueItems = new LinkedHashMap<>();
+        items.forEach(item -> uniqueItems.put(item.getItemKey(), item));
+        List<Map<String, Object>> fields = uniqueItems.values().stream().map(item -> {
+            Map<String, Object> field = new LinkedHashMap<>();
+            field.put("key", item.getItemKey());
+            field.put("label", item.getTitle());
+            field.put("type", "file");
+            field.put("required", Boolean.TRUE.equals(item.getRequiredFlag()));
+            field.put("fileFormat", firstText(metadataValue(item, "fileFormat"), "ANY"));
+            field.put("maxSizeMb", positiveIntegerMetadata(item, "maxSizeMb", 20));
+            String storageKey = metadataValue(item, "storageKey");
+            if (StringUtils.hasText(storageKey)) {
+                field.put("storageKey", storageKey);
+            }
+            return field;
+        }).toList();
+        try {
+            return OBJECT_MAPPER.writeValueAsString(Map.of("fields", fields));
+        } catch (Exception exception) {
+            throw biz(ErrorCode.BIZ_ERROR, "Competition stage form could not be generated");
+        }
+    }
+
+    private int positiveIntegerMetadata(CompetitionVO.ConfigItem item, String key, int fallback) {
+        String value = metadataValue(item, key);
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : fallback;
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     @Transactional

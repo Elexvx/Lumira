@@ -16,8 +16,8 @@
 
 执行建议：
 
-1. 页面级手工测试明细记录在 [`doc/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/doc/24-page-manual-test-workbook.md)
-2. 页面级结果汇总记录在 [`doc/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/22-test-execution-checklist-template.md)
+1. 页面级手工测试明细记录在 [逐页手工测试工作簿](24-page-manual-test-workbook.md)。
+2. 页面级结果汇总记录在 [测试执行台账模板](22-test-execution-checklist-template.md)。
 3. 本文档用于形成正式测试结论
 
 ## 2. 基本信息
@@ -251,6 +251,6 @@
 
 关联文档：
 
-- 主测试方案：[`doc/21-test-strategy-and-cases.md`](/Users/johntao/Documents/GitHub/lumira/doc/21-test-strategy-and-cases.md)
-- 执行台账模板：[`doc/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/22-test-execution-checklist-template.md)
-- 逐页手工测试工作簿：[`doc/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/doc/24-page-manual-test-workbook.md)
+- 主测试方案：[测试策略与用例](21-test-strategy-and-cases.md)
+- 执行台账模板：[测试执行台账模板](22-test-execution-checklist-template.md)
+- 逐页手工测试工作簿：[逐页手工测试工作簿](24-page-manual-test-workbook.md)

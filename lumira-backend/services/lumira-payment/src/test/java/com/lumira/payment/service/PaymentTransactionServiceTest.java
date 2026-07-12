@@ -11,6 +11,7 @@ import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.vo.PageResponse;
 import com.lumira.domain.event.DomainEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -41,6 +42,32 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PaymentTransactionServiceTest {
+
+    @Test
+    void listSandboxOrdersShouldReturnOnlyCloudSandboxOrdersNewestFirst() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow row = orderRow(1001L);
+        row.setOrderNo("SBX-1783830650013-A6ABA9");
+        row.setProviderCode("alipay");
+        doReturn(1L).when(jdbcTemplate).queryForObject(any(String.class), eq(Long.class), eq("alipay"));
+        doReturn(List.of(row)).when(jdbcTemplate).query(any(String.class), anyOrderRowMapper(), eq("alipay"), eq(10), eq(10));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PageResponse<PaymentOrderDTO> page = service.listSandboxOrders(currentUser(), 2, 10);
+
+        assertThat(page.getPageNo()).isEqualTo(2);
+        assertThat(page.getPageSize()).isEqualTo(10);
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).extracting(PaymentOrderDTO::orderNo)
+                .containsExactly("SBX-1783830650013-A6ABA9");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).query(sqlCaptor.capture(), anyOrderRowMapper(), eq("alipay"), eq(10), eq(10));
+        assertThat(sqlCaptor.getValue())
+                .contains("provider_code = ?")
+                .contains("order_no like 'SBX-%'")
+                .contains("order by created_at desc, id desc")
+                .contains("limit ? offset ?");
+    }
 
     @Test
     void getOrderForUserShouldConstrainByCreator() {

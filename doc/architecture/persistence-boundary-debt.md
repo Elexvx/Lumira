@@ -2,7 +2,9 @@
 
 本文件记录当前仍保留的直接 SQL 写库债务。它们不是新规范的例外模板，只是为了避免本阶段大规模扰动 System、IAM、AI 等历史模块。后续治理应按模块拆分，逐步迁移到 Repository、Mapper、DAO 或 Persistence Adapter。
 Team 模块不允许进入本债务清单。本阶段已经要求 `TeamAppService` 和 `TeamInviteService` 清除直接写库 SQL，并由 Team repository 层承接持久化。
-## 褰撳墠鍊哄姟娓呭崟
+## 当前债务清单
+
+“债务”列中的 `direct SQL` 和 `direct persistence dependency` 是架构测试识别的固定标记，不翻译。
 
 | 模块/类 | 债务 | 本阶段处理 |
 | --- | --- | --- |
@@ -10,9 +12,9 @@ Team 模块不允许进入本债务清单。本阶段已经要求 `TeamAppServic
 | `SystemUserManagementAppService` | direct SQL | 记录债务，后续迁移到 User repository/persistence adapter |
 | `SystemRoleManagementAppService` | direct SQL | 记录债务，后续迁移到 Role repository/persistence adapter |
 | `SystemDepartmentAppService` | direct SQL | 记录债务，后续迁移到 Department repository/persistence adapter |
-| `AccountActivationService` | direct SQL | historical debt; migrate to Account activation repository/persistence adapter |
+| `AccountActivationService` | direct SQL | 迁移到 Account activation repository/persistence adapter |
 | `IamUserService` | direct SQL | 记录债务，后续迁移到 IAM repository/persistence adapter |
-| `AiAssistantEmployeeResolver` | direct SQL | historical debt; migrate to AI assistant employee repository/persistence adapter |
+| `AiAssistantEmployeeResolver` | direct SQL | 迁移到 AI assistant employee repository/persistence adapter |
 | `DefaultDelegationGrantEvaluator` | direct persistence dependency | 记录债务，后续迁移到 IAM delegation repository/persistence adapter |
 | `AiToolPolicyService` | direct SQL | 记录债务，后续迁移到 AI policy repository/persistence adapter |
 | `AiConversationService` | direct SQL | 记录债务，后续迁移到 AI conversation repository/persistence adapter |
@@ -29,11 +31,11 @@ Team 模块不允许进入本债务清单。本阶段已经要求 `TeamAppServic
 | `AiSkillPermissionChecker` | direct persistence dependency | 记录债务，后续迁移到 AI permission repository/persistence adapter 或授权 Internal API |
 | `AiToolRegistry` | direct persistence dependency | 记录债务，后续迁移到 AI tool registry repository/persistence adapter |
 | `ActivityManagementAppService` | direct SQL | 记录债务，后续迁移到 Activity repository/persistence adapter |
-| `OperationAuditService` | direct SQL | historical debt; migrate to Audit repository/persistence adapter |
-| `CertificateAppService` | direct SQL | historical debt; migrate to Certificate repository/persistence adapter |
+| `OperationAuditService` | direct SQL | 迁移到 Audit repository/persistence adapter |
+| `CertificateAppService` | direct SQL | 迁移到 Certificate repository/persistence adapter |
 | `CompetitionManagementAppService` | direct SQL | 记录债务，后续迁移到 Competition repository/persistence adapter |
-| `CompetitionRegistrationAppService` | direct SQL | MVP registration/material/payment orchestration debt; migrate to Competition registration repository/persistence adapter |
-| `ExpertApprovalEventConsumer` | direct SQL | historical debt; migrate to Expert approval repository/persistence adapter |
+| `CompetitionRegistrationAppService` | direct SQL | MVP 报名、资料与支付编排债务；迁移到 Competition registration repository/persistence adapter |
+| `ExpertApprovalEventConsumer` | direct SQL | 迁移到 Expert approval repository/persistence adapter |
 | `ExpertManagementAppService` | direct SQL | 记录债务，后续迁移到 Expert repository/persistence adapter |
 | `FileManagementAppService` | direct persistence dependency | 记录债务，后续迁移到 File repository/persistence adapter |
 | `OnlineSessionManagementAppService` | direct SQL | 记录债务，后续迁移到 Online Session repository/persistence adapter |
@@ -48,8 +50,8 @@ Team 模块不允许进入本债务清单。本阶段已经要求 `TeamAppServic
 | `UserExportTaskWorkerService` | direct persistence dependency | 记录债务，后续迁移到 User export repository/persistence adapter |
 | `TeamInternalApiService` | direct persistence dependency | 记录债务，后续迁移到 Team repository/persistence adapter；不得扩展到 `TeamAppService` 或 `TeamInviteService` |
 | `TeamPermissionService` | direct persistence dependency | 记录债务，后续迁移到 Team repository/persistence adapter；不得扩展到 `TeamAppService` 或 `TeamInviteService` |
-| `WorkflowAppService` | direct SQL | historical debt; migrate to Workflow repository/persistence adapter |
-| `WorkflowSchemaBootstrap` | direct SQL | historical debt; migrate to Workflow schema repository/persistence adapter |
+| `WorkflowAppService` | direct SQL | 迁移到 Workflow repository/persistence adapter |
+| `WorkflowSchemaBootstrap` | direct SQL | 迁移到 Workflow schema repository/persistence adapter |
 | `WorkOrderFeedbackService` | direct SQL | 记录债务，后续迁移到 Work Order repository/persistence adapter |
 | `WorkOrderFeedbackPluginStateService` | direct persistence dependency | 记录债务，后续迁移到 Work Order plugin state repository/persistence adapter |
 | `InternalSystemController` | direct SQL / direct persistence dependency | 记录债务，后续迁移到 Internal API application service 或 repository/persistence adapter |

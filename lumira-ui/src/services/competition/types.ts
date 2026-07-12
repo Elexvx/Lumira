@@ -208,6 +208,15 @@ export interface CompetitionStageRecord {
   stageName: string;
   status: string;
   sort: number;
+  materialSubmitStart?: string | null;
+  materialSubmitEnd?: string | null;
+  reviewStart?: string | null;
+  reviewEnd?: string | null;
+  promotionRuleType?: string | null;
+  promotionRuleValue?: number | null;
+  promotionTiePolicy?: string | null;
+  materialEditable?: boolean | null;
+  materialAccessReason?: string | null;
 }
 
 export interface CompetitionStageUpsertPayload {
@@ -215,6 +224,33 @@ export interface CompetitionStageUpsertPayload {
   stageName: string;
   status?: string;
   sort?: number;
+  materialSubmitStart?: string | null;
+  materialSubmitEnd?: string | null;
+  reviewStart?: string | null;
+  reviewEnd?: string | null;
+  promotionRuleType?: string | null;
+  promotionRuleValue?: number | null;
+  promotionTiePolicy?: string | null;
+}
+
+export interface CompetitionStageReviewCandidateRecord {
+  registrationId: number;
+  registrationNo: string;
+  competitionId: number;
+  stageId: number;
+  teamName: string;
+  projectTitle: string;
+  score?: number | null;
+  decision: 'PENDING' | 'ADVANCED' | 'ELIMINATED';
+  reviewComment?: string | null;
+  publishedAt?: string | null;
+  submittedAt?: string | null;
+}
+
+export interface CompetitionStageReviewDecisionPayload {
+  score?: number | null;
+  decision: 'PENDING' | 'ADVANCED' | 'ELIMINATED';
+  comment?: string;
 }
 
 export interface CompetitionStageFormRecord {

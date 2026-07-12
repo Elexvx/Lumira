@@ -79,6 +79,12 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         return paymentTransactionService.getOrderForUser(operator.getUserId(), operator.getUserUuid(), requireOrderNo(orderNo));
     }
 
+    @Override
+    public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+        CurrentUser operator = resolveTrustedOperator(operatorId, operatorUuid, simulatedRoleId);
+        return paymentTransactionService.cancelPendingOrderForUser(operator, requireOrderNo(orderNo));
+    }
+
     private CurrentUser resolveTrustedOperator(Long operatorId, String operatorUuid, Long simulatedRoleId) {
         if (operatorId == null || operatorId <= 0) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid operator is required");
@@ -88,7 +94,7 @@ public class PaymentInternalApiService implements PaymentInternalApi {
         }
         SystemInternalApi systemInternalApi = systemInternalApiProvider == null ? null : systemInternalApiProvider.getIfAvailable();
         if (systemInternalApi == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator resolver is unavailable");
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Trusted operator resolver is unavailable");
         }
         SystemUserSnapshotDTO snapshot = systemInternalApi.findUserIdentityById(operatorId);
         if (snapshot == null || snapshot.userId() == null || !snapshot.userId().equals(operatorId)) {
@@ -111,7 +117,7 @@ public class PaymentInternalApiService implements PaymentInternalApi {
                 ? systemInternalApi.permissionSnapshot(operatorId, snapshot.userUuid().trim())
                 : systemInternalApi.simulatedRolePermissionSnapshot(operatorId, snapshot.userUuid().trim(), normalizedSimulatedRoleId);
         if (permissionSnapshot == null || !StringUtils.hasText(permissionSnapshot.version())) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Operator permissions are unavailable");
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Operator permissions are unavailable");
         }
         CurrentUser operator = new CurrentUser(
                 snapshot.userId(),

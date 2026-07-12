@@ -1,7 +1,8 @@
 import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tabs, Tag, Typography, Upload } from 'antd';
+import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -20,10 +21,12 @@ import { normalizeLocale } from '@/i18n/locale';
 import {
   createCompetition,
   createCompetitionDraft,
+  createCompetitionStage,
   createProject,
   createRegistration,
   createRegistrationPaymentOrder,
   deleteCompetition,
+  deleteRegistration,
   getCompetition,
   getRegistration,
   getCompetitionSettings,
@@ -35,6 +38,8 @@ import {
   publishCompetitionSettings,
   saveCompetitionSettingsModule,
   submitRegistrationMaterials,
+  updateCompetitionStage,
+  upsertCompetitionStageForm,
   updateCompetition,
   updateCompetitionDraft,
   updateRegistration,
@@ -53,11 +58,12 @@ import type {
   CompetitionRegistrationRecord,
   CompetitionSettingsRecord,
   CompetitionStageFormRecord,
+  CompetitionStageRecord,
   CompetitionStatus,
   CompetitionUpsertPayload,
 } from '@/services/competition/types';
 import { request } from '@/services/common/request';
-import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult } from '@/types/api';
+import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult, PaymentProviderSettings } from '@/types/api';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
@@ -2728,6 +2734,23 @@ const CompetitionRegistrationPage = () => {
     }
   }, [form, loadStageFormForCompetition, setWizardStep]);
 
+  const removePendingRegistration = useCallback((record: CompetitionRegistrationRecord) => {
+    modal.confirm({
+      title: '确认删除该报名记录？',
+      content: record.paymentOrderNo
+        ? '删除后将同步取消已生成的待支付订单，且无法恢复。'
+        : '删除后该待支付报名记录将无法恢复。',
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await deleteRegistration(record.id);
+        message.success(record.paymentOrderNo ? '报名记录与待支付订单已取消' : '报名记录已删除');
+        registrationActionRef.current?.reload();
+      },
+    });
+  }, []);
+
   const goNext = async () => {
     if (step <= 2 && !canCreateRegistration) {
       message.error('当前账号没有创建赛事报名权限');
@@ -2891,19 +2914,6 @@ const CompetitionRegistrationPage = () => {
     }
   };
 
-  const resetMemberEditor = useCallback(() => {
-    setMemberEditorKey(undefined);
-    setMemberEditorDraft(undefined);
-    setMemberEditorErrors({});
-  }, []);
-
-  const openMemberEditor = useCallback((key: RegistrationMemberEditorKey) => {
-    const currentMembers = (form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[];
-    setMemberEditorKey(key);
-    setMemberEditorDraft(key === 'new' ? emptyRegistrationTeamMember() : currentMembers[key] || emptyRegistrationTeamMember());
-    setMemberEditorErrors({});
-  }, [form]);
-
   const confirmMemberModal = async () => {
     const values = await memberForm.validateFields();
     const [member] = normalizeRegistrationMembers([values]);
@@ -2930,7 +2940,7 @@ const CompetitionRegistrationPage = () => {
     memberForm.resetFields();
   };
 
-  const removeMember = (index: number) => {
+  const removeMember = useCallback((index: number) => {
     const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
     currentMembers.splice(index, 1);
     form.setFieldValue(['newTeam', 'initialMembers'], currentMembers);
@@ -2941,7 +2951,7 @@ const CompetitionRegistrationPage = () => {
         initialMembers: currentMembers,
       },
     });
-  };
+  }, [collectRegistrationValues, form, persistRegistrationDraft]);
 
   useEffect(() => {
     if (step !== 4 || !registrationId || paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID') {
@@ -2969,7 +2979,7 @@ const CompetitionRegistrationPage = () => {
       ),
     ) as string[];
 
-  const getMemberSummary = (member: RegistrationTeamMemberDraft, index: number) => {
+  const _getMemberSummary = (member: RegistrationTeamMemberDraft, index: number) => {
     const displayValues = getMemberDisplayValues(member);
     const extraValues = member.extraValues || {};
     return (
@@ -2982,7 +2992,7 @@ const CompetitionRegistrationPage = () => {
     );
   };
 
-  const getMemberDescription = (member: RegistrationTeamMemberDraft) => {
+  const _getMemberDescription = (member: RegistrationTeamMemberDraft) => {
     const displayValues = getMemberDisplayValues(member);
     return displayValues.slice(1).join(' / ') || '已填写报名采集信息';
   };
@@ -3187,16 +3197,23 @@ const CompetitionRegistrationPage = () => {
         title: '\u64cd\u4f5c',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 112,
+        width: 200,
         align: 'right',
         render: (_, record) => (
-          <Button type="text" icon={<EyeOutlined />} loading={loading && registrationId === record.id} onClick={() => void openRegistrationFlow(record)}>
-            {record.status === 'PAID' || record.status === 'CONFIRMED' ? '\u67e5\u770b' : '\u7ee7\u7eed'}
-          </Button>
+          <Space size={4}>
+            <Button type="text" icon={<EyeOutlined />} loading={loading && registrationId === record.id} onClick={() => void openRegistrationFlow(record)}>
+              {record.status === 'PAID' || record.status === 'CONFIRMED' ? '\u67e5\u770b' : '\u7ee7\u7eed'}
+            </Button>
+            {record.status === 'PENDING_PAYMENT' ? (
+              <Button danger type="text" icon={<DeleteOutlined />} onClick={() => removePendingRegistration(record)}>
+                删除
+              </Button>
+            ) : null}
+          </Space>
         ),
       },
     ],
-    [competitionTitleMap, loading, openRegistrationFlow, registrationId, responsive.isDesktop],
+    [competitionTitleMap, loading, openRegistrationFlow, registrationId, removePendingRegistration, responsive.isDesktop],
   );
   const registrationBreadcrumb = useMemo(
     () => ({
@@ -3792,6 +3809,12 @@ type StorageSpaceOption = {
   value: string;
 };
 
+type PaymentProviderOption = {
+  label: string;
+  value: string;
+  disabled?: boolean;
+};
+
 const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
   {
     key: 'documents',
@@ -4055,12 +4078,19 @@ const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }>
   { label: '项目信息', value: 'PROJECT_FIELD' },
 ];
 
-const paymentProviderOptions = [
-  { label: '微信支付', value: 'wechat_pay' },
-  { label: '支付宝', value: 'alipay' },
-  { label: 'Stripe', value: 'stripe' },
-  { label: 'PayPal', value: 'paypal' },
-];
+const loadConfiguredPaymentProviderOptions = async (): Promise<PaymentProviderOption[]> => {
+  const providers = await request<PaymentProviderSettings[]>('/v1/payment/providers', {
+    method: 'GET',
+    ...API_OPTS.SILENT,
+  });
+  return providers
+    .filter((provider) => provider.persisted && provider.configured && provider.enabled)
+    .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0))
+    .map((provider) => ({
+      value: provider.providerCode,
+      label: provider.displayName || provider.providerName || provider.providerCode,
+    }));
+};
 
 const timelineKindOptions = [
   { label: '报名时间', value: 'REGISTRATION' },
@@ -4267,22 +4297,22 @@ const renderConfigItemFields = (
 
   if (module.key === 'payments') {
     return (
-      <div className="competition-config-grid">
-        <Form.Item name={[fieldName, 'itemKey']} label="支付渠道" rules={[{ required: true, message: '请选择支付渠道' }]}>
-          <Select options={paymentProviderOptions} />
+      <>
+        <Form.Item name={[fieldName, 'itemKey']} hidden rules={[{ required: true }]}>
+          <Input />
         </Form.Item>
-        <Form.Item name={[fieldName, 'title']} label="前台名称" rules={[{ required: true, message: '请输入前台名称' }]}>
-          <Input maxLength={64} placeholder="例如：微信支付" />
+        <Form.Item name={[fieldName, 'title']} hidden rules={[{ required: true }]}>
+          <Input />
         </Form.Item>
-      </div>
+      </>
     );
   }
 
   if (module.key === 'files') {
     return (
       <div className="competition-config-grid">
-        <Form.Item name={[fieldName, 'metadata', 'stageCode']} label="适用阶段" rules={[{ required: true, message: '请选择适用阶段' }]}>
-          <Select options={fileStageOptions} />
+        <Form.Item name={[fieldName, 'metadata', 'stageCode']} hidden initialValue="GENERAL">
+          <Input />
         </Form.Item>
         <Form.Item name={[fieldName, 'itemKey']} hidden normalize={normalizeConfigKey}>
           <Input />
@@ -4445,6 +4475,7 @@ type ConfigModulePanelProps = {
   storageSpaceOptions: StorageSpaceOption[];
   fieldScope?: RegistrationFieldScope;
   includeMemberFields?: boolean;
+  paymentProviderOptions?: PaymentProviderOption[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
 
@@ -4455,6 +4486,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   storageSpaceOptions,
   fieldScope,
   includeMemberFields = false,
+  paymentProviderOptions = [],
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<{
@@ -4467,15 +4499,43 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     fieldTitle?: string;
     value: string;
   }>();
+  const resolvedPaymentProviderOptions = useMemo(() => {
+    const configuredCodes = new Set(paymentProviderOptions.map((option) => option.value));
+    const unavailableOptions = items
+      .filter((item) => item.itemType === 'PAYMENT_SETTINGS' && item.itemKey && !configuredCodes.has(item.itemKey))
+      .map((item) => ({
+        value: item.itemKey,
+        label: `${item.title || item.itemKey}（系统渠道已停用）`,
+        disabled: true,
+      }));
+    return [...paymentProviderOptions, ...unavailableOptions];
+  }, [items, paymentProviderOptions]);
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
+    const editableItems = toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS'));
+    const initialItems = module.key === 'payments'
+      ? [
+          ...paymentProviderOptions.map((provider, index) => {
+            const existing = editableItems.find((item) => item.itemKey === provider.value);
+            return existing
+              ? { ...existing, title: provider.label }
+              : {
+                  ...toEditableConfigItems([emptyConfigItem('PAYMENT_SETTINGS', (index + 1) * 10)])[0],
+                  itemKey: provider.value,
+                  title: provider.label,
+                  enabled: false,
+                };
+          }),
+          ...editableItems.filter((item) => !paymentProviderOptions.some((provider) => provider.value === item.itemKey)),
+        ]
+      : editableItems;
     return {
-      items: toEditableConfigItems(items.filter((item) => item.itemType !== 'TEAM_SETTINGS')),
+      items: initialItems,
       teamMinMembers: limits.minMembers,
       teamMaxMembers: limits.maxMembers,
     };
-  }, [items]);
+  }, [items, module.key, paymentProviderOptions]);
 
   useEffect(() => {
     form.setFieldsValue(getInitialValues());
@@ -4552,6 +4612,15 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
         {getCompetitionSettingsModuleDescription(module)}
       </Typography.Paragraph>
+      {module.key === 'payments' && !paymentProviderOptions.length ? (
+        <Alert
+          showIcon
+          type="warning"
+          message="暂无可绑定的支付渠道"
+          description="请先在系统支付设置中完成渠道配置并启用，已启用的渠道会自动出现在这里。"
+          style={{ marginBottom: 16 }}
+        />
+      ) : null}
       <Form form={form} layout="vertical" initialValues={getInitialValues()} onValuesChange={scheduleSave}>
         <Form.List name="items">
           {(fields, { add, remove }) =>
@@ -4646,6 +4715,70 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                   };
                 })}
               />
+            ) : module.key === 'payments' ? (
+              <Table
+                className="competition-payment-provider-table"
+                rowKey="key"
+                size="small"
+                pagination={false}
+                dataSource={fields}
+                scroll={{ x: 720 }}
+                locale={{ emptyText: '系统支付设置中暂无已配置并启用的渠道' }}
+                columns={[
+                  {
+                    title: '支付渠道',
+                    key: 'provider',
+                    width: 240,
+                    render: (_, field) => {
+                      const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
+                      const provider = resolvedPaymentProviderOptions.find((option) => option.value === item?.itemKey);
+                      return (
+                        <>
+                          <Form.Item name={[field.name, 'itemKey']} hidden rules={[{ required: true }]}>
+                            <Input />
+                          </Form.Item>
+                          <Form.Item name={[field.name, 'title']} hidden rules={[{ required: true }]}>
+                            <Input />
+                          </Form.Item>
+                          <Typography.Text strong>{provider?.label || item?.title || item?.itemKey || '-'}</Typography.Text>
+                        </>
+                      );
+                    },
+                  },
+                  {
+                    title: '系统状态',
+                    key: 'systemStatus',
+                    width: 150,
+                    render: (_, field) => {
+                      const item = form.getFieldValue(['items', field.name]) as EditableCompetitionConfigItem | undefined;
+                      const provider = resolvedPaymentProviderOptions.find((option) => option.value === item?.itemKey);
+                      return provider?.disabled
+                        ? <Tag>已停用</Tag>
+                        : <Tag color="success">可用</Tag>;
+                    },
+                  },
+                  {
+                    title: '绑定状态',
+                    key: 'enabled',
+                    width: 190,
+                    render: (_, field) => (
+                      <Form.Item name={[field.name, 'enabled']} valuePropName="checked" style={{ marginBottom: 0 }}>
+                        <Switch aria-label="绑定状态" />
+                      </Form.Item>
+                    ),
+                  },
+                  {
+                    title: '排序',
+                    key: 'sortOrder',
+                    width: 140,
+                    render: (_, field) => (
+                      <Form.Item name={[field.name, 'sortOrder']} style={{ marginBottom: 0 }}>
+                        <InputNumber min={0} precision={0} style={{ width: 110 }} />
+                      </Form.Item>
+                    ),
+                  },
+                ]}
+              />
             ) : (
               <Space className="competition-config-list" direction="vertical" size={16}>
               {fields.map((field, index) => (
@@ -4655,7 +4788,11 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                   size="small"
                   title={
                     <Space size={8} wrap>
-                      <span>{formatMessage({ id: 'page.competition.settings.item.title', defaultMessage: 'Item {index}' }, { index: index + 1 })}</span>
+                      <span>{module.key === 'payments'
+                        ? (resolvedPaymentProviderOptions.find((option) => option.value === form.getFieldValue(['items', field.name, 'itemKey']))?.label
+                          || form.getFieldValue(['items', field.name, 'title'])
+                          || `支付渠道 ${index + 1}`)
+                        : formatMessage({ id: 'page.competition.settings.item.title', defaultMessage: 'Item {index}' }, { index: index + 1 })}</span>
                       <Form.Item noStyle shouldUpdate>
                         {({ getFieldValue }) => {
                           const enabled = getFieldValue(['items', field.name, 'enabled']);
@@ -4665,14 +4802,16 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                             <>
                               {isDocumentModule && enabled !== false ? <Tag color="blue">需确认</Tag> : null}
                               {!isDocumentModule && required ? <Tag color="red">必填</Tag> : null}
-                              {enabled === false ? <Tag>停用</Tag> : <Tag color="green">启用</Tag>}
+                              {enabled === false
+                                ? <Tag>{module.key === 'payments' ? '未绑定' : '停用'}</Tag>
+                                : <Tag color="green">{module.key === 'payments' ? '已绑定' : '启用'}</Tag>}
                             </>
                           );
                         }}
                       </Form.Item>
                     </Space>
                   }
-                  extra={
+                  extra={module.key === 'payments' ? null : (
                     <Button
                       danger
                       onClick={() => {
@@ -4682,7 +4821,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     >
                       {formatMessage({ id: 'page.competition.settings.item.remove', defaultMessage: 'Remove' })}
                     </Button>
-                  }
+                  )}
                 >
                   <Space direction="vertical" style={{ width: '100%' }}>
                     <div className="competition-config-item__fields">
@@ -4800,7 +4939,7 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
         </Typography.Title>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        管理赛事名称、组织者、参赛规则、费用、时间和展示信息。
+        管理赛事名称、组织者和参赛规则。
       </Typography.Paragraph>
       <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
         <section className="competition-basic-section">
@@ -4878,10 +5017,83 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
           </div>
         </section>
 
-        <section className="competition-basic-section">
-          <Typography.Title className="competition-basic-section__title" level={5}>
+        <Form.Item name="code" hidden>
+          <Input />
+        </Form.Item>
+      </Form>
+    </section>
+  );
+});
+
+CompetitionBasicSettingsPanel.displayName = 'CompetitionBasicSettingsPanel';
+
+type CompetitionPaymentSettingsPanelProps = {
+  competition: CompetitionRecord;
+  competitionUuid: string;
+  module: CompetitionSettingsModuleConfig;
+  items: CompetitionConfigItem[];
+  storageSpaceOptions: StorageSpaceOption[];
+  paymentProviderOptions: PaymentProviderOption[];
+  onCompetitionSaved: (competition: CompetitionRecord) => void;
+  onSettingsSaved: (settings: CompetitionSettingsRecord) => void;
+};
+
+const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandle, CompetitionPaymentSettingsPanelProps>(({
+  competition,
+  competitionUuid,
+  module,
+  items,
+  storageSpaceOptions,
+  paymentProviderOptions,
+  onCompetitionSaved,
+  onSettingsSaved,
+}, ref) => {
+  const [form] = Form.useForm<CompetitionFormValues>();
+  const paymentMethodsRef = useRef<CompetitionSettingsPanelHandle | null>(null);
+
+  useEffect(() => {
+    form.resetFields();
+    form.setFieldsValue({
+      feeMode: competition.feeMode || undefined,
+      entryFeeMinor: Number(competition.entryFeeMinor || 0) / 100,
+      currency: competition.currency || 'CNY',
+    });
+  }, [competition, form]);
+
+  const saveFeeSettings = useCallback(async () => {
+    const values = await form.validateFields();
+    try {
+      const saved = await updateCompetition(competition.id, normalizePayload({
+        ...defaultCompetitionFormValues,
+        ...recordToFormValues(competition),
+        ...values,
+      } as CompetitionFormValues), API_OPTS.SILENT);
+      onCompetitionSaved(saved);
+    } catch (error) {
+      showErrorMessage(error, '费用设置保存失败');
+    }
+  }, [competition, form, onCompetitionSaved]);
+  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(saveFeeSettings);
+
+  useImperativeHandle(ref, () => ({
+    flushPendingSave: async () => {
+      await flushPendingSave();
+      await paymentMethodsRef.current?.flushPendingSave();
+    },
+  }), [flushPendingSave]);
+
+  return (
+    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+      <section className="competition-config-module">
+        <div className="competition-config-module__header">
+          <Typography.Title className="competition-config-module__title" level={4}>
             费用设置
           </Typography.Title>
+        </div>
+        <Typography.Paragraph className="competition-config-module__description" type="secondary">
+          配置赛事收费规则、参赛费用和结算货币。
+        </Typography.Paragraph>
+        <Form<CompetitionFormValues> form={form} layout="vertical" onValuesChange={scheduleSave}>
           <div className="competition-basic-section__grid">
             <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请选择收费方式' }]}>
               <Select options={feeModeOptions} placeholder="请选择收费方式" />
@@ -4893,33 +5105,22 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
               <Select options={[{ label: 'CNY', value: 'CNY' }]} />
             </Form.Item>
           </div>
-        </section>
-
-        <section className="competition-basic-section">
-          <Typography.Title className="competition-basic-section__title" level={5}>
-            展示与联系
-          </Typography.Title>
-          <div className="competition-basic-section__grid">
-            <Form.Item name="contactName" label="联系主办方">
-              <Input maxLength={128} placeholder="请输入主办方联系方式" />
-            </Form.Item>
-            <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
-              <Select mode="multiple" maxTagCount="responsive" options={localeOptions} />
-            </Form.Item>
-            <Form.Item className="competition-basic-section__full" name="homepageContent" label="竞赛主页">
-              <AgreementMarkdownEditor placeholder="请输入竞赛主页内容，支持 Markdown 富文本" />
-            </Form.Item>
-          </div>
-          <Form.Item name="code" hidden>
-            <Input />
-          </Form.Item>
-        </section>
-      </Form>
-    </section>
+        </Form>
+      </section>
+      <ConfigModulePanel
+        ref={paymentMethodsRef}
+        competitionUuid={competitionUuid}
+        module={module}
+        items={items}
+        storageSpaceOptions={storageSpaceOptions}
+        paymentProviderOptions={paymentProviderOptions}
+        onSaved={onSettingsSaved}
+      />
+    </Space>
   );
 });
 
-CompetitionBasicSettingsPanel.displayName = 'CompetitionBasicSettingsPanel';
+CompetitionPaymentSettingsPanel.displayName = 'CompetitionPaymentSettingsPanel';
 
 type CompetitionTimelineSettingsPanelProps = {
   competition: CompetitionRecord;
@@ -4932,7 +5133,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
   const schedules = Form.useWatch('schedules', form) || [];
-  const registrationRange = Form.useWatch('registrationRange', form);
 
   useEffect(() => {
     form.resetFields();
@@ -5032,18 +5232,13 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                                     if (!getCompleteTimeRange(value)) {
                                       return Promise.reject(new Error('请选择开始和结束时间'));
                                     }
-                                    if (!getCompleteTimeRange(registrationRange)) {
-                                      return Promise.reject(new Error('请先选择报名时间'));
-                                    }
-                                    return isScheduleWithinRegistrationRange(value, registrationRange)
-                                      ? Promise.resolve()
-                                      : Promise.reject(new Error('竞赛安排需在报名时间内'));
+                                    return Promise.resolve();
                                   },
                                 },
                               ]}
                               className="competition-schedule-row__time"
                             >
-                              <CompetitionDateTimeRangePicker disabledDate={(current) => isOutsideRegistrationDate(current, registrationRange)} />
+                              <CompetitionDateTimeRangePicker />
                             </Form.Item>
                             <div className="competition-schedule-row__actions">
                               {index === fields.length - 1 ? (
@@ -5085,6 +5280,292 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 
 CompetitionTimelineSettingsPanel.displayName = 'CompetitionTimelineSettingsPanel';
 
+type CompetitionStageWindowsPanelProps = {
+  competitionId: number;
+  onStagesChange: (stages: CompetitionStageRecord[]) => void;
+};
+
+const CompetitionStageWindowsPanel = ({ competitionId, onStagesChange }: CompetitionStageWindowsPanelProps) => {
+  const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [savingId, setSavingId] = useState<number>();
+
+  const loadStages = useCallback(async () => {
+    setLoading(true);
+    try {
+      const result = await listCompetitionStages(competitionId);
+      setStages(result);
+      onStagesChange(result);
+    } catch (error) {
+      showErrorMessage(error, '阶段时间加载失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [competitionId, onStagesChange]);
+
+  useEffect(() => {
+    void loadStages();
+  }, [loadStages]);
+
+  const initializeStages = async () => {
+    setLoading(true);
+    try {
+      const existingCodes = new Set(stages.map((stage) => stage.stageCode));
+      if (!existingCodes.has('PRELIMINARY')) {
+        await createCompetitionStage(competitionId, { stageCode: 'PRELIMINARY', stageName: '初赛', status: 'DRAFT', sort: 10 });
+      }
+      if (!existingCodes.has('FINAL')) {
+        await createCompetitionStage(competitionId, { stageCode: 'FINAL', stageName: '决赛', status: 'DRAFT', sort: 20 });
+      }
+      await loadStages();
+      message.success('初赛、决赛阶段已初始化');
+    } catch (error) {
+      showErrorMessage(error, '阶段初始化失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateLocalStage = (stageId: number, patch: Partial<CompetitionStageRecord>) => {
+    setStages((current) => current.map((stage) => stage.id === stageId ? { ...stage, ...patch } : stage));
+  };
+
+  const saveStage = async (stage: CompetitionStageRecord) => {
+    setSavingId(stage.id);
+    try {
+      const saved = await updateCompetitionStage(stage.id, {
+        stageCode: stage.stageCode as 'PRELIMINARY' | 'FINAL',
+        stageName: stage.stageName,
+        status: stage.status,
+        sort: stage.sort,
+        materialSubmitStart: stage.materialSubmitStart,
+        materialSubmitEnd: stage.materialSubmitEnd,
+        reviewStart: stage.reviewStart,
+        reviewEnd: stage.reviewEnd,
+        promotionRuleType: stage.stageCode === 'PRELIMINARY' ? (stage.promotionRuleType || 'PERCENTAGE') : undefined,
+        promotionRuleValue: stage.stageCode === 'PRELIMINARY' ? (stage.promotionRuleValue || 30) : undefined,
+        promotionTiePolicy: stage.stageCode === 'PRELIMINARY' ? 'MANUAL_REVIEW' : undefined,
+      });
+      updateLocalStage(stage.id, saved);
+      onStagesChange(stages.map((item) => item.id === saved.id ? saved : item));
+      message.success(`${saved.stageName}时间与权限已保存`);
+    } catch (error) {
+      showErrorMessage(error, '阶段保存失败');
+    } finally {
+      setSavingId(undefined);
+    }
+  };
+
+  const columns: ColumnsType<CompetitionStageRecord> = [
+    { title: '阶段', dataIndex: 'stageName', width: 130 },
+    {
+      title: '材料修改时间', key: 'materialWindow', width: 390,
+      render: (_, stage) => (
+        <DatePicker.RangePicker
+          showTime
+          value={stage.materialSubmitStart && stage.materialSubmitEnd
+            ? [dayjs(stage.materialSubmitStart), dayjs(stage.materialSubmitEnd)]
+            : undefined}
+          onChange={(value) => updateLocalStage(stage.id, {
+            materialSubmitStart: value?.[0]?.format('YYYY-MM-DDTHH:mm:ss') || null,
+            materialSubmitEnd: value?.[1]?.format('YYYY-MM-DDTHH:mm:ss') || null,
+          })}
+        />
+      ),
+    },
+    {
+      title: '评审时间', key: 'reviewWindow', width: 390,
+      render: (_, stage) => (
+        <DatePicker.RangePicker
+          showTime
+          value={stage.reviewStart && stage.reviewEnd ? [dayjs(stage.reviewStart), dayjs(stage.reviewEnd)] : undefined}
+          onChange={(value) => updateLocalStage(stage.id, {
+            reviewStart: value?.[0]?.format('YYYY-MM-DDTHH:mm:ss') || null,
+            reviewEnd: value?.[1]?.format('YYYY-MM-DDTHH:mm:ss') || null,
+          })}
+        />
+      ),
+    },
+    {
+      title: '材料权限', key: 'permission', width: 190,
+      render: (_, stage) => stage.stageCode === 'FINAL'
+        ? <Tag color="blue">仅已公布晋级团队</Tag>
+        : <Tag>已报名团队</Tag>,
+    },
+    {
+      title: '晋级方式', key: 'promotionRule', width: 290,
+      render: (_, stage) => stage.stageCode === 'PRELIMINARY' ? (
+        <Space size={8}>
+          <Select
+            style={{ width: 110 }}
+            value={stage.promotionRuleType || 'PERCENTAGE'}
+            options={[
+              { label: '按比例', value: 'PERCENTAGE' },
+              { label: '按人数', value: 'COUNT' },
+            ]}
+            onChange={(value) => updateLocalStage(stage.id, { promotionRuleType: value })}
+          />
+          <InputNumber
+            min={1}
+            max={stage.promotionRuleType === 'COUNT' ? undefined : 100}
+            precision={stage.promotionRuleType === 'COUNT' ? 0 : 2}
+            value={stage.promotionRuleValue ?? 30}
+            addonAfter={stage.promotionRuleType === 'COUNT' ? '人' : '%'}
+            onChange={(value) => updateLocalStage(stage.id, { promotionRuleValue: value })}
+          />
+        </Space>
+      ) : <Typography.Text type="secondary">—</Typography.Text>,
+    },
+    {
+      title: '开放', dataIndex: 'status', width: 100,
+      render: (_, stage) => (
+        <Switch
+          checked={stage.status === 'ENABLED'}
+          onChange={(checked) => updateLocalStage(stage.id, { status: checked ? 'ENABLED' : 'DRAFT' })}
+        />
+      ),
+    },
+    {
+      title: '操作', key: 'actions', width: 110,
+      render: (_, stage) => (
+        <Button type="primary" loading={savingId === stage.id} onClick={() => void saveStage(stage)}>保存</Button>
+      ),
+    },
+  ];
+
+  return (
+    <section className="competition-config-module">
+      <div className="competition-config-module__header">
+        <div>
+          <Typography.Title className="competition-config-module__title" level={4}>阶段时间与权限</Typography.Title>
+          <Typography.Paragraph type="secondary">
+            先设置每个阶段的材料修改和评审时间。决赛阶段自动与“评审与晋级”结果联动。
+          </Typography.Paragraph>
+        </div>
+        <Button onClick={() => void initializeStages()}>初始化初赛与决赛</Button>
+      </div>
+      <Table
+        rowKey="id"
+        loading={loading}
+        pagination={false}
+        dataSource={stages}
+        columns={columns}
+        scroll={{ x: 1610 }}
+        locale={{ emptyText: '请先初始化比赛阶段' }}
+      />
+    </section>
+  );
+};
+
+type CompetitionStageAndMaterialPanelProps = {
+  competition: CompetitionRecord;
+  competitionUuid: string;
+  module: CompetitionSettingsModuleConfig;
+  items: CompetitionConfigItem[];
+  storageSpaceOptions: StorageSpaceOption[];
+  onCompetitionSaved: (competition: CompetitionRecord) => void;
+  onSettingsSaved: (settings: CompetitionSettingsRecord) => void;
+};
+
+const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHandle, CompetitionStageAndMaterialPanelProps>(({
+  competition,
+  competitionUuid,
+  module,
+  items,
+  storageSpaceOptions,
+  onCompetitionSaved,
+  onSettingsSaved,
+}, ref) => {
+  const timelineRef = useRef<CompetitionSettingsPanelHandle | null>(null);
+  const materialsRef = useRef<CompetitionSettingsPanelHandle | null>(null);
+  const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
+  const sharedMaterialItems = useMemo(() => Array.from(new Map(items.map((item) => {
+    const metadata = parseConfigItemMetadata(item.contentJson);
+    const sharedItem: CompetitionConfigItem = {
+      ...item,
+      itemType: 'REQUIRED_FILE',
+      contentJson: serializeConfigItemMetadata({ ...metadata, stageCode: 'GENERAL', stageName: undefined }),
+    };
+    return [sharedItem.itemKey, sharedItem];
+  })).values()), [items]);
+  const sharedStageFormSchema = useMemo(() => JSON.stringify({
+    fields: sharedMaterialItems
+      .filter((item) => item.enabled !== false)
+      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
+      .map((item) => {
+        const metadata = parseConfigItemMetadata(item.contentJson);
+        return {
+          key: item.itemKey,
+          label: item.title,
+          type: 'file',
+          required: Boolean(item.requiredFlag),
+          fileFormat: normalizeFileFormat(metadata.fileFormat),
+          maxSizeMb: metadata.maxSizeMb || 20,
+          storageKey: metadata.storageKey,
+        };
+      }),
+  }), [sharedMaterialItems]);
+
+  useImperativeHandle(ref, () => ({
+    flushPendingSave: async () => {
+      await timelineRef.current?.flushPendingSave();
+      await materialsRef.current?.flushPendingSave();
+    },
+  }), []);
+
+  useEffect(() => {
+    if (!stages.length) return;
+    void Promise.all(stages.map((stage) => upsertCompetitionStageForm(stage.id, {
+      formName: '统一参赛材料',
+      formSchemaJson: sharedStageFormSchema,
+      status: 'ENABLED',
+    }))).catch((error) => showErrorMessage(error, '阶段材料模板同步失败'));
+  }, [sharedStageFormSchema, stages]);
+
+  const syncSharedStageForm = useCallback(async (saved: CompetitionSettingsRecord) => {
+    onSettingsSaved(saved);
+    const materialItems = [...saved.files, ...saved.stageMaterials]
+      .filter((item) => item.enabled !== false)
+      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
+    const schema = JSON.stringify({ fields: materialItems.map((item) => {
+      const metadata = parseConfigItemMetadata(item.contentJson);
+      return {
+        key: item.itemKey, label: item.title, type: 'file', required: Boolean(item.requiredFlag),
+        fileFormat: normalizeFileFormat(metadata.fileFormat), maxSizeMb: metadata.maxSizeMb || 20,
+        storageKey: metadata.storageKey,
+      };
+    }) });
+    await Promise.all(stages.map((stage) => upsertCompetitionStageForm(stage.id, {
+      formName: '统一参赛材料',
+      formSchemaJson: schema,
+      status: 'ENABLED',
+    })));
+  }, [onSettingsSaved, stages]);
+
+  return (
+    <Space direction="vertical" size={24} style={{ width: '100%' }}>
+      <CompetitionTimelineSettingsPanel ref={timelineRef} competition={competition} onSaved={onCompetitionSaved} />
+      <CompetitionStageWindowsPanel competitionId={competition.id} onStagesChange={setStages} />
+      <section>
+        <Typography.Title level={4}>统一材料模板</Typography.Title>
+        <Typography.Paragraph type="secondary">
+          初赛和决赛使用同一套材料字段；每个阶段只控制可修改时间，决赛另受晋级名单限制。
+        </Typography.Paragraph>
+        <ConfigModulePanel
+          ref={materialsRef}
+          competitionUuid={competitionUuid}
+          module={module}
+          items={sharedMaterialItems}
+          storageSpaceOptions={storageSpaceOptions}
+          onSaved={(saved) => void syncSharedStageForm(saved)}
+        />
+      </section>
+    </Space>
+  );
+});
+
+CompetitionStageAndMaterialPanel.displayName = 'CompetitionStageAndMaterialPanel';
+
 const CompetitionSettingsPage = () => {
   const params = useParams<{ competitionUuid: string }>();
   const location = useLocation();
@@ -5097,6 +5578,7 @@ const CompetitionSettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
+  const [paymentProviderOptions, setPaymentProviderOptions] = useState<PaymentProviderOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
@@ -5139,11 +5621,13 @@ const CompetitionSettingsPage = () => {
     Promise.all([
       getCompetitionSettings(competitionUuid),
       loadStorageSpaceOptions().catch(() => [] as StorageSpaceOption[]),
+      loadConfiguredPaymentProviderOptions().catch(() => [] as PaymentProviderOption[]),
     ])
-      .then(([result, nextStorageSpaceOptions]) => {
+      .then(([result, nextStorageSpaceOptions, nextPaymentProviderOptions]) => {
         if (mounted) {
           setSettings(result);
           setStorageSpaceOptions(nextStorageSpaceOptions);
+          setPaymentProviderOptions(nextPaymentProviderOptions);
         }
       })
       .catch((error) => showErrorMessage(error, formatMessage({ id: 'page.competition.settings.loadFailed', defaultMessage: 'Competition settings load failed' })))
@@ -5160,11 +5644,11 @@ const CompetitionSettingsPage = () => {
   const activeConfigModuleKey: CompetitionSettingsConfigModuleKey | undefined = activeKey === 'registration'
     ? registrationDetail === 'documents' ? 'documents' : 'fields'
     : activeKey === 'stages'
-      ? stageDetail
+      ? 'files'
       : activeKey === 'payments'
         ? 'payments'
         : undefined;
-  const activeModule = activeConfigModuleKey && activeConfigModuleKey !== 'timeline'
+  const activeModule = activeConfigModuleKey
     ? competitionSettingsModules.find((item) => item.key === activeConfigModuleKey)
     : undefined;
 
@@ -5196,7 +5680,7 @@ const CompetitionSettingsPage = () => {
     updateNavigationUrl('registration', nextDetail);
   }, [flushActivePanel, updateNavigationUrl]);
 
-  const handleStageDetailChange = useCallback(async (nextKey: string) => {
+  const _handleStageDetailChange = useCallback(async (nextKey: string) => {
     await flushActivePanel();
     const nextDetail = nextKey as CompetitionSettingsStageTab;
     setStageDetail(nextDetail);
@@ -5271,10 +5755,6 @@ const CompetitionSettingsPage = () => {
                     ]}
                     onChange={(key) => void handleRegistrationDetailChange(key)}
                   />
-                  <header className="competition-settings-section-header">
-                    <Typography.Title level={4}>报名设置</Typography.Title>
-                    <Typography.Paragraph type="secondary">集中配置参赛者需要阅读的文书，以及报名、团队、成员和项目信息。</Typography.Paragraph>
-                  </header>
                   {activeModule ? (
                     <ConfigModulePanel
                       key={activeModule.key}
@@ -5294,47 +5774,32 @@ const CompetitionSettingsPage = () => {
                   ) : null}
                 </>
               ) : activeKey === 'stages' ? (
-                <>
-                  <header className="competition-settings-section-header">
-                    <Typography.Title level={4}>赛程与材料</Typography.Title>
-                    <Typography.Paragraph type="secondary">按比赛阶段配置时间和参赛者需要提交的材料。</Typography.Paragraph>
-                  </header>
-                  <Tabs
-                    className="competition-settings-detail-tabs"
-                    activeKey={stageDetail}
-                    items={[
-                      { key: 'files', label: '阶段提交材料' },
-                      { key: 'timeline', label: '阶段时间' },
-                    ]}
-                    onChange={(key) => void handleStageDetailChange(key)}
+                activeModule ? (
+                  <CompetitionStageAndMaterialPanel
+                    ref={activePanelRef}
+                    competition={settings.competition}
+                    competitionUuid={settings.competition.uuid || competitionUuid}
+                    module={activeModule}
+                    items={getModuleItems(settings, activeModule.key)}
+                    storageSpaceOptions={storageSpaceOptions}
+                    onCompetitionSaved={(competition) => setSettings((current) => current ? { ...current, competition } : current)}
+                    onSettingsSaved={setSettings}
                   />
-                  {stageDetail === 'timeline' ? (
-                    <CompetitionTimelineSettingsPanel
-                      ref={activePanelRef}
-                      competition={settings.competition}
-                      onSaved={(competition) => setSettings({ ...settings, competition })}
-                    />
-                  ) : activeModule ? (
-                    <ConfigModulePanel
-                      key={activeModule.key}
-                      ref={activePanelRef}
-                      competitionUuid={settings.competition.uuid || competitionUuid}
-                      module={activeModule}
-                      items={getModuleItems(settings, activeModule.key)}
-                      storageSpaceOptions={storageSpaceOptions}
-                      onSaved={setSettings}
-                    />
-                  ) : null}
-                </>
+                ) : null
               ) : activeKey === 'payments' && activeModule ? (
-                <ConfigModulePanel
-                  key={activeModule.key}
+                <CompetitionPaymentSettingsPanel
+                  key={`${activeModule.key}-${settings.competition.id}`}
                   ref={activePanelRef}
+                  competition={settings.competition}
                   competitionUuid={settings.competition.uuid || competitionUuid}
                   module={activeModule}
                   items={getModuleItems(settings, activeModule.key)}
                   storageSpaceOptions={storageSpaceOptions}
-                  onSaved={setSettings}
+                  paymentProviderOptions={paymentProviderOptions}
+                  onCompetitionSaved={(competition) => setSettings((current) => current
+                    ? { ...current, competition }
+                    : current)}
+                  onSettingsSaved={setSettings}
                 />
               ) : activeKey === 'review' ? (
                 <section className="competition-settings-review">

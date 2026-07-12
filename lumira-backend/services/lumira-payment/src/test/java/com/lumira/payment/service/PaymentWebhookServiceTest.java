@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
+import com.lumira.domain.event.DomainEvent;
 import com.lumira.domain.event.DomainEventPublisher;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
@@ -37,7 +38,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class PaymentWebhookServiceTest {
 
     @Test
-    void paidCompetitionRegistrationWebhookUpdatesRegistrationWithIdempotentParticipantGuard() {
+    void paidCompetitionRegistrationWebhookPublishesOwnedEventWithoutWritingCompetitionTables() {
         JdbcTemplate jdbcTemplate = mockJdbcTemplateWithProcessMark();
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
         PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
@@ -81,7 +82,7 @@ class PaymentWebhookServiceTest {
                 domainEventPublisher
         );
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
-        String payload = "{\"eventId\":\"evt-paid\",\"eventType\":\"payment.succeeded\",\"orderNo\":\"REG-1-ABCD\"}";
+        String payload = "{\"eventId\":\"evt-paid\",\"eventType\":\"payment.succeeded\",\"orderNo\":\"REG-1-ABCD\",\"providerTxnId\":\"txn-provider-1001\"}";
 
         PaymentWebhookEventDTO result = service.handleWebhook(
                 "stripe",
@@ -95,7 +96,7 @@ class PaymentWebhookServiceTest {
         );
 
         assertThat(result.processed()).isTrue();
-        verify(jdbcTemplate).update(
+        verify(jdbcTemplate, never()).update(
                 contains("update competition_registration"),
                 eq("AIADC2026-0001"),
                 eq("REG-1-ABCD"),
@@ -127,7 +128,26 @@ class PaymentWebhookServiceTest {
                 eq("user-uuid-1001"),
                 eq("PENDING")
         );
-        verify(jdbcTemplate).update(contains("owner_user_id = ? and owner_user_uuid = ?"), any(Object[].class));
+        verify(jdbcTemplate).update(
+                contains("set provider_order_no = ?"),
+                eq("txn-provider-1001"),
+                any(),
+                eq(501L),
+                eq("REG-1-ABCD"),
+                eq("stripe")
+        );
+        verify(jdbcTemplate, never()).update(contains("owner_user_id = ? and owner_user_uuid = ?"), any(Object[].class));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.Collection<? extends DomainEvent>> events = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(domainEventPublisher).publishAll(events.capture());
+        assertThat(events.getValue()).singleElement().satisfies(event -> {
+            assertThat(event.eventType()).isEqualTo("PAYMENT_ORDER_PAID");
+            assertThat(event.aggregateId()).isEqualTo("REG-1-ABCD");
+            assertThat(event.attributes()).containsEntry("registrationId", 1L);
+            assertThat(event.attributes()).containsEntry("bizType", "competition_registration");
+            assertThat(event.attributes()).containsEntry("userId", 1001L);
+            assertThat(event.attributes()).containsEntry("userUuid", "user-uuid-1001");
+        });
         ArgumentCaptor<Object[]> webhookInsertParams = ArgumentCaptor.forClass(Object[].class);
         verify(jdbcTemplate).update(contains("insert into payment_webhook_event"), webhookInsertParams.capture());
         assertThat(webhookInsertParams.getValue())
@@ -146,7 +166,7 @@ class PaymentWebhookServiceTest {
     }
 
     @Test
-    void paidCompetitionRegistrationWebhookRejectsWhenRegistrationSnapshotChanged() {
+    void paidCompetitionRegistrationWebhookDoesNotDependOnRegistrationSnapshotWrite() {
         JdbcTemplate jdbcTemplate = mockJdbcTemplateWithProcessMark();
         PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
         PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
@@ -193,7 +213,7 @@ class PaymentWebhookServiceTest {
         String timestamp = String.valueOf(Instant.now().getEpochSecond());
         String payload = "{\"eventId\":\"evt-paid-registration-conflict\",\"eventType\":\"payment.succeeded\",\"orderNo\":\"REG-1-ABCD\"}";
 
-        assertThatThrownBy(() -> service.handleWebhook(
+        PaymentWebhookEventDTO result = service.handleWebhook(
                 "stripe",
                 payload,
                 Map.of(
@@ -202,10 +222,11 @@ class PaymentWebhookServiceTest {
                         "X-Timestamp", timestamp,
                         "Stripe-Signature", stripeSignature(timestamp, payload)
                 )
-        )).isInstanceOf(com.lumira.common.exception.BizException.class)
-                .hasMessageContaining("Competition registration state changed during payment webhook processing");
+        );
 
-        verifyNoInteractions(outboxService);
+        assertThat(result.processed()).isTrue();
+        verify(jdbcTemplate, never()).update(contains("update competition_registration"), any(Object[].class));
+        verify(domainEventPublisher).publishAll(any());
     }
 
     @Test

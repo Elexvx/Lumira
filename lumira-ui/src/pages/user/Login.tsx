@@ -71,7 +71,7 @@ const LoginPageMainSection = ({
   loginPageStyle,
   brandingWebsiteName,
   brandingFooterItems,
-  loginSubTitle,
+  loginSubTitle: _loginSubTitle,
   submitButtonText,
   activeLoginMode,
   availableLoginModes,

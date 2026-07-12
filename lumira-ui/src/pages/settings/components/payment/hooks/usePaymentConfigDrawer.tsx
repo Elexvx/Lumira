@@ -8,6 +8,7 @@ import { normalizeLocale } from '@/i18n/locale';
 import { buildSystemPaymentWebhookUrl } from '../paymentWebhookUrl';
 import { requestPaymentApi } from '../paymentAuthenticatedRequest';
 import { localizePaymentMessage } from '../paymentMessage';
+import { normalizePaymentEnvironment, paymentEnvironmentDisplayName, paymentProviderDisplayName } from '../paymentDisplay';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -28,18 +29,10 @@ type PaymentFieldConfig = {
 
 const MASKED_SECRET = '********';
 
-const PAYMENT_ENVIRONMENT_OPTIONS = [
-  { label: t('沙箱', 'Sandbox'), value: 'SANDBOX' },
-  { label: t('测试', 'Test'), value: 'TEST' },
-  { label: t('正式', 'Production'), value: 'PRODUCTION' },
-];
-
-const PAYMENT_PROVIDER_TITLES: Record<PaymentProviderCode, string> = {
-  alipay: t('支付宝', 'Alipay'),
-  wechat_pay: t('微信支付', 'WeChat Pay'),
-  stripe: 'Stripe',
-  paypal: 'PayPal',
-};
+const paymentEnvironmentOptions = () => ['SANDBOX', 'PRODUCTION'].map((value) => ({
+  value,
+  label: paymentEnvironmentDisplayName(value, isEnglishLocale()),
+}));
 
 const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldConfig[]> = {
   alipay: [
@@ -122,6 +115,7 @@ const resolveSandboxEnabled = (environment?: string | null) => environment?.trim
 
 const buildFormValues = (settings: PaymentProviderSettings): PaymentProviderSettings => ({
   ...settings,
+  environment: normalizePaymentEnvironment(settings.environment),
   appId: settings.appId ?? '',
   merchantId: settings.merchantId ?? '',
   merchantSerialNo: settings.merchantSerialNo ?? '',
@@ -198,10 +192,10 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
       setEditingProviderCode(providerCode);
       form.setFieldsValue(buildFormValues(provider || {
         providerCode,
-        providerName: PAYMENT_PROVIDER_TITLES[providerCode],
+        providerName: paymentProviderDisplayName(providerCode, providerCode, isEnglishLocale()),
         supportedScenes,
         enabledScenes: supportedScenes,
-        enabled: false,
+        enabled: true,
         configured: false,
         environment: 'SANDBOX',
         configuredFields: [],
@@ -295,9 +289,6 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
 
     return (
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
-        <Typography.Paragraph style={{ marginBottom: 0 }}>
-          {t('{provider} 配置已按平台字段分组保存，敏感项会以密文方式持久化。', '{provider} configuration is grouped by platform fields and sensitive items are stored encrypted.').replace('{provider}', currentProviderSettings?.providerName || PAYMENT_PROVIDER_TITLES[editingProviderCode])}
-        </Typography.Paragraph>
         <Form form={form} layout="vertical" disabled={!canUpdateSettings}>
           <Form.Item name="providerCode" hidden>
             <Input />
@@ -305,16 +296,13 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
           <Form.Item name="providerName" hidden>
             <Input />
           </Form.Item>
-          <Typography.Paragraph type="secondary">
-            {t('必填配置完整后，保存即自动启用；配置不完整时保持待配置状态。', 'A complete configuration is enabled automatically when saved; incomplete configurations remain pending.')}
-          </Typography.Paragraph>
           <Form.Item
             name="environment"
             label={t('环境', 'Environment')}
             rules={[{ required: true, message: t('请选择环境', 'Please select an environment') }]}
-            extra={t('选择沙箱时，系统会自动按沙箱配置保存。', 'Sandbox environment is saved as sandbox configuration automatically.')}
+            extra={t('测试环境使用测试配置保存，不会发起正式交易。', 'Test environment uses test configuration and does not create production transactions.')}
           >
-            <Select options={PAYMENT_ENVIRONMENT_OPTIONS} disabled={!canUpdateSettings} />
+            <Select options={paymentEnvironmentOptions()} disabled={!canUpdateSettings} />
           </Form.Item>
           <Form.Item name="displayName" label={t('前台展示名称', 'Checkout display name')} rules={[{ required: true, message: t('请输入前台展示名称', 'Please enter the checkout display name') }]}>
             <Input disabled={!canUpdateSettings} maxLength={64} />

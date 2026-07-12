@@ -34,6 +34,8 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +63,8 @@ public class CompetitionRegistrationAppService {
     private static final Set<String> REGISTRATION_STATUSES = Set.of("DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED", "CANCELLED");
     private static final Set<String> STAGE_CODES = Set.of("PRELIMINARY", "FINAL");
     private static final Set<String> STAGE_STATUSES = Set.of("DRAFT", "ENABLED", "DISABLED", "CLOSED");
+    private static final Set<String> REVIEW_DECISIONS = Set.of("PENDING", "ADVANCED", "ELIMINATED");
+    private static final Set<String> PROMOTION_RULE_TYPES = Set.of("PERCENTAGE", "COUNT", "MANUAL");
     private static final Set<String> FORM_STATUSES = Set.of("ENABLED", "DISABLED");
     private static final Set<String> FIELD_TYPES = Set.of("input", "textarea", "file");
     private static final long MAX_PAGE_SIZE = 100L;
@@ -304,6 +308,7 @@ public class CompetitionRegistrationAppService {
         requireRequest(request, "Registration request is required");
         validateRegistrationCreateRequest(request);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
+        requireRegistrationWindowOpen(competition);
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         int memberCount = team.members().size();
@@ -351,6 +356,7 @@ public class CompetitionRegistrationAppService {
         validateRegistrationCreateRequest(request);
         CompetitionRegistrationVO.Registration existing = getRegistration(currentUser, id);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
+        requireRegistrationWindowOpen(competition);
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
         int memberCount = team.members().size();
@@ -392,6 +398,60 @@ public class CompetitionRegistrationAppService {
         return getRegistration(currentUser, id);
     }
 
+    @Transactional
+    public boolean deletePendingRegistration(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, REGISTRATION_UPDATE_PERMISSION);
+        requirePositiveId(id, "Registration id is required");
+        CompetitionRegistrationVO.Registration existing = getRegistration(currentUser, id);
+        if (!"PENDING_PAYMENT".equals(existing.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "只有待支付的报名记录可以删除");
+        }
+        if (StringUtils.hasText(existing.getPaymentOrderNo())) {
+            PaymentInternalApi paymentApi = paymentInternalApiProvider.getIfAvailable();
+            if (paymentApi == null) {
+                throw biz(ErrorCode.DEPENDENCY_UNAVAILABLE, "支付服务暂不可用，无法安全取消订单");
+            }
+            PaymentOrderDTO cancelled = paymentApi.cancelOrder(
+                    requirePositiveUserId(existing.getOwnerUserId(), "Registration owner is missing"),
+                    requireRegistrationOwnerUserUuid(existing),
+                    null,
+                    existing.getPaymentOrderNo()
+            );
+            if (cancelled == null || !"CANCELLED".equals(cancelled.status())) {
+                throw biz(ErrorCode.BIZ_ERROR, "支付订单取消失败，报名记录未删除");
+            }
+        }
+        Long operatorId = requireUserId(currentUser);
+        String operatorUuid = requireUserUuid(currentUser);
+        jdbcTemplate.update(
+                """
+                        update competition_payment_order_task
+                        set status = 'CANCELLED', process_message = 'Registration deleted before payment',
+                            claim_token = null, claim_expires_at = null, updated_by = ?, updated_by_uuid = ?,
+                            updated_at = ?, deleted = 1
+                        where registration_id = ? and deleted = 0 and status not in ('SUCCEEDED', 'CANCELLED')
+                        """,
+                operatorId, operatorUuid, LocalDateTime.now(), id
+        );
+        int deleted = jdbcTemplate.update(
+                """
+                        update competition_registration
+                        set status = 'CANCELLED', updated_by = ?, updated_by_uuid = ?, updated_at = ?, deleted = 1
+                        where id = ? and registration_no = ? and owner_user_id = ? and owner_user_uuid = ?
+                          and status = 'PENDING_PAYMENT' and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                LocalDateTime.now(),
+                id,
+                existing.getRegistrationNo(),
+                requirePositiveUserId(existing.getOwnerUserId(), "Registration owner is missing"),
+                requireRegistrationOwnerUserUuid(existing)
+        );
+        requireRegistrationWrite(deleted, "Registration changed, please retry");
+        return true;
+    }
+
     public List<CompetitionRegistrationVO.Stage> listStages(CurrentUser currentUser, Long competitionId) {
         requirePositiveId(competitionId, "Competition id is required");
         requireUserId(currentUser);
@@ -404,10 +464,13 @@ public class CompetitionRegistrationAppService {
             );
         }
         requireRegistrationStageReadPermission(currentUser);
-        return jdbcTemplate.query(
+        List<CompetitionRegistrationVO.Stage> stages = jdbcTemplate.query(
                 """
                         select s.id, s.competition_id as competitionId, s.stage_code as stageCode,
-                               s.stage_name as stageName, s.status, s.sort
+                               s.stage_name as stageName, s.material_submit_start as materialSubmitStart,
+                               s.material_submit_end as materialSubmitEnd, s.review_start as reviewStart, s.review_end as reviewEnd,
+                               s.status, s.sort, s.promotion_rule_type as promotionRuleType,
+                               s.promotion_rule_value as promotionRuleValue, s.promotion_tie_policy as promotionTiePolicy
                         from competition_stage s
                         join aiadc_competition c on c.id = s.competition_id and c.deleted = 0 and c.status = 'published'
                         where s.competition_id = ? and s.status = 'ENABLED' and s.deleted = 0
@@ -416,6 +479,10 @@ public class CompetitionRegistrationAppService {
                 new BeanPropertyRowMapper<>(CompetitionRegistrationVO.Stage.class),
                 competitionId
         );
+        for (CompetitionRegistrationVO.Stage stage : stages) {
+            hydrateMaterialAccess(stage, currentUser);
+        }
+        return stages;
     }
 
     @Transactional
@@ -426,18 +493,27 @@ public class CompetitionRegistrationAppService {
         requireRequest(request, "Stage request is required");
         requireCompetition(competitionId);
         String stageCode = normalizeEnum(request.getStageCode(), null, STAGE_CODES, "Invalid stage code");
+        validateStageWindows(request);
         int inserted = jdbcTemplate.update(
                 """
                         insert into competition_stage (
-                            competition_id, stage_code, stage_name, status, sort,
+                            competition_id, stage_code, stage_name, material_submit_start, material_submit_end,
+                            review_start, review_end, status, sort, promotion_rule_type, promotion_rule_value, promotion_tie_policy,
                             created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
-                                competitionId,
+                competitionId,
                 stageCode,
                 trimRequired(request.getStageName(), "Stage name is required"),
+                request.getMaterialSubmitStart(),
+                request.getMaterialSubmitEnd(),
+                request.getReviewStart(),
+                request.getReviewEnd(),
                 normalizeEnum(request.getStatus(), "DRAFT", STAGE_STATUSES, "Invalid stage status"),
                 request.getSort() == null ? 100 : request.getSort(),
+                trimToNull(request.getPromotionRuleType()),
+                request.getPromotionRuleValue(),
+                trimToNull(request.getPromotionTiePolicy()),
                 userId,
                 userUuid,
                 userId,
@@ -446,6 +522,156 @@ public class CompetitionRegistrationAppService {
         requireRegistrationWrite(inserted, "Competition stage changed, please retry");
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return findStage(id);
+    }
+
+    @Transactional
+    public CompetitionRegistrationVO.Stage updateStage(CurrentUser currentUser, Long stageId, CompetitionRegistrationDTO.StageUpsertRequest request) {
+        Long userId = requirePermission(currentUser, STAGE_MANAGE_PERMISSION);
+        String userUuid = requireUserUuid(currentUser);
+        requirePositiveId(stageId, "Stage id is required");
+        requireRequest(request, "Stage request is required");
+        CompetitionRegistrationVO.Stage existing = findStage(stageId);
+        if (existing == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Stage not found");
+        }
+        validateStageWindows(request);
+        int updated = jdbcTemplate.update(
+                """
+                        update competition_stage
+                        set stage_name = ?, material_submit_start = ?, material_submit_end = ?, review_start = ?, review_end = ?,
+                            status = ?, sort = ?, promotion_rule_type = ?, promotion_rule_value = ?, promotion_tie_policy = ?,
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and competition_id = ? and stage_code = ? and deleted = 0
+                        """,
+                trimRequired(request.getStageName(), "Stage name is required"),
+                request.getMaterialSubmitStart(), request.getMaterialSubmitEnd(), request.getReviewStart(), request.getReviewEnd(),
+                normalizeEnum(request.getStatus(), existing.getStatus(), STAGE_STATUSES, "Invalid stage status"),
+                request.getSort() == null ? existing.getSort() : request.getSort(),
+                trimToNull(request.getPromotionRuleType()), request.getPromotionRuleValue(), trimToNull(request.getPromotionTiePolicy()),
+                userId, userUuid, LocalDateTime.now(), stageId, existing.getCompetitionId(), existing.getStageCode()
+        );
+        requireRegistrationWrite(updated, "Competition stage changed, please retry");
+        return findStage(stageId);
+    }
+
+    public List<CompetitionRegistrationVO.StageReviewCandidate> listStageReviewCandidates(CurrentUser currentUser, Long stageId) {
+        requirePermission(currentUser, STAGE_MANAGE_PERMISSION);
+        CompetitionRegistrationVO.Stage stage = findStage(stageId);
+        if (stage == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Stage not found");
+        }
+        return jdbcTemplate.query(
+                """
+                        select r.id as registrationId, r.registration_no as registrationNo, r.competition_id as competitionId,
+                               ? as stageId,
+                               coalesce(json_unquote(json_extract(r.team_snapshot_json, '$.teamName')), concat('Team #', r.team_id)) as teamName,
+                               coalesce(p.title, concat('Project #', r.project_id)) as projectTitle,
+                               rr.score, coalesce(rr.decision, 'PENDING') as decision, rr.review_comment as reviewComment,
+                               rr.published_at as publishedAt, ms.submitted_at as submittedAt
+                        from competition_registration r
+                        left join aiadc_project p on p.id = r.project_id and p.deleted = 0
+                        left join competition_stage_review_result rr
+                          on rr.registration_id = r.id and rr.stage_id = ? and rr.deleted = 0
+                        left join registration_material_submission ms
+                          on ms.registration_id = r.id and ms.stage_id = ? and ms.deleted = 0
+                        where r.competition_id = ? and r.status in ('PAID', 'CONFIRMED') and r.deleted = 0
+                        order by case when rr.score is null then 1 else 0 end, rr.score desc, r.created_at asc, r.id asc
+                        """,
+                new BeanPropertyRowMapper<>(CompetitionRegistrationVO.StageReviewCandidate.class),
+                stageId, stageId, stageId, stage.getCompetitionId()
+        );
+    }
+
+    @Transactional
+    public CompetitionRegistrationVO.StageReviewCandidate saveStageReviewDecision(
+            CurrentUser currentUser,
+            Long stageId,
+            Long registrationId,
+            CompetitionRegistrationDTO.StageReviewDecisionRequest request
+    ) {
+        Long userId = requirePermission(currentUser, STAGE_MANAGE_PERMISSION);
+        String userUuid = requireUserUuid(currentUser);
+        requireRequest(request, "Review decision is required");
+        CompetitionRegistrationVO.Stage stage = findStage(stageId);
+        CompetitionRegistrationVO.Registration registration = findRegistration(registrationId);
+        if (stage == null || registration == null || !stage.getCompetitionId().equals(registration.getCompetitionId())) {
+            throw biz(ErrorCode.NOT_FOUND, "Review candidate not found");
+        }
+        String decision = normalizeEnum(request.getDecision(), null, REVIEW_DECISIONS, "Invalid review decision");
+        if (request.getScore() != null && (request.getScore().compareTo(BigDecimal.ZERO) < 0 || request.getScore().compareTo(new BigDecimal("100")) > 0)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Review score must be between 0 and 100");
+        }
+        LocalDateTime publishedAt = "PENDING".equals(decision) ? null : LocalDateTime.now();
+        jdbcTemplate.update(
+                """
+                        insert into competition_stage_review_result (
+                            competition_id, stage_id, registration_id, score, decision, review_comment, published_at,
+                            decided_by, decided_by_uuid, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        on duplicate key update score = values(score), decision = values(decision), review_comment = values(review_comment),
+                            published_at = values(published_at), decided_by = values(decided_by), decided_by_uuid = values(decided_by_uuid),
+                            updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid), updated_at = current_timestamp
+                        """,
+                stage.getCompetitionId(), stageId, registrationId, request.getScore(), decision, trimToNull(request.getComment()), publishedAt,
+                userId, userUuid, userId, userUuid, userId, userUuid
+        );
+        return listStageReviewCandidates(currentUser, stageId).stream()
+                .filter(candidate -> registrationId.equals(candidate.getRegistrationId()))
+                .findFirst()
+                .orElseThrow(() -> biz(ErrorCode.NOT_FOUND, "Review candidate not found"));
+    }
+
+    @Transactional
+    public List<CompetitionRegistrationVO.StageReviewCandidate> applyStagePromotionRule(CurrentUser currentUser, Long stageId) {
+        Long userId = requirePermission(currentUser, STAGE_MANAGE_PERMISSION);
+        String userUuid = requireUserUuid(currentUser);
+        CompetitionRegistrationVO.Stage stage = findStage(stageId);
+        if (stage == null || !"PRELIMINARY".equals(stage.getStageCode())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Promotion rule can only be applied to the preliminary stage");
+        }
+        String ruleType = normalizeEnum(stage.getPromotionRuleType(), null, Set.of("PERCENTAGE", "COUNT"), "Please configure a promotion rule first");
+        BigDecimal ruleValue = stage.getPromotionRuleValue();
+        if (ruleValue == null || ruleValue.compareTo(BigDecimal.ZERO) <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Please configure a valid promotion rule value");
+        }
+        List<CompetitionRegistrationVO.StageReviewCandidate> candidates = listStageReviewCandidates(currentUser, stageId).stream()
+                .filter(candidate -> candidate.getScore() != null)
+                .toList();
+        if (candidates.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "请先完成评分，再生成晋级名单");
+        }
+        int target = "COUNT".equals(ruleType)
+                ? ruleValue.intValue()
+                : (int) Math.ceil(candidates.size() * ruleValue.doubleValue() / 100D);
+        target = Math.max(1, Math.min(target, candidates.size()));
+        BigDecimal boundaryScore = candidates.get(target - 1).getScore();
+        long aboveBoundary = candidates.stream().filter(candidate -> candidate.getScore().compareTo(boundaryScore) > 0).count();
+        long atBoundary = candidates.stream().filter(candidate -> candidate.getScore().compareTo(boundaryScore) == 0).count();
+        boolean tieNeedsReview = aboveBoundary < target && aboveBoundary + atBoundary > target;
+        LocalDateTime now = LocalDateTime.now();
+        for (CompetitionRegistrationVO.StageReviewCandidate candidate : candidates) {
+            String decision = candidate.getScore().compareTo(boundaryScore) > 0
+                    ? "ADVANCED"
+                    : candidate.getScore().compareTo(boundaryScore) < 0
+                    ? "ELIMINATED"
+                    : tieNeedsReview ? "PENDING" : "ADVANCED";
+            LocalDateTime publishedAt = "PENDING".equals(decision) ? null : now;
+            jdbcTemplate.update(
+                    """
+                            insert into competition_stage_review_result (
+                                competition_id, stage_id, registration_id, score, decision, review_comment, published_at,
+                                decided_by, decided_by_uuid, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            on duplicate key update decision = values(decision), published_at = values(published_at),
+                                decided_by = values(decided_by), decided_by_uuid = values(decided_by_uuid),
+                                updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid), updated_at = current_timestamp
+                            """,
+                    stage.getCompetitionId(), stageId, candidate.getRegistrationId(), candidate.getScore(), decision,
+                    tieNeedsReview && candidate.getScore().compareTo(boundaryScore) == 0 ? "晋级边界同分，请人工确认" : candidate.getReviewComment(),
+                    publishedAt, userId, userUuid, userId, userUuid, userId, userUuid
+            );
+        }
+        return listStageReviewCandidates(currentUser, stageId);
     }
 
     public CompetitionRegistrationVO.StageForm getStageForm(CurrentUser currentUser, Long stageId) {
@@ -472,7 +698,9 @@ public class CompetitionRegistrationAppService {
         }
         validateFormSchema(request.getFormSchemaJson());
         CompetitionRegistrationVO.StageForm existing = findStageForm(stageId);
-        int version = request.getVersion() == null || request.getVersion() <= 0 ? 1 : request.getVersion();
+        int version = request.getVersion() == null || request.getVersion() <= 0
+                ? existing == null ? 1 : existing.getVersion()
+                : request.getVersion();
         String status = normalizeEnum(request.getStatus(), "ENABLED", FORM_STATUSES, "Invalid form status");
         if (existing == null) {
                 int inserted = jdbcTemplate.update(
@@ -527,6 +755,8 @@ public class CompetitionRegistrationAppService {
         requirePositiveId(request.getStageId(), "Stage id is required");
         validateMaterialSubmitRequest(request);
         CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
+        CompetitionRegistrationVO.Stage stage = findStage(request.getStageId());
+        requireMaterialWindowOpen(stage, registration);
         CompetitionRegistrationVO.StageForm form = findStageForm(request.getStageId());
         if (form == null || !form.getCompetitionId().equals(registration.getCompetitionId())) {
             throw biz(ErrorCode.NOT_FOUND, "Stage form not found");
@@ -603,6 +833,26 @@ public class CompetitionRegistrationAppService {
             if (updated == 0) {
                 throw biz(ErrorCode.BIZ_ERROR, "Material submission changed, please retry");
             }
+            Integer revisionNo = jdbcTemplate.queryForObject(
+                    "select coalesce(max(revision_no), 0) + 1 from registration_material_value_revision where submission_id = ?",
+                    Integer.class,
+                    submissionId
+            );
+            jdbcTemplate.update(
+                    """
+                            insert into registration_material_value_revision (
+                                submission_id, revision_no, field_key, field_type, text_value, file_id, json_value,
+                                changed_by, changed_by_uuid
+                            )
+                            select submission_id, ?, field_key, field_type, text_value, file_id, json_value, ?, ?
+                            from registration_material_value
+                            where submission_id = ? and deleted = 0
+                            """,
+                    revisionNo == null ? 1 : revisionNo,
+                    userId,
+                    userUuid,
+                    submissionId
+            );
             jdbcTemplate.update(
                     """
                             update registration_material_value
@@ -1369,7 +1619,8 @@ public class CompetitionRegistrationAppService {
         requirePositiveId(competitionId, "Competition id is required");
         CompetitionRow row = jdbcTemplate.queryForObject(
                 """
-                        select id, code, fee_mode as feeMode, entry_fee_minor as entryFeeMinor, currency
+                        select id, code, fee_mode as feeMode, entry_fee_minor as entryFeeMinor, currency,
+                               registration_start as registrationStart, registration_end as registrationEnd
                         from aiadc_competition
                         where id = ? and deleted = 0
                         limit 1
@@ -1918,6 +2169,136 @@ public class CompetitionRegistrationAppService {
         return AuthenticationTrustSupport.isTrustedCurrentUser(currentUser);
     }
 
+    private void validateStageWindows(CompetitionRegistrationDTO.StageUpsertRequest request) {
+        requireChronologicalRange(request.getMaterialSubmitStart(), request.getMaterialSubmitEnd(), "Material submission end must be after its start");
+        requireChronologicalRange(request.getReviewStart(), request.getReviewEnd(), "Review end must be after its start");
+        if (request.getMaterialSubmitEnd() != null && request.getReviewStart() != null
+                && request.getReviewStart().isBefore(request.getMaterialSubmitEnd())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Review cannot start before material submission closes");
+        }
+        if (StringUtils.hasText(request.getPromotionRuleType())) {
+            String ruleType = normalizeEnum(request.getPromotionRuleType(), null, PROMOTION_RULE_TYPES, "Invalid promotion rule type");
+            BigDecimal ruleValue = request.getPromotionRuleValue();
+            if (!"MANUAL".equals(ruleType) && (ruleValue == null || ruleValue.compareTo(BigDecimal.ZERO) <= 0)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Promotion rule value must be greater than zero");
+            }
+            if ("PERCENTAGE".equals(ruleType) && ruleValue.compareTo(new BigDecimal("100")) > 0) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Promotion percentage cannot exceed 100");
+            }
+        }
+    }
+
+    private void requireChronologicalRange(LocalDateTime start, LocalDateTime end, String message) {
+        if ((start == null) != (end == null)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Both start and end time are required");
+        }
+        if (start != null && !end.isAfter(start)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, message);
+        }
+    }
+
+    private void requireRegistrationWindowOpen(CompetitionRow competition) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime start = parseBusinessDateTime(competition.registrationStart());
+        LocalDateTime end = parseBusinessDateTime(competition.registrationEnd());
+        if (start != null && now.isBefore(start)) {
+            throw biz(ErrorCode.BIZ_ERROR, "报名尚未开始");
+        }
+        if (end != null && now.isAfter(end)) {
+            throw biz(ErrorCode.BIZ_ERROR, "报名已截止，不能新增或修改报名信息");
+        }
+    }
+
+    private LocalDateTime parseBusinessDateTime(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim().replace('T', ' ');
+        for (DateTimeFormatter formatter : List.of(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        )) {
+            try {
+                return LocalDateTime.parse(normalized, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try the next supported persisted format.
+            }
+        }
+        throw biz(ErrorCode.VALIDATION_ERROR, "赛事时间格式无效");
+    }
+
+    private void requireMaterialWindowOpen(CompetitionRegistrationVO.Stage stage, CompetitionRegistrationVO.Registration registration) {
+        if (stage == null || !stage.getCompetitionId().equals(registration.getCompetitionId())) {
+            throw biz(ErrorCode.NOT_FOUND, "Stage not found");
+        }
+        if (!"ENABLED".equals(stage.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "当前阶段未开放材料提交");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (stage.getMaterialSubmitStart() == null || stage.getMaterialSubmitEnd() == null
+                || now.isBefore(stage.getMaterialSubmitStart()) || now.isAfter(stage.getMaterialSubmitEnd())) {
+            throw biz(ErrorCode.BIZ_ERROR, "当前不在材料修改时间内");
+        }
+        if ("FINAL".equals(stage.getStageCode())) {
+            Long advanced = jdbcTemplate.queryForObject(
+                    """
+                            select count(1)
+                            from competition_stage_review_result rr
+                            join competition_stage source_stage on source_stage.id = rr.stage_id and source_stage.deleted = 0
+                            where rr.competition_id = ? and rr.registration_id = ? and rr.decision = 'ADVANCED'
+                              and rr.published_at is not null and rr.deleted = 0
+                              and source_stage.stage_code = 'PRELIMINARY'
+                            """,
+                    Long.class,
+                    registration.getCompetitionId(), registration.getId()
+            );
+            if (advanced == null || advanced == 0) {
+                throw biz(ErrorCode.FORBIDDEN, "仅已公布晋级的团队可以修改决赛材料");
+            }
+        }
+    }
+
+    private void hydrateMaterialAccess(CompetitionRegistrationVO.Stage stage, CurrentUser currentUser) {
+        LocalDateTime now = LocalDateTime.now();
+        if (stage.getMaterialSubmitStart() == null || stage.getMaterialSubmitEnd() == null) {
+            stage.setMaterialEditable(false);
+            stage.setMaterialAccessReason("材料修改时间未配置");
+            return;
+        }
+        if (now.isBefore(stage.getMaterialSubmitStart())) {
+            stage.setMaterialEditable(false);
+            stage.setMaterialAccessReason("材料修改尚未开始");
+            return;
+        }
+        if (now.isAfter(stage.getMaterialSubmitEnd())) {
+            stage.setMaterialEditable(false);
+            stage.setMaterialAccessReason("材料修改已截止");
+            return;
+        }
+        if ("FINAL".equals(stage.getStageCode())) {
+            Long advanced = jdbcTemplate.queryForObject(
+                    """
+                            select count(1)
+                            from competition_stage_review_result rr
+                            join competition_registration r on r.id = rr.registration_id and r.deleted = 0
+                            join competition_stage source_stage on source_stage.id = rr.stage_id and source_stage.deleted = 0
+                            where rr.competition_id = ? and r.owner_user_id = ? and r.owner_user_uuid = ?
+                              and rr.decision = 'ADVANCED' and rr.published_at is not null and rr.deleted = 0
+                              and source_stage.stage_code = 'PRELIMINARY'
+                            """,
+                    Long.class,
+                    stage.getCompetitionId(), requireUserId(currentUser), requireUserUuid(currentUser)
+            );
+            if (advanced == null || advanced == 0) {
+                stage.setMaterialEditable(false);
+                stage.setMaterialAccessReason("未进入决赛或晋级结果尚未公布");
+                return;
+            }
+        }
+        stage.setMaterialEditable(true);
+        stage.setMaterialAccessReason("当前可修改");
+    }
+
     private String normalizeEnum(String value, String defaultValue, Set<String> allowed, String message) {
         String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
         if (normalized == null || !allowed.contains(normalized)) {
@@ -1998,7 +2379,10 @@ public class CompetitionRegistrationAppService {
     private String stageSelect() {
         return """
                 select id, competition_id as competitionId, stage_code as stageCode,
-                       stage_name as stageName, status, sort
+                       stage_name as stageName, material_submit_start as materialSubmitStart,
+                       material_submit_end as materialSubmitEnd, review_start as reviewStart, review_end as reviewEnd,
+                       status, sort, promotion_rule_type as promotionRuleType,
+                       promotion_rule_value as promotionRuleValue, promotion_tie_policy as promotionTiePolicy
                 """;
     }
 
@@ -2039,16 +2423,22 @@ public class CompetitionRegistrationAppService {
         private String feeMode;
         private Long entryFeeMinor;
         private String currency;
+        private String registrationStart;
+        private String registrationEnd;
 
         Long id() { return id; }
         String code() { return code == null ? "" : code; }
         String feeMode() { return feeMode == null ? "TEAM" : feeMode; }
         Long entryFeeMinor() { return entryFeeMinor == null ? 0L : entryFeeMinor; }
         String currency() { return currency == null ? "CNY" : currency; }
+        String registrationStart() { return registrationStart; }
+        String registrationEnd() { return registrationEnd; }
         public void setId(Long id) { this.id = id; }
         public void setCode(String code) { this.code = code; }
         public void setFeeMode(String feeMode) { this.feeMode = feeMode; }
         public void setEntryFeeMinor(Long entryFeeMinor) { this.entryFeeMinor = entryFeeMinor; }
         public void setCurrency(String currency) { this.currency = currency; }
+        public void setRegistrationStart(String registrationStart) { this.registrationStart = registrationStart; }
+        public void setRegistrationEnd(String registrationEnd) { this.registrationEnd = registrationEnd; }
     }
 }

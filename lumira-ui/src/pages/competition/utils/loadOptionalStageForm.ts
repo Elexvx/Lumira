@@ -10,8 +10,13 @@ export const loadOptionalPreliminaryStageForm = async (
 ): Promise<CompetitionStageFormRecord | undefined> => {
   try {
     const stages = await listStages(competitionId);
-    const preliminary = stages.find((item) => item.stageCode === 'PRELIMINARY') || stages[0];
-    return preliminary ? await getStageForm(preliminary.id) : undefined;
+    const editableStages = stages.filter((item) => item.materialEditable !== false);
+    const active = editableStages.find((item) => item.stageCode === 'PRELIMINARY')
+      || editableStages.find((item) => item.stageCode === 'FINAL')
+      || editableStages[0]
+      || stages.find((item) => item.stageCode === 'PRELIMINARY')
+      || stages[0];
+    return active ? await getStageForm(active.id) : undefined;
   } catch {
     return undefined;
   }

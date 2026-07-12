@@ -27,7 +27,8 @@ public enum ErrorCode {
     PLUGIN_DEPENDENCY_CONFLICT(409, "P2005", "插件依赖冲突", "请先安装或启用依赖插件"),
     PLUGIN_RUNTIME_ERROR(500, "P2006", "插件运行时异常", "插件运行失败，请查看运行日志"),
     PLUGIN_NOT_ENABLED(403, "P2007", "插件未启用", "当前未启用该插件"),
-    SYSTEM_ERROR(500, "S0001", "系统异常", "系统异常，请稍后重试");
+    SYSTEM_ERROR(500, "S0001", "系统异常", "系统异常，请稍后重试"),
+    DEPENDENCY_UNAVAILABLE(503, "S0002", "依赖服务不可用", "服务暂时不可用，请稍后重试");
 
     private final Integer httpStatus;
     private final String code;

@@ -1,117 +1,188 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Drawer, Form, InputNumber, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Descriptions, Drawer, Form, Input, InputNumber, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
-import { request } from '@/services/common/request';
-import { createSandboxSimulationOrder, listSandboxSimulationOrders } from '@/services/payment/api';
+import {
+  createSandboxPaymentOrder,
+  getPaymentOrder,
+  listSandboxPaymentOrders,
+} from '@/services/payment/api';
 import { message } from '@/theme/antdFeedbackBridge';
-import type { PagedResult, PaymentProviderSettings, SandboxSimulationOrderRecord, UserRecord } from '@/types/api';
+import type { PaymentOrderRecord, PaymentProviderSettings } from '@/types/api';
+import { normalizePaymentEnvironment } from './paymentDisplay';
+import { formatPaymentOrderCreatedAt, sortPaymentOrdersNewestFirst } from './paymentOrderTime';
+import { buildCleanSandboxOrderPath } from './sandboxPaymentReturnUrl';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
-type SimulationFormValues = {
-  targetUserId: number;
+type AlipaySandboxFormValues = {
   amountYuan: number;
+  subject: string;
 };
 
-const accountName = (record: SandboxSimulationOrderRecord) =>
-  record.realName || record.nickname || record.username || `#${record.targetUserId}`;
-
-const userLabel = (user: UserRecord) => {
-  const name = user.realName || user.nickname || user.username;
-  const contact = user.mobile || user.email;
-  return contact ? `${name} · ${contact}` : `${name} · ${user.username}`;
-};
+const isPaid = (status?: string | null) => ['PAID', 'SUCCESS', 'SETTLED'].includes(status || '');
 
 export const SandboxPaymentOrderTab = ({
-  paymentSettings: _paymentSettings,
+  paymentSettings,
   canCreateOrders,
 }: {
   paymentSettings: PaymentProviderSettings[];
   canCreateOrders: boolean;
 }) => {
-  const [form] = Form.useForm<SimulationFormValues>();
-  const [orders, setOrders] = useState<SandboxSimulationOrderRecord[]>([]);
-  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [alipayForm] = Form.useForm<AlipaySandboxFormValues>();
+  const [orders, setOrders] = useState<PaymentOrderRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [userLoading, setUserLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pageNo, setPageNo] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [alipayDrawerOpen, setAlipayDrawerOpen] = useState(false);
+  const [alipaySubmitting, setAlipaySubmitting] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<PaymentOrderRecord>();
+  const [detailOrder, setDetailOrder] = useState<PaymentOrderRecord>();
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  const loadOrders = useCallback(async () => {
+  const alipaySandboxReady = useMemo(() => paymentSettings.some((settings) =>
+    settings.providerCode === 'alipay'
+      && settings.enabled
+      && settings.configured
+      && normalizePaymentEnvironment(settings.environment) === 'SANDBOX'), [paymentSettings]);
+
+  const upsertOrder = useCallback((order: PaymentOrderRecord) => {
+    setOrders((current) => sortPaymentOrdersNewestFirst([
+      order,
+      ...current.filter((item) => item.orderNo !== order.orderNo),
+    ]));
+  }, []);
+
+  const loadOrders = useCallback(async (nextPageNo: number, nextPageSize: number) => {
     setLoading(true);
     try {
-      setOrders(await listSandboxSimulationOrders());
+      const page = await listSandboxPaymentOrders({ pageNo: nextPageNo, pageSize: nextPageSize });
+      setOrders(sortPaymentOrdersNewestFirst(page.records));
+      setPageNo(Number(page.pageNo));
+      setPageSize(Number(page.pageSize));
+      setTotal(page.total);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadUsers = useCallback(async (keyword?: string) => {
-    setUserLoading(true);
-    try {
-      const result = await request<PagedResult<UserRecord>>('/v1/system/users', {
-        method: 'GET',
-        params: {
-          current: 1,
-          pageSize: 20,
-          keyword: keyword?.trim() || undefined,
-          status: 'ENABLED',
-          _t: Date.now(),
-        },
-      });
-      setUsers(result.records || []);
-    } finally {
-      setUserLoading(false);
-    }
-  }, []);
+  useEffect(() => {
+    void loadOrders(pageNo, pageSize);
+  }, [loadOrders, pageNo, pageSize]);
 
   useEffect(() => {
-    void loadOrders();
-  }, [loadOrders]);
+    const searchParams = new URLSearchParams(window.location.search);
+    const orderNo = searchParams.get('orderNo') || searchParams.get('out_trade_no');
+    if (orderNo) {
+      void getPaymentOrder(orderNo).then((order) => {
+        setActiveOrder(order);
+        upsertOrder(order);
+      });
+      const cleanPath = buildCleanSandboxOrderPath(window.location.href);
+      if (`${window.location.pathname}${window.location.search}` !== cleanPath) {
+        window.history.replaceState(window.history.state, '', cleanPath);
+      }
+    }
+  }, [upsertOrder]);
 
-  const openDrawer = () => {
-    form.resetFields();
-    form.setFieldValue('amountYuan', 0.01);
-    setDrawerOpen(true);
-    void loadUsers();
+  useEffect(() => {
+    if (!activeOrder?.orderNo || activeOrder.status !== 'PENDING') {
+      return undefined;
+    }
+    const timer = window.setInterval(() => {
+      void getPaymentOrder(activeOrder.orderNo).then((order) => {
+        setActiveOrder(order);
+        upsertOrder(order);
+        if (isPaid(order.status)) {
+          message.success(t('支付宝沙箱收款成功，订单状态已同步', 'Alipay sandbox payment received and synchronized'));
+        }
+      });
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [activeOrder?.orderNo, activeOrder?.status, upsertOrder]);
+
+  const openAlipayDrawer = () => {
+    alipayForm.setFieldsValue({
+      amountYuan: 0.01,
+      subject: t('Lumira 支付宝沙箱收款验证', 'Lumira Alipay sandbox receipt verification'),
+    });
+    setAlipayDrawerOpen(true);
   };
 
-  const submit = async () => {
+  const submitAlipaySandbox = async () => {
+    let checkoutWindow: Window | null = null;
     try {
-      setSubmitting(true);
-      const values = await form.validateFields();
-      await createSandboxSimulationOrder({
-        targetUserId: values.targetUserId,
+      const values = await alipayForm.validateFields();
+      checkoutWindow = window.open('about:blank', '_blank');
+      setAlipaySubmitting(true);
+      const orderNo = `SBX-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      const returnUrl = `${window.location.origin}/settings/payment?tab=sandbox-orders&orderNo=${encodeURIComponent(orderNo)}`;
+      const order = await createSandboxPaymentOrder({
+        providerCode: 'alipay',
+        orderNo,
+        subject: values.subject.trim(),
         amountMinor: Math.round(values.amountYuan * 100),
+        currency: 'CNY',
+        returnUrl,
+        metadata: { bizType: 'alipay_sandbox_receipt_verification' },
+        idempotencyKey: orderNo,
       });
-      message.success(t('模拟订单已生成，全程未调用云端支付平台', 'Simulation order created without calling a cloud payment provider'));
-      setDrawerOpen(false);
-      await loadOrders();
+      setActiveOrder(order);
+      upsertOrder(order);
+      setAlipayDrawerOpen(false);
+      if (!order.paymentUrl) {
+        checkoutWindow?.close();
+        throw new Error(t('支付宝未返回收银台地址', 'Alipay checkout URL was not returned'));
+      }
+      if (checkoutWindow) {
+        checkoutWindow.location.href = order.paymentUrl;
+      } else {
+        window.location.assign(order.paymentUrl);
+      }
+      message.success(t(
+        '支付宝沙箱订单已生成，请在新窗口使用沙箱买家账号付款',
+        'Sandbox order created. Pay with the sandbox buyer account in the new window.',
+      ));
+    } catch (error) {
+      checkoutWindow?.close();
+      throw error;
     } finally {
-      setSubmitting(false);
+      setAlipaySubmitting(false);
     }
   };
 
-  const columns = useMemo<ColumnsType<SandboxSimulationOrderRecord>>(() => [
+  const openOrderDetail = useCallback(async (record: PaymentOrderRecord) => {
+    setDetailOrder(record);
+    setDetailLoading(true);
+    try {
+      const order = await getPaymentOrder(record.orderNo);
+      setDetailOrder(order);
+      setActiveOrder(order);
+      upsertOrder(order);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [upsertOrder]);
+
+  const columns = useMemo<ColumnsType<PaymentOrderRecord>>(() => [
     {
       title: t('订单号', 'Order number'),
       dataIndex: 'orderNo',
       width: 250,
-      render: (value: string) => <Typography.Text copyable>{value}</Typography.Text>,
+      render: (value: string, record) => (
+        <Button type="link" style={{ padding: 0, height: 'auto' }} onClick={() => void openOrderDetail(record)}>
+          {value}
+        </Button>
+      ),
     },
     {
-      title: t('账户', 'Account'),
-      width: 220,
-      render: (_, record) => (
-        <Space direction="vertical" size={0}>
-          <Typography.Text>{accountName(record)}</Typography.Text>
-          <Typography.Text type="secondary">{record.username || `ID ${record.targetUserId}`}</Typography.Text>
-        </Space>
-      ),
+      title: t('订单标题', 'Subject'),
+      dataIndex: 'subject',
+      width: 280,
     },
     {
       title: t('订单价格', 'Amount'),
@@ -120,106 +191,172 @@ export const SandboxPaymentOrderTab = ({
       render: (value: number, record) => `${(value / 100).toFixed(2)} ${record.currency || 'CNY'}`,
     },
     {
-      title: t('模式', 'Mode'),
-      width: 150,
-      render: (_, record) => (
-        <Tag color={record.localOnly && !record.cloudRequestSent ? 'green' : 'red'}>
-          {record.localOnly && !record.cloudRequestSent ? t('本地沙箱', 'Local sandbox') : t('异常', 'Invalid')}
-        </Tag>
-      ),
+      title: t('环境', 'Environment'),
+      width: 160,
+      render: () => <Tag color="blue">{t('支付宝云沙箱', 'Alipay cloud sandbox')}</Tag>,
     },
     {
       title: t('状态', 'Status'),
       dataIndex: 'status',
       width: 130,
-      render: () => <Tag color="processing">{t('已模拟', 'Simulated')}</Tag>,
+      render: (value: string) => <Tag color={isPaid(value) ? 'success' : 'warning'}>{value}</Tag>,
     },
     {
       title: t('生成时间', 'Created at'),
       dataIndex: 'createdAt',
       width: 190,
-      render: (value: string) => value ? value.replace('T', ' ') : '-',
+      render: (value: string, record) => formatPaymentOrderCreatedAt(
+        record.orderNo,
+        value,
+        isEnglishLocale() ? 'en-US' : 'zh-CN',
+      ),
     },
-  ], []);
+  ], [openOrderDetail]);
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Alert
-        showIcon
-        type="info"
-        message={t('本页面仅生成本地沙箱模拟订单', 'This page creates local sandbox simulations only')}
-        description={t(
-          '不会读取正式支付配置，不会调用支付平台 SDK、网关或任何云端下单接口。',
-          'Production payment settings, provider SDKs, gateways, and cloud order APIs are never used.',
-        )}
-      />
       {!canCreateOrders ? (
-        <Alert showIcon type="warning" message={t('当前账号没有生成模拟订单的权限', 'You cannot create simulation orders')} />
+        <Alert showIcon type="warning" message={t('当前账号没有生成支付订单的权限', 'You cannot create payment orders')} />
       ) : null}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div>
-          <Typography.Title level={5} style={{ margin: 0 }}>{t('模拟订单', 'Simulation orders')}</Typography.Title>
-          <Typography.Text type="secondary">{t('最近生成的 100 条本地沙箱记录', 'The latest 100 local sandbox records')}</Typography.Text>
+          <Typography.Title level={5} style={{ margin: 0 }}>
+            {t('支付宝云沙箱订单验证', 'Alipay cloud sandbox order verification')}
+          </Typography.Title>
+          <Typography.Text type="secondary">
+            {t('创建支付宝官方沙箱订单并验证收款结果', 'Create official Alipay sandbox orders and verify payment results')}
+          </Typography.Text>
         </div>
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()} loading={loading}>
+        <Space wrap>
+          <Button icon={<ReloadOutlined />} onClick={() => void loadOrders(pageNo, pageSize)} loading={loading}>
             {t('刷新', 'Refresh')}
           </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openDrawer} disabled={!canCreateOrders}>
-            {t('生成模拟订单', 'Create simulation order')}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={openAlipayDrawer}
+            disabled={!canCreateOrders || !alipaySandboxReady}
+          >
+            {t('创建支付宝沙箱订单', 'Create Alipay sandbox order')}
           </Button>
         </Space>
       </div>
-      <Table<SandboxSimulationOrderRecord>
+
+      <Table<PaymentOrderRecord>
         rowKey="orderNo"
         columns={columns}
         dataSource={orders}
         loading={loading}
-        pagination={false}
-        scroll={{ x: 1090 }}
-        locale={{ emptyText: t('暂无模拟订单', 'No simulation orders') }}
+        pagination={{
+          current: pageNo,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 20, 50],
+          showTotal: (count, range) => t(
+            `第 ${range[0]}-${range[1]} 条/共 ${count} 条`,
+            `${range[0]}-${range[1]} of ${count}`,
+          ),
+          onChange: (nextPageNo, nextPageSize) => {
+            if (nextPageSize !== pageSize) {
+              setPageNo(1);
+              setPageSize(nextPageSize);
+              return;
+            }
+            setPageNo(nextPageNo);
+          },
+        }}
+        scroll={{ x: 1160 }}
+        locale={{ emptyText: t('暂无支付宝云沙箱订单', 'No Alipay cloud sandbox orders') }}
       />
+
       <Drawer
-        title={t('生成模拟订单', 'Create simulation order')}
+        title={t('交易详情', 'Transaction details')}
+        width={560}
+        open={Boolean(detailOrder)}
+        onClose={() => setDetailOrder(undefined)}
+        destroyOnClose
+        extra={detailLoading ? <Typography.Text type="secondary">{t('刷新中…', 'Refreshing…')}</Typography.Text> : null}
+      >
+        {detailOrder ? (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label={t('订单编号', 'Order number')}>
+              <Typography.Text copyable>{detailOrder.orderNo}</Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('交易环境', 'Environment')}>
+              {t('支付宝云沙箱', 'Alipay cloud sandbox')}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('交易状态', 'Status')}>
+              <Tag color={isPaid(detailOrder.status) ? 'success' : 'warning'}>{detailOrder.status}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('交易金额', 'Amount')}>
+              {(detailOrder.amountMinor / 100).toFixed(2)} {detailOrder.currency || 'CNY'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('订单标题', 'Subject')}>{detailOrder.subject}</Descriptions.Item>
+            <Descriptions.Item label={t('支付宝交易号', 'Alipay transaction number')}>
+              {detailOrder.providerOrderNo || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('创建时间', 'Created at')}>
+              {formatPaymentOrderCreatedAt(
+                detailOrder.orderNo,
+                detailOrder.createdAt,
+                isEnglishLocale() ? 'en-US' : 'zh-CN',
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('支付时间', 'Paid at')}>
+              {detailOrder.paidAt?.replace('T', ' ') || '-'}
+            </Descriptions.Item>
+            {detailOrder.failureMessage ? (
+              <Descriptions.Item label={t('失败原因', 'Failure reason')}>
+                {detailOrder.failureMessage}
+              </Descriptions.Item>
+            ) : null}
+            {detailOrder.paymentUrl && detailOrder.status === 'PENDING' ? (
+              <Descriptions.Item label={t('操作', 'Action')}>
+                <Button type="primary" href={detailOrder.paymentUrl} target="_blank">
+                  {t('继续付款', 'Continue payment')}
+                </Button>
+              </Descriptions.Item>
+            ) : null}
+          </Descriptions>
+        ) : null}
+      </Drawer>
+
+      <Drawer
+        title={t('创建支付宝云沙箱订单', 'Create Alipay cloud sandbox order')}
         width={480}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        open={alipayDrawerOpen}
+        onClose={() => setAlipayDrawerOpen(false)}
         destroyOnClose
         extra={(
           <Space>
-            <Button onClick={() => setDrawerOpen(false)}>{t('取消', 'Cancel')}</Button>
-            <Button type="primary" loading={submitting} onClick={() => void submit()}>{t('生成订单', 'Create order')}</Button>
+            <Button onClick={() => setAlipayDrawerOpen(false)}>{t('取消', 'Cancel')}</Button>
+            <Button type="primary" loading={alipaySubmitting} onClick={() => void submitAlipaySandbox()}>
+              {t('生成并打开收银台', 'Create and open checkout')}
+            </Button>
           </Space>
         )}
       >
         <Alert
           showIcon
-          type="success"
-          message={t('本地模拟，不会产生真实扣款', 'Local simulation with no real charge')}
+          type="warning"
+          message={t('仅用于支付宝官方沙箱，不会产生真实资金扣款', 'Official Alipay sandbox only; no real funds are charged')}
           style={{ marginBottom: 20 }}
         />
-        <Form<SimulationFormValues> form={form} layout="vertical">
+        <Form<AlipaySandboxFormValues> form={alipayForm} layout="vertical">
           <Form.Item
-            name="targetUserId"
-            label={t('选择账户', 'Select account')}
-            rules={[{ required: true, message: t('请选择需要生成订单的账户', 'Select an account') }]}
+            name="subject"
+            label={t('订单标题', 'Order subject')}
+            rules={[{ required: true, whitespace: true, message: t('请输入订单标题', 'Enter an order subject') }]}
           >
-            <Select
-              showSearch
-              filterOption={false}
-              loading={userLoading}
-              placeholder={t('搜索用户名、姓名、手机号或邮箱', 'Search username, name, mobile, or email')}
-              options={users.map((user) => ({ label: userLabel(user), value: user.id }))}
-              onSearch={(value) => void loadUsers(value)}
-              notFoundContent={userLoading ? t('加载中…', 'Loading…') : t('未找到启用账户', 'No enabled accounts found')}
-            />
+            <Input maxLength={256} />
           </Form.Item>
           <Form.Item
             name="amountYuan"
-            label={t('订单价格（元）', 'Order amount (CNY)')}
+            label={t('订单金额（元）', 'Order amount (CNY)')}
             rules={[
-              { required: true, message: t('请输入订单价格', 'Enter an order amount') },
-              { type: 'number', min: 0.01, message: t('订单价格必须大于 0', 'Amount must be greater than zero') },
+              { required: true, message: t('请输入订单金额', 'Enter an order amount') },
+              { type: 'number', min: 0.01, message: t('订单金额必须大于 0', 'Amount must be greater than zero') },
             ]}
           >
             <InputNumber min={0.01} precision={2} step={1} style={{ width: '100%' }} addonAfter="CNY" />

@@ -4,6 +4,7 @@ import com.lumira.saas.common.constant.HeaderConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.AccessTokenAuthenticationPort;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.common.web.TraceContext;
@@ -22,6 +23,7 @@ import com.lumira.common.api.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -48,6 +50,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
     private final SecurityAuditEventService securityAuditEventService;
+    private ObjectProvider<AccessTokenAuthenticationPort> accessTokenAuthenticationPortProvider;
+    private AccessTokenAuthenticationPort accessTokenAuthenticationPort;
 
     @Autowired
     public JwtAuthFilter(
@@ -86,6 +90,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.securityAuditEventService = securityAuditEventService;
     }
 
+    @Autowired(required = false)
+    void setAccessTokenAuthenticationPortProvider(
+            ObjectProvider<AccessTokenAuthenticationPort> accessTokenAuthenticationPortProvider
+    ) {
+        this.accessTokenAuthenticationPortProvider = accessTokenAuthenticationPortProvider;
+    }
+
+    void setAccessTokenAuthenticationPort(AccessTokenAuthenticationPort accessTokenAuthenticationPort) {
+        this.accessTokenAuthenticationPort = accessTokenAuthenticationPort;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -121,6 +136,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         try {
+            AccessTokenAuthenticationPort authenticationPort = accessTokenAuthenticationPort != null
+                    ? accessTokenAuthenticationPort
+                    : accessTokenAuthenticationPortProvider == null
+                    ? null
+                    : accessTokenAuthenticationPortProvider.getIfAvailable();
+            if (authenticationPort != null) {
+                CurrentUser currentUser = authenticationPort.authenticateAccessToken(token);
+                if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
+                    throw new BizException(
+                            ErrorCode.SESSION_EXPIRED,
+                            ErrorCode.SESSION_EXPIRED.getDefaultUserMessage(),
+                            ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+                    );
+                }
+                setAuthentication(currentUser);
+                if (initialPasswordChangeGuard.requiresPasswordChange(currentUser) && !isPasswordChangeAllowedRequest(request)) {
+                    writeForbiddenResponse(request, response);
+                    return;
+                }
+                filterChain.doFilter(request, response);
+                return;
+            }
             SessionAuthenticationService.AuthenticatedAccess authenticatedAccess = sessionAuthenticationService.authenticateAccessToken(token);
             AuthSession session = authenticatedAccess.session();
             boolean sessionStateUpdated = authenticatedAccess.sessionStateUpdated();

@@ -1,6 +1,6 @@
 import { request } from '@/services/common/request';
 import type { PageResponse, RegistrationPaymentQueryParams, RegistrationPaymentRecord } from './types';
-import type { PaymentCreateOrderRequest, PaymentOrderRecord, SandboxSimulationOrderRecord } from '@/types/api';
+import type { PaymentCreateOrderRequest, PaymentOrderRecord } from '@/types/api';
 
 export const listRegistrationPayments = (params: RegistrationPaymentQueryParams) =>
   request<PageResponse<RegistrationPaymentRecord>>('/v2/aiadc/payments', {
@@ -14,14 +14,15 @@ export const createSandboxPaymentOrder = (data: PaymentCreateOrderRequest) =>
     data,
   });
 
-export const listSandboxSimulationOrders = () =>
-  request<SandboxSimulationOrderRecord[]>('/v1/payment/sandbox/simulations', {
+export const getPaymentOrder = (orderNo: string) =>
+  request<PaymentOrderRecord>(`/v1/payment/orders/${encodeURIComponent(orderNo)}`, {
     method: 'GET',
     params: { _t: Date.now() },
   });
 
-export const createSandboxSimulationOrder = (data: { targetUserId: number; amountMinor: number }) =>
-  request<SandboxSimulationOrderRecord>('/v1/payment/sandbox/simulations', {
-    method: 'POST',
-    data,
+export const listSandboxPaymentOrders = (params: { pageNo: number; pageSize: number }) =>
+  request<PageResponse<PaymentOrderRecord>>('/v1/payment/sandbox/orders', {
+    method: 'GET',
+    params: { ...params, _t: Date.now() },
+    autoRedirectOnUnauthorized: false,
   });

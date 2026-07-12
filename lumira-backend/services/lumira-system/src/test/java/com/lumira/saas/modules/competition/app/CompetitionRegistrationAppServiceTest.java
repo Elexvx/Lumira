@@ -1017,6 +1017,11 @@ class CompetitionRegistrationAppServiceTest {
                 assertThat(simulatedRoleId).isNull();
                 return paymentOrder(orderNo, 8_800L, "CNY");
             }
+
+            @Override
+            public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+                return getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
+            }
         };
         CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
 
@@ -1073,6 +1078,11 @@ class CompetitionRegistrationAppServiceTest {
                 assertThat(operatorUuid).isEqualTo("user-uuid-1001");
                 assertThat(simulatedRoleId).isEqualTo(9L);
                 return paymentOrder(orderNo, 8_800L, "CNY");
+            }
+
+            @Override
+            public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+                return getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
             }
         };
         CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
@@ -1843,7 +1853,9 @@ class CompetitionRegistrationAppServiceTest {
                         "competitionId", 11L,
                         "stageCode", "PRELIMINARY",
                         "stageName", "Preliminary",
-                        "status", "DRAFT",
+                        "materialSubmitStart", LocalDateTime.now().minusDays(1),
+                        "materialSubmitEnd", LocalDateTime.now().plusDays(1),
+                        "status", "ENABLED",
                         "sort", 100,
                         "createdAt", LocalDateTime.now(),
                         "updatedAt", LocalDateTime.now()

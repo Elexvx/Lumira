@@ -24,7 +24,7 @@ import {
 } from '@/navigation/settingsNavigationRuntime';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
-import type { CurrentUser, SecuritySettings, SimulatedRoleSwitchResponse } from '@/types/api';
+import type { SecuritySettings, SimulatedRoleSwitchResponse } from '@/types/api';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
 import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';

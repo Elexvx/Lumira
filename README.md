@@ -1,112 +1,88 @@
-﻿# Lumira
+# Lumira
 
-Lumira 是一套面向企业管理场景的 SaaS 平台底座，提供用户、权限、配置、文件、消息、插件、国际化、支付、AI 助手和后台任务等基础能力。
+Lumira 是面向企业管理场景的 SaaS 平台底座，提供认证、用户与权限、团队、配置、文件、消息、插件、国际化、支付、AI 助手和后台任务等基础能力。
 
-当前仓库已经按职责整理为更清晰的目录结构：前端集中在 `lumira-ui/`，后端集中在 `lumira-backend/`，部署资源、运维脚本和文档保留在仓库根目录下。
+## 第一次使用
 
-## 目录结构
-
-```text
-Lumira/
-├─ lumira-ui/              前端工程（React、TypeScript、Umi Max）
-├─ lumira-backend/               后端工程（Java、Spring Boot、Maven 多模块）
-│  ├─ services/           后端启动入口和业务模块
-│  ├─ libs/               公共基础库和跨模块 API 契约
-│  ├─ sql/           数据库初始化脚本和说明
-│  ├─ storage/            本地运行时存储目录
-│  ├─ pom.xml             后端 Maven 父工程
-│  └─ mvnw / mvnw.cmd     Maven Wrapper
-├─ deploy/                Docker、Nginx、监控和生产部署资源
-├─ doc/                  架构、权限、部署、测试和运维文档
-├─ bin/               本地启动、部署和自检脚本
-└─ README.md
-```
-
-## 后端模块
-
-正式后端启动入口是 `lumira-backend/services/lumira-admin`，它聚合各业务模块并统一暴露 API、WebSocket、健康检查和运维端点。
-
-- `lumira-backend/services/lumira-admin`：聚合后端启动入口。
-- `lumira-backend/services/lumira-system`：系统、权限、配置、审计等核心能力。
-- `lumira-backend/services/lumira-team`：团队、成员、邀请和加入申请等 Team 业务域。
-- `lumira-backend/services/lumira-auth`：认证、会话、登录保护和二次验证。
-- `lumira-backend/services/lumira-file`：文件对象、上传、存储空间和文件安全。
-- `lumira-backend/services/lumira-message`：站内消息、通知和 WebSocket。
-- `lumira-backend/services/lumira-plugin`：插件管理、插件运行时和插件网关。
-- `lumira-backend/services/lumira-localization`：国际化语言、词条和发布。
-- `lumira-backend/services/lumira-payment`：支付配置、订单、退款和支付事件。
-- `lumira-backend/services/lumira-ai`：AI 助手、知识库、会话和工具调用。
-- `lumira-backend/services/lumira-async`：可靠异步 worker，负责 Outbox relay、文件处理、消息/支付/插件等后台投递。
-- `lumira-backend/services/lumira-quartz`：后台任务、XXL-JOB handler 和 relay 调度。
-- `lumira-backend/libs/lumira-team-api`：Team 跨模块 Internal API 契约。
-- `lumira-backend/libs/*`：后端公共能力和跨模块契约。
-
-## 架构文档入口
-
-- [模块边界](doc/architecture/module-boundary.md)
-- [表归属边界](doc/architecture/table-ownership.md)
-- [事件边界](doc/architecture/event-boundary.md)
-- [业务模块模板](doc/architecture/business-module-template.md)
-- [持久化边界治理](doc/architecture/persistence-boundary.md)
-- [持久化边界历史债务](doc/architecture/persistence-boundary-debt.md)
-
-## Release Evidence Artifacts
-
-历史 DDD release evidence 输出曾保存在 `artifacts/ddd/`，对应的专用 evidence workflow 也曾位于 `.github/workflows/ddd-release-evidence.yml`。当前主线已清理这些本地生成物并收敛 CI，只保留常规后端、前端和安全检查入口。该清理是为了避免把一次性本地证据长期当作源码维护；需要 release evidence 时，应由当前代码和环境重新生成并在对应发布记录中保存，不应继续扩大删除范围到业务源码、架构文档或运行脚本。
-
-## 常用命令
-
-启动平台：
+本地开发需要 Node.js 20+、pnpm、Java 21、Docker、MySQL 8 和 Redis 6+。
 
 ```bash
+# 启动后端、异步任务、调度器和 API 代理
 node bin/start-platform.mjs
-```
 
-跳过重新构建启动：
+# 不重新构建，直接启动
+node bin/start-platform.mjs --no-build
 
-```bash
-node bin/start-platform.mjs --skip-build
-```
-
-停止平台：
-
-```bash
+# 停止本地环境
 node bin/stop-platform.mjs
 ```
 
-后端编译：
+默认访问地址：
+
+- API 代理：`http://localhost:8000/api`
+- 后端：`http://localhost:8080`
+- 健康检查：`http://localhost:8080/actuator/health`
+
+本地前端需要单独启动：
 
 ```bash
+corepack pnpm --dir lumira-ui install
+corepack pnpm --dir lumira-ui dev
+```
+
+## 仓库结构
+
+```text
+Lumira/
+├─ lumira-ui/          React、TypeScript、Umi Max 前端
+├─ lumira-backend/     Java、Spring Boot、Maven 多模块后端
+│  ├─ services/        聚合入口、业务模块和后台运行时
+│  ├─ libs/            公共库与跨模块契约
+│  └─ sql/             数据库初始化脚本
+├─ deploy/             Docker Compose、Nginx 和可观测性配置
+├─ bin/                启停、部署、自检、备份和压测脚本
+├─ doc/                产品、架构、开发和测试文档
+└─ README.md           本入口说明
+```
+
+后端采用模块化单体：`lumira-backend/services/lumira-admin` 是同步请求的唯一聚合入口，运行时名称为 `lumira-server`；`lumira-async` 和 `lumira-job-executor` 分别负责异步处理与任务调度。业务代码仍按 `services/lumira-*` 保持模块、数据和契约边界。
+
+## 文档入口
+
+从 [文档导航](doc/README.md) 开始阅读。该索引按“新成员、前端、后端、测试、部署”给出最短阅读路径，并说明每份文档的用途和维护规则。
+
+常用入口：
+
+- [技术方案总览](doc/01-technical-scheme.md)
+- [项目目录与模块规范](doc/02-directory-module-spec.md)
+- [前端开发规范](doc/06-frontend-architecture.md)
+- [后端开发规范](doc/07-backend-architecture.md)
+- [本地运行与排障](doc/17-architecture-runbook.md)
+- [生产部署](deploy/README.md)
+
+## 构建与检查
+
+```bash
+# 后端编译
 ./lumira-backend/mvnw -f lumira-backend/pom.xml clean compile
-```
 
-后端发行包：
+# 后端发行包
+./lumira-backend/mvnw -f lumira-backend/pom.xml \
+  -pl services/lumira-admin -am -DskipTests package
 
-```bash
-./lumira-backend/mvnw -f lumira-backend/pom.xml -pl services/lumira-admin -am -DskipTests package
-```
+# 前端检查与构建
+corepack pnpm --dir lumira-ui typecheck
+corepack pnpm --dir lumira-ui build
 
-前端生产构建：
-
-```bash
-corepack pnpm --dir lumira-ui run build
-```
-
-部署自检：
-
-```bash
+# 部署配置自检
 node bin/check-deployment.mjs
 ```
 
-## 常用访问地址
-
-- 后端：`http://localhost:8080`
-- 健康检查：`http://localhost:8080/actuator/health`
-- API 代理：`http://localhost:8000`
+更完整的命令和故障处理见 [架构运行手册](doc/17-architecture-runbook.md)。
 
 ## 技术栈
 
-- 后端：Java 21、Spring Boot 4、MyBatis-Plus、Flyway、Redis、MySQL。
+- 后端：Java 21、Spring Boot 4、Spring Security、MyBatis-Plus、MySQL、Redis。
 - 前端：React、TypeScript、Umi Max、Ant Design、ProComponents。
-- 异步与实时：MySQL Outbox、独立 `lumira-async` worker、XXL-JOB/自适应 relay、WebSocket、SSE。Redis Stream 仅作为可选分发通道。
-- 部署：Docker Compose、Nginx、Prometheus、Grafana、Loki、Tempo、Alloy。
+- 异步与实时：Outbox、`lumira-async`、XXL-JOB、WebSocket、SSE。
+- 部署与观测：Docker Compose、Nginx、Prometheus、Grafana、Loki、Tempo、Alloy。

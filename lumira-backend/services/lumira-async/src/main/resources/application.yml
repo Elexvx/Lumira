@@ -27,6 +27,14 @@ lumira:
   runtime:
     control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:false}
     async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:true}
+  event:
+    relay-loop:
+      enabled: ${LUMIRA_EVENT_RELAY_LOOP_ENABLED:true}
+      initial-delay-ms: ${LUMIRA_EVENT_RELAY_INITIAL_DELAY_MS:3000}
+      fixed-delay-ms: ${LUMIRA_EVENT_RELAY_FIXED_DELAY_MS:500}
+    payment-consumer:
+      enabled: ${LUMIRA_PAYMENT_EVENT_CONSUMER_ENABLED:true}
+      consumer-name: ${LUMIRA_PAYMENT_EVENT_CONSUMER_NAME:}
   file:
     security-scan:
       mode: ${LUMIRA_FILE_SECURITY_SCAN_MODE:INLINE}
@@ -137,7 +145,7 @@ saas:
       batch-size: ${SAAS_EVENT_OUTBOX_BATCH_SIZE:100}
       max-drain-rounds: ${SAAS_EVENT_OUTBOX_MAX_DRAIN_ROUNDS:4}
       max-burst-rounds: ${SAAS_EVENT_OUTBOX_MAX_BURST_ROUNDS:12}
-      dispatcher: ${SAAS_EVENT_OUTBOX_DISPATCHER:logging}
+      dispatcher: ${SAAS_EVENT_OUTBOX_DISPATCHER:redis-stream}
       redis-stream-key: ${SAAS_EVENT_REDIS_STREAM_KEY:saas:platform-events}
   redis:
     enabled: ${ELEXVX_REDIS_ENABLED:true}

@@ -51,18 +51,7 @@ public class PaymentOutboxService {
     }
 
     public void recordAfterCommit(Long userId, String sourceType, String eventType, String eventKey, Object payload) {
-        Runnable action = () -> record(userId, sourceType, eventType, eventKey, payload);
-        if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
+        record(userId, sourceType, eventType, eventKey, payload);
     }
 
     public void record(Long userId, String sourceType, String eventType, String eventKey, Object payload) {

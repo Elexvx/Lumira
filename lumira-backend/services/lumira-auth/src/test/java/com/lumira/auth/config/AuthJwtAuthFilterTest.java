@@ -352,6 +352,40 @@ class AuthJwtAuthFilterTest {
         verify(systemInternalApi, never()).findUserById(42L);
     }
 
+    @Test
+    void returnsDependencyUnavailableInsteadOfAnonymous401WhenUserTrustLookupFails() throws Exception {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        AuthSession session = session("session-1", 42L, "alice", 3);
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(systemInternalApi.findUserById(42L)).thenThrow(new IllegalStateException("system unavailable"));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/current-user");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+
+        filter.doFilterInternal(request, response, (servletRequest, servletResponse) -> chainInvoked.set(true));
+
+        assertThat(response.getStatus()).isEqualTo(503);
+        assertThat(response.getContentAsString()).contains("S0002");
+        assertThat(chainInvoked).isFalse();
+    }
+
+    @Test
+    void returnsDependencyUnavailableWhenSessionStoreCannotDecide() throws Exception {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1")).thenThrow(new IllegalStateException("redis unavailable"));
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/current-user");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilterInternal(request, response, (servletRequest, servletResponse) -> { });
+
+        assertThat(response.getStatus()).isEqualTo(503);
+        assertThat(response.getContentAsString()).contains("S0002");
+    }
+
     private JwtTokenClaims accessClaims(String sessionId, Long userId, String username, Integer sessionVersion) {
         JwtTokenClaims claims = new JwtTokenClaims();
         claims.setTokenType(JwtTokenType.ACCESS);

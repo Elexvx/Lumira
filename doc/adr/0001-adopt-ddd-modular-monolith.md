@@ -1,91 +1,76 @@
-# ADR-0001: Adopt DDD Modular Monolith Architecture
+# ADR-0001：采用 DDD 模块化单体
 
-## Status
+## 状态
 
-Proposed
+已采纳。
 
-## Context
+## 背景
 
-Lumira currently runs as a modular monolith through `services/lumira-admin`, while preserving Maven service modules such as `system-service`, `auth-service`, `message-service`, `file-service`, `plugin-service`, `localization-service`, and `payment-service`.
+Lumira 通过 `services/lumira-admin` 聚合运行，同时保留 system、auth、message、file、plugin、localization、payment、AI 和 Team 等 Maven 模块。
 
-This shape is operationally simple, but several modules still mix resource-oriented CRUD, application orchestration, persistence entities, cache handling, and domain rules. `system-service` in particular contains multiple business meanings under one broad `system` package. If this continues, future service extraction will become difficult and performance-sensitive rules such as permission snapshot invalidation will remain scattered.
+这种运行方式部署简单，但早期代码在部分模块中混合了 CRUD、用例编排、持久化实体、缓存和领域规则。若继续扩大 `system-service`，后续业务边界、权限快照失效和物理拆分都会变得更困难。
 
-DDD offers two useful tools for this codebase:
+DDD 对本项目最有价值的两点是：
 
-- Strategic design to define bounded contexts and ownership.
-- Tactical design to move core rules into entities, aggregates, domain services, repositories, and domain events.
+- 通过限界上下文明确业务与数据 owner。
+- 通过应用层、领域层、Repository 和领域事件保护核心规则。
 
-## Decision
+## 决策
 
-Adopt a DDD-oriented modular monolith as the target backend architecture.
+后端目标架构采用 DDD 导向的模块化单体。
 
-We will keep `services/lumira-admin` as the primary runtime entrypoint, and evolve each business module toward explicit bounded contexts. Physical microservice extraction remains a later operational decision, not the first step.
-
-Each bounded context should converge on this internal shape:
+- `services/lumira-admin` 继续作为同步请求的唯一聚合入口。
+- 每个业务模块必须有明确的代码、数据、契约、权限和事件边界。
+- 物理微服务拆分是后续运行决策，不作为清理领域边界的前提。
+- 新代码按以下依赖方向组织：
 
 ```text
-interfaces -> application -> domain
-infrastructure -> domain/application ports
+interfaces/controller -> application -> domain
+infrastructure        -> domain/application ports
 ```
 
-New code should prefer:
+各层职责：
 
-- `interfaces` for REST controllers, request validation, response assembly.
-- `application` for use-case orchestration, transaction boundaries, authorization checks, audit, and event publication.
-- `domain` for aggregates, value objects, domain services, repository interfaces, and domain events.
-- `infrastructure` for MyBatis, Redis, external clients, messaging, object storage, and repository implementations.
+- `interfaces` / `controller`：协议适配、请求校验和响应组装。
+- `application`：用例编排、事务、授权、审计和事件发布。
+- `domain`：聚合、值对象、领域服务、Repository 接口和领域事件。
+- `infrastructure`：MyBatis、Redis、外部客户端、消息、对象存储和 Repository 实现。
 
-The first migration candidate will be IAM, especially role, permission, and permission snapshot behavior. Lower-coupling contexts such as message and file should follow after the first migration proves the pattern.
+简单 CRUD 不要求建立复杂领域模型，但仍必须遵守模块、数据和持久化边界。
 
-## Consequences
+## 影响
 
-### Positive
+收益：
 
-- Business boundaries become explicit and easier to protect.
-- Core rules move out of controllers, mappers, and transaction scripts.
-- Cache invalidation and cross-module events become modeled as domain facts.
-- Current modular monolith deployment remains simple.
-- Future microservice extraction becomes less risky because contracts and owner boundaries already exist.
+- 业务规则和数据归属更清晰，架构测试可以保护边界。
+- 聚合部署保持简单，同时降低未来物理拆分风险。
+- 缓存失效和跨模块协作可以通过明确的领域事实表达。
 
-### Negative
+代价：
 
-- Short-term migration cost is real.
-- Developers need shared understanding of bounded contexts, aggregates, and domain events.
-- Some existing packages will temporarily contain old and new styles.
-- Over-modeling simple CRUD areas would slow delivery if not controlled.
+- 历史模块需要渐进迁移，新旧结构会在一段时间内并存。
+- 团队需要统一理解限界上下文、聚合、Repository 和事件。
+- 过度设计简单 CRUD 会降低交付效率，评审时需要控制建模粒度。
 
-### Neutral
+本决策不要求全局采用 Event Sourcing 或 CQRS，也不要求修改现有前端 API 路径。
 
-- API paths do not need to change.
-- Database ownership rules remain compatible with existing service data ownership docs.
-- This decision does not require adopting event sourcing or CQRS globally.
+## 被否决的方案
 
-## Alternatives Considered
+### 保持宽泛的分层 CRUD
 
-**Keep current layered CRUD style**
+无法阻止 `system-service` 继续吸收无关业务，也难以保护表 owner 和领域规则，因此不采用。
 
-- Rejected because the existing broad modules already show boundary pressure, especially in `system-service`.
-- It does not sufficiently protect future service extraction or domain rule consistency.
+### 立即拆成物理微服务
 
-**Immediately split into microservices**
+在边界尚未稳定前会提前引入部署、可观测、事务和调试复杂度，因此不采用。
 
-- Rejected because physical separation would increase deployment, observability, transaction, and debugging complexity before the domain boundaries are clean.
-- It risks turning current in-process coupling into distributed coupling.
+### 引入重量级 DDD 框架
 
-**Adopt a heavy DDD framework**
+现有 Spring Boot、MyBatis、Flyway、Redis 和 Outbox 足以支撑轻量约定与架构测试，因此不采用。
 
-- Rejected because Lumira already has Spring Boot, MyBatis, Redis, Flyway, and Outbox foundations.
-- Lightweight DDD conventions and architecture tests are enough for the current stage.
+## 相关文档
 
-## References
-
-- `doc/26-ddd-architecture-migration.md`
-- `doc/07-backend-architecture.md`
-- `doc/13-service-data-ownership.md`
-- `doc/14-system-service-module-boundaries.md`
-- `doc/16-event-outbox-architecture.md`
-- https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/ddd-oriented-microservice
-- https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis
-- https://learn.microsoft.com/en-us/azure/architecture/microservices/model/tactical-domain-driven-design
-- https://martinfowler.com/bliki/BoundedContext.html
-- https://martinfowler.com/bliki/DomainDrivenDesign.html
+- [后端开发规范](../07-backend-architecture.md)
+- [服务与数据归属](../13-service-data-ownership.md)
+- [模块边界与新模块模板](../14-system-service-module-boundaries.md)
+- [事件与 Outbox](../16-event-outbox-architecture.md)

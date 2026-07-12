@@ -10,22 +10,19 @@ import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import { Button, Dropdown, Tabs } from 'antd';
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
+import { paymentProviderDisplayName } from './components/payment/paymentDisplay';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
-
-const PAYMENT_PROVIDER_TITLES: Record<string, string> = {
-  alipay: t('支付宝', 'Alipay'),
-  wechat_pay: t('微信支付', 'WeChat Pay'),
-  stripe: 'Stripe',
-  paypal: 'PayPal',
-};
 
 const resolveDrawerTitle = (providerCode?: string | null) => {
   if (!providerCode) {
     return t('支付设置', 'Payment settings');
   }
-  return t('{provider} 配置', '{provider} configuration').replace('{provider}', PAYMENT_PROVIDER_TITLES[providerCode] || providerCode);
+  return t('{provider} 配置', '{provider} configuration').replace(
+    '{provider}',
+    paymentProviderDisplayName(providerCode, providerCode, isEnglishLocale()),
+  );
 };
 
 const SystemPaymentPage = () => {
@@ -44,7 +41,7 @@ const SystemPaymentPage = () => {
     <ManagementPage title={t('支付设置', 'Payment settings')}>
       <ManagementPageBody>
         <Tabs
-          defaultActiveKey="settings"
+          defaultActiveKey={new URLSearchParams(window.location.search).get('tab') || 'settings'}
           destroyInactiveTabPane
           items={[
             {

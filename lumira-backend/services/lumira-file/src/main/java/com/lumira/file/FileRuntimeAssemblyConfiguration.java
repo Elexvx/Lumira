@@ -10,6 +10,7 @@ import com.lumira.file.event.FileOutboxRelay;
 import com.lumira.file.event.FilePlatformEventPublisher;
 import com.lumira.file.event.LoggingFileOutboxDispatcher;
 import com.lumira.file.event.PlatformEventOutboxService;
+import com.lumira.file.event.RedisStreamFileOutboxDispatcher;
 import com.lumira.file.event.domain.FileDomainEventPublisher;
 import com.lumira.file.infrastructure.security.FileJwtAuthFilter;
 import com.lumira.file.mapper.FileObjectMapper;
@@ -59,6 +60,7 @@ import org.springframework.context.annotation.Import;
         FileOutboxRelay.class,
         FilePlatformEventPublisher.class,
         LoggingFileOutboxDispatcher.class,
+        RedisStreamFileOutboxDispatcher.class,
         PlatformEventOutboxService.class,
         com.lumira.file.infrastructure.security.JwtTokenService.class,
         FileJwtAuthFilter.class,

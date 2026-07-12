@@ -124,18 +124,19 @@ const PaymentPage = () => {
   const columns = useMemo<ProColumns<RegistrationPaymentRecord>[]>(
     () => [
       {
-        title: '报名/订单',
+        title: '订单号',
         dataIndex: 'keyword',
+        width: 210,
         fieldProps: {
           placeholder: '报名号/订单号/赛事/团队/项目',
         },
         render: (_, record) => (
           <Space className="payment-record-title" direction="vertical" size={0}>
-            <Typography.Text strong ellipsis>
-              {record.orderNo || '未生成订单'}
+            <Typography.Text strong ellipsis={{ tooltip: record.orderNo || undefined }}>
+              {record.orderNo || '-'}
             </Typography.Text>
-            <Typography.Text type="secondary" ellipsis>
-              {record.registrationNo}
+            <Typography.Text type="secondary" ellipsis={{ tooltip: record.registrationNo }}>
+              报名：{record.registrationNo}
             </Typography.Text>
             {record.participantNo ? <Tag color="blue">{record.participantNo}</Tag> : null}
           </Space>
@@ -146,7 +147,7 @@ const PaymentPage = () => {
         dataIndex: 'paymentStatus',
         valueType: 'select',
         valueEnum: paymentStatusValueEnum,
-        width: 124,
+        width: 96,
         render: (_, record) => renderPaymentStatus(record.paymentStatus),
       },
       {
@@ -154,7 +155,7 @@ const PaymentPage = () => {
         dataIndex: 'registrationStatus',
         valueType: 'select',
         valueEnum: registrationStatusValueEnum,
-        width: 124,
+        width: 96,
         render: (_, record) => renderRegistrationStatus(record.registrationStatus),
       },
       {
@@ -162,13 +163,15 @@ const PaymentPage = () => {
         dataIndex: 'providerCode',
         valueType: 'select',
         valueEnum: providerValueEnum,
-        width: 124,
+        width: 104,
+        responsive: ['lg', 'xl', 'xxl'],
         render: (_, record) => statusText(record.providerCode, providerValueEnum),
       },
       {
         title: '赛事',
         dataIndex: 'competitionTitle',
         search: false,
+        width: 140,
         ellipsis: true,
         render: (_, record) => record.competitionTitle || record.competitionCode || '-',
       },
@@ -176,42 +179,48 @@ const PaymentPage = () => {
         title: '团队',
         dataIndex: 'teamName',
         search: false,
+        width: 128,
         ellipsis: true,
+        responsive: ['md', 'lg', 'xl', 'xxl'],
         render: (_, record) => record.teamName || `团队 ${record.teamId}`,
       },
       {
         title: '项目',
         dataIndex: 'projectTitle',
         search: false,
+        width: 128,
         ellipsis: true,
+        responsive: ['xl', 'xxl'],
         render: (_, record) => record.projectTitle || `项目 ${record.projectId}`,
       },
       {
         title: '金额',
         dataIndex: 'amountMinor',
         search: false,
-        width: 128,
+        width: 104,
         render: (_, record) => formatAmount(record.amountMinor ?? record.payableAmountMinor, record.currency),
       },
       {
         title: '下单时间',
         dataIndex: 'orderCreatedAt',
         search: false,
-        width: 172,
+        width: 168,
+        responsive: ['xxl'],
         render: (value) => formatTime(typeof value === 'string' ? value : undefined),
       },
       {
         title: '支付时间',
         dataIndex: 'paidAt',
         search: false,
-        width: 172,
+        width: 168,
+        responsive: ['xxl'],
         render: (value) => formatTime(typeof value === 'string' ? value : undefined),
       },
       {
         title: '操作',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 96,
+        width: 80,
         align: 'right',
         render: (_, record) => (
           <Button type="text" icon={<EyeOutlined />} onClick={() => setDetailRecord(record)}>
@@ -235,8 +244,10 @@ const PaymentPage = () => {
           actionRef={actionRef}
           rowKey="registrationId"
           columns={tableColumns}
+          containerResponsive
           isMobile={responsive.isMobile}
-          scroll={{ x: isStatusQuery ? 1280 : 1380 }}
+          scroll={{ x: 960 }}
+          tableLayout="fixed"
           request={async (params) => {
             const response = await listRegistrationPayments({
               keyword: typeof params.keyword === 'string' ? params.keyword : undefined,

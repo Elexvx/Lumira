@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -120,6 +122,15 @@ public final class CompetitionRegistrationDTO {
         @Size(max = 32)
         private String status;
         private Integer sort;
+        private LocalDateTime materialSubmitStart;
+        private LocalDateTime materialSubmitEnd;
+        private LocalDateTime reviewStart;
+        private LocalDateTime reviewEnd;
+        @Size(max = 16)
+        private String promotionRuleType;
+        private BigDecimal promotionRuleValue;
+        @Size(max = 32)
+        private String promotionTiePolicy;
 
         public String getStageCode() { return stageCode; }
         public void setStageCode(String stageCode) { this.stageCode = stageCode; }
@@ -129,6 +140,36 @@ public final class CompetitionRegistrationDTO {
         public void setStatus(String status) { this.status = status; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
+        public LocalDateTime getMaterialSubmitStart() { return materialSubmitStart; }
+        public void setMaterialSubmitStart(LocalDateTime materialSubmitStart) { this.materialSubmitStart = materialSubmitStart; }
+        public LocalDateTime getMaterialSubmitEnd() { return materialSubmitEnd; }
+        public void setMaterialSubmitEnd(LocalDateTime materialSubmitEnd) { this.materialSubmitEnd = materialSubmitEnd; }
+        public LocalDateTime getReviewStart() { return reviewStart; }
+        public void setReviewStart(LocalDateTime reviewStart) { this.reviewStart = reviewStart; }
+        public LocalDateTime getReviewEnd() { return reviewEnd; }
+        public void setReviewEnd(LocalDateTime reviewEnd) { this.reviewEnd = reviewEnd; }
+        public String getPromotionRuleType() { return promotionRuleType; }
+        public void setPromotionRuleType(String promotionRuleType) { this.promotionRuleType = promotionRuleType; }
+        public BigDecimal getPromotionRuleValue() { return promotionRuleValue; }
+        public void setPromotionRuleValue(BigDecimal promotionRuleValue) { this.promotionRuleValue = promotionRuleValue; }
+        public String getPromotionTiePolicy() { return promotionTiePolicy; }
+        public void setPromotionTiePolicy(String promotionTiePolicy) { this.promotionTiePolicy = promotionTiePolicy; }
+    }
+
+    public static class StageReviewDecisionRequest {
+        private BigDecimal score;
+        @NotBlank
+        @Size(max = 32)
+        private String decision;
+        @Size(max = 1000)
+        private String comment;
+
+        public BigDecimal getScore() { return score; }
+        public void setScore(BigDecimal score) { this.score = score; }
+        public String getDecision() { return decision; }
+        public void setDecision(String decision) { this.decision = decision; }
+        public String getComment() { return comment; }
+        public void setComment(String comment) { this.comment = comment; }
     }
 
     public static class StageFormUpsertRequest {

@@ -10,6 +10,7 @@ import com.lumira.saas.infrastructure.event.PlatformEventProperties;
 import com.lumira.saas.infrastructure.event.PlatformEventPublisher;
 import com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcher;
 import com.lumira.saas.infrastructure.event.domain.SystemDomainEventPublisher;
+import com.lumira.saas.infrastructure.event.EventConsumptionGuard;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RawSqlMapper;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
@@ -17,6 +18,7 @@ import com.lumira.saas.infrastructure.redis.RedisConfig;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupProperties;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunner;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
+import com.lumira.saas.modules.competition.event.CompetitionPaymentEventHandler;
 import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
@@ -54,6 +56,8 @@ import org.springframework.context.annotation.Import;
         RedisStartupCleanupRunner.class,
         RedisStreamPlatformEventDispatcher.class,
         SystemDomainEventPublisher.class,
+        EventConsumptionGuard.class,
+        CompetitionPaymentEventHandler.class,
         UserExportTaskWorkerService.class,
         com.lumira.saas.infrastructure.job.InternalJobController.class
 })

@@ -8,14 +8,16 @@ import com.lumira.auth.service.AuthSessionStore;
 import com.lumira.auth.service.JwtTokenService;
 import com.lumira.auth.service.SecuritySettingsService;
 import com.lumira.common.security.AuthenticationTrustSupport;
+import com.lumira.common.security.AccessTokenAuthenticationPort;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,8 +35,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
-@ConditionalOnProperty(name = "lumira.monolith", havingValue = "false", matchIfMissing = true)
-public class AuthJwtAuthFilter extends OncePerRequestFilter {
+public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTokenAuthenticationPort {
 
     private static final String BEARER_PREFIX = "Bearer ";
     private static final int MAX_BEARER_TOKEN_LENGTH = 8 * 1024;
@@ -78,14 +79,19 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
                 if (!isTrustedBearerToken(token)) {
                     throw new IllegalArgumentException("Bearer token is invalid");
                 }
-                JwtTokenClaims claims = jwtTokenService.parseToken(token);
-                if (isTrustedAccessClaims(claims)) {
-                    String trustedSessionId = normalizeSessionId(claims.getSessionId());
-                    authSessionStore.findBySessionId(trustedSessionId)
-                            .filter(session -> isTrustedSession(session, claims))
-                            .filter(this::isSessionWithinIdleTimeout)
-                            .filter(this::isTrustedActiveSessionUser)
-                            .ifPresent(session -> authenticate(request, authorization, session));
+                CurrentUser currentUser = authenticateAccessToken(token);
+                if (currentUser != null) {
+                    authenticate(request, authorization, currentUser);
+                }
+            } catch (BizException exception) {
+                SecurityContextHolder.clearContext();
+                if (exception.getErrorCode() == ErrorCode.DEPENDENCY_UNAVAILABLE) {
+                    response.setStatus(ErrorCode.DEPENDENCY_UNAVAILABLE.getHttpStatus());
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("{\"code\":\"" + ErrorCode.DEPENDENCY_UNAVAILABLE.getCode()
+                            + "\",\"message\":\"Authentication dependency unavailable\"}");
+                    return;
                 }
             } catch (RuntimeException ignored) {
                 SecurityContextHolder.clearContext();
@@ -97,6 +103,31 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    @Override
+    public CurrentUser authenticateAccessToken(String token) {
+        if (!isTrustedBearerToken(token)) {
+            return null;
+        }
+        JwtTokenClaims claims = jwtTokenService.parseToken(token);
+        if (!isTrustedAccessClaims(claims)) {
+            return null;
+        }
+        String trustedSessionId = normalizeSessionId(claims.getSessionId());
+        AuthSession session;
+        try {
+            session = authSessionStore.findBySessionId(trustedSessionId).orElse(null);
+        } catch (RuntimeException exception) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
+        }
+        if (!isTrustedSession(session, claims)
+                || !isSessionWithinIdleTimeout(session)
+                || !isTrustedActiveSessionUser(session)) {
+            return null;
+        }
+        refreshActivity(session);
+        return buildCurrentUser(session);
     }
 
     private boolean isTrustedAccessClaims(JwtTokenClaims claims) {
@@ -136,7 +167,12 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
         if (session == null || session.getUserId() == null || session.getUserId() <= 0 || !StringUtils.hasText(session.getUserUuid())) {
             return false;
         }
-        SystemUserSnapshotDTO user = systemInternalApi.findUserById(session.getUserId());
+        SystemUserSnapshotDTO user;
+        try {
+            user = systemInternalApi.findUserById(session.getUserId());
+        } catch (RuntimeException exception) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "User trust service is unavailable");
+        }
         return user != null
                 && user.userId() != null
                 && user.userId().equals(session.getUserId())
@@ -154,7 +190,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
         return false;
     }
 
-    private void authenticate(HttpServletRequest request, String authorization, AuthSession session) {
+    private CurrentUser buildCurrentUser(AuthSession session) {
         CurrentUser currentUser = new CurrentUser(
                 session.getUserId(),
                 session.getUsername(),
@@ -174,6 +210,23 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter {
         currentUser.setPermissionsVersion(session.getPermissionsVersion());
         currentUser.setRequiresPasswordChange(session.getRequiresPasswordChange());
         currentUser.setDefaultHomePath(session.getDefaultHomePath());
+        return currentUser;
+    }
+
+    private void refreshActivity(AuthSession session) {
+        Instant now = Instant.now();
+        if (session.getLastActivityAt() == null
+                || session.getLastActivityAt().isBefore(now.minusSeconds(60))) {
+            session.setLastActivityAt(now);
+            try {
+                authSessionStore.save(session, false);
+            } catch (RuntimeException exception) {
+                throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
+            }
+        }
+    }
+
+    private void authenticate(HttpServletRequest request, String authorization, CurrentUser currentUser) {
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(currentUser, authorization, List.of());
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

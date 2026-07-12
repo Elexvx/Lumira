@@ -7,8 +7,8 @@ import type { RequestOptions } from './requestInternalsTypes';
 export const activeWriteRequests = new Set<string>();
 
 export const refreshAuthSession = async () => {
-  const { tryRefreshToken } = await import('@/auth/sessionLifecycle');
-  return tryRefreshToken();
+  const { tryRefreshTokenOutcome } = await import('@/auth/sessionLifecycle');
+  return tryRefreshTokenOutcome();
 };
 
 export const ensureUniqueWriteRequest = (duplicateKey: string | null | undefined, options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {

@@ -4,6 +4,16 @@
 
 Outbox 用于把本服务内已经提交的业务事实可靠地发布出去。它不是同步 RPC 的替代品，而是用于通知、索引、缓存失效、审计投影、补偿和弱一致流程。
 
+Lumira 使用三类事件：
+
+| 类型 | 范围 | 用途 |
+| --- | --- | --- |
+| 领域事件 | 单个 owner 模块内部 | 表达聚合或领域状态变化 |
+| 集成事件 | 跨模块 | 通知其他模块建立投影或触发后续处理 |
+| Outbox 事件 | 需要可靠投递的集成事件 | 与业务写入同事务记录，异步重试和重放 |
+
+基本边界：事件由完成业务写入的 owner 发布；消费者必须幂等；Payload 只包含完成协作所需的最少事实，不得包含密码、原始邀请 Token 或敏感身份数据。高风险命令仍需同步鉴权，不能用事件替代。
+
 当前仓库已有两条基础能力：
 
 - `system-service`：平台级 outbox、relay、logging dispatcher、Redis Stream dispatcher、内部任务触发接口。
@@ -64,11 +74,12 @@ Outbox 用于把本服务内已经提交的业务事实可靠地发布出去。�
 
 ## 5. 生产规则
 
-- 事件必须在业务事务提交后记录或投递。
+- Outbox 记录必须与业务写入处于同一事务；事务提交后再由 relay 投递。
 - 事件 payload 只描述事实，不携带后续处理指令。
 - 消费端必须幂等，优先使用 `event_key` 或业务 aggregate id 去重。
 - 事件失败后进入 `FAILED`，由 relay 根据 `next_retry_at` 重试。
 - 事件不替代审计日志；高风险操作仍需同步写审计。
+- 跨模块事件至少包含 `eventId`、`eventType`、`occurredAt`、`sourceModule`、`tenantId`、`aggregateType` 和 `aggregateId`。
 
 ## 6. 典型流程
 

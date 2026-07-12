@@ -6,9 +6,9 @@
 
 配套文档：
 
-- 执行台账模板：[`doc/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/22-test-execution-checklist-template.md)
-- 测试报告模板：[`doc/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/23-test-report-template.md)
-- 逐页手工测试工作簿：[`doc/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/doc/24-page-manual-test-workbook.md)
+- 执行台账模板：[22-test-execution-checklist-template.md](22-test-execution-checklist-template.md)
+- 测试报告模板：[23-test-report-template.md](23-test-report-template.md)
+- 逐页手工测试工作簿：[24-page-manual-test-workbook.md](24-page-manual-test-workbook.md)
 
 本文档覆盖：
 
@@ -24,8 +24,8 @@
 建议实际执行方式：
 
 1. 先阅读本文档，明确范围、环境、账号、优先级和用例口径。
-2. 手工逐页测试时，以 [`doc/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/doc/24-page-manual-test-workbook.md) 作为主执行文档，直接填写“实际结果/状态/缺陷编号/备注”。
-3. 每轮测试结束后，再把页面级结果汇总到 [`doc/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/22-test-execution-checklist-template.md) 和 [`doc/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/23-test-report-template.md)。
+2. 手工逐页测试时，以 [逐页手工测试工作簿](24-page-manual-test-workbook.md) 作为主执行文档，直接填写“实际结果/状态/缺陷编号/备注”。
+3. 每轮测试结束后，再把页面级结果汇总到 [测试执行台账模板](22-test-execution-checklist-template.md) 和 [测试报告模板](23-test-report-template.md)。
 
 ## 2. 项目测试对象
 
@@ -95,7 +95,7 @@
 - 后端至少通过：
 
 ```bash
-./mvnw -DskipTests package
+./lumira-backend/mvnw -f lumira-backend/pom.xml -DskipTests package
 ```
 
 - 前端至少通过：
@@ -108,7 +108,7 @@ corepack pnpm --dir lumira-ui build
 - 关键自动化测试至少通过：
 
 ```bash
-./mvnw test
+./lumira-backend/mvnw -f lumira-backend/pom.xml test
 corepack pnpm --dir lumira-ui test
 ```
 
@@ -337,7 +337,7 @@ node bin/check-deployment.mjs
 
 每个页面的详细操作步骤与结果留空位，统一见：
 
-- [`doc/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/doc/24-page-manual-test-workbook.md)
+- [逐页手工测试工作簿](24-page-manual-test-workbook.md)
 
 ## 11. 模块测试用例
 
@@ -624,11 +624,11 @@ corepack pnpm --dir lumira-ui test:smoke
 后端：
 
 ```bash
-./mvnw test
-./mvnw -pl services/lumira-system -am test
-./mvnw -pl services/lumira-auth -am test
-./mvnw -pl services/lumira-file -am test
-./mvnw -pl services/lumira-message -am test
+./lumira-backend/mvnw -f lumira-backend/pom.xml test
+./lumira-backend/mvnw -f lumira-backend/pom.xml -pl services/lumira-system -am test
+./lumira-backend/mvnw -f lumira-backend/pom.xml -pl services/lumira-auth -am test
+./lumira-backend/mvnw -f lumira-backend/pom.xml -pl services/lumira-file -am test
+./lumira-backend/mvnw -f lumira-backend/pom.xml -pl services/lumira-message -am test
 ```
 
 ### 14.2 自动化覆盖优先级
@@ -726,10 +726,10 @@ corepack pnpm --dir lumira-ui test:smoke
 推荐执行命令：
 
 ```bash
-./mvnw -pl services/lumira-admin -am -DskipTests package
+./lumira-backend/mvnw -f lumira-backend/pom.xml -pl services/lumira-admin -am -DskipTests package
 corepack pnpm --dir lumira-ui typecheck
 corepack pnpm --dir lumira-ui build
-./mvnw test
+./lumira-backend/mvnw -f lumira-backend/pom.xml test
 corepack pnpm --dir lumira-ui test
 corepack pnpm --dir lumira-ui test:smoke
 node bin/check-deployment.mjs
@@ -779,8 +779,8 @@ git diff --check
 
 落地执行时建议按下面三份文档配合使用：
 
-1. [`doc/21-test-strategy-and-cases.md`](/Users/johntao/Documents/GitHub/lumira/doc/21-test-strategy-and-cases.md)：总方案、风险、模块用例库
-2. [`doc/24-page-manual-test-workbook.md`](/Users/johntao/Documents/GitHub/lumira/doc/24-page-manual-test-workbook.md)：逐页手工测试步骤和结果填写
-3. [`doc/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/22-test-execution-checklist-template.md) / [`doc/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/23-test-report-template.md)：轮次汇总与正式结论
+1. [测试策略与用例](21-test-strategy-and-cases.md)：总方案、风险、模块用例库。
+2. [逐页手工测试工作簿](24-page-manual-test-workbook.md)：逐页手工测试步骤和结果填写。
+3. [测试执行台账模板](22-test-execution-checklist-template.md) / [测试报告模板](23-test-report-template.md)：轮次汇总与正式结论。
 
 按本文档执行，可以形成一套可持续复用的测试基线，后续新模块也可以沿用本结构追加测试范围和测试用例。

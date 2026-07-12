@@ -119,16 +119,17 @@ node bin/check-deployment.mjs
 
 ## 4. 构建与验证
 
-后端全量构建：
+以下命令均从仓库根目录执行。后端全量构建：
 
 ```bash
-./mvnw -DskipTests package
+./lumira-backend/mvnw -f lumira-backend/pom.xml -DskipTests package
 ```
 
 指定聚合后端构建：
 
 ```bash
-./mvnw -q -pl services/lumira-admin -am -DskipTests compile
+./lumira-backend/mvnw -f lumira-backend/pom.xml \
+  -q -pl services/lumira-admin -am -DskipTests compile
 ```
 
 前端检查：

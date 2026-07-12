@@ -18,6 +18,8 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
 
   try {
     let refreshedAfterUnauthorized = false;
+    let refreshSucceededAfterUnauthorized = false;
+    let refreshTemporarilyUnavailable = false;
 
     while (true) {
       const response = await fetchWithTimeout(
@@ -42,11 +44,13 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
 
         if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, apiResponse.code, refreshedAfterUnauthorized, authSnapshot)) {
           refreshedAfterUnauthorized = true;
-          const refreshed = await refreshAuthSession();
-          if (refreshed) {
+          const refreshOutcome = await refreshAuthSession();
+          if (refreshOutcome === 'refreshed') {
+            refreshSucceededAfterUnauthorized = true;
             authSnapshot = captureRequestAuthSnapshot(options.skipAuth);
             continue;
           }
+          refreshTemporarilyUnavailable = refreshOutcome === 'temporarily_unavailable';
         }
 
         const apiError = new ApiRequestError(apiResponse.code, apiResponse.message, {
@@ -55,21 +59,29 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
           httpStatus,
         });
 
-        handleApiError(apiError, options, authSnapshot);
+        handleApiError(apiError, options, authSnapshot, {
+          authenticatedRefreshSucceeded: refreshSucceededAfterUnauthorized,
+          refreshTemporarilyUnavailable,
+        });
         throw apiError;
       }
 
       if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, undefined, refreshedAfterUnauthorized, authSnapshot)) {
         refreshedAfterUnauthorized = true;
-        const refreshed = await refreshAuthSession();
-        if (refreshed) {
+        const refreshOutcome = await refreshAuthSession();
+        if (refreshOutcome === 'refreshed') {
+          refreshSucceededAfterUnauthorized = true;
           authSnapshot = captureRequestAuthSnapshot(options.skipAuth);
           continue;
         }
+        refreshTemporarilyUnavailable = refreshOutcome === 'temporarily_unavailable';
       }
 
       const fallbackError = buildFallbackError(httpStatus, requestId, authSnapshot.hasAuthToken);
-      handleApiError(fallbackError, options, authSnapshot);
+      handleApiError(fallbackError, options, authSnapshot, {
+        authenticatedRefreshSucceeded: refreshSucceededAfterUnauthorized,
+        refreshTemporarilyUnavailable,
+      });
       throw fallbackError;
     }
   } catch (error) {

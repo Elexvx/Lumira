@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.Enumeration;
@@ -192,7 +193,10 @@ public class PaymentV2Controller {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        CurrentUser currentUser = authentication != null && authentication.getPrincipal() instanceof CurrentUser principal
+                ? principal
+                : null;
         if (!isAuthenticatedUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }

@@ -394,7 +394,7 @@ const expertRoutes: BackendRouteRecord[] = [
     access: 'canVisitExpertReview',
     routes: [
       { path: '/expert-review', redirect: '/expert-review/reviews', hideInMenu: true },
-      { path: '/expert-review/reviews', component: '@/pages/workflow/WorkflowTasksPage', name: '\u8bc4\u5ba1\u5217\u8868', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: '\u8bc4\u5ba1\u4e0e\u664b\u7ea7', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
     ],
   },
   {

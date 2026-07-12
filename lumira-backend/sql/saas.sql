@@ -769,7 +769,7 @@ CREATE TABLE `payment_order` (
   `amount_minor` bigint NOT NULL,
   `currency` varchar(16) NOT NULL,
   `status` varchar(32) NOT NULL,
-  `payment_url` varchar(1024) DEFAULT NULL,
+  `payment_url` text DEFAULT NULL,
   `client_ip` varchar(64) DEFAULT NULL,
   `notify_url` varchar(1024) DEFAULT NULL,
   `return_url` varchar(1024) DEFAULT NULL,
@@ -2064,6 +2064,30 @@ CREATE TABLE `competition_stage_form` (
   KEY `idx_competition_stage_form_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `competition_stage_review_result` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_id` bigint NOT NULL,
+  `stage_id` bigint NOT NULL,
+  `registration_id` bigint NOT NULL,
+  `score` decimal(10,2) DEFAULT NULL,
+  `decision` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `review_comment` varchar(1000) DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `decided_by` bigint DEFAULT NULL,
+  `decided_by_uuid` char(36) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_stage_review_result` (`stage_id`,`registration_id`,`deleted`),
+  KEY `idx_competition_stage_review_result_rank` (`competition_id`,`stage_id`,`decision`,`score`,`deleted`),
+  KEY `idx_competition_stage_review_result_registration` (`registration_id`,`published_at`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `competition_config_set` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `competition_uuid` char(36) NOT NULL,
@@ -2181,6 +2205,22 @@ CREATE TABLE `registration_material_value` (
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_registration_material_value_submission` (`submission_id`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `registration_material_value_revision` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `submission_id` bigint NOT NULL,
+  `revision_no` int NOT NULL,
+  `field_key` varchar(128) NOT NULL,
+  `field_type` varchar(32) NOT NULL,
+  `text_value` longtext,
+  `file_id` bigint DEFAULT NULL,
+  `json_value` longtext,
+  `changed_by` bigint NOT NULL,
+  `changed_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_registration_material_value_revision` (`submission_id`,`revision_no`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `aiadc_expert` (
@@ -4097,3 +4137,40 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 
 
+CREATE TABLE IF NOT EXISTS `event_consumer_receipt` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `consumer_name` varchar(128) NOT NULL,
+  `event_id` varchar(64) NOT NULL,
+  `event_type` varchar(128) NOT NULL,
+  `source_module` varchar(64) NOT NULL,
+  `aggregate_id` varchar(191) NOT NULL,
+  `processed_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `result_status` varchar(32) NOT NULL DEFAULT 'SUCCEEDED',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_event_consumer_receipt_consumer_event` (`consumer_name`,`event_id`),
+  KEY `idx_event_consumer_receipt_event_type_processed` (`event_type`,`processed_at`),
+  KEY `idx_event_consumer_receipt_aggregate` (`source_module`,`aggregate_id`,`processed_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `async_task` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `task_id` varchar(64) NOT NULL,
+  `task_type` varchar(128) NOT NULL,
+  `owner_module` varchar(64) NOT NULL,
+  `scope_id` bigint unsigned DEFAULT NULL,
+  `correlation_id` varchar(128) DEFAULT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `progress` int NOT NULL DEFAULT 0,
+  `result_ref` varchar(512) DEFAULT NULL,
+  `error_code` varchar(128) DEFAULT NULL,
+  `error_message` varchar(1000) DEFAULT NULL,
+  `started_at` datetime(6) DEFAULT NULL,
+  `completed_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_async_task_task_id` (`task_id`),
+  KEY `idx_async_task_owner_status_created` (`owner_module`,`status`,`created_at`),
+  KEY `idx_async_task_correlation` (`correlation_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

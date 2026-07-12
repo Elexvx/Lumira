@@ -1,4 +1,3 @@
-import dayjs from 'dayjs';
 import { Button, Popconfirm, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -9,7 +8,8 @@ import type { PaymentProviderSettings } from '@/types/api';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import { requestPaymentApi } from '../paymentAuthenticatedRequest';
-import { localizePaymentMessage } from '../paymentMessage';
+import { paymentConnectivityStatusDisplayName } from '../paymentMessage';
+import { paymentEnvironmentDisplayName, paymentProviderDisplayName } from '../paymentDisplay';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -20,25 +20,11 @@ type PaymentRow = PaymentProviderSettings & {
 
 const PAYMENT_PROVIDER_ORDER: PaymentProviderCode[] = ['alipay', 'wechat_pay', 'stripe', 'paypal'];
 
-const PAYMENT_PROVIDER_TITLES: Record<PaymentProviderCode, string> = {
-  alipay: t('支付宝', 'Alipay'),
-  wechat_pay: t('微信支付', 'WeChat Pay'),
-  stripe: 'Stripe',
-  paypal: 'PayPal',
-};
 const resolveStatusColor = (enabled: boolean, configured: boolean) => {
   if (!configured) {
     return 'warning';
   }
   return enabled ? 'success' : 'default';
-};
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) {
-    return t('未测试', 'Not tested');
-  }
-  const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : value;
 };
 
 const buildProviderStatusText = (enabled: boolean, configured: boolean) => {
@@ -86,7 +72,7 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
       .filter((providerCode) => !persistedProviderCodes.has(providerCode))
       .map((providerCode) => ({
         key: providerCode,
-        label: PAYMENT_PROVIDER_TITLES[providerCode],
+        label: paymentProviderDisplayName(providerCode, providerCode, isEnglishLocale()),
         onClick: () => openConfigDrawer(providerCode),
       }));
   }, [openConfigDrawer, paymentSettingsQuery.data]);
@@ -98,17 +84,16 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
         dataIndex: 'providerName',
         width: 180,
         render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Typography.Text strong>{record.providerName}</Typography.Text>
-            <Typography.Text type="secondary">{record.providerCode}</Typography.Text>
-          </Space>
+          <Typography.Text strong style={{ whiteSpace: 'nowrap' }}>
+            {paymentProviderDisplayName(record.providerCode, record.providerName, isEnglishLocale())}
+          </Typography.Text>
         ),
       },
       {
         title: t('环境', 'Environment'),
         dataIndex: 'environment',
         width: 120,
-        render: (_, record) => <Tag>{record.environment}</Tag>,
+        render: (_, record) => <Tag>{paymentEnvironmentDisplayName(record.environment, isEnglishLocale())}</Tag>,
       },
       {
         title: t('状态', 'Status'),
@@ -117,27 +102,23 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
       },
       {
         title: t('配置完整度', 'Configuration completeness'),
-        width: 160,
+        width: 140,
         render: (_, record) => (
-          <Space size={8}>
-            <Tag color={record.configured ? 'success' : 'warning'}>{record.configured ? t('已完成', 'Complete') : t('待完成', 'Incomplete')}</Tag>
-            <Typography.Text type="secondary">
-              {record.configuredFields?.length || 0}
-              {t('项', 'items')}
-            </Typography.Text>
-          </Space>
+          <Tag color={record.configured ? 'success' : 'warning'}>
+            {record.configured ? t('已完成', 'Complete') : t('待完成', 'Incomplete')}
+          </Tag>
         ),
       },
       {
-        title: t('最近测试', 'Latest test'),
-        width: 240,
+        title: t('连通状态', 'Connectivity'),
+        width: 180,
         render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Typography.Text>{formatDateTime(record.lastTestedAt)}</Typography.Text>
-            <Typography.Text type={record.lastTestSuccess === false ? 'danger' : 'secondary'}>
-              {localizePaymentMessage(record.lastTestMessage, isEnglishLocale()) || t('暂无测试记录', 'No test history')}
-            </Typography.Text>
-          </Space>
+          <Tag
+            color={record.lastTestSuccess === true ? 'success' : record.lastTestSuccess === false ? 'error' : 'default'}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            {paymentConnectivityStatusDisplayName(record.lastTestSuccess, isEnglishLocale())}
+          </Tag>
         ),
       },
       {

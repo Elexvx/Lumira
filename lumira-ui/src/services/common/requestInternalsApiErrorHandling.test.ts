@@ -145,4 +145,26 @@ describe('handleApiError', () => {
     expect(mocks.messageInfo).not.toHaveBeenCalled();
     expect(mocks.performLogout).not.toHaveBeenCalled();
   });
+
+  it('does not destroy the platform session when a business service still returns 401 after refresh', () => {
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-after-refresh',
+      hasAuthToken: true,
+    }, { authenticatedRefreshSucceeded: true });
+
+    expect(mocks.messageWarning).toHaveBeenCalledWith('session expired');
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
+  it('does not destroy the platform session when refresh is temporarily unavailable', () => {
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    }, { refreshTemporarilyUnavailable: true });
+
+    expect(mocks.messageWarning).toHaveBeenCalledWith('session expired');
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
 });

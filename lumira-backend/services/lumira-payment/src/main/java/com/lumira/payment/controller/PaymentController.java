@@ -16,12 +16,11 @@ import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
+import com.lumira.common.vo.PageResponse;
 import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -117,31 +117,16 @@ public class PaymentController {
         );
     }
 
-    @GetMapping("/sandbox/simulations")
-    public ApiResponse<List<PaymentTransactionService.SandboxSimulationOrder>> sandboxSimulations() {
-        CurrentUser currentUser = requireManage();
-        return ApiResponse.success(
-                paymentTransactionService.listLocalSandboxSimulations(currentUser),
-                TraceContext.getRequestId()
-        );
-    }
-
-    @PostMapping("/sandbox/simulations")
-    @RepeatSubmit
-    public ApiResponse<PaymentTransactionService.SandboxSimulationOrder> createSandboxSimulation(
-            @Valid @RequestBody SandboxSimulationRequest request
+    @GetMapping("/sandbox/orders")
+    public ApiResponse<PageResponse<PaymentOrderDTO>> sandboxOrders(
+            @RequestParam(defaultValue = "1") int pageNo,
+            @RequestParam(defaultValue = "10") int pageSize
     ) {
         CurrentUser currentUser = requireManage();
         return ApiResponse.success(
-                paymentTransactionService.createLocalSandboxSimulation(currentUser, request.targetUserId(), request.amountMinor()),
+                paymentTransactionService.listSandboxOrders(currentUser, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
-    }
-
-    public record SandboxSimulationRequest(
-            @NotNull Long targetUserId,
-            @NotNull @Positive Long amountMinor
-    ) {
     }
 
     @GetMapping("/orders/{orderNo}")
@@ -273,7 +258,10 @@ public class PaymentController {
     }
 
     private CurrentUser currentUser() {
-        CurrentUser currentUser = securityContextFacade.getCurrentUser();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        CurrentUser currentUser = authentication != null && authentication.getPrincipal() instanceof CurrentUser principal
+                ? principal
+                : null;
         if (!isAuthenticatedUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }

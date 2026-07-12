@@ -21,6 +21,7 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -172,6 +173,13 @@ public class CompetitionRegistrationV2Controller {
         return ApiResponse.success(registrationAppService.updateRegistration(currentUser, id, request), TraceContext.getRequestId());
     }
 
+    @DeleteMapping("/registrations/{id}")
+    @RepeatSubmit
+    public ApiResponse<Boolean> deleteRegistration(@PathVariable("id") Long id) {
+        CurrentUser currentUser = require(REGISTRATION_UPDATE);
+        return ApiResponse.success(registrationAppService.deletePendingRegistration(currentUser, id), TraceContext.getRequestId());
+    }
+
     @PostMapping("/registrations/{id}/materials")
     @RepeatSubmit
     public ApiResponse<CompetitionRegistrationVO.Registration> submitMaterials(
@@ -234,6 +242,43 @@ public class CompetitionRegistrationV2Controller {
     ) {
         CurrentUser currentUser = require(STAGE_MANAGE);
         return ApiResponse.success(registrationAppService.createStage(currentUser, competitionId, request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/stages/{stageId}")
+    @RepeatSubmit
+    public ApiResponse<CompetitionRegistrationVO.Stage> updateStage(
+            @PathVariable("stageId") Long stageId,
+            @Valid @RequestBody CompetitionRegistrationDTO.StageUpsertRequest request
+    ) {
+        CurrentUser currentUser = require(STAGE_MANAGE);
+        return ApiResponse.success(registrationAppService.updateStage(currentUser, stageId, request), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/stages/{stageId}/review-candidates")
+    public ApiResponse<List<CompetitionRegistrationVO.StageReviewCandidate>> reviewCandidates(@PathVariable("stageId") Long stageId) {
+        CurrentUser currentUser = require(STAGE_MANAGE);
+        return ApiResponse.success(registrationAppService.listStageReviewCandidates(currentUser, stageId), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/stages/{stageId}/review-candidates/{registrationId}")
+    @RepeatSubmit
+    public ApiResponse<CompetitionRegistrationVO.StageReviewCandidate> saveReviewDecision(
+            @PathVariable("stageId") Long stageId,
+            @PathVariable("registrationId") Long registrationId,
+            @Valid @RequestBody CompetitionRegistrationDTO.StageReviewDecisionRequest request
+    ) {
+        CurrentUser currentUser = require(STAGE_MANAGE);
+        return ApiResponse.success(
+                registrationAppService.saveStageReviewDecision(currentUser, stageId, registrationId, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/stages/{stageId}/apply-promotion-rule")
+    @RepeatSubmit
+    public ApiResponse<List<CompetitionRegistrationVO.StageReviewCandidate>> applyPromotionRule(@PathVariable("stageId") Long stageId) {
+        CurrentUser currentUser = require(STAGE_MANAGE);
+        return ApiResponse.success(registrationAppService.applyStagePromotionRule(currentUser, stageId), TraceContext.getRequestId());
     }
 
     @GetMapping("/stages/{stageId}/form")

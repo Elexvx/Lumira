@@ -308,6 +308,29 @@ https://bm.aiadc.org.cn -> http://127.0.0.1:80
 
 如果你已经有正式域名和证书，把 `deploy/.env` 里的 `API_DOMAIN`、`FRONTEND_ORIGIN` 和 `CORS_ALLOWED_ORIGIN_PATTERNS` 一并改成正式值。
 
+### 使用 1Panel 部署
+
+1Panel 只负责管理同一份生产 Compose，不需要维护另一套配置：
+
+1. 将仓库放到服务器，例如 `/opt/lumira`。
+2. 复制 `deploy/.env.example` 为 `deploy/.env`，按本文前面的环境变量清单替换密码和密钥。
+3. 在“容器 → 编排”中新建编排，工作目录选择仓库根目录，Compose 文件选择 `deploy/docker-compose.prod.yml`，环境变量文件选择 `deploy/.env`。
+4. 启动后检查 `api-proxy`、`lumira-server`、`lumira-async` 和 `lumira-job-executor` 状态。
+5. 在“网站”中将后端域名反向代理到容器 edge proxy，并只对公网开放 80/443。
+
+命令行等价操作：
+
+```bash
+docker compose --env-file deploy/.env \
+  -f deploy/docker-compose.prod.yml pull
+docker compose --env-file deploy/.env \
+  -f deploy/docker-compose.prod.yml up -d
+docker compose --env-file deploy/.env \
+  -f deploy/docker-compose.prod.yml ps
+```
+
+当前生产拓扑不提供内置 Nacos profile，应保持 `NACOS_CONFIG_ENABLED=false` 和 `NACOS_DISCOVERY_ENABLED=false`。MySQL、Redis 和 XXL-JOB 只在 Docker 内部网络使用，不要直接暴露到公网。
+
 ## 单独自检
 
 演示前可以单独运行：

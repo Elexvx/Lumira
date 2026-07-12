@@ -63,22 +63,7 @@ public class PlatformEventOutboxService {
     }
 
     public void recordAfterCommit(MessageEventDTO event) {
-        Runnable recordAction = () -> record(event);
-        if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
-            recordAction.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    recordAction.run();
-                } catch (RuntimeException exception) {
-                    logger.warn("平台事件 outbox 记录失败: {}", exception.getMessage(), exception);
-                }
-            }
-        });
+        record(event);
     }
 
     public PlatformEventOutboxEntity record(MessageEventDTO event) {

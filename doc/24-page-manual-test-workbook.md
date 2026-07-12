@@ -13,8 +13,8 @@
 3. `状态` 建议填写：`PASS` / `FAIL` / `BLOCKED` / `SKIP` / `NOT RUN`
 4. 若失败或阻塞，请补 `缺陷编号` 和 `备注`。
 5. 测试完成后，将本页结果汇总到：
-   - [`doc/22-test-execution-checklist-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/22-test-execution-checklist-template.md)
-   - [`doc/23-test-report-template.md`](/Users/johntao/Documents/GitHub/lumira/doc/23-test-report-template.md)
+   - [测试执行台账模板](22-test-execution-checklist-template.md)
+   - [测试报告模板](23-test-report-template.md)
 
 ## 2. 测试轮次信息
 

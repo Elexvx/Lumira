@@ -109,6 +109,7 @@ public class PaymentWebhookService {
             recordRejectedWebhook(providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
         }
+        verifyProviderIdentity(providerCode, settings, payloadFields, normalizedPayload, headers);
         if (!isFreshTimestamp(timestamp)) {
             recordRejectedWebhook(providerCode, "TIMESTAMP_EXPIRED", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook timestamp expired", "Webhook request is invalid");
@@ -322,7 +323,14 @@ public class PaymentWebhookService {
                     BigDecimal.valueOf(order == null || order.getAmountMinor() == null ? 1L : order.getAmountMinor(), 2),
                     order == null ? "PENDING" : order.getStatus()
             );
-            orderAggregate.markPaid(extractField(payload, "providerTxnId", "transaction_id", "trade_no"));
+            Long registrationId = extractRegistrationId(order == null ? null : order.getRequestJson());
+            String providerTransactionId = extractField(payload, "providerTxnId", "transaction_id", "trade_no");
+            orderAggregate.markPaid(
+                    providerTransactionId,
+                    order == null ? null : order.getCreatedBy(),
+                    order == null ? null : order.getCreatedByUuid(),
+                    registrationId
+            );
             int updated = jdbcTemplate.update(
                     """
                             update payment_order
@@ -335,7 +343,7 @@ public class PaymentWebhookService {
                               and created_by_uuid = ?
                               and status = ?
                               and deleted = 0
-                              and status not in ('PAID', 'SUCCESS', 'SETTLED')
+                              and status not in ('PAID', 'SUCCESS', 'SETTLED', 'CANCELLED')
                             """,
                     LocalDateTime.now(),
                     LocalDateTime.now(),
@@ -350,45 +358,24 @@ public class PaymentWebhookService {
                     order.getStatus()
             );
             if (updated > 0) {
+                if (StringUtils.hasText(providerTransactionId)) {
+                    jdbcTemplate.update(
+                            """
+                                    update payment_order
+                                    set provider_order_no = ?, updated_at = ?
+                                    where id = ? and order_no = ? and provider_code = ? and deleted = 0
+                                    """,
+                            providerTransactionId.trim(),
+                            LocalDateTime.now(),
+                            order.getId(),
+                            orderNo.trim(),
+                            normalizedProvider
+                    );
+                }
                 domainEventPublisher.publishAll(orderAggregate.pullDomainEvents());
-                markCompetitionRegistrationPaid(orderNo.trim(), order);
             }
         }
         return "Payment webhook processed";
-    }
-
-    private void markCompetitionRegistrationPaid(String orderNo, PaymentOrderRow order) {
-        Long registrationId = extractRegistrationId(order == null ? null : order.getRequestJson());
-        if (registrationId == null) {
-            return;
-        }
-        String participantNo = buildParticipantNo(registrationId);
-        if (!StringUtils.hasText(participantNo)) {
-            return;
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update competition_registration
-                        set status = 'CONFIRMED', participant_no = ?, payment_order_no = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and deleted = 0
-                          and owner_user_id = ? and owner_user_uuid = ?
-                          and payment_order_no = ?
-                          and participant_no is null
-                        """,
-                participantNo,
-                orderNo,
-                null,
-                null,
-                LocalDateTime.now(),
-                registrationId,
-                order.getCreatedBy(),
-                order.getCreatedByUuid(),
-                orderNo
-        );
-        if (updated != 1) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Competition registration state changed during payment webhook processing");
-        }
     }
 
     private Long extractRegistrationId(String requestJson) {
@@ -403,32 +390,6 @@ public class PaymentWebhookService {
             JsonNode registrationId = metadata.path("registrationId");
             return registrationId.canConvertToLong() ? registrationId.asLong() : null;
         } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private String buildParticipantNo(Long registrationId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select concat(upper(c.code), '-', lpad((
-                                select count(1) + 1
-                                from competition_registration cr2
-                                where cr2.competition_id = cr.competition_id
-                                  and cr2.participant_no is not null
-                                  and cr2.deleted = 0
-                            ), 4, '0'))
-                            from competition_registration cr
-                            join aiadc_competition c
-                              on c.id = cr.competition_id
-                             and c.deleted = 0
-                            where cr.id = ? and cr.deleted = 0
-                            limit 1
-                            """,
-                    String.class,
-                    registrationId
-            );
-        } catch (EmptyResultDataAccessException ignored) {
             return null;
         }
     }
@@ -529,6 +490,28 @@ public class PaymentWebhookService {
             case "paypal" -> verifyHmacSignature(settings.getWebhookSecret(), payload, signature);
             default -> false;
         };
+    }
+
+    private void verifyProviderIdentity(
+            String providerCode,
+            PaymentProviderSettingsDTO settings,
+            Map<String, String> payloadFields,
+            String payload,
+            Map<String, String> headers
+    ) {
+        if (!"alipay".equals(providerCatalog.normalize(providerCode))) {
+            return;
+        }
+        String callbackAppId = firstText(payloadFields, "app_id");
+        if (!StringUtils.hasText(callbackAppId)
+                || !StringUtils.hasText(settings.getAppId())
+                || !MessageDigest.isEqual(
+                callbackAppId.getBytes(StandardCharsets.UTF_8),
+                settings.getAppId().trim().getBytes(StandardCharsets.UTF_8)
+        )) {
+            recordRejectedWebhook(providerCode, "PROVIDER_IDENTITY_MISMATCH", payload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Alipay application identity mismatch", "Webhook request is invalid");
+        }
     }
 
     private boolean verifyHmacSignature(String secret, String payload, String signature) {

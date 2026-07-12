@@ -1,42 +1,40 @@
-# ADR 0002: AI Provider Runtime Port
+# ADR-0002：AI Provider Runtime 端口
 
-## Status
+## 状态
 
-Accepted
+已采纳。
 
-## Context
+## 背景
 
-Lumira is moving AI into an independent bounded context. The AI owner must support local development, production provider calls, knowledge embedding, and future physical service split without coupling the application layer to a specific LLM SDK or another owner module.
+AI 模块需要同时支持本地开发、生产模型服务、知识库 Embedding 和未来物理拆分。若 `AiCommandService` 直接调用某个供应商 SDK 或 HTTP 接口，应用流程会与基础设施耦合，降级逻辑也难以测试。
 
-Directly calling provider SDKs or HTTP endpoints from `AiCommandService` would mix domain/application flow with infrastructure concerns, make fallback behavior hard to test, and increase risk during physical split.
+## 决策
 
-## Decision
+在 `services/lumira-ai` 中以 `AiProviderRuntime` 作为模型供应商端口。
 
-Introduce `AiProviderRuntime` as the AI provider port in `services/lumira-ai`.
+- `DefaultAiProviderRuntime` 提供确定性的本地后备：`lumira-local` Chat 和 `local-hashing-v1` Embedding。
+- 配置 `lumira.ai.provider.openai-compatible.*` 后，通过 OpenAI-compatible 的 `/chat/completions` 和 `/embeddings` 调用远程服务。
+- 供应商调用失败时降级到本地实现，避免整个对话或索引流程不可用。
+- 知识块在 AI owner Schema 中保存 `embedding_model`、`embedding_dim`、`embedding_vector_json` 和 `vector_indexed_at`。
+- `/api/v2/ai/health` 暴露运行时状态，用于发布验证和故障定位。
 
-- `DefaultAiProviderRuntime` provides a deterministic local fallback: `lumira-local` chat and `local-hashing-v1` embedding.
-- When `lumira.ai.provider.openai-compatible.*` is configured, the runtime calls OpenAI-compatible `/chat/completions` and `/embeddings` endpoints.
-- Provider failures degrade to the local runtime instead of failing the whole chat or indexing flow.
-- Knowledge chunks persist `embedding_model`, `embedding_dim`, `embedding_vector_json`, and `vector_indexed_at` using the existing AI owner schema.
-- `/api/v2/ai/health` exposes provider runtime status so release drills can prove whether AI is using local fallback or a remote provider.
+## 影响
 
-## Consequences
+收益：
 
-Benefits:
+- 应用层依赖稳定端口，不依赖供应商的 HTTP 细节。
+- 本地和 CI 无需外部凭据即可确定性测试。
+- 可以通过配置切换供应商，并快速回退到本地实现。
+- 新增供应商实现时不需要修改对话或知识索引用例。
 
-- `AiCommandService` depends on a stable application port, not provider-specific HTTP details.
-- Local and CI tests remain deterministic without external credentials.
-- Provider-native rollout can be done with configuration, runtime observability, and rollback to local fallback.
-- Future provider implementations can be added without changing chat or knowledge indexing use cases.
+限制：
 
-Trade-offs:
+- 本地后备不代表生产模型质量，只保证功能可用和测试稳定。
+- OpenAI-compatible 适配器仍需使用真实生产配置做冒烟测试。
+- 当前向量检索仍是受限 SQL 与持久化向量投影；引入专用向量数据库前需要评估数据迁移和回滚。
 
-- Local fallback is not equivalent to production provider quality.
-- The OpenAI-compatible adapter still needs production-equivalent smoke tests with real provider credentials.
-- Vector retrieval remains bounded SQL plus stored vector projection until a dedicated vector database is introduced.
+## 验证
 
-## Verification
-
-- `DefaultAiProviderRuntimeTest` verifies deterministic local chat/embedding fallback.
-- `AiCommandServiceTest` verifies command service can run through provider and owner ports.
-- `AiReadinessV2ControllerTest` verifies provider runtime status is part of AI readiness/health/metrics.
+- `DefaultAiProviderRuntimeTest`：验证本地 Chat 和 Embedding 的确定性结果。
+- `AiCommandServiceTest`：验证命令服务通过 Provider 与 owner 端口运行。
+- `AiReadinessV2ControllerTest`：验证 AI 健康状态包含 Provider Runtime 信息。

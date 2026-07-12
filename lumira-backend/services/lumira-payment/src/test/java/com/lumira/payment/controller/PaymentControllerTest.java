@@ -11,7 +11,10 @@ import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -27,6 +30,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaymentControllerTest {
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void createOrder_shouldUseCurrentUserAsOperator() {
@@ -394,6 +402,9 @@ class PaymentControllerTest {
     private CurrentUser trusted(CurrentUser currentUser) {
         currentUser.setUserUuid("user-uuid-" + currentUser.getUserId());
         currentUser.setPermissionsVersion("permissions-1");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(currentUser, null, Collections.emptyList())
+        );
         return currentUser;
     }
 

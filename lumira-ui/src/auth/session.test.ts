@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ErrorCode } from '@/enums/errorCode';
+import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -185,5 +187,22 @@ describe('performLogout', () => {
 
     expect(result).toBe(true);
     expect(mocks.request).toHaveBeenCalledTimes(2);
+  });
+
+  it('distinguishes temporary refresh failures from confirmed session expiry', async () => {
+    const { tryRefreshTokenOutcome } = await import('@/auth/sessionLifecycle');
+    mocks.request.mockRejectedValue(new Error('network unavailable') as never);
+
+    await expect(tryRefreshTokenOutcome()).resolves.toBe('temporarily_unavailable');
+  });
+
+  it('reports session expiry only when an auth refresh endpoint confirms it', async () => {
+    const { tryRefreshTokenOutcome } = await import('@/auth/sessionLifecycle');
+    mocks.request.mockRejectedValue(new ApiRequestError(ErrorCode.SESSION_EXPIRED, 'expired', {
+      httpStatus: 401,
+      userMessage: 'expired',
+    }) as never);
+
+    await expect(tryRefreshTokenOutcome()).resolves.toBe('session_expired');
   });
 });

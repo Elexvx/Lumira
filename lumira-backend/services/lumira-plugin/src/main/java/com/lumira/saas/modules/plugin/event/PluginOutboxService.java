@@ -50,18 +50,7 @@ public class PluginOutboxService {
     }
 
     public void recordAfterCommit(Long userId, String eventType, String eventKey, Object payload) {
-        Runnable action = () -> record(userId, eventType, eventKey, payload);
-        if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
+        record(userId, eventType, eventKey, payload);
     }
 
     public void record(Long userId, String eventType, String eventKey, Object payload) {

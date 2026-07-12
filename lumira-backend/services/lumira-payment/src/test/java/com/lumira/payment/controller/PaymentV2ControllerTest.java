@@ -16,8 +16,11 @@ import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -56,6 +59,11 @@ class PaymentV2ControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -396,6 +404,9 @@ class PaymentV2ControllerTest {
         CurrentUser currentUser = new CurrentUser(userId, username, legacyScopeId, "session-1", 1, true, Set.of(permission));
         currentUser.setUserUuid("user-uuid-" + userId);
         currentUser.setPermissionsVersion("permissions-1");
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(currentUser, null, Collections.emptyList())
+        );
         return currentUser;
     }
 

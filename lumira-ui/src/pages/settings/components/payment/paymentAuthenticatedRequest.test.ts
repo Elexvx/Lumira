@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ErrorCode } from '@/enums/errorCode';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
+import { requestPaymentApi } from './paymentAuthenticatedRequest';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -39,7 +40,6 @@ describe('requestPaymentApi', () => {
   });
 
   it('clears an expired session and redirects back to the current payment page after login', async () => {
-    const { requestPaymentApi } = await import('./paymentAuthenticatedRequest');
     const error = new ApiRequestError(ErrorCode.UNAUTHORIZED, '未登录', {
       httpStatus: 401,
       userMessage: '请先登录后再继续操作',
@@ -59,7 +59,6 @@ describe('requestPaymentApi', () => {
   });
 
   it('leaves the session intact for non-authentication save errors', async () => {
-    const { requestPaymentApi } = await import('./paymentAuthenticatedRequest');
     const error = new ApiRequestError(ErrorCode.VALIDATION_ERROR, '参数错误', {
       httpStatus: 400,
     });
