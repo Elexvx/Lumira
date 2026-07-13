@@ -9,7 +9,8 @@ export const competitionSettingsSectionKeys = [
 export type CompetitionSettingsSectionKey = (typeof competitionSettingsSectionKeys)[number];
 
 export type CompetitionSettingsRegistrationTab =
-  | 'TEAM_AND_MEMBER'
+  | 'MEMBER_FIELD'
+  | 'TEAM_FIELD'
   | 'PROJECT_FIELD'
   | 'INTELLECTUAL_PROPERTY'
   | 'documents';
@@ -35,7 +36,9 @@ export const getCompetitionSettingsStageTabFallback = (
 
 const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistrationTab> = {
   registration: 'PROJECT_FIELD',
-  'team-members': 'TEAM_AND_MEMBER',
+  'team-members': 'TEAM_FIELD',
+  students: 'MEMBER_FIELD',
+  team: 'TEAM_FIELD',
   'other-fields': 'PROJECT_FIELD',
   project: 'PROJECT_FIELD',
   'intellectual-property': 'INTELLECTUAL_PROPERTY',
@@ -43,7 +46,8 @@ const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistratio
 };
 
 const registrationQueryValueByTab: Record<CompetitionSettingsRegistrationTab, string> = {
-  TEAM_AND_MEMBER: 'team-members',
+  MEMBER_FIELD: 'students',
+  TEAM_FIELD: 'team',
   PROJECT_FIELD: 'project',
   INTELLECTUAL_PROPERTY: 'intellectual-property',
   documents: 'documents',
@@ -61,7 +65,7 @@ export const parseCompetitionSettingsNavigation = (search: string): CompetitionS
   return {
     section,
     registrationTab: section === 'registration'
-      ? registrationTabByQueryValue[tabValue] || 'PROJECT_FIELD'
+      ? registrationTabByQueryValue[tabValue] || 'MEMBER_FIELD'
       : 'PROJECT_FIELD',
     stageTab: section === 'stages'
       ? tabValue === 'files'
@@ -82,7 +86,7 @@ export const createCompetitionSettingsSearch = (
   if (section === 'registration') {
     const registrationTab = detail && detail in registrationQueryValueByTab
       ? detail as CompetitionSettingsRegistrationTab
-      : 'PROJECT_FIELD';
+      : 'MEMBER_FIELD';
     params.set('tab', registrationQueryValueByTab[registrationTab]);
   } else if (section === 'stages') {
     params.set('tab', detail || 'timeline');

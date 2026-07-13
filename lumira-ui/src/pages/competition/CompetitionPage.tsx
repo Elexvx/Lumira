@@ -22,8 +22,7 @@ import {
   createCompetition,
   createCompetitionDraft,
   createCompetitionStage,
-  createProject,
-  createRegistration,
+  confirmRegistration,
   createRegistrationPaymentOrder,
   deleteCompetition,
   deleteRegistration,
@@ -31,24 +30,24 @@ import {
   getRegistration,
   getCompetitionSettings,
   getCompetitionStageForm,
+  getRegistrationPaymentStatus,
   listCompetitionStages,
   listCompetitions,
   listRegistrations,
   listRegistrationPaymentOptions,
   publishCompetitionSettings,
   saveCompetitionSettingsModule,
-  submitRegistrationMaterials,
+  reconfirmRegistration,
   updateCompetitionStage,
   upsertCompetitionStageForm,
   updateCompetition,
   updateCompetitionDraft,
-  updateRegistration,
   type RegistrationSnapshotMemberPayload,
   type RegistrationProjectSnapshotPayload,
   type RegistrationSnapshotTeamPayload,
   type RegistrationUpsertPayload,
 } from '@/services/competition/api';
-import type { CompetitionPaymentOptionRecord } from '@/services/competition/types';
+import type { CompetitionPaymentOptionRecord, CompetitionPaymentOrderRecord } from '@/services/competition/types';
 import type {
   CompetitionFeeMode,
   CompetitionLocale,
@@ -66,9 +65,17 @@ import { request } from '@/services/common/request';
 import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult, PaymentProviderSettings } from '@/types/api';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
+import PaymentResultPage from '@/pages/competition/PaymentResultPage';
 import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
 import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
+import {
+  buildRegistrationPaymentResultUrl,
+  calculateRegistrationPayableAmount,
+  isRegistrationPaymentSuccessful,
+  pickEnabledCollectedValues,
+  retainAvailablePaymentProvider,
+} from '@/pages/competition/utils/registrationCheckout';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import { resolveRegistrationFieldScope } from '@/pages/competition/utils/registrationFieldScope';
 import {
@@ -1792,12 +1799,59 @@ type RegistrationCollectedField = {
   required?: boolean;
   options?: string;
   validationRule?: string;
+  groupLabel?: string;
 };
 
 type RegistrationCollectedFieldSplit = {
   allFields: RegistrationCollectedField[];
   customFields: RegistrationCollectedField[];
   overrides: Map<string, RegistrationCollectedField>;
+};
+
+type RegistrationImageFieldInputProps = {
+  value?: string;
+  onChange?: (value?: string) => void;
+};
+
+const RegistrationImageFieldInput = ({ value, onChange }: RegistrationImageFieldInputProps) => {
+  const [uploading, setUploading] = useState(false);
+  return (
+    <Space direction="vertical" size={8}>
+      {value ? <Image width={96} height={96} src={normalizeUploadUrl(value)} alt="已上传图片" /> : null}
+      <Space>
+        <Upload
+          accept="image/*"
+          showUploadList={false}
+          disabled={uploading}
+          beforeUpload={async (file) => {
+            if (!file.type.startsWith('image/')) {
+              message.error('请上传图片文件');
+              return Upload.LIST_IGNORE;
+            }
+            if (file.size > 20 * 1024 * 1024) {
+              message.error('请上传小于 20MB 的图片');
+              return Upload.LIST_IGNORE;
+            }
+            const data = new FormData();
+            data.append('file', file);
+            setUploading(true);
+            try {
+              const uploadedUrl = await request<string>('/v1/system/uploads/image', { method: 'POST', headers: {}, data });
+              onChange?.(uploadedUrl);
+            } catch (error) {
+              showErrorMessage(error, '图片上传失败');
+            } finally {
+              setUploading(false);
+            }
+            return Upload.LIST_IGNORE;
+          }}
+        >
+          <Button icon={<UploadOutlined />} loading={uploading}>{value ? '更换图片' : '上传图片'}</Button>
+        </Upload>
+        {value ? <Button type="link" onClick={() => onChange?.(undefined)}>移除</Button> : null}
+      </Space>
+    </Space>
+  );
 };
 
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
@@ -1811,6 +1865,7 @@ const toRegistrationCollectedField = (item: CompetitionConfigItem): Registration
     required: Boolean(item.requiredFlag),
     options: metadata.options,
     validationRule: metadata.validationRule,
+    groupLabel: metadata.groupLabel,
   };
 };
 
@@ -1920,6 +1975,8 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
       return <InputNumber min={0} style={{ width: '100%' }} placeholder={placeholder} />;
     case 'TEXTAREA':
       return <Input.TextArea rows={2} placeholder={placeholder} />;
+    case 'IMAGE':
+      return <RegistrationImageFieldInput />;
     case 'DATE':
       return <DatePicker style={{ width: '100%' }} placeholder={placeholder} />;
     case 'SELECT':
@@ -2079,10 +2136,32 @@ const parseSnapshotName = (snapshotJson?: string | null, keys: string[] = []) =>
   return undefined;
 };
 
+const renderCollectedFieldReviewValue = (field: RegistrationCollectedField, value: unknown) => {
+  if (!hasCollectedValue(value)) return <Typography.Text type="secondary">未填写</Typography.Text>;
+  const fieldType = (field.fieldType || 'TEXT').toUpperCase();
+  if (fieldType === 'IMAGE' && typeof value === 'string') {
+    return <Image width={72} height={72} src={normalizeUploadUrl(value)} alt={field.title} />;
+  }
+  if (fieldType === 'SELECT' || fieldType === 'MULTI_SELECT') {
+    const display = resolveOptionLabel(buildOptionLabelMap(parseConfigFieldOptions(field.options)), value);
+    return <Typography.Text>{display || normalizeDisplayText(value)}</Typography.Text>;
+  }
+  return <Typography.Text>{normalizeDisplayText(normalizeSnapshotValue(value)) || '-'}</Typography.Text>;
+};
+
+const parseRegistrationSnapshot = <T,>(snapshotJson?: string | null, fallback: T = {} as T): T => {
+  if (!snapshotJson) return fallback;
+  try {
+    return JSON.parse(snapshotJson) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 const registrationWizardModeQueryKey = 'mode';
 const registrationWizardStepQueryKey = 'step';
 const registrationWizardModeValue = 'wizard';
-const registrationWizardMaxStep = 4;
+const registrationWizardMaxStep = 5;
 
 const parseRegistrationWizardStepFromSearch = (search: string) => {
   const params = new URLSearchParams(search);
@@ -2145,6 +2224,9 @@ const getAllowedRegistrationWizardStep = (
   if (!activeRegistrationId && !toPositiveId(values.projectId) && !trimOptional(values.newProjectTitle)) {
     return 2;
   }
+  if (normalizedStep >= 5 && !activeRegistrationId) {
+    return 4;
+  }
   return normalizedStep;
 };
 
@@ -2174,7 +2256,11 @@ const CompetitionRegistrationPage = () => {
   const [acceptedDocumentKeys, setAcceptedDocumentKeys] = useState<string[]>([]);
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
   const [registrationId, setRegistrationId] = useState<number>();
+  const [registrationRecord, setRegistrationRecord] = useState<CompetitionRegistrationRecord>();
   const [paymentStatus, setPaymentStatus] = useState<string>();
+  const [paymentOrder, setPaymentOrder] = useState<CompetitionPaymentOrderRecord>();
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [materialFileRecords, setMaterialFileRecords] = useState<Record<number, FileObjectRecord>>({});
   const [paymentOptions, setPaymentOptions] = useState<CompetitionPaymentOptionRecord[]>([]);
   const [selectedPaymentProvider, setSelectedPaymentProvider] = useState<string>();
   const [registrationDraftSavedAt, setRegistrationDraftSavedAt] = useState<number>();
@@ -2222,12 +2308,12 @@ const CompetitionRegistrationPage = () => {
     () => splitConfiguredRegistrationFields(registrationFields, 'PROJECT_FIELD'),
     [registrationFields],
   );
-  const effectiveMemberRegistrationFields = memberFieldSplit.overrides.has('memberName')
+  const effectiveMemberRegistrationFields = useMemo(() => memberFieldSplit.overrides.has('memberName')
     ? memberFieldSplit.allFields
     : [
         requiredSystemRegistrationField('MEMBER_FIELD', 'memberName', '成员姓名'),
         ...memberFieldSplit.allFields,
-      ];
+      ], [memberFieldSplit]);
   const memberRoleOptions = useMemo(() => {
     const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
     return registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }));
@@ -2244,7 +2330,8 @@ const CompetitionRegistrationPage = () => {
     || requiredSystemRegistrationField('PROJECT_FIELD', 'title', '项目名称');
   const projectImageField = projectFieldSplit.overrides.get('imageUrl');
   const projectDescriptionField = projectFieldSplit.overrides.get('description');
-  const intellectualPropertyFields = projectFieldSplit.customFields;
+  const projectCustomFields = projectFieldSplit.customFields.filter((field) => field.groupLabel !== INTELLECTUAL_PROPERTY_GROUP_LABEL);
+  const intellectualPropertyFields = projectFieldSplit.customFields.filter((field) => field.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL);
   const registrationDocumentStates = useMemo(
     () =>
       registrationDocuments.map((item, index) => {
@@ -2271,6 +2358,39 @@ const CompetitionRegistrationPage = () => {
     () => !registrationDocumentStates.length || pendingRegistrationDocumentCount === 0,
     [pendingRegistrationDocumentCount, registrationDocumentStates.length],
   );
+
+  useEffect(() => {
+    const toDateValue = (value: unknown) => {
+      if (!value || dayjs.isDayjs(value)) return value;
+      const parsed = dayjs(String(value));
+      return parsed.isValid() ? parsed : value;
+    };
+    [...registrationScopeFields, ...teamFieldSplit.customFields, ...projectFieldSplit.customFields]
+      .filter((field) => field.fieldType?.toUpperCase() === 'DATE')
+      .forEach((field) => {
+        const path = field.scope === 'REGISTRATION_FIELD'
+          ? ['registrationExtraValues', field.itemKey]
+          : field.scope === 'TEAM_FIELD'
+            ? ['newTeam', 'extraValues', field.itemKey]
+            : ['newProjectExtraValues', field.itemKey];
+        const current = form.getFieldValue(path);
+        const next = toDateValue(current);
+        if (next !== current) form.setFieldValue(path, next);
+      });
+    const currentMembers = (form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[];
+    const dateMemberFields = effectiveMemberRegistrationFields.filter((field) => field.fieldType?.toUpperCase() === 'DATE');
+    if (dateMemberFields.length && currentMembers.length) {
+      let changed = false;
+      const nextMembers = currentMembers.map((member) => dateMemberFields.reduce((current, field) => {
+        const currentValue = getMemberCollectedFieldValue(current, field);
+        const nextValue = toDateValue(currentValue);
+        if (nextValue === currentValue) return current;
+        changed = true;
+        return setMemberCollectedFieldValue(current, field, nextValue);
+      }, member));
+      if (changed) form.setFieldValue(['newTeam', 'initialMembers'], nextMembers);
+    }
+  }, [effectiveMemberRegistrationFields, form, projectFieldSplit.customFields, registrationScopeFields, teamFieldSplit.customFields]);
   const canAccessRegistrationPage = registrationActionPermission.can([
     'aiadc:registration:view',
     'aiadc:registration:create',
@@ -2747,6 +2867,9 @@ const CompetitionRegistrationPage = () => {
     const draft = await readCompetitionRegistrationDraft(registrationDraftStorageKey);
     hydrateRegistrationDraft(draft);
     setStageForm(undefined);
+    setRegistrationRecord(undefined);
+    setPaymentOrder(undefined);
+    setPaymentModalOpen(false);
     setMemberModalOpen(false);
     setEditingMemberIndex(undefined);
     cancelMemberInlineEditor();
@@ -2761,19 +2884,38 @@ const CompetitionRegistrationPage = () => {
     setLoading(true);
     try {
       const latest = await getRegistration(record.id);
+      if (isRegistrationPaymentSuccessful(latest.status)) {
+        history.push(`/competitions/register/payment-result?registrationId=${latest.id}`);
+        return;
+      }
       const competitionId = toPositiveId(latest.competitionId);
       const teamId = toPositiveId(latest.teamId);
       const projectId = toPositiveId(latest.projectId);
+      const teamSnapshot = parseRegistrationSnapshot<RegistrationSnapshotTeamPayload & { registrationExtraValues?: Record<string, unknown> }>(latest.teamSnapshotJson);
+      const projectSnapshot = parseRegistrationSnapshot<{ title?: string; description?: string; imageUrl?: string; extraValues?: Record<string, unknown> }>(latest.projectSnapshotJson);
+      const members = parseRegistrationSnapshot<RegistrationTeamMemberDraft[]>(latest.memberSnapshotJson, []);
       form.resetFields();
-      form.setFieldsValue({ competitionId, teamId, projectId });
+      form.setFieldsValue({
+        competitionId,
+        teamId,
+        projectId,
+        registrationExtraValues: teamSnapshot.registrationExtraValues,
+        newTeamName: teamSnapshot.teamName,
+        newTeam: { ...teamSnapshot, initialMembers: members },
+        newProjectTitle: projectSnapshot.title,
+        newProjectDescription: projectSnapshot.description,
+        newProjectImageUrl: projectSnapshot.imageUrl,
+        newProjectExtraValues: projectSnapshot.extraValues,
+      });
       confirmedTeamIdRef.current = teamId;
       confirmedProjectIdRef.current = projectId;
       setRegistrationId(latest.id);
+      setRegistrationRecord(latest);
       setPaymentStatus(latest.status);
       if (competitionId) {
         await loadStageFormForCompetition(competitionId);
       }
-      setWizardStep(latest.status === 'PAID' || latest.status === 'CONFIRMED' ? 4 : 3, false, {
+      setWizardStep(latest.paymentOrderNo ? 5 : 4, false, {
         registrationId: latest.id,
         paymentStatus: latest.status,
       });
@@ -2802,11 +2944,12 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   const goNext = async () => {
-    if (step <= 2 && !canCreateRegistration) {
+    const isUpdating = Boolean(registrationId);
+    if (!isUpdating && !canCreateRegistration) {
       message.error('当前账号没有创建赛事报名权限');
       return;
     }
-    if (step > 2 && !canUpdateRegistration) {
+    if (isUpdating && !canUpdateRegistration) {
       message.error('当前账号没有编辑赛事报名权限');
       return;
     }
@@ -2856,61 +2999,77 @@ const CompetitionRegistrationPage = () => {
         setWizardStep(2);
       } else if (step === 2) {
         await form.validateFields();
-        let projectId = toPositiveId(form.getFieldValue('projectId')) || confirmedProjectIdRef.current;
-        if (!projectId) {
-          const title = form.getFieldValue('newProjectTitle')?.trim();
-          if (!title) {
-            message.error('请选择已有项目或填写新建项目名称');
-            return;
-          }
-          const project = await createProject({
-            code: `proj-${Date.now()}`,
-            title,
-            category: 'INNOVATION',
-            ownerName: '',
-            description: form.getFieldValue('newProjectDescription'),
-            imageUrl: form.getFieldValue('newProjectImageUrl'),
-          });
-          form.setFieldValue('projectId', project.id);
-          confirmedProjectIdRef.current = project.id;
-          projectId = project.id;
-        }
         const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
-        if (!competitionId || !projectId) {
-          message.error('请先选择赛事并创建项目');
+        if (!competitionId || (!toPositiveId(form.getFieldValue('projectId')) && !form.getFieldValue('newProjectTitle')?.trim())) {
+          message.error('请先选择赛事并填写项目名称');
+          return;
+        }
+        await loadStageFormForCompetition(competitionId);
+        setWizardStep(3);
+      } else if (step === 3) {
+        await form.validateFields();
+        setWizardStep(4);
+      } else if (step === 4) {
+        await form.validateFields();
+        const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
+        if (!competitionId) {
+          message.error('赛事信息不存在');
           return;
         }
         const teamDraft = (form.getFieldValue('newTeam') || {}) as RegistrationTeamDraft;
-        const registrationExtraValues = normalizeSnapshotValue(form.getFieldValue('registrationExtraValues')) as Record<string, unknown> | undefined;
-        const projectExtraValues = normalizeSnapshotValue(form.getFieldValue('newProjectExtraValues')) as Record<string, unknown> | undefined;
+        const registrationExtraValues = pickEnabledCollectedValues(
+          normalizeSnapshotValue(form.getFieldValue('registrationExtraValues')) as Record<string, unknown> | undefined,
+          registrationScopeFields.map((field) => field.itemKey),
+        );
+        const projectExtraValues = pickEnabledCollectedValues(
+          normalizeSnapshotValue(form.getFieldValue('newProjectExtraValues')) as Record<string, unknown> | undefined,
+          projectFieldSplit.customFields.map((field) => field.itemKey),
+        );
+        const enabledMemberStandardKeys = new Set(
+          effectiveMemberRegistrationFields
+            .map((field) => resolveMemberStandardFieldKey(field.itemKey))
+            .filter(Boolean),
+        );
+        const members = normalizeRegistrationMembers(teamDraft.initialMembers).map((member) => ({
+          memberName: member.memberName,
+          employeeNo: enabledMemberStandardKeys.has('employeeNo') ? member.employeeNo : undefined,
+          departmentName: enabledMemberStandardKeys.has('departmentName') ? member.departmentName : undefined,
+          role: enabledMemberStandardKeys.has('role') ? member.role : undefined,
+          remark: enabledMemberStandardKeys.has('remark') ? member.remark : undefined,
+          extraValues: pickEnabledCollectedValues(member.extraValues, memberFieldSplit.customFields.map((field) => field.itemKey)),
+        }));
         const teamSnapshot: RegistrationSnapshotTeamPayload = {
           teamName: form.getFieldValue('newTeamName')?.trim(),
-          teamType: normalizeSnapshotValue(teamDraft.teamType) as string | undefined,
-          avatarUrl: normalizeSnapshotValue(teamDraft.avatarUrl) as string | undefined,
-          description: normalizeSnapshotValue(teamDraft.description) as string | undefined,
-          extraValues: normalizeSnapshotValue(teamDraft.extraValues) as Record<string, unknown> | undefined,
+          teamType: teamFieldSplit.overrides.has('teamType') ? normalizeSnapshotValue(teamDraft.teamType) as string | undefined : undefined,
+          avatarUrl: teamAvatarField ? normalizeSnapshotValue(teamDraft.avatarUrl) as string | undefined : undefined,
+          description: teamDescriptionField ? normalizeSnapshotValue(teamDraft.description) as string | undefined : undefined,
+          extraValues: pickEnabledCollectedValues(
+            normalizeSnapshotValue(teamDraft.extraValues) as Record<string, unknown> | undefined,
+            teamFieldSplit.customFields.map((field) => field.itemKey),
+          ),
         };
-        const projectSnapshot: RegistrationProjectSnapshotPayload | undefined = projectExtraValues && Object.keys(projectExtraValues).length
+        const projectSnapshot: RegistrationProjectSnapshotPayload | undefined = Object.keys(projectExtraValues).length
           ? { extraValues: projectExtraValues }
           : undefined;
         const registrationPayload: RegistrationUpsertPayload = {
           competitionId,
-          projectId,
+          teamId: toPositiveId(form.getFieldValue('teamId')),
+          projectId: toPositiveId(form.getFieldValue('projectId')),
           registrationExtraValues,
           teamSnapshot,
           projectSnapshot,
-          members: normalizeRegistrationMembers(teamDraft.initialMembers),
+          members,
         };
-        const registration = registrationId
-          ? await updateRegistration(registrationId, registrationPayload)
-          : await createRegistration(registrationPayload);
-        setRegistrationId(registration.id);
-        setWizardStep(3, true, { registrationId: registration.id, paymentStatus: registration.status });
-        await loadStageFormForCompetition(competitionId);
-      } else if (step === 3) {
-        if (registrationId && stageForm) {
-          const materialValues = form.getFieldValue('materials') || {};
-          await submitRegistrationMaterials(registrationId, {
+        const materialValues = (form.getFieldValue('materials') || {}) as Record<string, unknown>;
+        const confirmPayload = {
+          registration: registrationPayload,
+          project: registrationPayload.projectId ? undefined : {
+            title: form.getFieldValue('newProjectTitle')?.trim(),
+            category: 'INNOVATION',
+            description: projectDescriptionField ? form.getFieldValue('newProjectDescription') : undefined,
+            imageUrl: projectImageField ? form.getFieldValue('newProjectImageUrl') : undefined,
+          },
+          materials: stageForm ? {
             stageId: stageForm.stageId,
             values: fields.map((field) => ({
               fieldKey: field.key,
@@ -2918,9 +3077,26 @@ const CompetitionRegistrationPage = () => {
               textValue: field.type === 'file' ? undefined : (materialValues[field.key] != null ? String(materialValues[field.key]) : undefined),
               fileId: field.type === 'file' && materialValues[field.key] ? Number(materialValues[field.key]) : undefined,
             })),
-          });
+          } : undefined,
+        };
+        const registration = registrationId
+          ? await reconfirmRegistration(registrationId, confirmPayload)
+          : await confirmRegistration(confirmPayload);
+        setRegistrationId(registration.id);
+        setRegistrationRecord(registration);
+        setPaymentStatus(registration.status);
+        confirmedTeamIdRef.current = registration.teamId;
+        confirmedProjectIdRef.current = registration.projectId;
+        form.setFieldValue('teamId', registration.teamId);
+        form.setFieldValue('projectId', registration.projectId);
+        registrationActionRef.current?.reload();
+        if (registration.payableAmountMinor === 0 || isRegistrationPaymentSuccessful(registration.status)) {
+          await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
+          latestRegistrationDraftRef.current = undefined;
+          history.push(`/competitions/register/payment-result?registrationId=${registration.id}`);
+          return;
         }
-        setWizardStep(4);
+        setWizardStep(5, true, { registrationId: registration.id, paymentStatus: registration.status });
       }
     } catch (error) {
       showErrorMessage(error, '操作失败');
@@ -2947,17 +3123,12 @@ const CompetitionRegistrationPage = () => {
       const order = await createRegistrationPaymentOrder(registrationId, {
         providerCode: selectedPaymentProvider,
         clientType: detectPaymentClientType(),
+        returnUrl: buildRegistrationPaymentResultUrl(window.location.origin, registrationId),
       });
-      setPaymentStatus(order.status || 'QUEUED');
+      setPaymentOrder(order);
+      setPaymentModalOpen(true);
       registrationActionRef.current?.reload();
-      await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
-      latestRegistrationDraftRef.current = undefined;
-      setRegistrationDraftSavedAt(undefined);
-      if (order.paymentUrl) {
-        window.location.assign(order.paymentUrl);
-        return;
-      }
-      message.info('支付订单正在生成，请稍后刷新状态');
+      if (!order.paymentUrl) message.info('支付链接正在生成，弹窗会自动刷新');
     } catch (error) {
       showErrorMessage(error, '支付订单生成失败');
     } finally {
@@ -3005,7 +3176,7 @@ const CompetitionRegistrationPage = () => {
   }, [collectRegistrationValues, form, persistRegistrationDraft]);
 
   useEffect(() => {
-    if (step !== 4 || !registrationId || paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID') {
+    if (step !== 5 || !registrationId || isRegistrationPaymentSuccessful(paymentStatus)) {
       return;
     }
     let active = true;
@@ -3013,13 +3184,71 @@ const CompetitionRegistrationPage = () => {
       .then((options) => {
         if (!active) return;
         setPaymentOptions(options || []);
-        setSelectedPaymentProvider((current) => current && options.some((item) => item.providerCode === current)
-          ? current
-          : options[0]?.providerCode);
+        setSelectedPaymentProvider((current) => retainAvailablePaymentProvider(
+          current,
+          options.map((item) => item.providerCode),
+        ));
       })
       .catch((error) => showErrorMessage(error, '支付方式加载失败'));
+    void getRegistrationPaymentStatus(registrationId)
+      .then((order) => {
+        if (active) setPaymentOrder(order);
+      })
+      .catch(() => undefined);
     return () => { active = false; };
   }, [paymentStatus, registrationId, step]);
+
+  const refreshPaymentResult = useCallback(async (silent = false) => {
+    if (!registrationId) return;
+    try {
+      const [latestOrderResult, latestRegistrationResult] = await Promise.allSettled([
+        getRegistrationPaymentStatus(registrationId),
+        getRegistration(registrationId),
+      ]);
+      if (latestRegistrationResult.status === 'rejected') throw latestRegistrationResult.reason;
+      const latestRegistration = latestRegistrationResult.value;
+      if (latestOrderResult.status === 'fulfilled') setPaymentOrder(latestOrderResult.value);
+      setRegistrationRecord(latestRegistration);
+      setPaymentStatus(latestRegistration.status);
+      if (isRegistrationPaymentSuccessful(latestRegistration.status)) {
+        setPaymentModalOpen(false);
+        await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
+        latestRegistrationDraftRef.current = undefined;
+        setRegistrationDraftSavedAt(undefined);
+        history.push(`/competitions/register/payment-result?registrationId=${registrationId}`);
+      }
+    } catch (error) {
+      if (!silent) showErrorMessage(error, '支付结果查询失败');
+    }
+  }, [registrationDraftStorageKey, registrationId]);
+
+  useEffect(() => {
+    if (!paymentModalOpen || !registrationId) return;
+    const timer = window.setInterval(() => void refreshPaymentResult(true), 3000);
+    return () => window.clearInterval(timer);
+  }, [paymentModalOpen, refreshPaymentResult, registrationId]);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    const materialValues = (form.getFieldValue('materials') || {}) as Record<string, unknown>;
+    const fileIds = Array.from(new Set(fields
+      .filter((field) => field.type === 'file')
+      .map((field) => Number(materialValues[field.key]))
+      .filter((fileId) => Number.isSafeInteger(fileId) && fileId > 0)));
+    if (!fileIds.length) {
+      setMaterialFileRecords({});
+      return;
+    }
+    let active = true;
+    void Promise.all(fileIds.map((fileId) => request<FileObjectRecord>(`/v1/files/${fileId}`, { method: 'GET', silent: true })))
+      .then((records) => {
+        if (active) setMaterialFileRecords(Object.fromEntries(records.map((record) => [record.id, record])));
+      })
+      .catch(() => {
+        if (active) setMaterialFileRecords({});
+      });
+    return () => { active = false; };
+  }, [fields, form, step]);
 
   const getMemberDisplayValues = (member: RegistrationTeamMemberDraft) =>
     Array.from(
@@ -3173,10 +3402,15 @@ const CompetitionRegistrationPage = () => {
     return matchedScopes.some((scope) => scope.scopeType === 'ALL');
   }, [initialState?.currentUser?.dataScopes]);
   const nextButtonDisabled = step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted);
-  const canAdvanceRegistration = step <= 2 ? canCreateRegistration : canUpdateRegistration;
+  const canAdvanceRegistration = registrationId ? canUpdateRegistration : canCreateRegistration;
   const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
     ? `下一步（剩余 ${pendingRegistrationDocumentCount} 项）`
-    : '\u4e0b\u4e00\u6b65';
+    : step === 4 ? '确认并生成订单' : '\u4e0b\u4e00\u6b65';
+  const previewPayableAmount = calculateRegistrationPayableAmount(
+    selectedCompetition?.entryFeeMinor,
+    selectedCompetition?.feeMode,
+    registrationMembers.length,
+  );
 
   const registrationColumns = useMemo<ProColumns<CompetitionRegistrationRecord>[]>(
     () => [
@@ -3646,10 +3880,11 @@ const CompetitionRegistrationPage = () => {
             responsive
             items={[
               { title: '选择赛事' },
-              { title: '创建团队' },
+              { title: '团队与学生' },
               { title: '项目与知识产权' },
               { title: '初赛材料' },
-              { title: '确认支付' },
+              { title: '信息确认' },
+              { title: '支付方式' },
             ]}
           />
           <Form<RegistrationFormValues>
@@ -3783,6 +4018,18 @@ const CompetitionRegistrationPage = () => {
                   {projectDescriptionField ? <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
                     <Input.TextArea rows={3} maxLength={1000} placeholder={projectDescriptionField.placeholder || projectDescriptionField.title} />
                   </Form.Item> : null}
+                  {projectCustomFields.length ? <Typography.Title level={5}>项目扩展信息</Typography.Title> : null}
+                  {projectCustomFields.map((field) => (
+                    <Form.Item
+                      key={field.itemKey}
+                      name={['newProjectExtraValues', field.itemKey]}
+                      label={field.title}
+                      rules={buildCollectedFieldRule(field)}
+                    >
+                      {renderRegistrationCollectedFieldInput(field)}
+                    </Form.Item>
+                  ))}
+                  {intellectualPropertyFields.length ? <Typography.Title level={5}>知识产权信息</Typography.Title> : null}
                   {intellectualPropertyFields.map((field) => (
                     <Form.Item
                       key={field.itemKey}
@@ -3814,15 +4061,86 @@ const CompetitionRegistrationPage = () => {
                     </Form.Item>
                   ))
                 ) : (
-                  <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入支付确认。" />
+                  <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入信息确认。" />
                 )
               ) : null}
               {step === 4 ? (
                 <Space direction="vertical" style={{ width: '100%' }} size={16}>
+                  <Alert type="info" showIcon message="请核对以下全部报名信息。确认后将生成报名订单；生成支付订单后内容将不能修改。" />
+                  <Card size="small" title="赛事与报名信息" extra={<Button type="link" onClick={() => setWizardStep(0)}>返回修改</Button>}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Typography.Text><Typography.Text strong>赛事：</Typography.Text>{selectedCompetition?.title || '-'}</Typography.Text>
+                      {registrationDocumentStates.map(({ item, documentKey }) => (
+                        <Typography.Text key={documentKey}><Typography.Text strong>已确认文书：</Typography.Text>{item.title || '报名文书'}</Typography.Text>
+                      ))}
+                      {registrationScopeFields.map((field) => (
+                        <Space key={field.itemKey} align="start">
+                          <Typography.Text strong>{field.title}：</Typography.Text>
+                          {renderCollectedFieldReviewValue(field, form.getFieldValue(['registrationExtraValues', field.itemKey]))}
+                        </Space>
+                      ))}
+                    </Space>
+                  </Card>
+                  <Card size="small" title="团队与学生" extra={<Button type="link" onClick={() => setWizardStep(1)}>返回修改</Button>}>
+                    <Space direction="vertical" style={{ width: '100%' }} size={12}>
+                      <Typography.Text><Typography.Text strong>{teamNameField.title}：</Typography.Text>{form.getFieldValue('newTeamName') || '-'}</Typography.Text>
+                      {teamFieldSplit.overrides.get('teamType') ? <Space align="start"><Typography.Text strong>{teamFieldSplit.overrides.get('teamType')?.title}：</Typography.Text>{renderCollectedFieldReviewValue(teamFieldSplit.overrides.get('teamType')!, form.getFieldValue(['newTeam', 'teamType']))}</Space> : null}
+                      {teamAvatarField && form.getFieldValue(['newTeam', 'avatarUrl']) ? <Image width={72} height={72} src={normalizeUploadUrl(form.getFieldValue(['newTeam', 'avatarUrl']))} alt={teamAvatarField.title} /> : null}
+                      {teamDescriptionField ? <Typography.Text><Typography.Text strong>{teamDescriptionField.title}：</Typography.Text>{form.getFieldValue(['newTeam', 'description']) || '-'}</Typography.Text> : null}
+                      {teamFieldSplit.customFields.map((field) => (
+                        <Space key={field.itemKey} align="start"><Typography.Text strong>{field.title}：</Typography.Text>{renderCollectedFieldReviewValue(field, form.getFieldValue(['newTeam', 'extraValues', field.itemKey]))}</Space>
+                      ))}
+                      {registrationMembers.map((member, index) => (
+                        <Card key={`review-member-${index}`} size="small" title={`学生 ${index + 1}`}>
+                          <Space direction="vertical">
+                            {effectiveMemberRegistrationFields.map((field) => (
+                              <Space key={field.itemKey} align="start"><Typography.Text strong>{field.title}：</Typography.Text>{renderCollectedFieldReviewValue(field, getMemberCollectedFieldValue(member, field))}</Space>
+                            ))}
+                          </Space>
+                        </Card>
+                      ))}
+                    </Space>
+                  </Card>
+                  <Card size="small" title="项目与知识产权" extra={<Button type="link" onClick={() => setWizardStep(2)}>返回修改</Button>}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Typography.Text><Typography.Text strong>{projectTitleField.title}：</Typography.Text>{form.getFieldValue('newProjectTitle') || '-'}</Typography.Text>
+                      {projectImageField && form.getFieldValue('newProjectImageUrl') ? <Image width={72} height={72} src={normalizeUploadUrl(form.getFieldValue('newProjectImageUrl'))} alt={projectImageField.title} /> : null}
+                      {projectDescriptionField ? <Typography.Text><Typography.Text strong>{projectDescriptionField.title}：</Typography.Text>{form.getFieldValue('newProjectDescription') || '-'}</Typography.Text> : null}
+                      {[...projectCustomFields, ...intellectualPropertyFields].map((field) => (
+                        <Space key={field.itemKey} align="start"><Typography.Text strong>{field.title}：</Typography.Text>{renderCollectedFieldReviewValue(field, form.getFieldValue(['newProjectExtraValues', field.itemKey]))}</Space>
+                      ))}
+                    </Space>
+                  </Card>
+                  <Card size="small" title="初赛材料" extra={<Button type="link" onClick={() => setWizardStep(3)}>返回修改</Button>}>
+                    {fields.length ? <Space direction="vertical">
+                      {fields.map((field) => (
+                        <Typography.Text key={field.key}>
+                          <Typography.Text strong>{field.label || field.key}：</Typography.Text>
+                          {field.type === 'file' ? (() => {
+                            const fileId = Number(form.getFieldValue(['materials', field.key]));
+                            const fileRecord = materialFileRecords[fileId];
+                            return fileRecord ? <Space size={4}>
+                              <span>{fileRecord.originalFileName}</span>
+                              <Button type="link" size="small" href={normalizeUploadUrl(fileRecord.previewUrl || fileRecord.publicUrl)} target="_blank" rel="noopener noreferrer">查看</Button>
+                            </Space> : `附件文件 #${fileId || '-'}`;
+                          })() : normalizeDisplayText(form.getFieldValue(['materials', field.key])) || '-'}
+                        </Typography.Text>
+                      ))}
+                    </Space> : <Typography.Text type="secondary">无需提交初赛材料</Typography.Text>}
+                  </Card>
+                  <Card size="small" title="应付金额">
+                    <Typography.Title level={3} style={{ margin: 0 }}>{formatRegistrationAmount(previewPayableAmount, selectedCompetition?.currency)}</Typography.Title>
+                    <Typography.Text type="secondary">{selectedCompetition?.feeMode === 'MEMBER' ? `按 ${registrationMembers.length} 位学生计费` : '按团队计费'}</Typography.Text>
+                  </Card>
+                </Space>
+              ) : null}
+              {step === 5 ? (
+                <Space direction="vertical" style={{ width: '100%' }} size={16}>
                   <Alert
                     type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
                     showIcon
-                    message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请选择支付方式。'}
+                    message={`报名编号：${registrationRecord?.registrationNo || registrationId || '-'}，应付金额：${formatRegistrationAmount(registrationRecord?.payableAmountMinor ?? previewPayableAmount, registrationRecord?.currency || selectedCompetition?.currency)}`}
+                    description="支付方式必须单选。选定后生成支付链接，不会自动跳转。"
                   />
                   {paymentStatus !== 'CONFIRMED' && paymentStatus !== 'PAID' ? (
                     paymentOptions.length ? (
@@ -3849,7 +4167,7 @@ const CompetitionRegistrationPage = () => {
               </Typography.Text>
             ) : null}
             {step > 0 ? <Button onClick={() => setWizardStep(step - 1)}>上一步</Button> : null}
-            {step < 4 ? (
+            {step < 5 ? (
               <Button type="primary" loading={loading} disabled={nextButtonDisabled || !canAdvanceRegistration} onClick={() => void goNext()}>
                 {nextButtonText}
               </Button>
@@ -3859,6 +4177,24 @@ const CompetitionRegistrationPage = () => {
               </Button>
             )}
           </div>
+          <Modal
+            title="前往付款"
+            open={paymentModalOpen}
+            onCancel={() => setPaymentModalOpen(false)}
+            footer={null}
+            destroyOnHidden
+          >
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <Typography.Text>支付订单号：{paymentOrder?.orderNo || '生成中'}</Typography.Text>
+              <Typography.Text>支付金额：{formatRegistrationAmount(paymentOrder?.amountMinor ?? registrationRecord?.payableAmountMinor, paymentOrder?.currency || registrationRecord?.currency)}</Typography.Text>
+              <Typography.Text>支付渠道：{paymentOptions.find((item) => item.providerCode === selectedPaymentProvider)?.displayName || selectedPaymentProvider || '-'}</Typography.Text>
+              {paymentOrder?.paymentUrl ? (
+                <Button type="primary" block href={paymentOrder.paymentUrl} target="_blank" rel="noopener noreferrer">前往支付</Button>
+              ) : <Button type="primary" block loading disabled>支付链接生成中</Button>}
+              {paymentOrder?.paymentUrl ? <Button block href={paymentOrder.paymentUrl} target="_blank" rel="noopener noreferrer">重新打开支付</Button> : null}
+              <Button block onClick={() => void refreshPaymentResult()}>我已完成支付，检查结果</Button>
+            </Space>
+          </Modal>
         </Card>
       </ManagementPageBody>
     </ManagementPage>
@@ -4181,6 +4517,12 @@ type RegistrationFieldScope = Extract<
 >;
 
 const INTELLECTUAL_PROPERTY_GROUP_LABEL = '知识产权信息';
+
+const protectedCollectionFieldKeys: Partial<Record<RegistrationFieldScope, Set<string>>> = {
+  TEAM_FIELD: new Set(['teamName']),
+  MEMBER_FIELD: new Set(['memberName']),
+  PROJECT_FIELD: new Set(['title']),
+};
 
 const fieldScopeOptions: Array<{ label: string; value: RegistrationFieldScope }> = [
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
@@ -4555,12 +4897,14 @@ const renderFieldSettingsTable = (
             </Form.Item>
             <Form.Item noStyle shouldUpdate>
               {({ getFieldValue }) => {
-                const isStandardField = Boolean(getFieldValue(['items', field.name, 'metadata', 'standardField']));
+                const itemScope = (getFieldValue(['items', field.name, 'metadata', 'fieldScope']) || scope) as RegistrationFieldScope;
+                const itemKey = String(getFieldValue(['items', field.name, 'itemKey']) || '');
+                const isProtectedField = Boolean(protectedCollectionFieldKeys[itemScope]?.has(itemKey));
                 return (
                   <Button
                     danger
-                    disabled={isStandardField}
-                    title={isStandardField ? '标准字段请使用启用开关控制' : '删除字段'}
+                    disabled={isProtectedField}
+                    title={isProtectedField ? '核心识别字段不可删除' : '删除字段'}
                     type="link"
                     onClick={() => {
                       remove(field.name);
@@ -5718,6 +6062,16 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
   const materialStageTabs = useMemo(() => getCompetitionMaterialStageTabs(competition), [competition]);
   const activeStage = materialStageTabs.find((stage) => stage.key === activeTab) || materialStageTabs[0];
 
+  useEffect(() => {
+    let active = true;
+    void listCompetitionStages(competition.id)
+      .then((records) => {
+        if (active) setStages(records || []);
+      })
+      .catch((error) => showErrorMessage(error, '赛事阶段加载失败'));
+    return () => { active = false; };
+  }, [competition.id]);
+
   const syncStageForms = useCallback(async (
     materialItems: CompetitionConfigItem[],
     currentStages: CompetitionStageRecord[],
@@ -6008,8 +6362,9 @@ const CompetitionSettingsPage = () => {
                     className="competition-settings-detail-tabs competition-settings-detail-tabs--top"
                     activeKey={registrationDetail}
                     items={[
+                      { key: 'MEMBER_FIELD', label: '学生信息' },
+                      { key: 'TEAM_FIELD', label: '团队信息' },
                       { key: 'PROJECT_FIELD', label: '项目信息' },
-                      { key: 'TEAM_AND_MEMBER', label: '团队与成员信息' },
                       { key: 'INTELLECTUAL_PROPERTY', label: '知识产权信息' },
                       { key: 'documents', label: '报名须知与文书' },
                     ]}
@@ -6025,17 +6380,15 @@ const CompetitionSettingsPage = () => {
                       storageSpaceOptions={storageSpaceOptions}
                       fieldScope={registrationDetail === 'documents'
                         ? undefined
-                        : registrationDetail === 'TEAM_AND_MEMBER'
-                          ? 'TEAM_FIELD'
-                          : registrationDetail === 'INTELLECTUAL_PROPERTY'
-                            ? 'PROJECT_FIELD'
-                            : registrationDetail}
+                        : registrationDetail === 'INTELLECTUAL_PROPERTY'
+                          ? 'PROJECT_FIELD'
+                          : registrationDetail}
                       fieldGroupLabel={registrationDetail === 'INTELLECTUAL_PROPERTY'
                         ? INTELLECTUAL_PROPERTY_GROUP_LABEL
                         : registrationDetail === 'PROJECT_FIELD'
                           ? '项目信息'
                           : undefined}
-                      includeMemberFields={registrationDetail === 'TEAM_AND_MEMBER'}
+                      includeMemberFields={false}
                       onSaved={setSettings}
                     />
                   ) : null}
@@ -6388,6 +6741,10 @@ const CompetitionPage = () => {
 
   if (/^\/competitions\/[^/]+\/settings$/.test(location.pathname)) {
     return <CompetitionSettingsPage />;
+  }
+
+  if (location.pathname === '/competitions/register/payment-result') {
+    return <PaymentResultPage />;
   }
 
   if (location.pathname === '/competitions/register') {

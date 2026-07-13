@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -119,6 +120,9 @@ class CompetitionRegistrationAppServiceTest {
     @Test
     void createRegistrationPersistsRegistrationAndProjectExtraValues() throws Exception {
         RegistrationSql sql = new RegistrationSql();
+        sql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "contactName", "联系人", "TEXT", false));
+        sql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "school", "学校", "TEXT", false));
+        sql.collectionFieldRows.add(configField("PROJECT_FIELD", "advisor", "指导老师", "TEXT", false));
         sql.competitionFeeMode = "MEMBER";
         sql.competitionEntryFeeMinor = 5_000L;
         CompetitionRegistrationAppService service = service(sql, teamApiRejectingLookup());
@@ -135,6 +139,57 @@ class CompetitionRegistrationAppServiceTest {
         assertThat(team.path("registrationExtraValues").path("contactName").asText()).isEqualTo("张三");
         assertThat(team.path("registrationExtraValues").path("school").asText()).isEqualTo("AIADC University");
         assertThat(project.path("extraValues").path("advisor").asText()).isEqualTo("李老师");
+    }
+
+    @Test
+    void createRegistrationRejectsUnknownAndMissingRequiredCollectedFields() {
+        RegistrationSql unknownSql = new RegistrationSql();
+        CompetitionRegistrationDTO.RegistrationCreateRequest unknownRequest = inlineRegistrationRequest();
+        unknownRequest.setRegistrationExtraValues(Map.of("deletedField", "stale"));
+
+        assertThatThrownBy(() -> service(unknownSql, teamApiRejectingLookup()).createRegistration(student(), unknownRequest))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        RegistrationSql requiredSql = new RegistrationSql();
+        requiredSql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "school", "学校", "TEXT", true));
+        assertThatThrownBy(() -> service(requiredSql, teamApiRejectingLookup()).createRegistration(student(), inlineRegistrationRequest()))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage()).contains("学校"));
+    }
+
+    @Test
+    void createRegistrationValidatesFieldFormatAndPersistsDefinitionSnapshot() throws Exception {
+        RegistrationSql sql = new RegistrationSql();
+        sql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "email", "邮箱", "EMAIL", true));
+        CompetitionRegistrationDTO.RegistrationCreateRequest invalid = inlineRegistrationRequest();
+        invalid.setRegistrationExtraValues(Map.of("email", "not-an-email"));
+
+        assertThatThrownBy(() -> service(sql, teamApiRejectingLookup()).createRegistration(student(), invalid))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        CompetitionRegistrationDTO.RegistrationCreateRequest valid = inlineRegistrationRequest();
+        valid.setRegistrationExtraValues(Map.of("email", "student@example.com"));
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup()).createRegistration(student(), valid);
+
+        JsonNode snapshot = objectMapper.readTree(registration.getCollectionSchemaSnapshotJson());
+        assertThat(snapshot.toString()).contains("邮箱", "EMAIL", "mobile");
+    }
+
+    @Test
+    void confirmRegistrationAutoConfirmsZeroFeeWithoutPaymentOrder() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.competitionEntryFeeMinor = 0L;
+        CompetitionRegistrationDTO.RegistrationConfirmRequest request = new CompetitionRegistrationDTO.RegistrationConfirmRequest();
+        request.setRegistration(registrationRequest());
+
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiWithMembers(1001L, 2))
+                .confirmRegistration(student(), null, request);
+
+        assertThat(registration.getStatus()).isEqualTo("CONFIRMED");
+        assertThat(registration.getParticipantNo()).isNotBlank();
+        assertThat(registration.getPaymentOrderNo()).isNull();
     }
 
     @Test
@@ -1355,6 +1410,51 @@ class CompetitionRegistrationAppServiceTest {
         return request;
     }
 
+    @Test
+    void paymentOrderCreationRejectsUnconfiguredProviderForModernCheckout() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        sql.preliminaryStageId = 71L;
+        sql.submittedMaterialCount = 1L;
+        CompetitionRegistrationDTO.PaymentOrderRequest request = new CompetitionRegistrationDTO.PaymentOrderRequest();
+        request.setClientType("DESKTOP");
+        request.setProviderCode("unavailable-provider");
+
+        assertThatThrownBy(() -> service(sql, teamApiWithMembers(1001L, 1), mock(PaymentInternalApi.class))
+                .createPaymentOrder(student(), 1L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+
+        assertThat(sql.lastPaymentTaskInsertSql).isNull();
+    }
+
+    @Test
+    void registrationPaymentReturnUrlIsRestrictedToTheBackendVerifiedResultPage() throws Exception {
+        CompetitionRegistrationAppService service = service(new RegistrationSql(), teamApiWithMembers(1001L, 1));
+        Method method = CompetitionRegistrationAppService.class.getDeclaredMethod("normalizeRegistrationReturnUrl", String.class, Long.class);
+        method.setAccessible(true);
+
+        assertThat(method.invoke(service, "https://contest.example/competitions/register/payment-result?registrationId=42", 42L))
+                .isEqualTo("https://contest.example/competitions/register/payment-result?registrationId=42");
+        assertThatThrownBy(() -> method.invoke(service, "https://evil.example/payment-success?registrationId=42", 42L))
+                .isInstanceOfSatisfying(InvocationTargetException.class, exception ->
+                        assertThat(exception.getCause()).isInstanceOf(BizException.class));
+        assertThatThrownBy(() -> method.invoke(service, "https://contest.example/competitions/register/payment-result?registrationId=41", 42L))
+                .isInstanceOfSatisfying(InvocationTargetException.class, exception ->
+                        assertThat(exception.getCause()).isInstanceOf(BizException.class));
+    }
+
+    private Map<String, Object> configField(String scope, String key, String title, String fieldType, boolean required) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("itemType", scope);
+        row.put("itemKey", key);
+        row.put("title", title);
+        row.put("contentJson", "{\"fieldType\":\"" + fieldType + "\"}");
+        row.put("requiredFlag", required ? 1 : 0);
+        row.put("sortOrder", 10);
+        return row;
+    }
+
     private CompetitionRegistrationDTO.RegistrationCreateRequest inlineRegistrationRequest() {
         CompetitionRegistrationDTO.RegistrationCreateRequest request = new CompetitionRegistrationDTO.RegistrationCreateRequest();
         request.setCompetitionId(11L);
@@ -1598,6 +1698,16 @@ class CompetitionRegistrationAppServiceTest {
         private String lastConfirmRegistrationSql;
         private int lastInsertIdQueries;
         private final Queue<Integer> updateResults = new java.util.ArrayDeque<>();
+        private final List<Map<String, Object>> collectionFieldRows = new ArrayList<>(List.of(
+                new LinkedHashMap<>(Map.of(
+                        "itemType", "MEMBER_FIELD",
+                        "itemKey", "mobile",
+                        "title", "手机号",
+                        "contentJson", "{\"fieldType\":\"MOBILE\"}",
+                        "requiredFlag", 0,
+                        "sortOrder", 10
+                ))
+        ));
 
         void seedRegistration(Long id, String status, String paymentOrderNo, Long payableAmountMinor) {
             registration = newRegistration(id, status, paymentOrderNo, payableAmountMinor);
@@ -1651,6 +1761,10 @@ class CompetitionRegistrationAppServiceTest {
                 registration.put("projectSnapshotJson", args[13]);
                 registration.put("memberSnapshotJson", args[14]);
                 return updateResults.isEmpty() ? 1 : updateResults.remove();
+            }
+            if (normalized.contains("set collection_schema_snapshot_json = ?")) {
+                if (registration != null) registration.put("collectionSchemaSnapshotJson", args[0]);
+                return 1;
             }
             if (normalized.contains("update competition_registration")
                     && normalized.contains("set competition_id = ?")) {
@@ -1891,6 +2005,10 @@ class CompetitionRegistrationAppServiceTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             String normalized = sql.toLowerCase();
+            if (normalized.contains("from aiadc_competition competition")
+                    && normalized.contains("competition_config_item")) {
+                return collectionFieldRows;
+            }
             if (normalized.contains("from competition_payment_order_task")) {
                 if (paymentOrderTask == null
                         || !"RUNNING".equals(paymentOrderTask.get("status"))
@@ -1990,6 +2108,7 @@ class CompetitionRegistrationAppServiceTest {
             row.put("teamSnapshotJson", "{}");
             row.put("projectSnapshotJson", "{}");
             row.put("memberSnapshotJson", "[]");
+            row.put("collectionSchemaSnapshotJson", null);
             row.put("createdAt", LocalDateTime.now());
             row.put("updatedAt", LocalDateTime.now());
             return row;

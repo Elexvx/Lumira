@@ -163,6 +163,25 @@ public class CompetitionRegistrationV2Controller {
         return ApiResponse.success(registrationAppService.createRegistration(currentUser, request), TraceContext.getRequestId());
     }
 
+    @PostMapping("/registrations/confirm")
+    @RepeatSubmit
+    public ApiResponse<CompetitionRegistrationVO.Registration> confirmRegistration(
+            @Valid @RequestBody CompetitionRegistrationDTO.RegistrationConfirmRequest request
+    ) {
+        CurrentUser currentUser = require(REGISTRATION_CREATE);
+        return ApiResponse.success(registrationAppService.confirmRegistration(currentUser, null, request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/registrations/{id}/confirm")
+    @RepeatSubmit
+    public ApiResponse<CompetitionRegistrationVO.Registration> reconfirmRegistration(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody CompetitionRegistrationDTO.RegistrationConfirmRequest request
+    ) {
+        CurrentUser currentUser = require(REGISTRATION_UPDATE);
+        return ApiResponse.success(registrationAppService.confirmRegistration(currentUser, id, request), TraceContext.getRequestId());
+    }
+
     @PutMapping("/registrations/{id}")
     @RepeatSubmit
     public ApiResponse<CompetitionRegistrationVO.Registration> updateRegistration(

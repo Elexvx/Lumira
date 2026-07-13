@@ -26,6 +26,7 @@ public final class CompetitionRegistrationVO {
         private String teamSnapshotJson;
         private String projectSnapshotJson;
         private String memberSnapshotJson;
+        private String collectionSchemaSnapshotJson;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -65,6 +66,8 @@ public final class CompetitionRegistrationVO {
         public void setProjectSnapshotJson(String projectSnapshotJson) { this.projectSnapshotJson = projectSnapshotJson; }
         public String getMemberSnapshotJson() { return memberSnapshotJson; }
         public void setMemberSnapshotJson(String memberSnapshotJson) { this.memberSnapshotJson = memberSnapshotJson; }
+        public String getCollectionSchemaSnapshotJson() { return collectionSchemaSnapshotJson; }
+        public void setCollectionSchemaSnapshotJson(String collectionSchemaSnapshotJson) { this.collectionSchemaSnapshotJson = collectionSchemaSnapshotJson; }
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         public LocalDateTime getUpdatedAt() { return updatedAt; }
