@@ -5873,33 +5873,30 @@ const CompetitionSettingsPage = () => {
     history.push('/competitions/management');
   }, [flushActivePanel]);
 
-  const handleModuleChange = useCallback(async (nextKey: CompetitionSettingsModuleKey) => {
+  const handleModuleChange = useCallback((nextKey: CompetitionSettingsModuleKey) => {
     if (nextKey === activeKey) {
       return;
     }
-    const pendingSave = flushActivePanel();
     setActiveKey(nextKey);
     updateNavigationUrl(
       nextKey,
       nextKey === 'registration' ? registrationDetail : nextKey === 'stages' ? stageDetail : undefined,
     );
-    await pendingSave;
+    void flushActivePanel();
   }, [activeKey, flushActivePanel, registrationDetail, stageDetail, updateNavigationUrl]);
 
-  const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
-    const pendingSave = flushActivePanel();
+  const handleRegistrationDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
     setRegistrationDetail(nextDetail);
     updateNavigationUrl('registration', nextDetail);
-    await pendingSave;
+    void flushActivePanel();
   }, [flushActivePanel, updateNavigationUrl]);
 
-  const handleStageDetailChange = useCallback(async (nextKey: string) => {
-    const pendingSave = flushActivePanel();
+  const handleStageDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsStageTab;
     setStageDetail(nextDetail);
     updateNavigationUrl('stages', nextDetail);
-    await pendingSave;
+    void flushActivePanel();
   }, [flushActivePanel, updateNavigationUrl]);
 
   const publish = async () => {
