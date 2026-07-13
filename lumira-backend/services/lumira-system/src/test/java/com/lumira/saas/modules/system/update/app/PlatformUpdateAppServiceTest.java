@@ -57,6 +57,35 @@ class PlatformUpdateAppServiceTest {
     }
 
     @Test
+    void fromManifestShouldReadDigestPinnedManifestFromGithubReleaseBody() throws Exception {
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                mock(PlatformUpdateTaskMapper.class)
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod(
+                "fromManifest",
+                com.fasterxml.jackson.databind.JsonNode.class
+        );
+        method.setAccessible(true);
+        String digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        var release = new ObjectMapper().readTree("""
+                {
+                  "html_url": "https://github.com/Elexvx/Lumira/releases/tag/continuous",
+                  "body": "{\\\"version\\\":\\\"main\\\",\\\"commit\\\":\\\"036d591f3bc3d8468fb10771ae33377f5bd64f63\\\",\\\"serverImage\\\":\\\"ghcr.io/elexvx/lumira/lumira-server@sha256:%s\\\",\\\"frontendImage\\\":\\\"ghcr.io/elexvx/lumira/lumira-ui@sha256:%s\\\"}"
+                }
+                """.formatted(digest, digest));
+
+        PlatformUpdateVO.LatestVersionVO latest = (PlatformUpdateVO.LatestVersionVO) method.invoke(service, release);
+
+        assertThat(latest.getCommitId()).isEqualTo("036d591f3bc3d8468fb10771ae33377f5bd64f63");
+        assertThat(latest.getServerImage()).contains("@sha256:" + digest);
+        assertThat(latest.getFrontendImage()).contains("@sha256:" + digest);
+        assertThat(latest.getUrl()).isEqualTo("https://github.com/Elexvx/Lumira/releases/tag/continuous");
+    }
+
+    @Test
     void validateManifestSourceUrlShouldRequireHttps() throws Exception {
         PlatformUpdateAppService service = new PlatformUpdateAppService(
                 mock(Environment.class),

@@ -93,6 +93,7 @@ function generatedSecrets() {
     SAAS_INTERNAL_PLUGIN_TOKEN: randomSecret('plugin-token'),
     SAAS_INTERNAL_TEAM_TOKEN: randomSecret('team-token'),
     SAAS_INTERNAL_JOB_TOKEN: randomSecret('job-token'),
+    PLATFORM_UPDATE_AGENT_TOKEN: randomSecret('updater-token'),
     XXL_JOB_ADMIN_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
@@ -459,6 +460,13 @@ function ensureEnvFile(options, profile) {
     SAAS_TRAFFIC_AUTH_LOGIN_QPS: existingEnv.SAAS_TRAFFIC_AUTH_LOGIN_QPS || '20',
     SAAS_TRAFFIC_AUTH_REFRESH_TOKEN_QPS: existingEnv.SAAS_TRAFFIC_AUTH_REFRESH_TOKEN_QPS || '80',
     SAAS_TRAFFIC_AUTH_CURRENT_USER_QPS: existingEnv.SAAS_TRAFFIC_AUTH_CURRENT_USER_QPS || '160',
+    PLATFORM_UPDATE_SOURCE_URL: existingEnv.PLATFORM_UPDATE_SOURCE_URL || 'https://api.github.com/repos/Elexvx/lumira/commits/main',
+    PLATFORM_UPDATE_MANIFEST_URL: existingEnv.PLATFORM_UPDATE_MANIFEST_URL || 'https://api.github.com/repos/Elexvx/Lumira/releases/tags/continuous',
+    PLATFORM_UPDATE_AGENT_URL: existingEnv.PLATFORM_UPDATE_AGENT_URL === 'http://127.0.0.1:9788'
+      ? 'http://host.docker.internal:9788'
+      : (existingEnv.PLATFORM_UPDATE_AGENT_URL || 'http://host.docker.internal:9788'),
+    PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS: existingEnv.PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS || 'host.docker.internal',
+    LUMIRA_UPDATER_PORT: existingEnv.LUMIRA_UPDATER_PORT || '9788',
   };
 
   for (const [key, value] of Object.entries(updates)) {
@@ -633,6 +641,17 @@ function installContainers(options) {
   composeUp(options, 'observability', options.useObservability ? ['prometheus', 'loki', 'tempo', 'alloy', 'grafana'] : []);
 }
 
+function installUpdaterService() {
+  if (noStart || platform() !== 'linux' || !commandExists('systemctl')) {
+    return;
+  }
+  const args = ['bin/install-lumira-updater.mjs'];
+  if (dryRun) {
+    args.push('--dry-run');
+  }
+  run('node', args);
+}
+
 async function runVerification(options, profile) {
   if (noStart) {
     return;
@@ -703,6 +722,7 @@ async function main() {
   await checkEnvironment(options.profileName);
   assertEdgeTlsFiles(options);
   ensureDocker();
+  installUpdaterService();
   installContainers(options);
   await runVerification(options, profile);
   log('Installation finished.');

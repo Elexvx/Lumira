@@ -460,6 +460,11 @@ services:
       BUILD_TIME: ${BUILD_TIME:-}
       GIT_COMMIT: ${GIT_COMMIT:-}
       GIT_BRANCH: ${GIT_BRANCH:-}
+      PLATFORM_UPDATE_SOURCE_URL: ${PLATFORM_UPDATE_SOURCE_URL:-https://api.github.com/repos/Elexvx/lumira/commits/main}
+      PLATFORM_UPDATE_MANIFEST_URL: ${PLATFORM_UPDATE_MANIFEST_URL:-https://api.github.com/repos/Elexvx/Lumira/releases/tags/continuous}
+      PLATFORM_UPDATE_AGENT_URL: ${PLATFORM_UPDATE_AGENT_URL:-http://host.docker.internal:9788}
+      PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS: ${PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS:-host.docker.internal}
+      PLATFORM_UPDATE_AGENT_TOKEN: ${PLATFORM_UPDATE_AGENT_TOKEN:?PLATFORM_UPDATE_AGENT_TOKEN is required}
       OBSERVABILITY_ENVIRONMENT: ${OBSERVABILITY_ENVIRONMENT:-prod}
       OTEL_JAVAAGENT_ENABLED: ${OTEL_JAVAAGENT_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://alloy:4318}
@@ -533,6 +538,8 @@ services:
     - upload_data:/data/uploads
     - plugin_data:/data/plugins
     - plugin_staging:/data/plugin-staging
+    extra_hosts:
+    - host.docker.internal:host-gateway
     depends_on:
       redis:
         condition: service_started

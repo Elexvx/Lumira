@@ -675,18 +675,35 @@ public class PlatformUpdateAppService {
     }
 
     private PlatformUpdateVO.LatestVersionVO fromManifest(JsonNode root) {
+        JsonNode manifest = unwrapGithubReleaseManifest(root);
         PlatformUpdateVO.LatestVersionVO latest = new PlatformUpdateVO.LatestVersionVO();
-        latest.setCommitId(normalizeCommit(firstText(root.path("commit").asText(null), root.path("commitId").asText(null)), true));
-        latest.setVersion(boundedText(firstText(root.path("version").asText(null), latest.getCommitId()), MAX_VERSION_LENGTH, "version"));
-        latest.setBranch(boundedText(firstText(root.path("branch").asText(null), root.path("channel").asText(null), DEFAULT_BRANCH), MAX_BRANCH_LENGTH, "branch"));
-        latest.setReleasedAt(boundedText(root.path("releasedAt").asText(null), MAX_RELEASED_AT_LENGTH, "releasedAt"));
-        latest.setTitle(boundedText(firstText(root.path("releaseNotes").asText(null), root.path("title").asText(null), "Lumira release"), MAX_TITLE_LENGTH, "releaseNotes"));
-        latest.setUrl(boundedText(firstText(root.path("url").asText(null), root.path("releaseUrl").asText(null)), MAX_URL_LENGTH, "releaseUrl"));
-        latest.setServerImage(requireDigestPinnedImage(root.path("serverImage").asText(null), "serverImage"));
-        latest.setFrontendImage(requireDigestPinnedImage(root.path("frontendImage").asText(null), "frontendImage"));
-        latest.setMigrationRequired(root.path("migrationRequired").asBoolean(false));
-        latest.setRollbackSupported(root.path("rollbackSupported").asBoolean(true));
+        latest.setCommitId(normalizeCommit(firstText(manifest.path("commit").asText(null), manifest.path("commitId").asText(null)), true));
+        latest.setVersion(boundedText(firstText(manifest.path("version").asText(null), latest.getCommitId()), MAX_VERSION_LENGTH, "version"));
+        latest.setBranch(boundedText(firstText(manifest.path("branch").asText(null), manifest.path("channel").asText(null), DEFAULT_BRANCH), MAX_BRANCH_LENGTH, "branch"));
+        latest.setReleasedAt(boundedText(manifest.path("releasedAt").asText(null), MAX_RELEASED_AT_LENGTH, "releasedAt"));
+        latest.setTitle(boundedText(firstText(manifest.path("releaseNotes").asText(null), manifest.path("title").asText(null), "Lumira release"), MAX_TITLE_LENGTH, "releaseNotes"));
+        latest.setUrl(boundedText(firstText(manifest.path("url").asText(null), manifest.path("releaseUrl").asText(null), root.path("html_url").asText(null)), MAX_URL_LENGTH, "releaseUrl"));
+        latest.setServerImage(requireDigestPinnedImage(manifest.path("serverImage").asText(null), "serverImage"));
+        latest.setFrontendImage(requireDigestPinnedImage(manifest.path("frontendImage").asText(null), "frontendImage"));
+        latest.setMigrationRequired(manifest.path("migrationRequired").asBoolean(false));
+        latest.setRollbackSupported(manifest.path("rollbackSupported").asBoolean(true));
         return latest;
+    }
+
+    private JsonNode unwrapGithubReleaseManifest(JsonNode root) {
+        JsonNode body = root.path("body");
+        if (!body.isTextual() || !StringUtils.hasText(body.asText())) {
+            return root;
+        }
+        try {
+            JsonNode manifest = objectMapper.readTree(body.asText());
+            if (manifest == null || !manifest.isObject()) {
+                throw new IllegalStateException("GitHub release body must contain a JSON update manifest");
+            }
+            return manifest;
+        } catch (Exception ex) {
+            throw new IllegalStateException("GitHub release body contains an invalid update manifest", ex);
+        }
     }
 
     private String requireDigestPinnedImage(String image, String fieldName) {
