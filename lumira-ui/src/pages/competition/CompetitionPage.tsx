@@ -5797,11 +5797,16 @@ const CompetitionSettingsPage = () => {
     if (nextSearch === location.search) {
       return;
     }
-    const nextLocation = { pathname: location.pathname, search: nextSearch };
+    // Umi's history adapter is more reliable when navigation is passed as a
+    // complete path string. Passing a location object here can leave the
+    // router's location snapshot unchanged, so the synchronization effect
+    // immediately restores the previous section/tab and every switch appears
+    // to be disabled.
+    const nextPath = `${location.pathname}${nextSearch}`;
     if (replace) {
-      history.replace(nextLocation);
+      history.replace(nextPath);
     } else {
-      history.push(nextLocation);
+      history.push(nextPath);
     }
   }, [location.pathname, location.search]);
 
