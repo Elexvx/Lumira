@@ -1,53 +1,46 @@
-# Competition Timeline Table QA
+# Platform Update Actions QA
 
-- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-00df8d21-08e2-4989-ab5e-06637a110198.png`
-- Original implementation reference: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-b7648160-d545-4edb-b916-4c51e02bf418.png`
-- Implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-timeline-table-qa.png`
-- Focused implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-timeline-table-focused-qa.png`
-- Side-by-side comparison: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-timeline-side-by-side-qa.png`
-- Viewport: 1740 × 976 desktop, light theme
-- State: confirmed competition schedule with two populated stages
+- Source visual truth: browser annotations Comment 1 and Comment 2 on `https://bm.aiadc.org.cn/settings/monitoring?tab=update` supplied in the current task.
+- Implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/qa-platform-update-actions.png`
+- Viewport: 1407 x 991, desktop, light theme.
+- State: current release synchronized, installable manifest images present, updater availability probe false, no running update task.
 
 ## Full-view comparison evidence
 
-The source pattern and implementation were placed together in the side-by-side comparison artifact. The implementation now follows the requested configuration-table composition: a tinted header row, aligned inline controls, bordered data rows, horizontal overflow protection, and a full-width add button below the table. The existing registration-time section and confirmed/TBD control remain because they are product-specific requirements outside the source table pattern.
+The annotated source and the browser-rendered implementation were compared at the same desktop viewport in the same task. The existing page hierarchy, status card, version cards, check chain, typography, spacing, borders, and light-theme tokens remain unchanged. The requested warning block is absent, so the version cards move upward naturally without leaving an empty gap. The action stack remains aligned to the right edge of the status card.
 
 ## Focused region comparison evidence
 
-The focused capture shows the four schedule columns (`阶段名称`, `比赛时间`, `评审时间`, `操作`), two complete rows, visible date-range controls, delete actions, and the bottom `新增竞赛安排` action. Controls remain readable without clipping at the tested desktop viewport. The table owns horizontal overflow at narrower widths through a 980px internal minimum, matching the source pattern's overflow behavior.
+The status-card action region was checked at readable scale. In the source, `检查` is the only visually active action and `手动更新` is muted. In the implementation, `检查` is a standard secondary button and `更新` is the blue primary button. The DOM snapshot confirms exactly one enabled `cloud-download 更新` button and no `平台更新代理未连接` alert. No additional focused image region is needed because this patch contains no custom imagery or non-standard assets.
 
 ## Findings
 
-- No actionable P0/P1/P2 visual mismatch remains for the requested structural change.
-- Fonts and typography: existing Ant Design typography and product font stack are retained; header weight and hierarchy match the surrounding settings UI.
-- Spacing and layout rhythm: 16px row padding and column gaps provide a compact configuration-table rhythm; the add action is separated by a 16px vertical gap.
-- Colors and visual tokens: borders, header fill, text, background, and destructive-action color use existing Ant Design semantic tokens.
-- Image quality and asset fidelity: not applicable; this interface uses library icons and native controls only.
-- Copy and content: schedule-specific labels and actions are preserved while adopting the source structure.
+- No actionable P0, P1, or P2 visual differences remain for the annotated scope.
+- Fonts and typography: existing family, sizes, weights, line heights, and hierarchy are preserved; the button label is intentionally shortened from `手动更新` to `更新`.
+- Spacing and layout rhythm: removing the warning closes the former vertical gap; card padding, action spacing, radii, and grid alignment remain consistent with the existing screen.
+- Colors and visual tokens: the existing Ant Design blue primary token is now applied to `更新`; `检查` uses the standard neutral button treatment.
+- Image quality and asset fidelity: not applicable; the screen uses the existing Ant Design icon library and contains no raster assets.
+- Copy and content: the unwanted updater warning is removed, and the primary action is named `更新` as requested.
 
 ## Comparison history
 
-1. Earlier implementation: each stage used a vertically stacked form with labels repeated inside every row; add/delete buttons sat beside the time fields.
-2. Fix: moved labels into a shared table header, aligned values into four columns, changed deletion to a row action, and moved addition to a full-width button below the table.
-3. Post-fix evidence: the focused browser capture confirms aligned rows, complete date ranges, visible row actions, and the full-width add action.
-4. Polish fix: replaced the new deprecated `Space direction` usage with `orientation`; no new component-library warning is introduced by this change.
+1. Source findings: [P1] the updater-disconnected alert occupies a full content block despite not helping the requested action; [P1] the update action is visually suppressed while check is primary.
+2. Fixes: removed the updater-disconnected alert, promoted `更新` to primary, demoted `检查` to secondary, and allowed update submission whenever an installable server image exists and no task is running.
+3. Post-fix evidence: `artifacts/qa-platform-update-actions.png`; DOM checks found the enabled update button and no updater alert. No P0/P1/P2 differences remain.
 
 ## Primary interactions tested
 
-- Confirmed/TBD radio state renders correctly from form data.
-- Two populated schedule rows render from the existing `scheduleJson` model.
-- Add and delete controls are present with accessible names and the single-row delete safeguard remains in code.
-- Existing timeline readiness and navigation tests passed (20 tests).
-- TypeScript typecheck and style lint passed.
+- Clicked the enabled `更新` button.
+- Confirmed the `确认手动安装平台更新？` modal opens with `开始更新` and `取消` actions.
+- Cancelled the modal without submitting a backend task.
+- Verified duplicate submissions remain blocked for `PENDING` and `RUNNING` tasks by unit tests.
 
 ## Console errors checked
 
-The rendered component produced no application error. A component-library deprecation warning identified during the first pass was traced to the new `Space` prop and fixed before the final source state.
+No uncaught runtime errors were observed. Existing Ant Design deprecation warnings for `Space`, `Statistic`, `Steps`, and `Descriptions` remain outside this patch's scope.
 
-## Implementation checklist
+## Follow-up polish
 
-- Keep timeline persistence and validation unchanged.
-- Retain table overflow behavior for tablet/mobile widths.
-- Recheck the authenticated production screen after deployment using real competition data.
+- [P3] Migrate the existing deprecated Ant Design props in a separate maintenance pass.
 
 final result: passed
