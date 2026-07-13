@@ -455,7 +455,20 @@ function ensureDockerReady() {
 }
 
 function availableDiskMb(mountPath = '/') {
-  const result = output('df', ['-Pm', mountPath]);
+  let result;
+  if (process.platform === 'win32') {
+    const dockerInvocation = resolveDockerWrapperInvocation();
+    if (dockerInvocation.command !== 'wsl.exe' || dockerInvocation.prefixArgs.at(-1) !== 'docker') {
+      return null;
+    }
+    result = spawnSync(
+      dockerInvocation.command,
+      [...dockerInvocation.prefixArgs.slice(0, -1), 'df', '-Pm', mountPath],
+      { cwd: repoRoot, encoding: 'utf8', stdio: 'pipe', shell: false }
+    );
+  } else {
+    result = output('df', ['-Pm', mountPath]);
+  }
   if (result.status !== 0) {
     return null;
   }
@@ -479,8 +492,9 @@ function maybePruneDockerBuildCache(stage) {
   if (!shouldPrune) {
     return;
   }
+  const pruneUntil = process.env.DEPLOY_DOCKER_PRUNE_UNTIL || '168h';
   log(`Docker cleanup (${stage}) started: free=${freeBefore ?? 'unknown'}MB, threshold=${minimumFreeMb}MB.`);
-  run('docker', ['builder', 'prune', '-af']);
+  run('docker', ['buildx', 'prune', '--force', '--filter', `until=${pruneUntil}`]);
   run('docker', ['image', 'prune', '-f']);
   const freeAfter = availableDiskMb('/');
   log(`Docker cleanup (${stage}) finished: free=${freeAfter ?? 'unknown'}MB.`);
@@ -1062,7 +1076,6 @@ if (serviceNames.length > 0) {
   }
   runWithRetry('docker', composeArgs(...upArgs), 1);
 }
-maybePruneDockerBuildCache('after-build');
 run('docker', composeArgs('ps'));
 
 if (!skipCheck) {

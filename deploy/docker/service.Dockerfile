@@ -36,22 +36,17 @@ COPY lumira-backend/services/lumira-async/pom.xml services/lumira-async/pom.xml
 COPY lumira-backend/services services
 COPY lumira-backend/libs libs
 
-ARG SERVICE_MODULE
+# Build every runtime artifact in one reactor. The three Compose image builds
+# share this exact layer, so common modules are compiled once instead of once
+# per service image.
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    if [ -n "$SERVICE_MODULE" ]; then \
-      mvn -pl "$SERVICE_MODULE" -am -Dmaven.test.skip=true package; \
-    else \
-      mvn -Dmaven.test.skip=true package; \
-    fi
+    mvn \
+      -pl services/lumira-admin,services/lumira-async,services/lumira-quartz \
+      -am \
+      -Dmaven.test.skip=true \
+      package
 
-ARG SERVICE_DIR
-RUN set -eux; \
-    test -n "$SERVICE_DIR"; \
-    JAR_FILE="$(find "$SERVICE_DIR/target" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | sort | head -n 1)"; \
-    test -n "$JAR_FILE"; \
-    cp "$JAR_FILE" /workspace/app.jar
-
-FROM ${JRE_IMAGE}
+FROM ${JRE_IMAGE} AS runtime
 
 ENV JAVA_OPTS="" \
     SERVER_PORT=8080 \
@@ -65,7 +60,6 @@ RUN addgroup --system app \
     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging \
     && chown -R app:app /tmp/nacos /tmp/sentinel /data
 
-COPY --from=builder /workspace/app.jar /app/app.jar
 COPY --from=builder /workspace/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 
 USER app
@@ -73,3 +67,12 @@ USER app
 EXPOSE 8080
 
 ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"true\" ]; then if [ ! -s \"$OTEL_JAVAAGENT_PATH\" ]; then echo \"OTEL_JAVAAGENT_ENABLED=true but $OTEL_JAVAAGENT_PATH is missing or empty; rebuild with OTEL_JAVAAGENT_URL\" >&2; exit 64; fi; AGENT_OPTS=\"-javaagent:$OTEL_JAVAAGENT_PATH\"; fi; exec java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $AGENT_OPTS $JAVA_OPTS -jar /app/app.jar"]
+
+FROM runtime AS lumira-server-image
+COPY --from=builder /workspace/services/lumira-admin/target/lumira-server-*.jar /app/app.jar
+
+FROM runtime AS lumira-async-image
+COPY --from=builder /workspace/services/lumira-async/target/lumira-async-*.jar /app/app.jar
+
+FROM runtime AS lumira-job-executor-image
+COPY --from=builder /workspace/services/lumira-quartz/target/job-executor-*.jar /app/app.jar

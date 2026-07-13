@@ -69,7 +69,7 @@ const getEnabledAuthenticatorKeys = (
   passkeySettingsData?.enabled ? 'passkey_login' : null,
   smsSettingsData?.enabled ? 'sms_login' : null,
   verificationSettingsData?.emailLoginEnabled ? 'email_login' : null,
-  wechatSettingsData?.enabled ? 'wechat_login' : null,
+  wechatSettingsData?.enabled && wechatSettingsData?.configured ? 'wechat_login' : null,
   (verificationSettingsData?.passwordLoginEnabled ?? true) ? 'password_login' : null,
 ].filter(Boolean) as AuthenticatorCode[];
 
@@ -922,7 +922,7 @@ export const useAuthenticatorManagement = ({
         passkeyEnabled: Boolean(passkeySettingsData?.enabled),
         smsEnabled: Boolean(smsSettingsData?.enabled),
         emailEnabled: Boolean(verificationSettingsData?.emailLoginEnabled),
-        wechatEnabled: Boolean(wechatSettingsData?.enabled),
+        wechatEnabled: Boolean(wechatSettingsData?.enabled && wechatSettingsData?.configured),
         passwordEnabled: Boolean(verificationSettingsData?.passwordLoginEnabled ?? true),
         passkeyConfigured: Boolean(passkeySettingsData?.rpId || passkeySettingsData?.rpName || passkeySettingsData?.allowedOrigins?.length),
         smsConfigured: Boolean(smsSettingsData?.configured),
