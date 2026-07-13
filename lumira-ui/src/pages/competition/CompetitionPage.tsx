@@ -5392,97 +5392,105 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
           </Typography.Title>
           <Form.List name="schedules">
             {(fields, { add, remove }) => (
-              <Form.Item label="竞赛安排" required>
+              <div className="competition-schedule-settings">
                 {fields.length ? (
-                  <div className="competition-schedule-list">
-                    <Form.Item name={[fields[0].name, 'timeMode']} rules={[{ required: true, message: '请选择时间状态' }]} className="competition-schedule-status">
-                      <Radio.Group
-                        options={timeModeOptions}
-                        onChange={(event) => {
-                          const nextMode = event.target.value as CompetitionTimeMode;
-                          const currentSchedules = form.getFieldValue('schedules') || [];
-                          if (nextMode === 'CONFIRMED') {
-                            form.setFieldValue('schedules', [{ ...currentSchedules[0], timeMode: 'CONFIRMED' }]);
-                            scheduleSave();
-                            return;
-                          }
-                          form.setFieldValue('schedules', [{ timeMode: 'TBD' }]);
+                  <Form.Item
+                    name={[fields[0].name, 'timeMode']}
+                    label="竞赛安排"
+                    required
+                    rules={[{ required: true, message: '请选择时间状态' }]}
+                    className="competition-schedule-settings__status"
+                  >
+                    <Radio.Group
+                      options={timeModeOptions}
+                      onChange={(event) => {
+                        const nextMode = event.target.value as CompetitionTimeMode;
+                        const currentSchedules = form.getFieldValue('schedules') || [];
+                        if (nextMode === 'CONFIRMED') {
+                          form.setFieldValue('schedules', [{ ...currentSchedules[0], timeMode: 'CONFIRMED' }]);
                           scheduleSave();
-                        }}
-                      />
-                    </Form.Item>
-                    {schedules[0]?.timeMode === 'CONFIRMED' ? (
-                      <Space direction="vertical" size={8} className="competition-dynamic-list">
-                        {fields.map((field, index) => (
-                          <div key={field.key} className="competition-schedule-row">
-                            <Form.Item name={[field.name, 'title']} label="阶段名称" rules={[{ required: true, message: '请输入阶段名称' }]} className="competition-schedule-row__title">
-                              <Input maxLength={128} placeholder="例如：初赛" />
-                            </Form.Item>
-                            <Form.Item
-                              name={[field.name, 'timeRange']}
-                              label="比赛时间"
-                              rules={[
-                                { required: true, message: '请选择比赛时间' },
-                                {
-                                  validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
-                                    if (!getCompleteTimeRange(value)) {
-                                      return Promise.reject(new Error('请选择开始和结束时间'));
-                                    }
-                                    return Promise.resolve();
-                                  },
-                                },
-                              ]}
-                              className="competition-schedule-row__time"
-                            >
-                              <CompetitionDateTimeRangePicker />
-                            </Form.Item>
-                            <Form.Item
-                              name={[field.name, 'reviewRange']}
-                              label="评审时间"
-                              rules={[
-                                { required: true, message: '请选择评审时间' },
-                                {
-                                  validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => (
-                                    getCompleteTimeRange(value)
-                                      ? Promise.resolve()
-                                      : Promise.reject(new Error('请选择评审开始和结束时间'))
-                                  ),
-                                },
-                              ]}
-                              className="competition-schedule-row__time"
-                            >
-                              <CompetitionDateTimeRangePicker />
-                            </Form.Item>
-                            <div className="competition-schedule-row__actions">
-                              {index === fields.length - 1 ? (
-                                <Button
-                                  aria-label="添加竞赛安排"
-                                  title="添加竞赛安排"
-                                  icon={<PlusOutlined />}
-                                  onClick={() => {
-                                    add({ timeMode: 'CONFIRMED', title: '' });
-                                    scheduleSave();
-                                  }}
-                                />
-                              ) : null}
-                              <Button
-                                aria-label="删除竞赛安排"
-                                title="删除竞赛安排"
-                                icon={<DeleteOutlined />}
-                                disabled={fields.length <= 1}
-                                onClick={() => {
-                                  remove(field.name);
-                                  scheduleSave();
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </Space>
-                    ) : null}
-                  </div>
+                          return;
+                        }
+                        form.setFieldValue('schedules', [{ timeMode: 'TBD' }]);
+                        scheduleSave();
+                      }}
+                    />
+                  </Form.Item>
                 ) : null}
-              </Form.Item>
+                {schedules[0]?.timeMode === 'CONFIRMED' ? (
+                  <Space orientation="vertical" size={16} className="competition-schedule-settings__content">
+                    <div className="competition-schedule-table">
+                      <div className="competition-schedule-table__head">
+                        <span>阶段名称</span>
+                        <span>比赛时间</span>
+                        <span>评审时间</span>
+                        <span>操作</span>
+                      </div>
+                      {fields.map((field) => (
+                        <div key={field.key} className="competition-schedule-table__row">
+                          <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入阶段名称' }]}>
+                            <Input maxLength={128} placeholder="例如：初赛" />
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, 'timeRange']}
+                            rules={[
+                              { required: true, message: '请选择比赛时间' },
+                              {
+                                validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
+                                  if (!getCompleteTimeRange(value)) {
+                                    return Promise.reject(new Error('请选择开始和结束时间'));
+                                  }
+                                  return Promise.resolve();
+                                },
+                              },
+                            ]}
+                          >
+                            <CompetitionDateTimeRangePicker />
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, 'reviewRange']}
+                            rules={[
+                              { required: true, message: '请选择评审时间' },
+                              {
+                                validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => (
+                                  getCompleteTimeRange(value)
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('请选择评审开始和结束时间'))
+                                ),
+                              },
+                            ]}
+                          >
+                            <CompetitionDateTimeRangePicker />
+                          </Form.Item>
+                          <Button
+                            danger
+                            type="link"
+                            aria-label="删除竞赛安排"
+                            title={fields.length <= 1 ? '至少保留一个竞赛安排' : '删除竞赛安排'}
+                            disabled={fields.length <= 1}
+                            onClick={() => {
+                              remove(field.name);
+                              scheduleSave();
+                            }}
+                          >
+                            删除
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      block
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        add({ timeMode: 'CONFIRMED', title: '' });
+                        scheduleSave();
+                      }}
+                    >
+                      新增竞赛安排
+                    </Button>
+                  </Space>
+                ) : null}
+              </div>
             )}
           </Form.List>
         </section>
