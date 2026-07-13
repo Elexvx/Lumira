@@ -210,7 +210,6 @@ public class SystemVerificationAppService {
 
     private boolean hasAnyPermission(CurrentUser currentUser, String ... permissionKeys) {
         Set permissions;
-        this.refreshTrustedCurrentUser(currentUser);
         if (!AuthenticationTrustSupport.isTrustedCurrentUser((CurrentUser)currentUser)) {
             return false;
         }
