@@ -5877,12 +5877,13 @@ const CompetitionSettingsPage = () => {
     if (nextKey === activeKey) {
       return;
     }
-    await flushActivePanel();
+    const pendingSave = flushActivePanel();
     setActiveKey(nextKey);
     updateNavigationUrl(
       nextKey,
       nextKey === 'registration' ? registrationDetail : nextKey === 'stages' ? stageDetail : undefined,
     );
+    await pendingSave;
   }, [activeKey, flushActivePanel, registrationDetail, stageDetail, updateNavigationUrl]);
 
   const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
