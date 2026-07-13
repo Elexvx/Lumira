@@ -57,7 +57,8 @@ else
 fi
 
 echo "Creating Redis backup..."
-run docker compose -f "${COMPOSE_FILE}" exec -T "${REDIS_SERVICE}" redis-cli --rdb /data/dump.rdb
+run docker compose -f "${COMPOSE_FILE}" exec -T "${REDIS_SERVICE}" \
+  sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --rdb /data/dump.rdb'
 run docker compose -f "${COMPOSE_FILE}" cp "${REDIS_SERVICE}:/data/dump.rdb" "${OUT_DIR}/redis-dump.rdb"
 
 echo "Archiving uploaded files and plugins..."
