@@ -108,6 +108,7 @@ type CompetitionScheduleFormItem = {
   timeMode?: CompetitionTimeMode;
   title?: string;
   timeRange?: [Dayjs, Dayjs] | [string, string];
+  reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
 
 type CompetitionFormValues = Omit<Partial<CompetitionUpsertPayload>, 'locale'> & {
@@ -191,7 +192,26 @@ type CompetitionJsonSchedule = {
   title?: string;
   start?: string;
   end?: string;
+  reviewStart?: string;
+  reviewEnd?: string;
 };
+
+type CompetitionMaterialStageTab = {
+  key: string;
+  label: string;
+  stageCode: string;
+  stageName: string;
+};
+
+const getCompetitionMaterialStageTabs = (competition: CompetitionRecord): CompetitionMaterialStageTab[] =>
+  parseJsonArray<CompetitionJsonSchedule>(competition.scheduleJson)
+    .filter((schedule) => schedule.timeMode === 'CONFIRMED' && trimOptional(schedule.title))
+    .map((schedule, index) => ({
+      key: `stage-${index + 1}`,
+      label: `${schedule.title}材料设置`,
+      stageCode: `STAGE_${index + 1}`,
+      stageName: schedule.title || `阶段${index + 1}`,
+    }));
 
 type CompetitionCreateDraftStorage = {
   competitionId?: number;
@@ -218,7 +238,7 @@ type CompetitionRegistrationDraftStorage = {
 
 const COMPETITION_CATEGORY_DICT = 'aiadc_competition_category';
 const COMPETITION_LEVEL_DICT = 'aiadc_competition_level';
-const COMPETITION_CREATE_DRAFT_STORAGE_KEY = 'lumira.competition.create.draft.v1';
+const COMPETITION_CREATE_DRAFT_STORAGE_KEY = 'competition.create';
 
 const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
   newTeam: {
@@ -486,11 +506,14 @@ const sanitizeSchedules = (schedules?: CompetitionScheduleFormItem[]): Competiti
         return { timeMode: 'TBD' as const };
       }
       const [start, end] = item.timeRange || [];
+      const [reviewStart, reviewEnd] = item.reviewRange || [];
       return {
         timeMode,
         title: trimOptional(item.title),
         start: formatRangeValue(start),
         end: formatRangeValue(end),
+        reviewStart: formatRangeValue(reviewStart),
+        reviewEnd: formatRangeValue(reviewEnd),
       };
     })
     .filter((item) => item.timeMode === 'TBD' || item.title || item.start || item.end);
@@ -556,6 +579,7 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
     timeMode: normalizeTimeMode(item.timeMode),
     title: item.title,
     timeRange: item.timeMode === 'CONFIRMED' ? parseRange(item.start, item.end) : undefined,
+    reviewRange: item.timeMode === 'CONFIRMED' ? parseRange(item.reviewStart, item.reviewEnd) : undefined,
   }));
 
   return {
@@ -784,57 +808,40 @@ const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormVal
   };
 };
 
-const readCompetitionCreateDraft = () => {
-  if (typeof window === 'undefined') {
-    return undefined;
-  }
-  try {
-    const stored = window.localStorage.getItem(COMPETITION_CREATE_DRAFT_STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as CompetitionCreateDraftStorage) : undefined;
-  } catch {
-    return undefined;
-  }
+interface StoredUserDraft<T> {
+  payload: T;
+  updatedAt: number;
+}
+
+const readUserDraft = async <T,>(draftKey: string): Promise<T | undefined> => {
+  const stored = await request<StoredUserDraft<T> | null>(`/v2/user-drafts/${draftKey}`, {
+    method: 'GET',
+    silent: true,
+  });
+  return stored?.payload;
 };
 
-const writeCompetitionCreateDraft = (draft: CompetitionCreateDraftStorage) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.localStorage.setItem(COMPETITION_CREATE_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+const writeUserDraft = async <T,>(draftKey: string, draft: T) => {
+  await request<StoredUserDraft<T>>(`/v2/user-drafts/${draftKey}`, {
+    method: 'PUT',
+    data: draft,
+    silent: true,
+  });
 };
 
-const clearCompetitionCreateDraft = () => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.localStorage.removeItem(COMPETITION_CREATE_DRAFT_STORAGE_KEY);
+const clearUserDraft = async (draftKey: string) => {
+  await request<void>(`/v2/user-drafts/${draftKey}`, {
+    method: 'DELETE',
+    silent: true,
+  });
 };
 
-const readCompetitionRegistrationDraft = (storageKey: string) => {
-  if (typeof window === 'undefined') {
-    return undefined;
-  }
-  try {
-    const stored = window.localStorage.getItem(storageKey);
-    return stored ? (JSON.parse(stored) as CompetitionRegistrationDraftStorage) : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const writeCompetitionRegistrationDraft = (storageKey: string, draft: CompetitionRegistrationDraftStorage) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.localStorage.setItem(storageKey, JSON.stringify(draft));
-};
-
-const clearCompetitionRegistrationDraft = (storageKey: string) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.localStorage.removeItem(storageKey);
-};
+const readCompetitionCreateDraft = () => readUserDraft<CompetitionCreateDraftStorage>(COMPETITION_CREATE_DRAFT_STORAGE_KEY);
+const writeCompetitionCreateDraft = (draft: CompetitionCreateDraftStorage) => writeUserDraft(COMPETITION_CREATE_DRAFT_STORAGE_KEY, draft);
+const clearCompetitionCreateDraft = () => clearUserDraft(COMPETITION_CREATE_DRAFT_STORAGE_KEY);
+const readCompetitionRegistrationDraft = (draftKey: string) => readUserDraft<CompetitionRegistrationDraftStorage>(draftKey);
+const writeCompetitionRegistrationDraft = (draftKey: string, draft: CompetitionRegistrationDraftStorage) => writeUserDraft(draftKey, draft);
+const clearCompetitionRegistrationDraft = (draftKey: string) => clearUserDraft(draftKey);
 
 const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationFormValues>) => {
   const members = values.newTeam?.initialMembers || [];
@@ -1300,7 +1307,7 @@ const CreateCompetitionPage = () => {
       savedAt,
       values: serializeCompetitionCreateDraftValues(normalizedValues),
     };
-    writeCompetitionCreateDraft(draftState);
+    void writeCompetitionCreateDraft(draftState);
     setDraftSavedAt(savedAt);
     return draftState;
   }, [collectCompetitionCreateValues, currentStep, draftRecord, termsAccepted]);
@@ -1346,7 +1353,7 @@ const CreateCompetitionPage = () => {
             competitionNo: saved.competitionNo,
           }
         : persistedDraftState;
-      writeCompetitionCreateDraft(nextDraftState);
+      await writeCompetitionCreateDraft(nextDraftState);
       latestDraftPayloadRef.current = nextDraftState;
       setDraftSavedAt(savedAt);
     } catch (error) {
@@ -1375,9 +1382,11 @@ const CreateCompetitionPage = () => {
   }, [collectCompetitionCreateValues, currentStep, flushCompetitionCreateDraft, termsAccepted, writeCurrentDraftState]);
 
   useEffect(() => {
-    const draft = readCompetitionCreateDraft();
+    let cancelled = false;
+    void readCompetitionCreateDraft().then((draft) => {
+    if (cancelled) return;
     if (draft && !draft.competitionId && !draft.competitionUuid) {
-      clearCompetitionCreateDraft();
+      void clearCompetitionCreateDraft();
     }
     const nextValues = {
       ...defaultCompetitionFormValues,
@@ -1398,6 +1407,10 @@ const CreateCompetitionPage = () => {
       setDraftSavedAt(undefined);
     }
     setDraftHydrated(true);
+    }).catch(() => {
+      if (!cancelled) setDraftHydrated(true);
+    });
+    return () => { cancelled = true; };
   }, [form]);
 
   useEffect(() => () => {
@@ -1777,6 +1790,7 @@ type RegistrationCollectedField = {
   placeholder?: string;
   required?: boolean;
   options?: string;
+  validationRule?: string;
 };
 
 type RegistrationCollectedFieldSplit = {
@@ -1795,6 +1809,7 @@ const toRegistrationCollectedField = (item: CompetitionConfigItem): Registration
     placeholder: metadata.placeholder,
     required: Boolean(item.requiredFlag),
     options: metadata.options,
+    validationRule: metadata.validationRule,
   };
 };
 
@@ -1868,7 +1883,30 @@ const parseConfigFieldOptions = (options?: string) =>
     .map((item) => ({ label: item, value: item }));
 
 const buildCollectedFieldRule = (field: RegistrationCollectedField) =>
-  field.required ? [{ required: true, message: `请输入${field.title}` }] : undefined;
+  [
+    ...(field.required ? [{ required: true, message: `请输入${field.title}` }] : []),
+    ...((field.validationRule || '').toUpperCase() === 'CHINA_MOBILE'
+      ? [{ pattern: /^1[3-9]\d{9}$/, message: `请输入正确的${field.title}` }]
+      : []),
+    ...((field.validationRule || '').toUpperCase() === 'EMAIL'
+      ? [{ type: 'email' as const, message: `请输入正确的${field.title}` }]
+      : []),
+    ...((field.validationRule || '').toUpperCase() === 'ID_CARD'
+      ? [{ pattern: /^(?:\d{15}|\d{17}[\dXx])$/, message: `请输入正确的${field.title}` }]
+      : []),
+  ];
+
+const requiredSystemRegistrationField = (
+  scope: RegistrationCollectedField['scope'],
+  itemKey: string,
+  title: string,
+): RegistrationCollectedField => ({
+  scope,
+  itemKey,
+  title,
+  fieldType: 'TEXT',
+  required: true,
+});
 
 const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField) => {
   const placeholder = field.placeholder || field.title || undefined;
@@ -2183,17 +2221,28 @@ const CompetitionRegistrationPage = () => {
     () => splitConfiguredRegistrationFields(registrationFields, 'PROJECT_FIELD'),
     [registrationFields],
   );
-  const effectiveMemberRegistrationFields = memberFieldSplit.allFields;
+  const effectiveMemberRegistrationFields = memberFieldSplit.overrides.has('memberName')
+    ? memberFieldSplit.allFields
+    : [
+        requiredSystemRegistrationField('MEMBER_FIELD', 'memberName', '成员姓名'),
+        ...memberFieldSplit.allFields,
+      ];
   const memberRoleOptions = useMemo(() => {
     const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
     return registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }));
   }, []);
-  const teamNameField = teamFieldSplit.overrides.get('teamName')!;
-  const teamAvatarField = teamFieldSplit.overrides.get('avatarUrl')!;
-  const teamDescriptionField = teamFieldSplit.overrides.get('description')!;
-  const projectTitleField = projectFieldSplit.overrides.get('title')!;
-  const projectImageField = projectFieldSplit.overrides.get('imageUrl')!;
-  const projectDescriptionField = projectFieldSplit.overrides.get('description')!;
+  // Team name, member name and project title are persistence invariants in the
+  // registration API. Older or partially migrated configurations may not
+  // contain them, so keep only these three safe fallbacks. Every optional
+  // standard field remains fully controlled by the competition settings.
+  const teamNameField = teamFieldSplit.overrides.get('teamName')
+    || requiredSystemRegistrationField('TEAM_FIELD', 'teamName', '团队名称');
+  const teamAvatarField = teamFieldSplit.overrides.get('avatarUrl');
+  const teamDescriptionField = teamFieldSplit.overrides.get('description');
+  const projectTitleField = projectFieldSplit.overrides.get('title')
+    || requiredSystemRegistrationField('PROJECT_FIELD', 'title', '项目名称');
+  const projectImageField = projectFieldSplit.overrides.get('imageUrl');
+  const projectDescriptionField = projectFieldSplit.overrides.get('description');
   const intellectualPropertyFields = projectFieldSplit.customFields;
   const registrationDocumentStates = useMemo(
     () =>
@@ -2276,7 +2325,7 @@ const CompetitionRegistrationPage = () => {
         ...nextValues,
       }),
     };
-    writeCompetitionRegistrationDraft(registrationDraftStorageKey, draftState);
+    void writeCompetitionRegistrationDraft(registrationDraftStorageKey, draftState);
     setRegistrationDraftSavedAt(savedAt);
     return draftState;
   }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationDraftStorageKey, registrationId, selectedCompetition?.title, selectedCompetition?.uuid, step]);
@@ -2293,7 +2342,7 @@ const CompetitionRegistrationPage = () => {
       && !hasCompetitionRegistrationDraftContent(nextValues)
       && nextStep <= 0
     ) {
-      clearCompetitionRegistrationDraft(registrationDraftStorageKey);
+      void clearCompetitionRegistrationDraft(registrationDraftStorageKey);
       latestRegistrationDraftRef.current = undefined;
       setRegistrationDraftSavedAt(undefined);
       return;
@@ -2421,8 +2470,15 @@ const CompetitionRegistrationPage = () => {
   }, [canLoadRegistrationCompetitions, canViewRegistrationList, viewMode]);
 
   useEffect(() => {
-    hydrateRegistrationDraft(readCompetitionRegistrationDraft(registrationDraftStorageKey));
-    setRegistrationDraftHydrated(true);
+    let cancelled = false;
+    void readCompetitionRegistrationDraft(registrationDraftStorageKey)
+      .then((draft) => {
+        if (!cancelled) hydrateRegistrationDraft(draft);
+      })
+      .finally(() => {
+        if (!cancelled) setRegistrationDraftHydrated(true);
+      });
+    return () => { cancelled = true; };
   }, [hydrateRegistrationDraft, registrationDraftStorageKey]);
 
   useEffect(() => () => {
@@ -2686,8 +2742,8 @@ const CompetitionRegistrationPage = () => {
     setStageForm(await loadOptionalPreliminaryStageForm(competitionId, listCompetitionStages, getCompetitionStageForm));
   }, []);
 
-  const startNewRegistration = () => {
-    const draft = readCompetitionRegistrationDraft(registrationDraftStorageKey);
+  const startNewRegistration = async () => {
+    const draft = await readCompetitionRegistrationDraft(registrationDraftStorageKey);
     hydrateRegistrationDraft(draft);
     setStageForm(undefined);
     setMemberModalOpen(false);
@@ -2893,7 +2949,7 @@ const CompetitionRegistrationPage = () => {
       });
       setPaymentStatus(order.status || 'QUEUED');
       registrationActionRef.current?.reload();
-      clearCompetitionRegistrationDraft(registrationDraftStorageKey);
+      await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
       latestRegistrationDraftRef.current = undefined;
       setRegistrationDraftSavedAt(undefined);
       if (order.paymentUrl) {
@@ -3458,10 +3514,14 @@ const CompetitionRegistrationPage = () => {
           <Form.Item name="newTeamName" label={teamNameField.title} rules={buildCollectedFieldRule(teamNameField)}>
             <Input maxLength={128} placeholder={teamNameField.placeholder || teamNameField.title} />
           </Form.Item>
-          <Form.Item name={["newTeam", "avatarUrl"]} hidden>
+          <Form.Item
+            name={["newTeam", "avatarUrl"]}
+            hidden
+            rules={teamAvatarField ? buildCollectedFieldRule(teamAvatarField) : undefined}
+          >
             <Input />
           </Form.Item>
-          <Form.Item label={teamAvatarField.title}>
+          {teamAvatarField ? <Form.Item label={teamAvatarField.title} required={teamAvatarField.required}>
             <Space>
               <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
               <Upload
@@ -3495,10 +3555,10 @@ const CompetitionRegistrationPage = () => {
                 </Button>
               ) : null}
             </Space>
-          </Form.Item>
-          <Form.Item name={["newTeam", "description"]} label={teamDescriptionField.title} rules={buildCollectedFieldRule(teamDescriptionField)}>
+          </Form.Item> : null}
+          {teamDescriptionField ? <Form.Item name={["newTeam", "description"]} label={teamDescriptionField.title} rules={buildCollectedFieldRule(teamDescriptionField)}>
             <Input.TextArea rows={3} maxLength={1000} placeholder={teamDescriptionField.placeholder || teamDescriptionField.title} />
-          </Form.Item>
+          </Form.Item> : null}
           {teamFieldSplit.customFields.map((field) => (
             <Form.Item
               key={field.itemKey}
@@ -3677,10 +3737,14 @@ const CompetitionRegistrationPage = () => {
                   <Form.Item name="newProjectTitle" label={projectTitleField.title} rules={buildCollectedFieldRule(projectTitleField)}>
                     <Input maxLength={128} placeholder={projectTitleField.placeholder || projectTitleField.title} />
                   </Form.Item>
-                  <Form.Item name="newProjectImageUrl" hidden>
+                  <Form.Item
+                    name="newProjectImageUrl"
+                    hidden
+                    rules={projectImageField ? buildCollectedFieldRule(projectImageField) : undefined}
+                  >
                     <Input />
                   </Form.Item>
-                  <Form.Item label={projectImageField.title} required={projectImageField.required}>
+                  {projectImageField ? <Form.Item label={projectImageField.title} required={projectImageField.required}>
                     <Space>
                       <Avatar
                         shape="square"
@@ -3714,10 +3778,10 @@ const CompetitionRegistrationPage = () => {
                         </Button>
                       ) : null}
                     </Space>
-                  </Form.Item>
-                  <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
+                  </Form.Item> : null}
+                  {projectDescriptionField ? <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
                     <Input.TextArea rows={3} maxLength={1000} placeholder={projectDescriptionField.placeholder || projectDescriptionField.title} />
-                  </Form.Item>
+                  </Form.Item> : null}
                   {intellectualPropertyFields.map((field) => (
                     <Form.Item
                       key={field.itemKey}
@@ -3827,7 +3891,7 @@ type ConfigItemMetadata = {
   fileFormat?: string;
   maxSizeMb?: number;
   storageKey?: string;
-  stageCode?: 'GENERAL' | 'PRELIMINARY' | 'FINAL';
+  stageCode?: string;
   stageName?: string;
   materialType?: string;
   timelineKind?: string;
@@ -4005,7 +4069,7 @@ const normalizeFileStageCode = (value?: string): NonNullable<ConfigItemMetadata[
     ? 'PRELIMINARY'
     : value === 'FINAL' || value === '决赛'
       ? 'FINAL'
-      : 'GENERAL';
+      : value?.trim() || 'GENERAL';
 
 const getFileConfigItemStageCode = (item: CompetitionConfigItem) => {
   const metadata = parseConfigItemMetadata(item.contentJson);
@@ -4013,7 +4077,7 @@ const getFileConfigItemStageCode = (item: CompetitionConfigItem) => {
 };
 
 const resolveFileStageName = (stageCode: NonNullable<ConfigItemMetadata['stageCode']>) =>
-  fileStageOptions.find((option) => option.value === stageCode)?.label || '通用';
+  fileStageOptions.find((option) => option.value === stageCode)?.label || stageCode;
 
 const normalizeFileFormat = (value?: string) => {
   if (value === 'PDF' || value === 'WORD') {
@@ -4539,7 +4603,7 @@ type ConfigModulePanelProps = {
   fieldScope?: RegistrationFieldScope;
   fieldGroupLabel?: string;
   includeMemberFields?: boolean;
-  fileStageCode?: 'PRELIMINARY' | 'FINAL';
+  fileStageCode?: string;
   paymentProviderOptions?: PaymentProviderOption[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
@@ -5350,11 +5414,12 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                       <Space direction="vertical" size={8} className="competition-dynamic-list">
                         {fields.map((field, index) => (
                           <div key={field.key} className="competition-schedule-row">
-                            <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入赛程名称' }]} className="competition-schedule-row__title">
+                            <Form.Item name={[field.name, 'title']} label="阶段名称" rules={[{ required: true, message: '请输入阶段名称' }]} className="competition-schedule-row__title">
                               <Input maxLength={128} placeholder="例如：初赛" />
                             </Form.Item>
                             <Form.Item
                               name={[field.name, 'timeRange']}
+                              label="比赛时间"
                               rules={[
                                 { required: true, message: '请选择比赛时间' },
                                 {
@@ -5364,6 +5429,23 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                                     }
                                     return Promise.resolve();
                                   },
+                                },
+                              ]}
+                              className="competition-schedule-row__time"
+                            >
+                              <CompetitionDateTimeRangePicker />
+                            </Form.Item>
+                            <Form.Item
+                              name={[field.name, 'reviewRange']}
+                              label="评审时间"
+                              rules={[
+                                { required: true, message: '请选择评审时间' },
+                                {
+                                  validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => (
+                                    getCompleteTimeRange(value)
+                                      ? Promise.resolve()
+                                      : Promise.reject(new Error('请选择评审开始和结束时间'))
+                                  ),
                                 },
                               ]}
                               className="competition-schedule-row__time"
@@ -5624,7 +5706,8 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
   const timelineRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const materialsRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
-  const activeStageCode = activeTab === 'final' ? 'FINAL' : 'PRELIMINARY';
+  const materialStageTabs = useMemo(() => getCompetitionMaterialStageTabs(competition), [competition]);
+  const activeStage = materialStageTabs.find((stage) => stage.key === activeTab) || materialStageTabs[0];
 
   const syncStageForms = useCallback(async (
     materialItems: CompetitionConfigItem[],
@@ -5685,24 +5768,27 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
 
   return activeTab === 'timeline' ? (
     <CompetitionTimelineSettingsPanel ref={timelineRef} competition={competition} onSaved={onCompetitionSaved} />
-  ) : (
-    <Space direction="vertical" size={24} style={{ width: '100%' }}>
-      <CompetitionStageWindowsPanel
-        competitionId={competition.id}
-        stageCode={activeStageCode}
-        onStagesChange={setStages}
-      />
+  ) : activeStage ? (
+    <section className="competition-config-module">
+      <div className="competition-config-module__header">
+        <Typography.Title className="competition-config-module__title" level={4}>
+          {activeStage.stageName}提交材料设置
+        </Typography.Title>
+      </div>
+      <Typography.Paragraph className="competition-config-module__description" type="secondary">
+        配置参赛者在{activeStage.stageName}阶段需要提交的材料和字段要求。
+      </Typography.Paragraph>
       <ConfigModulePanel
         ref={materialsRef}
         competitionUuid={competitionUuid}
         module={module}
         items={items}
         storageSpaceOptions={storageSpaceOptions}
-        fileStageCode={activeStageCode}
+        fileStageCode={activeStage.stageCode}
         onSaved={(saved) => void handleMaterialsSaved(saved)}
       />
-    </Space>
-  );
+    </section>
+  ) : null;
 });
 
 CompetitionStageAndMaterialPanel.displayName = 'CompetitionStageAndMaterialPanel';
@@ -5724,6 +5810,10 @@ const CompetitionSettingsPage = () => {
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
   const { options: levelOptions } = useDictOptions(COMPETITION_LEVEL_DICT, fallbackDictOptions.levelOptions);
+  const materialStageTabs = useMemo(
+    () => settings ? getCompetitionMaterialStageTabs(settings.competition) : [],
+    [settings],
+  );
 
   const updateNavigationUrl = useCallback((
     section: CompetitionSettingsModuleKey,
@@ -5741,6 +5831,14 @@ const CompetitionSettingsPage = () => {
       history.push(nextLocation);
     }
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!settings || stageDetail === 'timeline' || materialStageTabs.some((tab) => tab.key === stageDetail)) {
+      return;
+    }
+    setStageDetail('timeline');
+    updateNavigationUrl('stages', 'timeline', true);
+  }, [materialStageTabs, settings, stageDetail, updateNavigationUrl]);
 
   useEffect(() => {
     const navigation = parseCompetitionSettingsNavigation(location.search);
@@ -5931,8 +6029,7 @@ const CompetitionSettingsPage = () => {
                       activeKey={stageDetail}
                       items={[
                         { key: 'timeline', label: '时间设置' },
-                        { key: 'preliminary', label: '初赛' },
-                        { key: 'final', label: '决赛' },
+                        ...materialStageTabs.map(({ key, label }) => ({ key, label })),
                       ]}
                       onChange={(key) => void handleStageDetailChange(key)}
                     />

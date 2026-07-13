@@ -7,6 +7,7 @@ import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationVerdict;
 import com.lumira.common.security.authorization.DelegationGrantDecision;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.iam.infrastructure.JdbcDelegationGrantRepository;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,7 @@ class DefaultDelegationGrantEvaluatorTest {
     void deniesAiAgentWhenDelegationGrantIsMissing() {
         StubQueryOperations jdbc = new StubQueryOperations();
         jdbc.grants = List.of();
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
 
         DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "LOW", false, false));
 
@@ -37,7 +38,7 @@ class DefaultDelegationGrantEvaluatorTest {
     void requiresConfirmAndApprovalFromMatchedGrant() {
         StubQueryOperations jdbc = new StubQueryOperations();
         jdbc.grants = List.of(grant("file.object.search", "system:file:view", "TENANT", "HIGH", true, true));
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
 
         assertThat(evaluator.evaluate(request("file.object.search", "system:file:view", "HIGH", false, false)).verdict())
                 .isEqualTo(AuthorizationVerdict.REQUIRE_APPROVAL);
@@ -54,7 +55,7 @@ class DefaultDelegationGrantEvaluatorTest {
                 grant(null, "*", "SELF", "LOW", false, false),
                 grant("file.object.search", "system:file:view", "TENANT", "MEDIUM", false, false)
         );
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
 
         DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "MEDIUM", true, true));
 
@@ -67,7 +68,7 @@ class DefaultDelegationGrantEvaluatorTest {
     void failsClosedWhenSubjectsCannotBeResolved() {
         StubQueryOperations jdbc = new StubQueryOperations();
         jdbc.humanSubjectId = null;
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
 
         DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "LOW", true, true));
 
@@ -78,7 +79,7 @@ class DefaultDelegationGrantEvaluatorTest {
     @Test
     void refusesToInferHumanUserIdFromUntrustedCurrentUser() {
         StubQueryOperations jdbc = new StubQueryOperations();
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
         CurrentUser currentUser = new CurrentUser(100L, "admin", 1001L, "session-1", null, true, Set.of("system:file:view"));
 
         DelegationGrantDecision decision = evaluator.evaluate(
@@ -93,7 +94,7 @@ class DefaultDelegationGrantEvaluatorTest {
     @Test
     void refusesExplicitHumanUserIdThatDoesNotMatchTrustedCurrentUser() {
         StubQueryOperations jdbc = new StubQueryOperations();
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
         CurrentUser currentUser = trustedUser(100L, "system:file:view");
 
         DelegationGrantDecision decision = evaluator.evaluate(
@@ -108,7 +109,7 @@ class DefaultDelegationGrantEvaluatorTest {
     @Test
     void refusesExplicitHumanUserUuidThatDoesNotMatchTrustedCurrentUser() {
         StubQueryOperations jdbc = new StubQueryOperations();
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
         CurrentUser currentUser = trustedUser(100L, "system:file:view");
 
         DelegationGrantDecision decision = evaluator.evaluate(
@@ -123,7 +124,7 @@ class DefaultDelegationGrantEvaluatorTest {
     @Test
     void refusesExplicitHumanUserIdWhenCurrentUserIsNotFullyTrusted() {
         StubQueryOperations jdbc = new StubQueryOperations();
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc));
         CurrentUser currentUser = trustedUser(100L, "system:file:view");
         currentUser.setPermissionsVersion(null);
 
@@ -142,7 +143,7 @@ class DefaultDelegationGrantEvaluatorTest {
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
         when(sessionAuthenticationService.authenticateSessionTicket("session-1", 100L, "user-uuid-100", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc, sessionAuthenticationService);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc), sessionAuthenticationService);
 
         DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "LOW", true, true));
 
@@ -154,7 +155,7 @@ class DefaultDelegationGrantEvaluatorTest {
     @Test
     void missingTrustedUserResolverFailsClosedInStrictMode() {
         StubQueryOperations jdbc = new StubQueryOperations();
-        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(jdbc, null);
+        DefaultDelegationGrantEvaluator evaluator = new DefaultDelegationGrantEvaluator(new JdbcDelegationGrantRepository(jdbc), null);
 
         DelegationGrantDecision decision = evaluator.evaluate(request("file.object.search", "system:file:view", "LOW", true, true));
 

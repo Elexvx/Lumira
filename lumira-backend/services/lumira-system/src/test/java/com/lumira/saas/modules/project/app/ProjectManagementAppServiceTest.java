@@ -10,6 +10,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.project.dto.ProjectDTO;
+import com.lumira.saas.modules.project.infrastructure.JdbcProjectRepository;
+import com.lumira.saas.modules.project.repository.ProjectRepository;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -28,10 +30,14 @@ import static org.mockito.Mockito.when;
 
 class ProjectManagementAppServiceTest {
 
+    private static ProjectRepository repository(RecordingQueryOperations queryOperations) {
+        return new JdbcProjectRepository(queryOperations);
+    }
+
     @Test
     void createProjectShouldRequireCreateOrRegistrationCreatePermissionAtServiceLayer() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:view"), request()))
                 .isInstanceOf(BizException.class)
@@ -42,7 +48,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void createProjectShouldRejectBlankUsernameBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createProject(blankUsernameUser(), request()))
                 .isInstanceOf(BizException.class)
@@ -54,7 +60,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void createProjectShouldRejectMissingSessionVersionBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createProject(missingSessionVersionUser(), request()))
                 .isInstanceOf(BizException.class)
@@ -66,7 +72,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void createProjectShouldRejectMissingUserUuidBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
         CurrentUser currentUser = user("aiadc:project:create");
         currentUser.setUserUuid(null);
 
@@ -85,7 +91,7 @@ class ProjectManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:project:view")));
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations, permissionSnapshotService);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations), permissionSnapshotService);
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -106,7 +112,7 @@ class ProjectManagementAppServiceTest {
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:project:view")));
         ProjectManagementAppService service =
-                new ProjectManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+                new ProjectManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
         CurrentUser currentUser = user("aiadc:project:view");
         currentUser.setSimulatedRoleId(0L);
         Method method = ProjectManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
@@ -126,7 +132,7 @@ class ProjectManagementAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "operator-live", "DISABLED"));
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -143,7 +149,7 @@ class ProjectManagementAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -179,7 +185,7 @@ class ProjectManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:project:create", "aiadc:project:view")));
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
         CurrentUser currentUser = user("*");
         currentUser.setUsername("operator-stale");
 
@@ -196,7 +202,7 @@ class ProjectManagementAppServiceTest {
         when(sessionAuthenticationService.authenticateSessionTicket("session-1", 2001L, "user-uuid-2001", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
         ProjectManagementAppService service =
-                new ProjectManagementAppService(queryOperations, null, sessionAuthenticationService);
+                new ProjectManagementAppService(repository(queryOperations), null, sessionAuthenticationService);
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -210,7 +216,7 @@ class ProjectManagementAppServiceTest {
     void createProjectShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         ProjectManagementAppService service =
-                new ProjectManagementAppService(queryOperations, null, (SessionAuthenticationService) null);
+                new ProjectManagementAppService(repository(queryOperations), null, (SessionAuthenticationService) null);
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -227,7 +233,7 @@ class ProjectManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
         ProjectManagementAppService service =
-                new ProjectManagementAppService(queryOperations, permissionSnapshotService, null, null);
+                new ProjectManagementAppService(repository(queryOperations), permissionSnapshotService, null, null);
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -244,7 +250,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void deleteProjectShouldRejectMissingPermissionsVersionBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
         CurrentUser currentUser = user("aiadc:project:delete");
         currentUser.setPermissionsVersion(null);
 
@@ -271,7 +277,7 @@ class ProjectManagementAppServiceTest {
                 Map.entry("featured", 0)
         ));
         queryOperations.lastInsertId = 1L;
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThat(service.createProject(user("aiadc:registration:create"), request()).getId()).isEqualTo(1L);
         assertThat(queryOperations.updateCallCount).isEqualTo(1);
@@ -283,7 +289,7 @@ class ProjectManagementAppServiceTest {
     void createProjectShouldRejectWhenInsertMissesBeforeGeneratedIdLookup() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.updateCount = 0;
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), request()))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -297,7 +303,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void updateProjectShouldRequireUpdatePermissionBeforeDatabaseWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.updateProject(user("aiadc:project:create"), 1L, request()))
                 .isInstanceOf(BizException.class)
@@ -308,7 +314,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void projectWritesShouldRejectNullRequestOrInvalidIdBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createProject(user("aiadc:project:create"), null))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -327,7 +333,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void updateProjectShouldVerifyResourceExistsBeforeWriting() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.updateProject(user("aiadc:project:update"), 1L, request()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -340,7 +346,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void projectWritesShouldRejectUnsafeUrlsAndOversizedFieldsBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
         ProjectDTO.ProjectUpsertRequest unsafeUrl = request();
         unsafeUrl.setCtaHref("javascript:alert(1)");
         ProjectDTO.ProjectUpsertRequest oversizedTitle = request();
@@ -360,7 +366,7 @@ class ProjectManagementAppServiceTest {
     @Test
     void deleteProjectShouldRequireDeletePermissionAtServiceLayer() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.deleteProject(user("aiadc:project:update"), 1L))
                 .isInstanceOf(BizException.class)
@@ -372,7 +378,7 @@ class ProjectManagementAppServiceTest {
     void updateProjectShouldBindOriginalCodeLocaleAndStatusInFinalWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.rows = List.of(projectRow());
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         service.updateProject(user("*"), 1L, request());
 
@@ -385,7 +391,7 @@ class ProjectManagementAppServiceTest {
     void deleteProjectShouldBindOriginalCodeLocaleAndStatusInFinalWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.rows = List.of(projectRow());
-        ProjectManagementAppService service = new ProjectManagementAppService(queryOperations);
+        ProjectManagementAppService service = new ProjectManagementAppService(repository(queryOperations));
 
         service.deleteProject(user("aiadc:project:delete"), 1L);
 
@@ -507,6 +513,18 @@ class ProjectManagementAppServiceTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queryCallCount += 1;
+            if (args.length > 0 && "aiadc_project_locale".equals(args[0])) {
+                return List.of(Map.of("itemValue", "zh"), Map.of("itemValue", "en"));
+            }
+            if (args.length > 0 && "aiadc_project_status".equals(args[0])) {
+                return List.of(Map.of("itemValue", "draft"), Map.of("itemValue", "published"));
+            }
+            if (args.length > 0 && "aiadc_project_rating".equals(args[0])) {
+                return List.of(Map.of("itemValue", "popular"), Map.of("itemValue", "excellent"), Map.of("itemValue", "new"));
+            }
+            if (args.length > 0 && "aiadc_project_filter_all".equals(args[0])) {
+                return List.of(Map.of("itemValue", "all"));
+            }
             return List.of();
         }
     }

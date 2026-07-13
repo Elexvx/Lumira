@@ -11,8 +11,7 @@ import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
+import com.lumira.saas.modules.ai.repository.AiToolRegistryRepository;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -351,7 +350,7 @@ class AiToolRegistryTest {
         );
     }
 
-    private static class StaticSkillQueryOperations extends MyBatisQueryOperations {
+    private static class StaticSkillQueryOperations implements AiToolRegistryRepository {
         private final AiVO.SkillVO skill;
 
         StaticSkillQueryOperations(AiVO.SkillVO skill) {
@@ -359,9 +358,8 @@ class AiToolRegistryTest {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            return (List<T>) List.of(skill);
+        public List<AiVO.SkillVO> findGrantedSkills(Long employeeId) {
+            return List.of(skill);
         }
     }
 
@@ -373,10 +371,9 @@ class AiToolRegistryTest {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+        public List<AiVO.SkillVO> findGrantedSkills(Long employeeId) {
             queryCalled = true;
-            return super.query(sql, rowMapper, args);
+            return super.findGrantedSkills(employeeId);
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.lumira.saas.modules.audit.app;
 
 import com.lumira.saas.modules.audit.entity.AuditOperationLogEntity;
-import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
+import com.lumira.saas.modules.audit.repository.OperationAuditRepository;
 import com.lumira.common.web.TraceContext;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.common.enums.ErrorCode;
@@ -15,14 +15,14 @@ import java.time.LocalDateTime;
 @Service
 public class OperationAuditService {
 
-    private final AuditOperationLogMapper auditOperationLogMapper;
+    private final OperationAuditRepository auditRepository;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
 
     public OperationAuditService(
-            AuditOperationLogMapper auditOperationLogMapper,
+            OperationAuditRepository auditRepository,
             ObjectProvider<OwnerRuntimeMetrics> ownerRuntimeMetricsProvider
     ) {
-        this.auditOperationLogMapper = auditOperationLogMapper;
+        this.auditRepository = auditRepository;
         this.ownerRuntimeMetrics = ownerRuntimeMetricsProvider.getIfAvailable();
     }
 
@@ -52,7 +52,7 @@ public class OperationAuditService {
         entity.setCreatedAt(LocalDateTime.now());
         entity.setDeleted(0);
         try {
-            int inserted = auditOperationLogMapper.insert(entity);
+            int inserted = auditRepository.insert(entity);
             if (inserted != 1) {
                 throw new BizException(ErrorCode.BIZ_ERROR, "Operation audit changed, please retry");
             }

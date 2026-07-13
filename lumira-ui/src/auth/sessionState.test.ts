@@ -1,19 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { CurrentUser, LoginResponse } from '@/types/api';
-
-const mocks = vi.hoisted(() => ({
-  get: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn(),
-}));
-
-vi.mock('@/cache/storage', () => ({
-  storage: {
-    get: mocks.get,
-    set: mocks.set,
-    remove: mocks.remove,
-  },
-}));
 
 const trustedUser = (): CurrentUser => ({
   userId: 1001,
@@ -43,22 +29,20 @@ const loginResponse = (overrides: Partial<LoginResponse['user']> = {}): LoginRes
 });
 
 describe('sessionState', () => {
-  beforeEach(() => {
-    mocks.get.mockReset();
-    mocks.set.mockReset();
-    mocks.remove.mockReset();
-    mocks.get.mockReturnValue(null);
+  beforeEach(async () => {
+    const { clearStoredSessionState } = await import('@/auth/sessionState');
+    clearStoredSessionState();
   });
 
   it('persists a complete trusted current user tuple', async () => {
-    const { persistCurrentUser } = await import('@/auth/sessionState');
+    const { getStoredCurrentUser, getStoredSessionMeta, persistCurrentUser } = await import('@/auth/sessionState');
 
     const currentUser = trustedUser();
     const persisted = persistCurrentUser(currentUser);
 
     expect(persisted).toBe(currentUser);
-    expect(mocks.set).toHaveBeenCalledWith('current_user_profile', currentUser);
-    expect(mocks.set).toHaveBeenCalledWith('current_session_meta', {
+    expect(getStoredCurrentUser()).toBe(currentUser);
+    expect(getStoredSessionMeta()).toEqual({
       sessionId: 'session-1001',
       sessionVersion: 1,
       permissionsVersion: 'permissions-1',
@@ -71,7 +55,8 @@ describe('sessionState', () => {
     expect(() => persistCurrentUser({ ...trustedUser(), sessionId: '' })).toThrow(/trusted session identity/);
     expect(() => persistCurrentUser({ ...trustedUser(), sessionVersion: undefined })).toThrow(/trusted session identity/);
     expect(() => persistCurrentUser({ ...trustedUser(), permissionsVersion: undefined })).toThrow(/trusted session identity/);
-    expect(mocks.set).not.toHaveBeenCalled();
+    const { getStoredCurrentUser } = await import('@/auth/sessionState');
+    expect(getStoredCurrentUser()).toBeNull();
   });
 
   it('allows legacy users whose uuid has not been backfilled yet', async () => {
@@ -91,22 +76,6 @@ describe('sessionState', () => {
   });
 
   it('does not build fallback users from stale local session metadata', async () => {
-    mocks.get.mockImplementation((key: string) => {
-      if (key === 'current_session_meta') {
-        return {
-          sessionId: 'stored-session',
-          sessionVersion: 9,
-          permissionsVersion: 'stored-permissions',
-        };
-      }
-      if (key === 'current_user_profile') {
-        return {
-          permissions: ['*'],
-        };
-      }
-      return null;
-    });
-
     const { buildFallbackCurrentUser } = await import('@/auth/sessionState');
 
     expect(() =>

@@ -6,9 +6,8 @@ import { history, useLocation, useModel } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { listPublicActivities } from '@/services/activity/api';
-import type { PublicActivityRecord } from '@/services/activity/types';
-import type { RoleDataScope } from '@/types/api';
+import { createActivityRegistration, listActivityRegistrations, listPublicActivities } from '@/services/activity/api';
+import type { ActivityRegistrationRecord as ActivityApplicationRecord, PublicActivityRecord } from '@/services/activity/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 
@@ -22,22 +21,10 @@ type ActivityRegistrationValues = {
   remark?: string;
 };
 
-type ActivityApplicationRecord = ActivityRegistrationValues & {
-  id: string;
-  applicationNo: string;
-  activityTitle: string;
-  status: 'SUBMITTED';
-  submittedAt: string;
-  ownerUserId?: number | null;
-  ownerUsername?: string | null;
-};
-
 const activityRegistrationModeQueryKey = 'mode';
 const activityRegistrationStepQueryKey = 'step';
 const activityRegistrationModeValue = 'wizard';
 const activityRegistrationMaxStep = 3;
-const ACTIVITY_REGISTRATION_SCOPE_RESOURCE = 'activity:registration';
-const buildActivityRegistrationStorageKey = (userId?: number | null) => `lumira.activityRegistration.records.${userId ?? 'guest'}`;
 
 const parseActivityRegistrationStepFromSearch = (search: string) => {
   const params = new URLSearchParams(search);
@@ -58,49 +45,7 @@ const createActivityRegistrationSearch = (stepIndex: number) => {
   return `?${params.toString()}`;
 };
 
-const readActivityApplicationRecords = (storageKey: string): ActivityApplicationRecord[] => {
-  try {
-    const value = window.localStorage.getItem(storageKey);
-    const parsed = value ? JSON.parse(value) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const writeActivityApplicationRecords = (storageKey: string, records: ActivityApplicationRecord[]) => {
-  window.localStorage.setItem(storageKey, JSON.stringify(records));
-};
-
 const formatDateTime = (value?: string) => (value ? value.replace('T', ' ').slice(0, 19) : '-');
-
-const createLocalTimestamp = () => {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
-};
-
-const canViewAllActivityApplications = (dataScopes?: RoleDataScope[]) => {
-  const matchedScopes = (dataScopes || []).filter(
-    (scope) => scope.resourceCode === '*' || scope.resourceCode === ACTIVITY_REGISTRATION_SCOPE_RESOURCE,
-  );
-  return matchedScopes.some((scope) => scope.scopeType === 'ALL');
-};
-
-const readVisibleActivityApplicationRecords = (storageKey: string, canViewAll: boolean): ActivityApplicationRecord[] => {
-  if (!canViewAll) {
-    return readActivityApplicationRecords(storageKey);
-  }
-
-  const records: ActivityApplicationRecord[] = [];
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
-    if (!key || !key.startsWith('lumira.activityRegistration.records.')) {
-      continue;
-    }
-    records.push(...readActivityApplicationRecords(key));
-  }
-  return records.sort((left, right) => String(right.submittedAt || '').localeCompare(String(left.submittedAt || '')));
-};
 
 const ActivityRegistrationPage = () => {
   const { initialState } = useModel('@@initialState');
@@ -114,14 +59,6 @@ const ActivityRegistrationPage = () => {
   const [loading, setLoading] = useState(false);
   const [applicationNo, setApplicationNo] = useState<string>();
   const [selectedActivityId, setSelectedActivityId] = useState<number>();
-  const activityRegistrationStorageKey = useMemo(
-    () => buildActivityRegistrationStorageKey(initialState?.currentUser?.userId),
-    [initialState?.currentUser?.userId],
-  );
-  const canViewAllRecords = useMemo(
-    () => canViewAllActivityApplications(initialState?.currentUser?.dataScopes),
-    [initialState?.currentUser?.dataScopes],
-  );
   const canCreateActivityRegistration = actionPermission.can('aiadc:activity:create');
 
   const selectedActivity = useMemo(
@@ -153,15 +90,15 @@ const ActivityRegistrationPage = () => {
   }, [form, setWizardStep]);
 
   useEffect(() => {
-    setRecords(readVisibleActivityApplicationRecords(activityRegistrationStorageKey, canViewAllRecords));
-  }, [activityRegistrationStorageKey, canViewAllRecords]);
-
-  useEffect(() => {
     const loadActivities = async () => {
       setLoading(true);
       try {
-        const response = await listPublicActivities({ status: 'published', pageNo: 1, pageSize: 100 });
-        setActivities(response.records);
+        const [activityResponse, registrationResponse] = await Promise.all([
+          listPublicActivities({ status: 'published', pageNo: 1, pageSize: 100 }),
+          listActivityRegistrations(),
+        ]);
+        setActivities(activityResponse.records);
+        setRecords(registrationResponse);
       } catch (error) {
         showErrorMessage(error, '活动列表加载失败');
       } finally {
@@ -201,24 +138,12 @@ const ActivityRegistrationPage = () => {
     }
 
     const values = form.getFieldsValue(true);
-    const no = `ACT-${Date.now().toString(36).toUpperCase()}`;
-    const nextRecord: ActivityApplicationRecord = {
-      ...values,
-      id: no,
-      applicationNo: no,
-      activityTitle: selectedActivity?.title || '-',
-      status: 'SUBMITTED',
-      submittedAt: createLocalTimestamp(),
-      ownerUserId: initialState?.currentUser?.userId,
-      ownerUsername: initialState?.currentUser?.username,
-    };
-    const nextRecords = [nextRecord, ...records];
-    writeActivityApplicationRecords(
-      activityRegistrationStorageKey,
-      canViewAllRecords ? [nextRecord, ...readActivityApplicationRecords(activityRegistrationStorageKey)] : nextRecords,
-    );
-    setRecords(readVisibleActivityApplicationRecords(activityRegistrationStorageKey, canViewAllRecords));
-    setApplicationNo(no);
+    const created = await createActivityRegistration({
+      activityId: values.activityId!, name: values.name!, mobile: values.mobile, email: values.email,
+      organization: values.organization, position: values.position, remark: values.remark,
+    });
+    setRecords((current) => [created, ...current]);
+    setApplicationNo(created.applicationNo);
     message.success('活动报名已提交');
     setWizardStep(3);
   };

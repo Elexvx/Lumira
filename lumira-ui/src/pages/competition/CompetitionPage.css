@@ -383,10 +383,16 @@
 .competition-schedule-row__time {
   min-width: 0;
   margin-bottom: 0;
+  grid-column: 1;
 }
 
 .competition-schedule-row__title {
   grid-column: 1 / -1;
+}
+
+.competition-schedule-row > .competition-schedule-row__actions {
+  grid-column: 2;
+  grid-row: 2 / span 2;
 }
 
 .competition-date-time-range-picker,

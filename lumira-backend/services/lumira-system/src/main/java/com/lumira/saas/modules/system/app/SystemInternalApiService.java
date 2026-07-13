@@ -35,28 +35,12 @@ import com.lumira.api.system.VerificationVerificationDTO;
 import com.lumira.api.system.WechatLoginSettingsDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
-import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
-import com.lumira.saas.infrastructure.security.service.CaptchaService;
-import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
-import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
-import com.lumira.saas.modules.audit.app.LoginAuditService;
-import com.lumira.saas.modules.audit.app.OperationAuditService;
-import com.lumira.saas.modules.iam.service.IamUserService;
-import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.controller.InternalSystemController;
-import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
-import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
-import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
-import com.lumira.saas.modules.user.domain.UserDomainService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,44 +55,7 @@ public class SystemInternalApiService implements SystemInternalApi {
 
     private final InternalSystemController delegate;
 
-    @Autowired
-    public SystemInternalApiService(
-            UserDomainService userDomainService,
-            IamUserService iamUserService,
-            PermissionSnapshotService permissionSnapshotService,
-            CaptchaService captchaService,
-            SystemVerificationAppService verificationAppService,
-            WechatLoginSettingsService wechatLoginSettingsService,
-            PasskeyCredentialAppService passkeyCredentialAppService,
-            MyBatisQueryOperations jdbcTemplate,
-            PasswordEncoder passwordEncoder,
-            LoginAuditService loginAuditService,
-            OperationAuditService operationAuditService,
-            SecuritySettingsService securitySettingsService,
-            PasswordPolicyService passwordPolicyService,
-            AuthSessionStore authSessionStore,
-            ReadModelVersionService readModelVersionService
-    ) {
-        this(new InternalSystemController(
-                userDomainService,
-                iamUserService,
-                permissionSnapshotService,
-                captchaService,
-                verificationAppService,
-                wechatLoginSettingsService,
-                passkeyCredentialAppService,
-                jdbcTemplate,
-                passwordEncoder,
-                loginAuditService,
-                operationAuditService,
-                securitySettingsService,
-                passwordPolicyService,
-                authSessionStore,
-                readModelVersionService
-        ));
-    }
-
-    SystemInternalApiService(InternalSystemController delegate) {
+    public SystemInternalApiService(InternalSystemController delegate) {
         this.delegate = delegate;
     }
 

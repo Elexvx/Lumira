@@ -3,8 +3,7 @@ package com.lumira.saas.modules.system.dict.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.lumira.saas.modules.system.dict.repository.DictRuntimeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -17,33 +16,17 @@ import java.util.stream.Collectors;
 @Service
 public class DictRuntimeService {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final DictRuntimeRepository repository;
 
-    public DictRuntimeService(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public DictRuntimeService(DictRuntimeRepository repository) {
+        this.repository = repository;
     }
 
     public List<SystemVO.DictItemVO> listEnabledItems(String dictCode) {
         if (!StringUtils.hasText(dictCode)) {
             return List.of();
         }
-        return jdbcTemplate.query(
-                """
-                        select i.id, i.dict_type_id as dictTypeId, i.item_label as itemLabel, i.item_value as itemValue,
-                               i.sort_no as sortNo, i.status, i.remark
-                        from sys_dict_type t
-                        join sys_dict_item i
-                          on i.dict_type_id = t.id
-                         and i.deleted = 0
-                        where t.dict_code = ?
-                          and t.deleted = 0
-                          and t.status = 'ENABLED'
-                          and i.status = 'ENABLED'
-                        order by t.is_system desc, t.id desc, i.sort_no asc, i.id asc
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.DictItemVO.class),
-                dictCode.trim()
-        );
+        return repository.findEnabledItems(dictCode.trim());
     }
 
     public List<String> enabledValues(String dictCode) {

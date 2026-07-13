@@ -7,7 +7,9 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.event.PlatformEventConsumer;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxEntity;
 import com.lumira.saas.infrastructure.event.PlatformEventTypes;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.expert.repository.ExpertApprovalRepository;
+import com.lumira.saas.modules.expert.repository.ExpertApprovalRepository.ExpertAccountRecord;
+import com.lumira.saas.modules.expert.repository.ExpertApprovalRepository.OperatorRecord;
 import com.lumira.saas.modules.account.app.AccountActivationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -32,20 +34,20 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
     private static final int WORKFLOW_OPERATOR_SESSION_VERSION = 1;
     private static final String REQUIRED_PERMISSION_CREATE_USER = "system:user:create";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final ExpertApprovalRepository approvalRepository;
     private final ObjectMapper objectMapper;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final AccountActivationService accountActivationService;
 
     public ExpertApprovalEventConsumer(
-            MyBatisQueryOperations jdbcTemplate,
+            ExpertApprovalRepository approvalRepository,
             ObjectMapper objectMapper,
             PermissionSnapshotService permissionSnapshotService,
             SystemUserManagementAppService systemUserManagementAppService,
             AccountActivationService accountActivationService
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.approvalRepository = approvalRepository;
         this.objectMapper = objectMapper;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemUserManagementAppService = systemUserManagementAppService;
@@ -69,7 +71,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         Long workflowInstanceId = requirePayloadWorkflowInstanceId(event);
         String businessUuid = requirePayloadBusinessUuid(event);
         CurrentUser operator = buildOperator(event);
-        ExpertAccountRow expert = loadExpert(expertId, workflowInstanceId, businessUuid);
+        ExpertAccountRecord expert = loadExpert(expertId, workflowInstanceId, businessUuid);
         if (expert == null) {
             throw new IllegalStateException("Expert not found: " + expertId);
         }
@@ -94,28 +96,8 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
             SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUserFromTrustedSnapshot(operator, userRequest);
             userId = createdUser.getId();
             userUuid = requireCreatedUserUuid(createdUser);
-            int linked = jdbcTemplate.update(
-                    """
-                            update aiadc_expert
-                            set user_id = ?, user_uuid = ?, account_status = 'PENDING_ACTIVATION', initial_password_reset_required = 1,
-                                updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                            where id = ?
-                              and code = ?
-                              and approval_instance_id = ?
-                              and approval_status = 'APPROVED'
-                              and user_id is null
-                              and (user_uuid is null or user_uuid = '')
-                              and deleted = 0
-                            """,
-                    userId,
-                    userUuid,
-                    operator.getUserId(),
-                    operator.getUserUuid(),
-                    LocalDateTime.now(),
-                    expertId,
-                    businessUuid,
-                    workflowInstanceId
-            );
+            int linked = approvalRepository.bindAccount(expertId, businessUuid, workflowInstanceId, userId, userUuid,
+                    operator.getUserId(), operator.getUserUuid(), LocalDateTime.now());
             if (linked != 1) {
                 throw new IllegalStateException("Expert account binding changed before activation");
             }
@@ -151,7 +133,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         if (!eventUserUuid.equals(expectedUserUuid)) {
             throw new IllegalStateException("EXPERT_APPROVED event operator uuid mismatch");
         }
-        OperatorRow operatorRow = loadTrustedOperator(event.getUserId());
+        OperatorRecord operatorRow = loadTrustedOperator(event.getUserId());
         if (!expectedUserUuid.equals(operatorRow.userUuid())) {
             throw new IllegalStateException("EXPERT_APPROVED event operator uuid mismatch");
         }
@@ -191,26 +173,11 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         return operator;
     }
 
-    private OperatorRow loadTrustedOperator(Long userId) {
-        List<OperatorRow> rows = jdbcTemplate.query(
-                """
-                        select id, uuid, username, status
-                        from sys_user
-                        where id = ? and deleted = 0
-                        limit 1
-                        """,
-                (rs, rowNum) -> new OperatorRow(
-                        rs.getLong("id"),
-                        rs.getString("uuid"),
-                        rs.getString("username"),
-                        rs.getString("status")
-                ),
-                userId
-        );
-        if (rows.isEmpty()) {
+    private OperatorRecord loadTrustedOperator(Long userId) {
+        OperatorRecord operator = approvalRepository.findOperator(userId).orElse(null);
+        if (operator == null) {
             throw new IllegalStateException("EXPERT_APPROVED event operator does not exist");
         }
-        OperatorRow operator = rows.get(0);
         if (!StringUtils.hasText(operator.username())) {
             throw new IllegalStateException("EXPERT_APPROVED event operator username is required");
         }
@@ -220,45 +187,14 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         if (!StringUtils.hasText(operator.status()) || !"ENABLED".equalsIgnoreCase(operator.status().trim())) {
             throw new IllegalStateException("EXPERT_APPROVED event operator is disabled");
         }
-        return new OperatorRow(operator.userId(), operator.userUuid().trim(), operator.username().trim(), operator.status());
+        return new OperatorRecord(operator.userId(), operator.userUuid().trim(), operator.username().trim(), operator.status());
     }
 
     private String workflowOperatorSessionId(PlatformEventOutboxEntity event) {
         return "internal-workflow-event-" + event.getId();
     }
-    private ExpertAccountRow loadExpert(Long expertId, Long workflowInstanceId, String businessUuid) {
-        List<ExpertAccountRow> rows = jdbcTemplate.query(
-                """
-                        select e.id, e.code, e.name, e.mobile, e.email, e.approval_instance_id as approvalInstanceId,
-                               e.user_id as userId, e.user_uuid as userUuid, u.username
-                        from aiadc_expert e
-                        left join sys_user u
-                          on u.id = e.user_id
-                         and u.uuid = e.user_uuid
-                         and u.deleted = 0
-                        where e.id = ?
-                          and e.code = ?
-                          and e.approval_instance_id = ?
-                          and e.approval_status = 'APPROVED'
-                          and e.deleted = 0
-                        limit 1
-                        """,
-                (rs, rowNum) -> new ExpertAccountRow(
-                        rs.getLong("id"),
-                        rs.getString("code"),
-                        rs.getString("name"),
-                        rs.getString("mobile"),
-                        rs.getString("email"),
-                        rs.getObject("approvalInstanceId", Long.class),
-                        rs.getObject("userId", Long.class),
-                        rs.getString("userUuid"),
-                        rs.getString("username")
-                ),
-                expertId,
-                businessUuid,
-                workflowInstanceId
-        );
-        return rows.isEmpty() ? null : rows.get(0);
+    private ExpertAccountRecord loadExpert(Long expertId, Long workflowInstanceId, String businessUuid) {
+        return approvalRepository.findApprovedExpert(expertId, businessUuid, workflowInstanceId).orElse(null);
     }
 
     private void requireEventKeyMatchesExpert(PlatformEventOutboxEntity event, Long expertId) {
@@ -295,12 +231,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
     }
 
     private Long findRoleId(String roleCode) {
-        List<Long> rows = jdbcTemplate.query(
-                "select id from sys_role where role_code = ? and deleted = 0 limit 1",
-                (rs, rowNum) -> rs.getLong("id"),
-                roleCode
-        );
-        return rows.isEmpty() ? null : rows.get(0);
+        return approvalRepository.findRoleId(roleCode).orElse(null);
     }
 
     private String nextUsername(String code, Long expertId) {
@@ -312,12 +243,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
     }
 
     private boolean usernameExists(String username) {
-        Long count = jdbcTemplate.queryForObject(
-                "select count(1) from sys_user where username = ? and deleted = 0",
-                Long.class,
-                username
-        );
-        return count != null && count > 0;
+        return approvalRepository.usernameExists(username);
     }
 
     private String randomPassword() {
@@ -437,7 +363,4 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         return null;
     }
 
-    private record OperatorRow(Long userId, String userUuid, String username, String status) {}
-
-    private record ExpertAccountRow(Long id, String code, String name, String mobile, String email, Long approvalInstanceId, Long userId, String userUuid, String username) {}
 }

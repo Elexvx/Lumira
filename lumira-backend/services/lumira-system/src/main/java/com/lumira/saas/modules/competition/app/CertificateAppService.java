@@ -13,11 +13,11 @@ import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.competition.dto.CertificateDTO;
 import com.lumira.saas.modules.competition.vo.CertificateVO;
+import com.lumira.saas.modules.competition.repository.CertificateTemplateRepository;
+import com.lumira.saas.modules.competition.repository.CertificateRecordRepository;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -54,27 +54,32 @@ public class CertificateAppService {
     private static final String CERTIFICATE_DOWNLOAD = "aiadc:certificate:download";
     private static final String CERTIFICATE_REGENERATE = "aiadc:certificate:regenerate";
     private static final String CERTIFICATE_REVOKE = "aiadc:certificate:revoke";
-    private static final Set<String> TEMPLATE_STATUS = Set.of("DRAFT", "PUBLISHED", "ARCHIVED");
-    private static final Set<String> VERSION_STATUS = Set.of("DRAFT", "PUBLISHED", "ARCHIVED");
-    private static final Set<String> SCENE_TYPES = Set.of("COMPETITION_AWARD", "PARTICIPATION", "CUSTOM");
-    private static final Set<String> SOURCE_TYPES = Set.of("MANUAL", "IMPORT", "REGISTRATION", "AWARD_RESULT");
-    private static final Set<String> RECIPIENT_TYPES = Set.of("USER", "TEAM", "PROJECT", "CUSTOM");
-    private static final Set<String> RECORD_STATUS = Set.of("ISSUED", "REVOKED");
-    private static final int DEFAULT_WIDTH = 3508;
-    private static final int DEFAULT_HEIGHT = 2480;
-    private static final String DEFAULT_VARIABLE_SCHEMA = """
-            {"variables":[
-              {"key":"recipientName","label":"Recipient","type":"text","required":true},
-              {"key":"competitionTitle","label":"Competition","type":"text","required":true},
-              {"key":"projectName","label":"Project","type":"text","required":false},
-              {"key":"teamName","label":"Team","type":"text","required":false},
-              {"key":"awardName","label":"Award","type":"text","required":true},
-              {"key":"certificateNo","label":"Certificate No","type":"text","required":true},
-              {"key":"issueDate","label":"Issue Date","type":"date","required":true},
-              {"key":"verificationUrl","label":"Verification URL","type":"qrcode","required":true}
-            ]}
-            """;
-    private static final DateTimeFormatter BATCH_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final String CERTIFICATE_DEFAULT_GROUP = "CERTIFICATE";
+    private static final String DEFAULT_WIDTH_KEY = "certificate.canvas.default-width";
+    private static final String DEFAULT_HEIGHT_KEY = "certificate.canvas.default-height";
+    private static final String DEFAULT_ORIENTATION_KEY = "certificate.canvas.default-orientation";
+    private static final String DEFAULT_UNIT_KEY = "certificate.canvas.default-unit";
+    private static final String DEFAULT_DPI_KEY = "certificate.canvas.default-dpi";
+    private static final String DEFAULT_CANVAS_KEY = "certificate.canvas.default-json";
+    private static final String DEFAULT_VARIABLE_SCHEMA_KEY = "certificate.canvas.default-variable-schema-json";
+    private static final String PUBLIC_ORGANIZER_KEY = "certificate.public.organizer";
+    private static final String TEMPLATE_STATUSES_KEY = "certificate.rule.template-statuses";
+    private static final String SCENE_TYPES_KEY = "certificate.rule.scene-types";
+    private static final String SOURCE_TYPES_KEY = "certificate.rule.source-types";
+    private static final String RECIPIENT_TYPES_KEY = "certificate.rule.recipient-types";
+    private static final String RECORD_STATUSES_KEY = "certificate.rule.record-statuses";
+    private static final Set<String> RECORD_STATUSES = Set.of("ISSUED", "REVOKED");
+    private static final String DEFAULT_SCENE_TYPE_KEY = "certificate.rule.default-scene-type";
+    private static final String DEFAULT_SOURCE_TYPE_KEY = "certificate.rule.default-source-type";
+    private static final String DEFAULT_RECIPIENT_TYPE_KEY = "certificate.rule.default-recipient-type";
+    private static final String TEMPLATE_CODE_PREFIX_KEY = "certificate.number.template-prefix";
+    private static final String BATCH_NO_PREFIX_KEY = "certificate.number.batch-prefix";
+    private static final String CERTIFICATE_NO_PREFIX_KEY = "certificate.number.certificate-prefix";
+    private static final String TIMESTAMP_FORMAT_KEY = "certificate.number.timestamp-format";
+    private static final String VERIFICATION_CODE_LENGTH_KEY = "certificate.number.verification-code-length";
+    private static final String PREVIEW_BATCH_NO_KEY = "certificate.preview.batch-no";
+    private static final String PREVIEW_BATCH_NAME_KEY = "certificate.preview.batch-name";
+    private static final String PREVIEW_STATUS_KEY = "certificate.preview.status";
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_CODE_LENGTH = 64;
     private static final int MAX_NAME_LENGTH = 128;
@@ -88,7 +93,8 @@ public class CertificateAppService {
     private static final long MAX_PAGE_NO = 100000L;
     private static final long MAX_UPLOAD_BYTES = 10L * 1024L * 1024L;
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final CertificateTemplateRepository templateRepository;
+    private final CertificateRecordRepository recordRepository;
     private final ObjectMapper objectMapper;
     private final FileInternalApi fileInternalApi;
     private final CertificateRenderService renderService;
@@ -99,7 +105,8 @@ public class CertificateAppService {
 
     @Autowired
     public CertificateAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            CertificateTemplateRepository templateRepository,
+            CertificateRecordRepository recordRepository,
             ObjectMapper objectMapper,
             FileInternalApi fileInternalApi,
             CertificateRenderService renderService,
@@ -107,7 +114,8 @@ public class CertificateAppService {
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                templateRepository,
+                recordRepository,
                 objectMapper,
                 fileInternalApi,
                 renderService,
@@ -119,19 +127,8 @@ public class CertificateAppService {
     }
 
     public CertificateAppService(
-            MyBatisQueryOperations jdbcTemplate,
-            ObjectMapper objectMapper,
-            FileInternalApi fileInternalApi,
-            CertificateRenderService renderService,
-            PermissionSnapshotService permissionSnapshotService,
-            SystemInternalApi systemInternalApi,
-            SessionAuthenticationService sessionAuthenticationService
-    ) {
-        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
-    }
-
-    private CertificateAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            CertificateTemplateRepository templateRepository,
+            CertificateRecordRepository recordRepository,
             ObjectMapper objectMapper,
             FileInternalApi fileInternalApi,
             CertificateRenderService renderService,
@@ -140,7 +137,8 @@ public class CertificateAppService {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.templateRepository = templateRepository;
+        this.recordRepository = recordRepository;
         this.objectMapper = objectMapper;
         this.fileInternalApi = fileInternalApi;
         this.renderService = renderService;
@@ -150,52 +148,17 @@ public class CertificateAppService {
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
-    public CertificateAppService(
-            MyBatisQueryOperations jdbcTemplate,
-            ObjectMapper objectMapper,
-            FileInternalApi fileInternalApi,
-            CertificateRenderService renderService,
-            PermissionSnapshotService permissionSnapshotService
-    ) {
-        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, permissionSnapshotService, null, null, false);
-    }
-
-    public CertificateAppService(
-            MyBatisQueryOperations jdbcTemplate,
-            ObjectMapper objectMapper,
-            FileInternalApi fileInternalApi,
-            CertificateRenderService renderService
-    ) {
-        this(jdbcTemplate, objectMapper, fileInternalApi, renderService, null, null, null, false);
-    }
-
     public PageResponse<CertificateVO.Template> listTemplates(CurrentUser currentUser, String keyword, String status, long pageNo, long pageSize) {
         requirePermission(currentUser, TEMPLATE_VIEW);
         long normalizedPageNo = normalizePageNo(pageNo);
         long normalizedPageSize = normalizePageSize(pageSize);
         String normalizedKeyword = normalizeSearchText(keyword, "Template keyword is too large");
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from certificate_template where deleted = 0");
-        if (normalizedKeyword != null) {
-            where.append(" and (template_code like ? or template_name like ?)");
-            String pattern = "%" + normalizedKeyword + "%";
-            params.add(pattern);
-            params.add(pattern);
-        }
-        if (StringUtils.hasText(status)) {
-            where.append(" and status = ?");
-            params.add(normalizeEnum(status, TEMPLATE_STATUS, "Invalid template status"));
-        }
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        queryParams.add(normalizedPageSize);
-        List<CertificateVO.Template> records = jdbcTemplate.query(
-                templateSelect() + where + " order by updated_at desc, id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(CertificateVO.Template.class),
-                queryParams.toArray()
-        );
-        return page(records, total, normalizedPageNo, normalizedPageSize);
+        CertificateDefaults defaults = certificateDefaults();
+        String normalizedStatus = StringUtils.hasText(status)
+                ? normalizeEnum(status, defaults.templateStatuses(), "Invalid template status") : null;
+        CertificateTemplateRepository.TemplatePage result = templateRepository.findTemplates(
+                normalizedKeyword, normalizedStatus, (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
+        return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
     }
 
     @Transactional
@@ -205,28 +168,16 @@ public class CertificateAppService {
         requireRequest(request, "Template request is required");
         validateTemplateRequest(request);
         String templateCode = StringUtils.hasText(request.getTemplateCode()) ? request.getTemplateCode().trim() : generateTemplateCode();
-        String sceneType = normalizeEnum(defaultText(request.getSceneType(), "COMPETITION_AWARD"), SCENE_TYPES, "Invalid scene type");
-        int templateInserted = jdbcTemplate.update(
-                """
-                        insert into certificate_template (
-                            template_code, template_name, template_type, scene_type, description,
-                            latest_version, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, 'CERTIFICATE', ?, ?, 1, 'DRAFT', ?, ?, ?, ?, 0)
-                        """,
-                templateCode, requiredText(request.getTemplateName(), "Template name is required"), sceneType,
-                trimToNull(request.getDescription()), userId, userUuid, userId, userUuid
-        );
-        requireCertificateWrite(templateInserted, "Certificate template changed, please retry");
-        Long templateId = lastInsertId();
-        int versionInserted = jdbcTemplate.update(
-                """
-                        insert into certificate_template_version (
-                            template_id, version, page_width, page_height, orientation, unit, dpi,
-                            canvas_json, variable_schema_json, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, 1, ?, ?, 'LANDSCAPE', 'PX', 300, ?, ?, 'DRAFT', ?, ?, ?, ?, 0)
-                        """,
-                templateId, DEFAULT_WIDTH, DEFAULT_HEIGHT, defaultCanvas(), DEFAULT_VARIABLE_SCHEMA, userId, userUuid, userId, userUuid
-        );
+        CertificateDefaults defaults = certificateDefaults();
+        String sceneType = normalizeEnum(defaultText(request.getSceneType(), defaults.defaultSceneType()),
+                defaults.sceneTypes(), "Invalid scene type");
+        Long templateId = templateRepository.insertTemplate(templateCode,
+                requiredText(request.getTemplateName(), "Template name is required"), sceneType,
+                trimToNull(request.getDescription()), userId, userUuid);
+        if (templateId == null) throw biz(ErrorCode.BIZ_ERROR, "Certificate template changed, please retry");
+        int versionInserted = templateRepository.insertInitialVersion(templateId,
+                new CertificateTemplateRepository.TemplateDefaults(defaults.width(), defaults.height(), defaults.orientation(),
+                        defaults.unit(), defaults.dpi(), defaults.canvasJson(), defaults.variableSchemaJson()), userId, userUuid);
         requireCertificateWrite(versionInserted, "Certificate template version changed, please retry");
         return getTemplate(currentUser, templateId);
     }
@@ -250,18 +201,12 @@ public class CertificateAppService {
         if ("ARCHIVED".equals(existing.getStatus())) {
             throw biz(ErrorCode.BAD_REQUEST, "Archived template cannot be edited");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update certificate_template
-                        set template_code = ?, template_name = ?, scene_type = ?, description = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and template_code = ? and status = ? and deleted = 0
-                        """,
+        int updated = templateRepository.updateTemplate(id, existing.getTemplateCode(), existing.getStatus(),
                 StringUtils.hasText(request.getTemplateCode()) ? request.getTemplateCode().trim() : existing.getTemplateCode(),
                 requiredText(request.getTemplateName(), "Template name is required"),
-                normalizeEnum(defaultText(request.getSceneType(), existing.getSceneType()), SCENE_TYPES, "Invalid scene type"),
+                normalizeEnum(defaultText(request.getSceneType(), existing.getSceneType()), certificateDefaults().sceneTypes(), "Invalid scene type"),
                 trimToNull(request.getDescription()),
-                userId, userUuid, LocalDateTime.now(), id, existing.getTemplateCode(), existing.getStatus()
-        );
+                userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(updated, "Certificate template changed, please retry");
         return getTemplate(currentUser, id);
     }
@@ -286,10 +231,8 @@ public class CertificateAppService {
         String userUuid = trustedUserUuid(currentUser);
         requirePositiveId(id, "Certificate template id is required");
         CertificateVO.Template existing = getTemplate(currentUser, id);
-        int updated = jdbcTemplate.update(
-                "update certificate_template set status = 'ARCHIVED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and template_code = ? and status = ? and deleted = 0",
-                userId, userUuid, LocalDateTime.now(), id, existing.getTemplateCode(), existing.getStatus()
-        );
+        int updated = templateRepository.archiveTemplate(id, existing.getTemplateCode(), existing.getStatus(),
+                userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(updated, "Certificate template changed, please retry");
         return getTemplate(currentUser, id);
     }
@@ -297,11 +240,7 @@ public class CertificateAppService {
     public List<CertificateVO.TemplateVersion> listVersions(CurrentUser currentUser, Long templateId) {
         requirePermission(currentUser, TEMPLATE_VIEW);
         requirePositiveId(templateId, "Certificate template id is required");
-        return jdbcTemplate.query(
-                versionSelect() + " from certificate_template_version where template_id = ? and deleted = 0 order by version desc",
-                new BeanPropertyRowMapper<>(CertificateVO.TemplateVersion.class),
-                templateId
-        );
+        return templateRepository.findVersions(templateId);
     }
 
     public CertificateVO.TemplateVersion getVersion(CurrentUser currentUser, Long versionId) {
@@ -324,21 +263,15 @@ public class CertificateAppService {
         if ("PUBLISHED".equals(version.getStatus())) {
             throw biz(ErrorCode.BAD_REQUEST, "Published template version cannot be overwritten");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update certificate_template_version
-                        set page_width = ?, page_height = ?, orientation = ?, unit = ?, dpi = ?, canvas_json = ?,
-                            variable_schema_json = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and template_id = ? and version = ? and status = 'DRAFT' and deleted = 0
-                        """,
-                positive(request.getPageWidth(), DEFAULT_WIDTH), positive(request.getPageHeight(), DEFAULT_HEIGHT),
-                defaultText(request.getOrientation(), "LANDSCAPE").toUpperCase(Locale.ROOT),
-                defaultText(request.getUnit(), "PX").toUpperCase(Locale.ROOT),
-                positive(request.getDpi(), 300),
+        CertificateDefaults defaults = certificateDefaults();
+        CertificateTemplateRepository.TemplateCanvas canvas = new CertificateTemplateRepository.TemplateCanvas(
+                positive(request.getPageWidth(), defaults.width()), positive(request.getPageHeight(), defaults.height()),
+                defaultText(request.getOrientation(), defaults.orientation()).toUpperCase(Locale.ROOT),
+                defaultText(request.getUnit(), defaults.unit()).toUpperCase(Locale.ROOT), positive(request.getDpi(), defaults.dpi()),
                 requiredText(request.getCanvasJson(), "Canvas JSON is required"),
-                defaultText(request.getVariableSchemaJson(), DEFAULT_VARIABLE_SCHEMA),
-                userId, userUuid, LocalDateTime.now(), versionId, version.getTemplateId(), version.getVersion()
-        );
+                defaultText(request.getVariableSchemaJson(), defaults.variableSchemaJson()));
+        int updated = templateRepository.updateCanvas(versionId, version.getTemplateId(), version.getVersion(), canvas,
+                userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(updated, "Certificate template version changed, please retry");
         return getVersion(currentUser, versionId);
     }
@@ -363,15 +296,9 @@ public class CertificateAppService {
                 trustedUsername(currentUser),
                 currentUser.getSimulatedRoleId()
         );
-        int updated = jdbcTemplate.update(
-                """
-                        update certificate_template_version
-                        set background_file_id = ?, background_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and template_id = ? and version = ? and status = 'DRAFT' and deleted = 0
-                """,
+        int updated = templateRepository.updateBackground(versionId, version.getTemplateId(), version.getVersion(),
                 uploaded.id(), firstText(uploaded.publicUrl(), uploaded.previewUrl(), uploaded.downloadUrl()),
-                userId, userUuid, LocalDateTime.now(), versionId, version.getTemplateId(), version.getVersion()
-        );
+                userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(updated, "Certificate template version changed, please retry");
         return getVersion(currentUser, versionId);
     }
@@ -388,30 +315,13 @@ public class CertificateAppService {
         if (!"DRAFT".equals(draft.getStatus())) {
             throw biz(ErrorCode.BAD_REQUEST, "Only draft template version can be published");
         }
-        int versionUpdated = jdbcTemplate.update(
-                "update certificate_template_version set status = 'PUBLISHED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and template_id = ? and version = ? and status = 'DRAFT' and deleted = 0",
-                userId, userUuid, LocalDateTime.now(), draft.getId(), draft.getTemplateId(), draft.getVersion()
-        );
+        int versionUpdated = templateRepository.publishVersion(draft, userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(versionUpdated, "Certificate template version changed, please retry");
         CertificateVO.Template template = getTemplate(currentUser, templateId);
-        int templateUpdated = jdbcTemplate.update(
-                "update certificate_template set status = 'PUBLISHED', latest_version = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and template_code = ? and status = ? and deleted = 0",
-                draft.getVersion(), userId, userUuid, LocalDateTime.now(), templateId, template.getTemplateCode(), template.getStatus()
-        );
+        int templateUpdated = templateRepository.publishTemplate(template, draft.getVersion(), userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(templateUpdated, "Certificate template changed, please retry");
         int nextVersion = draft.getVersion() + 1;
-        int draftInserted = jdbcTemplate.update(
-                """
-                        insert into certificate_template_version (
-                            template_id, version, background_file_id, background_url, page_width, page_height,
-                            orientation, unit, dpi, canvas_json, variable_schema_json, status,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, 0)
-                        """,
-                templateId, nextVersion, draft.getBackgroundFileId(), draft.getBackgroundUrl(),
-                draft.getPageWidth(), draft.getPageHeight(), draft.getOrientation(), draft.getUnit(), draft.getDpi(),
-                draft.getCanvasJson(), draft.getVariableSchemaJson(), userId, userUuid, userId, userUuid
-        );
+        int draftInserted = templateRepository.insertDraftVersion(templateId, nextVersion, draft, userId, userUuid);
         requireCertificateWrite(draftInserted, "Certificate template version changed, please retry");
         return draft;
     }
@@ -420,14 +330,15 @@ public class CertificateAppService {
         requirePermission(currentUser, BATCH_CREATE);
         requireRequest(request, "Batch request is required");
         validateBatchRequest(request);
+        CertificateDefaults defaults = certificateDefaults();
         CertificateVO.GenerateResult result = new CertificateVO.GenerateResult();
         CertificateVO.Batch batch = new CertificateVO.Batch();
-        batch.setBatchNo("PREVIEW");
-        batch.setBatchName(defaultText(request.getBatchName(), "Preview"));
+        batch.setBatchNo(defaults.previewBatchNo());
+        batch.setBatchName(defaultText(request.getBatchName(), defaults.previewBatchName()));
         batch.setTotalCount(request.getRecords() == null ? 0 : request.getRecords().size());
         batch.setSuccessCount(batch.getTotalCount());
         batch.setFailedCount(0);
-        batch.setStatus("PREVIEW");
+        batch.setStatus(defaults.previewStatus());
         result.setBatch(batch);
         result.setRecords(List.of());
         return result;
@@ -443,22 +354,15 @@ public class CertificateAppService {
         if (!"PUBLISHED".equals(version.getStatus())) {
             throw biz(ErrorCode.BAD_REQUEST, "Only published template version can generate certificates");
         }
-        String batchNo = "CB-" + LocalDateTime.now().format(BATCH_FORMAT);
-        String sourceType = normalizeEnum(defaultText(request.getSourceType(), "MANUAL"), SOURCE_TYPES, "Invalid source type");
+        CertificateDefaults defaults = certificateDefaults();
+        String batchNo = defaults.batchNoPrefix() + LocalDateTime.now().format(defaults.timestampFormatter());
+        String sourceType = normalizeEnum(defaultText(request.getSourceType(), defaults.defaultSourceType()),
+                defaults.sourceTypes(), "Invalid source type");
         List<CertificateDTO.CertificateDataRequest> rows = request.getRecords() == null ? List.of() : request.getRecords();
-        int batchInserted = jdbcTemplate.update(
-                """
-                        insert into certificate_batch (
-                            batch_no, batch_name, template_id, template_version_id, competition_id, stage_id,
-                            source_type, total_count, success_count, failed_count, status,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 'GENERATING', ?, ?, ?, ?, 0)
-                        """,
+        Long batchId = recordRepository.insertBatch(new CertificateRecordRepository.BatchCreate(
                 batchNo, defaultText(request.getBatchName(), batchNo), request.getTemplateId(), request.getTemplateVersionId(),
-                request.getCompetitionId(), request.getStageId(), sourceType, rows.size(), userId, userUuid, userId, userUuid
-        );
-        requireCertificateWrite(batchInserted, "Certificate batch changed, please retry");
-        Long batchId = lastInsertId();
+                request.getCompetitionId(), request.getStageId(), sourceType, rows.size(), userId, userUuid));
+        if (batchId == null) throw biz(ErrorCode.BIZ_ERROR, "Certificate batch changed, please retry");
         List<CertificateVO.Record> created = new ArrayList<>();
         int success = 0;
         int failed = 0;
@@ -473,24 +377,8 @@ public class CertificateAppService {
                 errorMessage = exception.getMessage();
             }
         }
-        int batchUpdated = jdbcTemplate.update(
-                """
-                        update certificate_batch
-                        set success_count = ?, failed_count = ?, status = ?, error_message = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and created_by = ? and created_by_uuid = ? and deleted = 0
-                        """,
-                success,
-                failed,
-                failed == 0 ? "COMPLETED" : "FAILED",
-                errorMessage,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                batchId,
-                userId,
-                userUuid
-        );
+        int batchUpdated = recordRepository.completeBatch(batchId, success, failed,
+                failed == 0 ? "COMPLETED" : "FAILED", errorMessage, userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(batchUpdated, "Certificate batch changed, please retry");
         CertificateVO.GenerateResult result = new CertificateVO.GenerateResult();
         result.setBatch(getBatch(currentUser, batchId));
@@ -502,35 +390,21 @@ public class CertificateAppService {
         requirePermission(currentUser, BATCH_VIEW);
         long normalizedPageNo = normalizePageNo(pageNo);
         long normalizedPageSize = normalizePageSize(pageSize);
-        List<Object> params = new ArrayList<>();
-        String where = " from certificate_batch where deleted = 0" + ownerFilter(currentUser, "certificate_batch", params);
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        queryParams.add(normalizedPageSize);
-        List<CertificateVO.Batch> records = jdbcTemplate.query(
-                batchSelect() + where + " order by created_at desc, id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(CertificateVO.Batch.class),
-                queryParams.toArray()
-        );
-        return page(records, total, normalizedPageNo, normalizedPageSize);
+        Ownership owner = ownership(currentUser);
+        CertificateRecordRepository.BatchPage result = recordRepository.findBatches(owner.userId(), owner.userUuid(),
+                (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
+        return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
     }
 
     public CertificateVO.Batch getBatch(CurrentUser currentUser, Long id) {
         requirePermission(currentUser, BATCH_VIEW);
         requirePositiveId(id, "Certificate batch id is required");
-        List<Object> params = new ArrayList<>();
-        params.add(id);
-        String where = " from certificate_batch where id = ? and deleted = 0" + ownerFilter(currentUser, "certificate_batch", params);
-        List<CertificateVO.Batch> records = jdbcTemplate.query(
-                batchSelect() + where,
-                new BeanPropertyRowMapper<>(CertificateVO.Batch.class),
-                params.toArray()
-        );
-        if (records.isEmpty()) {
+        Ownership owner = ownership(currentUser);
+        CertificateVO.Batch batch = recordRepository.findBatch(id, owner.userId(), owner.userUuid());
+        if (batch == null) {
             throw biz(ErrorCode.NOT_FOUND, "Certificate batch not found");
         }
-        return records.get(0);
+        return batch;
     }
 
     public PageResponse<CertificateVO.Record> listRecords(
@@ -546,31 +420,13 @@ public class CertificateAppService {
         long normalizedPageSize = normalizePageSize(pageSize);
         String normalizedCertificateNo = normalizeSearchText(certificateNo, "Certificate no is too large");
         String normalizedRecipientName = normalizeSearchText(recipientName, "Recipient name is too large");
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from certificate_record r left join certificate_template t on r.template_id = t.id where r.deleted = 0");
-        where.append(ownerFilter(currentUser, "r", params));
-        if (normalizedCertificateNo != null) {
-            where.append(" and r.certificate_no like ?");
-            params.add("%" + normalizedCertificateNo + "%");
-        }
-        if (normalizedRecipientName != null) {
-            where.append(" and r.recipient_name like ?");
-            params.add("%" + normalizedRecipientName + "%");
-        }
-        if (StringUtils.hasText(status)) {
-            where.append(" and r.status = ?");
-            params.add(normalizeEnum(status, RECORD_STATUS, "Invalid certificate status"));
-        }
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        queryParams.add(normalizedPageSize);
-        List<CertificateVO.Record> records = jdbcTemplate.query(
-                recordSelect() + where + " order by r.created_at desc, r.id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
-                queryParams.toArray()
-        );
-        return page(records, total, normalizedPageNo, normalizedPageSize);
+        String normalizedStatus = StringUtils.hasText(status)
+                ? normalizeEnum(status, RECORD_STATUSES, "Invalid certificate status") : null;
+        Ownership owner = ownership(currentUser);
+        CertificateRecordRepository.RecordPage result = recordRepository.findRecords(
+                normalizedCertificateNo, normalizedRecipientName, normalizedStatus, owner.userId(), owner.userUuid(),
+                (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
+        return page(result.records(), result.total(), normalizedPageNo, normalizedPageSize);
     }
 
     public CertificateVO.Record getRecord(CurrentUser currentUser, Long id) {
@@ -596,25 +452,9 @@ public class CertificateAppService {
         Long userId = requirePermission(currentUser, CERTIFICATE_REVOKE);
         String userUuid = trustedUserUuid(currentUser);
         CertificateVO.Record record = getRecord(currentUser, id);
-        List<Object> params = new ArrayList<>();
-        params.add(trimToNull(reason));
-        params.add(LocalDateTime.now());
-        params.add(userId);
-        params.add(userUuid);
-        params.add(LocalDateTime.now());
-        params.add(id);
-        params.add(record.getCertificateNo());
-        params.add(record.getBatchId());
-        params.add(record.getStatus());
-        String ownerClause = ownerFilter(currentUser, "certificate_record", params);
-        int updated = jdbcTemplate.update(
-                """
-                        update certificate_record
-                        set status = 'REVOKED', revoked_reason = ?, revoked_at = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and certificate_no = ? and batch_id = ? and status = ? and deleted = 0
-                """ + ownerClause,
-                params.toArray()
-        );
+        Ownership owner = ownership(currentUser);
+        int updated = recordRepository.revoke(record, trimToNull(reason), userId, userUuid,
+                owner.userId(), owner.userUuid(), LocalDateTime.now());
         requireCertificateWrite(updated, "Certificate record changed, please retry");
         return getRecord(currentUser, id);
     }
@@ -627,20 +467,9 @@ public class CertificateAppService {
         CertificateVO.TemplateVersion version = getVersion(currentUser, record.getTemplateVersionId());
         Map<String, Object> data = parseData(record.getDataJson());
         String fileUrl = render(record.getCertificateNo(), record.getBatchId(), version, data);
-        List<Object> params = new ArrayList<>();
-        params.add(fileUrl);
-        params.add(userId);
-        params.add(userUuid);
-        params.add(LocalDateTime.now());
-        params.add(id);
-        params.add(record.getCertificateNo());
-        params.add(record.getBatchId());
-        params.add(record.getStatus());
-        String ownerClause = ownerFilter(currentUser, "certificate_record", params);
-        int updated = jdbcTemplate.update(
-                "update certificate_record set certificate_file_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and certificate_no = ? and batch_id = ? and status = ?" + ownerClause,
-                params.toArray()
-        );
+        Ownership owner = ownership(currentUser);
+        int updated = recordRepository.updateFile(record, fileUrl, userId, userUuid,
+                owner.userId(), owner.userUuid(), LocalDateTime.now());
         requireCertificateWrite(updated, "Certificate record changed, please retry");
         return getRecord(currentUser, id);
     }
@@ -649,16 +478,11 @@ public class CertificateAppService {
         String normalizedToken = requiredPublicText(publicToken, MAX_PUBLIC_TOKEN_LENGTH, "Public token is invalid");
         String normalizedClientIp = publicLogText(clientIp);
         String normalizedUserAgent = publicLogText(userAgent);
-        List<CertificateVO.Record> records = jdbcTemplate.query(
-                recordSelect() + " from certificate_record r left join certificate_template t on r.template_id = t.id where r.public_token = ? and r.deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
-                normalizedToken
-        );
-        if (records.isEmpty()) {
+        CertificateVO.Record record = recordRepository.findByPublicToken(normalizedToken);
+        if (record == null) {
             logVerify(null, null, "TOKEN", "NOT_FOUND", normalizedClientIp, normalizedUserAgent);
             return publicResult("NOT_FOUND", null);
         }
-        CertificateVO.Record record = records.get(0);
         String result = resolvePublicResult(record);
         logVerify(record.getId(), record.getCertificateNo(), "TOKEN", result, normalizedClientIp, normalizedUserAgent);
         return publicResult(result, record);
@@ -669,16 +493,11 @@ public class CertificateAppService {
         String normalizedVerificationCode = requiredPublicText(verificationCode, 16, "Verification code is invalid");
         String normalizedClientIp = publicLogText(clientIp);
         String normalizedUserAgent = publicLogText(userAgent);
-        List<CertificateVO.Record> records = jdbcTemplate.query(
-                recordSelect() + " from certificate_record r left join certificate_template t on r.template_id = t.id where r.certificate_no = ? and r.deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
-                normalizedCertificateNo
-        );
-        if (records.isEmpty()) {
+        CertificateVO.Record record = recordRepository.findByCertificateNo(normalizedCertificateNo);
+        if (record == null) {
             logVerify(null, normalizedCertificateNo, "CERT_NO", "NOT_FOUND", normalizedClientIp, normalizedUserAgent);
             return publicResult("NOT_FOUND", null);
         }
-        CertificateVO.Record record = records.get(0);
         if (!normalizedVerificationCode.equals(record.getVerificationCode())) {
             logVerify(record.getId(), record.getCertificateNo(), "CERT_NO", "INVALID_CODE", normalizedClientIp, normalizedUserAgent);
             return publicResult("INVALID_CODE", null);
@@ -699,7 +518,8 @@ public class CertificateAppService {
     ) {
         String certificateNo = generateCertificateNo();
         String publicToken = UUID.randomUUID().toString().replace("-", "");
-        String verificationCode = randomDigits(6);
+        CertificateDefaults defaults = certificateDefaults();
+        String verificationCode = randomDigits(defaults.verificationCodeLength());
         LocalDate issueDate = row.getIssueDate() == null ? LocalDate.now() : row.getIssueDate();
         Map<String, Object> data = new LinkedHashMap<>();
         if (row.getData() != null) {
@@ -716,33 +536,17 @@ public class CertificateAppService {
         data.put("verificationCode", verificationCode);
         data.put("verificationUrl", "/certificate/verify/" + publicToken);
         String dataJson = toJson(data);
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into certificate_record (
-                            certificate_no, verification_code, public_token, batch_id, template_id, template_version_id,
-                            competition_id, stage_id, recipient_name, recipient_type, competition_title, project_name, team_name, award_name,
-                            issue_date, expire_date, data_json, status,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ISSUED', ?, ?, ?, ?, 0)
-                        """,
+        Long recordId = recordRepository.insertRecord(new CertificateRecordRepository.RecordCreate(
                 certificateNo, verificationCode, publicToken, batchId, request.getTemplateId(), request.getTemplateVersionId(),
                 request.getCompetitionId(), request.getStageId(), requiredText(row.getRecipientName(), "Recipient name is required"),
-                normalizeEnum(defaultText(row.getRecipientType(), "CUSTOM"), RECIPIENT_TYPES, "Invalid recipient type"),
-                trimToNull(row.getCompetitionTitle()), trimToNull(row.getProjectName()), trimToNull(row.getTeamName()), trimToNull(row.getAwardName()),
-                issueDate, row.getExpireDate(), dataJson, userId, userUuid, userId, userUuid
-        );
-        requireCertificateWrite(inserted, "Certificate record changed, please retry");
-        Long recordId = lastInsertId();
+                normalizeEnum(defaultText(row.getRecipientType(), defaults.defaultRecipientType()),
+                        defaults.recipientTypes(), "Invalid recipient type"),
+                trimToNull(row.getCompetitionTitle()), trimToNull(row.getProjectName()), trimToNull(row.getTeamName()),
+                trimToNull(row.getAwardName()), issueDate, row.getExpireDate(), dataJson, userId, userUuid));
+        if (recordId == null) throw biz(ErrorCode.BIZ_ERROR, "Certificate record changed, please retry");
         String fileUrl = render(certificateNo, batchId, version, data);
-        int updated = jdbcTemplate.update(
-                """
-                        update certificate_record
-                        set certificate_file_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and certificate_no = ? and batch_id = ? and status = 'ISSUED'
-                          and created_by = ? and created_by_uuid = ? and deleted = 0
-                        """,
-                fileUrl, userId, userUuid, LocalDateTime.now(), recordId, certificateNo, batchId, userId, userUuid
-        );
+        int updated = recordRepository.updateGeneratedFile(recordId, certificateNo, batchId, fileUrl,
+                userId, userUuid, LocalDateTime.now());
         if (updated <= 0) {
             throw biz(ErrorCode.BIZ_ERROR, "Certificate record changed, please retry");
         }
@@ -757,68 +561,33 @@ public class CertificateAppService {
 
     private CertificateVO.Template findTemplate(Long id) {
         requirePositiveId(id, "Certificate template id is required");
-        List<CertificateVO.Template> records = jdbcTemplate.query(
-                templateSelect() + " from certificate_template where id = ? and deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(CertificateVO.Template.class),
-                id
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return templateRepository.findTemplate(id);
     }
 
     private CertificateVO.TemplateVersion findVersion(Long versionId) {
         requirePositiveId(versionId, "Template version id is required");
-        List<CertificateVO.TemplateVersion> records = jdbcTemplate.query(
-                versionSelect() + " from certificate_template_version where id = ? and deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(CertificateVO.TemplateVersion.class),
-                versionId
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return templateRepository.findVersion(versionId);
     }
 
     private CertificateVO.TemplateVersion latestVersion(Long templateId) {
         requirePositiveId(templateId, "Certificate template id is required");
-        List<CertificateVO.TemplateVersion> records = jdbcTemplate.query(
-                versionSelect() + " from certificate_template_version where template_id = ? and deleted = 0 order by version desc limit 1",
-                new BeanPropertyRowMapper<>(CertificateVO.TemplateVersion.class),
-                templateId
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return templateRepository.findLatestVersion(templateId);
     }
 
     private CertificateVO.Record findRecord(Long id) {
         requirePositiveId(id, "Certificate id is required");
-        List<CertificateVO.Record> records = jdbcTemplate.query(
-                recordSelect() + " from certificate_record r left join certificate_template t on r.template_id = t.id where r.id = ? and r.deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
-                id
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return recordRepository.findRecord(id);
     }
 
     private CertificateVO.Record findRecord(CurrentUser currentUser, Long id) {
         requirePositiveId(id, "Certificate id is required");
-        List<Object> params = new ArrayList<>();
-        params.add(id);
-        String where = " from certificate_record r left join certificate_template t on r.template_id = t.id where r.id = ? and r.deleted = 0"
-                + ownerFilter(currentUser, "r", params)
-                + " limit 1";
-        List<CertificateVO.Record> records = jdbcTemplate.query(
-                recordSelect() + where,
-                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
-                params.toArray()
-        );
-        return records.isEmpty() ? null : records.get(0);
+        Ownership owner = ownership(currentUser);
+        return recordRepository.findRecord(id, owner.userId(), owner.userUuid());
     }
 
     private void logVerify(Long certificateId, String certificateNo, String queryType, String queryResult, String clientIp, String userAgent) {
-        jdbcTemplate.update(
-                """
-                        insert into certificate_verify_log (
-                            certificate_id, certificate_no, query_type, query_result, client_ip, user_agent
-                        ) values (?, ?, ?, ?, ?, ?)
-                        """,
-                certificateId, certificateNo, queryType, queryResult, trimToNull(clientIp), trimToNull(userAgent)
-        );
+        recordRepository.insertVerifyLog(certificateId, certificateNo, queryType, queryResult,
+                trimToNull(clientIp), trimToNull(userAgent));
     }
 
     private String resolvePublicResult(CertificateVO.Record record) {
@@ -843,7 +612,8 @@ public class CertificateAppService {
         response.setProjectName(record.getProjectName());
         response.setAwardName(record.getAwardName());
         response.setIssueDate(record.getIssueDate());
-        response.setOrganizer("Lumira");
+        response.setOrganizer(requiredDefault(
+                templateRepository.findDefaultDefinitions(CERTIFICATE_DEFAULT_GROUP), PUBLIC_ORGANIZER_KEY));
         response.setStatus(record.getStatus());
         response.setCertificateFileUrl(record.getCertificateFileUrl());
         response.setSafeData(Map.of(
@@ -851,27 +621,6 @@ public class CertificateAppService {
                 "projectName", firstText(record.getProjectName(), "")
         ));
         return response;
-    }
-
-    private String templateSelect() {
-        return "select id, template_code, template_name, template_type, scene_type, description, latest_version, status, created_at, updated_at";
-    }
-
-    private String versionSelect() {
-        return "select id, template_id, version, background_file_id, background_url, page_width, page_height, orientation, unit, dpi, canvas_json, variable_schema_json, preview_file_id, status, created_at, updated_at";
-    }
-
-    private String batchSelect() {
-        return "select id, batch_no, batch_name, template_id, template_version_id, competition_id, stage_id, source_type, total_count, success_count, failed_count, status, error_message, created_at, updated_at";
-    }
-
-    private String recordSelect() {
-        return """
-                select r.id, r.certificate_no, r.verification_code, r.public_token, r.batch_id, r.template_id, r.template_version_id,
-                       t.template_name, r.competition_id, r.recipient_name, r.recipient_type, r.competition_title, r.project_name,
-                       r.team_name, r.award_name, r.issue_date, r.expire_date, r.data_json, r.certificate_file_url,
-                       r.status, r.revoked_reason, r.revoked_at, r.created_at, r.updated_at
-                """;
     }
 
     private CertificateDTO.CanvasSaveRequest toCanvasRequest(CertificateVO.TemplateVersion version) {
@@ -886,14 +635,68 @@ public class CertificateAppService {
         return request;
     }
 
-    private String defaultCanvas() {
-        return """
-                {"page":{"width":3508,"height":2480,"dpi":300,"orientation":"LANDSCAPE"},"elements":[
-                  {"id":"el_name","type":"text","fieldKey":"recipientName","x":1200,"y":920,"width":1100,"height":120,"fontFamily":"Microsoft YaHei","fontSize":72,"fontWeight":"bold","color":"#222222","textAlign":"center","placeholder":"${recipientName}"},
-                  {"id":"el_award","type":"text","fieldKey":"awardName","x":1200,"y":1200,"width":1100,"height":100,"fontFamily":"Microsoft YaHei","fontSize":56,"fontWeight":"normal","color":"#222222","textAlign":"center","placeholder":"${awardName}"},
-                  {"id":"el_qr","type":"qrcode","fieldKey":"verificationUrl","x":2920,"y":1900,"width":220,"height":220}
-                ]}
-                """;
+    private CertificateDefaults certificateDefaults() {
+        Map<String, String> values = templateRepository.findDefaultDefinitions(CERTIFICATE_DEFAULT_GROUP);
+        return new CertificateDefaults(
+                requiredPositiveDefault(values, DEFAULT_WIDTH_KEY),
+                requiredPositiveDefault(values, DEFAULT_HEIGHT_KEY),
+                requiredDefault(values, DEFAULT_ORIENTATION_KEY),
+                requiredDefault(values, DEFAULT_UNIT_KEY),
+                requiredPositiveDefault(values, DEFAULT_DPI_KEY),
+                requiredDefault(values, DEFAULT_CANVAS_KEY),
+                requiredDefault(values, DEFAULT_VARIABLE_SCHEMA_KEY),
+                requiredSetDefault(values, TEMPLATE_STATUSES_KEY),
+                requiredSetDefault(values, SCENE_TYPES_KEY),
+                requiredSetDefault(values, SOURCE_TYPES_KEY),
+                requiredSetDefault(values, RECIPIENT_TYPES_KEY),
+                requiredSetDefault(values, RECORD_STATUSES_KEY),
+                requiredDefault(values, DEFAULT_SCENE_TYPE_KEY),
+                requiredDefault(values, DEFAULT_SOURCE_TYPE_KEY),
+                requiredDefault(values, DEFAULT_RECIPIENT_TYPE_KEY),
+                requiredDefault(values, TEMPLATE_CODE_PREFIX_KEY),
+                requiredDefault(values, BATCH_NO_PREFIX_KEY),
+                requiredDefault(values, CERTIFICATE_NO_PREFIX_KEY),
+                requiredFormatter(values, TIMESTAMP_FORMAT_KEY),
+                requiredPositiveDefault(values, VERIFICATION_CODE_LENGTH_KEY),
+                requiredDefault(values, PREVIEW_BATCH_NO_KEY),
+                requiredDefault(values, PREVIEW_BATCH_NAME_KEY),
+                requiredDefault(values, PREVIEW_STATUS_KEY)
+        );
+    }
+
+    private Set<String> requiredSetDefault(Map<String, String> values, String key) {
+        Set<String> result = java.util.Arrays.stream(requiredDefault(values, key).split(","))
+                .map(String::trim).filter(StringUtils::hasText)
+                .map(value -> value.toUpperCase(Locale.ROOT))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if (result.isEmpty()) throw biz(ErrorCode.SYSTEM_ERROR, "Invalid certificate setting definition: " + key);
+        return result;
+    }
+
+    private DateTimeFormatter requiredFormatter(Map<String, String> values, String key) {
+        try {
+            return DateTimeFormatter.ofPattern(requiredDefault(values, key));
+        } catch (IllegalArgumentException exception) {
+            throw biz(ErrorCode.SYSTEM_ERROR, "Invalid certificate setting definition: " + key);
+        }
+    }
+
+    private int requiredPositiveDefault(Map<String, String> values, String key) {
+        try {
+            int value = Integer.parseInt(requiredDefault(values, key));
+            if (value > 0) return value;
+        } catch (NumberFormatException ignored) {
+            // Converted to a deterministic configuration error below.
+        }
+        throw biz(ErrorCode.SYSTEM_ERROR, "Invalid certificate setting definition: " + key);
+    }
+
+    private String requiredDefault(Map<String, String> values, String key) {
+        String value = values.get(key);
+        if (!StringUtils.hasText(value)) {
+            throw biz(ErrorCode.SYSTEM_ERROR, "Missing certificate setting definition: " + key);
+        }
+        return value;
     }
 
 
@@ -928,15 +731,13 @@ public class CertificateAppService {
         return permissions.contains("*") || permissions.contains(permissionKey);
     }
 
-    private String ownerFilter(CurrentUser currentUser, String alias, List<Object> params) {
+    private Ownership ownership(CurrentUser currentUser) {
         Long userId = requireUserId(currentUser);
         Set<String> permissions = trustedPermissions(currentUser);
         if (permissions.contains("*")) {
-            return "";
+            return new Ownership(null, null);
         }
-        params.add(userId);
-        params.add(trustedUserUuid(currentUser));
-        return " and " + alias + ".created_by = ? and " + alias + ".created_by_uuid = ?";
+        return new Ownership(userId, trustedUserUuid(currentUser));
     }
 
     private Set<String> trustedPermissions(CurrentUser currentUser) {
@@ -1057,10 +858,6 @@ public class CertificateAppService {
         target.setLoginType(source.getLoginType());
     }
 
-    private Long lastInsertId() {
-        return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-    }
-
     private void requireCertificateWrite(int updated, String message) {
         if (updated <= 0) {
             throw biz(ErrorCode.BIZ_ERROR, message);
@@ -1068,17 +865,14 @@ public class CertificateAppService {
     }
 
     private String generateTemplateCode() {
-        return "CTPL-" + LocalDateTime.now().format(BATCH_FORMAT);
+        CertificateDefaults defaults = certificateDefaults();
+        return defaults.templateCodePrefix() + LocalDateTime.now().format(defaults.timestampFormatter());
     }
 
     private String generateCertificateNo() {
-        String prefix = "CERT-" + Year.now().getValue() + "-";
-        Long count = jdbcTemplate.queryForObject(
-                "select count(1) from certificate_record where certificate_no like ?",
-                Long.class,
-                prefix + "%"
-        );
-        return prefix + String.format("%06d", (count == null ? 0 : count) + 1);
+        String prefix = certificateDefaults().certificateNoPrefix() + Year.now().getValue() + "-";
+        long count = recordRepository.countCertificateNumbers(prefix + "%");
+        return prefix + String.format("%06d", count + 1);
     }
 
     private String randomDigits(int length) {
@@ -1105,8 +899,9 @@ public class CertificateAppService {
     }
 
     private void validateCanvasRequest(CertificateDTO.CanvasSaveRequest request) {
-        int width = positive(request.getPageWidth(), DEFAULT_WIDTH);
-        int height = positive(request.getPageHeight(), DEFAULT_HEIGHT);
+        CertificateDefaults defaults = certificateDefaults();
+        int width = positive(request.getPageWidth(), defaults.width());
+        int height = positive(request.getPageHeight(), defaults.height());
         if (width > 10000 || height > 10000) {
             throw biz(ErrorCode.BAD_REQUEST, "Canvas size is too large");
         }
@@ -1292,5 +1087,35 @@ public class CertificateAppService {
 
     private BizException biz(ErrorCode code, String message) {
         return new BizException(code, message);
+    }
+
+    private record CertificateDefaults(
+            int width,
+            int height,
+            String orientation,
+            String unit,
+            int dpi,
+            String canvasJson,
+            String variableSchemaJson,
+            Set<String> templateStatuses,
+            Set<String> sceneTypes,
+            Set<String> sourceTypes,
+            Set<String> recipientTypes,
+            Set<String> recordStatuses,
+            String defaultSceneType,
+            String defaultSourceType,
+            String defaultRecipientType,
+            String templateCodePrefix,
+            String batchNoPrefix,
+            String certificateNoPrefix,
+            DateTimeFormatter timestampFormatter,
+            int verificationCodeLength,
+            String previewBatchNo,
+            String previewBatchName,
+            String previewStatus
+    ) {
+    }
+
+    private record Ownership(Long userId, String userUuid) {
     }
 }

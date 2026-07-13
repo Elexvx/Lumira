@@ -6,6 +6,8 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.activity.infrastructure.JdbcActivityRepository;
+import com.lumira.saas.modules.activity.repository.ActivityRepository;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
@@ -36,7 +38,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void createActivityShouldRequireCreatePermissionAtServiceLayer() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:view"), request()))
                 .isInstanceOf(BizException.class)
@@ -48,7 +50,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void createActivityShouldRejectBlankUsernameBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createActivity(blankUsernameUser(), request()))
                 .isInstanceOf(BizException.class)
@@ -60,7 +62,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void createActivityShouldRejectMissingSessionIdBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createActivity(missingSessionIdUser(), request()))
                 .isInstanceOf(BizException.class)
@@ -76,7 +78,7 @@ class ActivityManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:activity:view")));
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations, permissionSnapshotService);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations), permissionSnapshotService);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -96,7 +98,7 @@ class ActivityManagementAppServiceTest {
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:activity:view")));
         ActivityManagementAppService service =
-                new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+                new ActivityManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
         CurrentUser currentUser = user("aiadc:activity:view");
         currentUser.setSimulatedRoleId(0L);
         Method method = ActivityManagementAppService.class.getDeclaredMethod("refreshTrustedCurrentUser", CurrentUser.class);
@@ -116,7 +118,7 @@ class ActivityManagementAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "operator-live", "DISABLED"));
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -133,7 +135,7 @@ class ActivityManagementAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -155,7 +157,7 @@ class ActivityManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("aiadc:activity:create", "aiadc:activity:view")));
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations, permissionSnapshotService, systemInternalApi, null);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations), permissionSnapshotService, systemInternalApi, null);
         CurrentUser currentUser = user("*");
         currentUser.setUsername("operator-stale");
 
@@ -172,7 +174,7 @@ class ActivityManagementAppServiceTest {
         when(sessionAuthenticationService.authenticateSessionTicket("session-1", 2001L, "user-uuid-2001", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
         ActivityManagementAppService service =
-                new ActivityManagementAppService(queryOperations, null, sessionAuthenticationService);
+                new ActivityManagementAppService(repository(queryOperations), null, sessionAuthenticationService);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -185,7 +187,7 @@ class ActivityManagementAppServiceTest {
     void createActivityShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         ActivityManagementAppService service =
-                new ActivityManagementAppService(queryOperations, null, (SessionAuthenticationService) null);
+                new ActivityManagementAppService(repository(queryOperations), null, (SessionAuthenticationService) null);
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), request()))
                 .isInstanceOf(BizException.class)
@@ -197,7 +199,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void updateActivityShouldRequireUpdatePermissionBeforeLookup() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.updateActivity(user("aiadc:activity:create"), 1L, request()))
                 .isInstanceOf(BizException.class)
@@ -209,7 +211,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void activityWritesShouldRejectNullRequestOrInvalidIdBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createActivity(user("aiadc:activity:create"), null))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -228,7 +230,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void deleteActivityShouldRequireDeletePermissionAtServiceLayer() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.deleteActivity(user("aiadc:activity:update"), 1L))
                 .isInstanceOf(BizException.class)
@@ -239,7 +241,7 @@ class ActivityManagementAppServiceTest {
     @Test
     void activityWritesShouldRejectUnsafeUrlsAndOversizedFieldsBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
         ActivityDTO.ActivityUpsertRequest unsafeUrl = request();
         unsafeUrl.setImageUrl("javascript:alert(1)");
         ActivityDTO.ActivityUpsertRequest oversizedLocation = request();
@@ -261,7 +263,7 @@ class ActivityManagementAppServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.countResult = 11L;
         queryOperations.rows = List.of(activityRow());
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         ActivityVO.Activity activity = service.createActivity(user("*"), request());
 
@@ -274,7 +276,7 @@ class ActivityManagementAppServiceTest {
     void createActivityShouldRejectWhenInsertMissesBeforeGeneratedIdLookup() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.updateCount = 0;
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         assertThatThrownBy(() -> service.createActivity(user("*"), request()))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -289,7 +291,7 @@ class ActivityManagementAppServiceTest {
     void updateActivityShouldBindOriginalCodeLocaleAndStatusInFinalWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.rows = List.of(activityRow());
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         service.updateActivity(user("*"), 11L, request());
 
@@ -302,7 +304,7 @@ class ActivityManagementAppServiceTest {
     void deleteActivityShouldBindOriginalCodeLocaleAndStatusInFinalWrite() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.rows = List.of(activityRow());
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         service.deleteActivity(user("aiadc:activity:delete"), 11L);
 
@@ -316,7 +318,7 @@ class ActivityManagementAppServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.countResult = 1L;
         queryOperations.rows = List.of(activityRow());
-        ActivityManagementAppService service = new ActivityManagementAppService(queryOperations);
+        ActivityManagementAppService service = new ActivityManagementAppService(repository(queryOperations));
 
         ActivityVO.PublicActivity activity = service.listPublishedActivities(null, null, null, 1L, 10L)
                 .getRecords()
@@ -410,6 +412,10 @@ class ActivityManagementAppServiceTest {
         );
     }
 
+    private ActivityRepository repository(MyBatisQueryOperations operations) {
+        return new JdbcActivityRepository(operations);
+    }
+
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private int updateCallCount;
         private int queryCallCount;
@@ -454,6 +460,15 @@ class ActivityManagementAppServiceTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queryCallCount += 1;
+            if (args.length > 0 && "aiadc_activity_locale".equals(args[0])) {
+                return List.of(Map.of("itemValue", "zh"), Map.of("itemValue", "en"));
+            }
+            if (args.length > 0 && "aiadc_activity_status".equals(args[0])) {
+                return List.of(Map.of("itemValue", "draft"), Map.of("itemValue", "published"));
+            }
+            if (args.length > 0 && "aiadc_activity_public_status".equals(args[0])) {
+                return List.of(Map.of("itemValue", "published"));
+            }
             return List.of();
         }
     }

@@ -12,6 +12,8 @@ public interface TeamMemberRepository {
 
     TeamVO.Member findMemberById(Long teamId, Long memberId);
 
+    TeamVO.Member findActiveMember(Long teamId, Long userId, String userUuid);
+
     boolean updateMemberRole(Long teamId, TeamVO.Member expectedMember, String role);
 
     boolean removeMember(Long teamId, TeamVO.Member expectedMember);

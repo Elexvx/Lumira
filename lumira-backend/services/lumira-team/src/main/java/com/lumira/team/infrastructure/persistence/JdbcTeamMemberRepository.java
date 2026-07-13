@@ -248,6 +248,20 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
+    public TeamVO.Member findActiveMember(Long teamId, Long userId, String userUuid) {
+        List<TeamVO.Member> members = jdbcTemplate.query(
+                memberSelect("""
+                        where team_id = ? and user_id = ? and user_uuid = ?
+                          and status = 'ACTIVE' and deleted = 0
+                        limit 1
+                        """),
+                new BeanPropertyRowMapper<>(TeamVO.Member.class),
+                teamId, userId, userUuid
+        );
+        return members.isEmpty() ? null : members.getFirst();
+    }
+
+    @Override
     public void refreshMemberCount(Long teamId, TeamVO.Team expectedTeam) {
         requireExpectedTeam(expectedTeam);
         jdbcTemplate.update(

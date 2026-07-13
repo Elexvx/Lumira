@@ -14,8 +14,7 @@ import com.lumira.common.security.authorization.AuthorizationVerdict;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.ai.vo.AiVO;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.repository.AiToolRegistryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -35,7 +34,7 @@ public interface AiToolRegistry {
 class DefaultAiToolRegistry implements AiToolRegistry {
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final AiToolRegistryRepository toolRegistryRepository;
     private final AuthorizationService authorizationService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -44,24 +43,24 @@ class DefaultAiToolRegistry implements AiToolRegistry {
     private final boolean enforceTrustedUserResolution;
 
     DefaultAiToolRegistry(
-            MyBatisQueryOperations jdbcTemplate,
+            AiToolRegistryRepository toolRegistryRepository,
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, authorizationService, securityContextFacade, permissionSnapshotService, null, null, false);
+        this(toolRegistryRepository, authorizationService, securityContextFacade, permissionSnapshotService, null, null, false);
     }
 
     @Autowired
     DefaultAiToolRegistry(
-            MyBatisQueryOperations jdbcTemplate,
+            AiToolRegistryRepository toolRegistryRepository,
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                toolRegistryRepository,
                 authorizationService,
                 securityContextFacade,
                 permissionSnapshotService,
@@ -72,7 +71,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
     }
 
     DefaultAiToolRegistry(
-            MyBatisQueryOperations jdbcTemplate,
+            AiToolRegistryRepository toolRegistryRepository,
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade,
             PermissionSnapshotService permissionSnapshotService,
@@ -80,7 +79,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                toolRegistryRepository,
                 authorizationService,
                 securityContextFacade,
                 permissionSnapshotService,
@@ -91,7 +90,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
     }
 
     private DefaultAiToolRegistry(
-            MyBatisQueryOperations jdbcTemplate,
+            AiToolRegistryRepository toolRegistryRepository,
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade,
             PermissionSnapshotService permissionSnapshotService,
@@ -99,7 +98,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.toolRegistryRepository = toolRegistryRepository;
         this.authorizationService = authorizationService;
         this.securityContextFacade = securityContextFacade;
         this.permissionSnapshotService = permissionSnapshotService;
@@ -109,11 +108,11 @@ class DefaultAiToolRegistry implements AiToolRegistry {
     }
 
     DefaultAiToolRegistry(
-            MyBatisQueryOperations jdbcTemplate,
+            AiToolRegistryRepository toolRegistryRepository,
             AuthorizationService authorizationService,
             SecurityContextFacade securityContextFacade
     ) {
-        this(jdbcTemplate, authorizationService, securityContextFacade, null);
+        this(toolRegistryRepository, authorizationService, securityContextFacade, null);
     }
 
     @Override
@@ -122,25 +121,7 @@ class DefaultAiToolRegistry implements AiToolRegistry {
             return Collections.emptyList();
         }
         CurrentUser currentUser = refreshTrustedCurrentUser(securityContextFacade.getCurrentUser());
-        return jdbcTemplate.query(
-                """
-                        select k.id, k.skill_code as skillCode, k.skill_name as skillName, k.category, k.description,
-                               k.risk_level as riskLevel, k.read_only as readOnly, k.need_confirm as needConfirm,
-                               k.enabled, k.create_time as createTime, k.update_time as updateTime,
-                               r.permission_mode as permissionMode
-                        from ai_skill k
-                        join ai_employee_skill r
-                          on r.skill_code = k.skill_code
-                         and r.employee_id = ?
-                         and r.is_deleted = 0
-                        where k.is_deleted = 0
-                          and k.enabled = 1
-                          and lower(r.permission_mode) in ('view', 'visit', 'invoke', 'execute', 'allow')
-                        order by k.category asc, k.skill_code asc
-                        """,
-                new BeanPropertyRowMapper<>(AiVO.SkillVO.class),
-                employeeId
-        ).stream()
+        return toolRegistryRepository.findGrantedSkills(employeeId).stream()
                 .filter(skill -> isAuthorized(currentUser, employeeId, skill))
                 .toList();
     }

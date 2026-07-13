@@ -8,8 +8,6 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
@@ -19,8 +17,7 @@ import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.system.settings.repository.SystemPlatformSettingsRepository;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -28,20 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
@@ -51,12 +40,6 @@ public class SystemPlatformSettingsAppService {
     private static final String CONTEXT_PLATFORM = "platform";
     private static final String SCOPE_RUNTIME_APPEARANCE = "runtime-appearance";
     private static final String SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
-    private static final String RUNTIME_APPEARANCE_CACHE_KEY = "runtime-appearance";
-    private static final Duration CONFIG_SNAPSHOT_TTL = Duration.ofSeconds(30);
-    private static final int CONFIG_SNAPSHOT_MAX_ENTRIES = 4096;
-    private static final int CONFIG_SINGLE_FLIGHT_MAX_ENTRIES = 2048;
-    private static final Duration RUNTIME_APPEARANCE_VERSION_TTL = Duration.ofSeconds(10);
-    private static final int RUNTIME_APPEARANCE_VERSION_MAX_ENTRIES = 1024;
 
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
@@ -71,28 +54,11 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_FOOTER_ICP_KEY = "branding.footer-icp";
     private static final String BRANDING_FOOTER_POLICE_BEIAN_KEY = "branding.footer-police-beian";
     private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
-    private static final List<String> BRANDING_CONFIG_KEYS = List.of(
-            BRANDING_WEBSITE_NAME_KEY,
-            BRANDING_WEBSITE_FAVICON_URL_KEY,
-            BRANDING_WEBSITE_LOGO_URL_KEY,
-            BRANDING_LOGIN_BACKGROUND_URL_KEY,
-            BRANDING_GITHUB_LINK_ENABLED_KEY,
-            BRANDING_GITHUB_LINK_URL_KEY,
-            BRANDING_HELP_LINK_ENABLED_KEY,
-            BRANDING_HELP_LINK_URL_KEY,
-            BRANDING_COMPANY_NAME_KEY,
-            BRANDING_COPYRIGHT_START_YEAR_KEY,
-            BRANDING_FOOTER_ICP_KEY,
-            BRANDING_FOOTER_POLICE_BEIAN_KEY,
-            BRANDING_FOOTER_COPYRIGHT_KEY
-    );
+    private static final String GROUP_BRANDING = "BRANDING";
 
     private static final String AGREEMENT_USER_MARKDOWN_KEY = "agreement.user-agreement-markdown";
     private static final String AGREEMENT_PRIVACY_MARKDOWN_KEY = "agreement.privacy-agreement-markdown";
-    private static final List<String> AGREEMENT_CONFIG_KEYS = List.of(
-            AGREEMENT_USER_MARKDOWN_KEY,
-            AGREEMENT_PRIVACY_MARKDOWN_KEY
-    );
+    private static final String GROUP_AGREEMENT = "AGREEMENT";
 
     private static final String SMTP_HOST_KEY = "smtp.host";
     private static final String SMTP_ENABLED_KEY = "smtp.enabled";
@@ -103,30 +69,19 @@ public class SystemPlatformSettingsAppService {
     private static final String SMTP_AUTH_ENABLED_KEY = "smtp.auth-enabled";
     private static final String SMTP_STARTTLS_ENABLED_KEY = "smtp.starttls-enabled";
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
-    private static final List<String> SMTP_CONFIG_KEYS = List.of(
-            SMTP_ENABLED_KEY,
-            SMTP_HOST_KEY,
-            SMTP_PORT_KEY,
-            SMTP_USERNAME_KEY,
-            SMTP_PASSWORD_KEY,
-            SMTP_FROM_KEY,
-            SMTP_AUTH_ENABLED_KEY,
-            SMTP_STARTTLS_ENABLED_KEY,
-            SMTP_SSL_ENABLED_KEY
-    );
+    private static final String SMTP_TEST_SUBJECT_KEY = "smtp.test-subject";
+    private static final String SMTP_TEST_CONTENT_KEY = "smtp.test-content";
+    private static final String SMTP_CONNECTION_TIMEOUT_KEY = "smtp.connection-timeout-ms";
+    private static final String SMTP_READ_TIMEOUT_KEY = "smtp.read-timeout-ms";
+    private static final String SMTP_WRITE_TIMEOUT_KEY = "smtp.write-timeout-ms";
+    private static final String GROUP_SMTP = "SMTP";
 
     private static final String WECHAT_OFFICIAL_ENABLED_KEY = "notification.wechat-official.enabled";
     private static final String WECHAT_OFFICIAL_APP_ID_KEY = "notification.wechat-official.app-id";
     private static final String WECHAT_OFFICIAL_APP_SECRET_KEY = "notification.wechat-official.app-secret";
     private static final String WECHAT_OFFICIAL_TEMPLATE_ID_KEY = "notification.wechat-official.template-id";
     private static final String WECHAT_OFFICIAL_DETAIL_URL_KEY = "notification.wechat-official.detail-url";
-    private static final List<String> WECHAT_OFFICIAL_CONFIG_KEYS = List.of(
-            WECHAT_OFFICIAL_ENABLED_KEY,
-            WECHAT_OFFICIAL_APP_ID_KEY,
-            WECHAT_OFFICIAL_APP_SECRET_KEY,
-            WECHAT_OFFICIAL_TEMPLATE_ID_KEY,
-            WECHAT_OFFICIAL_DETAIL_URL_KEY
-    );
+    private static final String GROUP_WECHAT_OFFICIAL = "WECHAT_OFFICIAL";
 
     private static final String WATERMARK_ENABLED_KEY = "watermark.enabled";
     private static final String WATERMARK_MODE_KEY = "watermark.mode";
@@ -142,33 +97,14 @@ public class SystemPlatformSettingsAppService {
     private static final String WATERMARK_OFFSET_Y_KEY = "watermark.offset-y";
     private static final String WATERMARK_Z_INDEX_KEY = "watermark.z-index";
     private static final String WATERMARK_OPACITY_KEY = "watermark.opacity";
-    private static final List<String> WATERMARK_CONFIG_KEYS = List.of(
-            WATERMARK_ENABLED_KEY,
-            WATERMARK_MODE_KEY,
-            WATERMARK_TEXT_LINES_KEY,
-            WATERMARK_IMAGE_URL_KEY,
-            WATERMARK_FONT_COLOR_KEY,
-            WATERMARK_FONT_SIZE_KEY,
-            WATERMARK_FONT_WEIGHT_KEY,
-            WATERMARK_ROTATE_KEY,
-            WATERMARK_GAP_X_KEY,
-            WATERMARK_GAP_Y_KEY,
-            WATERMARK_OFFSET_X_KEY,
-            WATERMARK_OFFSET_Y_KEY,
-            WATERMARK_Z_INDEX_KEY,
-            WATERMARK_OPACITY_KEY
-    );
+    private static final String GROUP_WATERMARK = "WATERMARK";
 
     private static final String FLOATING_API_DOCS_QR_ENABLED_KEY = "floating-window.api-docs-qr-enabled";
     private static final String FLOATING_API_DOCS_QR_TITLE_KEY = "floating-window.api-docs-qr-title";
     private static final String FLOATING_API_DOCS_QR_IMAGE_URL_KEY = "floating-window.api-docs-qr-image-url";
-    private static final List<String> FLOATING_WINDOW_CONFIG_KEYS = List.of(
-            FLOATING_API_DOCS_QR_ENABLED_KEY,
-            FLOATING_API_DOCS_QR_TITLE_KEY,
-            FLOATING_API_DOCS_QR_IMAGE_URL_KEY
-    );
+    private static final String GROUP_FLOATING_WINDOW = "FLOATING_WINDOW";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final SystemPlatformSettingsRepository repository;
     private final OperationAuditService operationAuditService;
     private final FieldCryptoService fieldCryptoService;
     private final ReadModelVersionService readModelVersionService;
@@ -178,14 +114,10 @@ public class SystemPlatformSettingsAppService {
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
-    private final Cache<String, Map<String, String>> configSnapshotCache;
-    private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
-    private final Cache<String, Long> runtimeAppearanceVersionCache;
-    private final Cache<String, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight;
 
     @Autowired
     public SystemPlatformSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemPlatformSettingsRepository repository,
             OperationAuditService operationAuditService,
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
@@ -195,11 +127,11 @@ public class SystemPlatformSettingsAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, operationAuditService, fieldCryptoService, readModelVersionService, ownerRuntimeMetrics, smtpMailService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(repository, operationAuditService, fieldCryptoService, readModelVersionService, ownerRuntimeMetrics, smtpMailService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
     private SystemPlatformSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemPlatformSettingsRepository repository,
             OperationAuditService operationAuditService,
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
@@ -210,7 +142,7 @@ public class SystemPlatformSettingsAppService {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.repository = repository;
         this.operationAuditService = operationAuditService;
         this.fieldCryptoService = fieldCryptoService;
         this.readModelVersionService = readModelVersionService;
@@ -220,33 +152,17 @@ public class SystemPlatformSettingsAppService {
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
-        this.configSnapshotCache = CacheBuilder.newBuilder()
-                .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
-                .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
-                .build();
-        this.configLoadInFlight = CacheBuilder.newBuilder()
-                .maximumSize(CONFIG_SINGLE_FLIGHT_MAX_ENTRIES)
-                .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
-                .build();
-        this.runtimeAppearanceVersionCache = CacheBuilder.newBuilder()
-                .maximumSize(RUNTIME_APPEARANCE_VERSION_MAX_ENTRIES)
-                .expireAfterWrite(RUNTIME_APPEARANCE_VERSION_TTL.toMillis(), TimeUnit.MILLISECONDS)
-                .build();
-        this.runtimeAppearanceVersionLoadInFlight = CacheBuilder.newBuilder()
-                .maximumSize(RUNTIME_APPEARANCE_VERSION_MAX_ENTRIES)
-                .expireAfterWrite(RUNTIME_APPEARANCE_VERSION_TTL.toMillis(), TimeUnit.MILLISECONDS)
-                .build();
     }
 
     public SystemPlatformSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemPlatformSettingsRepository repository,
             OperationAuditService operationAuditService,
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
             OwnerRuntimeMetrics ownerRuntimeMetrics,
             SmtpMailService smtpMailService
     ) {
-        this(jdbcTemplate,
+        this(repository,
                 operationAuditService,
                 fieldCryptoService,
                 readModelVersionService,
@@ -259,7 +175,7 @@ public class SystemPlatformSettingsAppService {
     }
 
     public SystemPlatformSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemPlatformSettingsRepository repository,
             OperationAuditService operationAuditService,
             FieldCryptoService fieldCryptoService,
             ReadModelVersionService readModelVersionService,
@@ -267,7 +183,7 @@ public class SystemPlatformSettingsAppService {
             SmtpMailService smtpMailService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate,
+        this(repository,
                 operationAuditService,
                 fieldCryptoService,
                 readModelVersionService,
@@ -303,23 +219,23 @@ public class SystemPlatformSettingsAppService {
         String websiteName = sanitizeBrandingText(request.getWebsiteName(), "Website name");
         String companyName = sanitizeBrandingText(request.getCompanyName(), websiteName);
         Integer copyrightStartYear = request.getCopyrightStartYear() == null ? LocalDate.now().getYear() : request.getCopyrightStartYear();
-        upsertBrandingConfig(BRANDING_WEBSITE_NAME_KEY, "Website name", websiteName, "Website name shown in branding and browser title", operatorId);
-        upsertBrandingConfig(BRANDING_WEBSITE_FAVICON_URL_KEY, "Website favicon URL", sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), "Favicon URL used by the website", operatorId);
-        upsertBrandingConfig(BRANDING_WEBSITE_LOGO_URL_KEY, "Website logo URL", sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), "Logo URL used by the website", operatorId);
-        upsertBrandingConfig(BRANDING_LOGIN_BACKGROUND_URL_KEY, "Login background URL", sanitizeBrandingText(request.getLoginBackgroundUrl(), ""), "Background image shown on the login page", operatorId);
-        upsertBrandingConfig(BRANDING_GITHUB_LINK_ENABLED_KEY, "GitHub link enabled", String.valueOf(request.getGithubLinkEnabled() == null || request.getGithubLinkEnabled()), "Whether the GitHub link is shown", operatorId);
-        upsertBrandingConfig(BRANDING_GITHUB_LINK_URL_KEY, "GitHub link URL", sanitizeBrandingText(request.getGithubLinkUrl(), ""), "GitHub link target URL", operatorId);
-        upsertBrandingConfig(BRANDING_HELP_LINK_ENABLED_KEY, "Help link enabled", String.valueOf(request.getHelpLinkEnabled() == null || request.getHelpLinkEnabled()), "Whether the help link is shown", operatorId);
-        upsertBrandingConfig(BRANDING_HELP_LINK_URL_KEY, "Help link URL", sanitizeBrandingText(request.getHelpLinkUrl(), ""), "Help link target URL", operatorId);
-        upsertBrandingConfig(BRANDING_COMPANY_NAME_KEY, "Company name", companyName, "Company name shown in branding", operatorId);
-        upsertBrandingConfig(BRANDING_COPYRIGHT_START_YEAR_KEY, "Copyright start year", String.valueOf(copyrightStartYear), "Copyright start year", operatorId);
-        upsertBrandingConfig(BRANDING_FOOTER_ICP_KEY, "Footer ICP", sanitizeBrandingText(request.getFooterIcp(), ""), "ICP text shown in the footer", operatorId);
-        upsertBrandingConfig(BRANDING_FOOTER_POLICE_BEIAN_KEY, "Footer police beian", sanitizeBrandingText(request.getFooterPoliceBeian(), ""), "Police beian text shown in the footer", operatorId);
+        upsertConfigValue(BRANDING_WEBSITE_NAME_KEY, websiteName, operatorId);
+        upsertConfigValue(BRANDING_WEBSITE_FAVICON_URL_KEY, sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), operatorId);
+        upsertConfigValue(BRANDING_WEBSITE_LOGO_URL_KEY, sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), operatorId);
+        upsertConfigValue(BRANDING_LOGIN_BACKGROUND_URL_KEY, sanitizeBrandingText(request.getLoginBackgroundUrl(), ""), operatorId);
+        upsertConfigValue(BRANDING_GITHUB_LINK_ENABLED_KEY, String.valueOf(request.getGithubLinkEnabled() == null || request.getGithubLinkEnabled()), operatorId);
+        upsertConfigValue(BRANDING_GITHUB_LINK_URL_KEY, sanitizeBrandingText(request.getGithubLinkUrl(), ""), operatorId);
+        upsertConfigValue(BRANDING_HELP_LINK_ENABLED_KEY, String.valueOf(request.getHelpLinkEnabled() == null || request.getHelpLinkEnabled()), operatorId);
+        upsertConfigValue(BRANDING_HELP_LINK_URL_KEY, sanitizeBrandingText(request.getHelpLinkUrl(), ""), operatorId);
+        upsertConfigValue(BRANDING_COMPANY_NAME_KEY, companyName, operatorId);
+        upsertConfigValue(BRANDING_COPYRIGHT_START_YEAR_KEY, String.valueOf(copyrightStartYear), operatorId);
+        upsertConfigValue(BRANDING_FOOTER_ICP_KEY, sanitizeBrandingText(request.getFooterIcp(), ""), operatorId);
+        upsertConfigValue(BRANDING_FOOTER_POLICE_BEIAN_KEY, sanitizeBrandingText(request.getFooterPoliceBeian(), ""), operatorId);
         String footerCopyright = sanitizeBrandingText(
                 request.getFooterCopyright(),
                 buildCopyrightText(companyName, copyrightStartYear)
         );
-        upsertBrandingConfig(BRANDING_FOOTER_COPYRIGHT_KEY, "Footer copyright", footerCopyright, "Footer copyright text", operatorId);
+        upsertConfigValue(BRANDING_FOOTER_COPYRIGHT_KEY, footerCopyright, operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -339,8 +255,8 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.AgreementSettingsVO updateAgreementSettings(CurrentUser currentUser, SystemDTO.AgreementSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Agreement settings request is required");
-        upsertConfigValue(AGREEMENT_USER_MARKDOWN_KEY, "User agreement", normalizeMarkdownText(request.getUserAgreementMarkdown()), "User agreement Markdown", operatorId);
-        upsertConfigValue(AGREEMENT_PRIVACY_MARKDOWN_KEY, "Privacy agreement", normalizeMarkdownText(request.getPrivacyAgreementMarkdown()), "Privacy agreement Markdown", operatorId);
+        upsertConfigValue(AGREEMENT_USER_MARKDOWN_KEY, normalizeMarkdownText(request.getUserAgreementMarkdown()), operatorId);
+        upsertConfigValue(AGREEMENT_PRIVACY_MARKDOWN_KEY, normalizeMarkdownText(request.getPrivacyAgreementMarkdown()), operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -378,20 +294,21 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Watermark settings request is required");
-        upsertBrandingConfig(WATERMARK_ENABLED_KEY, "Watermark enabled", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "Whether watermark display is enabled", operatorId);
-        upsertBrandingConfig(WATERMARK_MODE_KEY, "Watermark mode", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
-        upsertBrandingConfig(WATERMARK_TEXT_LINES_KEY, "Watermark text lines", String.join("\\n", request.getTextLines() == null ? List.of() : request.getTextLines()), "Watermark text lines", operatorId);
-        upsertBrandingConfig(WATERMARK_IMAGE_URL_KEY, "Watermark image URL", defaultIfBlank(request.getImageUrl(), ""), "Watermark image URL", operatorId);
-        upsertBrandingConfig(WATERMARK_FONT_COLOR_KEY, "Watermark font color", defaultIfBlank(request.getFontColor(), "rgba(0,0,0,0.15)"), "Watermark font color", operatorId);
-        upsertBrandingConfig(WATERMARK_FONT_SIZE_KEY, "Watermark font size", String.valueOf(request.getFontSize() == null ? 14 : request.getFontSize()), "Watermark font size", operatorId);
-        upsertBrandingConfig(WATERMARK_FONT_WEIGHT_KEY, "Watermark font weight", defaultIfBlank(request.getFontWeight(), "normal"), "Watermark font weight", operatorId);
-        upsertBrandingConfig(WATERMARK_ROTATE_KEY, "Watermark rotate", String.valueOf(request.getRotate() == null ? -22 : request.getRotate()), "Watermark rotate angle", operatorId);
-        upsertBrandingConfig(WATERMARK_GAP_X_KEY, "Watermark gap X", String.valueOf(request.getGapX() == null ? 100 : request.getGapX()), "Watermark horizontal gap", operatorId);
-        upsertBrandingConfig(WATERMARK_GAP_Y_KEY, "Watermark gap Y", String.valueOf(request.getGapY() == null ? 100 : request.getGapY()), "Watermark vertical gap", operatorId);
-        upsertBrandingConfig(WATERMARK_OFFSET_X_KEY, "Watermark offset X", String.valueOf(request.getOffsetX() == null ? 0 : request.getOffsetX()), "Watermark horizontal offset", operatorId);
-        upsertBrandingConfig(WATERMARK_OFFSET_Y_KEY, "Watermark offset Y", String.valueOf(request.getOffsetY() == null ? 0 : request.getOffsetY()), "Watermark vertical offset", operatorId);
-        upsertBrandingConfig(WATERMARK_Z_INDEX_KEY, "Watermark z-index", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "Watermark z-index", operatorId);
-        upsertBrandingConfig(WATERMARK_OPACITY_KEY, "Watermark opacity", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "Watermark opacity", operatorId);
+        Map<String, String> current = loadConfigValuesByGroup(GROUP_WATERMARK, true);
+        upsertConfigValue(WATERMARK_ENABLED_KEY, request.getEnabled() == null ? settingValue(current, WATERMARK_ENABLED_KEY) : String.valueOf(request.getEnabled()), operatorId);
+        upsertConfigValue(WATERMARK_MODE_KEY, defaultIfBlank(request.getMode(), settingValue(current, WATERMARK_MODE_KEY)), operatorId);
+        upsertConfigValue(WATERMARK_TEXT_LINES_KEY, request.getTextLines() == null ? settingValue(current, WATERMARK_TEXT_LINES_KEY) : String.join("\\n", request.getTextLines()), operatorId);
+        upsertConfigValue(WATERMARK_IMAGE_URL_KEY, request.getImageUrl() == null ? settingValue(current, WATERMARK_IMAGE_URL_KEY) : request.getImageUrl(), operatorId);
+        upsertConfigValue(WATERMARK_FONT_COLOR_KEY, defaultIfBlank(request.getFontColor(), settingValue(current, WATERMARK_FONT_COLOR_KEY)), operatorId);
+        upsertConfigValue(WATERMARK_FONT_SIZE_KEY, request.getFontSize() == null ? settingValue(current, WATERMARK_FONT_SIZE_KEY) : String.valueOf(request.getFontSize()), operatorId);
+        upsertConfigValue(WATERMARK_FONT_WEIGHT_KEY, defaultIfBlank(request.getFontWeight(), settingValue(current, WATERMARK_FONT_WEIGHT_KEY)), operatorId);
+        upsertConfigValue(WATERMARK_ROTATE_KEY, request.getRotate() == null ? settingValue(current, WATERMARK_ROTATE_KEY) : String.valueOf(request.getRotate()), operatorId);
+        upsertConfigValue(WATERMARK_GAP_X_KEY, request.getGapX() == null ? settingValue(current, WATERMARK_GAP_X_KEY) : String.valueOf(request.getGapX()), operatorId);
+        upsertConfigValue(WATERMARK_GAP_Y_KEY, request.getGapY() == null ? settingValue(current, WATERMARK_GAP_Y_KEY) : String.valueOf(request.getGapY()), operatorId);
+        upsertConfigValue(WATERMARK_OFFSET_X_KEY, request.getOffsetX() == null ? settingValue(current, WATERMARK_OFFSET_X_KEY) : String.valueOf(request.getOffsetX()), operatorId);
+        upsertConfigValue(WATERMARK_OFFSET_Y_KEY, request.getOffsetY() == null ? settingValue(current, WATERMARK_OFFSET_Y_KEY) : String.valueOf(request.getOffsetY()), operatorId);
+        upsertConfigValue(WATERMARK_Z_INDEX_KEY, request.getZIndex() == null ? settingValue(current, WATERMARK_Z_INDEX_KEY) : String.valueOf(request.getZIndex()), operatorId);
+        upsertConfigValue(WATERMARK_OPACITY_KEY, request.getOpacity() == null ? settingValue(current, WATERMARK_OPACITY_KEY) : String.valueOf(request.getOpacity()), operatorId);
         markRuntimeAppearanceChanged("watermark-update");
         return loadWatermarkSettings();
     }
@@ -400,9 +317,10 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Floating window settings request is required");
-        upsertBrandingConfig(FLOATING_API_DOCS_QR_ENABLED_KEY, "API docs QR enabled", String.valueOf(Boolean.TRUE.equals(request.getApiDocsQrEnabled())), "Whether API docs QR is shown", operatorId);
-        upsertBrandingConfig(FLOATING_API_DOCS_QR_TITLE_KEY, "API docs QR title", defaultIfBlank(request.getApiDocsQrTitle(), ""), "API docs QR title", operatorId);
-        upsertBrandingConfig(FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "API docs QR image URL", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "API docs QR image URL", operatorId);
+        Map<String, String> current = loadConfigValuesByGroup(GROUP_FLOATING_WINDOW, true);
+        upsertConfigValue(FLOATING_API_DOCS_QR_ENABLED_KEY, request.getApiDocsQrEnabled() == null ? settingValue(current, FLOATING_API_DOCS_QR_ENABLED_KEY) : String.valueOf(request.getApiDocsQrEnabled()), operatorId);
+        upsertConfigValue(FLOATING_API_DOCS_QR_TITLE_KEY, request.getApiDocsQrTitle() == null ? settingValue(current, FLOATING_API_DOCS_QR_TITLE_KEY) : request.getApiDocsQrTitle(), operatorId);
+        upsertConfigValue(FLOATING_API_DOCS_QR_IMAGE_URL_KEY, request.getApiDocsQrImageUrl() == null ? settingValue(current, FLOATING_API_DOCS_QR_IMAGE_URL_KEY) : request.getApiDocsQrImageUrl(), operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -431,7 +349,7 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "SMTP settings request is required");
-        Map<String, String> currentValues = loadConfigValuesByKeys(SMTP_CONFIG_KEYS);
+        Map<String, String> currentValues = loadConfigValuesByGroup(GROUP_SMTP, true);
         SystemVO.SmtpSettingsVO current = buildSmtpSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? !Boolean.FALSE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
         String host = sanitizeText(request.getHost(), current.getHost());
@@ -444,20 +362,20 @@ public class SystemPlatformSettingsAppService {
         boolean startTlsEnabled = request.getStartTlsEnabled() == null ? Boolean.TRUE.equals(current.getStartTlsEnabled()) : request.getStartTlsEnabled();
         boolean sslEnabled = request.getSslEnabled() == null ? Boolean.TRUE.equals(current.getSslEnabled()) : request.getSslEnabled();
 
-        upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP enabled", String.valueOf(enabled), "Whether SMTP is enabled", operatorId);
-        upsertPlatformConfig(SMTP_HOST_KEY, "SMTP host", host, "SMTP host address", operatorId);
-        upsertPlatformConfig(SMTP_PORT_KEY, "SMTP port", String.valueOf(port == null ? 25 : port), "SMTP port", operatorId);
-        upsertPlatformConfig(SMTP_USERNAME_KEY, "SMTP username", username, "SMTP username", operatorId);
-        upsertPlatformConfig(SMTP_PASSWORD_KEY, "SMTP password", password, "SMTP password", operatorId);
-        upsertPlatformConfig(SMTP_FROM_KEY, "SMTP from", from, "SMTP from address", operatorId);
-        upsertPlatformConfig(SMTP_AUTH_ENABLED_KEY, "SMTP auth", String.valueOf(authEnabled), "Whether SMTP AUTH is enabled", operatorId);
-        upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", String.valueOf(startTlsEnabled), "Whether SMTP STARTTLS is enabled", operatorId);
-        upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", String.valueOf(sslEnabled), "Whether SMTP SSL is enabled", operatorId);
+        upsertConfigValue(SMTP_ENABLED_KEY, String.valueOf(enabled), operatorId);
+        upsertConfigValue(SMTP_HOST_KEY, host, operatorId);
+        upsertConfigValue(SMTP_PORT_KEY, String.valueOf(port), operatorId);
+        upsertConfigValue(SMTP_USERNAME_KEY, username, operatorId);
+        upsertConfigValue(SMTP_PASSWORD_KEY, password, operatorId);
+        upsertConfigValue(SMTP_FROM_KEY, from, operatorId);
+        upsertConfigValue(SMTP_AUTH_ENABLED_KEY, String.valueOf(authEnabled), operatorId);
+        upsertConfigValue(SMTP_STARTTLS_ENABLED_KEY, String.valueOf(startTlsEnabled), operatorId);
+        upsertConfigValue(SMTP_SSL_ENABLED_KEY, String.valueOf(sslEnabled), operatorId);
         smtpMailService.invalidate();
         operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "update", "UPDATE", "SUCCESS", "Update SMTP settings");
         currentValues.put(SMTP_ENABLED_KEY, String.valueOf(enabled));
         currentValues.put(SMTP_HOST_KEY, host);
-        currentValues.put(SMTP_PORT_KEY, String.valueOf(port == null ? 25 : port));
+        currentValues.put(SMTP_PORT_KEY, String.valueOf(port));
         currentValues.put(SMTP_USERNAME_KEY, username);
         currentValues.put(SMTP_PASSWORD_KEY, password);
         currentValues.put(SMTP_FROM_KEY, from);
@@ -471,36 +389,27 @@ public class SystemPlatformSettingsAppService {
     @Transactional
     public SystemVO.SmtpSettingsVO resetSmtpSettings(CurrentUser currentUser) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
-        upsertPlatformConfig(SMTP_ENABLED_KEY, "SMTP enabled", "false", "Whether SMTP is enabled", operatorId);
-        upsertPlatformConfig(SMTP_HOST_KEY, "SMTP host", "", "SMTP host address", operatorId);
-        upsertPlatformConfig(SMTP_PORT_KEY, "SMTP port", "25", "SMTP port", operatorId);
-        upsertPlatformConfig(SMTP_USERNAME_KEY, "SMTP username", "", "SMTP username", operatorId);
-        upsertPlatformConfig(SMTP_PASSWORD_KEY, "SMTP password", "", "SMTP password", operatorId);
-        upsertPlatformConfig(SMTP_FROM_KEY, "SMTP from", "", "SMTP from address", operatorId);
-        upsertPlatformConfig(SMTP_AUTH_ENABLED_KEY, "SMTP auth", "true", "Whether SMTP AUTH is enabled", operatorId);
-        upsertPlatformConfig(SMTP_STARTTLS_ENABLED_KEY, "SMTP STARTTLS", "true", "Whether SMTP STARTTLS is enabled", operatorId);
-        upsertPlatformConfig(SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "Whether SMTP SSL is enabled", operatorId);
+        Map<String, String> resetValues = repository.findSettingResetValues(GROUP_SMTP);
+        upsertConfigValue(SMTP_ENABLED_KEY, settingValue(resetValues, SMTP_ENABLED_KEY), operatorId);
+        upsertConfigValue(SMTP_HOST_KEY, settingValue(resetValues, SMTP_HOST_KEY), operatorId);
+        upsertConfigValue(SMTP_PORT_KEY, settingValue(resetValues, SMTP_PORT_KEY), operatorId);
+        upsertConfigValue(SMTP_USERNAME_KEY, settingValue(resetValues, SMTP_USERNAME_KEY), operatorId);
+        upsertConfigValue(SMTP_PASSWORD_KEY, settingValue(resetValues, SMTP_PASSWORD_KEY), operatorId);
+        upsertConfigValue(SMTP_FROM_KEY, settingValue(resetValues, SMTP_FROM_KEY), operatorId);
+        upsertConfigValue(SMTP_AUTH_ENABLED_KEY, settingValue(resetValues, SMTP_AUTH_ENABLED_KEY), operatorId);
+        upsertConfigValue(SMTP_STARTTLS_ENABLED_KEY, settingValue(resetValues, SMTP_STARTTLS_ENABLED_KEY), operatorId);
+        upsertConfigValue(SMTP_SSL_ENABLED_KEY, settingValue(resetValues, SMTP_SSL_ENABLED_KEY), operatorId);
         smtpMailService.invalidate();
         operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "Reset SMTP settings");
         markRuntimeAppearanceChanged("smtp-reset");
-        return buildSmtpSettings(Map.of(
-                SMTP_ENABLED_KEY, "false",
-                SMTP_HOST_KEY, "",
-                SMTP_PORT_KEY, "25",
-                SMTP_USERNAME_KEY, "",
-                SMTP_PASSWORD_KEY, "",
-                SMTP_FROM_KEY, "",
-                SMTP_AUTH_ENABLED_KEY, "true",
-                SMTP_STARTTLS_ENABLED_KEY, "true",
-                SMTP_SSL_ENABLED_KEY, "false"
-        ));
+        return buildSmtpSettings(resetValues);
     }
 
     @Transactional
     public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Wechat official account settings request is required");
-        Map<String, String> currentValues = loadConfigValuesByKeys(WECHAT_OFFICIAL_CONFIG_KEYS);
+        Map<String, String> currentValues = loadConfigValuesByGroup(GROUP_WECHAT_OFFICIAL, true);
         SystemVO.WechatOfficialAccountSettingsVO current = buildWechatOfficialAccountSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
         String appId = sanitizeText(request.getAppId(), current.getAppId());
@@ -509,11 +418,11 @@ public class SystemPlatformSettingsAppService {
         String templateId = sanitizeText(request.getTemplateId(), current.getTemplateId());
         String detailUrl = sanitizeText(request.getDetailUrl(), current.getDetailUrl());
 
-        upsertPlatformConfig(WECHAT_OFFICIAL_ENABLED_KEY, "WeChat official account notifications", String.valueOf(enabled), "Whether official account template notifications are enabled", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_APP_ID_KEY, "WeChat official account AppID", appId, "WeChat official account AppID", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_APP_SECRET_KEY, "WeChat official account AppSecret", appSecret, "WeChat official account AppSecret", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, "WeChat template ID", templateId, "Template message ID for notifications", operatorId);
-        upsertPlatformConfig(WECHAT_OFFICIAL_DETAIL_URL_KEY, "WeChat notification detail URL", detailUrl, "Optional URL opened from template messages", operatorId);
+        upsertConfigValue(WECHAT_OFFICIAL_ENABLED_KEY, String.valueOf(enabled), operatorId);
+        upsertConfigValue(WECHAT_OFFICIAL_APP_ID_KEY, appId, operatorId);
+        upsertConfigValue(WECHAT_OFFICIAL_APP_SECRET_KEY, appSecret, operatorId);
+        upsertConfigValue(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, templateId, operatorId);
+        upsertConfigValue(WECHAT_OFFICIAL_DETAIL_URL_KEY, detailUrl, operatorId);
         operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "notification", "wechat-official-update", "UPDATE", "SUCCESS", "Update WeChat official account notification settings");
         currentValues.put(WECHAT_OFFICIAL_ENABLED_KEY, String.valueOf(enabled));
         currentValues.put(WECHAT_OFFICIAL_APP_ID_KEY, appId);
@@ -528,7 +437,7 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.SmtpTestVO testSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpTestRequest request) {
         requirePermission(currentUser, "system:config:update");
         requireRequest(request, "SMTP test request is required");
-        Map<String, String> values = loadConfigValuesByKeys(SMTP_CONFIG_KEYS);
+        Map<String, String> values = loadConfigValuesByGroup(GROUP_SMTP, true);
         JavaMailSenderImpl mailSender = buildSmtpSender(values);
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY));
         if (!StringUtils.hasText(from)) {
@@ -537,8 +446,8 @@ public class SystemPlatformSettingsAppService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(request.getToEmail());
         message.setFrom(from);
-        message.setSubject(defaultIfBlank(request.getSubject(), "SMTP test email"));
-        message.setText(defaultIfBlank(request.getContent(), "This is a test email sent from the system SMTP settings."));
+        message.setSubject(defaultIfBlank(request.getSubject(), settingValue(values, SMTP_TEST_SUBJECT_KEY)));
+        message.setText(defaultIfBlank(request.getContent(), settingValue(values, SMTP_TEST_CONTENT_KEY)));
         try {
             mailSender.send(message);
         } catch (MailException exception) {
@@ -553,20 +462,20 @@ public class SystemPlatformSettingsAppService {
     }
 
     private SystemVO.BrandingSettingsVO loadBrandingSettings() {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(BRANDING_CONFIG_KEYS);
+        Map<String, String> valueByKey = loadConfigValuesByGroup(GROUP_BRANDING, true);
         SystemVO.BrandingSettingsVO settings = new SystemVO.BrandingSettingsVO();
-        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "Lumira"));
-        settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
-        settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
-        settings.setLoginBackgroundUrl(defaultIfBlank(valueByKey.get(BRANDING_LOGIN_BACKGROUND_URL_KEY), ""));
-        settings.setGithubLinkEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_ENABLED_KEY), "true")));
-        settings.setGithubLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_URL_KEY), ""));
-        settings.setHelpLinkEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_ENABLED_KEY), "true")));
-        settings.setHelpLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_URL_KEY), ""));
+        settings.setWebsiteName(settingValue(valueByKey, BRANDING_WEBSITE_NAME_KEY));
+        settings.setWebsiteFaviconUrl(settingValue(valueByKey, BRANDING_WEBSITE_FAVICON_URL_KEY));
+        settings.setWebsiteLogoUrl(settingValue(valueByKey, BRANDING_WEBSITE_LOGO_URL_KEY));
+        settings.setLoginBackgroundUrl(settingValue(valueByKey, BRANDING_LOGIN_BACKGROUND_URL_KEY));
+        settings.setGithubLinkEnabled(Boolean.parseBoolean(settingValue(valueByKey, BRANDING_GITHUB_LINK_ENABLED_KEY)));
+        settings.setGithubLinkUrl(settingValue(valueByKey, BRANDING_GITHUB_LINK_URL_KEY));
+        settings.setHelpLinkEnabled(Boolean.parseBoolean(settingValue(valueByKey, BRANDING_HELP_LINK_ENABLED_KEY)));
+        settings.setHelpLinkUrl(settingValue(valueByKey, BRANDING_HELP_LINK_URL_KEY));
         settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
         settings.setCopyrightStartYear(parseInteger(valueByKey.get(BRANDING_COPYRIGHT_START_YEAR_KEY), LocalDate.now().getYear()));
-        settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
-        settings.setFooterPoliceBeian(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_POLICE_BEIAN_KEY), ""));
+        settings.setFooterIcp(settingValue(valueByKey, BRANDING_FOOTER_ICP_KEY));
+        settings.setFooterPoliceBeian(settingValue(valueByKey, BRANDING_FOOTER_POLICE_BEIAN_KEY));
         settings.setFooterCopyright(defaultIfBlank(
                 valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY),
                 buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())
@@ -575,59 +484,59 @@ public class SystemPlatformSettingsAppService {
     }
 
     private SystemVO.AgreementSettingsVO loadAgreementSettings() {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(AGREEMENT_CONFIG_KEYS, false);
+        Map<String, String> valueByKey = loadConfigValuesByGroup(GROUP_AGREEMENT, false);
         SystemVO.AgreementSettingsVO settings = new SystemVO.AgreementSettingsVO();
-        settings.setUserAgreementMarkdown(defaultIfBlank(valueByKey.get(AGREEMENT_USER_MARKDOWN_KEY), ""));
-        settings.setPrivacyAgreementMarkdown(defaultIfBlank(valueByKey.get(AGREEMENT_PRIVACY_MARKDOWN_KEY), ""));
+        settings.setUserAgreementMarkdown(settingValue(valueByKey, AGREEMENT_USER_MARKDOWN_KEY));
+        settings.setPrivacyAgreementMarkdown(settingValue(valueByKey, AGREEMENT_PRIVACY_MARKDOWN_KEY));
         return settings;
     }
 
     private SystemVO.WatermarkSettingsVO loadWatermarkSettings() {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(WATERMARK_CONFIG_KEYS);
+        Map<String, String> valueByKey = loadConfigValuesByGroup(GROUP_WATERMARK, true);
         SystemVO.WatermarkSettingsVO settings = new SystemVO.WatermarkSettingsVO();
-        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WATERMARK_ENABLED_KEY), "false")));
-        settings.setMode(defaultIfBlank(valueByKey.get(WATERMARK_MODE_KEY), "TEXT"));
+        settings.setEnabled(Boolean.parseBoolean(settingValue(valueByKey, WATERMARK_ENABLED_KEY)));
+        settings.setMode(settingValue(valueByKey, WATERMARK_MODE_KEY));
         settings.setTextLines(parseWatermarkTextLines(valueByKey.get(WATERMARK_TEXT_LINES_KEY)));
-        settings.setImageUrl(defaultIfBlank(valueByKey.get(WATERMARK_IMAGE_URL_KEY), ""));
-        settings.setFontColor(defaultIfBlank(valueByKey.get(WATERMARK_FONT_COLOR_KEY), "rgba(0,0,0,0.15)"));
-        settings.setFontSize(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_FONT_SIZE_KEY), "14")));
-        settings.setFontWeight(defaultIfBlank(valueByKey.get(WATERMARK_FONT_WEIGHT_KEY), "normal"));
-        settings.setRotate(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_ROTATE_KEY), "-22")));
-        settings.setGapX(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_GAP_X_KEY), "100")));
-        settings.setGapY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_GAP_Y_KEY), "100")));
-        settings.setOffsetX(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_X_KEY), "0")));
-        settings.setOffsetY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_Y_KEY), "0")));
-        settings.setZIndex(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_Z_INDEX_KEY), "9")));
-        settings.setOpacity(Double.parseDouble(defaultIfBlank(valueByKey.get(WATERMARK_OPACITY_KEY), "0.15")));
+        settings.setImageUrl(settingValue(valueByKey, WATERMARK_IMAGE_URL_KEY));
+        settings.setFontColor(settingValue(valueByKey, WATERMARK_FONT_COLOR_KEY));
+        settings.setFontSize(Integer.parseInt(settingValue(valueByKey, WATERMARK_FONT_SIZE_KEY)));
+        settings.setFontWeight(settingValue(valueByKey, WATERMARK_FONT_WEIGHT_KEY));
+        settings.setRotate(Integer.parseInt(settingValue(valueByKey, WATERMARK_ROTATE_KEY)));
+        settings.setGapX(Integer.parseInt(settingValue(valueByKey, WATERMARK_GAP_X_KEY)));
+        settings.setGapY(Integer.parseInt(settingValue(valueByKey, WATERMARK_GAP_Y_KEY)));
+        settings.setOffsetX(Integer.parseInt(settingValue(valueByKey, WATERMARK_OFFSET_X_KEY)));
+        settings.setOffsetY(Integer.parseInt(settingValue(valueByKey, WATERMARK_OFFSET_Y_KEY)));
+        settings.setZIndex(Integer.parseInt(settingValue(valueByKey, WATERMARK_Z_INDEX_KEY)));
+        settings.setOpacity(Double.parseDouble(settingValue(valueByKey, WATERMARK_OPACITY_KEY)));
         return settings;
     }
 
     private SystemVO.FloatingWindowSettingsVO loadFloatingWindowSettings() {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(FLOATING_WINDOW_CONFIG_KEYS);
+        Map<String, String> valueByKey = loadConfigValuesByGroup(GROUP_FLOATING_WINDOW, true);
         SystemVO.FloatingWindowSettingsVO settings = new SystemVO.FloatingWindowSettingsVO();
-        settings.setApiDocsQrEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_ENABLED_KEY), "false")));
-        settings.setApiDocsQrTitle(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_TITLE_KEY), ""));
-        settings.setApiDocsQrImageUrl(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_IMAGE_URL_KEY), ""));
+        settings.setApiDocsQrEnabled(Boolean.parseBoolean(settingValue(valueByKey, FLOATING_API_DOCS_QR_ENABLED_KEY)));
+        settings.setApiDocsQrTitle(settingValue(valueByKey, FLOATING_API_DOCS_QR_TITLE_KEY));
+        settings.setApiDocsQrImageUrl(settingValue(valueByKey, FLOATING_API_DOCS_QR_IMAGE_URL_KEY));
         return settings;
     }
 
     private SystemVO.SmtpSettingsVO loadSmtpSettings() {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(SMTP_CONFIG_KEYS);
+        Map<String, String> valueByKey = loadConfigValuesByGroup(GROUP_SMTP, true);
         return buildSmtpSettings(valueByKey);
     }
 
     private SystemVO.SmtpSettingsVO buildSmtpSettings(Map<String, String> valueByKey) {
         SystemVO.SmtpSettingsVO settings = new SystemVO.SmtpSettingsVO();
-        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_ENABLED_KEY), "true")));
-        settings.setHost(defaultIfBlank(valueByKey.get(SMTP_HOST_KEY), ""));
-        settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
-        settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
+        settings.setEnabled(Boolean.parseBoolean(settingValue(valueByKey, SMTP_ENABLED_KEY)));
+        settings.setHost(settingValue(valueByKey, SMTP_HOST_KEY));
+        settings.setPort(Integer.parseInt(settingValue(valueByKey, SMTP_PORT_KEY)));
+        settings.setUsername(settingValue(valueByKey, SMTP_USERNAME_KEY));
         settings.setPassword("");
         settings.setPasswordConfigured(StringUtils.hasText(valueByKey.get(SMTP_PASSWORD_KEY)));
-        settings.setFrom(defaultIfBlank(valueByKey.get(SMTP_FROM_KEY), ""));
-        settings.setAuthEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_AUTH_ENABLED_KEY), "true")));
-        settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));
-        settings.setSslEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_SSL_ENABLED_KEY), "false")));
+        settings.setFrom(settingValue(valueByKey, SMTP_FROM_KEY));
+        settings.setAuthEnabled(Boolean.parseBoolean(settingValue(valueByKey, SMTP_AUTH_ENABLED_KEY)));
+        settings.setStartTlsEnabled(Boolean.parseBoolean(settingValue(valueByKey, SMTP_STARTTLS_ENABLED_KEY)));
+        settings.setSslEnabled(Boolean.parseBoolean(settingValue(valueByKey, SMTP_SSL_ENABLED_KEY)));
         settings.setConfigured(
                 Boolean.TRUE.equals(settings.getEnabled())
                         && StringUtils.hasText(settings.getHost())
@@ -639,18 +548,18 @@ public class SystemPlatformSettingsAppService {
     }
 
     private SystemVO.WechatOfficialAccountSettingsVO loadWechatOfficialAccountSettings() {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(WECHAT_OFFICIAL_CONFIG_KEYS);
+        Map<String, String> valueByKey = loadConfigValuesByGroup(GROUP_WECHAT_OFFICIAL, true);
         return buildWechatOfficialAccountSettings(valueByKey);
     }
 
     private SystemVO.WechatOfficialAccountSettingsVO buildWechatOfficialAccountSettings(Map<String, String> valueByKey) {
         SystemVO.WechatOfficialAccountSettingsVO settings = new SystemVO.WechatOfficialAccountSettingsVO();
-        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_ENABLED_KEY), "false")));
-        settings.setAppId(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_APP_ID_KEY), ""));
+        settings.setEnabled(Boolean.parseBoolean(settingValue(valueByKey, WECHAT_OFFICIAL_ENABLED_KEY)));
+        settings.setAppId(settingValue(valueByKey, WECHAT_OFFICIAL_APP_ID_KEY));
         settings.setAppSecret("");
         settings.setAppSecretConfigured(StringUtils.hasText(valueByKey.get(WECHAT_OFFICIAL_APP_SECRET_KEY)));
-        settings.setTemplateId(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_TEMPLATE_ID_KEY), ""));
-        settings.setDetailUrl(defaultIfBlank(valueByKey.get(WECHAT_OFFICIAL_DETAIL_URL_KEY), ""));
+        settings.setTemplateId(settingValue(valueByKey, WECHAT_OFFICIAL_TEMPLATE_ID_KEY));
+        settings.setDetailUrl(settingValue(valueByKey, WECHAT_OFFICIAL_DETAIL_URL_KEY));
         settings.setConfigured(
                 Boolean.TRUE.equals(settings.getEnabled())
                         && StringUtils.hasText(settings.getAppId())
@@ -665,35 +574,22 @@ public class SystemPlatformSettingsAppService {
     }
 
     private Map<String, String> loadConfigValuesByKeys(List<String> keys, boolean trimValues) {
-        long version = loadRuntimeAppearanceVersion();
-        String cacheKey = configSnapshotCacheKey(keys, trimValues, version);
-        Map<String, String> cached = getCachedConfigSnapshot(cacheKey);
-        if (cached != null) {
-            if (ownerRuntimeMetrics != null) {
-                ownerRuntimeMetrics.recordPlatformConfigCacheHit();
-            }
-            return new LinkedHashMap<>(cached);
-        }
-        if (ownerRuntimeMetrics != null) {
-            ownerRuntimeMetrics.recordPlatformConfigCacheMiss();
-        }
-        return loadConfigValuesByKeysWithSingleFlight(cacheKey, keys, trimValues);
+        return loadConfigValuesByKeysFromDatabase(keys, trimValues);
     }
 
-    private Map<String, String> getCachedConfigSnapshot(String cacheKey) {
-        Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
-        return cached == null ? null : new LinkedHashMap<>(cached);
-    }
-
-    private void cacheConfigSnapshot(String cacheKey, Map<String, String> valueByKey) {
-        configSnapshotCache.put(cacheKey, new LinkedHashMap<>(valueByKey));
+    private Map<String, String> loadConfigValuesByGroup(String groupCode, boolean trimValues) {
+        Map<String, String> valueByKey = new LinkedHashMap<>();
+        repository.findEffectiveSettingValues(groupCode).forEach((configKey, value) -> {
+            String decryptedValue = decryptConfigValue(configKey, value);
+            valueByKey.put(configKey, trimValues ? normalizeConfigText(decryptedValue) : decryptedValue);
+        });
+        if (valueByKey.isEmpty()) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Platform setting group is not configured: " + groupCode);
+        }
+        return valueByKey;
     }
 
     private void markRuntimeAppearanceChanged(String eventKey) {
-        configSnapshotCache.invalidateAll();
-        configLoadInFlight.invalidateAll();
-        runtimeAppearanceVersionCache.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
-        runtimeAppearanceVersionLoadInFlight.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
         if (readModelVersionService != null) {
             readModelVersionService.bump(CONTEXT_PLATFORM, SCOPE_RUNTIME_APPEARANCE, eventKey);
         }
@@ -705,233 +601,38 @@ public class SystemPlatformSettingsAppService {
         }
     }
 
-    private Map<String, String> loadConfigValuesByKeysWithSingleFlight(
-            String cacheKey,
-            List<String> keys,
-            boolean trimValues
-    ) {
-        try {
-            CompletableFuture<Map<String, String>> inFlight = configLoadInFlight.get(
-                    cacheKey,
-                    () -> CompletableFuture.completedFuture(loadConfigValuesByKeysFromDatabase(cacheKey, keys, trimValues))
-            );
-            return inFlight.join();
-        } catch (CompletionException exception) {
-            configLoadInFlight.invalidate(cacheKey);
-            Throwable cause = exception.getCause() == null ? exception : exception.getCause();
-            if (cause instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new IllegalStateException("Failed to load platform config snapshot", cause);
-        } catch (ExecutionException exception) {
-            configLoadInFlight.invalidate(cacheKey);
-            throw new IllegalStateException("Failed to load platform config snapshot", exception);
-        }
-    }
-
     private Map<String, String> loadConfigValuesByKeysFromDatabase(
-            String cacheKey,
             List<String> keys,
             boolean trimValues
     ) {
-        Map<String, String> cached = getCachedConfigSnapshot(cacheKey);
-        if (cached != null) {
-            return new LinkedHashMap<>(cached);
-        }
-
-        String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
-        String sql = """
-                select config_key as configKey, config_value as configValue
-                from sys_config
-                where deleted = 0
-                  and config_scope = 'PLATFORM'
-                  and config_key in (%s)
-                order by id desc
-                """.formatted(placeholders);
-        List<Object> params = new ArrayList<>(keys);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
+        Map<String, String> rows = repository.findPlatformConfigValues(keys);
         Map<String, String> valueByKey = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String configKey = String.valueOf(row.get("configKey"));
-            if (!valueByKey.containsKey(configKey)) {
-                String rawValue = normalizeConfigTextRaw(row.get("configValue"));
-                String decryptedValue = decryptConfigValue(configKey, rawValue);
-                valueByKey.put(configKey, trimValues ? normalizeConfigText(decryptedValue) : decryptedValue);
-            }
-        }
-        cacheConfigSnapshot(cacheKey, valueByKey);
+        rows.forEach((configKey, value) -> {
+            String decryptedValue = decryptConfigValue(configKey, value);
+            valueByKey.put(configKey, trimValues ? normalizeConfigText(decryptedValue) : decryptedValue);
+        });
         return valueByKey;
-    }
-
-    private String configSnapshotCacheKey(List<String> keys, boolean trimValues, long version) {
-        String joinedKeys = keys.stream().sorted().collect(Collectors.joining(","));
-        return "global:" + version + ":" + trimValues + ":" + joinedKeys;
-    }
-
-    private long loadRuntimeAppearanceVersion() {
-        Long cachedVersion = runtimeAppearanceVersionCache.getIfPresent(RUNTIME_APPEARANCE_CACHE_KEY);
-        if (cachedVersion != null) {
-            return cachedVersion;
-        }
-        if (readModelVersionService == null) {
-            return 0L;
-        }
-        try {
-            CompletableFuture<Long> inFlight = runtimeAppearanceVersionLoadInFlight.get(
-                    RUNTIME_APPEARANCE_CACHE_KEY,
-                    () -> CompletableFuture.completedFuture(
-                            currentRuntimeAppearanceVersion()
-                    )
-            );
-            long version = inFlight.join();
-            runtimeAppearanceVersionCache.put(RUNTIME_APPEARANCE_CACHE_KEY, version);
-            return version;
-        } catch (CompletionException exception) {
-            runtimeAppearanceVersionLoadInFlight.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
-            Long fallback = runtimeAppearanceVersionCache.getIfPresent(RUNTIME_APPEARANCE_CACHE_KEY);
-            if (fallback != null) {
-                return fallback;
-            }
-            return 0L;
-        } catch (ExecutionException exception) {
-            runtimeAppearanceVersionLoadInFlight.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
-            Long fallback = runtimeAppearanceVersionCache.getIfPresent(RUNTIME_APPEARANCE_CACHE_KEY);
-            if (fallback != null) {
-                return fallback;
-            }
-            return 0L;
-        }
-    }
-
-    private long currentRuntimeAppearanceVersion() {
-        Long version = readModelVersionService.currentVersion(CONTEXT_PLATFORM, SCOPE_RUNTIME_APPEARANCE);
-        return version == null ? 0L : version;
-    }
-
-    private void upsertBrandingConfig(
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        Long existingId = queryConfigId(configKey);
-        upsertConfigRecord(existingId, configKey, configName, configValue, remark, operatorId);
-    }
-
-    private void upsertPlatformConfig(
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        upsertBrandingConfig(configKey, configName, configValue, remark, operatorId);
     }
 
     private void upsertConfigValue(
             String configKey,
-            String configName,
             String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        Long existingId = queryConfigId(configKey);
-        upsertConfigRecord(existingId, configKey, configName, configValue, remark, operatorId);
-    }
-
-    private void upsertConfigRecord(
-            Long existingId,
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
             Long operatorId
     ) {
         String operatorUuid = resolveOperatorUuid(operatorId);
-        if (existingId == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_config (
-                                config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
-                            """,
-                    configKey,
-                    configName,
-                    encryptConfigValue(configKey, configValue),
-                    remark,
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            if (inserted != 1) {
-                throw new BizException(ErrorCode.BIZ_ERROR, "Platform config changed, please retry");
-            }
-            return;
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_config
-                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ?
-                          and config_key = ?
-                          and config_scope = 'PLATFORM'
-                          and is_system = 0
-                          and deleted = 0
-                        """,
-                configName,
-                encryptConfigValue(configKey, configValue),
-                remark,
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                existingId,
-                configKey
-        );
+        int updated = repository.upsertPlatformConfig(configKey,
+                encryptConfigValue(configKey, configValue), operatorId, operatorUuid);
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Platform config changed, please retry");
         }
     }
 
     private String resolveOperatorUuid(Long operatorId) {
-        String operatorUuid;
-        try {
-            operatorUuid = jdbcTemplate.queryForObject(
-                    "select uuid from sys_user where id = ? and status = 'ENABLED' and deleted = 0 limit 1",
-                    String.class,
-                    operatorId
-            );
-        } catch (EmptyResultDataAccessException exception) {
-            operatorUuid = null;
-        }
+        String operatorUuid = repository.findEnabledUserUuid(operatorId);
         if (!StringUtils.hasText(operatorUuid)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted operator identity is required");
         }
         return operatorUuid.trim();
-    }
-
-    private Long queryConfigId(String configKey) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select id
-                            from sys_config
-                            where config_key = ?
-                              and config_scope = 'PLATFORM'
-                              and is_system = 0
-                              and deleted = 0
-                            order by id desc
-                            limit 1
-                            """,
-                    Long.class,
-                    configKey
-            );
-        } catch (EmptyResultDataAccessException exception) {
-            return null;
-        }
     }
 
     private String encryptConfigValue(String configKey, String configValue) {
@@ -1142,29 +843,36 @@ public class SystemPlatformSettingsAppService {
     }
 
     private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {
-        String host = defaultIfBlank(values.get(SMTP_HOST_KEY), "");
-        Integer port = parseInteger(values.get(SMTP_PORT_KEY), 25);
-        String username = defaultIfBlank(values.get(SMTP_USERNAME_KEY), "");
-        String password = defaultIfBlank(values.get(SMTP_PASSWORD_KEY), "");
+        String host = settingValue(values, SMTP_HOST_KEY);
+        Integer port = Integer.parseInt(settingValue(values, SMTP_PORT_KEY));
+        String username = settingValue(values, SMTP_USERNAME_KEY);
+        String password = settingValue(values, SMTP_PASSWORD_KEY);
         if (!StringUtils.hasText(host)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "SMTP host must be configured");
         }
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(host);
-        sender.setPort(port == null ? 25 : port);
+        sender.setPort(port);
         sender.setUsername(username);
         sender.setPassword(password);
         Properties properties = sender.getJavaMailProperties();
-        properties.put("mail.smtp.auth", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_AUTH_ENABLED_KEY), "true"))));
-        properties.put("mail.smtp.starttls.enable", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_STARTTLS_ENABLED_KEY), "true"))));
-        properties.put("mail.smtp.ssl.enable", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_SSL_ENABLED_KEY), "false"))));
-        properties.put("mail.smtp.connectiontimeout", "5000");
-        properties.put("mail.smtp.timeout", "5000");
-        properties.put("mail.smtp.writetimeout", "5000");
+        properties.put("mail.smtp.auth", settingValue(values, SMTP_AUTH_ENABLED_KEY));
+        properties.put("mail.smtp.starttls.enable", settingValue(values, SMTP_STARTTLS_ENABLED_KEY));
+        properties.put("mail.smtp.ssl.enable", settingValue(values, SMTP_SSL_ENABLED_KEY));
+        properties.put("mail.smtp.connectiontimeout", settingValue(values, SMTP_CONNECTION_TIMEOUT_KEY));
+        properties.put("mail.smtp.timeout", settingValue(values, SMTP_READ_TIMEOUT_KEY));
+        properties.put("mail.smtp.writetimeout", settingValue(values, SMTP_WRITE_TIMEOUT_KEY));
         return sender;
     }
 
     private String defaultIfBlank(String value, String fallback) {
         return StringUtils.hasText(value) ? value : fallback;
+    }
+
+    private String settingValue(Map<String, String> values, String configKey) {
+        if (values == null || !values.containsKey(configKey)) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Platform setting definition is missing: " + configKey);
+        }
+        return values.get(configKey) == null ? "" : values.get(configKey);
     }
 }

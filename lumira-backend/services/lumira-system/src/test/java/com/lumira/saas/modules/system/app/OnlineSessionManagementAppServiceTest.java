@@ -3,6 +3,8 @@ package com.lumira.saas.modules.system.app;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.system.online.JdbcOnlineSessionUserRepository;
+import com.lumira.saas.modules.system.online.OnlineSessionUserRepository.UserRecord;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -64,7 +66,7 @@ class OnlineSessionManagementAppServiceTest {
             }
         };
         service = new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 new OperationAuditService(null, objectProvider(null)) {
@@ -132,7 +134,7 @@ class OnlineSessionManagementAppServiceTest {
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", java.util.Set.of("system:user:view")));
         OnlineSessionManagementAppService liveSnapshotService = new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 new OperationAuditService(null, objectProvider(null)) {
@@ -155,7 +157,7 @@ class OnlineSessionManagementAppServiceTest {
     @Test
     void listOnlineSessionsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         OnlineSessionManagementAppService liveSnapshotService = new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 new RecordingOperationAuditService(),
@@ -179,7 +181,7 @@ class OnlineSessionManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
         OnlineSessionManagementAppService liveSnapshotService = new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 new RecordingOperationAuditService(),
@@ -204,7 +206,7 @@ class OnlineSessionManagementAppServiceTest {
         when(sessionAuthenticationService.authenticateSessionTicket("current-session", 2001L, "user-uuid-2001", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Login required"));
         OnlineSessionManagementAppService liveSessionService = new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 new OperationAuditService(null, objectProvider(null)) {
@@ -331,7 +333,7 @@ class OnlineSessionManagementAppServiceTest {
             }
         };
         service = new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 new OperationAuditService(null, objectProvider(null)) {
@@ -494,7 +496,7 @@ class OnlineSessionManagementAppServiceTest {
 
     @Test
     void banUserShouldRejectProtectedAdminAfterTrustedUserLookup() {
-        OnlineSessionManagementAppService.UserRow admin = new OnlineSessionManagementAppService.UserRow();
+        UserRecord admin = new UserRecord();
         admin.setId(1001L);
         admin.setUsername("admin");
         jdbcTemplate.userRows = List.of(admin);
@@ -511,7 +513,7 @@ class OnlineSessionManagementAppServiceTest {
 
     @Test
     void banUserShouldRejectProtectedAdminAfterUsernameRename() {
-        OnlineSessionManagementAppService.UserRow admin = new OnlineSessionManagementAppService.UserRow();
+        UserRecord admin = new UserRecord();
         admin.setId(1001L);
         admin.setUsername("root-admin");
         jdbcTemplate.userRows = List.of(admin);
@@ -528,7 +530,7 @@ class OnlineSessionManagementAppServiceTest {
 
     @Test
     void banUserShouldPersistTrustedOperatorUuid() {
-        OnlineSessionManagementAppService.UserRow target = new OnlineSessionManagementAppService.UserRow();
+        UserRecord target = new UserRecord();
         target.setId(2002L);
         target.setUuid("user-uuid-2002");
         target.setUsername("bob");
@@ -547,7 +549,7 @@ class OnlineSessionManagementAppServiceTest {
 
     @Test
     void banUserShouldLogRefreshedLiveUsername() {
-        OnlineSessionManagementAppService.UserRow target = new OnlineSessionManagementAppService.UserRow();
+        UserRecord target = new UserRecord();
         target.setId(2002L);
         target.setUuid("user-uuid-2002");
         target.setUsername("bob");
@@ -577,7 +579,7 @@ class OnlineSessionManagementAppServiceTest {
 
     @Test
     void banUserShouldNotRevokeSessionsWhenUserRowChangedConcurrently() {
-        OnlineSessionManagementAppService.UserRow target = new OnlineSessionManagementAppService.UserRow();
+        UserRecord target = new UserRecord();
         target.setId(2002L);
         target.setUuid("user-uuid-2002");
         target.setUsername("bob");
@@ -683,7 +685,7 @@ class OnlineSessionManagementAppServiceTest {
         if (systemInternalApi == null && sessionAuthenticationService == null) {
             if (permissionSnapshotService == null) {
                 return new OnlineSessionManagementAppService(
-                        new MyBatisQueryOperations(jdbcTemplate),
+                        new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                         authSessionStore,
                         securitySettingsService,
                         operationAuditService,
@@ -692,7 +694,7 @@ class OnlineSessionManagementAppServiceTest {
                 );
             }
             return new OnlineSessionManagementAppService(
-                    new MyBatisQueryOperations(jdbcTemplate),
+                    new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                     authSessionStore,
                     securitySettingsService,
                     operationAuditService,
@@ -703,7 +705,7 @@ class OnlineSessionManagementAppServiceTest {
         }
         if (systemInternalApi == null) {
             return new OnlineSessionManagementAppService(
-                    new MyBatisQueryOperations(jdbcTemplate),
+                    new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                     authSessionStore,
                     securitySettingsService,
                     operationAuditService,
@@ -714,7 +716,7 @@ class OnlineSessionManagementAppServiceTest {
             );
         }
         return new OnlineSessionManagementAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                new JdbcOnlineSessionUserRepository(new MyBatisQueryOperations(jdbcTemplate)),
                 authSessionStore,
                 securitySettingsService,
                 operationAuditService,
@@ -748,7 +750,7 @@ class OnlineSessionManagementAppServiceTest {
     }
 
     private static final class StubJdbcTemplate extends JdbcTemplate {
-        private List<OnlineSessionManagementAppService.UserRow> userRows = List.of();
+        private List<UserRecord> userRows = List.of();
         private int updateCount;
         private int updateResult = 1;
         private String lastUpdateSql;

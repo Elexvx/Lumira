@@ -8,8 +8,9 @@ import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.team.api.TeamInternalApi;
 import com.lumira.team.api.TeamMemberDTO;
 import com.lumira.team.api.TeamSummaryDTO;
-import com.lumira.team.infrastructure.persistence.BeanPropertyRowMapper;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
+import com.lumira.team.repository.TeamMemberRepository;
+import com.lumira.team.repository.TeamRepository;
+import com.lumira.team.vo.TeamVO;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Primary;
@@ -20,16 +21,19 @@ import org.springframework.util.StringUtils;
 @Service("teamInternalApi")
 @Primary
 public class TeamInternalApiService implements TeamInternalApi {
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final TeamRepository teamRepository;
+    private final TeamMemberRepository memberRepository;
     private final TeamPermissionService permissionService;
     private final ObjectProvider<SystemInternalApi> systemInternalApi;
 
     public TeamInternalApiService(
-            MyBatisQueryOperations jdbcTemplate,
+            TeamRepository teamRepository,
+            TeamMemberRepository memberRepository,
             TeamPermissionService permissionService,
             ObjectProvider<SystemInternalApi> systemInternalApi
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.teamRepository = teamRepository;
+        this.memberRepository = memberRepository;
         this.permissionService = permissionService;
         this.systemInternalApi = systemInternalApi;
     }
@@ -39,20 +43,8 @@ public class TeamInternalApiService implements TeamInternalApi {
         requireInternalServicePrincipal();
         requireTrustedUser(requesterUserId, requesterUserUuid, "Requester");
         requirePositiveId(teamId, "Team id is required");
-        requireActiveMember(teamId, requesterUserId, requesterUserUuid);
-        List<TeamSummaryDTO> teams = jdbcTemplate.query(
-                """
-                        select id, team_code as teamCode, team_name as teamName,
-                               team_type as teamType, visibility, owner_user_id as ownerUserId, owner_user_uuid as ownerUserUuid, status
-                        from team
-                        where id = ?
-                          and deleted = 0
-                        limit 1
-                """,
-                new BeanPropertyRowMapper<>(TeamSummaryDTO.class),
-                teamId
-        );
-        return teams.isEmpty() ? null : teams.get(0);
+        permissionService.requireTeamMember(teamId, requesterUserId, requesterUserUuid);
+        return toSummary(teamRepository.findTeam(teamId, requesterUserId, requesterUserUuid));
     }
 
     @Override
@@ -60,20 +52,11 @@ public class TeamInternalApiService implements TeamInternalApi {
         requireInternalServicePrincipal();
         requireTrustedUser(requesterUserId, requesterUserUuid, "Requester");
         requirePositiveId(teamId, "Team id is required");
-        requireActiveMember(teamId, requesterUserId, requesterUserUuid);
-        return jdbcTemplate.query(
-                """
-                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid,
-                               role, status, extra_values_json as extraValuesJson, joined_at as joinedAt
-                        from team_member
-                        where team_id = ?
-                          and status = 'ACTIVE'
-                          and deleted = 0
-                        order by id asc
-                """,
-                new BeanPropertyRowMapper<>(TeamMemberDTO.class),
-                teamId
-        );
+        permissionService.requireTeamMember(teamId, requesterUserId, requesterUserUuid);
+        return memberRepository.listMembers(teamId).stream()
+                .filter(member -> "ACTIVE".equals(member.getStatus()))
+                .map(this::toMember)
+                .toList();
     }
 
     @Override
@@ -81,7 +64,7 @@ public class TeamInternalApiService implements TeamInternalApi {
         requireInternalServicePrincipal();
         requirePositiveId(teamId, "Team id is required");
         requireTrustedUser(userId, userUuid, "User");
-        TeamMemberDTO member = activeMember(teamId, userId, userUuid);
+        TeamMemberDTO member = toMember(permissionService.activeMember(teamId, userId, userUuid));
         if (member == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Team membership required", "Team membership required");
         }
@@ -144,39 +127,26 @@ public class TeamInternalApiService implements TeamInternalApi {
     }
 
     private String activeRole(Long teamId, Long userId, String userUuid) {
-        TeamMemberDTO member = activeMember(teamId, userId, userUuid);
+        TeamMemberDTO member = toMember(permissionService.activeMember(teamId, userId, userUuid));
         return member == null ? null : member.getRole();
     }
 
-    private TeamMemberDTO activeMember(Long teamId, Long userId, String userUuid) {
-        requirePositiveId(teamId, "Team id is required");
-        requirePositiveId(userId, "User id is required");
-        if (!StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "User user uuid is required", "User user uuid is required");
-        }
-        List<TeamMemberDTO> members = jdbcTemplate.query(
-                """
-                        select m.id, m.team_id as teamId, m.user_id as userId, m.user_uuid as userUuid,
-                               m.role, m.status, m.extra_values_json as extraValuesJson, m.joined_at as joinedAt
-                        from team_member m
-                        join sys_user u on u.id = m.user_id
-                          and u.uuid = ?
-                          and u.deleted = 0
-                          and u.status = 'ENABLED'
-                        where m.team_id = ?
-                          and m.user_id = ?
-                          and m.user_uuid = ?
-                          and m.status = 'ACTIVE'
-                          and m.deleted = 0
-                        limit 1
-                """,
-                new BeanPropertyRowMapper<>(TeamMemberDTO.class),
-                userUuid.trim(),
-                teamId,
-                userId,
-                userUuid.trim()
-        );
-        return members.isEmpty() ? null : members.get(0);
+    private TeamSummaryDTO toSummary(TeamVO.Team team) {
+        if (team == null) return null;
+        TeamSummaryDTO dto = new TeamSummaryDTO();
+        dto.setId(team.getId()); dto.setTeamCode(team.getTeamCode()); dto.setTeamName(team.getTeamName());
+        dto.setTeamType(team.getTeamType()); dto.setVisibility(team.getVisibility());
+        dto.setOwnerUserId(team.getOwnerUserId()); dto.setOwnerUserUuid(team.getOwnerUserUuid()); dto.setStatus(team.getStatus());
+        return dto;
+    }
+
+    private TeamMemberDTO toMember(TeamVO.Member member) {
+        if (member == null) return null;
+        TeamMemberDTO dto = new TeamMemberDTO();
+        dto.setId(member.getId()); dto.setTeamId(member.getTeamId()); dto.setUserId(member.getUserId());
+        dto.setUserUuid(member.getUserUuid()); dto.setRole(member.getRole()); dto.setStatus(member.getStatus());
+        dto.setExtraValuesJson(member.getExtraValuesJson()); dto.setJoinedAt(member.getJoinedAt());
+        return dto;
     }
 
     private void requirePositiveId(Long id, String message) {

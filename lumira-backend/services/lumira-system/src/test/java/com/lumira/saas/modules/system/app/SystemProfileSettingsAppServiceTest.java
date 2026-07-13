@@ -12,6 +12,8 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.profile.dto.ProfileFieldSettingItem;
+import com.lumira.saas.modules.system.profile.infrastructure.JdbcSystemProfileSettingsRepository;
+import com.lumira.saas.modules.system.profile.repository.SystemProfileSettingsRepository;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionGroupVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionItemVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionSummaryVO;
@@ -41,22 +43,39 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SystemProfileSettingsAppServiceTest {
 
     @Test
-    void profileFieldConfigWritesShouldPersistTrustedUserUuid() throws Exception {
+    void profileFieldMetadataShouldBeDatabaseOwnedWithoutProcessCache() throws Exception {
+        String sql = Files.readString(Path.of("../../sql/upgrade-profile-field-definition-persistence-v1.sql"));
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemProfileSettingsAppService.java"));
+
+        assertTrue(sql.contains("sys_profile_field_definition"));
+        assertTrue(sql.contains("profile_settings_page_key"));
+        assertTrue(sql.contains("profile_custom_field_type"));
+        assertFalse(source.contains("private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS"));
+        assertFalse(source.contains("private static final List<ProfileFieldDefinition> TEAM_MEMBER_FIELD_DEFINITIONS"));
+        assertFalse(source.contains("SUPPORTED_CUSTOM_FIELD_TYPES"));
+        assertFalse(source.contains("CacheBuilder"));
+        assertFalse(source.contains("CompletableFuture<List<ProfileFieldSettingVO>>"));
+    }
+
+    @Test
+    void profileFieldConfigWritesShouldPersistTrustedUserUuid() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/profile/infrastructure/JdbcSystemProfileSettingsRepository.java"));
+        String appSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemProfileSettingsAppService.java"));
 
         assertTrue(source.contains("created_by, created_by_uuid, updated_by, updated_by_uuid"));
         assertTrue(source.contains("updated_by = ?, updated_by_uuid = ?"));
-        assertTrue(source.contains("operatorUuid = currentUser.getUserUuid()"));
+        assertTrue(appSource.contains("operatorUuid = currentUser.getUserUuid()"));
         assertTrue(source.contains("and config_key = ?"));
         assertTrue(source.contains("and config_scope = 'PLATFORM'"));
         assertTrue(source.contains("and is_system = 0"));
         assertTrue(source.contains("and deleted = 0"));
         assertFalse(source.contains("updated_at = ?, deleted = 0"));
-        assertTrue(source.contains("Profile config changed, please retry"));
+        assertTrue(appSource.contains("Profile config changed, please retry"));
+        assertFalse(appSource.contains("MyBatisQueryOperations"));
     }
 
     @Test
-    void getProfileFieldSettingsShouldReuseCachedSnapshot() {
+    void getProfileFieldSettingsShouldReloadDatabaseAuthoritativeSnapshot() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.mobile.visible", "true",
                 "profile.field.mobile.weight", "22",
@@ -69,7 +88,7 @@ class SystemProfileSettingsAppServiceTest {
 
         assertEquals("contact", findSetting(first, "mobile").getGroupKey());
         assertEquals("contact", findSetting(second, "mobile").getGroupKey());
-        assertEquals(1, jdbcTemplate.queryForListCount());
+        assertEquals(2, jdbcTemplate.queryForListCount());
     }
 
     @Test
@@ -232,7 +251,7 @@ class SystemProfileSettingsAppServiceTest {
     void updateProfileFieldSettingsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
         SystemProfileSettingsAppService service = new SystemProfileSettingsAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                        repository(jdbcTemplate),
                 new RecordingOperationAuditService(),
                 null,
                 null,
@@ -258,7 +277,7 @@ class SystemProfileSettingsAppServiceTest {
         org.mockito.Mockito.when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         org.mockito.Mockito.when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
         SystemProfileSettingsAppService service = new SystemProfileSettingsAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                        repository(jdbcTemplate),
                 new RecordingOperationAuditService(),
                 permissionSnapshotService,
                 null,
@@ -431,7 +450,7 @@ class SystemProfileSettingsAppServiceTest {
         assertEquals(20, mobile.getWeight());
         assertTrue(mobile.getRequired());
         assertEquals(77, mobile.getSortNo());
-        assertEquals(2, jdbcTemplate.queryForListCount());
+        assertEquals(3, jdbcTemplate.queryForListCount());
     }
 
     @Test
@@ -567,6 +586,47 @@ class SystemProfileSettingsAppServiceTest {
         return newService(jdbcTemplate, null);
     }
 
+    private static SystemProfileSettingsRepository repository(JdbcTemplate jdbcTemplate) {
+        return new JdbcSystemProfileSettingsRepository(new MyBatisQueryOperations(jdbcTemplate)) {
+            @Override
+            public List<String> findEnabledDictionaryValues(String dictionaryCode) {
+                return "profile_settings_page_key".equals(dictionaryCode)
+                        ? List.of("PROFILE", "TEAM_MEMBER")
+                        : List.of("TEXT", "NUMBER", "DATE", "SELECT", "TEXTAREA");
+            }
+
+            @Override
+            public List<FieldDefinition> findEnabledFieldDefinitions(String pageKey) {
+                if ("TEAM_MEMBER".equals(pageKey)) {
+                    return List.of(
+                            field("memberName", "Member name", "teamMember", "Team member", "team.member.field.member-name", 10, "TEXT", true),
+                            field("employeeNo", "Employee number", "teamMember", "Team member", "team.member.field.employee-no", 20, "TEXT", false),
+                            field("departmentName", "Department", "teamMember", "Team member", "team.member.field.department-name", 30, "TEXT", false),
+                            field("role", "Role", "teamMember", "Team member", "team.member.field.role", 40, "SELECT", false),
+                            field("remark", "Remark", "teamMember", "Team member", "team.member.field.remark", 50, "TEXTAREA", false));
+                }
+                return List.of(
+                        field("avatarUrl", "Avatar", "basic", "Basic profile", "profile.field.avatar", 10, "IMAGE", false),
+                        field("realName", "Real name", "basic", "Basic profile", "profile.field.real-name", 20, "TEXT", false),
+                        field("mobile", "Mobile", "contact", "Contact", "profile.field.mobile", 30, "MOBILE", false),
+                        field("email", "Email", "contact", "Contact", "profile.field.email", 40, "EMAIL", false),
+                        field("birthMonth", "Birth month", "basic", "Basic profile", "profile.field.birth-month", 50, "MONTH", false),
+                        field("gender", "Gender", "basic", "Basic profile", "profile.field.gender", 60, "SELECT", false),
+                        field("region", "Region", "basic", "Basic profile", "profile.field.region", 70, "TEXT", false),
+                        field("idCardNumber", "ID card number", "identity", "Identity", "profile.field.id-card-number", 80, "ID_CARD", false));
+            }
+        };
+    }
+
+    private static SystemProfileSettingsRepository.FieldDefinition field(
+            String key, String label, String groupKey, String groupLabel, String configPrefix,
+            int sortNo, String type, boolean required) {
+        int weight = List.of("realName", "mobile", "email").contains(key) ? 15
+                : (List.of("idCardNumber", "employeeNo", "departmentName", "role", "remark").contains(key) ? 5 : 10);
+        return new SystemProfileSettingsRepository.FieldDefinition(key, label, label, groupKey, groupLabel,
+                configPrefix + ".visible", configPrefix + ".weight", true, weight, type, required, null, sortNo);
+    }
+
     private static SystemProfileSettingsAppService newService(JdbcTemplate jdbcTemplate, PermissionSnapshotService permissionSnapshotService) {
         return newService(jdbcTemplate, permissionSnapshotService, null);
     }
@@ -589,26 +649,26 @@ class SystemProfileSettingsAppServiceTest {
         if (systemInternalApi == null && sessionAuthenticationService == null) {
             if (permissionSnapshotService == null) {
                 return new SystemProfileSettingsAppService(
-                        new MyBatisQueryOperations(jdbcTemplate),
+                        repository(jdbcTemplate),
                         auditService
                 );
             }
             return new SystemProfileSettingsAppService(
-                    new MyBatisQueryOperations(jdbcTemplate),
+                        repository(jdbcTemplate),
                     auditService,
                     permissionSnapshotService
             );
         }
         if (systemInternalApi == null) {
             return new SystemProfileSettingsAppService(
-                    new MyBatisQueryOperations(jdbcTemplate),
+                        repository(jdbcTemplate),
                     auditService,
                     permissionSnapshotService,
                     sessionAuthenticationService
             );
         }
         return new SystemProfileSettingsAppService(
-                new MyBatisQueryOperations(jdbcTemplate),
+                        repository(jdbcTemplate),
                 auditService,
                 permissionSnapshotService,
                 systemInternalApi,

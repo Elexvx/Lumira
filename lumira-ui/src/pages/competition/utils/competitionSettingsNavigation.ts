@@ -14,7 +14,7 @@ export type CompetitionSettingsRegistrationTab =
   | 'INTELLECTUAL_PROPERTY'
   | 'documents';
 
-export type CompetitionSettingsStageTab = 'timeline' | 'preliminary' | 'final';
+export type CompetitionSettingsStageTab = string;
 
 export type CompetitionSettingsNavigation = {
   section: CompetitionSettingsSectionKey;
@@ -53,11 +53,9 @@ export const parseCompetitionSettingsNavigation = (search: string): CompetitionS
       ? registrationTabByQueryValue[tabValue] || 'PROJECT_FIELD'
       : 'PROJECT_FIELD',
     stageTab: section === 'stages'
-      ? tabValue === 'timeline'
-        ? 'timeline'
-        : tabValue === 'final'
-          ? 'final'
-          : 'preliminary'
+      ? tabValue === 'files'
+        ? 'preliminary'
+        : tabValue || 'preliminary'
       : 'preliminary',
   };
 };
@@ -76,7 +74,7 @@ export const createCompetitionSettingsSearch = (
       : 'PROJECT_FIELD';
     params.set('tab', registrationQueryValueByTab[registrationTab]);
   } else if (section === 'stages') {
-    params.set('tab', detail === 'timeline' || detail === 'final' ? detail : 'preliminary');
+    params.set('tab', detail || 'timeline');
   } else {
     params.delete('tab');
   }

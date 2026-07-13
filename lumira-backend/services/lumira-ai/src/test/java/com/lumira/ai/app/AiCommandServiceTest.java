@@ -643,7 +643,21 @@ class AiCommandServiceTest {
     }
 
     private AiReadQueryService readQueryService(JdbcTemplate jdbcTemplate) {
-        return new AiReadQueryService(jdbcTemplate, provider(enabledSystemInternalApi()));
+        return AiReadQueryServiceFixture.create(
+                jdbcTemplate,
+                provider(enabledSystemInternalApi()),
+                () -> List.of(new AiToolVO(
+                        "system.permission.snapshot",
+                        "Permission snapshot",
+                        "system",
+                        "Current permissions",
+                        "LOW",
+                        true,
+                        false,
+                        null,
+                        Map.of()
+                ))
+        );
     }
 
     private AiCommandService service(

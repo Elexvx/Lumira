@@ -1,9 +1,8 @@
-import { storage } from '@/cache/storage';
 import type { BrandingSettings } from '@/types/api';
 import { repairMojibakeText } from '@/utils/textEncoding';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
-const BRANDING_SETTINGS_KEY = 'branding_settings';
+let currentBrandingSettings: BrandingSettings | null = null;
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   websiteName: '宏翔商道',
@@ -48,14 +47,16 @@ export const buildCopyrightText = (settings?: Partial<BrandingSettings> | null) 
   return `Copyright © ${yearLabel} ${normalized.companyName} All Rights Reserved`;
 };
 
-export const getStoredBrandingSettings = (): BrandingSettings | null => storage.get<BrandingSettings>(BRANDING_SETTINGS_KEY);
+// Runtime-only snapshot. Branding is owned by the backend database; the browser
+// must never become a second persistent source of truth.
+export const getStoredBrandingSettings = (): BrandingSettings | null => currentBrandingSettings;
 
 export const persistBrandingSettings = (settings: BrandingSettings) => {
-  storage.set(BRANDING_SETTINGS_KEY, normalizeBrandingSettings(settings));
+  currentBrandingSettings = normalizeBrandingSettings(settings);
 };
 
 export const clearBrandingSettings = () => {
-  storage.remove(BRANDING_SETTINGS_KEY);
+  currentBrandingSettings = null;
 };
 
 export const applyFavicon = (faviconUrl?: string) => {

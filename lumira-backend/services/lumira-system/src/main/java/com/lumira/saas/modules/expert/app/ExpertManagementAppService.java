@@ -8,11 +8,10 @@ import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.expert.dto.ExpertDTO;
+import com.lumira.saas.modules.expert.repository.ExpertRepository;
 import com.lumira.saas.modules.expert.vo.ExpertVO;
 import com.lumira.saas.modules.workflow.app.WorkflowAppService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +23,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,7 +37,9 @@ public class ExpertManagementAppService {
     private static final String EXPERT_UPDATE = "expert:update";
     private static final String EXPERT_DELETE = "expert:delete";
     private static final String STATUS_ENABLED = "ENABLED";
-    private static final Set<String> STATUSES = Set.of("active", "inactive");
+    private static final String STATUS_DICT_CODE = "aiadc_expert_status";
+    private static final String INITIAL_STATUS_DICT_CODE = "aiadc_expert_initial_status";
+    private static final String APPROVAL_STATUS_DICT_CODE = "aiadc_expert_approval_status";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter EXPERT_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int[] CHINA_ID_CARD_WEIGHTS = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};
@@ -58,7 +58,7 @@ public class ExpertManagementAppService {
     private static final java.util.regex.Pattern MOBILE_PATTERN = java.util.regex.Pattern.compile("^1[3-9]\\d{9}$");
     private static final java.util.regex.Pattern EMAIL_PATTERN = java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final ExpertRepository expertRepository;
     private final WorkflowAppService workflowAppService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
@@ -67,33 +67,33 @@ public class ExpertManagementAppService {
 
     @Autowired
     public ExpertManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ExpertRepository expertRepository,
             WorkflowAppService workflowAppService,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, workflowAppService, permissionSnapshotService, null, sessionAuthenticationService, true);
+        this(expertRepository, workflowAppService, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     public ExpertManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ExpertRepository expertRepository,
             WorkflowAppService workflowAppService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, workflowAppService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(expertRepository, workflowAppService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
     private ExpertManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ExpertRepository expertRepository,
             WorkflowAppService workflowAppService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.expertRepository = expertRepository;
         this.workflowAppService = workflowAppService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
@@ -102,55 +102,29 @@ public class ExpertManagementAppService {
     }
 
     public ExpertManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ExpertRepository expertRepository,
             WorkflowAppService workflowAppService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, workflowAppService, permissionSnapshotService, null, null, false);
+        this(expertRepository, workflowAppService, permissionSnapshotService, null, null, false);
     }
 
-    public ExpertManagementAppService(MyBatisQueryOperations jdbcTemplate, WorkflowAppService workflowAppService) {
-        this(jdbcTemplate, workflowAppService, null, null, null, false);
+    public ExpertManagementAppService(ExpertRepository expertRepository, WorkflowAppService workflowAppService) {
+        this(expertRepository, workflowAppService, null, null, null, false);
     }
 
     public PageResponse<ExpertVO.Expert> listExperts(CurrentUser currentUser, String keyword, String status, String approvalStatus, long pageNo, long pageSize) {
         requirePermission(currentUser, EXPERT_VIEW);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_expert where deleted = 0");
-        if (StringUtils.hasText(keyword)) {
-            where.append(" and (name like ? or code like ? or title like ? or organization like ? or expertise like ? or tags like ?)");
-            String pattern = "%" + keyword.trim() + "%";
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-        }
-        if (StringUtils.hasText(status)) {
-            where.append(" and status = ?");
-            params.add(normalizeStatus(status));
-        }
-        if (StringUtils.hasText(approvalStatus)) {
-            where.append(" and approval_status = ?");
-            params.add(normalizeApprovalStatus(approvalStatus));
-        }
-
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> selectParams = new ArrayList<>(params);
-        selectParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        selectParams.add(normalizedPageSize);
-        List<ExpertVO.Expert> records = jdbcTemplate.query(
-                expertSelect() + where + " order by sort asc, updated_at desc, id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(ExpertVO.Expert.class),
-                selectParams.toArray()
-        );
+        String normalizedStatus = StringUtils.hasText(status) ? normalizeStatus(status) : null;
+        String normalizedApprovalStatus = StringUtils.hasText(approvalStatus) ? normalizeApprovalStatus(approvalStatus) : null;
+        ExpertRepository.PageData page = expertRepository.search(keyword, normalizedStatus, normalizedApprovalStatus,
+                (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
 
         PageResponse<ExpertVO.Expert> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setRecords(page.records());
+        response.setTotal(page.total());
         response.setPageNo(normalizedPageNo);
         response.setPageSize(normalizedPageSize);
         response.setHasMore(normalizedPageNo * normalizedPageSize < response.getTotal());
@@ -178,38 +152,12 @@ public class ExpertManagementAppService {
         String userUuid = requireUserUuid(currentUser);
         requireRequest(request);
         ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, generateExpertCode());
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into aiadc_expert (
-                            code, name, title, organization, position, expertise,
-                            phone, mobile, id_card_number, email, avatar_url, bio, tags, status, approval_status, sort,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, 0)
-                        """,
-                normalized.getCode(),
-                normalized.getName(),
-                normalized.getTitle(),
-                normalized.getOrganization(),
-                normalized.getPosition(),
-                normalized.getExpertise(),
-                normalized.getPhone(),
-                normalized.getMobile(),
-                normalized.getIdCardNumber(),
-                normalized.getEmail(),
-                normalized.getAvatarUrl(),
-                normalized.getBio(),
-                normalized.getTags(),
-                "inactive",
-                normalized.getSort(),
-                userId,
-                userUuid,
-                userId,
-                userUuid
-        );
-        if (inserted != 1) {
+        String initialStatus = requiredDictValues(INITIAL_STATUS_DICT_CODE).getFirst();
+        String initialApprovalStatus = requiredDictValues(APPROVAL_STATUS_DICT_CODE).getFirst();
+        Long id = expertRepository.create(normalized, initialStatus, initialApprovalStatus, userId, userUuid);
+        if (id == null) {
             throw biz(ErrorCode.BIZ_ERROR, "Expert application changed, please retry");
         }
-        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         Long workflowInstanceId = workflowAppService.startWorkflow(
                 currentUser,
                 WorkflowAppService.BUSINESS_EXPERT_APPLICATION,
@@ -222,24 +170,8 @@ public class ExpertManagementAppService {
                         "expertise", normalized.getExpertise()
                 )
         );
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_expert
-                        set approval_instance_id = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ?
-                          and code = ?
-                          and status = ?
-                          and approval_status = 'PENDING'
-                          and deleted = 0
-                        """,
-                workflowInstanceId,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                normalized.getCode(),
-                "inactive"
-        );
+        int updated = expertRepository.attachWorkflow(id, normalized.getCode(), initialStatus, initialApprovalStatus,
+                workflowInstanceId, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.BIZ_ERROR, "Expert application changed, please retry");
         }
@@ -257,37 +189,7 @@ public class ExpertManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
         ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, existing.getCode());
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_expert
-                        set code = ?, name = ?, title = ?, organization = ?, position = ?, expertise = ?,
-                            phone = ?, mobile = ?, id_card_number = ?, email = ?, avatar_url = ?, bio = ?, tags = ?, status = ?, sort = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and code = ? and status = ? and approval_status = ? and deleted = 0
-                        """,
-                normalized.getCode(),
-                normalized.getName(),
-                normalized.getTitle(),
-                normalized.getOrganization(),
-                normalized.getPosition(),
-                normalized.getExpertise(),
-                normalized.getPhone(),
-                normalized.getMobile(),
-                normalized.getIdCardNumber(),
-                normalized.getEmail(),
-                normalized.getAvatarUrl(),
-                normalized.getBio(),
-                normalized.getTags(),
-                normalized.getStatus(),
-                normalized.getSort(),
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                existing.getCode(),
-                existing.getStatus(),
-                existing.getApprovalStatus()
-        );
+        int updated = expertRepository.update(id, existing, normalized, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
@@ -303,20 +205,7 @@ public class ExpertManagementAppService {
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_expert
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and code = ? and status = ? and approval_status = ? and deleted = 0
-                        """,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                existing.getCode(),
-                existing.getStatus(),
-                existing.getApprovalStatus()
-        );
+        int updated = expertRepository.delete(id, existing, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
@@ -325,12 +214,7 @@ public class ExpertManagementAppService {
 
     private ExpertVO.Expert findExpert(Long id) {
         requirePositiveId(id, "Expert id is required");
-        List<ExpertVO.Expert> records = jdbcTemplate.query(
-                expertSelect() + " from aiadc_expert where id = ? and deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(ExpertVO.Expert.class),
-                id
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return expertRepository.findById(id).orElse(null);
     }
 
     private ExpertDTO.ExpertUpsertRequest normalizeRequest(ExpertDTO.ExpertUpsertRequest request, String fallbackCode) {
@@ -339,18 +223,24 @@ public class ExpertManagementAppService {
                 ? trimRequired(request.getCode(), "Expert code is required", MAX_CODE_LENGTH, "Expert code is too long")
                 : trimRequired(fallbackCode, "Expert code is required", MAX_CODE_LENGTH, "Expert code is too long"));
         normalized.setName(normalizeName(request.getName()));
-        normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", trimOptional(request.getTitle(), MAX_SHORT_TEXT_LENGTH, "Expert title is too long"), "Expert title"));
+        normalized.setTitle(trimOptional(request.getTitle(), MAX_SHORT_TEXT_LENGTH, "Expert title is too long"));
         normalized.setOrganization(trimOptional(request.getOrganization(), MAX_SHORT_TEXT_LENGTH, "Expert organization is too long"));
-        normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", trimOptional(request.getPosition(), MAX_SHORT_TEXT_LENGTH, "Expert position is too long"), "Expert position"));
-        normalized.setExpertise(validateDictValues("aiadc_expert_expertise", trimRequired(request.getExpertise(), "Expertise is required", MAX_EXPERTISE_LENGTH, "Expertise is too long"), "Expert expertise"));
+        normalized.setPosition(trimOptional(request.getPosition(), MAX_SHORT_TEXT_LENGTH, "Expert position is too long"));
+        normalized.setExpertise(trimRequired(request.getExpertise(), "Expertise is required", MAX_EXPERTISE_LENGTH, "Expertise is too long"));
         normalized.setPhone(normalizePhone(request.getPhone()));
         normalized.setMobile(normalizeMobile(request.getMobile()));
         normalized.setIdCardNumber(normalizeIdCardNumber(request.getIdCardNumber()));
         normalized.setEmail(normalizeEmail(request.getEmail()));
         normalized.setAvatarUrl(normalizeUrl(request.getAvatarUrl(), "Expert avatar URL"));
         normalized.setBio(trimOptional(request.getBio(), MAX_LONG_TEXT_LENGTH, "Expert bio is too long"));
-        normalized.setTags(validateDictValues("aiadc_expert_tag", trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Expert tags are too long"), "Expert tags"));
-        normalized.setStatus(StringUtils.hasText(request.getStatus()) ? normalizeStatus(request.getStatus()) : "active");
+        normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Expert tags are too long"));
+        List<String> statuses = requiredDictValues(STATUS_DICT_CODE);
+        normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", normalized.getTitle(), "Expert title"));
+        normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", normalized.getPosition(), "Expert position"));
+        normalized.setExpertise(validateDictValues("aiadc_expert_expertise", normalized.getExpertise(), "Expert expertise"));
+        normalized.setTags(validateDictValues("aiadc_expert_tag", normalized.getTags(), "Expert tags"));
+        normalized.setStatus(StringUtils.hasText(request.getStatus())
+                ? normalizeStatus(request.getStatus()) : statuses.getFirst());
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
         return normalized;
     }
@@ -362,7 +252,7 @@ public class ExpertManagementAppService {
 
     private String normalizeStatus(String status) {
         String normalized = status.trim().toLowerCase(Locale.ROOT);
-        if (!STATUSES.contains(normalized)) {
+        if (!requiredDictValues(STATUS_DICT_CODE).contains(normalized)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid expert status");
         }
         return normalized;
@@ -370,7 +260,7 @@ public class ExpertManagementAppService {
 
     private String normalizeApprovalStatus(String approvalStatus) {
         String normalized = approvalStatus.trim().toUpperCase(Locale.ROOT);
-        if (!Set.of("PENDING", "RUNNING", "APPROVED", "REJECTED").contains(normalized)) {
+        if (!requiredDictValues(APPROVAL_STATUS_DICT_CODE).contains(normalized)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid expert approval status");
         }
         return normalized;
@@ -613,17 +503,17 @@ public class ExpertManagementAppService {
     }
 
     private String validateOptionalDictValue(String dictCode, String value, String label) {
-        if (value == null || !dictTypeExists(dictCode)) {
+        if (value == null) {
             return value;
         }
-        if (!dictItemExists(dictCode, value)) {
+        if (!requiredDictValues(dictCode).contains(value)) {
             throw biz(ErrorCode.VALIDATION_ERROR, label + " contains a dictionary value that does not exist or is disabled");
         }
         return value;
     }
 
     private String validateDictValues(String dictCode, String value, String label) {
-        if (value == null || !dictTypeExists(dictCode)) {
+        if (value == null) {
             return value;
         }
         List<String> values = List.of(value.split(",")).stream()
@@ -633,37 +523,21 @@ public class ExpertManagementAppService {
         if (values.isEmpty()) {
             return null;
         }
+        Set<String> allowed = Set.copyOf(requiredDictValues(dictCode));
         for (String itemValue : values) {
-            if (!dictItemExists(dictCode, itemValue)) {
+            if (!allowed.contains(itemValue)) {
                 throw biz(ErrorCode.VALIDATION_ERROR, label + " contains a dictionary value that does not exist or is disabled");
             }
         }
         return String.join(",", values);
     }
 
-    private boolean dictTypeExists(String dictCode) {
-        Long count = jdbcTemplate.queryForObject(
-                "select count(1) from sys_dict_type where dict_code = ? and status = 'ENABLED' and deleted = 0",
-                Long.class,
-                dictCode
-        );
-        return count != null && count > 0;
-    }
-
-    private boolean dictItemExists(String dictCode, String itemValue) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_dict_type dt
-                        join sys_dict_item di on di.dict_type_id = dt.id
-                        where dt.dict_code = ? and dt.status = 'ENABLED' and dt.deleted = 0
-                          and di.item_value = ? and di.status = 'ENABLED' and di.deleted = 0
-                """,
-                Long.class,
-                dictCode,
-                itemValue
-        );
-        return count != null && count > 0;
+    private List<String> requiredDictValues(String dictCode) {
+        List<String> values = expertRepository.findEnabledDictValues(dictCode);
+        if (values == null || values.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "Expert dictionary is not configured: " + dictCode);
+        }
+        return values;
     }
 
     private String normalizeIdCardNumber(String value) {
@@ -684,17 +558,6 @@ public class ExpertManagementAppService {
             sum += Character.digit(value.charAt(index), 10) * CHINA_ID_CARD_WEIGHTS[index];
         }
         return CHINA_ID_CARD_CHECK_CODES[sum % 11] == value.charAt(17);
-    }
-
-    private String expertSelect() {
-        return """
-                select id, code, name, title, organization, position, expertise,
-                       phone, mobile, id_card_number as idCardNumber, user_id as userId, user_uuid as userUuid, account_status as accountStatus,
-                       initial_password_reset_required as initialPasswordResetRequired,
-                       email, avatar_url as avatarUrl, bio, tags, status, approval_status as approvalStatus,
-                       approval_instance_id as approvalInstanceId, sort,
-                       created_at as createdAt, updated_at as updatedAt
-                """;
     }
 
     private static BizException biz(ErrorCode code, String message) {

@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.infrastructure.JdbcAiAssistantEmployeeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -162,7 +163,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
         this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
         this.aiToolOrchestrationService = aiToolOrchestrationService;
-        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
+        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(new JdbcAiAssistantEmployeeRepository(jdbcTemplate));
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;

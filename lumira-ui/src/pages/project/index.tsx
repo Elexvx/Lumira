@@ -234,7 +234,7 @@ const projectCreateSteps = [
 ];
 
 const projectCreateStepQueryKey = 'step';
-const projectCreateDraftKey = 'lumira:projects:create:draft';
+const projectCreateDraftKey = 'project.create';
 const projectMaterialFileLimit = 10;
 const projectLogoMaxSizeMb = 5;
 
@@ -246,6 +246,11 @@ interface ProjectCreateDraft {
   values: Partial<ProjectFormValues>;
   uploadedMaterials: FileObjectRecord[];
   createdTeam?: TeamRecord;
+}
+
+interface StoredProjectCreateDraft {
+  payload: ProjectCreateDraft;
+  updatedAt: number;
 }
 
 const trimOptional = (value?: string) => {
@@ -397,30 +402,27 @@ const parseProjectCreateStepFromSearch = (search: string) => {
 
 const createProjectStepSearch = (stepIndex: number) => `?${projectCreateStepQueryKey}=${Math.min(stepIndex + 1, projectCreateSteps.length)}`;
 
-const readProjectCreateDraft = (): ProjectCreateDraft | undefined => {
-  if (typeof window === 'undefined') {
-    return undefined;
-  }
-  try {
-    const raw = window.localStorage.getItem(projectCreateDraftKey);
-    return raw ? (JSON.parse(raw) as ProjectCreateDraft) : undefined;
-  } catch {
-    return undefined;
-  }
+const readProjectCreateDraft = async (): Promise<ProjectCreateDraft | undefined> => {
+  const stored = await request<StoredProjectCreateDraft | null>(`/v2/user-drafts/${projectCreateDraftKey}`, {
+    method: 'GET',
+    silent: true,
+  });
+  return stored?.payload;
 };
 
-const writeProjectCreateDraft = (draft: ProjectCreateDraft) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.localStorage.setItem(projectCreateDraftKey, JSON.stringify(draft));
+const writeProjectCreateDraft = async (draft: ProjectCreateDraft) => {
+  await request<StoredProjectCreateDraft>(`/v2/user-drafts/${projectCreateDraftKey}`, {
+    method: 'PUT',
+    data: draft,
+    silent: true,
+  });
 };
 
-const clearProjectCreateDraft = () => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  window.localStorage.removeItem(projectCreateDraftKey);
+const clearProjectCreateDraft = async () => {
+  await request<void>(`/v2/user-drafts/${projectCreateDraftKey}`, {
+    method: 'DELETE',
+    silent: true,
+  });
 };
 
 const getProjectCreateMissingFields = (values: Partial<ProjectFormValues>) => {
@@ -1204,8 +1206,7 @@ const CreateProjectPage = () => {
     if (draftSaveTimerRef.current) {
       window.clearTimeout(draftSaveTimerRef.current);
     }
-    try {
-      writeProjectCreateDraft({
+    void writeProjectCreateDraft({
         currentStep: nextStep,
         instructionConfirmed: nextInstructionConfirmed,
         commitmentConfirmed: nextCommitmentConfirmed,
@@ -1216,19 +1217,21 @@ const CreateProjectPage = () => {
         },
         uploadedMaterials: nextUploadedMaterials,
         createdTeam: nextCreatedTeam,
-      });
+      })
+      .then(() => {
       draftSaveTimerRef.current = window.setTimeout(() => {
         setDraftSavedAt(savedAt);
         setDraftSaveStatus('saved');
         draftSaveTimerRef.current = undefined;
       }, 500);
-    } catch {
-      setDraftSaveStatus('error');
-    }
+      })
+      .catch(() => setDraftSaveStatus('error'));
   }, [collectProjectCreateValues, commitmentConfirmed, createdTeam, currentStep, instructionConfirmed, uploadedMaterials]);
 
   useEffect(() => {
-    const draft = readProjectCreateDraft();
+    let cancelled = false;
+    void readProjectCreateDraft().then((draft) => {
+    if (cancelled) return;
     const draftValues = (draft?.values || {}) as Partial<ProjectFormValues>;
     const projectTeamMembers = draftValues.projectTeamMembers?.length
       ? draftValues.projectTeamMembers
@@ -1248,6 +1251,13 @@ const CreateProjectPage = () => {
     setDraftSavedAt(draft?.savedAt);
     setDraftSaveStatus(draft?.savedAt ? 'saved' : 'idle');
     setDraftHydrated(true);
+    }).catch(() => {
+      if (!cancelled) {
+        setDraftSaveStatus('error');
+        setDraftHydrated(true);
+      }
+    });
+    return () => { cancelled = true; };
   }, [form]);
 
   useEffect(
@@ -1519,7 +1529,7 @@ const CreateProjectPage = () => {
       }
       const project = await createProject(normalizePayload(values));
       setCreatedProject(project);
-      clearProjectCreateDraft();
+      await clearProjectCreateDraft();
       setDraftSavedAt(undefined);
       setDraftSaveStatus('idle');
       setCurrentStep(7);
@@ -1536,7 +1546,7 @@ const CreateProjectPage = () => {
   };
 
   const handleContinueCreate = () => {
-    clearProjectCreateDraft();
+    void clearProjectCreateDraft();
     defaultValuesRef.current = buildDefaultProjectCreateValues();
     form.resetFields();
     form.setFieldsValue(defaultValuesRef.current);

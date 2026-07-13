@@ -6,6 +6,8 @@ import com.lumira.team.app.TeamInternalApiService;
 import com.lumira.team.app.TeamPermissionService;
 import com.lumira.team.controller.InternalTeamController;
 import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
+import com.lumira.team.repository.TeamMemberRepository;
+import com.lumira.team.repository.TeamRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -51,6 +53,16 @@ class InternalTeamAssemblyTest {
         @Bean
         TeamPermissionService teamPermissionService() {
             return mock(TeamPermissionService.class);
+        }
+
+        @Bean
+        TeamRepository teamRepository() {
+            return mock(TeamRepository.class);
+        }
+
+        @Bean
+        TeamMemberRepository teamMemberRepository() {
+            return mock(TeamMemberRepository.class);
         }
 
         @Bean

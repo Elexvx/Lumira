@@ -17,6 +17,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
+import com.lumira.saas.modules.account.infrastructure.JdbcAccountActivationRepository;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.account.vo.AccountActivationVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
@@ -255,7 +256,7 @@ class AccountActivationServiceTest {
             )), 0));
         });
         AccountActivationService service = new AccountActivationService(
-                jdbcTemplate,
+                new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
                 iamUserService,
@@ -341,7 +342,7 @@ class AccountActivationServiceTest {
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(0);
         AccountActivationService service = new AccountActivationService(
-                jdbcTemplate,
+                new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
                 iamUserService,
@@ -390,7 +391,7 @@ class AccountActivationServiceTest {
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(0);
         AccountActivationService service = new AccountActivationService(
-                jdbcTemplate,
+                new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
                 iamUserService,
@@ -442,7 +443,7 @@ class AccountActivationServiceTest {
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(0);
         AccountActivationService service = new AccountActivationService(
-                jdbcTemplate,
+                new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
                 iamUserService,
@@ -459,7 +460,7 @@ class AccountActivationServiceTest {
             IamUserService iamUserService
     ) {
         return new AccountActivationService(
-                jdbcTemplate,
+                new JdbcAccountActivationRepository(jdbcTemplate),
                 mock(PasswordEncoder.class),
                 passwordPolicyService,
                 iamUserService,

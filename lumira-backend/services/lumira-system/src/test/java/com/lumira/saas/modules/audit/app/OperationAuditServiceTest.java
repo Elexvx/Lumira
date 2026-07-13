@@ -2,7 +2,7 @@ package com.lumira.saas.modules.audit.app;
 
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.audit.entity.AuditOperationLogEntity;
-import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
+import com.lumira.saas.modules.audit.repository.OperationAuditRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -18,14 +18,14 @@ class OperationAuditServiceTest {
 
     @Test
     void logRecordsTrustedUserUuid() {
-        AuditOperationLogMapper mapper = mock(AuditOperationLogMapper.class);
-        when(mapper.insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class))).thenReturn(1);
-        OperationAuditService service = new OperationAuditService(mapper, objectProvider(null));
+        OperationAuditRepository repository = mock(OperationAuditRepository.class);
+        when(repository.insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class))).thenReturn(1);
+        OperationAuditService service = new OperationAuditService(repository, objectProvider(null));
 
         service.log(1001L, "user-uuid-1001", "admin", "system", "update", "UPDATE", "SUCCESS", "updated");
 
         ArgumentCaptor<AuditOperationLogEntity> captor = ArgumentCaptor.forClass(AuditOperationLogEntity.class);
-        verify(mapper).insert(captor.capture());
+        verify(repository).insert(captor.capture());
         assertThat(captor.getValue().getUserUuid()).isEqualTo("user-uuid-1001");
         assertThat(captor.getValue().getCreatedBy()).isEqualTo(1001L);
         assertThat(captor.getValue().getCreatedByUuid()).isEqualTo("user-uuid-1001");
@@ -33,20 +33,20 @@ class OperationAuditServiceTest {
 
     @Test
     void logShouldRejectPositiveUserIdWithoutUserUuid() {
-        AuditOperationLogMapper mapper = mock(AuditOperationLogMapper.class);
-        OperationAuditService service = new OperationAuditService(mapper, objectProvider(null));
+        OperationAuditRepository repository = mock(OperationAuditRepository.class);
+        OperationAuditService service = new OperationAuditService(repository, objectProvider(null));
 
         assertThatThrownBy(() -> service.log(1001L, null, "admin", "system", "update", "UPDATE", "SUCCESS", "updated"))
                 .isInstanceOf(BizException.class);
 
-        verify(mapper, never()).insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class));
+        verify(repository, never()).insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class));
     }
 
     @Test
     void logShouldRejectWhenAuditInsertMisses() {
-        AuditOperationLogMapper mapper = mock(AuditOperationLogMapper.class);
-        when(mapper.insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class))).thenReturn(0);
-        OperationAuditService service = new OperationAuditService(mapper, objectProvider(null));
+        OperationAuditRepository repository = mock(OperationAuditRepository.class);
+        when(repository.insert(org.mockito.ArgumentMatchers.any(AuditOperationLogEntity.class))).thenReturn(0);
+        OperationAuditService service = new OperationAuditService(repository, objectProvider(null));
 
         assertThatThrownBy(() -> service.log(1001L, "user-uuid-1001", "admin", "system", "update", "UPDATE", "SUCCESS", "updated"))
                 .isInstanceOf(BizException.class)
