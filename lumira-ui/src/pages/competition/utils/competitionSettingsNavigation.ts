@@ -22,6 +22,17 @@ export type CompetitionSettingsNavigation = {
   stageTab: CompetitionSettingsStageTab;
 };
 
+export const getCompetitionSettingsStageTabFallback = (
+  section: CompetitionSettingsSectionKey,
+  stageTab: CompetitionSettingsStageTab,
+  availableStageTabs: readonly CompetitionSettingsStageTab[],
+): CompetitionSettingsStageTab | undefined => {
+  if (section !== 'stages' || stageTab === 'timeline' || availableStageTabs.includes(stageTab)) {
+    return undefined;
+  }
+  return 'timeline';
+};
+
 const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistrationTab> = {
   registration: 'PROJECT_FIELD',
   'team-members': 'TEAM_AND_MEMBER',
@@ -55,8 +66,8 @@ export const parseCompetitionSettingsNavigation = (search: string): CompetitionS
     stageTab: section === 'stages'
       ? tabValue === 'files'
         ? 'preliminary'
-        : tabValue || 'preliminary'
-      : 'preliminary',
+        : tabValue || 'timeline'
+      : 'timeline',
   };
 };
 
