@@ -6,6 +6,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordPluginStateRepository;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,7 @@ class SensitiveWordPluginStateServiceTest {
         queryOperations.pluginEnabled = true;
         queryOperations.tableExists = true;
         queryOperations.requiredColumnCount = 14L;
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
 
         assertThat(service.isEnabled(currentUser())).isTrue();
         assertThat(service.isEnabled(currentUser())).isTrue();
@@ -38,7 +39,7 @@ class SensitiveWordPluginStateServiceTest {
         queryOperations.pluginEnabled = false;
         queryOperations.tableExists = true;
         queryOperations.requiredColumnCount = 14L;
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
 
         assertThatThrownBy(() -> service.ensureEnabled(currentUser()))
                 .isInstanceOf(BizException.class)
@@ -48,7 +49,7 @@ class SensitiveWordPluginStateServiceTest {
     @Test
     void isEnabledShouldRejectInvalidAuthenticatedUserBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
         CurrentUser currentUser = currentUser();
         currentUser.setUserId(null);
 
@@ -60,7 +61,7 @@ class SensitiveWordPluginStateServiceTest {
     @Test
     void isEnabledShouldRejectBlankUsernameBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
         CurrentUser currentUser = currentUser();
         currentUser.setUsername(" ");
 
@@ -72,7 +73,7 @@ class SensitiveWordPluginStateServiceTest {
     @Test
     void isEnabledShouldRejectMissingSessionVersionBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
         CurrentUser currentUser = currentUser();
         currentUser.setSessionVersion(null);
 
@@ -87,7 +88,7 @@ class SensitiveWordPluginStateServiceTest {
         queryOperations.pluginEnabled = true;
         queryOperations.tableExists = true;
         queryOperations.requiredColumnCount = 10L;
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
 
         assertThatThrownBy(() -> service.ensureEnabled(currentUser()))
                 .isInstanceOf(BizException.class)
@@ -101,7 +102,7 @@ class SensitiveWordPluginStateServiceTest {
         queryOperations.pluginEnabled = true;
         queryOperations.tableExists = true;
         queryOperations.requiredColumnCount = 12L;
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations));
 
         assertThatThrownBy(() -> service.ensureEnabled(currentUser()))
                 .isInstanceOf(BizException.class)
@@ -115,7 +116,7 @@ class SensitiveWordPluginStateServiceTest {
     void isEnabledShouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations, permissionSnapshotService);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations), permissionSnapshotService);
         CurrentUser currentUser = currentUser();
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(false);
 
@@ -129,7 +130,7 @@ class SensitiveWordPluginStateServiceTest {
     void isEnabledShouldRejectBlankUserUuidBeforeSnapshotAndDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations, permissionSnapshotService);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations), permissionSnapshotService);
         CurrentUser currentUser = currentUser();
         currentUser.setUserUuid(" ");
 
@@ -143,7 +144,7 @@ class SensitiveWordPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations), permissionSnapshotService, systemInternalApi);
         CurrentUser currentUser = currentUser();
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "DISABLED"));
@@ -159,7 +160,7 @@ class SensitiveWordPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations), permissionSnapshotService, systemInternalApi);
         CurrentUser currentUser = currentUser();
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
@@ -178,7 +179,7 @@ class SensitiveWordPluginStateServiceTest {
         queryOperations.requiredColumnCount = 14L;
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations), permissionSnapshotService, systemInternalApi);
         CurrentUser currentUser = currentUser();
         currentUser.setUsername("admin-stale");
         when(systemInternalApi.findUserIdentityById(2001L))
@@ -195,7 +196,7 @@ class SensitiveWordPluginStateServiceTest {
         queryOperations.pluginEnabled = true;
         queryOperations.tableExists = true;
         queryOperations.requiredColumnCount = 14L;
-        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(queryOperations, null, null);
+        SensitiveWordPluginStateService service = new SensitiveWordPluginStateService(new JdbcSensitiveWordPluginStateRepository(queryOperations), null, null);
 
         assertThatThrownBy(() -> service.isEnabled(currentUser()))
                 .isInstanceOf(BizException.class)

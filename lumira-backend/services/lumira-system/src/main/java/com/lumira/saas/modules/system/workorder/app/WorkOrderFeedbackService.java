@@ -10,15 +10,13 @@ import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.vo.PageResponse;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.workorder.dto.WorkOrderFeedbackDTO;
+import com.lumira.saas.modules.system.workorder.repository.WorkOrderFeedbackRepository;
 import com.lumira.saas.modules.system.workorder.vo.WorkOrderFeedbackVO;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -32,16 +30,17 @@ import org.springframework.web.multipart.MultipartFile;
 @ConditionalOnLumiraControlPlaneEnabled
 public class WorkOrderFeedbackService {
 
-    private static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_DETAIL_HTML_LENGTH = 200_000;
     private static final String STATUS_ENABLED = "ENABLED";
-    private static final String SUPPORT_FEEDBACK_BUCKET = "support_feedback";
+    private static final String DICT_STATUS = "work_order_feedback_status";
+    private static final String DICT_PRIORITY = "work_order_feedback_priority";
+    private static final String DICT_DEFAULT = "work_order_feedback_default";
     private static final String PERMISSION_VIEW = "plugin:work-order-feedback:view";
     private static final String PERMISSION_CREATE = "plugin:work-order-feedback:create";
     private static final String PERMISSION_MANAGE = "plugin:work-order-feedback:manage";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final WorkOrderFeedbackRepository repository;
     private final WorkOrderFeedbackPluginStateService pluginStateService;
     private final FileInternalApi fileInternalApi;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -50,17 +49,17 @@ public class WorkOrderFeedbackService {
     private final boolean enforceTrustedUserResolution;
 
     public WorkOrderFeedbackService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderFeedbackRepository repository,
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, pluginStateService, fileInternalApi, permissionSnapshotService, null, null, false);
+        this(repository, pluginStateService, fileInternalApi, permissionSnapshotService, null, null, false);
     }
 
     @Autowired
     public WorkOrderFeedbackService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderFeedbackRepository repository,
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi,
             PermissionSnapshotService permissionSnapshotService,
@@ -68,7 +67,7 @@ public class WorkOrderFeedbackService {
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                repository,
                 pluginStateService,
                 fileInternalApi,
                 permissionSnapshotService,
@@ -79,7 +78,7 @@ public class WorkOrderFeedbackService {
     }
 
     private WorkOrderFeedbackService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderFeedbackRepository repository,
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi,
             PermissionSnapshotService permissionSnapshotService,
@@ -87,7 +86,7 @@ public class WorkOrderFeedbackService {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.repository = repository;
         this.pluginStateService = pluginStateService;
         this.fileInternalApi = fileInternalApi;
         this.permissionSnapshotService = permissionSnapshotService;
@@ -97,21 +96,21 @@ public class WorkOrderFeedbackService {
     }
 
     public WorkOrderFeedbackService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderFeedbackRepository repository,
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, pluginStateService, fileInternalApi, permissionSnapshotService, null, sessionAuthenticationService, false);
+        this(repository, pluginStateService, fileInternalApi, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
     public WorkOrderFeedbackService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderFeedbackRepository repository,
             WorkOrderFeedbackPluginStateService pluginStateService,
             FileInternalApi fileInternalApi
     ) {
-        this(jdbcTemplate, pluginStateService, fileInternalApi, null, null, null, false);
+        this(repository, pluginStateService, fileInternalApi, null, null, null, false);
     }
 
     public PageResponse<WorkOrderFeedbackVO.WorkOrderRecord> list(
@@ -132,37 +131,15 @@ public class WorkOrderFeedbackService {
         }
         String userUuid = trustedUserUuid(currentUser);
         pluginStateService.ensureEnabled(currentUser);
-        StringBuilder baseSql = new StringBuilder("""
-                from sys_work_order_feedback
-                where deleted = 0
-                """);
-        List<Object> params = new ArrayList<>();
-        if (!adminScope) {
-            baseSql.append(" and submitter_id = ? and submitter_uuid = ?");
-            params.add(userId);
-            params.add(userUuid);
-        }
-        if (StringUtils.hasText(keyword)) {
-            String like = "%" + keyword.trim() + "%";
-            baseSql.append(" and (title like ? or submitter_name like ?)");
-            params.add(like);
-            params.add(like);
-        }
-        if (StringUtils.hasText(status)) {
-            baseSql.append(" and status = ?");
-            params.add(normalizeStatus(status, false));
-        }
-        if (StringUtils.hasText(priority)) {
-            baseSql.append(" and priority = ?");
-            params.add(normalizePriority(priority));
-        }
-        String selectSql = """
-                select id, title, detail_html as detailHtml,
-                       priority, status, submitter_id as submitterId, submitter_uuid as submitterUuid, submitter_name as submitterName,
-                       admin_reply as adminReply, handled_by as handledBy, handled_at as handledAt,
-                       created_at as createdAt, updated_at as updatedAt
-                """ + baseSql + " order by updated_at desc, id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, pageNo, pageSize, params);
+        WorkOrderFeedbackRepository.Owner owner = adminScope
+                ? WorkOrderFeedbackRepository.Owner.all()
+                : new WorkOrderFeedbackRepository.Owner(userId, userUuid);
+        PageResponse<WorkOrderFeedbackVO.WorkOrderRecord> response = repository.findPage(
+                new WorkOrderFeedbackRepository.Filter(keyword,
+                        StringUtils.hasText(status) ? normalizeStatus(status, false) : null,
+                        StringUtils.hasText(priority) ? normalizePriority(priority) : null, owner), pageNo, pageSize);
+        response.getRecords().forEach(this::formatDateFields);
+        return response;
     }
 
     public WorkOrderFeedbackVO.WorkOrderRecord detail(CurrentUser currentUser, Long id, String scope) {
@@ -176,24 +153,9 @@ public class WorkOrderFeedbackService {
         }
         String userUuid = trustedUserUuid(currentUser);
         pluginStateService.ensureEnabled(currentUser);
-        String visibilitySql = adminScope ? "" : " and submitter_id = ? and submitter_uuid = ?";
-        List<Object> params = new ArrayList<>(List.of(id));
-        if (!adminScope) {
-            params.add(userId);
-            params.add(userUuid);
-        }
-        WorkOrderFeedbackVO.WorkOrderRecord record = jdbcTemplate.queryForObject("""
-                select id, title, detail_html as detailHtml,
-                       priority, status, submitter_id as submitterId, submitter_uuid as submitterUuid, submitter_name as submitterName,
-                       admin_reply as adminReply, handled_by as handledBy, handled_at as handledAt,
-                       created_at as createdAt, updated_at as updatedAt
-                from sys_work_order_feedback
-                where id = ?
-                  and deleted = 0
-                """ + visibilitySql,
-                new BeanPropertyRowMapper<>(WorkOrderFeedbackVO.WorkOrderRecord.class),
-                params.toArray()
-        );
+        WorkOrderFeedbackVO.WorkOrderRecord record = repository.findById(id, adminScope
+                ? WorkOrderFeedbackRepository.Owner.all()
+                : new WorkOrderFeedbackRepository.Owner(userId, userUuid));
         if (record == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "\u5de5\u5355\u4e0d\u5b58\u5728\u6216\u65e0\u6743\u67e5\u770b");
         }
@@ -209,9 +171,9 @@ public class WorkOrderFeedbackService {
         try {
             return fileInternalApi.uploadImageForUser(
                     file,
-                    "\u5de5\u5355\u53cd\u9988",
-                    "\u5de5\u5355\u53cd\u9988\u5bcc\u6587\u672c\u56fe\u7247",
-                    SUPPORT_FEEDBACK_BUCKET,
+                    requiredPolicyLabel(DICT_DEFAULT, "IMAGE_CATEGORY"),
+                    requiredPolicyLabel(DICT_DEFAULT, "IMAGE_REMARK"),
+                    requiredPolicyLabel(DICT_DEFAULT, "UPLOAD_BUCKET"),
                     userId,
                     userUuid,
                     username,
@@ -233,18 +195,11 @@ public class WorkOrderFeedbackService {
         String title = normalizeRequiredText(request == null ? null : request.getTitle(), 160, "\u8bf7\u586b\u5199\u5de5\u5355\u6807\u9898");
         String detailHtml = normalizeRequiredText(request == null ? null : request.getDetailHtml(), MAX_DETAIL_HTML_LENGTH, "\u8bf7\u586b\u5199\u95ee\u9898\u8be6\u60c5");
         String priority = normalizePriority(request == null ? null : request.getPriority());
-        int inserted = jdbcTemplate.update("""
-                insert into sys_work_order_feedback (
-                    title, detail_html, priority, status, submitter_id, submitter_uuid, submitter_name,
-                    created_by, created_by_uuid, created_at, updated_by, updated_by_uuid, updated_at, deleted
-                ) values (?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, now(), ?, ?, now(), 0)
-                """,
-                title, detailHtml, priority, userId,
-                userUuid, submitterName, userId, userUuid, userId, userUuid);
-        if (inserted != 1) {
+        Long id = repository.insert(title, detailHtml, priority,
+                requiredPolicyLabel(DICT_DEFAULT, "INITIAL_STATUS"), userId, userUuid, submitterName);
+        if (id == null) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Work order changed, please retry");
         }
-        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return detail(currentUser, id, "mine");
     }
 
@@ -256,59 +211,13 @@ public class WorkOrderFeedbackService {
         WorkOrderFeedbackVO.WorkOrderRecord currentRecord = detail(currentUser, id, "admin");
         String status = normalizeStatus(request == null ? null : request.getStatus(), true);
         String adminReply = normalizeNullableText(request == null ? null : request.getAdminReply(), 4000);
-        int updated = jdbcTemplate.update("""
-                update sys_work_order_feedback
-                   set status = ?,
-                       admin_reply = ?,
-                       handled_by = ?,
-                       handled_at = case when ? in ('RESOLVED', 'CLOSED') then now() else handled_at end,
-                       updated_by = ?,
-                       updated_by_uuid = ?,
-                       updated_at = now()
-                  where id = ?
-                    and status = ?
-                    and submitter_id = ?
-                    and submitter_uuid = ?
-                    and deleted = 0
-                """,
-                status,
-                adminReply,
-                userId,
-                status,
-                userId,
-                trustedUserUuid(currentUser),
-                id,
-                currentRecord.getStatus(),
-                currentRecord.getSubmitterId(),
-                currentRecord.getSubmitterUuid());
+        int updated = repository.updateStatus(id, currentRecord.getStatus(), currentRecord.getSubmitterId(),
+                currentRecord.getSubmitterUuid(), status, isTerminalStatus(status), adminReply,
+                userId, trustedUserUuid(currentUser));
         if (updated == 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Work order changed, please retry");
         }
         return detail(currentUser, id, "admin");
-    }
-
-    private PageResponse<WorkOrderFeedbackVO.WorkOrderRecord> pageQuery(String selectSql, String countSql, long pageNo, long pageSize, List<Object> params) {
-        long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        long offset = (safePageNo - 1L) * safePageSize;
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add(safePageSize);
-        queryParams.add(offset);
-        List<WorkOrderFeedbackVO.WorkOrderRecord> records = jdbcTemplate.query(
-                selectSql + " limit ? offset ?",
-                new BeanPropertyRowMapper<>(WorkOrderFeedbackVO.WorkOrderRecord.class),
-                queryParams.toArray()
-        );
-        records.forEach(this::formatDateFields);
-        long total = safePageNo == 1 && records.size() < safePageSize
-                ? records.size()
-                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
-        PageResponse<WorkOrderFeedbackVO.WorkOrderRecord> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total);
-        response.setPageNo(safePageNo);
-        response.setPageSize(safePageSize);
-        return response;
     }
 
     private boolean isAdminScope(String scope) {
@@ -479,15 +388,37 @@ public class WorkOrderFeedbackService {
         if (!StringUtils.hasText(normalized) && !requireKnown) {
             return normalized;
         }
-        if (List.of("OPEN", "PROCESSING", "RESOLVED", "CLOSED").contains(normalized)) {
+        if (findPolicyItem(DICT_STATUS, normalized) != null) {
             return normalized;
         }
         throw new BizException(ErrorCode.BAD_REQUEST, "\u5de5\u5355\u72b6\u6001\u65e0\u6548");
     }
 
     private String normalizePriority(String priority) {
+        String fallback = requiredPolicyLabel(DICT_DEFAULT, "DEFAULT_PRIORITY");
         String normalized = priority == null ? "" : priority.trim().toUpperCase(Locale.ROOT);
-        return List.of("LOW", "NORMAL", "HIGH", "URGENT").contains(normalized) ? normalized : "NORMAL";
+        return findPolicyItem(DICT_PRIORITY, normalized) == null ? fallback : normalized;
+    }
+
+    private boolean isTerminalStatus(String status) {
+        WorkOrderFeedbackRepository.PolicyItem item = findPolicyItem(DICT_STATUS, status);
+        return item != null && "TERMINAL".equalsIgnoreCase(item.remark());
+    }
+
+    private WorkOrderFeedbackRepository.PolicyItem findPolicyItem(String dictionaryCode, String value) {
+        if (!StringUtils.hasText(value)) return null;
+        return repository.findEnabledPolicyItems(dictionaryCode).stream()
+                .filter(item -> value.equalsIgnoreCase(item.value()))
+                .findFirst().orElse(null);
+    }
+
+    private String requiredPolicyLabel(String dictionaryCode, String value) {
+        WorkOrderFeedbackRepository.PolicyItem item = findPolicyItem(dictionaryCode, value);
+        if (item == null || !StringUtils.hasText(item.label())) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR,
+                    "Work order dictionary is not configured: " + dictionaryCode + "/" + value);
+        }
+        return item.label();
     }
 
     private String normalizeRequiredText(String value, int maxLength, String message) {
@@ -520,10 +451,6 @@ public class WorkOrderFeedbackService {
     private String trustedUserUuid(CurrentUser currentUser) {
         currentUserId(currentUser);
         return currentUser.getUserUuid();
-    }
-
-    private long nullToZero(Long value) {
-        return value == null ? 0L : value;
     }
 
     private void formatDateFields(WorkOrderFeedbackVO.WorkOrderRecord record) {

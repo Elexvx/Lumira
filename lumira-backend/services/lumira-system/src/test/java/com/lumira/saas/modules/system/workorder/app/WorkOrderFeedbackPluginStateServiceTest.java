@@ -6,6 +6,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.system.workorder.infrastructure.JdbcWorkOrderPluginStateRepository;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.pluginEnabled = true;
         queryOperations.tableExists = true;
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations));
 
         assertThat(service.isEnabled(currentUser())).isTrue();
         assertThat(service.isEnabled(currentUser())).isTrue();
@@ -37,7 +38,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.pluginEnabled = false;
         queryOperations.tableExists = true;
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations));
 
         assertThatThrownBy(() -> service.ensureEnabled(currentUser()))
                 .isInstanceOf(BizException.class)
@@ -47,7 +48,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
     @Test
     void isEnabledShouldRejectInvalidAuthenticatedUserBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations));
         CurrentUser currentUser = currentUser();
         currentUser.setUserId(0L);
 
@@ -59,7 +60,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
     @Test
     void isEnabledShouldRejectBlankUsernameBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations));
         CurrentUser currentUser = currentUser();
         currentUser.setUsername(" ");
 
@@ -71,7 +72,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
     @Test
     void isEnabledShouldRejectMissingSessionVersionBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations));
         CurrentUser currentUser = currentUser();
         currentUser.setSessionVersion(null);
 
@@ -84,7 +85,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
     void isEnabledShouldRejectDisabledTrustedUserBeforeDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, permissionSnapshotService);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations), permissionSnapshotService);
         CurrentUser currentUser = currentUser();
         when(permissionSnapshotService.isTrustedActiveUser(2001L, "user-uuid-2001")).thenReturn(false);
 
@@ -98,7 +99,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
     void isEnabledShouldRejectBlankUserUuidBeforeSnapshotAndDatabaseAccess() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, permissionSnapshotService);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations), permissionSnapshotService);
         CurrentUser currentUser = currentUser();
         currentUser.setUserUuid(" ");
 
@@ -112,7 +113,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations), permissionSnapshotService, systemInternalApi);
         CurrentUser currentUser = currentUser();
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "DISABLED"));
@@ -128,7 +129,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations), permissionSnapshotService, systemInternalApi);
         CurrentUser currentUser = currentUser();
         when(systemInternalApi.findUserIdentityById(2001L))
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
@@ -146,7 +147,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
         queryOperations.tableExists = true;
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, permissionSnapshotService, systemInternalApi);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations), permissionSnapshotService, systemInternalApi);
         CurrentUser currentUser = currentUser();
         currentUser.setUsername("admin-stale");
         when(systemInternalApi.findUserIdentityById(2001L))
@@ -162,7 +163,7 @@ class WorkOrderFeedbackPluginStateServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.pluginEnabled = true;
         queryOperations.tableExists = true;
-        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(queryOperations, null, null);
+        WorkOrderFeedbackPluginStateService service = new WorkOrderFeedbackPluginStateService(new JdbcWorkOrderPluginStateRepository(queryOperations), null, null);
 
         assertThatThrownBy(() -> service.isEnabled(currentUser()))
                 .isInstanceOf(BizException.class)

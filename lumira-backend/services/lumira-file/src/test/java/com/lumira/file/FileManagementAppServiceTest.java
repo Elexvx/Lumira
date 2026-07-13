@@ -15,7 +15,14 @@ import com.lumira.file.entity.FileObjectEntity;
 import com.lumira.file.entity.FileStorageSpaceEntity;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
+import com.lumira.file.infrastructure.JdbcFileProcessingArtifactRepository;
+import com.lumira.file.infrastructure.MyBatisFileStorageSpaceRepository;
+import com.lumira.file.infrastructure.MyBatisFileObjectRepository;
 import com.lumira.file.processing.FileProcessingTaskRequestService;
+import com.lumira.file.repository.FileProcessingArtifactRepository;
+import com.lumira.file.repository.FileBusinessPolicyRepository;
+import com.lumira.file.repository.FileStorageSpaceRepository;
+import com.lumira.file.repository.FileObjectRepository;
 import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
@@ -52,8 +59,23 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class FileManagementAppServiceTest {
 
+    private FileProcessingArtifactRepository artifactRepository() {
+        return new JdbcFileProcessingArtifactRepository(jdbcTemplate);
+    }
+
+    private FileStorageSpaceRepository storageSpaceRepository() {
+        return new MyBatisFileStorageSpaceRepository(fileStorageSpaceMapper);
+    }
+
+    private FileObjectRepository fileObjectRepository() {
+        return new MyBatisFileObjectRepository(fileObjectMapper);
+    }
+
     @Mock
     private FileObjectMapper fileObjectMapper;
+
+    @Mock
+    private FileBusinessPolicyRepository businessPolicyRepository;
 
     @Mock
     private FileStorageSpaceMapper fileStorageSpaceMapper;
@@ -96,9 +118,10 @@ class FileManagementAppServiceTest {
     @BeforeEach
     void setUp() {
         service = new FileManagementAppService(
-                fileObjectMapper,
-                fileStorageSpaceMapper,
-                jdbcTemplate,
+                fileObjectRepository(),
+                businessPolicyRepository,
+                storageSpaceRepository(),
+                artifactRepository(),
                 uploadProperties,
                 documentUploadService,
                 imageUploadService,
@@ -111,6 +134,40 @@ class FileManagementAppServiceTest {
                 provider(systemInternalApi)
         );
         org.mockito.Mockito.lenient().when(systemInternalApi.findUserIdentityById(11L)).thenReturn(userSnapshot(11L, "alice", "ENABLED"));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_storage_provider")).thenReturn(List.of(
+                new FileBusinessPolicyRepository.Item("Local storage", "LOCAL", null, 10),
+                new FileBusinessPolicyRepository.Item("阿里云 OSS", "ALIYUN_OSS", null, 20),
+                new FileBusinessPolicyRepository.Item("腾讯云 COS", "TENCENT_COS", null, 30)));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_rename_strategy")).thenReturn(List.of(
+                new FileBusinessPolicyRepository.Item("追加随机标识", "APPEND_RANDOM_ID", null, 10),
+                new FileBusinessPolicyRepository.Item("随机字符串", "RANDOM_STRING", null, 20),
+                new FileBusinessPolicyRepository.Item("保留原名", "KEEP_ORIGINAL", null, 30)));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_storage_status")).thenReturn(List.of(
+                new FileBusinessPolicyRepository.Item("启用", "ENABLED", null, 10),
+                new FileBusinessPolicyRepository.Item("停用", "DISABLED", null, 20)));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_runtime_default")).thenReturn(List.of(
+                new FileBusinessPolicyRepository.Item("LOCAL", "STORAGE_PROVIDER", null, 10),
+                new FileBusinessPolicyRepository.Item("local", "STORAGE_KEY", null, 15),
+                new FileBusinessPolicyRepository.Item("storage/uploads/", "ROOT_PATH", null, 20),
+                new FileBusinessPolicyRepository.Item("APPEND_RANDOM_ID", "RENAME_STRATEGY", null, 30),
+                new FileBusinessPolicyRepository.Item("20", "MAX_FILE_SIZE_MB", null, 40),
+                new FileBusinessPolicyRepository.Item("*", "ALLOWED_MIME_TYPES", null, 50),
+                new FileBusinessPolicyRepository.Item("我的文件", "DOCUMENT_CATEGORY", null, 60),
+                new FileBusinessPolicyRepository.Item("图片", "IMAGE_CATEGORY", null, 70),
+                new FileBusinessPolicyRepository.Item("UNSUPPORTED", "UNSUPPORTED_PREVIEW_MODE", null, 80),
+                new FileBusinessPolicyRepository.Item("ENABLED", "STORAGE_STATUS", null, 90)));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_preview_extension")).thenReturn(List.of(
+                new FileBusinessPolicyRepository.Item("IMAGE", "png", null, 10),
+                new FileBusinessPolicyRepository.Item("PDF", "pdf", null, 20),
+                new FileBusinessPolicyRepository.Item("TEXT", "txt", null, 30)));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_preview_content_type")).thenReturn(List.of(
+                new FileBusinessPolicyRepository.Item("IMAGE", "image/", "PREFIX", 10),
+                new FileBusinessPolicyRepository.Item("PDF", "application/pdf", "EXACT", 20),
+                new FileBusinessPolicyRepository.Item("TEXT", "text/", "PREFIX", 30)));
+        org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItem(any(String.class), any(String.class)))
+                .thenAnswer(invocation -> businessPolicyRepository.findEnabledItems(invocation.getArgument(0)).stream()
+                        .filter(item -> ((String) invocation.getArgument(1)).equalsIgnoreCase(item.value()))
+                        .findFirst());
         org.mockito.Mockito.lenient().when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
                 List.of("*"),
                 List.of(),
@@ -156,9 +213,10 @@ class FileManagementAppServiceTest {
     @Test
     void listFiles_shouldRejectWhenTrustedResolverIsUnavailableBeforeMapperAccess() {
         FileManagementAppService serviceWithoutResolver = new FileManagementAppService(
-                fileObjectMapper,
-                fileStorageSpaceMapper,
-                jdbcTemplate,
+                fileObjectRepository(),
+                businessPolicyRepository,
+                storageSpaceRepository(),
+                artifactRepository(),
                 uploadProperties,
                 documentUploadService,
                 imageUploadService,
@@ -476,47 +534,37 @@ class FileManagementAppServiceTest {
     }
 
     @Test
-    void listStorageSpaces_shouldSeedPlatformDefaultStorageSpacesWhenMissing() {
-        when(fileStorageSpaceMapper.countDefaultStorage()).thenReturn(0L);
-        when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
-                .thenReturn(storageSpaceEntities(3));
-        when(fileStorageSpaceMapper.listWithUsage(10L, 0L)).thenReturn(storageSpaceEntities(3));
+    void platformDefaultStorageSpacesShouldBeSeededByDatabase() throws Exception {
+        String sql = Files.readString(Path.of("../../sql/saas.sql"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/file/app/FileManagementAppService.java"));
 
-        PageResponse<?> response = service.listStorageSpaces(currentUser(), 1, 10);
-
-        ArgumentCaptor<FileStorageSpaceEntity> captor = ArgumentCaptor.forClass(FileStorageSpaceEntity.class);
-        verify(fileStorageSpaceMapper, times(5)).insert(captor.capture());
-        assertThat(captor.getAllValues())
-                .extracting(FileStorageSpaceEntity::getStorageKey)
-                .containsExactly("local", "download_center", "ai_chat", "avatar", "support_feedback");
-        assertThat(captor.getAllValues().getFirst().getDefaultFlag()).isEqualTo(1);
-        assertThat(captor.getAllValues())
-                .filteredOn(entity -> "local".equals(entity.getStorageKey()) || "download_center".equals(entity.getStorageKey()) || "avatar".equals(entity.getStorageKey()))
-                .extracting(FileStorageSpaceEntity::getAnonymousAccessAllowed)
-                .containsOnly(1);
-        assertThat(response.getRecords()).hasSize(3);
+        assertThat(sql).contains("INSERT INTO `file_storage_space`");
+        assertThat(sql).contains("'local'", "'download_center'", "'ai_chat'", "'avatar'", "'support_feedback'");
+        assertThat(source).doesNotContain("DEFAULT_STORAGE_SPACES", "new DefaultStorageSpace", "private record DefaultStorageSpace");
+        assertThat(source).doesNotContain("new StorageSpaceDTO(null, \"Local storage\"");
     }
 
     @Test
-    void listStorageSpaces_shouldMergeLegacySystemPublicStorageIntoLocal() {
-        FileStorageSpaceEntity legacyStorage = storageSpaceEntities(1).getFirst();
-        legacyStorage.setStorageKey("system_public");
-        when(fileStorageSpaceMapper.findByStorageKey("system_public")).thenReturn(legacyStorage);
-        when(fileStorageSpaceMapper.countDefaultStorage()).thenReturn(1L);
-        when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
-                .thenReturn(List.of());
-        when(fileStorageSpaceMapper.listWithUsage(10L, 0L)).thenReturn(List.of());
+    void legacySystemPublicStorageMigrationShouldBeDatabaseOwned() throws Exception {
+        String sql = Files.readString(Path.of("../../sql/upgrade-file-storage-space-persistence-v1.sql"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/file/app/FileManagementAppService.java"));
 
-        service.listStorageSpaces(currentUser(), 1, 10);
+        assertThat(sql).contains("WHERE `bucket`='system_public'", "SET `bucket`='local'");
+        assertThat(source).doesNotContain("LEGACY_STORAGE_KEY_SYSTEM_PUBLIC", "mergeLegacySystemPublicStorageSpace");
+    }
 
-        verify(fileObjectMapper).update(
-                ArgumentMatchers.isNull(),
-                ArgumentMatchers.<UpdateWrapper<FileObjectEntity>>any()
-        );
-        verify(fileStorageSpaceMapper).update(
-                ArgumentMatchers.isNull(),
-                ArgumentMatchers.<UpdateWrapper<FileStorageSpaceEntity>>any()
-        );
+    @Test
+    void fileBusinessPoliciesShouldBeDatabaseOwned() throws Exception {
+        String sql = Files.readString(Path.of("../../sql/upgrade-file-business-policy-dictionary-v1.sql"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/file/app/FileManagementAppService.java"));
+
+        assertThat(sql).contains("file_storage_provider", "file_rename_strategy", "file_storage_status",
+                "file_preview_extension", "file_preview_content_type", "file_runtime_default");
+        assertThat(source).doesNotContain(
+                "Set.of(\"LOCAL\", \"ALIYUN_OSS\", \"TENCENT_COS\")",
+                "Set.of(\"APPEND_RANDOM_ID\", \"RANDOM_STRING\", \"KEEP_ORIGINAL\")",
+                "List.of(\"png\", \"jpg\"",
+                "case \"ALIYUN_OSS\"");
     }
 
     @Test
@@ -613,13 +661,13 @@ class FileManagementAppServiceTest {
 
     @Test
     void storageSpaceWritesShouldBindOriginalProviderKeyStatusAndDefaultFlag() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/file/app/FileManagementAppService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/file/infrastructure/MyBatisFileStorageSpaceRepository.java"));
 
         assertThat(source).contains(
-                ".eq(FileStorageSpaceEntity::getStorageKey, existing.storageKey())",
-                ".eq(FileStorageSpaceEntity::getProvider, existing.provider())",
-                ".eq(FileStorageSpaceEntity::getStatus, existing.status())",
-                ".eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(existing.defaultStorage()) ? 1 : 0)"
+                ".eq(FileStorageSpaceEntity::getStorageKey, expected.storageKey())",
+                ".eq(FileStorageSpaceEntity::getProvider, expected.provider())",
+                ".eq(FileStorageSpaceEntity::getStatus, expected.status())",
+                ".eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(expected.defaultStorage()) ? 1 : 0)"
         );
     }
 

@@ -2,13 +2,11 @@ package com.lumira.team.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.team.infrastructure.persistence.BeanPropertyRowMapper;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
+import com.lumira.team.repository.TeamMemberRepository;
 import com.lumira.team.vo.TeamVO;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
 import java.util.Set;
 
 @Service
@@ -18,10 +16,10 @@ public class TeamPermissionService {
     public static final String MANAGER = "MANAGER";
     public static final String MEMBER = "MEMBER";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final TeamMemberRepository memberRepository;
 
-    public TeamPermissionService(MyBatisQueryOperations jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public TeamPermissionService(TeamMemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
     }
 
     public void requireTeamOwner(Long teamId, Long userId, String userUuid) {
@@ -75,46 +73,13 @@ public class TeamPermissionService {
         requirePositiveId(teamId, "Team id is required");
         requirePositiveId(userId, "User id is required");
         requireUserUuid(userUuid);
-        List<TeamVO.Member> members = jdbcTemplate.query(
-                """
-                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid, role,
-                               member_alias as memberAlias, status, invited_by as invitedBy,
-                               joined_at as joinedAt, created_at as createdAt
-                        from team_member
-                        where team_id = ?
-                          and user_id = ?
-                          and user_uuid = ?
-                          and status = 'ACTIVE'
-                          and deleted = 0
-                        limit 1
-                """,
-                new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                teamId,
-                userId,
-                userUuid.trim()
-        );
-        return members.isEmpty() ? null : members.get(0);
+        return memberRepository.findActiveMember(teamId, userId, userUuid.trim());
     }
 
     public TeamVO.Member memberById(Long teamId, Long memberId) {
         requirePositiveId(teamId, "Team id is required");
         requirePositiveId(memberId, "Team member id is required");
-        List<TeamVO.Member> members = jdbcTemplate.query(
-                """
-                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid, role,
-                               member_alias as memberAlias, status, invited_by as invitedBy,
-                               joined_at as joinedAt, created_at as createdAt
-                        from team_member
-                        where team_id = ?
-                          and id = ?
-                          and deleted = 0
-                        limit 1
-                """,
-                new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                teamId,
-                memberId
-        );
-        return members.isEmpty() ? null : members.get(0);
+        return memberRepository.findMemberById(teamId, memberId);
     }
 
     public String activeRole(Long teamId, Long userId, String userUuid) {

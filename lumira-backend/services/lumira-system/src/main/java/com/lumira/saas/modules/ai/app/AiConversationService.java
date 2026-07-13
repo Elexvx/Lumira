@@ -14,6 +14,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.infrastructure.JdbcAiAssistantEmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -79,7 +80,7 @@ class JdbcAiConversationService implements AiConversationService {
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.fileInternalApi = fileInternalApi;
-        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
+        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(new JdbcAiAssistantEmployeeRepository(jdbcTemplate));
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;

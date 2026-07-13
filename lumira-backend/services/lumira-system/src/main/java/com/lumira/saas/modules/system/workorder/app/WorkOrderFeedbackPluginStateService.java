@@ -6,7 +6,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.system.workorder.repository.WorkOrderPluginStateRepository;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,63 +18,49 @@ public class WorkOrderFeedbackPluginStateService {
     private static final String PLUGIN_CODE = "work-order-feedback";
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final WorkOrderPluginStateRepository repository;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final boolean enforceTrustedUserResolution;
     private volatile Boolean workOrderTableExists;
 
-    public WorkOrderFeedbackPluginStateService(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null, null, false);
+    public WorkOrderFeedbackPluginStateService(WorkOrderPluginStateRepository repository) {
+        this(repository, null, null, false);
     }
 
     @Autowired
     public WorkOrderFeedbackPluginStateService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderPluginStateRepository repository,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi
     ) {
-        this(jdbcTemplate, permissionSnapshotService, systemInternalApi, true);
+        this(repository, permissionSnapshotService, systemInternalApi, true);
     }
 
     private WorkOrderFeedbackPluginStateService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderPluginStateRepository repository,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.repository = repository;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
     public WorkOrderFeedbackPluginStateService(
-            MyBatisQueryOperations jdbcTemplate,
+            WorkOrderPluginStateRepository repository,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, false);
+        this(repository, permissionSnapshotService, null, false);
     }
 
     public boolean isEnabled(CurrentUser currentUser) {
         if (!isTrustedActiveUser(currentUser)) {
             return false;
         }
-        boolean enabled = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_plugin_definition d
-                        join sys_plugin_version v
-                          on v.plugin_code = d.plugin_code
-                         and v.is_active = 1
-                         and v.deleted = 0
-                        where d.plugin_code = ?
-                          and d.status = 'ENABLED'
-                          and d.deleted = 0
-                        limit 1
-                        """,
-                PLUGIN_CODE
-        );
+        boolean enabled = repository.isPluginEnabled(PLUGIN_CODE);
         return enabled && hasWorkOrderTable();
     }
 
@@ -131,15 +117,7 @@ public class WorkOrderFeedbackPluginStateService {
         synchronized (this) {
             Boolean refreshed = workOrderTableExists;
             if (refreshed == null) {
-                refreshed = jdbcTemplate.exists(
-                        """
-                                select 1
-                                from information_schema.tables
-                                where table_schema = database()
-                                  and table_name = 'sys_work_order_feedback'
-                                limit 1
-                                """
-                );
+                refreshed = repository.hasFeedbackTable();
                 workOrderTableExists = refreshed;
             }
             return refreshed;

@@ -276,6 +276,15 @@ class CompetitionManagementAppServiceTest {
                 List.of(competition("published")),
                 List.of(configSet()),
                 List.of(),
+                List.of(
+                        configItem("TEAM_FIELD", "teamName", "团队名称", null, "{\"standardField\":true}"),
+                        configItem("TEAM_FIELD", "avatarUrl", "团队头像", null, "{\"standardField\":true}"),
+                        configItem("MEMBER_FIELD", "memberName", "成员姓名", null, "{\"standardField\":true}"),
+                        configItem("PROJECT_FIELD", "title", "项目名称", null, "{\"standardField\":true}"),
+                        configItem("PROJECT_FIELD", "imageUrl", "项目头像", null, "{\"standardField\":true}"),
+                        configItem("PROJECT_FIELD", "intellectualPropertyType", "知识产权类型", null, "{\"standardField\":true}"),
+                        configItem("PROJECT_FIELD", "distributionRegions", "知识产权分布区域", null, "{\"standardField\":true}")
+                ),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -287,6 +296,28 @@ class CompetitionManagementAppServiceTest {
         assertThat(settings.getCompetition()).isNotNull();
         assertThat(settings.getCompetition().getStatus()).isEqualTo("published");
         assertThat(settings.getActiveConfigSet()).isNotNull();
+        assertThat(settings.getFields())
+                .extracting(CompetitionVO.ConfigItem::getItemKey)
+                .contains("teamName", "avatarUrl", "memberName", "title", "imageUrl", "intellectualPropertyType", "distributionRegions")
+                .doesNotContain("employeeNo", "departmentName", "role", "remark");
+    }
+
+    @Test
+    void seedDefaultConfigItemsShouldCopyDatabaseTemplatesWithoutBusinessDataInJava() throws Exception {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        Method method = CompetitionManagementAppService.class.getDeclaredMethod(
+                "seedDefaultConfigItems", String.class, Long.class, Long.class, String.class
+        );
+        method.setAccessible(true);
+
+        method.invoke(service, "competition-uuid", 22L, 1001L, "user-uuid-1001");
+
+        assertThat(jdbcTemplate.updates).hasSize(1);
+        assertThat(jdbcTemplate.updates.get(0))
+                .contains("from competition_config_item_template")
+                .contains("template_code = 'DEFAULT'")
+                .doesNotContain("团队名称", "项目名称", "知识产权");
     }
 
     @Test

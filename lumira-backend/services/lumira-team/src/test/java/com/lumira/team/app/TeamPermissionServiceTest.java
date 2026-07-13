@@ -1,21 +1,20 @@
 package com.lumira.team.app;
 
 import com.lumira.common.exception.BizException;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
-import com.lumira.team.infrastructure.persistence.RowMapper;
+import com.lumira.team.repository.TeamMemberRepository;
 import com.lumira.team.vo.TeamVO;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class TeamPermissionServiceTest {
     @Test
     void roleBoundariesShouldMatchTeamRules() {
-        TeamPermissionService service = new TeamPermissionService(new PermissionQueries("OWNER"));
+        TeamPermissionService service = new TeamPermissionService(repository("OWNER"));
 
         service.requireTeamOwner(2001L, 3001L, "user-uuid-3001");
         assertThat(service.canInvite("OWNER")).isTrue();
@@ -35,7 +34,7 @@ class TeamPermissionServiceTest {
 
     @Test
     void memberCannotInviteOrRequireAdmin() {
-        TeamPermissionService service = new TeamPermissionService(new PermissionQueries("MEMBER"));
+        TeamPermissionService service = new TeamPermissionService(repository("MEMBER"));
 
         assertThatThrownBy(() -> service.requireTeamAdmin(2001L, 3001L, "user-uuid-3001"))
                 .isInstanceOf(BizException.class);
@@ -44,41 +43,27 @@ class TeamPermissionServiceTest {
 
     @Test
     void permissionLookupShouldRejectInvalidIdsBeforeQuerying() {
-        PermissionQueries queries = new PermissionQueries("OWNER");
-        TeamPermissionService service = new TeamPermissionService(queries);
+        TeamMemberRepository repository = mock(TeamMemberRepository.class);
+        TeamPermissionService service = new TeamPermissionService(repository);
 
         assertThatThrownBy(() -> service.activeMember(0L, 3001L, "user-uuid-3001"))
                 .isInstanceOf(BizException.class);
         assertThatThrownBy(() -> service.requireTeamMember(2001L, null, "user-uuid-3001"))
                 .isInstanceOf(BizException.class);
 
-        assertThat(queries.queryCount).isZero();
+        verifyNoInteractions(repository);
     }
 
-    private static final class PermissionQueries extends MyBatisQueryOperations {
-        private final String role;
-        private int queryCount;
-
-        private PermissionQueries(String role) {
-            this.role = role;
-        }
-
-        @Override
-        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            queryCount += 1;
-            TeamVO.Member member = new TeamVO.Member();
-            member.setId(1L);
-            member.setTeamId(2001L);
-            member.setUserId(3001L);
-            member.setUserUuid("user-uuid-3001");
-            member.setRole(role);
-            member.setStatus("ACTIVE");
-            return cast(List.of(member));
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T> List<T> cast(List<?> value) {
-            return (List<T>) new ArrayList<>(value);
-        }
+    private TeamMemberRepository repository(String role) {
+        TeamMemberRepository repository = mock(TeamMemberRepository.class);
+        TeamVO.Member member = new TeamVO.Member();
+        member.setId(1L);
+        member.setTeamId(2001L);
+        member.setUserId(3001L);
+        member.setUserUuid("user-uuid-3001");
+        member.setRole(role);
+        member.setStatus("ACTIVE");
+        when(repository.findActiveMember(2001L, 3001L, "user-uuid-3001")).thenReturn(member);
+        return repository;
     }
 }

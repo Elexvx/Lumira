@@ -6,6 +6,8 @@ import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.ai.repository.AiToolCatalogRepository;
+import com.lumira.ai.vo.AiToolVO;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
@@ -14,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,7 +52,7 @@ class AiReadQueryServiceTest {
     @Test
     void listEmployeesRequiresAuthenticatedUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate);
 
         assertThatThrownBy(() -> service.listEmployees(null, 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -61,7 +64,7 @@ class AiReadQueryServiceTest {
     @Test
     void listEmployeesRejectsUnauthenticatedUserBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate);
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate);
 
         assertThatThrownBy(() -> service.listEmployees(unauthenticatedUser(), 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -99,7 +102,7 @@ class AiReadQueryServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, "ai-user", "DISABLED"));
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate, provider(systemInternalApi));
 
         assertThatThrownBy(() -> service.listEmployees(user(Set.of("ai:view")), 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -113,7 +116,7 @@ class AiReadQueryServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(7L)).thenReturn(userSnapshot(7L, " ", "ENABLED"));
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate, provider(systemInternalApi));
 
         assertThatThrownBy(() -> service.listEmployees(user(Set.of("ai:view")), 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -129,7 +132,7 @@ class AiReadQueryServiceTest {
     void listEmployeesShouldRequireLiveViewOrChatPermissionBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         SystemInternalApi systemInternalApi = trustedSystemInternalApi(List.of("system:file:view"));
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi, false));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate, provider(systemInternalApi, false));
 
         assertThatThrownBy(() -> service.listEmployees(user(Set.of("ai:view")), 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -152,7 +155,9 @@ class AiReadQueryServiceTest {
 
     @Test
     void listToolsRejectsUnauthenticatedPermissionSnapshot() {
-        AiReadQueryService service = new AiReadQueryService(mock(JdbcTemplate.class));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(
+                mock(JdbcTemplate.class), null, toolCatalogRepository()
+        );
         CurrentUser currentUser = user(Set.of("*"));
         currentUser.setAuthenticated(false);
 
@@ -163,7 +168,9 @@ class AiReadQueryServiceTest {
 
     @Test
     void allToolsKeepsInternalCatalogForExecutionPermissionChecks() {
-        AiReadQueryService service = new AiReadQueryService(mock(JdbcTemplate.class));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(
+                mock(JdbcTemplate.class), null, toolCatalogRepository()
+        );
 
         var tools = service.allTools();
 
@@ -177,7 +184,7 @@ class AiReadQueryServiceTest {
 
     @Test
     void listToolsRequiresAuthenticatedUser() {
-        AiReadQueryService service = new AiReadQueryService(mock(JdbcTemplate.class));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(mock(JdbcTemplate.class));
 
         assertThatThrownBy(() -> service.listTools(null))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -203,7 +210,7 @@ class AiReadQueryServiceTest {
     void listConversationMessagesShouldRequireChatPermissionBeforeConversationProbe() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         SystemInternalApi systemInternalApi = trustedSystemInternalApi(List.of("ai:view"));
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi, false));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate, provider(systemInternalApi, false));
 
         assertThatThrownBy(() -> service.listConversationMessages(user(Set.of("ai:chat:send")), 99L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -216,7 +223,7 @@ class AiReadQueryServiceTest {
     void getKnowledgeBaseShouldRequireKnowledgeViewBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         SystemInternalApi systemInternalApi = trustedSystemInternalApi(List.of("ai:chat:send"));
-        AiReadQueryService service = new AiReadQueryService(jdbcTemplate, provider(systemInternalApi, false));
+        AiReadQueryService service = AiReadQueryServiceFixture.create(jdbcTemplate, provider(systemInternalApi, false));
 
         assertThatThrownBy(() -> service.getKnowledgeBase(user(Set.of("ai:knowledge:view")), 11L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -227,7 +234,7 @@ class AiReadQueryServiceTest {
 
     @Test
     void listToolsShouldRequireToolViewBeforeReadingToolCatalog() {
-        AiReadQueryService service = new AiReadQueryService(
+        AiReadQueryService service = AiReadQueryServiceFixture.create(
                 mock(JdbcTemplate.class),
                 provider(trustedSystemInternalApi(List.of("system:file:view")), false)
         );
@@ -295,7 +302,15 @@ class AiReadQueryServiceTest {
     }
 
     private AiReadQueryService service(JdbcTemplate jdbcTemplate) {
-        return new AiReadQueryService(jdbcTemplate, provider(enabledSystemInternalApi()));
+        return AiReadQueryServiceFixture.create(jdbcTemplate, provider(enabledSystemInternalApi()), toolCatalogRepository());
+    }
+
+    private AiToolCatalogRepository toolCatalogRepository() {
+        return () -> List.of(
+                new AiToolVO("system.permission.snapshot", "Permission snapshot", "system", "Current permissions", "LOW", true, false, null, Map.of()),
+                new AiToolVO("file.object.search", "File search", "file", "Search files", "MEDIUM", true, false, "system:file:view", Map.of()),
+                new AiToolVO("system.user.create", "Create user", "system", "Create user", "HIGH", false, true, "system:user:create", Map.of())
+        );
     }
 
     private SystemInternalApi enabledSystemInternalApi() {

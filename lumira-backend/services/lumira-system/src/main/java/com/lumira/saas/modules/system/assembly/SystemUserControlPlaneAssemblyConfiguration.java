@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.assembly;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.modules.account.app.AccountActivationService;
 import com.lumira.saas.modules.account.controller.AccountActivationController;
+import com.lumira.saas.modules.account.infrastructure.JdbcAccountActivationRepository;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Import;
 @Import({
         AccountActivationController.class,
         AccountActivationService.class,
+        JdbcAccountActivationRepository.class,
         UserDomainService.class
 })
 public class SystemUserControlPlaneAssemblyConfiguration {

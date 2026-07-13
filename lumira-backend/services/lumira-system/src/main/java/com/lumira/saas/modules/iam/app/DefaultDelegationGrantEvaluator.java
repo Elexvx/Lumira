@@ -7,7 +7,7 @@ import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationVerdict;
 import com.lumira.common.security.authorization.DelegationGrantDecision;
 import com.lumira.common.security.authorization.DelegationGrantEvaluator;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.iam.repository.DelegationGrantRepository;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,28 +21,28 @@ import java.util.Map;
 @Service
 public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator {
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final DelegationGrantRepository repository;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
-    public DefaultDelegationGrantEvaluator(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null, false);
+    public DefaultDelegationGrantEvaluator(DelegationGrantRepository repository) {
+        this(repository, null, false);
     }
 
     @Autowired
     public DefaultDelegationGrantEvaluator(
-            MyBatisQueryOperations jdbcTemplate,
+            DelegationGrantRepository repository,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, sessionAuthenticationService, true);
+        this(repository, sessionAuthenticationService, true);
     }
 
     private DefaultDelegationGrantEvaluator(
-            MyBatisQueryOperations jdbcTemplate,
+            DelegationGrantRepository repository,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.repository = repository;
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
@@ -76,31 +76,8 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
             return DelegationGrantDecision.deny("DELEGATION_AGENT_SUBJECT_NOT_FOUND", "Delegated digital employee subject was not found");
         }
 
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select id, resource_code as resourceCode, action_code as actionCode,
-                               permission_key as permissionKey, tool_code as toolCode,
-                               scope_type as scopeType, max_risk_level as maxRiskLevel,
-                               require_confirm as requireConfirm, require_approval as requireApproval
-                        from iam_delegation_grant
-                        where delegator_subject_id = ?
-                          and delegate_subject_id = ?
-                          and status = 'ENABLED'
-                          and deleted = 0
-                          and (valid_from is null or valid_from <= current_timestamp)
-                          and (expires_at is null or expires_at > current_timestamp)
-                          and (tool_code is null or tool_code = ?)
-                          and (permission_key is null or permission_key = ? or permission_key = '*')
-                          and (resource_code is null or resource_code = ?)
-                          and (action_code is null or action_code = ?)
-                        """,
-                humanSubjectId,
-                employeeSubjectId,
-                trim(request.toolCode()),
-                trim(request.permissionKey()),
-                trim(request.resourceCode()),
-                trim(request.actionCode())
-        );
+        List<Map<String, Object>> rows = repository.findMatchingGrants(humanSubjectId, employeeSubjectId,
+                trim(request.toolCode()), trim(request.permissionKey()), trim(request.resourceCode()), trim(request.actionCode()));
         Map<String, Object> grant = rows.stream()
                 .max(Comparator.comparingInt(row -> specificity(row, request)))
                 .orElse(null);
@@ -122,20 +99,7 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
     }
 
     private Long subjectId(String subjectType, Long refId) {
-        return jdbcTemplate.queryForObject(
-                """
-                        select id
-                        from iam_subject
-                        where subject_type = ?
-                          and ref_id = ?
-                          and status = 'ENABLED'
-                          and deleted = 0
-                        limit 1
-                """,
-                Long.class,
-                subjectType,
-                refId
-        );
+        return repository.findEnabledSubjectId(subjectType, refId);
     }
 
     private Long trustedUserIdOrNull(CurrentUser currentUser) {

@@ -1,12 +1,10 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.repository.AiIamUserRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 interface AiIamQueryFacade {
@@ -22,58 +20,22 @@ class DefaultAiIamQueryFacade implements AiIamQueryFacade {
 
     private static final int MAX_SEARCH_LIMIT = 100;
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final AiIamUserRepository userRepository;
 
-    DefaultAiIamQueryFacade(MyBatisQueryOperations jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    DefaultAiIamQueryFacade(AiIamUserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Override
     public UserSearchResult searchUsers(String keyword, String status, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, MAX_SEARCH_LIMIT));
-        List<Object> args = new java.util.ArrayList<>();
-        StringBuilder filterSql = new StringBuilder("""
-                from sys_user u
-                where u.deleted = 0
-                """);
-        appendUserSearchFilters(filterSql, args, keyword, status);
-
-        List<Object> queryArgs = new java.util.ArrayList<>(args);
-        StringBuilder sql = new StringBuilder("""
-                select u.id, u.username, u.nickname, u.real_name as realName, u.mobile, u.email,
-                       u.status, u.created_at as createdAt, u.updated_at as updatedAt
-                """);
-        sql.append(filterSql);
-        sql.append(" order by u.id desc limit ?");
-        queryArgs.add(safeLimit);
-        List<Map<String, Object>> users = jdbcTemplate.queryForList(sql.toString(), queryArgs.toArray()).stream()
+        List<Map<String, Object>> users = userRepository.search(keyword, status, safeLimit).stream()
                 .map(this::maskedUser)
                 .toList();
         long total = users.size() < safeLimit
                 ? users.size()
-                : nullToZero(jdbcTemplate.queryForObject("select count(1) " + filterSql, Long.class, args.toArray()));
+                : userRepository.count(keyword, status);
         return new UserSearchResult(users, total);
-    }
-
-    private void appendUserSearchFilters(StringBuilder sql, List<Object> args, String keyword, String status) {
-        if (StringUtils.hasText(keyword)) {
-            sql.append("""
-                     and (
-                       u.username like ? or u.nickname like ? or u.real_name like ?
-                       or u.mobile like ? or u.email like ?
-                     )
-                    """);
-            String pattern = like(keyword);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-            args.add(pattern);
-        }
-        if (StringUtils.hasText(status)) {
-            sql.append(" and u.status = ?");
-            args.add(status.trim().toUpperCase(Locale.ROOT));
-        }
     }
 
     private Map<String, Object> maskedUser(Map<String, Object> source) {
@@ -83,13 +45,6 @@ class DefaultAiIamQueryFacade implements AiIamQueryFacade {
         return user;
     }
 
-    private String like(String value) {
-        return "%" + value.trim() + "%";
-    }
-
-    private long nullToZero(Long value) {
-        return value == null ? 0L : value;
-    }
 
     private String maskMobile(Object value) {
         if (value == null) {

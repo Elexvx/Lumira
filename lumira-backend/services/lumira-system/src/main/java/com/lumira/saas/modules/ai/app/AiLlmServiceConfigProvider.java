@@ -1,131 +1,41 @@
 package com.lumira.saas.modules.ai.app;
 
 import com.lumira.saas.modules.ai.infrastructure.AiSecretCryptoService;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.repository.AiLlmConfigRepository;
+import java.util.Optional;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Optional;
-
 public interface AiLlmServiceConfigProvider {
-
     Optional<AiLlmServiceConfig> findById(Long serviceId);
-
     Optional<AiLlmServiceConfig> findDefault();
-
     Optional<AiLlmServiceConfig> findDefaultForEmployee(Long employeeId);
-
     Optional<AiLlmServiceConfig> findSupervisor();
 }
-
 
 @Service
 @Primary
 class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
+    private final AiLlmConfigRepository repository;
+    private final AiSecretCryptoService cryptoService;
 
-    private final MyBatisQueryOperations jdbcTemplate;
-    private final AiSecretCryptoService aiSecretCryptoService;
-
-    JdbcAiLlmServiceConfigProvider(MyBatisQueryOperations jdbcTemplate, AiSecretCryptoService aiSecretCryptoService) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.aiSecretCryptoService = aiSecretCryptoService;
+    JdbcAiLlmServiceConfigProvider(AiLlmConfigRepository repository, AiSecretCryptoService cryptoService) {
+        this.repository = repository;
+        this.cryptoService = cryptoService;
     }
-
-    @Override
-    public Optional<AiLlmServiceConfig> findById(Long serviceId) {
-        if (serviceId == null) {
-            return Optional.empty();
-        }
-        return jdbcTemplate.query(
-                """
-                        select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
-                               timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
-                        from ai_llm_service
-                        where id = ?
-                          and is_deleted = 0
-                          and enabled = 1
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
-                serviceId
-        ).stream()
-                .findFirst()
-                .map(this::decryptApiKey);
+    @Override public Optional<AiLlmServiceConfig> findById(Long id) {
+        return id == null ? Optional.empty() : repository.findEnabledById(id).map(this::decrypt);
     }
-
-    @Override
-    public Optional<AiLlmServiceConfig> findDefault() {
-        return jdbcTemplate.query(
-                """
-                        select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
-                               timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
-                        from ai_llm_service
-                        where is_deleted = 0
-                          and enabled = 1
-                        order by id asc
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class)
-        ).stream()
-                .findFirst()
-                .map(this::decryptApiKey);
+    @Override public Optional<AiLlmServiceConfig> findDefault() { return repository.findFirstEnabled().map(this::decrypt); }
+    @Override public Optional<AiLlmServiceConfig> findDefaultForEmployee(Long id) {
+        if (id == null) return Optional.empty();
+        return repository.findForEmployee(id)
+                .filter(config -> config.getId() != null && StringUtils.hasText(config.getProvider())).map(this::decrypt);
     }
-
-    @Override
-    public Optional<AiLlmServiceConfig> findDefaultForEmployee(Long employeeId) {
-        if (employeeId == null) {
-            return Optional.empty();
-        }
-        return jdbcTemplate.query(
-                """
-                        select s.id, s.provider, s.code, s.title, s.base_url as baseUrl, s.api_key_encrypted as apiKey,
-                               s.default_model as defaultModel, s.timeout_ms as timeoutMs, s.temperature, s.max_tokens as maxTokens
-                        from ai_employee e
-                        left join ai_llm_service s
-                          on s.id = e.default_llm_service_id
-                         and s.is_deleted = 0
-                        where e.id = ?
-                          and e.is_deleted = 0
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
-                employeeId
-        ).stream()
-                .findFirst()
-                .filter(config -> config.getId() != null && StringUtils.hasText(config.getProvider()))
-                .map(this::decryptApiKey);
-    }
-
-    @Override
-    public Optional<AiLlmServiceConfig> findSupervisor() {
-        return jdbcTemplate.query(
-                """
-                        select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
-                               timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
-                        from ai_llm_service
-                        where is_deleted = 0
-                          and enabled = 1
-                          and (
-                            lower(code) in ('supervisor', 'ai-supervisor', 'guardrail', 'ai-guardrail')
-                            or lower(title) like '%supervisor%'
-                            or title like '%监督%'
-                            or title like '%防护%'
-                          )
-                        order by id asc
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class)
-        ).stream()
-                .findFirst()
-                .map(this::decryptApiKey);
-    }
-
-    private AiLlmServiceConfig decryptApiKey(AiLlmServiceConfig config) {
-        if (config != null && StringUtils.hasText(config.getApiKey())) {
-            config.setApiKey(aiSecretCryptoService.decrypt(config.getApiKey()));
-        }
+    @Override public Optional<AiLlmServiceConfig> findSupervisor() { return repository.findSupervisor().map(this::decrypt); }
+    private AiLlmServiceConfig decrypt(AiLlmServiceConfig config) {
+        if (config != null && StringUtils.hasText(config.getApiKey())) config.setApiKey(cryptoService.decrypt(config.getApiKey()));
         return config;
     }
 }

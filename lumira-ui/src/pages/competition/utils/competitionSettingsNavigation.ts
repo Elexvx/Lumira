@@ -9,12 +9,12 @@ export const competitionSettingsSectionKeys = [
 export type CompetitionSettingsSectionKey = (typeof competitionSettingsSectionKeys)[number];
 
 export type CompetitionSettingsRegistrationTab =
-  | 'REGISTRATION_FIELD'
   | 'TEAM_AND_MEMBER'
   | 'PROJECT_FIELD'
+  | 'INTELLECTUAL_PROPERTY'
   | 'documents';
 
-export type CompetitionSettingsStageTab = 'timeline' | 'files';
+export type CompetitionSettingsStageTab = string;
 
 export type CompetitionSettingsNavigation = {
   section: CompetitionSettingsSectionKey;
@@ -23,16 +23,18 @@ export type CompetitionSettingsNavigation = {
 };
 
 const registrationTabByQueryValue: Record<string, CompetitionSettingsRegistrationTab> = {
-  registration: 'REGISTRATION_FIELD',
+  registration: 'PROJECT_FIELD',
   'team-members': 'TEAM_AND_MEMBER',
+  'other-fields': 'PROJECT_FIELD',
   project: 'PROJECT_FIELD',
+  'intellectual-property': 'INTELLECTUAL_PROPERTY',
   documents: 'documents',
 };
 
 const registrationQueryValueByTab: Record<CompetitionSettingsRegistrationTab, string> = {
-  REGISTRATION_FIELD: 'registration',
   TEAM_AND_MEMBER: 'team-members',
   PROJECT_FIELD: 'project',
+  INTELLECTUAL_PROPERTY: 'intellectual-property',
   documents: 'documents',
 };
 
@@ -48,9 +50,13 @@ export const parseCompetitionSettingsNavigation = (search: string): CompetitionS
   return {
     section,
     registrationTab: section === 'registration'
-      ? registrationTabByQueryValue[tabValue] || 'REGISTRATION_FIELD'
-      : 'REGISTRATION_FIELD',
-    stageTab: section === 'stages' && tabValue === 'timeline' ? 'timeline' : 'files',
+      ? registrationTabByQueryValue[tabValue] || 'PROJECT_FIELD'
+      : 'PROJECT_FIELD',
+    stageTab: section === 'stages'
+      ? tabValue === 'files'
+        ? 'preliminary'
+        : tabValue || 'preliminary'
+      : 'preliminary',
   };
 };
 
@@ -65,10 +71,10 @@ export const createCompetitionSettingsSearch = (
   if (section === 'registration') {
     const registrationTab = detail && detail in registrationQueryValueByTab
       ? detail as CompetitionSettingsRegistrationTab
-      : 'REGISTRATION_FIELD';
+      : 'PROJECT_FIELD';
     params.set('tab', registrationQueryValueByTab[registrationTab]);
   } else if (section === 'stages') {
-    params.set('tab', detail === 'timeline' ? 'timeline' : 'files');
+    params.set('tab', detail || 'timeline');
   } else {
     params.delete('tab');
   }

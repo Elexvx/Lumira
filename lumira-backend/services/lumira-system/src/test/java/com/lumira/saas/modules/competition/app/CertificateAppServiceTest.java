@@ -11,6 +11,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.competition.dto.CertificateDTO;
+import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateTemplateRepository;
+import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateRecordRepository;
 import com.lumira.saas.modules.competition.vo.CertificateVO;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import java.lang.reflect.Method;
@@ -18,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,19 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class CertificateAppServiceTest {
+
+    @Test
+    void certificateApplicationServiceShouldNotOwnSqlOrLowLevelPersistence() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
+        String templateAdapter = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateTemplateRepository.java"));
+        String recordAdapter = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateRecordRepository.java"));
+
+        assertThat(source).doesNotContain("MyBatisQueryOperations", "jdbcTemplate", "insert into certificate_",
+                "update certificate_", "select count(1) from certificate_");
+        assertThat(templateAdapter).contains("insert into certificate_template", "update certificate_template");
+        assertThat(recordAdapter).contains("insert into certificate_batch", "insert into certificate_record",
+                "insert into certificate_verify_log");
+    }
 
     @Test
     void listBatchesShouldScopeNormalUserByCreator() {
@@ -165,12 +181,15 @@ class CertificateAppServiceTest {
     void createTemplateShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         CertificateAppService service = new CertificateAppService(
-                jdbcTemplate,
+                new JdbcCertificateTemplateRepository(jdbcTemplate),
+                new JdbcCertificateRecordRepository(jdbcTemplate),
                 new ObjectMapper(),
                 mock(FileInternalApi.class),
                 mock(CertificateRenderService.class),
                 null,
-                null
+                null,
+                null,
+                true
         );
         CertificateDTO.TemplateUpsertRequest request = new CertificateDTO.TemplateUpsertRequest();
         request.setTemplateName("Award");
@@ -189,13 +208,15 @@ class CertificateAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
         CertificateAppService service = new CertificateAppService(
-                jdbcTemplate,
+                new JdbcCertificateTemplateRepository(jdbcTemplate),
+                new JdbcCertificateRecordRepository(jdbcTemplate),
                 new ObjectMapper(),
                 mock(FileInternalApi.class),
                 mock(CertificateRenderService.class),
                 permissionSnapshotService,
                 null,
-                null
+                null,
+                true
         );
         CertificateDTO.TemplateUpsertRequest request = new CertificateDTO.TemplateUpsertRequest();
         request.setTemplateName("Award");
@@ -352,7 +373,10 @@ class CertificateAppServiceTest {
 
     @Test
     void createTemplateShouldRefreshLiveUsernameBeforeDatabaseAccess() {
-        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class, invocation ->
+                "update".equals(invocation.getMethod().getName())
+                        ? 1
+                        : org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation));
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
@@ -372,7 +396,10 @@ class CertificateAppServiceTest {
         template.setStatus("DRAFT");
         when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<CertificateVO.Template>>any(), eq(10L)))
                 .thenReturn(List.of(template));
-        when(jdbcTemplate.update(org.mockito.ArgumentMatchers.contains("insert into certificate_template_version"), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(jdbcTemplate.update(
+                org.mockito.ArgumentMatchers.contains("insert into certificate_template_version"),
+                org.mockito.ArgumentMatchers.<Object[]>any()
+        ))
                 .thenReturn(1);
         CertificateAppService service =
                 service(jdbcTemplate, mock(FileInternalApi.class), permissionSnapshotService, systemInternalApi, null);
@@ -562,7 +589,8 @@ class CertificateAppServiceTest {
 
     @Test
     void certificateBatchAndRecordUpdatesShouldPersistTrustedUpdaterUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateRecordRepository.java"))
+                + Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
 
         assertThat(source).contains(
                 "updated_by, updated_by_uuid, deleted",
@@ -580,7 +608,7 @@ class CertificateAppServiceTest {
 
     @Test
     void certificateTemplateAndVersionWritesShouldPersistTrustedUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateTemplateRepository.java"));
 
         assertThat(source).contains(
                 "created_by, created_by_uuid, updated_by, updated_by_uuid, deleted",
@@ -601,11 +629,8 @@ class CertificateAppServiceTest {
 
         assertThat(source).contains(
                 "requireCertificateWrite(updated, \"Certificate template changed, please retry\")",
-                "requireCertificateWrite(templateInserted, \"Certificate template changed, please retry\")",
                 "requireCertificateWrite(versionInserted, \"Certificate template version changed, please retry\")",
                 "requireCertificateWrite(draftInserted, \"Certificate template version changed, please retry\")",
-                "requireCertificateWrite(batchInserted, \"Certificate batch changed, please retry\")",
-                "requireCertificateWrite(inserted, \"Certificate record changed, please retry\")",
                 "requireCertificateWrite(updated, \"Certificate template version changed, please retry\")",
                 "requireCertificateWrite(versionUpdated, \"Certificate template version changed, please retry\")",
                 "requireCertificateWrite(templateUpdated, \"Certificate template changed, please retry\")",
@@ -697,32 +722,74 @@ class CertificateAppServiceTest {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        if (systemInternalApi == null && sessionAuthenticationService == null) {
-            if (permissionSnapshotService == null) {
-                return new CertificateAppService(
-                        jdbcTemplate,
-                        new ObjectMapper(),
-                        fileInternalApi,
-                        mock(CertificateRenderService.class)
-                );
-            }
-            return new CertificateAppService(
-                    jdbcTemplate,
-                    new ObjectMapper(),
-                    fileInternalApi,
-                    mock(CertificateRenderService.class),
-                    permissionSnapshotService
-            );
-        }
+        when(jdbcTemplate.queryForList(
+                org.mockito.ArgumentMatchers.contains("sys_platform_setting_definition"),
+                eq("CERTIFICATE")
+        )).thenReturn(certificateDefaultRows());
         return new CertificateAppService(
-                jdbcTemplate,
+                new JdbcCertificateTemplateRepository(jdbcTemplate),
+                new JdbcCertificateRecordRepository(jdbcTemplate),
                 new ObjectMapper(),
                 fileInternalApi,
                 mock(CertificateRenderService.class),
                 permissionSnapshotService,
                 systemInternalApi,
-                sessionAuthenticationService
+                sessionAuthenticationService,
+                systemInternalApi != null || sessionAuthenticationService != null
         );
+    }
+
+    @Test
+    void certificateCanvasBusinessDefaultsShouldBeDatabaseOwned() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
+        String adapter = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateTemplateRepository.java"));
+        String sql = Files.readString(Path.of("../../sql/upgrade-certificate-setting-definition-persistence-v1.sql"));
+
+        assertThat(sql).contains("certificate.canvas.default-width", "certificate.canvas.default-json",
+                "certificate.canvas.default-variable-schema-json", "certificate.public.organizer",
+                "certificate.rule.template-statuses", "certificate.rule.scene-types",
+                "certificate.number.template-prefix", "certificate.number.verification-code-length",
+                "certificate.preview.batch-name", "recipientName", "verificationUrl");
+        assertThat(adapter).contains("from sys_platform_setting_definition");
+        assertThat(source)
+                .contains("templateRepository.findDefaultDefinitions")
+                .doesNotContain("private static final String DEFAULT_VARIABLE_SCHEMA =", "private String defaultCanvas()",
+                        "{\"page\":{\"width\":3508", "{\"key\":\"recipientName\"", "setOrganizer(\"Lumira\")",
+                        "Set.of(\"DRAFT\", \"PUBLISHED\", \"ARCHIVED\")", "\"CTPL-\" +", "\"CB-\" +",
+                        "\"CERT-\" +", "randomDigits(6)", "setBatchName(defaultText(request.getBatchName(), \"Preview\"))");
+    }
+
+    private List<Map<String, Object>> certificateDefaultRows() {
+        return List.of(
+                setting("certificate.canvas.default-width", "3508"),
+                setting("certificate.canvas.default-height", "2480"),
+                setting("certificate.canvas.default-orientation", "LANDSCAPE"),
+                setting("certificate.canvas.default-unit", "PX"),
+                setting("certificate.canvas.default-dpi", "300"),
+                setting("certificate.canvas.default-json", "{}"),
+                setting("certificate.canvas.default-variable-schema-json", "{}"),
+                setting("certificate.public.organizer", "Lumira"),
+                setting("certificate.rule.template-statuses", "DRAFT,PUBLISHED,ARCHIVED"),
+                setting("certificate.rule.scene-types", "COMPETITION_AWARD,PARTICIPATION,CUSTOM"),
+                setting("certificate.rule.source-types", "MANUAL,IMPORT,REGISTRATION,AWARD_RESULT"),
+                setting("certificate.rule.recipient-types", "USER,TEAM,PROJECT,CUSTOM"),
+                setting("certificate.rule.record-statuses", "ISSUED,REVOKED"),
+                setting("certificate.rule.default-scene-type", "COMPETITION_AWARD"),
+                setting("certificate.rule.default-source-type", "MANUAL"),
+                setting("certificate.rule.default-recipient-type", "CUSTOM"),
+                setting("certificate.number.template-prefix", "CTPL-"),
+                setting("certificate.number.batch-prefix", "CB-"),
+                setting("certificate.number.certificate-prefix", "CERT-"),
+                setting("certificate.number.timestamp-format", "yyyyMMddHHmmssSSS"),
+                setting("certificate.number.verification-code-length", "6"),
+                setting("certificate.preview.batch-no", "PREVIEW"),
+                setting("certificate.preview.batch-name", "Preview"),
+                setting("certificate.preview.status", "PREVIEW")
+        );
+    }
+
+    private Map<String, Object> setting(String key, String value) {
+        return Map.of("configKey", key, "configValue", value);
     }
 
     private CertificateDTO.BatchGenerateRequest batchRequest() {

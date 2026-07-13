@@ -1144,20 +1144,48 @@ public class CompetitionManagementAppService {
 
     private void seedDefaultConfigItems(String competitionUuid, Long configSetId, Long userId, String userUuid) {
         Long existing = jdbcTemplate.queryForObject(
-                "select count(1) from competition_config_item where competition_uuid = ? and deleted = 0",
+                "select count(1) from competition_config_item where config_set_id = ? and deleted = 0",
                 Long.class,
-                competitionUuid
+                configSetId
         );
         if (existing != null && existing > 0) {
             return;
         }
-        insertConfigItem(competitionUuid, configSetId, "AGREEMENT", "commitment", "Commitment", "", "Please configure the competition commitment.", 10, true, true, userId, userUuid);
-        insertConfigItem(competitionUuid, configSetId, "CONSENT", "informed-consent", "Informed consent", "", "Please configure the informed consent content.", 20, true, true, userId, userUuid);
-        insertConfigItem(competitionUuid, configSetId, "REGISTRATION_FIELD", "contact-name", "Contact name", "{\"type\":\"input\",\"target\":\"registration\"}", null, 10, true, true, userId, userUuid);
-        insertConfigItem(competitionUuid, configSetId, "REQUIRED_FILE", "work-file", "Work file", "{\"accept\":\"*\",\"maxSizeMb\":100,\"maxCount\":1}", null, 10, true, true, userId, userUuid);
+        jdbcTemplate.update(
+                """
+                        insert into competition_config_item (
+                            competition_uuid, config_set_id, item_type, item_key, title, content_json, content_text,
+                            sort_order, required_flag, enabled, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        )
+                        select ?, ?, item_type, item_key, title, content_json, content_text,
+                               sort_order, required_flag, enabled, ?, ?, ?, ?, 0
+                        from competition_config_item_template
+                        where template_code = 'DEFAULT' and enabled = 1 and deleted = 0
+                        order by sort_order asc, id asc
+                        """,
+                competitionUuid,
+                configSetId,
+                userId,
+                userUuid,
+                userId,
+                userUuid
+        );
     }
 
-    private void insertConfigItem(String competitionUuid, Long configSetId, String itemType, String itemKey, String title, String contentJson, String contentText, int sortOrder, boolean required, boolean enabled, Long userId, String userUuid) {
+    private void insertConfigItem(
+            String competitionUuid,
+            Long configSetId,
+            String itemType,
+            String itemKey,
+            String title,
+            String contentJson,
+            String contentText,
+            int sortOrder,
+            boolean required,
+            boolean enabled,
+            Long userId,
+            String userUuid
+    ) {
         jdbcTemplate.update(
                 """
                         insert into competition_config_item (

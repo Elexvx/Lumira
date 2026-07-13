@@ -11,6 +11,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.workorder.dto.WorkOrderFeedbackDTO;
+import com.lumira.saas.modules.system.workorder.infrastructure.JdbcWorkOrderFeedbackRepository;
+import com.lumira.saas.modules.system.workorder.repository.WorkOrderFeedbackRepository;
 import com.lumira.saas.modules.system.workorder.vo.WorkOrderFeedbackVO;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -35,12 +37,23 @@ import static org.mockito.Mockito.when;
 class WorkOrderFeedbackServiceTest {
 
     @Test
-    void workOrderWritesShouldPersistAuditUserUuid() throws Exception {
+    void workOrderBusinessPoliciesShouldBeDatabaseOwned() throws Exception {
+        String sql = Files.readString(Path.of("../../sql/upgrade-work-order-feedback-dictionary-v1.sql"));
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/workorder/app/WorkOrderFeedbackService.java"));
+
+        assertThat(sql).contains("work_order_feedback_status", "work_order_feedback_priority",
+                "work_order_feedback_default", "UPLOAD_BUCKET", "INITIAL_STATUS", "TERMINAL");
+        assertThat(source).doesNotContain("List.of(\"OPEN\"", "List.of(\"LOW\"", "SUPPORT_FEEDBACK_BUCKET");
+    }
+
+    @Test
+    void workOrderWritesShouldPersistAuditUserUuid() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/workorder/infrastructure/JdbcWorkOrderFeedbackRepository.java"));
+        String appSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/workorder/app/WorkOrderFeedbackService.java"));
 
         assertThat(source).contains("created_by, created_by_uuid, created_at, updated_by, updated_by_uuid");
         assertThat(source).contains("updated_by_uuid = ?");
-        assertThat(source).contains("trustedUserUuid(currentUser)");
+        assertThat(appSource).contains("trustedUserUuid(currentUser)");
         assertThat(source).contains("and status = ?");
         assertThat(source).contains("and submitter_id = ?");
         assertThat(source).contains("and submitter_uuid = ?");
@@ -50,7 +63,7 @@ class WorkOrderFeedbackServiceTest {
     void listShouldRejectUnauthenticatedUserBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
 
         assertThatThrownBy(() -> service.list(unauthenticatedUser(), null, null, null, "mine", 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -64,7 +77,7 @@ class WorkOrderFeedbackServiceTest {
     void listShouldRejectBlankUsernameBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
         CurrentUser currentUser = user(Set.of("*", "plugin:work-order-feedback:manage"));
         currentUser.setUsername(" ");
 
@@ -80,7 +93,7 @@ class WorkOrderFeedbackServiceTest {
     void listShouldRejectMissingSessionVersionBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
         CurrentUser currentUser = user(Set.of("*", "plugin:work-order-feedback:manage"));
         currentUser.setSessionVersion(null);
 
@@ -96,7 +109,7 @@ class WorkOrderFeedbackServiceTest {
     void createShouldRejectMissingUserUuidBeforePluginCheckAndDatabaseWrite() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
         CurrentUser currentUser = user(Set.of("*", "plugin:work-order-feedback:create"));
         currentUser.setUserUuid(" ");
         WorkOrderFeedbackDTO.CreateRequest request = new WorkOrderFeedbackDTO.CreateRequest();
@@ -120,7 +133,7 @@ class WorkOrderFeedbackServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("plugin:work-order-feedback:view")));
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, fileInternalApi, permissionSnapshotService);
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, fileInternalApi, permissionSnapshotService);
         WorkOrderFeedbackDTO.CreateRequest request = new WorkOrderFeedbackDTO.CreateRequest();
         request.setTitle("Problem");
         request.setDetailHtml("<p>Details</p>");
@@ -144,7 +157,7 @@ class WorkOrderFeedbackServiceTest {
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "DISABLED"));
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 permissionSnapshotService,
@@ -174,7 +187,7 @@ class WorkOrderFeedbackServiceTest {
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 permissionSnapshotService,
@@ -208,7 +221,7 @@ class WorkOrderFeedbackServiceTest {
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("plugin:work-order-feedback:create")));
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 permissionSnapshotService,
@@ -236,7 +249,7 @@ class WorkOrderFeedbackServiceTest {
         when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "User context is required"));
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 mock(PermissionSnapshotService.class),
@@ -261,7 +274,7 @@ class WorkOrderFeedbackServiceTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 null,
@@ -290,7 +303,7 @@ class WorkOrderFeedbackServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 permissionSnapshotService,
@@ -326,7 +339,7 @@ class WorkOrderFeedbackServiceTest {
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "alice-live", "ENABLED"));
         WorkOrderFeedbackService service = new WorkOrderFeedbackService(
-                jdbcTemplate,
+                repository(jdbcTemplate),
                 pluginStateService,
                 fileInternalApi,
                 permissionSnapshotService,
@@ -350,7 +363,7 @@ class WorkOrderFeedbackServiceTest {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, fileInternalApi);
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, fileInternalApi);
         CurrentUser currentUser = user(Set.of("*", "plugin:work-order-feedback:create"));
         currentUser.setPermissionsVersion(" ");
 
@@ -367,7 +380,7 @@ class WorkOrderFeedbackServiceTest {
     void listShouldRejectAdminScopeWithoutManagePermission() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
 
         assertThatThrownBy(() -> service.list(user(Set.of("plugin:work-order-feedback:view")), null, null, null, "admin", 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -381,7 +394,7 @@ class WorkOrderFeedbackServiceTest {
     void listMineShouldRequireViewPermissionAtServiceLayer() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
 
         assertThatThrownBy(() -> service.list(user(Set.of("plugin:work-order-feedback:create")), null, null, null, "mine", 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -420,7 +433,7 @@ class WorkOrderFeedbackServiceTest {
     void detailShouldRejectAdminScopeWithoutManagePermission() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
 
         assertThatThrownBy(() -> service.detail(user(Set.of("plugin:work-order-feedback:view")), 100L, "admin"))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -434,7 +447,7 @@ class WorkOrderFeedbackServiceTest {
     void detailMineShouldRequireViewPermissionBeforeLookup() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
 
         assertThatThrownBy(() -> service.detail(user(Set.of("plugin:work-order-feedback:create")), 100L, "mine"))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -465,7 +478,7 @@ class WorkOrderFeedbackServiceTest {
     void detailShouldRejectInvalidIdBeforePluginCheckAndLookup() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
 
         assertThatThrownBy(() -> service.detail(user(Set.of("plugin:work-order-feedback:view")), 0L, "mine"))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -479,7 +492,7 @@ class WorkOrderFeedbackServiceTest {
     void createShouldRequireCreatePermissionBeforeDatabaseWrite() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
         WorkOrderFeedbackDTO.CreateRequest request = new WorkOrderFeedbackDTO.CreateRequest();
         request.setTitle("Problem");
         request.setDetailHtml("<p>Details</p>");
@@ -524,7 +537,7 @@ class WorkOrderFeedbackServiceTest {
     void updateStatusShouldRequireManagePermissionAtServiceLayer() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
         WorkOrderFeedbackDTO.StatusRequest request = new WorkOrderFeedbackDTO.StatusRequest();
         request.setStatus("RESOLVED");
 
@@ -540,7 +553,7 @@ class WorkOrderFeedbackServiceTest {
     void updateStatusShouldRejectInvalidIdBeforePluginCheckAndWrite() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
         WorkOrderFeedbackDTO.StatusRequest request = new WorkOrderFeedbackDTO.StatusRequest();
         request.setStatus("RESOLVED");
 
@@ -576,7 +589,7 @@ class WorkOrderFeedbackServiceTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
         doNothing().when(pluginStateService).ensureEnabled(any(CurrentUser.class));
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, fileInternalApi);
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, fileInternalApi);
         CurrentUser currentUser = user(Set.of("*", "plugin:work-order-feedback:create"));
         currentUser.setUsername(" ");
 
@@ -595,7 +608,7 @@ class WorkOrderFeedbackServiceTest {
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
         doNothing().when(pluginStateService).ensureEnabled(any(CurrentUser.class));
-        WorkOrderFeedbackService service = new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, fileInternalApi);
+        WorkOrderFeedbackService service = new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, fileInternalApi);
 
         assertThatThrownBy(() -> service.uploadImage(user(Set.of("plugin:work-order-feedback:view")), mock(org.springframework.web.multipart.MultipartFile.class)))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -609,7 +622,32 @@ class WorkOrderFeedbackServiceTest {
     private WorkOrderFeedbackService service(MyBatisQueryOperations jdbcTemplate) {
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
         doNothing().when(pluginStateService).ensureEnabled(any(CurrentUser.class));
-        return new WorkOrderFeedbackService(jdbcTemplate, pluginStateService, mock(FileInternalApi.class));
+        return new WorkOrderFeedbackService(repository(jdbcTemplate), pluginStateService, mock(FileInternalApi.class));
+    }
+
+    private WorkOrderFeedbackRepository repository(MyBatisQueryOperations database) {
+        return new JdbcWorkOrderFeedbackRepository(database) {
+            @Override
+            public List<PolicyItem> findEnabledPolicyItems(String dictionaryCode) {
+                return switch (dictionaryCode) {
+                    case "work_order_feedback_status" -> List.of(
+                            new PolicyItem("待处理", "OPEN", null, 10),
+                            new PolicyItem("处理中", "PROCESSING", null, 20),
+                            new PolicyItem("已解决", "RESOLVED", "TERMINAL", 30),
+                            new PolicyItem("已关闭", "CLOSED", "TERMINAL", 40));
+                    case "work_order_feedback_priority" -> List.of(
+                            new PolicyItem("低", "LOW", null, 10), new PolicyItem("普通", "NORMAL", null, 20),
+                            new PolicyItem("高", "HIGH", null, 30), new PolicyItem("紧急", "URGENT", null, 40));
+                    case "work_order_feedback_default" -> List.of(
+                            new PolicyItem("OPEN", "INITIAL_STATUS", null, 10),
+                            new PolicyItem("NORMAL", "DEFAULT_PRIORITY", null, 20),
+                            new PolicyItem("support_feedback", "UPLOAD_BUCKET", null, 30),
+                            new PolicyItem("工单反馈", "IMAGE_CATEGORY", null, 40),
+                            new PolicyItem("工单反馈富文本图片", "IMAGE_REMARK", null, 50));
+                    default -> List.of();
+                };
+            }
+        };
     }
 
     private CurrentUser user(Set<String> permissions) {

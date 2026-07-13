@@ -4,6 +4,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.lumira.saas.modules.system.dict.infrastructure.JdbcDictRuntimeRepository;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.util.ArrayList;
@@ -18,7 +19,7 @@ class DictRuntimeServiceTest {
     @Test
     void listEnabledItemsShouldNotDependOnTenantScope() {
         FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate(List.of(item("MALE", "Male", 10)));
-        DictRuntimeService service = new DictRuntimeService(jdbcTemplate);
+        DictRuntimeService service = new DictRuntimeService(new JdbcDictRuntimeRepository(jdbcTemplate));
 
         List<SystemVO.DictItemVO> items = service.listEnabledItems(" sys_user_gender ");
 
@@ -31,7 +32,7 @@ class DictRuntimeServiceTest {
     @Test
     void normalizeValueShouldTrimUppercaseAndRejectIllegalValue() {
         FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate(List.of(item("ENABLED", "Enabled", 10)));
-        DictRuntimeService service = new DictRuntimeService(jdbcTemplate);
+        DictRuntimeService service = new DictRuntimeService(new JdbcDictRuntimeRepository(jdbcTemplate));
 
         assertEquals("ENABLED", service.normalizeValue("sys_common_status", " enabled ", null, false, "bad status"));
         assertThrows(BizException.class, () -> service.normalizeValue("sys_common_status", "disabled", null, false, "bad status"));
@@ -40,7 +41,7 @@ class DictRuntimeServiceTest {
     @Test
     void normalizeValueShouldAllowFallbackWhenDictionaryMissing() {
         FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate(List.of());
-        DictRuntimeService service = new DictRuntimeService(jdbcTemplate);
+        DictRuntimeService service = new DictRuntimeService(new JdbcDictRuntimeRepository(jdbcTemplate));
 
         assertEquals("CUSTOM", service.normalizeValue("missing_dict", " custom ", null, true, "bad value"));
     }
@@ -48,7 +49,7 @@ class DictRuntimeServiceTest {
     @Test
     void labelOfShouldReturnEnabledItemLabel() {
         FakeJdbcTemplate jdbcTemplate = new FakeJdbcTemplate(List.of(item("OPEN", "Open", 10)));
-        DictRuntimeService service = new DictRuntimeService(jdbcTemplate);
+        DictRuntimeService service = new DictRuntimeService(new JdbcDictRuntimeRepository(jdbcTemplate));
 
         assertEquals("Open", service.labelOf("team_join_mode", " open "));
     }

@@ -1,6 +1,6 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.repository.AiIamUserRepository;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -13,8 +13,8 @@ class AiIamQueryFacadeTest {
 
     @Test
     void searchUsersShouldSkipCountForShortResultAndCapLimit() {
-        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        DefaultAiIamQueryFacade facade = new DefaultAiIamQueryFacade(queryOperations);
+        RecordingUserRepository repository = new RecordingUserRepository();
+        DefaultAiIamQueryFacade facade = new DefaultAiIamQueryFacade(repository);
 
         AiIamQueryFacade.UserSearchResult result = facade.searchUsers("admin", "ENABLED", 500);
 
@@ -22,28 +22,23 @@ class AiIamQueryFacadeTest {
         assertThat(result.total()).isEqualTo(1L);
         assertThat(result.items().getFirst().get("mobile")).isEqualTo("138****8000");
         assertThat(result.items().getFirst().get("email")).isEqualTo("a***@example.com");
-        assertThat(queryOperations.countQueryCalled).isFalse();
-        assertThat(queryOperations.requestedLimit).isEqualTo(100);
-        assertThat(queryOperations.lastUserSearchSql).doesNotContain("tenant");
+        assertThat(repository.countCalled).isFalse();
+        assertThat(repository.requestedLimit).isEqualTo(100);
     }
 
-    private static final class RecordingQueryOperations extends MyBatisQueryOperations {
-        private boolean countQueryCalled;
+    private static final class RecordingUserRepository implements AiIamUserRepository {
+        private boolean countCalled;
         private int requestedLimit;
-        private String lastUserSearchSql;
 
         @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (sql.contains("count(1)")) {
-                countQueryCalled = true;
-            }
-            return requiredType.cast(10L);
+        public long count(String keyword, String status) {
+            countCalled = true;
+            return 10L;
         }
 
         @Override
-        public List<Map<String, Object>> queryForList(String sql, Object... args) {
-            lastUserSearchSql = sql;
-            requestedLimit = ((Number) args[args.length - 1]).intValue();
+        public List<Map<String, Object>> search(String keyword, String status, int limit) {
+            requestedLimit = limit;
             return List.of(Map.of(
                     "id", 100L,
                     "username", "admin",

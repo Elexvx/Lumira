@@ -7,11 +7,10 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.project.dto.ProjectDTO;
+import com.lumira.saas.modules.project.repository.ProjectRepository;
 import com.lumira.saas.modules.project.vo.ProjectVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,17 +19,16 @@ import org.springframework.util.StringUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 @Service
 public class ProjectManagementAppService {
-    private static final Set<String> LOCALES = Set.of("zh", "en");
-    private static final Set<String> STATUSES = Set.of("draft", "published");
-    private static final Set<String> RATINGS = Set.of("all", "excellent", "popular", "new");
+    private static final String LOCALE_DICT_CODE = "aiadc_project_locale";
+    private static final String STATUS_DICT_CODE = "aiadc_project_status";
+    private static final String RATING_DICT_CODE = "aiadc_project_rating";
+    private static final String FILTER_ALL_DICT_CODE = "aiadc_project_filter_all";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final String VIEW = "aiadc:project:view";
     private static final String CREATE = "aiadc:project:create";
@@ -47,7 +45,7 @@ public class ProjectManagementAppService {
     private static final int MAX_OWNER_LENGTH = 128;
     private static final int MAX_LABEL_LENGTH = 64;
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final ProjectRepository projectRepository;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -55,30 +53,30 @@ public class ProjectManagementAppService {
 
     @Autowired
     public ProjectManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ProjectRepository projectRepository,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService, true);
+        this(projectRepository, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     public ProjectManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ProjectRepository projectRepository,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(projectRepository, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
     private ProjectManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ProjectRepository projectRepository,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.projectRepository = projectRepository;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
@@ -86,14 +84,14 @@ public class ProjectManagementAppService {
     }
 
     public ProjectManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ProjectRepository projectRepository,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, null, false);
+        this(projectRepository, permissionSnapshotService, null, null, false);
     }
 
-    public ProjectManagementAppService(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null, null, null, false);
+    public ProjectManagementAppService(ProjectRepository projectRepository) {
+        this(projectRepository, null, null, null, false);
     }
 
     public PageResponse<ProjectVO.Project> listProjects(
@@ -111,54 +109,23 @@ public class ProjectManagementAppService {
         requireAnyPermission(currentUser, VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_project where deleted = 0");
-        if (StringUtils.hasText(keyword)) {
-            where.append(" and (title like ? or code like ? or description like ? or tags like ?)");
-            String pattern = "%" + keyword.trim() + "%";
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
+        String filterAll = requiredDictValues(FILTER_ALL_DICT_CODE).getFirst();
+        String normalizedCategory = normalizeOptionalFilter(category, filterAll);
+        String normalizedRating = normalizeOptionalFilter(rating, filterAll);
+        if (normalizedRating != null) {
+            normalizedRating = normalizeEnum(normalizedRating, null, Set.copyOf(requiredDictValues(RATING_DICT_CODE)), "Invalid project rating");
         }
-        if (StringUtils.hasText(category) && !"all".equalsIgnoreCase(category.trim())) {
-            where.append(" and category = ?");
-            params.add(category.trim());
-        }
-        if (StringUtils.hasText(ownerName)) {
-            where.append(" and owner_name like ?");
-            params.add("%" + ownerName.trim() + "%");
-        }
-        if (StringUtils.hasText(rating) && !"all".equalsIgnoreCase(rating.trim())) {
-            where.append(" and rating = ?");
-            params.add(normalizeEnum(rating, null, RATINGS, "Invalid project rating"));
-        }
-        if (StringUtils.hasText(status)) {
-            where.append(" and status = ?");
-            params.add(normalizeEnum(status, null, STATUSES, "Invalid project status"));
-        }
-        if (StringUtils.hasText(locale)) {
-            where.append(" and locale = ?");
-            params.add(normalizeEnum(locale, null, LOCALES, "Invalid project locale"));
-        }
-        if (featured != null) {
-            where.append(" and featured = ?");
-            params.add(Boolean.TRUE.equals(featured) ? 1 : 0);
-        }
-
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> selectParams = new ArrayList<>(params);
-        selectParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        selectParams.add(normalizedPageSize);
-        List<ProjectVO.Project> records = jdbcTemplate.query(
-                projectSelect() + where + " order by sort asc, featured desc, updated_at desc, id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(ProjectVO.Project.class),
-                selectParams.toArray()
-        );
+        String normalizedStatus = StringUtils.hasText(status)
+                ? normalizeEnum(status, null, Set.copyOf(requiredDictValues(STATUS_DICT_CODE)), "Invalid project status") : null;
+        String normalizedLocale = StringUtils.hasText(locale)
+                ? normalizeEnum(locale, null, Set.copyOf(requiredDictValues(LOCALE_DICT_CODE)), "Invalid project locale") : null;
+        ProjectRepository.PageData page = projectRepository.search(keyword, normalizedCategory, ownerName,
+                normalizedRating, normalizedStatus, normalizedLocale, featured,
+                (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
 
         PageResponse<ProjectVO.Project> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setRecords(page.records());
+        response.setTotal(page.total());
         response.setPageNo(normalizedPageNo);
         response.setPageSize(normalizedPageSize);
         response.setHasMore(normalizedPageNo * normalizedPageSize < response.getTotal());
@@ -181,35 +148,8 @@ public class ProjectManagementAppService {
         String userUuid = currentUser.getUserUuid().trim();
         requireRequest(request);
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into aiadc_project (
-                            code, locale, title, category, description, image_url,
-                            owner_name, rating, sort, status, tags, cta_label, cta_href,
-                            featured, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
-                normalized.getCode(),
-                normalized.getLocale(),
-                normalized.getTitle(),
-                normalized.getCategory(),
-                normalized.getDescription(),
-                normalized.getImageUrl(),
-                normalized.getOwnerName(),
-                normalized.getRating(),
-                normalized.getSort(),
-                normalized.getStatus(),
-                normalized.getTags(),
-                normalized.getCtaLabel(),
-                normalized.getCtaHref(),
-                Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
-                userId,
-                userUuid,
-                userId,
-                userUuid
-        );
-        requireProjectWrite(inserted);
-        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        Long id = projectRepository.create(normalized, userId, userUuid);
+        requireProjectWrite(id == null ? 0 : 1);
         ProjectVO.Project createdProject = findProject(id);
         if (createdProject == null) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
@@ -228,36 +168,7 @@ public class ProjectManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
         }
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_project
-                        set code = ?, locale = ?, title = ?, category = ?, description = ?, image_url = ?,
-                            owner_name = ?, rating = ?, sort = ?, status = ?, tags = ?, cta_label = ?,
-                            cta_href = ?, featured = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and code = ? and locale = ? and status = ? and deleted = 0
-                        """,
-                normalized.getCode(),
-                normalized.getLocale(),
-                normalized.getTitle(),
-                normalized.getCategory(),
-                normalized.getDescription(),
-                normalized.getImageUrl(),
-                normalized.getOwnerName(),
-                normalized.getRating(),
-                normalized.getSort(),
-                normalized.getStatus(),
-                normalized.getTags(),
-                normalized.getCtaLabel(),
-                normalized.getCtaHref(),
-                Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                existing.getCode(),
-                existing.getLocale(),
-                existing.getStatus()
-        );
+        int updated = projectRepository.update(id, existing, normalized, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
         }
@@ -273,20 +184,7 @@ public class ProjectManagementAppService {
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_project
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and code = ? and locale = ? and status = ? and deleted = 0
-                        """,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                existing.getCode(),
-                existing.getLocale(),
-                existing.getStatus()
-        );
+        int updated = projectRepository.delete(id, existing, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
         }
@@ -295,12 +193,7 @@ public class ProjectManagementAppService {
 
     private ProjectVO.Project findProject(Long id) {
         requirePositiveId(id, "Project id is required");
-        List<ProjectVO.Project> records = jdbcTemplate.query(
-                projectSelect() + " from aiadc_project where id = ? and deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(ProjectVO.Project.class),
-                id
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return projectRepository.findById(id).orElse(null);
     }
 
     private void requireProjectWrite(int updated) {
@@ -312,19 +205,22 @@ public class ProjectManagementAppService {
     private ProjectDTO.ProjectUpsertRequest normalizeRequest(ProjectDTO.ProjectUpsertRequest request) {
         ProjectDTO.ProjectUpsertRequest normalized = new ProjectDTO.ProjectUpsertRequest();
         normalized.setCode(trimRequired(request.getCode(), "Project code is required", MAX_CODE_LENGTH, "Project code is too long"));
-        normalized.setLocale(normalizeEnum(request.getLocale(), "zh", LOCALES, "Invalid project locale"));
         normalized.setTitle(trimRequired(request.getTitle(), "Project title is required", MAX_TITLE_LENGTH, "Project title is too long"));
         normalized.setCategory(trimRequired(request.getCategory(), "Project category is required", MAX_CATEGORY_LENGTH, "Project category is too long"));
         normalized.setDescription(trimOptional(request.getDescription(), MAX_LONG_TEXT_LENGTH, "Project description is too long"));
         normalized.setImageUrl(normalizeUrl(request.getImageUrl(), "Project image URL"));
         normalized.setOwnerName(trimOptional(request.getOwnerName(), MAX_OWNER_LENGTH, "Project owner name is too long"));
-        normalized.setRating(normalizeEnum(request.getRating(), "popular", RATINGS, "Invalid project rating"));
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
-        normalized.setStatus(normalizeEnum(request.getStatus(), "draft", STATUSES, "Invalid project status"));
         normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Project tags are too long"));
         normalized.setCtaLabel(trimOptional(request.getCtaLabel(), MAX_LABEL_LENGTH, "Project CTA label is too long"));
         normalized.setCtaHref(normalizeUrl(request.getCtaHref(), "Project CTA URL"));
         normalized.setFeatured(Boolean.TRUE.equals(request.getFeatured()));
+        List<String> locales = requiredDictValues(LOCALE_DICT_CODE);
+        List<String> ratings = requiredDictValues(RATING_DICT_CODE);
+        List<String> statuses = requiredDictValues(STATUS_DICT_CODE);
+        normalized.setLocale(normalizeEnum(request.getLocale(), locales.getFirst(), Set.copyOf(locales), "Invalid project locale"));
+        normalized.setRating(normalizeEnum(request.getRating(), ratings.getFirst(), Set.copyOf(ratings), "Invalid project rating"));
+        normalized.setStatus(normalizeEnum(request.getStatus(), statuses.getFirst(), Set.copyOf(statuses), "Invalid project status"));
         return normalized;
     }
 
@@ -491,6 +387,21 @@ public class ProjectManagementAppService {
         return normalized;
     }
 
+    private String normalizeOptionalFilter(String value, String filterAll) {
+        if (!StringUtils.hasText(value) || filterAll.equalsIgnoreCase(value.trim())) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private List<String> requiredDictValues(String dictCode) {
+        List<String> values = projectRepository.findEnabledDictValues(dictCode);
+        if (values == null || values.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "Project dictionary is not configured: " + dictCode);
+        }
+        return values;
+    }
+
     private String trimRequired(String value, String message) {
         String trimmed = trimToNull(value);
         if (trimmed == null) {
@@ -537,15 +448,6 @@ public class ProjectManagementAppService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
-    }
-
-    private String projectSelect() {
-        return """
-                select id, code, locale, title, category, description,
-                       image_url as imageUrl, owner_name as ownerName, rating, sort, status,
-                       tags, cta_label as ctaLabel, cta_href as ctaHref, featured,
-                       created_at as createdAt, updated_at as updatedAt
-                """;
     }
 
     private static BizException biz(ErrorCode code, String message) {

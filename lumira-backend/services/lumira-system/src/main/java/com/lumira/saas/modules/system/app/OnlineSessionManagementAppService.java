@@ -15,9 +15,9 @@ import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
+import com.lumira.saas.modules.system.online.OnlineSessionUserRepository;
+import com.lumira.saas.modules.system.online.OnlineSessionUserRepository.UserRecord;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
@@ -54,7 +53,7 @@ public class OnlineSessionManagementAppService {
     private static final String PERMISSION_BAN = "system:online-user:ban";
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final OnlineSessionUserRepository userRepository;
     private final AuthSessionStore authSessionStore;
     private final SecuritySettingsService securitySettingsService;
     private final OperationAuditService operationAuditService;
@@ -65,7 +64,7 @@ public class OnlineSessionManagementAppService {
     private final boolean enforceTrustedUserResolution;
 
     public OnlineSessionManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            OnlineSessionUserRepository userRepository,
             AuthSessionStore authSessionStore,
             SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,
@@ -73,7 +72,7 @@ public class OnlineSessionManagementAppService {
             PermissionSnapshotService permissionSnapshotService
     ) {
         this(
-                jdbcTemplate,
+                userRepository,
                 authSessionStore,
                 securitySettingsService,
                 operationAuditService,
@@ -87,7 +86,7 @@ public class OnlineSessionManagementAppService {
 
     @Autowired
     public OnlineSessionManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            OnlineSessionUserRepository userRepository,
             AuthSessionStore authSessionStore,
             SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,
@@ -96,11 +95,11 @@ public class OnlineSessionManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(userRepository, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
     private OnlineSessionManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            OnlineSessionUserRepository userRepository,
             AuthSessionStore authSessionStore,
             SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,
@@ -110,7 +109,7 @@ public class OnlineSessionManagementAppService {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.userRepository = userRepository;
         this.authSessionStore = authSessionStore;
         this.securitySettingsService = securitySettingsService;
         this.operationAuditService = operationAuditService;
@@ -122,7 +121,7 @@ public class OnlineSessionManagementAppService {
     }
 
     public OnlineSessionManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            OnlineSessionUserRepository userRepository,
             AuthSessionStore authSessionStore,
             SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,
@@ -131,7 +130,7 @@ public class OnlineSessionManagementAppService {
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                userRepository,
                 authSessionStore,
                 securitySettingsService,
                 operationAuditService,
@@ -144,13 +143,13 @@ public class OnlineSessionManagementAppService {
     }
 
     public OnlineSessionManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            OnlineSessionUserRepository userRepository,
             AuthSessionStore authSessionStore,
             SecuritySettingsService securitySettingsService,
             OperationAuditService operationAuditService,
             OnlineSessionStreamService onlineSessionStreamService
     ) {
-        this(jdbcTemplate, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, null, null, null, false);
+        this(userRepository, authSessionStore, securitySettingsService, operationAuditService, onlineSessionStreamService, null, null, null, false);
     }
 
     public PageResponse<SystemVO.OnlineSessionVO> listOnlineSessions(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -168,7 +167,7 @@ public class OnlineSessionManagementAppService {
             long end = Math.min(total, start + normalizedPageSize);
             sessions = new ArrayList<>(sessions.subList((int) start, (int) end));
         }
-        Map<Long, UserRow> userMap = loadUsers(sessions.stream().map(AuthSession::getUserId).filter(Objects::nonNull).toList());
+        Map<Long, UserRecord> userMap = loadUsers(sessions.stream().map(AuthSession::getUserId).filter(Objects::nonNull).toList());
 
         PageResponse<SystemVO.OnlineSessionVO> response = new PageResponse<>();
         response.setPageNo(normalizedPageNo);
@@ -212,21 +211,14 @@ public class OnlineSessionManagementAppService {
             throw new BizException(ErrorCode.FORBIDDEN, "You cannot ban your own account");
         }
 
-        UserRow targetUser = loadUser(userId)
+        UserRecord targetUser = loadUser(userId)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "User does not exist or has been deleted"));
 
         if (isProtectedAdminAccount(targetUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Protected admin account cannot be banned");
         }
 
-        int updated = jdbcTemplate.update(
-                "update sys_user set status = 'DISABLED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
-                operatorId,
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                userId,
-                targetUser.getUuid()
-        );
+        int updated = userRepository.disable(targetUser, operatorId, currentUser.getUserUuid(), LocalDateTime.now());
         if (updated <= 0) {
             throw new BizException(ErrorCode.NOT_FOUND, "User changed, please retry");
         }
@@ -249,7 +241,7 @@ public class OnlineSessionManagementAppService {
             throw new BizException(ErrorCode.BAD_REQUEST, "User uuid is required");
         }
         String trustedUserUuid = loadUser(userId)
-                .map(UserRow::getUuid)
+                .map(UserRecord::getUuid)
                 .filter(StringUtils::hasText)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "User does not exist or cannot be accessed"));
         if (!trustedUserUuid.trim().equals(userUuid.trim())) {
@@ -508,7 +500,7 @@ public class OnlineSessionManagementAppService {
         target.setLoginType(source.getLoginType());
     }
 
-    private Map<Long, UserRow> loadUsers(Collection<Long> userIds) {
+    private Map<Long, UserRecord> loadUsers(Collection<Long> userIds) {
         if (CollectionUtils.isEmpty(userIds)) {
             return Map.of();
         }
@@ -518,43 +510,24 @@ public class OnlineSessionManagementAppService {
             return Map.of();
         }
 
-        String placeholders = distinctIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        List<UserRow> rows = jdbcTemplate.query(
-                """
-                        select id, uuid, username, nickname, real_name as realName
-                        from sys_user
-                        where deleted = 0 and id in (%s)
-                        """.formatted(placeholders),
-                new BeanPropertyRowMapper<>(UserRow.class),
-                distinctIds.toArray()
-        );
-        Map<Long, UserRow> result = new LinkedHashMap<>();
-        for (UserRow row : rows) {
+        List<UserRecord> rows = userRepository.findByIds(distinctIds);
+        Map<Long, UserRecord> result = new LinkedHashMap<>();
+        for (UserRecord row : rows) {
             result.put(row.getId(), row);
         }
         return result;
     }
 
-    private java.util.Optional<UserRow> loadUser(Long userId) {
-        List<UserRow> rows = jdbcTemplate.query(
-                """
-                        select u.id, u.uuid, u.username, u.nickname, u.real_name as realName
-                        from sys_user u
-                        where u.id = ? and u.deleted = 0
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(UserRow.class),
-                userId
-        );
-        return rows.stream().findFirst();
+    private java.util.Optional<UserRecord> loadUser(Long userId) {
+        return userRepository.findById(userId);
     }
 
-    private boolean isProtectedAdminAccount(UserRow user) {
+    private boolean isProtectedAdminAccount(UserRecord user) {
         return user != null
                 && Objects.equals(user.getId(), PROTECTED_ADMIN_ID);
     }
 
-    private SystemVO.OnlineSessionVO toOnlineSessionVO(AuthSession session, UserRow userRow) {
+    private SystemVO.OnlineSessionVO toOnlineSessionVO(AuthSession session, UserRecord userRow) {
         SystemVO.OnlineSessionVO vo = new SystemVO.OnlineSessionVO();
         vo.setSessionId(session.getSessionId());
         vo.setUserId(session.getUserId());
@@ -581,53 +554,6 @@ public class OnlineSessionManagementAppService {
         }
     }
 
-    public static class UserRow {
-        private Long id;
-        private String uuid;
-        private String username;
-        private String nickname;
-        private String realName;
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getUuid() {
-            return uuid;
-        }
-
-        public void setUuid(String uuid) {
-            this.uuid = uuid;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getNickname() {
-            return nickname;
-        }
-
-        public void setNickname(String nickname) {
-            this.nickname = nickname;
-        }
-
-        public String getRealName() {
-            return realName;
-        }
-
-        public void setRealName(String realName) {
-            this.realName = realName;
-        }
-    }
 
     private record SessionOwnerKey(Long userId, String userUuid) {
         private static SessionOwnerKey from(AuthSession session) {

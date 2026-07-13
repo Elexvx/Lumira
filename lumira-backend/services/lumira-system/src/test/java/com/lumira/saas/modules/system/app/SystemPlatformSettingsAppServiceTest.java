@@ -15,6 +15,8 @@ import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
+import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatformSettingsRepository;
+import com.lumira.saas.modules.system.settings.repository.SystemPlatformSettingsRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.EmptyResultDataAccessException;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -41,6 +42,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -48,20 +50,36 @@ import static org.mockito.Mockito.anyString;
 class SystemPlatformSettingsAppServiceTest {
 
     @Test
-    void platformConfigUpsertShouldBindConfigKeyScopeAndDeletedFlag() throws Exception {
+    void platformSettingGroupsAndDefaultsShouldBeDatabaseOwned() throws Exception {
+        String sql = java.nio.file.Files.readString(java.nio.file.Path.of("../../sql/upgrade-platform-setting-definition-persistence-v1.sql"));
         String source = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemPlatformSettingsAppService.java"));
 
+        assertThat(sql).contains("sys_platform_setting_definition", "BRANDING", "SMTP", "WATERMARK",
+                "default_value", "reset_value", "config_name", "remark");
+        assertThat(source).doesNotContain("BRANDING_CONFIG_KEYS", "SMTP_CONFIG_KEYS", "WATERMARK_CONFIG_KEYS",
+                "WECHAT_OFFICIAL_CONFIG_KEYS", "FLOATING_WINDOW_CONFIG_KEYS", "AGREEMENT_CONFIG_KEYS", "CacheBuilder",
+                "upsertBrandingConfig", "Whether SMTP is enabled",
+                "Website name shown in branding and browser title");
+    }
+
+    @Test
+    void platformConfigUpsertShouldBindConfigKeyScopeAndDeletedFlag() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/system/settings/infrastructure/JdbcSystemPlatformSettingsRepository.java"));
+        String appSource = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemPlatformSettingsAppService.java"));
+
         assertThat(source)
+                .contains("select config_name as configName, remark")
                 .contains("and config_key = ?")
                 .contains("and config_scope = 'PLATFORM'")
                 .contains("and is_system = 0")
                 .contains("and deleted = 0")
-                .contains("Platform config changed, please retry")
                 .doesNotContain("updated_at = ?, deleted = 0");
+        assertThat(appSource).contains("Platform config changed, please retry")
+                .doesNotContain("MyBatisQueryOperations", "CacheBuilder");
     }
 
     @Test
-    void brandingSettingsSingleFlightCachesByRuntimeVersion() {
+    void brandingSettingsReloadsDatabaseAuthoritativeValuesOnEveryRead() {
         CurrentUser currentUser = currentUser();
         Map<String, String> configValues = Map.of(
                 "branding.website-name", "Lumira",
@@ -82,10 +100,10 @@ class SystemPlatformSettingsAppServiceTest {
 
         assertThat(first.getWebsiteName()).isEqualTo("Lumira");
         assertThat(second.getWebsiteName()).isEqualTo("Lumira");
-        assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
-        assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_MISS)).isEqualTo(1.0);
-        assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_HIT)).isEqualTo(1.0);
+        assertThat(queryOperations.queryForListCount()).isEqualTo(2);
+        verify(readModelVersionService, never()).currentVersion("platform", "runtime-appearance");
+        assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_MISS)).isZero();
+        assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_HIT)).isZero();
         assertThat(first.getCopyrightStartYear()).isEqualTo(2020);
     }
 
@@ -106,19 +124,18 @@ class SystemPlatformSettingsAppServiceTest {
         SystemVO.BrandingSettingsVO first = service.getBrandingSettings(currentUser);
         SystemVO.BrandingSettingsVO second = service.getBrandingSettings(currentUser);
         assertThat(second.getWebsiteName()).isEqualTo(first.getWebsiteName());
-        assertThat(queryOperations.queryForListCount()).isEqualTo(1);
+        assertThat(queryOperations.queryForListCount()).isEqualTo(2);
 
-        clearRuntimeVersionCaches(service);
         SystemVO.BrandingSettingsVO third = service.getBrandingSettings(currentUser);
 
         assertThat(third.getWebsiteName()).isEqualTo("Lumira");
-        assertThat(queryOperations.queryForListCount()).isEqualTo(2);
-        verify(readModelVersionService, times(2)).currentVersion("platform", "runtime-appearance");
+        assertThat(queryOperations.queryForListCount()).isEqualTo(3);
+        verify(readModelVersionService, never()).currentVersion("platform", "runtime-appearance");
         assertThat(System.identityHashCode(first)).isNotEqualTo(System.identityHashCode(third));
     }
 
     @Test
-    void brandingSettingsSingleFlightBuildsOnceUnderConcurrentMisses() throws Exception {
+    void brandingSettingsConcurrentReadsRemainDatabaseAuthoritative() throws Exception {
         CurrentUser currentUser = currentUser();
         Map<String, String> configValues = Map.of(
                 "branding.website-name", "Lumira",
@@ -157,8 +174,8 @@ class SystemPlatformSettingsAppServiceTest {
             assertThat(setting).isNotNull();
             assertThat(setting.getWebsiteName()).isEqualTo(expect.getWebsiteName());
         }
-        assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
+        assertThat(queryOperations.queryForListCount()).isEqualTo(threadCount);
+        verify(readModelVersionService, never()).currentVersion("platform", "runtime-appearance");
     }
 
     @Test
@@ -262,7 +279,7 @@ class SystemPlatformSettingsAppServiceTest {
         when(fieldCryptoService.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(fieldCryptoService.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         SystemPlatformSettingsAppService service = new SystemPlatformSettingsAppService(
-                queryOperations,
+                repository(queryOperations),
                 new RecordingAuditLog(),
                 fieldCryptoService,
                 readModelVersionService,
@@ -298,7 +315,7 @@ class SystemPlatformSettingsAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001")).thenReturn(null);
         SystemPlatformSettingsAppService service = new SystemPlatformSettingsAppService(
-                queryOperations,
+                repository(queryOperations),
                 new RecordingAuditLog(),
                 fieldCryptoService,
                 readModelVersionService,
@@ -674,6 +691,68 @@ class SystemPlatformSettingsAppServiceTest {
         return newService(queryOperations, readModelVersionService, ownerRuntimeMetrics, smtpMailService, null);
     }
 
+    private static SystemPlatformSettingsRepository repository(RecordingQueryOperations database) {
+        return new JdbcSystemPlatformSettingsRepository(database) {
+            @Override
+            public Map<String, String> findEffectiveSettingValues(String groupCode) {
+                database.queryForList("select config_key from sys_platform_setting_definition where group_code = ?", groupCode);
+                Map<String, String> values = new LinkedHashMap<>(platformDefaults(groupCode));
+                values.putAll(database.configValues);
+                return values;
+            }
+
+            @Override
+            public Map<String, String> findSettingDefaults(String groupCode) {
+                return platformDefaults(groupCode);
+            }
+
+            @Override
+            public Map<String, String> findSettingResetValues(String groupCode) {
+                Map<String, String> values = new LinkedHashMap<>(platformDefaults(groupCode));
+                if ("SMTP".equals(groupCode)) values.put("smtp.enabled", "false");
+                return values;
+            }
+        };
+    }
+
+    private static Map<String, String> platformDefaults(String groupCode) {
+        return switch (groupCode) {
+            case "BRANDING" -> Map.ofEntries(
+                    Map.entry("branding.website-name", "Lumira"), Map.entry("branding.website-favicon-url", ""),
+                    Map.entry("branding.website-logo-url", ""), Map.entry("branding.login-background-url", ""),
+                    Map.entry("branding.github-link-enabled", "true"), Map.entry("branding.github-link-url", ""),
+                    Map.entry("branding.help-link-enabled", "true"), Map.entry("branding.help-link-url", ""),
+                    Map.entry("branding.company-name", ""), Map.entry("branding.copyright-start-year", ""),
+                    Map.entry("branding.footer-icp", ""), Map.entry("branding.footer-police-beian", ""),
+                    Map.entry("branding.footer-copyright", ""));
+            case "AGREEMENT" -> Map.of("agreement.user-agreement-markdown", "", "agreement.privacy-agreement-markdown", "");
+            case "SMTP" -> Map.ofEntries(
+                    Map.entry("smtp.enabled", "true"), Map.entry("smtp.host", ""), Map.entry("smtp.port", "25"),
+                    Map.entry("smtp.username", ""), Map.entry("smtp.password", ""), Map.entry("smtp.from", ""),
+                    Map.entry("smtp.auth-enabled", "true"), Map.entry("smtp.starttls-enabled", "true"),
+                    Map.entry("smtp.ssl-enabled", "false"), Map.entry("smtp.test-subject", "SMTP test email"),
+                    Map.entry("smtp.test-content", "This is a test email sent from the system SMTP settings."),
+                    Map.entry("smtp.connection-timeout-ms", "5000"), Map.entry("smtp.read-timeout-ms", "5000"),
+                    Map.entry("smtp.write-timeout-ms", "5000"));
+            case "WECHAT_OFFICIAL" -> Map.of(
+                    "notification.wechat-official.enabled", "false", "notification.wechat-official.app-id", "",
+                    "notification.wechat-official.app-secret", "", "notification.wechat-official.template-id", "",
+                    "notification.wechat-official.detail-url", "");
+            case "WATERMARK" -> Map.ofEntries(
+                    Map.entry("watermark.enabled", "false"), Map.entry("watermark.mode", "TEXT"),
+                    Map.entry("watermark.text-lines", ""), Map.entry("watermark.image-url", ""),
+                    Map.entry("watermark.font-color", "rgba(0,0,0,0.15)"), Map.entry("watermark.font-size", "14"),
+                    Map.entry("watermark.font-weight", "normal"), Map.entry("watermark.rotate", "-22"),
+                    Map.entry("watermark.gap-x", "100"), Map.entry("watermark.gap-y", "100"),
+                    Map.entry("watermark.offset-x", "0"), Map.entry("watermark.offset-y", "0"),
+                    Map.entry("watermark.z-index", "9"), Map.entry("watermark.opacity", "0.15"));
+            case "FLOATING_WINDOW" -> Map.of(
+                    "floating-window.api-docs-qr-enabled", "false", "floating-window.api-docs-qr-title", "",
+                    "floating-window.api-docs-qr-image-url", "");
+            default -> Map.of();
+        };
+    }
+
     private static SystemPlatformSettingsAppService newService(
             RecordingQueryOperations queryOperations,
             ReadModelVersionService readModelVersionService,
@@ -719,8 +798,8 @@ class SystemPlatformSettingsAppServiceTest {
         when(fieldCryptoService.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         if (sessionAuthenticationService == null && systemInternalApi == null) {
             if (permissionSnapshotService == null) {
-                return new SystemPlatformSettingsAppService(
-                        queryOperations,
+                        return new SystemPlatformSettingsAppService(
+                                repository(queryOperations),
                         auditLog,
                         fieldCryptoService,
                         readModelVersionService,
@@ -728,8 +807,8 @@ class SystemPlatformSettingsAppServiceTest {
                         smtpMailService
                 );
             }
-            return new SystemPlatformSettingsAppService(
-                    queryOperations,
+                        return new SystemPlatformSettingsAppService(
+                                repository(queryOperations),
                     auditLog,
                     fieldCryptoService,
                     readModelVersionService,
@@ -738,8 +817,8 @@ class SystemPlatformSettingsAppServiceTest {
                     permissionSnapshotService
             );
         }
-        return new SystemPlatformSettingsAppService(
-                queryOperations,
+                        return new SystemPlatformSettingsAppService(
+                                repository(queryOperations),
                 auditLog,
                 fieldCryptoService,
                 readModelVersionService,
@@ -888,35 +967,6 @@ class SystemPlatformSettingsAppServiceTest {
         }
     }
 
-    private static void clearRuntimeVersionCaches(SystemPlatformSettingsAppService service) throws Exception {
-        Field runtimeVersionCacheField = SystemPlatformSettingsAppService.class.getDeclaredField("runtimeAppearanceVersionCache");
-        runtimeVersionCacheField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, Long> runtimeVersionCache =
-                (com.google.common.cache.Cache<String, Long>) runtimeVersionCacheField.get(service);
-        runtimeVersionCache.invalidateAll();
-
-        Field inFlightField = SystemPlatformSettingsAppService.class.getDeclaredField("runtimeAppearanceVersionLoadInFlight");
-        inFlightField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, CompletableFuture<Long>> inFlight =
-                (com.google.common.cache.Cache<String, CompletableFuture<Long>>) inFlightField.get(service);
-        inFlight.invalidateAll();
-
-        Field configLoadInFlightField = SystemPlatformSettingsAppService.class.getDeclaredField("configLoadInFlight");
-        configLoadInFlightField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight =
-                (com.google.common.cache.Cache<String, CompletableFuture<Map<String, String>>>) configLoadInFlightField.get(service);
-        configLoadInFlight.invalidateAll();
-        Field configSnapshotCacheField = SystemPlatformSettingsAppService.class.getDeclaredField("configSnapshotCache");
-        configSnapshotCacheField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, Map<String, String>> configSnapshotCache =
-                (com.google.common.cache.Cache<String, Map<String, String>>) configSnapshotCacheField.get(service);
-        configSnapshotCache.invalidateAll();
-    }
-
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private final Map<String, String> configValues;
         private final Map<String, Long> configIds = new LinkedHashMap<>();
@@ -940,6 +990,9 @@ class SystemPlatformSettingsAppServiceTest {
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queryForListCount.incrementAndGet();
+            if (sql.contains("select config_name as configName") && args.length == 1) {
+                return List.of(Map.of("configName", Objects.toString(args[0], "")));
+            }
             return rowsByArgs(args);
         }
 

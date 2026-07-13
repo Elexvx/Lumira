@@ -11,6 +11,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.expert.dto.ExpertDTO;
+import com.lumira.saas.modules.expert.infrastructure.JdbcExpertRepository;
+import com.lumira.saas.modules.expert.repository.ExpertRepository;
 import com.lumira.saas.modules.expert.vo.ExpertVO;
 import com.lumira.saas.modules.workflow.app.WorkflowAppService;
 import org.junit.jupiter.api.Test;
@@ -36,12 +38,16 @@ import static org.mockito.Mockito.when;
 
 class ExpertManagementAppServiceTest {
 
+    private static ExpertRepository repository(MyBatisQueryOperations sql) {
+        return new JdbcExpertRepository(sql);
+    }
+
     @Test
     void createExpertStartsApprovalWorkflowWithoutCreatingAccount() throws Exception {
         ExpertSql sql = new ExpertSql();
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
         when(workflowAppService.startWorkflow(any(CurrentUser.class), eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION), eq(501L), eq("exp-001"), eq("Ada Expert"), any(Map.class))).thenReturn(7001L);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService);
 
         ExpertVO.Expert expert = service.createExpert(admin(), expertRequest());
 
@@ -56,11 +62,11 @@ class ExpertManagementAppServiceTest {
                 .contains("updated_by_uuid")
                 .contains("and code = ?")
                 .contains("and status = ?")
-                .contains("and approval_status = 'PENDING'");
+                .contains("and approval_status = ?");
         String source = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/expert/app/ExpertManagementAppService.java"));
         assertThat(source).contains("Expert application changed, please retry");
         assertThat(sql.insertArgs).contains(1001L, "user-uuid-1001");
-        assertThat(sql.workflowInstanceUpdateArgs).contains(1001L, "user-uuid-1001", "exp-001", "inactive");
+        assertThat(sql.workflowInstanceUpdateArgs).contains(1001L, "user-uuid-1001", "exp-001", "inactive", "PENDING");
     }
 
     @Test
@@ -68,7 +74,7 @@ class ExpertManagementAppServiceTest {
         ExpertSql sql = new ExpertSql();
         sql.insertResult = 0;
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService);
 
         assertThatThrownBy(() -> service.createExpert(admin(), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -84,7 +90,7 @@ class ExpertManagementAppServiceTest {
     void updateExpertShouldRequireUpdatePermissionAtServiceLayer() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService);
 
         assertThatThrownBy(() -> service.updateExpert(user("expert:view"), 501L, expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -98,7 +104,7 @@ class ExpertManagementAppServiceTest {
     @Test
     void listExpertsShouldRequireViewPermissionBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
 
         assertThatThrownBy(() -> service.listExperts(user("expert:update"), null, null, null, 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -111,7 +117,7 @@ class ExpertManagementAppServiceTest {
     @Test
     void listExpertsShouldRejectBlankUsernameBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
 
         assertThatThrownBy(() -> service.listExperts(blankUsernameUser(), null, null, null, 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -124,7 +130,7 @@ class ExpertManagementAppServiceTest {
     @Test
     void listExpertsShouldRejectMissingSessionVersionBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
 
         assertThatThrownBy(() -> service.listExperts(missingSessionVersionUser(), null, null, null, 1, 10))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -137,7 +143,7 @@ class ExpertManagementAppServiceTest {
     @Test
     void listExpertsShouldRejectMissingUserUuidBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
         CurrentUser currentUser = user("expert:view");
         currentUser.setUserUuid(" ");
 
@@ -153,7 +159,7 @@ class ExpertManagementAppServiceTest {
     void createExpertShouldRejectMissingPermissionsVersionBeforeDatabaseOrWorkflowAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService);
         CurrentUser currentUser = user("expert:create");
         currentUser.setPermissionsVersion(" ");
 
@@ -174,7 +180,7 @@ class ExpertManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("expert:view")));
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService, permissionSnapshotService);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -193,7 +199,7 @@ class ExpertManagementAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin-live", "DISABLED"));
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService, systemInternalApi, null);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService, permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -212,7 +218,7 @@ class ExpertManagementAppServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L))
                 .thenReturn(userSnapshot(1001L, "user-uuid-1001", " ", "ENABLED"));
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService, systemInternalApi, null);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService, permissionSnapshotService, systemInternalApi, null);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
@@ -238,7 +244,7 @@ class ExpertManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*", "expert:create")));
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService, systemInternalApi, null);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService, permissionSnapshotService, systemInternalApi, null);
         CurrentUser currentUser = admin();
         currentUser.setUsername("admin-stale");
 
@@ -264,7 +270,7 @@ class ExpertManagementAppServiceTest {
         when(sessionAuthenticationService.authenticateSessionTicket("session-1", 1001L, "user-uuid-1001", null, 1, "permissions-1"))
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Session expired"));
         ExpertManagementAppService service =
-                new ExpertManagementAppService(sql, workflowAppService, null, sessionAuthenticationService);
+                new ExpertManagementAppService(repository(sql), workflowAppService, null, sessionAuthenticationService);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -280,7 +286,7 @@ class ExpertManagementAppServiceTest {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
         ExpertManagementAppService service =
-                new ExpertManagementAppService(sql, workflowAppService, null, (SessionAuthenticationService) null);
+                new ExpertManagementAppService(repository(sql), workflowAppService, null, (SessionAuthenticationService) null);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -295,7 +301,7 @@ class ExpertManagementAppServiceTest {
     void createExpertShouldRejectNullRequestBeforeDatabaseOrWorkflowAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService);
 
         assertThatThrownBy(() -> service.createExpert(user("expert:create"), null))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -309,7 +315,7 @@ class ExpertManagementAppServiceTest {
     @Test
     void expertResourceOperationsShouldRejectInvalidIdsBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
 
         assertThatThrownBy(() -> service.getExpert(user("expert:view"), 0L))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -329,7 +335,7 @@ class ExpertManagementAppServiceTest {
     void createExpertShouldRejectUnsafeFieldsBeforeDatabaseOrWorkflowAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService);
         ExpertDTO.ExpertUpsertRequest unsafeAvatar = expertRequest();
         unsafeAvatar.setAvatarUrl("javascript:alert(1)");
         ExpertDTO.ExpertUpsertRequest oversizedBio = expertRequest();
@@ -361,7 +367,7 @@ class ExpertManagementAppServiceTest {
     void updateExpertShouldBindOriginalCodeStatusAndApprovalStatusInFinalWrite() {
         ExpertSql sql = new ExpertSql();
         sql.seedExpert();
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
 
         service.updateExpert(admin(), 501L, expertRequest());
 
@@ -374,7 +380,7 @@ class ExpertManagementAppServiceTest {
     void deleteExpertShouldBindOriginalCodeStatusAndApprovalStatusInFinalWrite() {
         ExpertSql sql = new ExpertSql();
         sql.seedExpert();
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, mock(WorkflowAppService.class));
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), mock(WorkflowAppService.class));
 
         service.deleteExpert(admin(), 501L);
 
@@ -391,7 +397,7 @@ class ExpertManagementAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("expert:view")));
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService, permissionSnapshotService);
+        ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService, permissionSnapshotService);
         CurrentUser currentUser = user("expert:view");
         currentUser.setSimulatedRoleId(0L);
 
@@ -405,7 +411,7 @@ class ExpertManagementAppServiceTest {
         verify(permissionSnapshotService, never()).loadGrantedRoleSnapshot(1001L, "user-uuid-1001", 0L);
     }
 
-    private ExpertDTO.ExpertUpsertRequest expertRequest() {
+    private static ExpertDTO.ExpertUpsertRequest expertRequest() {
         ExpertDTO.ExpertUpsertRequest request = new ExpertDTO.ExpertUpsertRequest();
         request.setCode("exp-001");
         request.setName("Ada Expert");
@@ -522,8 +528,8 @@ class ExpertManagementAppServiceTest {
                 expert.put("bio", args[11]);
                 expert.put("tags", args[12]);
                 expert.put("status", args[13]);
-                expert.put("approvalStatus", "PENDING");
-                expert.put("sort", args[14]);
+                expert.put("approvalStatus", args[14]);
+                expert.put("sort", args[15]);
                 expert.put("createdAt", LocalDateTime.now());
                 expert.put("updatedAt", LocalDateTime.now());
                 return insertResult;
@@ -560,6 +566,23 @@ class ExpertManagementAppServiceTest {
                 return List.of(map(rowMapper, expert));
             }
             return List.of();
+        }
+
+        @Override
+        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            if (args.length == 0) return List.of();
+            return switch (String.valueOf(args[0])) {
+                case "aiadc_expert_title" -> List.of(Map.of("itemValue", expertRequest().getTitle()));
+                case "aiadc_expert_position" -> List.of(Map.of("itemValue", expertRequest().getPosition()));
+                case "aiadc_expert_expertise" -> List.of(Map.of("itemValue", expertRequest().getExpertise()));
+                case "aiadc_expert_tag" -> List.of(Map.of("itemValue", "TAG"));
+                case "aiadc_expert_status" -> List.of(Map.of("itemValue", "active"), Map.of("itemValue", "inactive"));
+                case "aiadc_expert_initial_status" -> List.of(Map.of("itemValue", "inactive"));
+                case "aiadc_expert_approval_status" -> List.of(
+                        Map.of("itemValue", "PENDING"), Map.of("itemValue", "RUNNING"),
+                        Map.of("itemValue", "APPROVED"), Map.of("itemValue", "REJECTED"));
+                default -> List.of();
+            };
         }
 
         private <T> T map(RowMapper<T> rowMapper, Map<String, Object> values) {

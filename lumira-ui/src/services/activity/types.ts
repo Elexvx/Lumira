@@ -65,6 +65,26 @@ export interface ActivityQueryParams {
   pageSize?: number;
 }
 
+export interface ActivityRegistrationPayload {
+  activityId: number;
+  name: string;
+  mobile?: string;
+  email?: string;
+  organization?: string;
+  position?: string;
+  remark?: string;
+}
+
+export interface ActivityRegistrationRecord extends ActivityRegistrationPayload {
+  id: number;
+  applicationNo: string;
+  activityTitle: string;
+  status: 'SUBMITTED';
+  submittedAt: string;
+  ownerUserId?: number | null;
+  ownerUsername?: string | null;
+}
+
 export interface PageResponse<T> {
   records: T[];
   total: number;

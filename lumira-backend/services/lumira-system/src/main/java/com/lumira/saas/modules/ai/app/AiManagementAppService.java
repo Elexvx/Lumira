@@ -11,6 +11,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.infrastructure.AiSecretCryptoService;
+import com.lumira.saas.modules.ai.infrastructure.JdbcAiAssistantEmployeeRepository;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -127,7 +128,7 @@ public class AiManagementAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
-        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
+        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(new JdbcAiAssistantEmployeeRepository(jdbcTemplate));
         this.governanceOverviewCache = CacheBuilder.newBuilder()
                 .maximumSize(GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(GOVERNANCE_OVERVIEW_CACHE_TTL_MS, TimeUnit.MILLISECONDS)

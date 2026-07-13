@@ -7,8 +7,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.activity.repository.ActivityRepository;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.activity.dto.ActivityDTO;
@@ -22,19 +21,17 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 @Service
 public class ActivityManagementAppService {
-    private static final Set<String> LOCALES = Set.of("zh", "en");
-    private static final List<String> LOCALE_ORDER = List.of("zh", "en");
-    private static final Set<String> STATUSES = Set.of("draft", "published");
+    private static final String LOCALE_DICT_CODE = "aiadc_activity_locale";
+    private static final String STATUS_DICT_CODE = "aiadc_activity_status";
+    private static final String PUBLIC_STATUS_DICT_CODE = "aiadc_activity_public_status";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter ACTIVITY_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final String VIEW = "aiadc:activity:view";
@@ -49,7 +46,7 @@ public class ActivityManagementAppService {
     private static final int MAX_URL_LENGTH = 512;
     private static final int MAX_LOCATION_LENGTH = 255;
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final ActivityRepository activityRepository;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -57,30 +54,30 @@ public class ActivityManagementAppService {
 
     @Autowired
     public ActivityManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ActivityRepository activityRepository,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, sessionAuthenticationService, true);
+        this(activityRepository, permissionSnapshotService, null, sessionAuthenticationService, true);
     }
 
     public ActivityManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ActivityRepository activityRepository,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(activityRepository, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
     private ActivityManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ActivityRepository activityRepository,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.activityRepository = activityRepository;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
@@ -88,14 +85,14 @@ public class ActivityManagementAppService {
     }
 
     public ActivityManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            ActivityRepository activityRepository,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, null, null, false);
+        this(activityRepository, permissionSnapshotService, null, null, false);
     }
 
-    public ActivityManagementAppService(MyBatisQueryOperations jdbcTemplate) {
-        this(jdbcTemplate, null, null, null, false);
+    public ActivityManagementAppService(ActivityRepository activityRepository) {
+        this(activityRepository, null, null, null, false);
     }
 
     public PageResponse<ActivityVO.Activity> listActivities(
@@ -118,7 +115,8 @@ public class ActivityManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        PageResponse<ActivityVO.Activity> page = listActivitiesInternal(keyword, "published", locale, featured, pageNo, pageSize);
+        String publicStatus = requiredDictValues(PUBLIC_STATUS_DICT_CODE).getFirst();
+        PageResponse<ActivityVO.Activity> page = listActivitiesInternal(keyword, publicStatus, locale, featured, pageNo, pageSize);
         PageResponse<ActivityVO.PublicActivity> response = new PageResponse<>();
         response.setRecords(page.getRecords().stream().map(this::toPublicActivity).toList());
         response.setTotal(page.getTotal());
@@ -144,37 +142,8 @@ public class ActivityManagementAppService {
         String userUuid = requireUserUuid(currentUser);
         requireRequest(request);
         ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(request, generateActivityCode());
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into aiadc_activity (
-                            code, locale, title, subtitle, description, image_url,
-                            sort, status, tags, cta_label, cta_href,
-                            activity_date, activity_time, location, featured,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
-                normalized.getCode(),
-                normalized.getLocale(),
-                normalized.getTitle(),
-                normalized.getSubtitle(),
-                normalized.getDescription(),
-                normalized.getImageUrl(),
-                normalized.getSort(),
-                normalized.getStatus(),
-                normalized.getTags(),
-                normalized.getCtaLabel(),
-                normalized.getCtaHref(),
-                normalized.getActivityDate(),
-                normalized.getActivityTime(),
-                normalized.getLocation(),
-                Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
-                userId,
-                userUuid,
-                userId,
-                userUuid
-        );
-        requireActivityWrite(inserted);
-        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        Long id = activityRepository.create(normalized, userId, userUuid);
+        requireActivityWrite(id == null ? 0 : 1);
         return getActivity(currentUser, id);
     }
 
@@ -189,38 +158,7 @@ public class ActivityManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
         ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(request, existing.getCode());
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_activity
-                        set code = ?, locale = ?, title = ?, subtitle = ?, description = ?, image_url = ?,
-                            sort = ?, status = ?, tags = ?, cta_label = ?, cta_href = ?,
-                            activity_date = ?, activity_time = ?, location = ?, featured = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and code = ? and locale = ? and status = ? and deleted = 0
-                        """,
-                normalized.getCode(),
-                normalized.getLocale(),
-                normalized.getTitle(),
-                normalized.getSubtitle(),
-                normalized.getDescription(),
-                normalized.getImageUrl(),
-                normalized.getSort(),
-                normalized.getStatus(),
-                normalized.getTags(),
-                normalized.getCtaLabel(),
-                normalized.getCtaHref(),
-                normalized.getActivityDate(),
-                normalized.getActivityTime(),
-                normalized.getLocation(),
-                Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                existing.getCode(),
-                existing.getLocale(),
-                existing.getStatus()
-        );
+        int updated = activityRepository.update(id, existing, normalized, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
@@ -236,20 +174,7 @@ public class ActivityManagementAppService {
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update aiadc_activity
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and code = ? and locale = ? and status = ? and deleted = 0
-                        """,
-                userId,
-                userUuid,
-                LocalDateTime.now(),
-                id,
-                existing.getCode(),
-                existing.getLocale(),
-                existing.getStatus()
-        );
+        int updated = activityRepository.delete(id, existing, userId, userUuid);
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
@@ -258,12 +183,7 @@ public class ActivityManagementAppService {
 
     private ActivityVO.Activity findActivity(Long id) {
         requirePositiveId(id, "Activity id is required");
-        List<ActivityVO.Activity> records = jdbcTemplate.query(
-                activitySelect() + " from aiadc_activity where id = ? and deleted = 0 limit 1",
-                new BeanPropertyRowMapper<>(ActivityVO.Activity.class),
-                id
-        );
-        return records.isEmpty() ? null : records.get(0);
+        return activityRepository.findById(id).orElse(null);
     }
 
     private void requireActivityWrite(int updated) {
@@ -282,41 +202,16 @@ public class ActivityManagementAppService {
     ) {
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_activity where deleted = 0");
-        if (StringUtils.hasText(keyword)) {
-            where.append(" and (title like ? or code like ? or subtitle like ?)");
-            String pattern = "%" + keyword.trim() + "%";
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-        }
-        if (StringUtils.hasText(status)) {
-            where.append(" and status = ?");
-            params.add(normalizeEnum(status, null, STATUSES, "Invalid activity status"));
-        }
-        if (StringUtils.hasText(locale)) {
-            where.append(" and find_in_set(?, replace(locale, ' ', '')) > 0");
-            params.add(normalizeEnum(locale, null, LOCALES, "Invalid activity locale"));
-        }
-        if (featured != null) {
-            where.append(" and featured = ?");
-            params.add(Boolean.TRUE.equals(featured) ? 1 : 0);
-        }
-
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> selectParams = new ArrayList<>(params);
-        selectParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        selectParams.add(normalizedPageSize);
-        List<ActivityVO.Activity> records = jdbcTemplate.query(
-                activitySelect() + where + " order by sort asc, updated_at desc, id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(ActivityVO.Activity.class),
-                selectParams.toArray()
-        );
+        String normalizedStatus = StringUtils.hasText(status)
+                ? normalizeEnum(status, null, Set.copyOf(requiredDictValues(STATUS_DICT_CODE)), "Invalid activity status") : null;
+        String normalizedLocale = StringUtils.hasText(locale)
+                ? normalizeEnum(locale, null, Set.copyOf(requiredDictValues(LOCALE_DICT_CODE)), "Invalid activity locale") : null;
+        ActivityRepository.PageData page = activityRepository.search(keyword, normalizedStatus, normalizedLocale, featured,
+                (normalizedPageNo - 1) * normalizedPageSize, normalizedPageSize);
 
         PageResponse<ActivityVO.Activity> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
+        response.setRecords(page.records());
+        response.setTotal(page.total());
         response.setPageNo(normalizedPageNo);
         response.setPageSize(normalizedPageSize);
         response.setHasMore(normalizedPageNo * normalizedPageSize < response.getTotal());
@@ -328,13 +223,11 @@ public class ActivityManagementAppService {
         normalized.setCode(StringUtils.hasText(request.getCode())
                 ? trimRequired(request.getCode(), "Activity code is required", MAX_CODE_LENGTH, "Activity code is too long")
                 : trimRequired(fallbackCode, "Activity code is required"));
-        normalized.setLocale(normalizeLocales(request.getLocale(), "zh", LOCALES, "Invalid activity locale"));
         normalized.setTitle(trimRequired(request.getTitle(), "Activity title is required", MAX_TITLE_LENGTH, "Activity title is too long"));
         normalized.setSubtitle(trimOptional(request.getSubtitle(), MAX_SHORT_TEXT_LENGTH, "Activity subtitle is too long"));
         normalized.setDescription(trimOptional(request.getDescription(), MAX_LONG_TEXT_LENGTH, "Activity description is too long"));
         normalized.setImageUrl(normalizeUrl(request.getImageUrl(), "Activity image URL"));
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
-        normalized.setStatus(normalizeEnum(request.getStatus(), "draft", STATUSES, "Invalid activity status"));
         normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Activity tags are too long"));
         normalized.setCtaLabel(trimOptional(request.getCtaLabel(), MAX_SHORT_TEXT_LENGTH, "Activity CTA label is too long"));
         normalized.setCtaHref(normalizeUrl(request.getCtaHref(), "Activity CTA URL"));
@@ -342,6 +235,10 @@ public class ActivityManagementAppService {
         normalized.setActivityTime(trimRequired(request.getActivityTime(), "Activity time is required", MAX_SHORT_TEXT_LENGTH, "Activity time is too long"));
         normalized.setLocation(trimRequired(request.getLocation(), "Activity location is required", MAX_LOCATION_LENGTH, "Activity location is too long"));
         normalized.setFeatured(Boolean.TRUE.equals(request.getFeatured()));
+        List<String> locales = requiredDictValues(LOCALE_DICT_CODE);
+        List<String> statuses = requiredDictValues(STATUS_DICT_CODE);
+        normalized.setLocale(normalizeLocales(request.getLocale(), locales, "Invalid activity locale"));
+        normalized.setStatus(normalizeEnum(request.getStatus(), statuses.getFirst(), Set.copyOf(statuses), "Invalid activity status"));
         return normalized;
     }
 
@@ -505,7 +402,9 @@ public class ActivityManagementAppService {
         return normalized;
     }
 
-    private String normalizeLocales(String value, String defaultValue, Set<String> allowed, String message) {
+    private String normalizeLocales(String value, List<String> orderedValues, String message) {
+        String defaultValue = orderedValues.getFirst();
+        Set<String> allowed = Set.copyOf(orderedValues);
         if (!StringUtils.hasText(value)) {
             return defaultValue;
         }
@@ -519,8 +418,16 @@ public class ActivityManagementAppService {
         if (selected.isEmpty()) {
             return defaultValue;
         }
-        List<String> ordered = LOCALE_ORDER.stream().filter(selected::contains).collect(Collectors.toList());
+        List<String> ordered = orderedValues.stream().filter(selected::contains).toList();
         return String.join(",", ordered);
+    }
+
+    private List<String> requiredDictValues(String dictCode) {
+        List<String> values = activityRepository.findEnabledDictValues(dictCode);
+        if (values == null || values.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "Activity dictionary is not configured: " + dictCode);
+        }
+        return values;
     }
 
     private String trimRequired(String value, String message) {
@@ -569,16 +476,6 @@ public class ActivityManagementAppService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
-    }
-
-    private String activitySelect() {
-        return """
-                select id, code, locale, title, subtitle, description,
-                       image_url as imageUrl, sort, status, tags,
-                       cta_label as ctaLabel, cta_href as ctaHref, activity_date as activityDate,
-                       activity_time as activityTime, location, featured, created_at as createdAt,
-                       updated_at as updatedAt
-                """;
     }
 
     private ActivityVO.PublicActivity toPublicActivity(ActivityVO.Activity activity) {

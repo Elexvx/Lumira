@@ -5,7 +5,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.authorization.AgentToolGrantDecision;
 import com.lumira.common.security.authorization.AgentToolGrantEvaluator;
 import com.lumira.common.security.authorization.AuthorizationRequest;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.repository.AiSkillGrantRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -27,11 +27,11 @@ public interface AiSkillPermissionChecker {
 @Primary
 class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final AiSkillGrantRepository skillGrantRepository;
     private final AgentToolGrantEvaluator agentToolGrantEvaluator;
 
-    DefaultAiSkillPermissionChecker(MyBatisQueryOperations jdbcTemplate, AgentToolGrantEvaluator agentToolGrantEvaluator) {
-        this.jdbcTemplate = jdbcTemplate;
+    DefaultAiSkillPermissionChecker(AiSkillGrantRepository skillGrantRepository, AgentToolGrantEvaluator agentToolGrantEvaluator) {
+        this.skillGrantRepository = skillGrantRepository;
         this.agentToolGrantEvaluator = agentToolGrantEvaluator;
     }
 
@@ -41,20 +41,7 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
         }
 
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select k.skill_code as skillCode, k.skill_name as skillName, k.read_only as readOnly,
-                               k.need_confirm as needConfirm, k.enabled as skillEnabled,
-                               coalesce(r.permission_mode, case when k.read_only = 1 then 'visit' else 'deny' end) as permissionMode
-                        from ai_skill k
-                        left join ai_employee_skill r
-                          on r.skill_code = k.skill_code
-                         and r.employee_id = ?
-                         and r.is_deleted = 0
-                        where k.is_deleted = 0
-                        """,
-                employeeId
-        );
+        List<Map<String, Object>> rows = skillGrantRepository.findEmployeeSkills(employeeId);
         Map<String, Map<String, Object>> skillMap = new HashMap<>();
         for (Map<String, Object> row : rows) {
             Object skillCode = row.get("skillCode");
@@ -152,10 +139,10 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
 @Service
 class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final AiSkillGrantRepository skillGrantRepository;
 
-    DefaultAgentToolGrantEvaluator(MyBatisQueryOperations jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    DefaultAgentToolGrantEvaluator(AiSkillGrantRepository skillGrantRepository) {
+        this.skillGrantRepository = skillGrantRepository;
     }
 
     @Override
@@ -163,34 +150,9 @@ class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
         if (request == null || request.employeeId() == null || request.employeeId() <= 0 || !StringUtils.hasText(request.toolCode())) {
             return AgentToolGrantDecision.deny("AGENT_CONTEXT_INCOMPLETE");
         }
-        Map<String, Object> grant = jdbcTemplate.queryForList(
-                """
-                        select k.skill_code as skillCode, k.skill_name as skillName, k.read_only as readOnly,
-                               k.need_confirm as needConfirm, k.enabled as skillEnabled,
-                               coalesce(g.permission_key, ?) as permissionKey,
-                               coalesce(g.permission_mode, r.permission_mode, case when k.read_only = 1 then 'VIEW' else 'DENY' end) as permissionMode,
-                               coalesce(g.max_risk_level, k.risk_level, 'LOW') as maxRiskLevel,
-                               coalesce(g.require_confirm, k.need_confirm, 0) as requireConfirm,
-                               coalesce(g.require_approval, 0) as requireApproval
-                        from ai_skill k
-                        left join ai_employee_tool_grant g
-                          on g.tool_code = k.skill_code
-                         and g.employee_id = ?
-                         and g.deleted = 0
-                         and g.enabled = 1
-                        left join ai_employee_skill r
-                          on r.skill_code = k.skill_code
-                         and r.employee_id = ?
-                         and r.is_deleted = 0
-                        where k.is_deleted = 0
-                          and k.skill_code = ?
-                        limit 1
-                        """,
-                request.permissionKey(),
-                request.employeeId(),
-                request.employeeId(),
-                request.toolCode().trim()
-        ).stream().findFirst().orElse(null);
+        Map<String, Object> grant = skillGrantRepository.findToolGrant(
+                request.employeeId(), request.toolCode().trim(), request.permissionKey()
+        ).orElse(null);
         if (grant == null) {
             return AgentToolGrantDecision.deny("AGENT_TOOL_NOT_REGISTERED");
         }

@@ -7,6 +7,7 @@ import com.lumira.saas.infrastructure.event.PlatformEventTypes;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
+import com.lumira.saas.modules.expert.infrastructure.JdbcExpertApprovalRepository;
 import com.lumira.saas.modules.account.app.AccountActivationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -405,7 +406,7 @@ class ExpertApprovalEventConsumerTest {
             AccountActivationService activationService
     ) {
         return new ExpertApprovalEventConsumer(
-                jdbcTemplate,
+                new JdbcExpertApprovalRepository(jdbcTemplate),
                 new ObjectMapper(),
                 permissionSnapshotService,
                 userManagementAppService,

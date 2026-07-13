@@ -20,16 +20,12 @@ import com.lumira.saas.modules.system.profile.vo.ProfileCompletionGroupVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionItemVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionSummaryVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import org.springframework.dao.EmptyResultDataAccessException;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.system.profile.repository.SystemProfileSettingsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -37,9 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,10 +41,8 @@ public class SystemProfileSettingsAppService {
 
     public static final String PROFILE_PAGE_KEY = "PROFILE";
     public static final String TEAM_MEMBER_PAGE_KEY = "TEAM_MEMBER";
-    private static final Set<String> SUPPORTED_PAGE_KEYS = Set.of(PROFILE_PAGE_KEY, TEAM_MEMBER_PAGE_KEY);
-    private static final String PROFILE_SETTINGS_CACHE_KEY_PREFIX = "global-field-settings:";
-    private static final long PROFILE_SETTINGS_CACHE_TTL_MS = 30_000L;
-    private static final int PROFILE_SETTINGS_CACHE_MAX_ENTRIES = 2048;
+    private static final String DICT_SUPPORTED_PAGE_KEYS = "profile_settings_page_key";
+    private static final String DICT_CUSTOM_FIELD_TYPES = "profile_custom_field_type";
     private static final Integer PROFILE_SCORE_MAX = 100;
     private static final String STATUS_ENABLED = "ENABLED";
     private static final String PROFILE_FIELD_GROUP_BASIC_KEY = "basic";
@@ -61,89 +52,61 @@ public class SystemProfileSettingsAppService {
     private static final String PROFILE_FIELD_GROUP_CUSTOM_LABEL = "Custom profile";
     private static final String SYSTEM_PROFILE_FIELD_OVERRIDES_KEY = "profile.field.system.overrides";
     private static final String CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY = "profile.field.custom.definitions";
-    private static final Set<String> SUPPORTED_CUSTOM_FIELD_TYPES = Set.of("TEXT", "NUMBER", "DATE", "SELECT", "TEXTAREA");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final List<ProfileFieldDefinition> PROFILE_FIELD_DEFINITIONS = List.of(
-            new ProfileFieldDefinition("avatarUrl", "Avatar", "Controls whether profile avatar upload and preview are shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.avatar.visible", "profile.field.avatar.weight", true, 10, "IMAGE", false, null, 10, false),
-            new ProfileFieldDefinition("realName", "Real name", "Controls whether the real-name profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.real-name.visible", "profile.field.real-name.weight", true, 15, "TEXT", false, "Enter real name", 20, false),
-            new ProfileFieldDefinition("mobile", "Mobile", "Controls whether the mobile profile field is shown", PROFILE_FIELD_GROUP_CONTACT_KEY, "Contact", "profile.field.mobile.visible", "profile.field.mobile.weight", true, 15, "MOBILE", false, "Enter mobile number", 30, false),
-            new ProfileFieldDefinition("email", "Email", "Controls whether the email profile field is shown", PROFILE_FIELD_GROUP_CONTACT_KEY, "Contact", "profile.field.email.visible", "profile.field.email.weight", true, 15, "EMAIL", false, "Enter email address", 40, false),
-            new ProfileFieldDefinition("birthMonth", "Birth month", "Controls whether the birth-month profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.birth-month.visible", "profile.field.birth-month.weight", true, 10, "MONTH", false, "Select birth month", 50, false),
-            new ProfileFieldDefinition("gender", "Gender", "Controls whether the gender profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.gender.visible", "profile.field.gender.weight", true, 10, "SELECT", false, "Select gender", 60, false),
-            new ProfileFieldDefinition("region", "Region", "Controls whether the region profile field is shown", PROFILE_FIELD_GROUP_BASIC_KEY, "Basic profile", "profile.field.region.visible", "profile.field.region.weight", true, 10, "TEXT", false, "Enter region", 70, false),
-            new ProfileFieldDefinition("idCardNumber", "ID card number", "Controls whether the ID-card profile field is shown", PROFILE_FIELD_GROUP_IDENTITY_KEY, "Identity", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5, "ID_CARD", false, "Enter ID card number", 80, false)
-    );
-    private static final List<ProfileFieldDefinition> TEAM_MEMBER_FIELD_DEFINITIONS = List.of(
-            new ProfileFieldDefinition("memberName", "Member name", "Team member name", "teamMember", "Team member", "team.member.field.member-name.visible", "team.member.field.member-name.weight", true, 10, "TEXT", true, "Enter member name", 10, false),
-            new ProfileFieldDefinition("employeeNo", "Employee number", "Team member employee or student number", "teamMember", "Team member", "team.member.field.employee-no.visible", "team.member.field.employee-no.weight", true, 5, "TEXT", false, "Enter employee or student number", 20, false),
-            new ProfileFieldDefinition("departmentName", "Department", "Team member department", "teamMember", "Team member", "team.member.field.department-name.visible", "team.member.field.department-name.weight", true, 5, "TEXT", false, "Enter department", 30, false),
-            new ProfileFieldDefinition("role", "Role", "Team member role", "teamMember", "Team member", "team.member.field.role.visible", "team.member.field.role.weight", true, 5, "SELECT", false, "Select role", 40, false),
-            new ProfileFieldDefinition("remark", "Remark", "Team member remark", "teamMember", "Team member", "team.member.field.remark.visible", "team.member.field.remark.weight", true, 5, "TEXTAREA", false, "Enter remark", 50, false)
-    );
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final SystemProfileSettingsRepository repository;
     private final OperationAuditService operationAuditService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
-    private final Cache<String, List<ProfileFieldSettingVO>> profileFieldSettingsCache;
-    private final Cache<String, CompletableFuture<List<ProfileFieldSettingVO>>> profileFieldSettingsLoadInFlight;
 
     public SystemProfileSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemProfileSettingsRepository repository,
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, null, false);
+        this(repository, operationAuditService, permissionSnapshotService, null, null, false);
     }
 
     @Autowired
     public SystemProfileSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemProfileSettingsRepository repository,
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, operationAuditService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(repository, operationAuditService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
     }
 
     private SystemProfileSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemProfileSettingsRepository repository,
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.repository = repository;
         this.operationAuditService = operationAuditService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
-        this.profileFieldSettingsCache = CacheBuilder.newBuilder()
-                .maximumSize(PROFILE_SETTINGS_CACHE_MAX_ENTRIES)
-                .expireAfterWrite(PROFILE_SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
-                .build();
-        this.profileFieldSettingsLoadInFlight = CacheBuilder.newBuilder()
-                .maximumSize(PROFILE_SETTINGS_CACHE_MAX_ENTRIES)
-                .expireAfterWrite(PROFILE_SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
-                .build();
     }
 
     public SystemProfileSettingsAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemProfileSettingsRepository repository,
             OperationAuditService operationAuditService,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, operationAuditService, permissionSnapshotService, null, sessionAuthenticationService, false);
+        this(repository, operationAuditService, permissionSnapshotService, null, sessionAuthenticationService, false);
     }
 
-    public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
-        this(jdbcTemplate, operationAuditService, null, null, null, false);
+    public SystemProfileSettingsAppService(SystemProfileSettingsRepository repository, OperationAuditService operationAuditService) {
+        this(repository, operationAuditService, null, null, null, false);
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
@@ -222,7 +185,6 @@ public class SystemProfileSettingsAppService {
                 operatorUuid
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
-        invalidateProfileFieldSettingsCache(normalizedPageKey);
         return loadProfileFieldSettings(normalizedPageKey);
     }
 
@@ -361,40 +323,6 @@ public class SystemProfileSettingsAppService {
     }
 
     private List<ProfileFieldSettingVO> loadProfileFieldSettings(String pageKey) {
-        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(cacheKey(pageKey));
-        if (cached != null) {
-            return new ArrayList<>(cached);
-        }
-        return loadProfileFieldSettingsWithSingleFlight(pageKey);
-    }
-
-    private List<ProfileFieldSettingVO> loadProfileFieldSettingsWithSingleFlight(String pageKey) {
-        try {
-            CompletableFuture<List<ProfileFieldSettingVO>> future = profileFieldSettingsLoadInFlight.get(
-                    cacheKey(pageKey),
-                    () -> CompletableFuture.completedFuture(loadProfileFieldSettingsFresh(pageKey))
-            );
-            List<ProfileFieldSettingVO> settings = future.join();
-            profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
-            return settings;
-        } catch (ExecutionException ex) {
-            profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
-            Throwable cause = ex.getCause();
-            if (cause instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new IllegalStateException("Failed to load profile field settings", cause);
-        } catch (RuntimeException ex) {
-            profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
-            throw ex;
-        }
-    }
-
-    private List<ProfileFieldSettingVO> loadProfileFieldSettingsFresh(String pageKey) {
-        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(cacheKey(pageKey));
-        if (cached != null) {
-            return new ArrayList<>(cached);
-        }
         List<ProfileFieldDefinition> builtInDefinitions = builtInDefinitions(pageKey);
         Map<String, String> valueByKey = loadConfigValuesByKeys(fieldConfigKeys(pageKey, builtInDefinitions));
         Map<String, ProfileFieldMetadataOverride> systemOverrides = parseSystemFieldOverrides(valueByKey.get(systemOverridesConfigKey(pageKey)), builtInDefinitions);
@@ -428,13 +356,7 @@ public class SystemProfileSettingsAppService {
             item.setCustom(definition.custom());
             return item;
         }).toList();
-        profileFieldSettingsCache.put(cacheKey(pageKey), new ArrayList<>(settings));
         return settings;
-    }
-
-    private void invalidateProfileFieldSettingsCache(String pageKey) {
-        profileFieldSettingsCache.invalidate(cacheKey(pageKey));
-        profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
     }
 
     public ProfileCompletionSummaryVO buildProfileCompletionSummary(
@@ -454,7 +376,7 @@ public class SystemProfileSettingsAppService {
 
         List<EvaluatedField> evaluatedFields = new ArrayList<>();
         int totalWeight = 0;
-        for (ProfileFieldDefinition definition : PROFILE_FIELD_DEFINITIONS) {
+        for (ProfileFieldDefinition definition : builtInDefinitions(PROFILE_PAGE_KEY)) {
             ProfileFieldSettingVO setting = settingByFieldKey.get(definition.fieldKey());
             if (setting == null || !Boolean.TRUE.equals(setting.getVisible())) {
                 continue;
@@ -689,8 +611,9 @@ public class SystemProfileSettingsAppService {
     }
 
     private String normalizeCustomFieldType(String value) {
-        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase() : "TEXT";
-        return SUPPORTED_CUSTOM_FIELD_TYPES.contains(normalized) ? normalized : "TEXT";
+        List<String> supported = repository.findEnabledDictionaryValues(DICT_CUSTOM_FIELD_TYPES);
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase() : defaultCustomFieldType(supported);
+        return supported.stream().anyMatch(normalized::equalsIgnoreCase) ? normalized : defaultCustomFieldType(supported);
     }
 
     private String normalizeLimitedText(String value, int maxLength) {
@@ -703,15 +626,26 @@ public class SystemProfileSettingsAppService {
 
     private String normalizePageKey(String pageKey) {
         String normalized = StringUtils.hasText(pageKey) ? pageKey.trim().toUpperCase() : PROFILE_PAGE_KEY;
-        return SUPPORTED_PAGE_KEYS.contains(normalized) ? normalized : PROFILE_PAGE_KEY;
+        return repository.findEnabledDictionaryValues(DICT_SUPPORTED_PAGE_KEYS).stream()
+                .anyMatch(normalized::equalsIgnoreCase) ? normalized : PROFILE_PAGE_KEY;
     }
 
     private List<ProfileFieldDefinition> builtInDefinitions(String pageKey) {
-        return TEAM_MEMBER_PAGE_KEY.equals(pageKey) ? TEAM_MEMBER_FIELD_DEFINITIONS : PROFILE_FIELD_DEFINITIONS;
+        List<ProfileFieldDefinition> definitions = repository.findEnabledFieldDefinitions(pageKey).stream()
+                .map(row -> new ProfileFieldDefinition(row.fieldKey(), row.fieldLabel(), row.fieldDescription(),
+                        row.groupKey(), row.groupLabel(), row.visibleConfigKey(), row.weightConfigKey(),
+                        row.defaultVisible(), row.defaultWeight(), row.fieldType(), row.required(),
+                        row.placeholder(), row.sortNo(), false))
+                .toList();
+        if (definitions.isEmpty()) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Profile field definitions are not configured: " + pageKey);
+        }
+        return definitions;
     }
 
-    private String cacheKey(String pageKey) {
-        return PROFILE_SETTINGS_CACHE_KEY_PREFIX + pageKey;
+    private String defaultCustomFieldType(List<String> supported) {
+        return supported.stream().findFirst().orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR,
+                "Profile custom field type dictionary is not configured"));
     }
 
     private String systemOverridesConfigKey(String pageKey) {
@@ -733,25 +667,7 @@ public class SystemProfileSettingsAppService {
     }
 
     private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
-        String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
-        String sql = """
-                select config_key as configKey, config_value as configValue
-                from sys_config
-                where deleted = 0
-                  and config_scope = 'PLATFORM'
-                  and config_key in (%s)
-                order by id desc
-                """.formatted(placeholders);
-        List<Object> params = new ArrayList<>(keys);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
-        Map<String, String> valueByKey = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String configKey = String.valueOf(row.get("configKey"));
-            if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
-            }
-        }
-        return valueByKey;
+        return repository.findPlatformConfigValues(keys);
     }
 
     private void upsertConfigValue(
@@ -762,72 +678,9 @@ public class SystemProfileSettingsAppService {
             Long operatorId,
             String operatorUuid
     ) {
-        Long existingId = queryConfigId(configKey);
-        if (existingId == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_config (
-                                config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
-                            """,
-                    configKey,
-                    configName,
-                    configValue,
-                    remark,
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            if (inserted != 1) {
-                throw new BizException(ErrorCode.BIZ_ERROR, "Profile config changed, please retry");
-            }
-            return;
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_config
-                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ?
-                          and config_key = ?
-                          and config_scope = 'PLATFORM'
-                          and is_system = 0
-                          and deleted = 0
-                        """,
-                configName,
-                configValue,
-                remark,
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                existingId,
-                configKey
-        );
+        int updated = repository.upsertPlatformConfig(configKey, configName, configValue, remark, operatorId, operatorUuid);
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Profile config changed, please retry");
-        }
-    }
-
-    private Long queryConfigId(String configKey) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select id
-                            from sys_config
-                            where config_key = ?
-                              and config_scope = 'PLATFORM'
-                              and is_system = 0
-                              and deleted = 0
-                            order by id desc
-                            limit 1
-                            """,
-                    Long.class,
-                    configKey
-            );
-        } catch (EmptyResultDataAccessException exception) {
-            return null;
         }
     }
 

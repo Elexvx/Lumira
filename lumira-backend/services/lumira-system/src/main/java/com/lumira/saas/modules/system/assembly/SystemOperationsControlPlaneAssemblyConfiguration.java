@@ -18,6 +18,7 @@ import com.lumira.saas.modules.system.controller.SystemDepartmentController;
 import com.lumira.saas.modules.system.controller.SystemVerificationController;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
+import com.lumira.saas.modules.system.dict.infrastructure.JdbcDictRuntimeRepository;
 import com.lumira.saas.modules.system.export.ExcelExportService;
 import com.lumira.saas.modules.system.export.ExportTaskService;
 import com.lumira.saas.modules.system.monitor.app.SystemMonitorAppService;
@@ -30,6 +31,8 @@ import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordDictionaryCache;
+import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordDictionaryRepository;
+import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordPluginStateRepository;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordDictionaryVersionService;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordMetrics;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordPluginStateService;
@@ -50,6 +53,7 @@ import com.lumira.saas.modules.system.verification.VerificationDeliveryAuditServ
 import com.lumira.saas.modules.system.verification.WechatLoginProperties;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.modules.system.workorder.app.WorkOrderFeedbackPluginStateService;
+import com.lumira.saas.modules.system.workorder.infrastructure.JdbcWorkOrderPluginStateRepository;
 import com.lumira.saas.modules.system.workorder.app.WorkOrderFeedbackService;
 import com.lumira.saas.modules.system.workorder.controller.WorkOrderFeedbackController;
 import org.apache.ibatis.annotations.Mapper;
@@ -77,6 +81,7 @@ import org.springframework.context.annotation.Import;
         AiKnowledgeTextExtractor.class,
         DashboardController.class,
         DictRuntimeService.class,
+        JdbcDictRuntimeRepository.class,
         ExcelExportService.class,
         ExportTaskService.class,
         InternalSystemController.class,
@@ -94,6 +99,8 @@ import org.springframework.context.annotation.Import;
         PublicSystemController.class,
         SensitiveWordController.class,
         SensitiveWordDictionaryCache.class,
+        JdbcSensitiveWordDictionaryRepository.class,
+        JdbcSensitiveWordPluginStateRepository.class,
         SensitiveWordDictionaryVersionService.class,
         SensitiveWordFormFilter.class,
         SensitiveWordMetrics.class,
@@ -122,6 +129,7 @@ import org.springframework.context.annotation.Import;
         WechatLoginSettingsService.class,
         WorkOrderFeedbackController.class,
         WorkOrderFeedbackPluginStateService.class,
+        JdbcWorkOrderPluginStateRepository.class,
         WorkOrderFeedbackService.class
 })
 public class SystemOperationsControlPlaneAssemblyConfiguration {

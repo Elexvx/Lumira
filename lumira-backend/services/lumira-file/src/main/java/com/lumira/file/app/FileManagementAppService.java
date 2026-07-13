@@ -1,8 +1,5 @@
 package com.lumira.file.app;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
@@ -29,9 +26,11 @@ import com.lumira.file.dto.FileStorageSpaceRequest;
 import com.lumira.file.domain.model.FileDomainModels.FileObjectAggregate;
 import com.lumira.file.entity.FileObjectEntity;
 import com.lumira.file.entity.FileStorageSpaceEntity;
-import com.lumira.file.mapper.FileObjectMapper;
-import com.lumira.file.mapper.FileStorageSpaceMapper;
 import com.lumira.file.processing.FileProcessingTaskRequestService;
+import com.lumira.file.repository.FileProcessingArtifactRepository;
+import com.lumira.file.repository.FileBusinessPolicyRepository;
+import com.lumira.file.repository.FileObjectRepository;
+import com.lumira.file.repository.FileStorageSpaceRepository;
 import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
@@ -44,7 +43,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -64,7 +62,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Lazy
 @Service
@@ -77,41 +74,25 @@ public class FileManagementAppService {
     private static final long FILE_LIST_TOTAL_COUNT_CAP = 1000L;
     private static final long STORAGE_SPACE_LIST_TOTAL_COUNT_CAP = 1000L;
     private static final long MAX_IN_MEMORY_FILE_CONTENT_BYTES = 10L * 1024L * 1024L;
-    private static final Duration FILE_LIST_CACHE_TTL = Duration.ofSeconds(30);
     private static final String RESOURCE_FILE_OBJECT = "file:object";
-    private static final String DEFAULT_SORT_COLUMN = "created_at";
     public static final String SCOPE_MINE = "mine";
     public static final String SCOPE_SHARED = "shared";
     public static final String SCOPE_DOWNLOAD_CENTER = "download-center";
     private static final String STORAGE_KEY_LOCAL = "local";
     private static final String STORAGE_KEY_DOWNLOAD_CENTER = "download_center";
-    private static final String LEGACY_STORAGE_KEY_SYSTEM_PUBLIC = "system_public";
-    private static final Long SYSTEM_OPERATOR_ID = 1L;
-    private static final String SYSTEM_OPERATOR_UUID = "00000000-0000-0000-0000-000000000000";
     private static final String VISIBILITY_SCOPE_PERSONAL = "PERSONAL";
     private static final String VISIBILITY_SCOPE_DOWNLOAD_CENTER = "DOWNLOAD_CENTER";
     private static final String VISIBILITY_SCOPE_PUBLIC = "PUBLIC";
-    private static final List<DefaultStorageSpace> DEFAULT_STORAGE_SPACES = List.of(
-            new DefaultStorageSpace("用户上传文件", STORAGE_KEY_LOCAL, "storage/uploads/", "", true, 20, true),
-            new DefaultStorageSpace("下载中心", STORAGE_KEY_DOWNLOAD_CENTER, "storage/uploads/download_center/", "", false, 100, true),
-            new DefaultStorageSpace("AI 聊天附件", "ai_chat", "storage/uploads/ai_chat/", "", false, 20, false),
-            new DefaultStorageSpace("头像文件", "avatar", "storage/uploads/avatar/", "", false, 10, true),
-            new DefaultStorageSpace("Support feedback images", "support_feedback", "storage/uploads/support_feedback/", "", false, 20, true)
-    );
-    private static final Map<String, String> SORT_COLUMN_MAPPING = Map.ofEntries(
-            Map.entry("createdAt", "created_at"),
-            Map.entry("updatedAt", "updated_at"),
-            Map.entry("originalFileName", "original_filename"),
-            Map.entry("fileExtension", "file_extension"),
-            Map.entry("fileSizeBytes", "file_size"),
-            Map.entry("uploadedByName", "uploaded_by_name"),
-            Map.entry("category", "category"),
-            Map.entry("previewMode", "preview_mode")
-    );
-
-    private final FileObjectMapper fileObjectMapper;
-    private final FileStorageSpaceMapper fileStorageSpaceMapper;
-    private final JdbcTemplate jdbcTemplate;
+    private static final String DICT_STORAGE_PROVIDER = "file_storage_provider";
+    private static final String DICT_RENAME_STRATEGY = "file_rename_strategy";
+    private static final String DICT_STORAGE_STATUS = "file_storage_status";
+    private static final String DICT_PREVIEW_EXTENSION = "file_preview_extension";
+    private static final String DICT_PREVIEW_CONTENT_TYPE = "file_preview_content_type";
+    private static final String DICT_RUNTIME_DEFAULT = "file_runtime_default";
+    private final FileObjectRepository fileObjectRepository;
+    private final FileBusinessPolicyRepository businessPolicyRepository;
+    private final FileStorageSpaceRepository storageSpaceRepository;
+    private final FileProcessingArtifactRepository artifactRepository;
     private final UploadProperties uploadProperties;
     private final DocumentUploadService documentUploadService;
     private final ImageUploadService imageUploadService;
@@ -122,12 +103,12 @@ public class FileManagementAppService {
     private final SafeUrlValidator safeUrlValidator;
     private final SecurityAuditEventService securityAuditEventService;
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
-    private final Map<String, CachedFilePage> localFileListCache = new ConcurrentHashMap<>();
 
     public FileManagementAppService(
-            FileObjectMapper fileObjectMapper,
-            FileStorageSpaceMapper fileStorageSpaceMapper,
-            JdbcTemplate jdbcTemplate,
+            FileObjectRepository fileObjectRepository,
+            FileBusinessPolicyRepository businessPolicyRepository,
+            FileStorageSpaceRepository storageSpaceRepository,
+            FileProcessingArtifactRepository artifactRepository,
             UploadProperties uploadProperties,
             DocumentUploadService documentUploadService,
             ImageUploadService imageUploadService,
@@ -137,16 +118,17 @@ public class FileManagementAppService {
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator
     ) {
-        this(fileObjectMapper, fileStorageSpaceMapper, jdbcTemplate, uploadProperties, documentUploadService,
+        this(fileObjectRepository, businessPolicyRepository, storageSpaceRepository, artifactRepository, uploadProperties, documentUploadService,
                 imageUploadService, domainEventPublisher, fileProcessingTaskRequestService, fieldCryptoService,
                 storageMetrics, safeUrlValidator, null, null);
     }
 
     @Autowired
     public FileManagementAppService(
-            FileObjectMapper fileObjectMapper,
-            FileStorageSpaceMapper fileStorageSpaceMapper,
-            JdbcTemplate jdbcTemplate,
+            FileObjectRepository fileObjectRepository,
+            FileBusinessPolicyRepository businessPolicyRepository,
+            FileStorageSpaceRepository storageSpaceRepository,
+            FileProcessingArtifactRepository artifactRepository,
             UploadProperties uploadProperties,
             DocumentUploadService documentUploadService,
             ImageUploadService imageUploadService,
@@ -158,9 +140,10 @@ public class FileManagementAppService {
             SecurityAuditEventService securityAuditEventService,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
-        this.fileObjectMapper = fileObjectMapper;
-        this.fileStorageSpaceMapper = fileStorageSpaceMapper;
-        this.jdbcTemplate = jdbcTemplate;
+        this.fileObjectRepository = fileObjectRepository;
+        this.businessPolicyRepository = businessPolicyRepository;
+        this.storageSpaceRepository = storageSpaceRepository;
+        this.artifactRepository = artifactRepository;
         this.uploadProperties = uploadProperties;
         this.documentUploadService = documentUploadService;
         this.imageUploadService = imageUploadService;
@@ -189,59 +172,20 @@ public class FileManagementAppService {
         boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         TrustedCurrentUser actor = requirePermission(currentUser, resolveReadPermission(sharedScope, downloadCenterScope));
-        QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
-                .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, actor, sharedScope, downloadCenterScope);
-        if (StringUtils.hasText(keyword)) {
-            String normalizedKeyword = keyword.trim();
-            queryWrapper.and(wrapper -> wrapper
-                    .like("original_filename", normalizedKeyword)
-                    .or()
-                    .like("category", normalizedKeyword)
-                    .or()
-                    .like("tags", normalizedKeyword)
-                    .or()
-                    .like("remark", normalizedKeyword));
-        }
-        if (StringUtils.hasText(category)) {
-            queryWrapper.eq("category", category.trim());
-        }
-        if (StringUtils.hasText(fileExtension)) {
-            queryWrapper.eq("file_extension", fileExtension.trim().toLowerCase(Locale.ROOT));
-        }
-        if (StringUtils.hasText(previewMode)) {
-            queryWrapper.eq("preview_mode", previewMode.trim().toUpperCase(Locale.ROOT));
-        }
-        if (StringUtils.hasText(bucket)) {
-            queryWrapper.eq("bucket", normalizeStorageKey(bucket));
-        }
-
-        String sortColumn = StringUtils.hasText(sortField)
-                ? SORT_COLUMN_MAPPING.getOrDefault(sortField, DEFAULT_SORT_COLUMN)
-                : DEFAULT_SORT_COLUMN;
         boolean ascending = "ascend".equalsIgnoreCase(sortOrder);
+        FileObjectRepository.Query query = new FileObjectRepository.Query(
+                trimToNull(keyword), true, trimToNull(category), normalizeLower(fileExtension),
+                normalizeUpper(previewMode), StringUtils.hasText(bucket) ? normalizeStorageKey(bucket) : null,
+                null, null, sortField, ascending);
+        FileObjectRepository.Access access = resolveFileAccess(actor, sharedScope, downloadCenterScope);
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        boolean localCacheable = isDefaultListCacheable(keyword, category, fileExtension, previewMode, bucket, scope, sortField, sortOrder);
-        String localCacheKey = localCacheable ? buildFileListCacheKey(actor, safePageNo, safePageSize, sortColumn, ascending) : null;
-        if (localCacheable) {
-            CachedFilePage cached = localFileListCache.get(localCacheKey);
-            Instant now = Instant.now();
-            if (cached != null && cached.expireAt().isAfter(now)) {
-                return cached.page();
-            }
-            if (cached != null) {
-                localFileListCache.remove(localCacheKey);
-            }
-        }
         long safeOffset = (safePageNo - 1L) * safePageSize;
         long totalLimit = calculateFileListTotalCountLimit(safePageSize, safeOffset);
-        Long total = countFileObjectCandidates(queryWrapper.clone(), totalLimit);
+        Long total = fileObjectRepository.countCandidates(query, access, totalLimit);
         long normalizedTotal = normalizeTotal(total, totalLimit);
         boolean totalCapped = isTotalCapped(total, totalLimit);
-        List<FileObjectDTO> records = fileObjectMapper.selectList(queryWrapper
-                        .orderBy(true, ascending, sortColumn)
-                        .last("limit " + safePageSize + " offset " + safeOffset))
+        List<FileObjectDTO> records = fileObjectRepository.search(query, access, safeOffset, safePageSize)
                 .stream()
                 .map(this::mapFileObject)
                 .map(this::enrich)
@@ -253,49 +197,7 @@ public class FileManagementAppService {
         response.setTotalCapped(totalCapped);
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
-        if (localCacheable) {
-            localFileListCache.put(localCacheKey, new CachedFilePage(response, Instant.now().plus(FILE_LIST_CACHE_TTL)));
-        }
         return response;
-    }
-
-    private boolean isDefaultListCacheable(
-            String keyword,
-            String category,
-            String fileExtension,
-            String previewMode,
-            String bucket,
-            String scope,
-            String sortField,
-            String sortOrder
-    ) {
-        return !StringUtils.hasText(keyword)
-                && !StringUtils.hasText(category)
-                && !StringUtils.hasText(fileExtension)
-                && !StringUtils.hasText(previewMode)
-                && !StringUtils.hasText(bucket)
-                && !StringUtils.hasText(scope)
-                && !StringUtils.hasText(sortField)
-                && !StringUtils.hasText(sortOrder);
-    }
-
-    private String buildFileListCacheKey(
-            TrustedCurrentUser actor,
-            long pageNo,
-            long pageSize,
-            String sortColumn,
-            boolean ascending
-    ) {
-        Long userId = actor.userId();
-        String permissionVersion = actor.permissionsVersion();
-        return String.join(":",
-                "file:list",
-                String.valueOf(userId),
-                StringUtils.hasText(permissionVersion) ? permissionVersion : "v0",
-                String.valueOf(pageNo),
-                String.valueOf(pageSize),
-                sortColumn,
-                ascending ? "asc" : "desc");
     }
 
     public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean sharedScope) {
@@ -337,30 +239,13 @@ public class FileManagementAppService {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "Invalid internal file search limit");
         }
         long safeLimit = limit;
-        QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
-                .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, actor, sharedScope, false);
-        if (StringUtils.hasText(keyword)) {
-            String normalizedKeyword = keyword.trim();
-            queryWrapper.and(wrapper -> wrapper
-                    .like("original_filename", normalizedKeyword)
-                    .or()
-                    .like("category", normalizedKeyword)
-                    .or()
-                    .like("tags", normalizedKeyword));
+        String normalizedContentType = trimToNull(contentType);
+        if (normalizedContentType != null && normalizedContentType.endsWith("%")) {
+            normalizedContentType = normalizedContentType.substring(0, normalizedContentType.length() - 1);
         }
-        if (StringUtils.hasText(contentType)) {
-            String normalizedContentType = contentType.trim();
-            queryWrapper.likeRight("content_type", normalizedContentType.endsWith("%")
-                    ? normalizedContentType.substring(0, normalizedContentType.length() - 1)
-                    : normalizedContentType);
-        }
-        if (StringUtils.hasText(status)) {
-            queryWrapper.eq("status", status.trim().toUpperCase(Locale.ROOT));
-        }
-        return fileObjectMapper.selectList(queryWrapper
-                        .orderByDesc("id")
-                        .last("limit " + safeLimit))
+        FileObjectRepository.Query query = new FileObjectRepository.Query(trimToNull(keyword), false, null, null,
+                null, null, normalizedContentType, normalizeUpper(status), "id", false);
+        return fileObjectRepository.search(query, resolveFileAccess(actor, sharedScope, false), 0L, safeLimit)
                 .stream()
                 .map(this::mapFileObject)
                 .map(this::enrich)
@@ -462,12 +347,11 @@ public class FileManagementAppService {
                 storedDocument.previewMode(),
                 storedDocument.previewable(),
                 visibilityScope,
-                StringUtils.hasText(category) ? category : "我的文件",
+                StringUtils.hasText(category) ? category : requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "DOCUMENT_CATEGORY"),
                 tags,
                 remark
         );
         FileObjectDTO uploaded = getInsertedFile(insertedId);
-        localFileListCache.clear();
         publishFileUploaded(uploaded, currentUser);
         fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser);
         return uploaded;
@@ -518,12 +402,11 @@ public class FileManagementAppService {
                 resolvePreviewMode(storedImage.fileExtension(), storedImage.contentType()),
                 true,
                 visibilityScope,
-                StringUtils.hasText(category) ? category : "图片",
+                StringUtils.hasText(category) ? category : requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "IMAGE_CATEGORY"),
                 null,
                 remark
         );
         FileObjectDTO uploaded = getInsertedFile(insertedId);
-        localFileListCache.clear();
         publishFileUploaded(uploaded, currentUser);
         fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser);
         return uploaded;
@@ -543,23 +426,7 @@ public class FileManagementAppService {
         if (!shouldRetainStoredFile(file.bucket())) {
             deleteStoredFile(file);
         }
-        UpdateWrapper<FileObjectEntity> updateWrapper = new UpdateWrapper<FileObjectEntity>()
-                .set("deleted", 1)
-                .set("updated_by", actorUserId)
-                .set("updated_by_uuid", actorUserUuid)
-                .set("updated_at", LocalDateTime.now())
-                .eq("id", fileId)
-                .eq("deleted", 0);
-        if (!sharedScope && !downloadCenterScope) {
-            updateWrapper
-                    .eq("uploaded_by", actorUserId)
-                    .eq("uploaded_by_uuid", actorUserUuid);
-        }
-        fileObjectMapper.update(
-                null,
-                updateWrapper
-        );
-        localFileListCache.clear();
+        fileObjectRepository.softDelete(fileId, actorUserId, actorUserUuid, !sharedScope && !downloadCenterScope);
         publishFileDeleted(file, currentUser);
     }
 
@@ -594,12 +461,10 @@ public class FileManagementAppService {
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long safeOffset = (safePageNo - 1L) * safePageSize;
         long totalLimit = calculateStorageSpaceListTotalCountLimit(safePageSize, safeOffset);
-        QueryWrapper<FileStorageSpaceEntity> countQueryWrapper = new QueryWrapper<FileStorageSpaceEntity>()
-                .eq("deleted", 0);
-        Long total = countStorageSpaceCandidates(countQueryWrapper.clone(), totalLimit);
+        Long total = storageSpaceRepository.countCandidates(totalLimit);
         long normalizedTotal = normalizeTotal(total, totalLimit);
         boolean totalCapped = isTotalCapped(total, totalLimit);
-        List<StorageSpaceDTO> records = fileStorageSpaceMapper
+        List<StorageSpaceDTO> records = storageSpaceRepository
                 .listWithUsage(safePageSize, safeOffset)
                 .stream()
                 .map(this::mapStorageSpace)
@@ -628,28 +493,6 @@ public class FileManagementAppService {
         return Math.min(dynamicLimit, STORAGE_SPACE_LIST_TOTAL_COUNT_CAP);
     }
 
-    private long countFileObjectCandidates(QueryWrapper<FileObjectEntity> queryWrapper, long limit) {
-        if (limit <= 0L) {
-            return 0L;
-        }
-        QueryWrapper<FileObjectEntity> countQuery = queryWrapper.clone()
-                .select("id")
-                .last("limit " + limit);
-        List<FileObjectEntity> candidates = fileObjectMapper.selectList(countQuery);
-        return candidates == null ? 0L : candidates.size();
-    }
-
-    private long countStorageSpaceCandidates(QueryWrapper<FileStorageSpaceEntity> queryWrapper, long limit) {
-        if (limit <= 0L) {
-            return 0L;
-        }
-        QueryWrapper<FileStorageSpaceEntity> countQuery = queryWrapper.clone()
-                .select("id")
-                .last("limit " + limit);
-        List<FileStorageSpaceEntity> candidates = fileStorageSpaceMapper.selectList(countQuery);
-        return candidates == null ? 0L : candidates.size();
-    }
-
     private long normalizeTotal(Long total, long limit) {
         if (total == null || total <= 0L) {
             return 0L;
@@ -674,7 +517,7 @@ public class FileManagementAppService {
 
     public FileStorageSpaceRequest.TestResult testStorageSpace(CurrentUser currentUser, Long id) {
         requirePermission(currentUser, "system:file:manage");
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(id);
+        FileStorageSpaceEntity entity = storageSpaceRepository.findByIdWithUsage(id);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "存储空间不存在");
         }
@@ -720,7 +563,7 @@ public class FileManagementAppService {
             clearDefaultStorage();
         }
         try {
-            fileStorageSpaceMapper.insert(buildStorageSpaceEntity(payload, actorUserId, actorUserUuid));
+            storageSpaceRepository.insert(buildStorageSpaceEntity(payload, actorUserId, actorUserUuid));
         } catch (DuplicateKeyException exception) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间标识已存在");
         }
@@ -738,33 +581,7 @@ public class FileManagementAppService {
         if (payload.defaultStorage()) {
             clearDefaultStorage();
         }
-        fileStorageSpaceMapper.update(
-                null,
-                new LambdaUpdateWrapper<FileStorageSpaceEntity>()
-                        .set(FileStorageSpaceEntity::getTitle, payload.title())
-                        .set(FileStorageSpaceEntity::getRootPath, payload.rootPath())
-                        .set(FileStorageSpaceEntity::getBucketName, payload.bucketName())
-                        .set(FileStorageSpaceEntity::getEndpoint, payload.endpoint())
-                        .set(FileStorageSpaceEntity::getRegion, payload.region())
-                        .set(FileStorageSpaceEntity::getAccessKeyId, payload.accessKeyId())
-                        .set(FileStorageSpaceEntity::getAccessKeySecret, encryptSecret(payload.accessKeySecret()))
-                        .set(FileStorageSpaceEntity::getRenameStrategy, payload.renameStrategy())
-                        .set(FileStorageSpaceEntity::getMaxFileSizeMb, payload.maxFileSizeMb())
-                        .set(FileStorageSpaceEntity::getAllowedMimeTypes, payload.allowedMimeTypes())
-                        .set(FileStorageSpaceEntity::getDefaultFlag, payload.defaultStorage() ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getRetainFileOnRecordDelete, payload.retainFileOnRecordDelete() ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, payload.anonymousAccessAllowed() ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getStatus, payload.status())
-                        .set(FileStorageSpaceEntity::getUpdatedBy, actorUserId)
-                        .set(FileStorageSpaceEntity::getUpdatedByUuid, actorUserUuid)
-                        .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getId, id)
-                        .eq(FileStorageSpaceEntity::getStorageKey, existing.storageKey())
-                        .eq(FileStorageSpaceEntity::getProvider, existing.provider())
-                        .eq(FileStorageSpaceEntity::getStatus, existing.status())
-                        .eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(existing.defaultStorage()) ? 1 : 0)
-                        .eq(FileStorageSpaceEntity::getDeleted, 0)
-        );
+        storageSpaceRepository.update(id, existing, buildStorageSpaceEntity(payload, actorUserId, actorUserUuid));
         ensureOneDefaultStorage();
         return queryStorageSpaceById(id);
     }
@@ -781,32 +598,14 @@ public class FileManagementAppService {
         if (Boolean.TRUE.equals(existing.defaultStorage())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "默认存储空间不能删除");
         }
-        fileStorageSpaceMapper.update(
-                null,
-                new LambdaUpdateWrapper<FileStorageSpaceEntity>()
-                        .set(FileStorageSpaceEntity::getDeleted, 1)
-                        .set(FileStorageSpaceEntity::getUpdatedBy, actorUserId)
-                        .set(FileStorageSpaceEntity::getUpdatedByUuid, actorUserUuid)
-                        .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getId, id)
-                        .eq(FileStorageSpaceEntity::getStorageKey, existing.storageKey())
-                        .eq(FileStorageSpaceEntity::getProvider, existing.provider())
-                        .eq(FileStorageSpaceEntity::getStatus, existing.status())
-                        .eq(FileStorageSpaceEntity::getDefaultFlag, Boolean.TRUE.equals(existing.defaultStorage()) ? 1 : 0)
-                        .eq(FileStorageSpaceEntity::getDeleted, 0)
-        );
+        storageSpaceRepository.delete(id, existing, actorUserId, actorUserUuid);
     }
 
     private boolean hasFileRecordsInBucket(String storageKey) {
         if (!StringUtils.hasText(storageKey)) {
             return false;
         }
-        QueryWrapper<FileObjectEntity> query = new QueryWrapper<FileObjectEntity>()
-                .select("1")
-                .eq("bucket", storageKey)
-                .eq("deleted", 0)
-                .last("limit 1");
-        return fileObjectMapper.selectOne(query) != null;
+        return fileObjectRepository.existsInBucket(storageKey);
     }
 
     public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean sharedScope) {
@@ -877,32 +676,12 @@ public class FileManagementAppService {
                 sharedScope,
                 downloadCenterScope
         );
-        List<FileProcessingArtifactDTO> artifacts = jdbcTemplate.query(
-                """
-                        select id, file_id, task_type, artifact_type, artifact_path,
-                               content_text, content_length, updated_at
-                        from file_processing_artifact
-                        where file_id = ? and artifact_type = ? and deleted = 0
-                        order by updated_at desc, id desc
-                        limit 1
-                        """,
-                (rs, rowNum) -> new FileProcessingArtifactDTO(
-                        rs.getLong("id"),
-                        rs.getLong("file_id"),
-                        rs.getString("task_type"),
-                        rs.getString("artifact_type"),
-                        rs.getString("artifact_path"),
-                        rs.getString("content_text"),
-                        rs.getInt("content_length"),
-                        rs.getObject("updated_at", LocalDateTime.class)
-                ),
-                file.id(),
-                artifactType.trim().toUpperCase(Locale.ROOT)
-        );
-        if (artifacts.isEmpty()) {
+        FileProcessingArtifactDTO artifact = artifactRepository.findLatest(
+                file.id(), artifactType.trim().toUpperCase(Locale.ROOT)).orElse(null);
+        if (artifact == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "文件处理产物不存在");
         }
-        return artifacts.getFirst();
+        return artifact;
     }
 
     private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean sharedScope) {
@@ -922,11 +701,8 @@ public class FileManagementAppService {
         if (fileId == null || fileId <= 0) {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "Valid file id is required");
         }
-        QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
-                .eq("id", fileId)
-                .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, actor, sharedScope, downloadCenterScope);
-        FileObjectEntity entity = fileObjectMapper.selectOne(queryWrapper);
+        FileObjectEntity entity = fileObjectRepository.findVisibleById(
+                fileId, resolveFileAccess(actor, sharedScope, downloadCenterScope));
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "文件不存在");
         }
@@ -1036,7 +812,7 @@ public class FileManagementAppService {
             return null;
         }
         if (StringUtils.hasText(file.bucket())) {
-            FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.bucket());
+            FileStorageSpaceEntity storageSpace = storageSpaceRepository.findByStorageKey(file.bucket());
             if (storageSpace != null) {
                 Path storageRoot = resolveStorageRoot(storageSpace);
                 Path target = storageRoot.resolve(validateObjectKey(file.storagePath())).normalize();
@@ -1136,7 +912,7 @@ public class FileManagementAppService {
         entity.setUpdatedByUuid(actorUserUuid);
         entity.setUpdatedAt(now);
         entity.setDeleted(0);
-        fileObjectMapper.insert(entity);
+        fileObjectRepository.insert(entity);
         if (entity.getId() == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传记录保存失败");
         }
@@ -1144,25 +920,22 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO getInsertedFile(Long insertedId) {
-        FileObjectEntity inserted = fileObjectMapper.selectById(insertedId);
+        FileObjectEntity inserted = fileObjectRepository.findById(insertedId);
         if (inserted == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传记录读取失败");
         }
         return enrich(mapFileObject(inserted));
     }
 
-    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, TrustedCurrentUser actor, boolean sharedScopeRequested, boolean downloadCenterScope) {
+    private FileObjectRepository.Access resolveFileAccess(TrustedCurrentUser actor, boolean sharedScopeRequested, boolean downloadCenterScope) {
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
-        applyFileVisibilityScope(queryWrapper, downloadCenterScope);
         if (!sharedScopeRequested) {
-            queryWrapper.eq("uploaded_by", actorUserId);
-            queryWrapper.eq("uploaded_by_uuid", actorUserUuid);
-            return;
+            return new FileObjectRepository.Access(downloadCenterScope, false, actorUserId, actorUserUuid, Set.of(), Set.of());
         }
         if (downloadCenterScope) {
             requirePermission(actor, "download:center:view");
-            return;
+            return new FileObjectRepository.Access(true, true, null, null, Set.of(), Set.of());
         }
         DataPermissionDecision decision = DataPermissionResolver.resolve(
                 RESOURCE_FILE_OBJECT,
@@ -1173,7 +946,7 @@ public class FileManagementAppService {
                 actor.permissions()
         );
         if (decision.scopeType() == DataScopeType.ALL) {
-            return;
+            return new FileObjectRepository.Access(false, true, null, null, Set.of(), Set.of());
         }
         Set<Long> deptIds = new java.util.LinkedHashSet<>(decision.deptIds());
         Set<Long> userIds = new java.util.LinkedHashSet<>(decision.userIds());
@@ -1181,22 +954,9 @@ public class FileManagementAppService {
             userIds.add(actorUserId);
         }
         if (deptIds.isEmpty() && userIds.isEmpty()) {
-            queryWrapper.eq("uploaded_by", actorUserId);
-            queryWrapper.eq("uploaded_by_uuid", actorUserUuid);
-            return;
+            return new FileObjectRepository.Access(false, false, actorUserId, actorUserUuid, Set.of(), Set.of());
         }
-        queryWrapper.and(nested -> {
-            boolean hasDeptIds = !deptIds.isEmpty();
-            if (hasDeptIds) {
-                nested.in("department_id", deptIds);
-            }
-            if (!userIds.isEmpty()) {
-                if (hasDeptIds) {
-                    nested.or();
-                }
-                nested.in("uploaded_by", userIds);
-            }
-        });
+        return new FileObjectRepository.Access(false, false, null, null, Set.copyOf(deptIds), Set.copyOf(userIds));
     }
 
     private TrustedCurrentUser requirePermission(CurrentUser currentUser, String permission) {
@@ -1262,22 +1022,6 @@ public class FileManagementAppService {
         return "system:file:delete";
     }
 
-    private void applyFileVisibilityScope(QueryWrapper<FileObjectEntity> queryWrapper, boolean downloadCenterScope) {
-        if (downloadCenterScope) {
-            queryWrapper.and(wrapper -> wrapper
-                    .eq("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER)
-                    .or()
-                    .eq("bucket", STORAGE_KEY_DOWNLOAD_CENTER));
-            return;
-        }
-        queryWrapper
-                .and(wrapper -> wrapper
-                        .isNull("visibility_scope")
-                        .or()
-                        .ne("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER))
-                .ne("bucket", STORAGE_KEY_DOWNLOAD_CENTER);
-    }
-
     private String resolveVisibilityScope(String scope) {
         if (SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) || VISIBILITY_SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope)) {
             return VISIBILITY_SCOPE_DOWNLOAD_CENTER;
@@ -1308,16 +1052,16 @@ public class FileManagementAppService {
 
     private StorageSpaceDTO getDefaultStorageSpace() {
         ensureDefaultStorageSpaces();
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findDefault();
+        FileStorageSpaceEntity entity = storageSpaceRepository.findDefault();
         if (entity != null) {
             return mapStorageSpace(entity);
         }
-        return new StorageSpaceDTO(null, "Local storage", "local", "LOCAL", "storage/uploads/", null, null, null, null, false, "APPEND_RANDOM_ID", 20, "*", true, false, true, "ENABLED", 0L, 0L, "0B", null, null);
+        throw visibleBizException(ErrorCode.SYSTEM_ERROR, "Default storage space is not configured in database");
     }
 
     private StorageSpaceDTO queryStorageSpace(String storageKey) {
         ensureDefaultStorageSpaces();
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(storageKey);
+        FileStorageSpaceEntity entity = storageSpaceRepository.findByStorageKey(storageKey);
         if (entity == null) {
             throw visibleBizException(ErrorCode.NOT_FOUND, "Storage space does not exist");
         }
@@ -1325,7 +1069,7 @@ public class FileManagementAppService {
     }
 
     private StorageSpaceDTO queryStorageSpaceById(Long id) {
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(id);
+        FileStorageSpaceEntity entity = storageSpaceRepository.findByIdWithUsage(id);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Storage space does not exist");
         }
@@ -1336,7 +1080,7 @@ public class FileManagementAppService {
         if (!StringUtils.hasText(bucket)) {
             return false;
         }
-        return Boolean.TRUE.equals(fileStorageSpaceMapper.shouldRetainStoredFile(bucket));
+        return Boolean.TRUE.equals(storageSpaceRepository.shouldRetainStoredFile(bucket));
     }
 
     private StorageSpaceUploadContext resolveUploadContext(String bucket) {
@@ -1357,7 +1101,7 @@ public class FileManagementAppService {
 
     private StorageSpaceDTO findUploadStorageSpaceOrDefault(String storageKey) {
         ensureDefaultStorageSpaces();
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(storageKey);
+        FileStorageSpaceEntity entity = storageSpaceRepository.findByStorageKey(storageKey);
         if (entity != null) {
             return mapStorageSpace(entity);
         }
@@ -1365,7 +1109,8 @@ public class FileManagementAppService {
         return getDefaultStorageSpace();
     }
     private long maxFileSizeBytes(Integer maxFileSizeMb) {
-        int safeMaxFileSizeMb = maxFileSizeMb == null || maxFileSizeMb <= 0 ? 20 : maxFileSizeMb;
+        int safeMaxFileSizeMb = maxFileSizeMb == null || maxFileSizeMb <= 0
+                ? requiredPolicyInteger(DICT_RUNTIME_DEFAULT, "MAX_FILE_SIZE_MB") : maxFileSizeMb;
         return safeMaxFileSizeMb * 1024L * 1024L;
     }
 
@@ -1432,138 +1177,19 @@ public class FileManagementAppService {
     }
 
     private void clearDefaultStorage() {
-        fileStorageSpaceMapper.clearDefaultStorage();
+        storageSpaceRepository.clearDefaultStorage();
     }
 
     private void ensureOneDefaultStorage() {
-        Long count = fileStorageSpaceMapper.countDefaultStorage();
+        Long count = storageSpaceRepository.countDefaultStorage();
         if (count != null && count > 0) {
             return;
         }
-        fileStorageSpaceMapper.ensureFirstDefaultStorage();
+        storageSpaceRepository.ensureFirstDefaultStorage();
     }
 
     private void ensureDefaultStorageSpaces() {
-        mergeLegacySystemPublicStorageSpace();
-        for (DefaultStorageSpace storageSpace : DEFAULT_STORAGE_SPACES) {
-            StoragePayload payload = new StoragePayload(
-                    storageSpace.title(),
-                    storageSpace.storageKey(),
-                    "LOCAL",
-                    storageSpace.rootPath(),
-                    storageSpace.bucketName(),
-                    "",
-                    "",
-                    "",
-                    null,
-                    "APPEND_RANDOM_ID",
-                    storageSpace.maxFileSizeMb(),
-                    "*",
-                    storageSpace.defaultStorage(),
-                    false,
-                    storageSpace.anonymousAccessAllowed(),
-                    "ENABLED"
-            );
-            FileStorageSpaceEntity existing = fileStorageSpaceMapper.findByStorageKey(storageSpace.storageKey());
-            if (existing != null) {
-                if (storageSpace.defaultStorage()
-                        && (existing.getDefaultFlag() == null || existing.getDefaultFlag() == 0)) {
-                    clearDefaultStorage();
-                    enableDefaultStorageSpace(storageSpace.storageKey(), storageSpace.anonymousAccessAllowed());
-                } else if (storageSpace.anonymousAccessAllowed()
-                        && (existing.getAnonymousAccessAllowed() == null || existing.getAnonymousAccessAllowed() == 0)) {
-                    enableDefaultStorageSpaceAccess(storageSpace.storageKey());
-                }
-                continue;
-            }
-            if (payload.defaultStorage()) {
-                clearDefaultStorage();
-            }
-            FileStorageSpaceEntity entity = buildStorageSpaceEntity(payload, SYSTEM_OPERATOR_ID, SYSTEM_OPERATOR_UUID);
-            try {
-                fileStorageSpaceMapper.insert(entity);
-            } catch (DuplicateKeyException exception) {
-                restoreDefaultStorageSpace(payload);
-            }
-        }
         ensureOneDefaultStorage();
-    }
-
-    private void mergeLegacySystemPublicStorageSpace() {
-        FileStorageSpaceEntity legacyStorageSpace = fileStorageSpaceMapper.findByStorageKey(LEGACY_STORAGE_KEY_SYSTEM_PUBLIC);
-        if (legacyStorageSpace == null) {
-            return;
-        }
-        LocalDateTime now = LocalDateTime.now();
-        fileObjectMapper.update(
-                null,
-                new UpdateWrapper<FileObjectEntity>()
-                        .set("bucket", STORAGE_KEY_LOCAL)
-                        .set("updated_by", SYSTEM_OPERATOR_ID)
-                        .set("updated_by_uuid", SYSTEM_OPERATOR_UUID)
-                        .set("updated_at", now)
-                        .eq("bucket", LEGACY_STORAGE_KEY_SYSTEM_PUBLIC)
-                        .eq("deleted", 0)
-        );
-        fileStorageSpaceMapper.update(
-                null,
-                new UpdateWrapper<FileStorageSpaceEntity>()
-                        .set("deleted", 1)
-                        .set("updated_by", SYSTEM_OPERATOR_ID)
-                        .set("updated_by_uuid", SYSTEM_OPERATOR_UUID)
-                        .set("updated_at", now)
-                        .eq("storage_key", LEGACY_STORAGE_KEY_SYSTEM_PUBLIC)
-        );
-    }
-
-    private void enableDefaultStorageSpace(String storageKey, boolean anonymousAccessAllowed) {
-        fileStorageSpaceMapper.update(
-                null,
-                new LambdaUpdateWrapper<FileStorageSpaceEntity>()
-                        .set(FileStorageSpaceEntity::getDefaultFlag, 1)
-                        .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, anonymousAccessAllowed ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
-                        .set(FileStorageSpaceEntity::getUpdatedByUuid, SYSTEM_OPERATOR_UUID)
-                        .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getStorageKey, storageKey)
-                        .eq(FileStorageSpaceEntity::getDeleted, 0)
-        );
-    }
-
-    private void enableDefaultStorageSpaceAccess(String storageKey) {
-        fileStorageSpaceMapper.update(
-                null,
-                new LambdaUpdateWrapper<FileStorageSpaceEntity>()
-                        .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, 1)
-                        .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
-                        .set(FileStorageSpaceEntity::getUpdatedByUuid, SYSTEM_OPERATOR_UUID)
-                        .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getStorageKey, storageKey)
-                        .eq(FileStorageSpaceEntity::getDeleted, 0)
-        );
-    }
-
-    private void restoreDefaultStorageSpace(StoragePayload payload) {
-        fileStorageSpaceMapper.update(
-                null,
-                new LambdaUpdateWrapper<FileStorageSpaceEntity>()
-                        .set(FileStorageSpaceEntity::getTitle, payload.title())
-                        .set(FileStorageSpaceEntity::getProvider, payload.provider())
-                        .set(FileStorageSpaceEntity::getRootPath, payload.rootPath())
-                        .set(FileStorageSpaceEntity::getBucketName, payload.bucketName())
-                        .set(FileStorageSpaceEntity::getRenameStrategy, payload.renameStrategy())
-                        .set(FileStorageSpaceEntity::getMaxFileSizeMb, payload.maxFileSizeMb())
-                        .set(FileStorageSpaceEntity::getAllowedMimeTypes, payload.allowedMimeTypes())
-                        .set(FileStorageSpaceEntity::getDefaultFlag, payload.defaultStorage() ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getRetainFileOnRecordDelete, payload.retainFileOnRecordDelete() ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, payload.anonymousAccessAllowed() ? 1 : 0)
-                        .set(FileStorageSpaceEntity::getStatus, payload.status())
-                        .set(FileStorageSpaceEntity::getDeleted, 0)
-                        .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
-                        .set(FileStorageSpaceEntity::getUpdatedByUuid, SYSTEM_OPERATOR_UUID)
-                        .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getStorageKey, payload.storageKey())
-        );
     }
     private String relativePathFromPublicUrl(String publicUrl) {
         return publicUrl;
@@ -1572,17 +1198,19 @@ public class FileManagementAppService {
     private String resolvePreviewMode(String extension, String contentType) {
         String normalizedExtension = extension == null ? "" : extension.toLowerCase(Locale.ROOT);
         String normalizedContentType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-        if (List.of("png", "jpg", "jpeg", "gif", "bmp", "ico").contains(normalizedExtension)
-                || normalizedContentType.startsWith("image/")) {
-            return "IMAGE";
+        for (FileBusinessPolicyRepository.Item rule : businessPolicyRepository.findEnabledItems(DICT_PREVIEW_EXTENSION)) {
+            if (normalizedExtension.equalsIgnoreCase(rule.value())) {
+                return rule.label();
+            }
         }
-        if ("pdf".equals(normalizedExtension) || "application/pdf".equals(normalizedContentType)) {
-            return "PDF";
+        for (FileBusinessPolicyRepository.Item rule : businessPolicyRepository.findEnabledItems(DICT_PREVIEW_CONTENT_TYPE)) {
+            boolean prefix = "PREFIX".equalsIgnoreCase(rule.remark());
+            if ((prefix && normalizedContentType.startsWith(rule.value().toLowerCase(Locale.ROOT)))
+                    || (!prefix && normalizedContentType.equalsIgnoreCase(rule.value()))) {
+                return rule.label();
+            }
         }
-        if (List.of("txt", "md", "csv", "json", "xml").contains(normalizedExtension) || normalizedContentType.startsWith("text/")) {
-            return "TEXT";
-        }
-        return "UNSUPPORTED";
+        return requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "UNSUPPORTED_PREVIEW_MODE");
     }
 
     private String normalizeTags(String tags) {
@@ -1598,6 +1226,20 @@ public class FileManagementAppService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String trimToNull(String value) {
+        return normalizeText(value);
+    }
+
+    private String normalizeLower(String value) {
+        String normalized = trimToNull(value);
+        return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeUpper(String value) {
+        String normalized = trimToNull(value);
+        return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
     }
 
     private void requireCurrentUser(CurrentUser currentUser) {
@@ -1696,22 +1338,26 @@ public class FileManagementAppService {
         String provider = normalizeProvider(StringUtils.hasText(request.getProvider()) ? request.getProvider() : providerFallback);
         String storageKey = normalizeStorageKey(StringUtils.hasText(request.getStorageKey()) ? request.getStorageKey() : storageKeyFallback);
         String title = defaultIfBlank(request.getTitle(), existing == null ? providerLabel(provider) : existing.title());
-        String rootPath = defaultIfBlank(request.getRootPath(), existing == null ? "storage/uploads/" : existing.rootPath());
+        String rootPath = defaultIfBlank(request.getRootPath(), existing == null ? requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "ROOT_PATH") : existing.rootPath());
         String bucketName = defaultIfBlank(request.getBucketName(), existing == null ? "" : existing.bucketName());
         String endpoint = defaultIfBlank(request.getEndpoint(), existing == null ? "" : existing.endpoint());
         String region = defaultIfBlank(request.getRegion(), existing == null ? "" : existing.region());
         String accessKeyId = defaultIfBlank(request.getAccessKeyId(), existing == null ? "" : existing.accessKeyId());
         String accessKeySecret = StringUtils.hasText(request.getAccessKeySecret()) ? request.getAccessKeySecret().trim() : null;
         if (existing != null && !StringUtils.hasText(accessKeySecret)) {
-            accessKeySecret = decryptSecret(fileStorageSpaceMapper.findAccessKeySecret(existing.id()));
+            accessKeySecret = decryptSecret(storageSpaceRepository.findAccessKeySecret(existing.id()));
         }
-        String renameStrategy = normalizeRenameStrategy(defaultIfBlank(request.getRenameStrategy(), existing == null ? "APPEND_RANDOM_ID" : existing.renameStrategy()));
-        Integer maxFileSizeMb = request.getMaxFileSizeMb() == null ? (existing == null ? 20 : existing.maxFileSizeMb()) : request.getMaxFileSizeMb();
-        String allowedMimeTypes = defaultIfBlank(request.getAllowedMimeTypes(), existing == null ? "*" : existing.allowedMimeTypes());
+        String renameStrategy = normalizeRenameStrategy(defaultIfBlank(request.getRenameStrategy(), existing == null ? requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "RENAME_STRATEGY") : existing.renameStrategy()));
+        Integer maxFileSizeMb = request.getMaxFileSizeMb() == null ? (existing == null ? requiredPolicyInteger(DICT_RUNTIME_DEFAULT, "MAX_FILE_SIZE_MB") : existing.maxFileSizeMb()) : request.getMaxFileSizeMb();
+        String allowedMimeTypes = defaultIfBlank(request.getAllowedMimeTypes(), existing == null ? requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "ALLOWED_MIME_TYPES") : existing.allowedMimeTypes());
         boolean defaultStorage = request.getDefaultStorage() == null ? existing == null || Boolean.TRUE.equals(existing.defaultStorage()) : request.getDefaultStorage();
         boolean retain = request.getRetainFileOnRecordDelete() == null ? existing != null && Boolean.TRUE.equals(existing.retainFileOnRecordDelete()) : request.getRetainFileOnRecordDelete();
         boolean anonymousAccessAllowed = request.getAnonymousAccessAllowed() == null ? existing != null && Boolean.TRUE.equals(existing.anonymousAccessAllowed()) : request.getAnonymousAccessAllowed();
-        String status = "DISABLED".equalsIgnoreCase(request.getStatus()) ? "DISABLED" : "ENABLED";
+        String status = defaultIfBlank(request.getStatus(), existing == null
+                ? requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "STORAGE_STATUS") : existing.status()).toUpperCase(Locale.ROOT);
+        if (businessPolicyRepository.findEnabledItem(DICT_STORAGE_STATUS, status).isEmpty()) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Unsupported storage status");
+        }
         if (maxFileSizeMb == null || maxFileSizeMb < 1) {
             throw new BizException(ErrorCode.BIZ_ERROR, "文件大小限制最小为 1MB");
         }
@@ -1719,23 +1365,24 @@ public class FileManagementAppService {
     }
 
     private String normalizeProvider(String provider) {
-        String normalized = defaultIfBlank(provider, "LOCAL").toUpperCase(Locale.ROOT);
-        if (!Set.of("LOCAL", "ALIYUN_OSS", "TENCENT_COS").contains(normalized)) {
+        String normalized = defaultIfBlank(provider, requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "STORAGE_PROVIDER")).toUpperCase(Locale.ROOT);
+        if (businessPolicyRepository.findEnabledItem(DICT_STORAGE_PROVIDER, normalized).isEmpty()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "不支持的存储类型");
         }
         return normalized;
     }
 
     private String normalizeRenameStrategy(String value) {
-        String normalized = defaultIfBlank(value, "APPEND_RANDOM_ID").toUpperCase(Locale.ROOT);
-        if (!Set.of("APPEND_RANDOM_ID", "RANDOM_STRING", "KEEP_ORIGINAL").contains(normalized)) {
-            return "APPEND_RANDOM_ID";
+        String normalized = value.toUpperCase(Locale.ROOT);
+        if (businessPolicyRepository.findEnabledItem(DICT_RENAME_STRATEGY, normalized).isEmpty()) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Unsupported file rename strategy");
         }
         return normalized;
     }
 
     private String normalizeStorageKey(String value) {
-        String normalized = defaultIfBlank(value, "local").trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
+        String normalized = defaultIfBlank(value, requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "STORAGE_KEY"))
+                .trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "_");
         if (!normalized.matches("^[a-z][a-z0-9_]*$")) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间标识必须以英文字母开头，且只包含英文、数字和下划线");
         }
@@ -1743,11 +1390,26 @@ public class FileManagementAppService {
     }
 
     private String providerLabel(String provider) {
-        return switch (provider) {
-            case "ALIYUN_OSS" -> "阿里云 OSS";
-            case "TENCENT_COS" -> "腾讯云 COS";
-            default -> "Local storage";
-        };
+        return businessPolicyRepository.findEnabledItem(DICT_STORAGE_PROVIDER, provider)
+                .map(FileBusinessPolicyRepository.Item::label)
+                .orElseThrow(() -> new BizException(ErrorCode.BIZ_ERROR, "Storage provider dictionary is not configured"));
+    }
+
+    private String requiredPolicyLabel(String dictionaryCode, String value) {
+        return businessPolicyRepository.findEnabledItem(dictionaryCode, value)
+                .map(FileBusinessPolicyRepository.Item::label)
+                .filter(StringUtils::hasText)
+                .orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR,
+                        "File business dictionary is not configured: " + dictionaryCode + "/" + value));
+    }
+
+    private int requiredPolicyInteger(String dictionaryCode, String value) {
+        try {
+            return Integer.parseInt(requiredPolicyLabel(dictionaryCode, value));
+        } catch (NumberFormatException exception) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR,
+                    "File business dictionary value must be an integer: " + dictionaryCode + "/" + value);
+        }
     }
 
     private String shortId() {
@@ -1884,17 +1546,6 @@ public class FileManagementAppService {
     ) {
     }
 
-    private record DefaultStorageSpace(
-            String title,
-            String storageKey,
-            String rootPath,
-            String bucketName,
-            boolean defaultStorage,
-            Integer maxFileSizeMb,
-            boolean anonymousAccessAllowed
-    ) {
-    }
-
     private record StorageSpaceUploadContext(
             StorageSpaceDTO storageSpace,
             String storageBucket,
@@ -1915,9 +1566,6 @@ public class FileManagementAppService {
             Set<Long> descendantDeptIds,
             List<DataPermissionRule> dataScopes
     ) {
-    }
-
-    private record CachedFilePage(PageResponse<FileObjectDTO> page, Instant expireAt) {
     }
 
 }

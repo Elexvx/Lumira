@@ -1,8 +1,7 @@
-import { storage } from '@/cache/storage';
 import type { CurrentUser, LoginResponse } from '@/types/api';
 
-const USER_PROFILE_KEY = 'current_user_profile';
-const SESSION_META_KEY = 'current_session_meta';
+let currentUserSnapshot: CurrentUser | null = null;
+let sessionMetaSnapshot: SessionMetaState | null = null;
 
 export interface SessionMetaState {
   sessionId?: string;
@@ -10,20 +9,20 @@ export interface SessionMetaState {
   permissionsVersion?: string;
 }
 
-export const getStoredCurrentUser = (): CurrentUser | null => storage.get<CurrentUser>(USER_PROFILE_KEY);
+export const getStoredCurrentUser = (): CurrentUser | null => currentUserSnapshot;
 
-export const getStoredSessionMeta = (): SessionMetaState | null => storage.get<SessionMetaState>(SESSION_META_KEY);
+export const getStoredSessionMeta = (): SessionMetaState | null => sessionMetaSnapshot;
 
 export const clearStoredSessionState = () => {
-  storage.remove(USER_PROFILE_KEY);
-  storage.remove(SESSION_META_KEY);
+  currentUserSnapshot = null;
+  sessionMetaSnapshot = null;
 };
 
 export const persistSessionMeta = (meta: SessionMetaState) => {
-  storage.set(SESSION_META_KEY, {
+  sessionMetaSnapshot = {
     ...getStoredSessionMeta(),
     ...meta,
-  });
+  };
 };
 
 export const isTrustedCurrentUser = (currentUser?: CurrentUser | null): currentUser is CurrentUser =>
@@ -46,7 +45,7 @@ const assertTrustedCurrentUser = (currentUser: CurrentUser): CurrentUser => {
 
 export const persistCurrentUser = (currentUser: CurrentUser): CurrentUser => {
   const normalizedCurrentUser = assertTrustedCurrentUser(currentUser);
-  storage.set(USER_PROFILE_KEY, normalizedCurrentUser);
+  currentUserSnapshot = normalizedCurrentUser;
   persistSessionMeta({
     sessionId: normalizedCurrentUser.sessionId,
     sessionVersion: normalizedCurrentUser.sessionVersion,

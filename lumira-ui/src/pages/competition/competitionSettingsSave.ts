@@ -12,6 +12,7 @@ export type CompetitionSettingsScheduleFormItem = {
   timeMode?: CompetitionSettingsTimeMode;
   title?: string;
   timeRange?: [Dayjs, Dayjs] | [string, string];
+  reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
 
 export type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
@@ -67,7 +68,11 @@ const hasCompleteSchedules = (schedules?: CompetitionSettingsScheduleFormItem[])
   if (normalized[0]?.timeMode !== 'CONFIRMED') {
     return true;
   }
-  return normalized.every((schedule) => trimOptional(schedule.title) && hasCompleteTimeRange(schedule.timeRange));
+  return normalized.every((schedule) => (
+    trimOptional(schedule.title)
+      && hasCompleteTimeRange(schedule.timeRange)
+      && hasCompleteTimeRange(schedule.reviewRange)
+  ));
 };
 
 export const isBasicSettingsPageReadyToSave = (values: Partial<CompetitionSettingsFormValues>) =>

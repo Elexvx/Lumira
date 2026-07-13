@@ -1,15 +1,16 @@
-import { storage } from '@/cache/storage';
 import type { SecuritySettings } from '@/types/api';
 import { normalizeSecuritySettings } from './securitySettingsNormalize';
 
-const SECURITY_SETTINGS_KEY = 'security_settings';
+let currentSecuritySettings: SecuritySettings | null = null;
 
-export const getStoredSecuritySettings = (): SecuritySettings | null => storage.get<SecuritySettings>(SECURITY_SETTINGS_KEY);
+// Runtime-only snapshot. Security policy is database-owned and is reloaded
+// from the backend for every fresh browser session.
+export const getStoredSecuritySettings = (): SecuritySettings | null => currentSecuritySettings;
 
 export const persistSecuritySettings = (settings: SecuritySettings) => {
-  storage.set(SECURITY_SETTINGS_KEY, normalizeSecuritySettings(settings));
+  currentSecuritySettings = normalizeSecuritySettings(settings);
 };
 
 export const clearSecuritySettings = () => {
-  storage.remove(SECURITY_SETTINGS_KEY);
+  currentSecuritySettings = null;
 };

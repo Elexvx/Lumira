@@ -22,6 +22,7 @@ import com.lumira.saas.modules.competition.event.CompetitionPaymentEventHandler;
 import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
+import com.lumira.saas.modules.audit.infrastructure.MapperOperationAuditRepository;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -46,6 +47,7 @@ import org.springframework.context.annotation.Import;
         JacksonCompatibilityConfig.class,
         LoggingPlatformEventDispatcher.class,
         MyBatisQueryOperations.class,
+        MapperOperationAuditRepository.class,
         OperationAuditService.class,
         OwnerRuntimeMetrics.class,
         PlatformEventOutboxRelay.class,

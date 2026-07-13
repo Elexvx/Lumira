@@ -243,6 +243,8 @@ CREATE TABLE `ai_skill` (
   `risk_level` varchar(32) NOT NULL DEFAULT 'LOW',
   `read_only` tinyint unsigned NOT NULL DEFAULT '1',
   `need_confirm` tinyint unsigned NOT NULL DEFAULT '0',
+  `permission_key` varchar(128) DEFAULT NULL,
+  `input_schema_json` longtext,
   `enabled` tinyint unsigned NOT NULL DEFAULT '1',
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -251,6 +253,19 @@ CREATE TABLE `ai_skill` (
   UNIQUE KEY `uk_ai_skill_code` (`skill_code`,`is_deleted`),
   KEY `idx_ai_skill_category_enabled` (`category`,`enabled`,`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `ai_skill`
+(`skill_code`, `skill_name`, `category`, `description`, `risk_level`, `read_only`, `need_confirm`, `permission_key`, `input_schema_json`, `enabled`, `is_deleted`)
+VALUES
+('audit.ai_call.search', '检索 AI 工具审计', 'audit', '按数字员工、技能编码和结果状态检索 AI 调用审计日志。', 'MEDIUM', 1, 0, 'audit:view', '{"type":"object","properties":{}}', 1, 0),
+('file.object.search', '检索文件对象', 'file', '按关键词、类型和状态检索文件中心对象。', 'MEDIUM', 1, 0, 'system:file:view', '{"type":"object","properties":{}}', 1, 0),
+('system.config.read', '读取非敏感系统配置', 'system', '按配置键读取非敏感平台配置。', 'MEDIUM', 1, 0, 'system:config:view', '{"type":"object","properties":{}}', 1, 0),
+('system.menu.list', '读取系统菜单与模块入口', 'system', '按当前账号权限读取系统菜单、路由、权限键和状态。', 'LOW', 1, 0, 'system:menu:view', '{"type":"object","properties":{}}', 1, 0),
+('system.permission.snapshot', '读取当前权限上下文', 'system', '返回当前登录用户、角色、部门和权限集合。', 'LOW', 1, 0, NULL, '{"type":"object","properties":{}}', 1, 0),
+('system.user.create', '新增系统用户', 'system', '在当前账号权限范围内新增系统用户。', 'HIGH', 0, 1, 'system:user:create', '{"type":"object","properties":{}}', 1, 0),
+('system.user.search', '检索系统用户', 'system', '按关键词和状态检索当前系统用户。', 'MEDIUM', 1, 0, 'system:user:view', '{"type":"object","properties":{}}', 1, 0),
+('system.user.update', '编辑系统用户', 'system', '在当前账号权限范围内编辑用户基础信息、角色和部门。', 'HIGH', 0, 1, 'system:user:update', '{"type":"object","properties":{}}', 1, 0)
+ON DUPLICATE KEY UPDATE `is_deleted` = 0;
 
 CREATE TABLE `ai_tool_audit_log` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -2064,6 +2079,34 @@ CREATE TABLE `competition_stage_form` (
   KEY `idx_competition_stage_form_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `aiadc_activity_registration` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `application_no` varchar(32) NOT NULL,
+  `activity_id` bigint NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `mobile` varchar(32) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `organization` varchar(255) DEFAULT NULL,
+  `position` varchar(128) DEFAULT NULL,
+  `remark` varchar(1000) DEFAULT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'SUBMITTED',
+  `submitted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `owner_user_id` bigint NOT NULL,
+  `owner_user_uuid` char(36) NOT NULL,
+  `owner_username` varchar(128) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) NOT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aiadc_activity_registration_no` (`application_no`),
+  KEY `idx_aiadc_activity_registration_owner` (`owner_user_id`,`deleted`,`submitted_at`),
+  KEY `idx_aiadc_activity_registration_activity` (`activity_id`,`deleted`,`submitted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `competition_stage_review_result` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `competition_id` bigint NOT NULL,
@@ -2086,6 +2129,25 @@ CREATE TABLE `competition_stage_review_result` (
   UNIQUE KEY `uk_competition_stage_review_result` (`stage_id`,`registration_id`,`deleted`),
   KEY `idx_competition_stage_review_result_rank` (`competition_id`,`stage_id`,`decision`,`score`,`deleted`),
   KEY `idx_competition_stage_review_result_registration` (`registration_id`,`published_at`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_config_item_template` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `template_code` varchar(64) NOT NULL DEFAULT 'DEFAULT',
+  `item_type` varchar(64) NOT NULL,
+  `item_key` varchar(128) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content_json` longtext,
+  `content_text` longtext,
+  `sort_order` int NOT NULL DEFAULT '100',
+  `required_flag` tinyint NOT NULL DEFAULT '0',
+  `enabled` tinyint NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_config_item_template_key` (`template_code`,`item_type`,`item_key`,`deleted`),
+  KEY `idx_competition_config_item_template_lookup` (`template_code`,`enabled`,`deleted`,`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `competition_config_set` (
@@ -2132,6 +2194,29 @@ CREATE TABLE `competition_config_item` (
   KEY `idx_competition_config_item_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_config_item_set` (`config_set_id`,`deleted`,`sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `competition_config_item_template`
+(`template_code`,`item_type`,`item_key`,`title`,`content_json`,`content_text`,`sort_order`,`required_flag`,`enabled`,`deleted`)
+VALUES
+('DEFAULT','AGREEMENT','commitment','Commitment','{}','Please configure the competition commitment.',10,1,1,0),
+('DEFAULT','CONSENT','informed-consent','Informed consent','{}','Please configure the informed consent content.',20,1,1,0),
+('DEFAULT','REGISTRATION_FIELD','contact-name','Contact name','{"type":"input","target":"registration"}',NULL,10,1,1,0),
+('DEFAULT','REQUIRED_FILE','work-file','Work file','{"accept":"*","maxSizeMb":100,"maxCount":1}',NULL,10,1,1,0),
+('DEFAULT','TEAM_SETTINGS','team-size-limits','团队人数限制','{"teamMinMembers":1,"teamMaxMembers":20,"standardField":true}',NULL,0,0,1,0),
+('DEFAULT','TEAM_FIELD','teamName','团队名称','{"fieldType":"TEXT","placeholder":"请输入团队名称","validationRule":"NONE","standardField":true}',NULL,10,1,1,0),
+('DEFAULT','TEAM_FIELD','avatarUrl','团队头像','{"fieldType":"IMAGE","placeholder":"请上传团队头像","validationRule":"NONE","standardField":true}',NULL,20,0,1,0),
+('DEFAULT','TEAM_FIELD','description','团队简介','{"fieldType":"TEXTAREA","placeholder":"请输入团队简介","validationRule":"NONE","standardField":true}',NULL,30,0,1,0),
+('DEFAULT','MEMBER_FIELD','memberName','成员姓名','{"fieldType":"TEXT","placeholder":"请输入成员姓名","validationRule":"NONE","standardField":true}',NULL,110,1,1,0),
+('DEFAULT','PROJECT_FIELD','title','项目名称','{"fieldType":"TEXT","placeholder":"请输入项目名称","validationRule":"NONE","standardField":true}',NULL,210,1,1,0),
+('DEFAULT','PROJECT_FIELD','imageUrl','项目头像','{"fieldType":"IMAGE","placeholder":"请上传项目头像","validationRule":"NONE","standardField":true}',NULL,220,0,1,0),
+('DEFAULT','PROJECT_FIELD','description','项目简介','{"fieldType":"TEXTAREA","placeholder":"请输入项目简介","validationRule":"NONE","standardField":true}',NULL,230,0,1,0),
+('DEFAULT','PROJECT_FIELD','intellectualPropertyType','知识产权类型','{"fieldType":"SELECT","placeholder":"请选择知识产权类型","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"发明专利\\n实用新型专利\\n外观设计专利\\n软件著作权\\n作品著作权\\n商标\\n其他"}',NULL,310,1,1,0),
+('DEFAULT','PROJECT_FIELD','intellectualPropertyName','知识产权名称','{"fieldType":"TEXT","placeholder":"请输入知识产权名称","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,320,1,1,0),
+('DEFAULT','PROJECT_FIELD','registrationNumber','申请号/登记号','{"fieldType":"TEXT","placeholder":"请输入申请号或登记号","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,330,0,1,0),
+('DEFAULT','PROJECT_FIELD','rightsHolder','权利人','{"fieldType":"TEXT","placeholder":"请输入权利人","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,340,1,1,0),
+('DEFAULT','PROJECT_FIELD','legalStatus','法律状态','{"fieldType":"SELECT","placeholder":"请选择法律状态","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"申请中\\n已受理\\n已授权\\n已登记\\n已失效\\n其他"}',NULL,350,0,1,0),
+('DEFAULT','PROJECT_FIELD','grantDate','授权/登记日期','{"fieldType":"DATE","placeholder":"请选择授权或登记日期","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,360,0,1,0),
+('DEFAULT','PROJECT_FIELD','distributionRegions','知识产权分布区域','{"fieldType":"MULTI_SELECT","placeholder":"请选择知识产权分布区域","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"中国大陆\\n中国香港\\n中国澳门\\n中国台湾\\n海外"}',NULL,370,1,1,0);
 
 CREATE TABLE `competition_config_audit` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -3347,7 +3432,10 @@ VALUES
     ('aiadc_expert_title', '专家头衔', 'ENABLED', 1, '专家库字典：专家头衔', 0, 0, 0),
     ('aiadc_expert_position', '专家职务', 'ENABLED', 1, '专家库字典：专家职务', 0, 0, 0),
     ('aiadc_expert_expertise', '专家专业领域', 'ENABLED', 1, '专家库字典：专业领域', 0, 0, 0),
-    ('aiadc_expert_tag', '专家标签', 'ENABLED', 1, '专家库字典：专家标签', 0, 0, 0)
+    ('aiadc_expert_tag', '专家标签', 'ENABLED', 1, '专家库字典：专家标签', 0, 0, 0),
+    ('aiadc_expert_status', '专家状态', 'ENABLED', 1, 'Expert status and default order', 0, 0, 0),
+    ('aiadc_expert_initial_status', '专家申请初始状态', 'ENABLED', 1, 'Initial status for expert applications', 0, 0, 0),
+    ('aiadc_expert_approval_status', '专家审批状态', 'ENABLED', 1, 'Expert approval lifecycle and initial order', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `dict_name` = VALUES(`dict_name`),
     `status` = VALUES(`status`),
@@ -3360,7 +3448,14 @@ INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `r
 VALUES
     ('aiadc_competition_category', '竞赛类别', 'ENABLED', 1, 'Competition dictionary: category', 0, 0, 0),
     ('aiadc_competition_level', '竞赛级别', 'ENABLED', 1, 'Competition dictionary: level', 0, 0, 0),
-    ('aiadc_activity_category', '活动分类', 'ENABLED', 1, 'Competition dictionary: activity category', 0, 0, 0)
+    ('aiadc_activity_category', '活动分类', 'ENABLED', 1, 'Competition dictionary: activity category', 0, 0, 0),
+    ('aiadc_activity_locale', '活动语言', 'ENABLED', 1, 'Activity locale and default order', 0, 0, 0),
+    ('aiadc_activity_status', '活动状态', 'ENABLED', 1, 'Activity status and default order', 0, 0, 0),
+    ('aiadc_activity_public_status', '活动公开状态', 'ENABLED', 1, 'Activity statuses visible to public queries', 0, 0, 0),
+    ('aiadc_project_locale', '项目语言', 'ENABLED', 1, 'Project locale and default order', 0, 0, 0),
+    ('aiadc_project_status', '项目状态', 'ENABLED', 1, 'Project status and default order', 0, 0, 0),
+    ('aiadc_project_rating', '项目评级', 'ENABLED', 1, 'Project rating and default order', 0, 0, 0),
+    ('aiadc_project_filter_all', '项目全部筛选标记', 'ENABLED', 1, 'Project query wildcard value', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `dict_name` = VALUES(`dict_name`),
     `status` = VALUES(`status`),
@@ -3409,6 +3504,20 @@ UNION ALL
 SELECT `id`, 'FINANCING', 'Financing', 40, 'ENABLED', 'Expert tag', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
 UNION ALL
 SELECT `id`, 'TECHNICAL_CONSULTANT', 'Technical Consultant', 50, 'ENABLED', 'Expert tag', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'active', '启用', 10, 'ENABLED', '专家默认状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'inactive', '停用', 20, 'ENABLED', '专家状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'inactive', '停用', 10, 'ENABLED', '专家申请初始状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_initial_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'PENDING', '待处理', 10, 'ENABLED', '专家审批初始状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_approval_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'RUNNING', '审批中', 20, 'ENABLED', '专家审批状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_approval_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'APPROVED', '已通过', 30, 'ENABLED', '专家审批状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_approval_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'REJECTED', '已拒绝', 40, 'ENABLED', '专家审批状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_approval_status' AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `item_label` = VALUES(`item_label`),
     `sort_no` = VALUES(`sort_no`),
@@ -3443,6 +3552,32 @@ UNION ALL
 SELECT `id`, '培训活动', '培训活动', 40, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
 UNION ALL
 SELECT `id`, '其他', '其他', 50, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'zh', '中文', 10, 'ENABLED', '活动默认语言', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_locale' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'en', 'English', 20, 'ENABLED', 'Activity locale', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_locale' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'draft', '草稿', 10, 'ENABLED', '活动默认状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'published', '已发布', 20, 'ENABLED', '活动状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'published', '已发布', 10, 'ENABLED', '公开查询可见状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_public_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'zh', '中文', 10, 'ENABLED', '项目默认语言', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_locale' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'en', 'English', 20, 'ENABLED', 'Project locale', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_locale' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'draft', '草稿', 10, 'ENABLED', '项目默认状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'published', '已发布', 20, 'ENABLED', '项目状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'popular', '热门', 10, 'ENABLED', '项目默认评级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_rating' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'excellent', '优秀', 20, 'ENABLED', '项目评级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_rating' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'new', '最新', 30, 'ENABLED', '项目评级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_rating' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'all', '全部', 10, 'ENABLED', '项目查询全部筛选标记', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_project_filter_all' AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `item_label` = VALUES(`item_label`),
     `sort_no` = VALUES(`sort_no`),
@@ -3582,6 +3717,7 @@ VALUES
     ('branding.footer-copyright', '页脚版权声明', CONCAT('Copyright ', YEAR(CURRENT_DATE()), ' Lumira All Rights Reserved'), 'PLATFORM', 0, '页脚版权声明', 0, 0, 0),
     ('agreement.user-agreement-markdown', '用户协议', '', 'PLATFORM', 0, '用户协议 Markdown', 0, 0, 0),
     ('agreement.privacy-agreement-markdown', '隐私协议', '', 'PLATFORM', 0, '隐私协议 Markdown', 0, 0, 0),
+    ('account.activation.url', '账户激活地址', 'http://localhost:8000/account-activation', 'PLATFORM', 1, '前端账户激活页面地址', 0, 0, 0),
     ('watermark.enabled', 'Watermark enabled', 'false', 'PLATFORM', 0, 'Global watermark enabled flag', 0, 0, 0),
     ('watermark.mode', '水印模式', 'TEXT', 'PLATFORM', 0, 'TEXT/IMAGE', 0, 0, 0),
     ('watermark.text-lines', '水印文本', '', 'PLATFORM', 0, '多行文本水印', 0, 0, 0),
@@ -4131,6 +4267,16 @@ VALUES (1, 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923ad
 
 INSERT INTO `xxl_job_lock` (`lock_name`) VALUES ('schedule_lock');
 
+INSERT INTO `ai_employee` (
+  `username`, `nickname`, `position`, `avatar_key`, `description`, `greeting`, `system_prompt`,
+  `default_llm_service_id`, `enabled`, `sort_order`, `is_deleted`, `create_time`, `update_time`
+) VALUES (
+  'ai-assistant', 'AI Assistant', 'General Chat', NULL,
+  'Default assistant for general AI conversations.', 'Hello, I am AI Assistant. How can I help?',
+  'You are the general AI assistant for this enterprise platform. Help clearly and concisely, answer in the user''s language, and do not claim access to a specific digital employee''s private skills or knowledge unless one is selected.',
+  NULL, 1, 100000, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+) ON DUPLICATE KEY UPDATE `is_deleted` = 0;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 
@@ -4174,3 +4320,525 @@ CREATE TABLE IF NOT EXISTS `async_task` (
   KEY `idx_async_task_owner_status_created` (`owner_module`,`status`,`created_at`),
   KEY `idx_async_task_correlation` (`correlation_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Workflow persistence is database-owned. Application startup must not create
+-- these tables or seed workflow records.
+CREATE TABLE IF NOT EXISTS `workflow_definition` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `business_type` varchar(64) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `version_no` int NOT NULL DEFAULT 1,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_workflow_definition_business` (`business_type`,`deleted`),
+  KEY `idx_workflow_definition_status` (`status`,`deleted`),
+  KEY `idx_workflow_definition_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `workflow_node` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `definition_id` bigint NOT NULL,
+  `node_key` varchar(64) NOT NULL,
+  `node_type` varchar(32) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `position_x` int DEFAULT 0,
+  `position_y` int DEFAULT 0,
+  `assignment_type` varchar(32) DEFAULT NULL,
+  `approver_user_ids_json` json DEFAULT NULL,
+  `approver_role_ids_json` json DEFAULT NULL,
+  `approval_mode` varchar(16) NOT NULL DEFAULT 'ALL',
+  `config_json` json DEFAULT NULL,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_workflow_node_key` (`definition_id`,`node_key`,`deleted`),
+  KEY `idx_workflow_node_definition` (`definition_id`,`deleted`),
+  KEY `idx_workflow_node_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `workflow_edge` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `definition_id` bigint NOT NULL,
+  `edge_key` varchar(64) NOT NULL,
+  `source_node_key` varchar(64) NOT NULL,
+  `target_node_key` varchar(64) NOT NULL,
+  `condition_expression` varchar(255) DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT 100,
+  `config_json` json DEFAULT NULL,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_workflow_edge_key` (`definition_id`,`edge_key`,`deleted`),
+  KEY `idx_workflow_edge_source` (`definition_id`,`source_node_key`,`deleted`),
+  KEY `idx_workflow_edge_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `workflow_instance` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `definition_id` bigint NOT NULL,
+  `definition_version_no` int NOT NULL,
+  `business_type` varchar(64) NOT NULL,
+  `business_id` bigint NOT NULL,
+  `business_uuid` varchar(64) DEFAULT NULL,
+  `business_title` varchar(255) DEFAULT NULL,
+  `status` varchar(32) NOT NULL,
+  `current_node_key` varchar(64) DEFAULT NULL,
+  `snapshot_json` json NOT NULL,
+  `variables_json` json DEFAULT NULL,
+  `applicant_user_id` bigint DEFAULT NULL,
+  `applicant_user_uuid` varchar(64) DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_workflow_instance_business` (`business_type`,`business_id`,`deleted`),
+  KEY `idx_workflow_instance_status` (`status`,`deleted`,`updated_at`),
+  KEY `idx_workflow_instance_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `workflow_task` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `instance_id` bigint NOT NULL,
+  `node_key` varchar(64) NOT NULL,
+  `node_name` varchar(128) NOT NULL,
+  `approval_mode` varchar(16) NOT NULL DEFAULT 'ALL',
+  `status` varchar(32) NOT NULL,
+  `approver_user_id` bigint DEFAULT NULL,
+  `approver_user_uuid` varchar(64) DEFAULT NULL,
+  `approver_role_id` bigint DEFAULT NULL,
+  `completed_by` bigint DEFAULT NULL,
+  `completed_by_uuid` varchar(64) DEFAULT NULL,
+  `completed_by_name` varchar(128) DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `comment` varchar(500) DEFAULT NULL,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_workflow_task_user_uuid` (`approver_user_id`,`approver_user_uuid`,`status`,`deleted`,`created_at`),
+  KEY `idx_workflow_task_role` (`approver_role_id`,`status`,`deleted`,`created_at`),
+  KEY `idx_workflow_task_instance` (`instance_id`,`node_key`,`status`,`deleted`),
+  KEY `idx_workflow_task_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `workflow_action_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `instance_id` bigint NOT NULL,
+  `task_id` bigint DEFAULT NULL,
+  `action_type` varchar(32) NOT NULL,
+  `node_key` varchar(64) DEFAULT NULL,
+  `node_name` varchar(128) DEFAULT NULL,
+  `operator_user_id` bigint DEFAULT NULL,
+  `operator_user_uuid` varchar(64) DEFAULT NULL,
+  `operator_username` varchar(128) DEFAULT NULL,
+  `comment` varchar(500) DEFAULT NULL,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_workflow_action_instance` (`instance_id`,`created_at`,`id`),
+  KEY `idx_workflow_action_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `sys_account_activation_token` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `token_hash` char(64) NOT NULL,
+  `user_id` bigint NOT NULL,
+  `user_uuid` varchar(64) DEFAULT NULL,
+  `expert_id` bigint DEFAULT NULL,
+  `expires_at` datetime NOT NULL,
+  `consumed_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT 0,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT 0,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_account_activation_token_hash` (`token_hash`),
+  KEY `idx_account_activation_user_uuid` (`user_id`,`user_uuid`,`consumed_at`,`deleted`),
+  KEY `idx_account_activation_expires` (`expires_at`,`consumed_at`,`deleted`),
+  KEY `idx_account_activation_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `sys_user_draft` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `user_uuid` char(36) NOT NULL,
+  `draft_key` varchar(128) NOT NULL,
+  `payload_json` json NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sys_user_draft_owner_key` (`user_id`,`user_uuid`,`draft_key`),
+  KEY `idx_sys_user_draft_updated` (`user_id`,`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE `aiadc_expert`
+  ADD COLUMN `approval_status` varchar(32) NOT NULL DEFAULT 'APPROVED' AFTER `status`,
+  ADD COLUMN `approval_instance_id` bigint DEFAULT NULL AFTER `approval_status`,
+  ADD COLUMN `approved_by` bigint DEFAULT NULL AFTER `approval_instance_id`,
+  ADD COLUMN `approved_at` datetime DEFAULT NULL AFTER `approved_by`,
+  ADD INDEX `idx_aiadc_expert_approval` (`approval_status`,`deleted`,`updated_at`);
+
+INSERT INTO `workflow_definition` (
+  `business_type`, `name`, `status`, `version_no`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+SELECT 'EXPERT_APPLICATION', '专家申请审批', 'ACTIVE', 1,
+       0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM `workflow_definition` WHERE `business_type` = 'EXPERT_APPLICATION' AND `deleted` = 0
+);
+
+INSERT INTO `workflow_node` (
+  `definition_id`, `node_key`, `node_type`, `name`, `position_x`, `position_y`, `assignment_type`,
+  `approver_user_ids_json`, `approver_role_ids_json`, `approval_mode`, `config_json`,
+  `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+SELECT definition_record.`id`, seed.`node_key`, seed.`node_type`, seed.`name`, seed.`position_x`, seed.`position_y`, seed.`assignment_type`,
+       JSON_ARRAY(), CASE WHEN seed.`node_key` = 'review' THEN JSON_ARRAY(COALESCE(admin_role.`id`, 1001)) ELSE JSON_ARRAY() END,
+       'ALL', JSON_OBJECT(), 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0
+FROM `workflow_definition` definition_record
+JOIN (
+  SELECT 'start' AS `node_key`, 'START' AS `node_type`, '开始' AS `name`, 80 AS `position_x`, 120 AS `position_y`, NULL AS `assignment_type`
+  UNION ALL SELECT 'review', 'APPROVAL', '管理员审批', 320, 120, 'ROLE'
+  UNION ALL SELECT 'end', 'END', '结束', 580, 120, NULL
+) seed
+LEFT JOIN `sys_role` admin_role ON admin_role.`role_code` = 'ADMIN' AND admin_role.`deleted` = 0
+WHERE definition_record.`business_type` = 'EXPERT_APPLICATION' AND definition_record.`deleted` = 0
+ON DUPLICATE KEY UPDATE `updated_at` = `workflow_node`.`updated_at`;
+
+INSERT INTO `workflow_edge` (
+  `definition_id`, `edge_key`, `source_node_key`, `target_node_key`, `condition_expression`, `sort_order`, `config_json`,
+  `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+SELECT definition_record.`id`, seed.`edge_key`, seed.`source_key`, seed.`target_key`, NULL, 10, JSON_OBJECT(),
+       0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0
+FROM `workflow_definition` definition_record
+JOIN (
+  SELECT 'start-review' AS `edge_key`, 'start' AS `source_key`, 'review' AS `target_key`
+  UNION ALL SELECT 'review-end', 'review', 'end'
+) seed
+WHERE definition_record.`business_type` = 'EXPERT_APPLICATION' AND definition_record.`deleted` = 0
+ON DUPLICATE KEY UPDATE `updated_at` = `workflow_edge`.`updated_at`;
+-- Sensitive-word behavior values are database-managed business configuration.
+INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
+VALUES
+    ('sys_sensitive_word_action', '敏感词动作', 'ENABLED', 1, 'Sensitive word action and default order', 0, 0, 0),
+    ('sys_sensitive_word_blocking_action', '敏感词阻断动作', 'ENABLED', 1, 'Action treated as blocking', 0, 0, 0),
+    ('sys_sensitive_word_default_category', '敏感词默认分类', 'ENABLED', 1, 'Default category for manual entries', 0, 0, 0),
+    ('sys_sensitive_word_import_category', '敏感词导入分类', 'ENABLED', 1, 'Category for imported entries', 0, 0, 0),
+    ('sys_sensitive_word_default_severity', '敏感词默认级别', 'ENABLED', 1, 'Default severity for sensitive words', 0, 0, 0),
+    ('sys_sensitive_word_severity', '敏感词级别优先级', 'ENABLED', 1, 'Database-owned matching priority', 0, 0, 0)
+ON DUPLICATE KEY UPDATE `status`=VALUES(`status`), `is_system`=VALUES(`is_system`), `remark`=VALUES(`remark`), `deleted`=0;
+
+INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
+SELECT `id`, 'BLOCK', '阻断', 10, 'ENABLED', '默认敏感词动作', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_action' AND `deleted`=0
+UNION ALL SELECT `id`, 'LOG_ONLY', '仅记录', 20, 'ENABLED', '敏感词动作', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_action' AND `deleted`=0
+UNION ALL SELECT `id`, 'BLOCK', '阻断', 10, 'ENABLED', '产生阻断结果的动作', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_blocking_action' AND `deleted`=0
+UNION ALL SELECT `id`, 'DEFAULT', '默认', 10, 'ENABLED', '手工敏感词默认分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_default_category' AND `deleted`=0
+UNION ALL SELECT `id`, 'IMPORTED', '导入', 10, 'ENABLED', '导入敏感词分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_import_category' AND `deleted`=0
+UNION ALL SELECT `id`, 'MEDIUM', '中', 10, 'ENABLED', '敏感词默认级别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_default_severity' AND `deleted`=0
+UNION ALL SELECT `id`, 'LOW', '低', 10, 'ENABLED', '匹配优先级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_severity' AND `deleted`=0
+UNION ALL SELECT `id`, 'MEDIUM', '中', 20, 'ENABLED', '匹配优先级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_severity' AND `deleted`=0
+UNION ALL SELECT `id`, 'HIGH', '高', 30, 'ENABLED', '匹配优先级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_severity' AND `deleted`=0
+UNION ALL SELECT `id`, 'CRITICAL', '严重', 40, 'ENABLED', '匹配优先级', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='sys_sensitive_word_severity' AND `deleted`=0
+ON DUPLICATE KEY UPDATE `item_label`=VALUES(`item_label`), `sort_no`=VALUES(`sort_no`), `status`=VALUES(`status`), `remark`=VALUES(`remark`), `deleted`=0;
+
+-- Built-in storage spaces are persisted configuration, not application-code defaults.
+INSERT INTO `file_storage_space` (
+    `title`, `storage_key`, `provider`, `root_path`, `bucket_name`, `endpoint`, `region`,
+    `access_key_id`, `access_key_secret`, `rename_strategy`, `max_file_size_mb`, `allowed_mime_types`,
+    `default_flag`, `retain_file_on_record_delete`, `anonymous_access_allowed`, `status`,
+    `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+VALUES
+    ('用户上传文件', 'local', 'LOCAL', 'storage/uploads/', '', '', '', '', NULL, 'APPEND_RANDOM_ID', 20, '*', 1, 0, 1, 'ENABLED', 1, '00000000-0000-0000-0000-000000000000', 1, '00000000-0000-0000-0000-000000000000', 0),
+    ('下载中心', 'download_center', 'LOCAL', 'storage/uploads/download_center/', '', '', '', '', NULL, 'APPEND_RANDOM_ID', 100, '*', 0, 0, 1, 'ENABLED', 1, '00000000-0000-0000-0000-000000000000', 1, '00000000-0000-0000-0000-000000000000', 0),
+    ('AI 聊天附件', 'ai_chat', 'LOCAL', 'storage/uploads/ai_chat/', '', '', '', '', NULL, 'APPEND_RANDOM_ID', 20, '*', 0, 0, 0, 'ENABLED', 1, '00000000-0000-0000-0000-000000000000', 1, '00000000-0000-0000-0000-000000000000', 0),
+    ('头像文件', 'avatar', 'LOCAL', 'storage/uploads/avatar/', '', '', '', '', NULL, 'APPEND_RANDOM_ID', 10, '*', 0, 0, 1, 'ENABLED', 1, '00000000-0000-0000-0000-000000000000', 1, '00000000-0000-0000-0000-000000000000', 0),
+    ('Support feedback images', 'support_feedback', 'LOCAL', 'storage/uploads/support_feedback/', '', '', '', '', NULL, 'APPEND_RANDOM_ID', 20, '*', 0, 0, 1, 'ENABLED', 1, '00000000-0000-0000-0000-000000000000', 1, '00000000-0000-0000-0000-000000000000', 0)
+ON DUPLICATE KEY UPDATE
+    `title`=VALUES(`title`), `provider`=VALUES(`provider`), `root_path`=VALUES(`root_path`),
+    `rename_strategy`=VALUES(`rename_strategy`), `max_file_size_mb`=VALUES(`max_file_size_mb`),
+    `allowed_mime_types`=VALUES(`allowed_mime_types`), `default_flag`=VALUES(`default_flag`),
+    `retain_file_on_record_delete`=VALUES(`retain_file_on_record_delete`),
+    `anonymous_access_allowed`=VALUES(`anonymous_access_allowed`), `status`=VALUES(`status`), `deleted`=0;
+
+
+-- Database-owned file service providers, strategies, preview rules, and runtime defaults.
+INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
+VALUES
+    ('file_storage_provider', '文件存储提供商', 'ENABLED', 1, 'File service storage providers', 0, 0, 0),
+    ('file_rename_strategy', '文件重命名策略', 'ENABLED', 1, 'File service rename strategies', 0, 0, 0),
+    ('file_storage_status', '文件存储状态', 'ENABLED', 1, 'File service storage statuses', 0, 0, 0),
+    ('file_preview_extension', '文件预览扩展名规则', 'ENABLED', 1, 'item_value=extension, item_label=preview mode', 0, 0, 0),
+    ('file_preview_content_type', '文件预览 MIME 规则', 'ENABLED', 1, 'item_value=MIME, item_label=preview mode, remark=EXACT/PREFIX', 0, 0, 0),
+    ('file_runtime_default', '文件服务运行默认值', 'ENABLED', 1, 'item_value=setting key, item_label=setting value', 0, 0, 0)
+ON DUPLICATE KEY UPDATE `dict_name`=VALUES(`dict_name`), `status`='ENABLED', `is_system`=1,
+    `remark`=VALUES(`remark`), `deleted`=0;
+
+INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
+SELECT `id`, 'LOCAL', 'Local storage', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_storage_provider'
+UNION ALL SELECT `id`, 'ALIYUN_OSS', '阿里云 OSS', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_storage_provider'
+UNION ALL SELECT `id`, 'TENCENT_COS', '腾讯云 COS', 30, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_storage_provider'
+UNION ALL SELECT `id`, 'APPEND_RANDOM_ID', '追加随机标识', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_rename_strategy'
+UNION ALL SELECT `id`, 'RANDOM_STRING', '随机字符串', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_rename_strategy'
+UNION ALL SELECT `id`, 'KEEP_ORIGINAL', '保留原名', 30, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_rename_strategy'
+UNION ALL SELECT `id`, 'ENABLED', '启用', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_storage_status'
+UNION ALL SELECT `id`, 'DISABLED', '停用', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_storage_status'
+UNION ALL SELECT `id`, 'png', 'IMAGE', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'jpg', 'IMAGE', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'jpeg', 'IMAGE', 30, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'gif', 'IMAGE', 40, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'bmp', 'IMAGE', 50, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'ico', 'IMAGE', 60, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'pdf', 'PDF', 70, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'txt', 'TEXT', 80, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'md', 'TEXT', 90, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'csv', 'TEXT', 100, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'json', 'TEXT', 110, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'xml', 'TEXT', 120, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_extension'
+UNION ALL SELECT `id`, 'image/', 'IMAGE', 10, 'ENABLED', 'PREFIX', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_content_type'
+UNION ALL SELECT `id`, 'application/pdf', 'PDF', 20, 'ENABLED', 'EXACT', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_content_type'
+UNION ALL SELECT `id`, 'text/', 'TEXT', 30, 'ENABLED', 'PREFIX', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_preview_content_type'
+UNION ALL SELECT `id`, 'STORAGE_PROVIDER', 'LOCAL', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'STORAGE_KEY', 'local', 15, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'ROOT_PATH', 'storage/uploads/', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'RENAME_STRATEGY', 'APPEND_RANDOM_ID', 30, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'MAX_FILE_SIZE_MB', '20', 40, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'ALLOWED_MIME_TYPES', '*', 50, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'DOCUMENT_CATEGORY', '我的文件', 60, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'IMAGE_CATEGORY', '图片', 70, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'UNSUPPORTED_PREVIEW_MODE', 'UNSUPPORTED', 80, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+UNION ALL SELECT `id`, 'STORAGE_STATUS', 'ENABLED', 90, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='file_runtime_default'
+ON DUPLICATE KEY UPDATE `item_label`=VALUES(`item_label`), `sort_no`=VALUES(`sort_no`),
+    `status`='ENABLED', `remark`=VALUES(`remark`), `deleted`=0;
+
+
+-- Database-owned work-order status, priority, terminal-state, and upload defaults.
+INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
+VALUES
+    ('work_order_feedback_status', '工单反馈状态', 'ENABLED', 1, 'remark=TERMINAL marks handled states', 0, 0, 0),
+    ('work_order_feedback_priority', '工单反馈优先级', 'ENABLED', 1, 'Work order feedback priorities', 0, 0, 0),
+    ('work_order_feedback_default', '工单反馈默认配置', 'ENABLED', 1, 'item_value=setting key, item_label=setting value', 0, 0, 0)
+ON DUPLICATE KEY UPDATE `dict_name`=VALUES(`dict_name`), `status`='ENABLED', `is_system`=1,
+    `remark`=VALUES(`remark`), `deleted`=0;
+
+INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
+SELECT `id`, 'OPEN', '待处理', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_status'
+UNION ALL SELECT `id`, 'PROCESSING', '处理中', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_status'
+UNION ALL SELECT `id`, 'RESOLVED', '已解决', 30, 'ENABLED', 'TERMINAL', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_status'
+UNION ALL SELECT `id`, 'CLOSED', '已关闭', 40, 'ENABLED', 'TERMINAL', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_status'
+UNION ALL SELECT `id`, 'LOW', '低', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_priority'
+UNION ALL SELECT `id`, 'NORMAL', '普通', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_priority'
+UNION ALL SELECT `id`, 'HIGH', '高', 30, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_priority'
+UNION ALL SELECT `id`, 'URGENT', '紧急', 40, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_priority'
+UNION ALL SELECT `id`, 'INITIAL_STATUS', 'OPEN', 10, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_default'
+UNION ALL SELECT `id`, 'DEFAULT_PRIORITY', 'NORMAL', 20, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_default'
+UNION ALL SELECT `id`, 'UPLOAD_BUCKET', 'support_feedback', 30, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_default'
+UNION ALL SELECT `id`, 'IMAGE_CATEGORY', '工单反馈', 40, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_default'
+UNION ALL SELECT `id`, 'IMAGE_REMARK', '工单反馈富文本图片', 50, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_default'
+ON DUPLICATE KEY UPDATE `item_label`=VALUES(`item_label`), `sort_no`=VALUES(`sort_no`),
+    `status`='ENABLED', `remark`=VALUES(`remark`), `deleted`=0;
++
+
+-- Database-owned profile and team-member field metadata.
+CREATE TABLE IF NOT EXISTS `sys_profile_field_definition` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `page_key` varchar(64) NOT NULL,
+  `field_key` varchar(64) NOT NULL,
+  `field_label` varchar(128) NOT NULL,
+  `field_description` varchar(512) DEFAULT NULL,
+  `group_key` varchar(64) NOT NULL,
+  `group_label` varchar(128) NOT NULL,
+  `visible_config_key` varchar(128) NOT NULL,
+  `weight_config_key` varchar(128) NOT NULL,
+  `default_visible` tinyint NOT NULL DEFAULT 1,
+  `default_weight` int NOT NULL DEFAULT 0,
+  `field_type` varchar(32) NOT NULL,
+  `required_flag` tinyint NOT NULL DEFAULT 0,
+  `placeholder` varchar(255) DEFAULT NULL,
+  `sort_no` int NOT NULL DEFAULT 0,
+  `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
+  `created_by` bigint DEFAULT 0,
+  `updated_by` bigint DEFAULT 0,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_profile_field_page_key` (`page_key`,`field_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `sys_dict_type` (`dict_code`,`dict_name`,`status`,`is_system`,`remark`,`created_by`,`updated_by`,`deleted`)
+VALUES ('profile_settings_page_key','资料字段页面','ENABLED',1,'Profile settings supported pages',0,0,0),
+       ('profile_custom_field_type','资料自定义字段类型','ENABLED',1,'Profile settings custom field types',0,0,0)
+ON DUPLICATE KEY UPDATE `dict_name`=VALUES(`dict_name`),`status`='ENABLED',`is_system`=1,`remark`=VALUES(`remark`),`deleted`=0;
+
+INSERT INTO `sys_dict_item` (`dict_type_id`,`item_value`,`item_label`,`sort_no`,`status`,`created_by`,`updated_by`,`deleted`)
+SELECT `id`,'PROFILE','个人资料',10,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_settings_page_key'
+UNION ALL SELECT `id`,'TEAM_MEMBER','团队成员',20,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_settings_page_key'
+UNION ALL SELECT `id`,'TEXT','文本',10,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_custom_field_type'
+UNION ALL SELECT `id`,'NUMBER','数字',20,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_custom_field_type'
+UNION ALL SELECT `id`,'DATE','日期',30,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_custom_field_type'
+UNION ALL SELECT `id`,'SELECT','下拉选择',40,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_custom_field_type'
+UNION ALL SELECT `id`,'TEXTAREA','多行文本',50,'ENABLED',0,0,0 FROM `sys_dict_type` WHERE `dict_code`='profile_custom_field_type'
+ON DUPLICATE KEY UPDATE `item_label`=VALUES(`item_label`),`sort_no`=VALUES(`sort_no`),`status`='ENABLED',`deleted`=0;
+
+INSERT INTO `sys_profile_field_definition` (`page_key`,`field_key`,`field_label`,`field_description`,`group_key`,`group_label`,`visible_config_key`,`weight_config_key`,`default_visible`,`default_weight`,`field_type`,`required_flag`,`placeholder`,`sort_no`,`status`,`created_by`,`updated_by`,`deleted`)
+VALUES
+('PROFILE','avatarUrl','Avatar','Controls whether profile avatar upload and preview are shown','basic','Basic profile','profile.field.avatar.visible','profile.field.avatar.weight',1,10,'IMAGE',0,NULL,10,'ENABLED',0,0,0),
+('PROFILE','realName','Real name','Controls whether the real-name profile field is shown','basic','Basic profile','profile.field.real-name.visible','profile.field.real-name.weight',1,15,'TEXT',0,'Enter real name',20,'ENABLED',0,0,0),
+('PROFILE','mobile','Mobile','Controls whether the mobile profile field is shown','contact','Contact','profile.field.mobile.visible','profile.field.mobile.weight',1,15,'MOBILE',0,'Enter mobile number',30,'ENABLED',0,0,0),
+('PROFILE','email','Email','Controls whether the email profile field is shown','contact','Contact','profile.field.email.visible','profile.field.email.weight',1,15,'EMAIL',0,'Enter email address',40,'ENABLED',0,0,0),
+('PROFILE','birthMonth','Birth month','Controls whether the birth-month profile field is shown','basic','Basic profile','profile.field.birth-month.visible','profile.field.birth-month.weight',1,10,'MONTH',0,'Select birth month',50,'ENABLED',0,0,0),
+('PROFILE','gender','Gender','Controls whether the gender profile field is shown','basic','Basic profile','profile.field.gender.visible','profile.field.gender.weight',1,10,'SELECT',0,'Select gender',60,'ENABLED',0,0,0),
+('PROFILE','region','Region','Controls whether the region profile field is shown','basic','Basic profile','profile.field.region.visible','profile.field.region.weight',1,10,'TEXT',0,'Enter region',70,'ENABLED',0,0,0),
+('PROFILE','idCardNumber','ID card number','Controls whether the ID-card profile field is shown','identity','Identity','profile.field.id-card-number.visible','profile.field.id-card-number.weight',1,5,'ID_CARD',0,'Enter ID card number',80,'ENABLED',0,0,0),
+('TEAM_MEMBER','memberName','Member name','Team member name','teamMember','Team member','team.member.field.member-name.visible','team.member.field.member-name.weight',1,10,'TEXT',1,'Enter member name',10,'ENABLED',0,0,0),
+('TEAM_MEMBER','employeeNo','Employee number','Team member employee or student number','teamMember','Team member','team.member.field.employee-no.visible','team.member.field.employee-no.weight',1,5,'TEXT',0,'Enter employee or student number',20,'ENABLED',0,0,0),
+('TEAM_MEMBER','departmentName','Department','Team member department','teamMember','Team member','team.member.field.department-name.visible','team.member.field.department-name.weight',1,5,'TEXT',0,'Enter department',30,'ENABLED',0,0,0),
+('TEAM_MEMBER','role','Role','Team member role','teamMember','Team member','team.member.field.role.visible','team.member.field.role.weight',1,5,'SELECT',0,'Select role',40,'ENABLED',0,0,0),
+('TEAM_MEMBER','remark','Remark','Team member remark','teamMember','Team member','team.member.field.remark.visible','team.member.field.remark.weight',1,5,'TEXTAREA',0,'Enter remark',50,'ENABLED',0,0,0)
+ON DUPLICATE KEY UPDATE `field_label`=VALUES(`field_label`),`field_description`=VALUES(`field_description`),`group_key`=VALUES(`group_key`),`group_label`=VALUES(`group_label`),`visible_config_key`=VALUES(`visible_config_key`),`weight_config_key`=VALUES(`weight_config_key`),`default_visible`=VALUES(`default_visible`),`default_weight`=VALUES(`default_weight`),`field_type`=VALUES(`field_type`),`required_flag`=VALUES(`required_flag`),`placeholder`=VALUES(`placeholder`),`sort_no`=VALUES(`sort_no`),`status`='ENABLED',`deleted`=0;
++
+
+-- Database-owned platform setting groups and defaults.
+CREATE TABLE IF NOT EXISTS `sys_platform_setting_definition` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `group_code` varchar(64) NOT NULL,
+  `config_key` varchar(128) NOT NULL,
+  `config_name` varchar(128) NOT NULL DEFAULT '',
+  `remark` varchar(512) DEFAULT NULL,
+  `default_value` text,
+  `reset_value` text,
+  `sort_no` int NOT NULL DEFAULT 0,
+  `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
+  `created_by` bigint DEFAULT 0,
+  `updated_by` bigint DEFAULT 0,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_platform_setting_config_key` (`config_key`),
+  KEY `idx_platform_setting_group` (`group_code`,`status`,`deleted`,`sort_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `sys_platform_setting_definition` (`group_code`,`config_key`,`default_value`,`sort_no`,`status`,`created_by`,`updated_by`,`deleted`)
+VALUES
+    ('BRANDING','branding.website-name','Lumira',10,'ENABLED',0,0,0),
+    ('BRANDING','branding.website-favicon-url','',20,'ENABLED',0,0,0),
+    ('BRANDING','branding.website-logo-url','',30,'ENABLED',0,0,0),
+    ('BRANDING','branding.login-background-url','',40,'ENABLED',0,0,0),
+    ('BRANDING','branding.github-link-enabled','true',50,'ENABLED',0,0,0),
+    ('BRANDING','branding.github-link-url','',60,'ENABLED',0,0,0),
+    ('BRANDING','branding.help-link-enabled','true',70,'ENABLED',0,0,0),
+    ('BRANDING','branding.help-link-url','',80,'ENABLED',0,0,0),
+    ('BRANDING','branding.company-name','',90,'ENABLED',0,0,0),
+    ('BRANDING','branding.copyright-start-year','',100,'ENABLED',0,0,0),
+    ('BRANDING','branding.footer-icp','',110,'ENABLED',0,0,0),
+    ('BRANDING','branding.footer-police-beian','',120,'ENABLED',0,0,0),
+    ('BRANDING','branding.footer-copyright','',130,'ENABLED',0,0,0),
+    ('AGREEMENT','agreement.user-agreement-markdown','',10,'ENABLED',0,0,0),
+    ('AGREEMENT','agreement.privacy-agreement-markdown','',20,'ENABLED',0,0,0),
+    ('SMTP','smtp.enabled','true',10,'ENABLED',0,0,0),
+    ('SMTP','smtp.host','',20,'ENABLED',0,0,0),
+    ('SMTP','smtp.port','25',30,'ENABLED',0,0,0),
+    ('SMTP','smtp.username','',40,'ENABLED',0,0,0),
+    ('SMTP','smtp.password','',50,'ENABLED',0,0,0),
+    ('SMTP','smtp.from','',60,'ENABLED',0,0,0),
+    ('SMTP','smtp.auth-enabled','true',70,'ENABLED',0,0,0),
+    ('SMTP','smtp.starttls-enabled','true',80,'ENABLED',0,0,0),
+    ('SMTP','smtp.ssl-enabled','false',90,'ENABLED',0,0,0),
+    ('SMTP','smtp.test-subject','SMTP test email',100,'ENABLED',0,0,0),
+    ('SMTP','smtp.test-content','This is a test email sent from the system SMTP settings.',110,'ENABLED',0,0,0),
+    ('SMTP','smtp.connection-timeout-ms','5000',120,'ENABLED',0,0,0),
+    ('SMTP','smtp.read-timeout-ms','5000',130,'ENABLED',0,0,0),
+    ('SMTP','smtp.write-timeout-ms','5000',140,'ENABLED',0,0,0),
+    ('WECHAT_OFFICIAL','notification.wechat-official.enabled','false',10,'ENABLED',0,0,0),
+    ('WECHAT_OFFICIAL','notification.wechat-official.app-id','',20,'ENABLED',0,0,0),
+    ('WECHAT_OFFICIAL','notification.wechat-official.app-secret','',30,'ENABLED',0,0,0),
+    ('WECHAT_OFFICIAL','notification.wechat-official.template-id','',40,'ENABLED',0,0,0),
+    ('WECHAT_OFFICIAL','notification.wechat-official.detail-url','',50,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.enabled','false',10,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.mode','TEXT',20,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.text-lines','',30,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.image-url','',40,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.font-color','rgba(0,0,0,0.15)',50,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.font-size','14',60,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.font-weight','normal',70,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.rotate','-22',80,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.gap-x','100',90,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.gap-y','100',100,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.offset-x','0',110,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.offset-y','0',120,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.z-index','9',130,'ENABLED',0,0,0),
+    ('WATERMARK','watermark.opacity','0.15',140,'ENABLED',0,0,0),
+    ('FLOATING_WINDOW','floating-window.api-docs-qr-enabled','false',10,'ENABLED',0,0,0),
+    ('FLOATING_WINDOW','floating-window.api-docs-qr-title','',20,'ENABLED',0,0,0),
+    ('FLOATING_WINDOW','floating-window.api-docs-qr-image-url','',30,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-width','3508',10,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-height','2480',20,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-orientation','LANDSCAPE',30,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-unit','PX',40,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-dpi','300',50,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-json','{"page":{"width":3508,"height":2480,"dpi":300,"orientation":"LANDSCAPE"},"elements":[{"id":"el_name","type":"text","fieldKey":"recipientName","x":1200,"y":920,"width":1100,"height":120,"fontFamily":"Microsoft YaHei","fontSize":72,"fontWeight":"bold","color":"#222222","textAlign":"center","placeholder":"${recipientName}"},{"id":"el_award","type":"text","fieldKey":"awardName","x":1200,"y":1200,"width":1100,"height":100,"fontFamily":"Microsoft YaHei","fontSize":56,"fontWeight":"normal","color":"#222222","textAlign":"center","placeholder":"${awardName}"},{"id":"el_qr","type":"qrcode","fieldKey":"verificationUrl","x":2920,"y":1900,"width":220,"height":220}]}',60,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.canvas.default-variable-schema-json','{"variables":[{"key":"recipientName","label":"Recipient","type":"text","required":true},{"key":"competitionTitle","label":"Competition","type":"text","required":true},{"key":"projectName","label":"Project","type":"text","required":false},{"key":"teamName","label":"Team","type":"text","required":false},{"key":"awardName","label":"Award","type":"text","required":true},{"key":"certificateNo","label":"Certificate No","type":"text","required":true},{"key":"issueDate","label":"Issue Date","type":"date","required":true},{"key":"verificationUrl","label":"Verification URL","type":"qrcode","required":true}]}',70,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.public.organizer','Lumira',80,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.template-statuses','DRAFT,PUBLISHED,ARCHIVED',90,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.scene-types','COMPETITION_AWARD,PARTICIPATION,CUSTOM',100,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.source-types','MANUAL,IMPORT,REGISTRATION,AWARD_RESULT',110,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.recipient-types','USER,TEAM,PROJECT,CUSTOM',120,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.record-statuses','ISSUED,REVOKED',130,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.default-scene-type','COMPETITION_AWARD',140,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.default-source-type','MANUAL',150,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.rule.default-recipient-type','CUSTOM',160,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.number.template-prefix','CTPL-',170,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.number.batch-prefix','CB-',180,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.number.certificate-prefix','CERT-',190,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.number.timestamp-format','yyyyMMddHHmmssSSS',200,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.number.verification-code-length','6',210,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.preview.batch-no','PREVIEW',220,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.preview.batch-name','Preview',230,'ENABLED',0,0,0),
+    ('CERTIFICATE','certificate.preview.status','PREVIEW',240,'ENABLED',0,0,0)
+ON DUPLICATE KEY UPDATE `group_code`=VALUES(`group_code`),`default_value`=VALUES(`default_value`),
+    `sort_no`=VALUES(`sort_no`),`status`='ENABLED',`deleted`=0;
+
+UPDATE `sys_platform_setting_definition`
+SET `config_name` = `config_key`
+WHERE (`config_name` IS NULL OR `config_name` = '') AND `deleted`=0;
+
+UPDATE `sys_platform_setting_definition`
+SET `reset_value` = CASE `config_key`
+    WHEN 'smtp.enabled' THEN 'false' WHEN 'smtp.host' THEN '' WHEN 'smtp.port' THEN '25'
+    WHEN 'smtp.username' THEN '' WHEN 'smtp.password' THEN '' WHEN 'smtp.from' THEN ''
+    WHEN 'smtp.auth-enabled' THEN 'true' WHEN 'smtp.starttls-enabled' THEN 'true'
+    WHEN 'smtp.ssl-enabled' THEN 'false' ELSE `reset_value` END
+WHERE `group_code`='SMTP' AND `deleted`=0;

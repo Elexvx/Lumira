@@ -5,8 +5,9 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.system.export.ExportDTO;
 import com.lumira.saas.modules.system.export.ExportTaskService;
+import com.lumira.saas.modules.system.user.repository.UserExportTaskWorkerRepository;
+import com.lumira.saas.modules.system.user.repository.UserExportTaskWorkerRepository.TaskClaim;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,12 +28,12 @@ class UserExportTaskWorkerServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void processPendingTasksShouldUploadAndCompleteClaimedTask() throws Exception {
-        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        UserExportTaskWorkerRepository taskRepository = mock(UserExportTaskWorkerRepository.class);
         ObjectMapper objectMapper = new ObjectMapper();
         UserExportAppService userExportAppService = mock(UserExportAppService.class);
         ExportTaskService exportTaskService = mock(ExportTaskService.class);
         UserExportTaskWorkerService service = new UserExportTaskWorkerService(
-                jdbcTemplate,
+                taskRepository,
                 objectMapper,
                 userExportAppService,
                 exportTaskService
@@ -41,12 +42,8 @@ class UserExportTaskWorkerServiceTest {
         payload.setRequest(request(List.of("id", "username")));
         payload.setFileName("users.xlsx");
         String requestPayload = objectMapper.writeValueAsString(payload);
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbcTemplate.query(
-                anyString(),
-                any(org.springframework.jdbc.core.RowMapper.class),
-                any(Object[].class)
-        )).thenReturn(List.of(new UserExportTaskWorkerService.ClaimedTask(
+        when(taskRepository.claim(any(Integer.class), anyString(), anyString(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(new TaskClaim(
                 9001L,
                 "system:user",
                 "RUNNING",
@@ -55,6 +52,7 @@ class UserExportTaskWorkerServiceTest {
                 "user-uuid-1001",
                 "claim-token-1"
         )));
+        when(taskRepository.markSucceeded(any(), any(), anyString(), any(LocalDateTime.class))).thenReturn(1);
         CurrentUser currentUser = trustedUser();
         when(userExportAppService.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L)).thenReturn(currentUser);
         when(userExportAppService.exportUsersFromTrustedSnapshot(eq(currentUser), any(ExportDTO.UserExportRequest.class)))
@@ -86,21 +84,17 @@ class UserExportTaskWorkerServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void processPendingTasksShouldFailClaimedTaskWhenPayloadIsInvalid() {
-        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        UserExportTaskWorkerRepository taskRepository = mock(UserExportTaskWorkerRepository.class);
         UserExportAppService userExportAppService = mock(UserExportAppService.class);
         ExportTaskService exportTaskService = mock(ExportTaskService.class);
         UserExportTaskWorkerService service = new UserExportTaskWorkerService(
-                jdbcTemplate,
+                taskRepository,
                 new ObjectMapper(),
                 userExportAppService,
                 exportTaskService
         );
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        when(jdbcTemplate.query(
-                anyString(),
-                any(org.springframework.jdbc.core.RowMapper.class),
-                any(Object[].class)
-        )).thenReturn(List.of(new UserExportTaskWorkerService.ClaimedTask(
+        when(taskRepository.claim(any(Integer.class), anyString(), anyString(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(new TaskClaim(
                 9002L,
                 "system:user",
                 "RUNNING",
@@ -109,6 +103,7 @@ class UserExportTaskWorkerServiceTest {
                 "user-uuid-1001",
                 "claim-token-2"
         )));
+        when(taskRepository.markFailed(any(), anyString(), any(LocalDateTime.class))).thenReturn(1);
 
         int processed = service.processPendingTasks(10);
 

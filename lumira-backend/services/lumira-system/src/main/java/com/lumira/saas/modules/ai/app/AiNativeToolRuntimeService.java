@@ -11,6 +11,8 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AiConfigAccessPolicy;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import com.lumira.saas.modules.ai.infrastructure.JdbcAiIamUserRepository;
+import com.lumira.saas.modules.ai.infrastructure.JdbcAiPlatformQueryRepository;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.authorization.AuthorizationDecision;
@@ -218,8 +220,12 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         this.authorizationService = authorizationService;
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
         this.objectMapper = objectMapper;
-        this.platformQueryFacade = platformQueryFacade == null ? new DefaultAiPlatformQueryFacade(jdbcTemplate) : platformQueryFacade;
-        this.iamQueryFacade = iamQueryFacade == null ? new DefaultAiIamQueryFacade(jdbcTemplate) : iamQueryFacade;
+        this.platformQueryFacade = platformQueryFacade == null
+                ? new DefaultAiPlatformQueryFacade(new JdbcAiPlatformQueryRepository(jdbcTemplate))
+                : platformQueryFacade;
+        this.iamQueryFacade = iamQueryFacade == null
+                ? new DefaultAiIamQueryFacade(new JdbcAiIamUserRepository(jdbcTemplate))
+                : iamQueryFacade;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
