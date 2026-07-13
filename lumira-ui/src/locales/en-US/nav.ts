@@ -12,6 +12,7 @@ export default {
   'nav.competitions.root': 'Competitions',
   'nav.competitions.management': 'Competition Management',
   'nav.competitions.register': 'Competition Registration',
+  'nav.competitions.paymentResult': 'Payment Result',
   'nav.competitions.activityRegister': 'Activity Registration',
   'nav.competitions.expertApply': 'Expert Application',
   'nav.competitions.create': 'Create Competition',

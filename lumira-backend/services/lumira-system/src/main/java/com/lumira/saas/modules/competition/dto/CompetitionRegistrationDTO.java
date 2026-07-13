@@ -46,6 +46,44 @@ public final class CompetitionRegistrationDTO {
         public void setMembers(List<MemberSnapshotRequest> members) { this.members = members == null ? new ArrayList<>() : members; }
     }
 
+    /** Atomically confirms the complete registration after the user reviews every section. */
+    public static class RegistrationConfirmRequest {
+        @NotNull
+        private RegistrationCreateRequest registration;
+        @Valid
+        private ProjectDraftRequest project;
+        @Valid
+        private MaterialSubmitRequest materials;
+
+        public RegistrationCreateRequest getRegistration() { return registration; }
+        public void setRegistration(RegistrationCreateRequest registration) { this.registration = registration; }
+        public ProjectDraftRequest getProject() { return project; }
+        public void setProject(ProjectDraftRequest project) { this.project = project; }
+        public MaterialSubmitRequest getMaterials() { return materials; }
+        public void setMaterials(MaterialSubmitRequest materials) { this.materials = materials; }
+    }
+
+    public static class ProjectDraftRequest {
+        @NotBlank
+        @Size(max = 128)
+        private String title;
+        @Size(max = 64)
+        private String category;
+        @Size(max = 1000)
+        private String description;
+        @Size(max = 1024)
+        private String imageUrl;
+
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getCategory() { return category; }
+        public void setCategory(String category) { this.category = category; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public String getImageUrl() { return imageUrl; }
+        public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    }
+
     public static class TeamSnapshotRequest {
         @Size(max = 128)
         private String teamName;

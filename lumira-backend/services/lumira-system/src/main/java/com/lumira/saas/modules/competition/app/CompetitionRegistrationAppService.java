@@ -32,10 +32,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
 
 @Service
 public class CompetitionRegistrationAppService {
@@ -78,6 +81,11 @@ public class CompetitionRegistrationAppService {
     private static final int MAX_JSON_LENGTH = 10000;
     private static final DateTimeFormatter NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final int PAYMENT_ORDER_TASK_MAX_RETRY = 8;
+    private static final Set<String> COLLECTION_FIELD_TYPES = Set.of(
+            "TEXT", "TEXTAREA", "IMAGE", "ROLE", "NUMBER", "DATE", "SELECT", "MULTI_SELECT", "MOBILE", "EMAIL"
+    );
+    private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -302,6 +310,39 @@ public class CompetitionRegistrationAppService {
     }
 
     @Transactional
+    public CompetitionRegistrationVO.Registration confirmRegistration(
+            CurrentUser currentUser,
+            Long registrationId,
+            CompetitionRegistrationDTO.RegistrationConfirmRequest request
+    ) {
+        requireRequest(request, "Registration confirmation request is required");
+        CompetitionRegistrationDTO.RegistrationCreateRequest registration = request.getRegistration();
+        requireRequest(registration, "Registration payload is required");
+        if (registration.getProjectId() == null || registration.getProjectId() <= 0) {
+            registration.setProjectId(createInlineProject(currentUser, request.getProject()));
+        }
+        CompetitionRegistrationVO.Registration confirmed;
+        if (registrationId == null) {
+            confirmed = createRegistration(currentUser, registration);
+        } else {
+            CompetitionRegistrationVO.Registration existing = getRegistration(currentUser, registrationId);
+            if (StringUtils.hasText(existing.getPaymentOrderNo())) {
+                throw biz(ErrorCode.BIZ_ERROR, "A registration with a payment order can no longer be edited");
+            }
+            confirmed = updateRegistration(currentUser, registrationId, registration);
+        }
+        if (request.getMaterials() != null) {
+            confirmed = submitMaterials(currentUser, confirmed.getId(), request.getMaterials());
+        }
+        if (confirmed.getPayableAmountMinor() != null && confirmed.getPayableAmountMinor() == 0L) {
+            requireSubmittedPreliminaryMaterials(confirmed);
+            confirmPaidRegistration(confirmed.getId(), null);
+            confirmed = getRegistration(currentUser, confirmed.getId());
+        }
+        return confirmed;
+    }
+
+    @Transactional
     public CompetitionRegistrationVO.Registration createRegistration(CurrentUser currentUser, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
         Long userId = requirePermission(currentUser, REGISTRATION_CREATE_PERMISSION);
         String userUuid = requireUserUuid(currentUser);
@@ -311,6 +352,7 @@ public class CompetitionRegistrationAppService {
         requireRegistrationWindowOpen(competition);
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
+        List<CollectedFieldDefinition> fieldDefinitions = validateCollectedFields(competition.id(), request, team, project);
         int memberCount = team.members().size();
         validateTeamMemberCount(competition.id(), memberCount);
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
@@ -345,6 +387,7 @@ public class CompetitionRegistrationAppService {
         );
         requireRegistrationWrite(inserted, "Registration changed, please retry");
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        persistCollectionSchemaSnapshot(id, fieldDefinitions);
         return getRegistration(currentUser, id);
     }
 
@@ -359,6 +402,7 @@ public class CompetitionRegistrationAppService {
         requireRegistrationWindowOpen(competition);
         TeamSnapshot team = resolveTeamSnapshot(currentUser, request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId(), request.getProjectSnapshot());
+        List<CollectedFieldDefinition> fieldDefinitions = validateCollectedFields(competition.id(), request, team, project);
         int memberCount = team.members().size();
         validateTeamMemberCount(competition.id(), memberCount);
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
@@ -395,6 +439,7 @@ public class CompetitionRegistrationAppService {
                 existing.getStatus()
         );
         requireRegistrationWrite(updated, "Registration changed, please retry");
+        persistCollectionSchemaSnapshot(id, fieldDefinitions);
         return getRegistration(currentUser, id);
     }
 
@@ -918,19 +963,27 @@ public class CompetitionRegistrationAppService {
             freeOrder.setStatus("CONFIRMED");
             return freeOrder;
         }
-        List<CompetitionRegistrationVO.PaymentOption> availableOptions = request != null && StringUtils.hasText(request.getClientType())
+        boolean modernCheckoutRequest = request != null && StringUtils.hasText(request.getClientType());
+        List<CompetitionRegistrationVO.PaymentOption> availableOptions = modernCheckoutRequest
                 ? listPaymentOptions(currentUser, registrationId, request.getClientType())
                 : List.of();
+        if (modernCheckoutRequest && !StringUtils.hasText(request.getProviderCode())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "A payment provider must be selected");
+        }
         String providerCode = request != null && StringUtils.hasText(request.getProviderCode())
                 ? request.getProviderCode().trim()
                 : availableOptions.stream().findFirst().map(CompetitionRegistrationVO.PaymentOption::getProviderCode).orElse("alipay");
         boolean providerAvailable = availableOptions.stream().anyMatch(option -> option.getProviderCode().equalsIgnoreCase(providerCode == null ? "" : providerCode));
-        if (!availableOptions.isEmpty() && !providerAvailable) {
+        if ((modernCheckoutRequest && !providerAvailable)
+                || (!modernCheckoutRequest && !availableOptions.isEmpty() && !providerAvailable)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Selected payment provider is unavailable for this device");
         }
         String clientIp = request == null ? null : request.getClientIp();
-        String notifyUrl = request == null ? null : request.getNotifyUrl();
-        String returnUrl = request == null ? null : request.getReturnUrl();
+        // Provider notifications are always controlled by the persisted payment
+        // provider configuration. Browsers may only supply the dedicated,
+        // same-purpose synchronous registration return page.
+        String notifyUrl = null;
+        String returnUrl = normalizeRegistrationReturnUrl(request == null ? null : request.getReturnUrl(), registrationId);
         enqueuePaymentOrderIfReady(
                 registration,
                 userId,
@@ -988,7 +1041,7 @@ public class CompetitionRegistrationAppService {
                         from aiadc_competition c
                         join competition_config_set ccs
                           on ccs.competition_uuid = c.uuid
-                         and ccs.status in ('DRAFT', 'PUBLISHED')
+                         and ccs.status = 'PUBLISHED'
                          and ccs.deleted = 0
                         join competition_config_item cci
                           on cci.competition_uuid = c.uuid
@@ -1001,7 +1054,7 @@ public class CompetitionRegistrationAppService {
                             select max(latest.id)
                             from competition_config_set latest
                             where latest.competition_uuid = c.uuid
-                              and latest.status in ('DRAFT', 'PUBLISHED')
+                              and latest.status = 'PUBLISHED'
                               and latest.deleted = 0
                           )
                         order by cci.sort_order asc, cci.id asc
@@ -1441,9 +1494,13 @@ public class CompetitionRegistrationAppService {
     private void requireSubmittedPreliminaryMaterials(CompetitionRegistrationVO.Registration registration) {
                 Long preliminaryStageId = jdbcTemplate.queryForObject(
                 """
-                        select id from competition_stage
-                        where competition_id = ? and stage_code = 'PRELIMINARY' and deleted = 0
-                        order by id asc limit 1
+                        select stage.id
+                        from competition_stage stage
+                        join competition_stage_form form
+                          on form.stage_id = stage.id and form.competition_id = stage.competition_id
+                         and form.status = 'ENABLED' and form.deleted = 0
+                        where stage.competition_id = ? and stage.stage_code = 'PRELIMINARY' and stage.deleted = 0
+                        order by stage.id asc limit 1
                         """,
                 Long.class,
                                 registration.getCompetitionId()
@@ -1739,6 +1796,263 @@ public class CompetitionRegistrationAppService {
             requireLength(member.getRemark(), 512, "Member remark is too large");
             requireJsonSize(member.getExtraValues(), "Member extra values are too large");
         }
+    }
+
+    private Long createInlineProject(CurrentUser currentUser, CompetitionRegistrationDTO.ProjectDraftRequest project) {
+        requireRequest(project, "Project information is required");
+        String title = trimRequired(project.getTitle(), "Project title is required");
+        Long userId = requireUserId(currentUser);
+        String userUuid = requireUserUuid(currentUser);
+        String code = "proj-" + NO_TIME_FORMATTER.format(LocalDateTime.now()) + "-"
+                + Integer.toString(ThreadLocalRandom.current().nextInt(36 * 36 * 36), 36).toUpperCase(Locale.ROOT);
+        int inserted = jdbcTemplate.update(
+                """
+                        insert into aiadc_project (
+                            code, locale, title, category, description, image_url, owner_name, rating, sort, status,
+                            tags, cta_label, cta_href, featured, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, 'zh', ?, ?, ?, ?, ?, 'new', 100, 'draft', null, null, null, 0, ?, ?, ?, ?, 0)
+                        """,
+                code,
+                title,
+                StringUtils.hasText(project.getCategory()) ? project.getCategory().trim() : "INNOVATION",
+                trimToNull(project.getDescription()),
+                trimToNull(project.getImageUrl()),
+                currentUser.getUsername(),
+                userId,
+                userUuid,
+                userId,
+                userUuid
+        );
+        requireRegistrationWrite(inserted, "Project changed while confirming registration");
+        Long projectId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        requirePositiveId(projectId, "Project could not be created");
+        return projectId;
+    }
+
+    private List<CollectedFieldDefinition> validateCollectedFields(
+            Long competitionId,
+            CompetitionRegistrationDTO.RegistrationCreateRequest request,
+            TeamSnapshot resolvedTeam,
+            ProjectSnapshot project
+    ) {
+        List<CollectedFieldDefinition> definitions = loadCollectedFieldDefinitions(competitionId);
+        validateScopeValues("REGISTRATION_FIELD", request.getRegistrationExtraValues(), definitions, Map.of());
+
+        CompetitionRegistrationDTO.TeamSnapshotRequest team = request.getTeamSnapshot();
+        Map<String, Object> teamSummary = toMutableMap(resolvedTeam.summary());
+        Map<String, Object> teamStandards = new LinkedHashMap<>();
+        teamStandards.put("teamName", teamSummary.get("teamName"));
+        teamStandards.put("teamType", teamSummary.get("teamType"));
+        teamStandards.put("avatarUrl", teamSummary.get("avatarUrl"));
+        teamStandards.put("description", teamSummary.get("description"));
+        validateScopeValues("TEAM_FIELD", team == null ? null : team.getExtraValues(), definitions, teamStandards);
+
+        for (CompetitionRegistrationDTO.MemberSnapshotRequest member : request.getMembers() == null
+                ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : request.getMembers()) {
+            Map<String, Object> memberStandards = new LinkedHashMap<>();
+            memberStandards.put("memberName", member.getMemberName());
+            memberStandards.put("employeeNo", member.getEmployeeNo());
+            memberStandards.put("departmentName", member.getDepartmentName());
+            memberStandards.put("role", member.getRole());
+            memberStandards.put("remark", member.getRemark());
+            validateScopeValues("MEMBER_FIELD", member.getExtraValues(), definitions, memberStandards);
+        }
+        Map<String, Object> projectSummary = toMutableMap(project.summary());
+        Map<String, Object> projectStandards = new LinkedHashMap<>();
+        projectStandards.put("title", projectSummary.get("title"));
+        projectStandards.put("imageUrl", projectSummary.get("imageUrl"));
+        projectStandards.put("description", projectSummary.get("description"));
+        validateScopeValues("PROJECT_FIELD",
+                request.getProjectSnapshot() == null ? null : request.getProjectSnapshot().getExtraValues(),
+                definitions, projectStandards);
+        return definitions;
+    }
+
+    private List<CollectedFieldDefinition> loadCollectedFieldDefinitions(Long competitionId) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                """
+                        select item.item_type as itemType, item.item_key as itemKey, item.title,
+                               item.content_json as contentJson, item.required_flag as requiredFlag,
+                               item.sort_order as sortOrder
+                        from aiadc_competition competition
+                        join competition_config_set config
+                          on config.competition_uuid = competition.uuid and config.deleted = 0
+                         and config.status = 'PUBLISHED'
+                        join competition_config_item item
+                          on item.config_set_id = config.id and item.competition_uuid = competition.uuid
+                         and item.enabled = 1 and item.deleted = 0
+                         and item.item_type in ('REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD')
+                        where competition.id = ? and competition.deleted = 0
+                          and config.id = (
+                              select max(current_config.id) from competition_config_set current_config
+                              where current_config.competition_uuid = competition.uuid
+                                and current_config.status = 'PUBLISHED' and current_config.deleted = 0
+                          )
+                        order by item.sort_order asc, item.id asc
+                        """,
+                competitionId
+        );
+        List<CollectedFieldDefinition> definitions = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            String contentJson = row.get("contentJson") == null ? null : String.valueOf(row.get("contentJson"));
+            JsonNode metadata;
+            try {
+                metadata = StringUtils.hasText(contentJson) ? objectMapper.readTree(contentJson) : objectMapper.createObjectNode();
+            } catch (Exception exception) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Invalid competition field configuration");
+            }
+            String fieldType = metadata.path("fieldType").asText("TEXT").toUpperCase(Locale.ROOT);
+            if (!COLLECTION_FIELD_TYPES.contains(fieldType)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Unsupported competition field type");
+            }
+            definitions.add(new CollectedFieldDefinition(
+                    String.valueOf(row.get("itemType")),
+                    String.valueOf(row.get("itemKey")),
+                    row.get("title") == null ? String.valueOf(row.get("itemKey")) : String.valueOf(row.get("title")),
+                    fieldType,
+                    Boolean.TRUE.equals(row.get("requiredFlag")) || Integer.valueOf(1).equals(row.get("requiredFlag")),
+                    metadata.path("validationRule").asText("NONE").toUpperCase(Locale.ROOT),
+                    metadata.path("options").asText(""),
+                    metadata.path("groupLabel").asText("")
+            ));
+        }
+        return definitions;
+    }
+
+    private void validateScopeValues(
+            String scope,
+            Map<String, Object> extraValues,
+            List<CollectedFieldDefinition> definitions,
+            Map<String, Object> standardValues
+    ) {
+        List<CollectedFieldDefinition> scoped = definitions.stream().filter(field -> scope.equals(field.scope())).toList();
+        if (scoped.isEmpty()) {
+            if (extraValues != null && !extraValues.isEmpty()) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Unknown or disabled registration field: " + extraValues.keySet().iterator().next());
+            }
+            return;
+        }
+        Map<String, Object> extras = extraValues == null ? Map.of() : extraValues;
+        Set<String> configuredKeys = scoped.stream().map(CollectedFieldDefinition::itemKey).collect(java.util.stream.Collectors.toSet());
+        for (String key : extras.keySet()) {
+            if (!configuredKeys.contains(key) || resolveStandardCollectedFieldKey(scope, key) != null) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Unknown or disabled registration field: " + key);
+            }
+        }
+        for (CollectedFieldDefinition field : scoped) {
+            String standardKey = resolveStandardCollectedFieldKey(scope, field.itemKey());
+            Object value = standardKey == null ? extras.get(field.itemKey()) : standardValues.get(standardKey);
+            if (field.required() && !hasCollectedValue(value)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Required registration field is missing: " + field.title());
+            }
+            if (hasCollectedValue(value)) {
+                validateCollectedValue(field, value);
+            }
+        }
+    }
+
+    private boolean hasCollectedValue(Object value) {
+        if (value == null) return false;
+        if (value instanceof String text) return StringUtils.hasText(text);
+        if (value instanceof List<?> list) return !list.isEmpty();
+        if (value instanceof Map<?, ?> map) return !map.isEmpty();
+        return true;
+    }
+
+    private void validateCollectedValue(CollectedFieldDefinition field, Object value) {
+        if ("NUMBER".equals(field.fieldType()) && !(value instanceof Number)) {
+            try {
+                new BigDecimal(String.valueOf(value));
+            } catch (NumberFormatException exception) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Registration field must be numeric: " + field.title());
+            }
+        }
+        if ("MULTI_SELECT".equals(field.fieldType()) && !(value instanceof List<?>)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field must contain multiple choices: " + field.title());
+        }
+        if (!"MULTI_SELECT".equals(field.fieldType()) && value instanceof List<?>) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field has an invalid value: " + field.title());
+        }
+        if (Set.of("TEXT", "TEXTAREA", "DATE", "SELECT", "MOBILE", "EMAIL", "IMAGE", "ROLE").contains(field.fieldType())
+                && !(value instanceof CharSequence)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field must be text: " + field.title());
+        }
+        List<String> options = field.options().lines().map(String::trim).filter(StringUtils::hasText).toList();
+        if ("SELECT".equals(field.fieldType()) && !options.isEmpty() && !options.contains(String.valueOf(value))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field contains an unavailable option: " + field.title());
+        }
+        if ("MULTI_SELECT".equals(field.fieldType()) && !options.isEmpty()
+                && ((List<?>) value).stream().map(String::valueOf).anyMatch(option -> !options.contains(option))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Registration field contains an unavailable option: " + field.title());
+        }
+        String text = String.valueOf(value).trim();
+        if ("DATE".equals(field.fieldType())) {
+            try {
+                LocalDate.parse(text);
+            } catch (RuntimeException exception) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Invalid date: " + field.title());
+            }
+        }
+        if ("IMAGE".equals(field.fieldType()) && (!StringUtils.hasText(text) || text.length() > 2048)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid image value: " + field.title());
+        }
+        if (("MOBILE".equals(field.fieldType()) || "CHINA_MOBILE".equals(field.validationRule()))
+                && !MOBILE_PATTERN.matcher(text).matches()) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid mobile number: " + field.title());
+        }
+        if (("EMAIL".equals(field.fieldType()) || "EMAIL".equals(field.validationRule()))
+                && !EMAIL_PATTERN.matcher(text).matches()) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid email address: " + field.title());
+        }
+    }
+
+    private String resolveStandardCollectedFieldKey(String scope, String itemKey) {
+        String normalized = itemKey == null ? "" : itemKey.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+        Map<String, Set<String>> aliases = switch (scope) {
+            case "TEAM_FIELD" -> Map.of(
+                    "teamName", Set.of("teamname", "name"),
+                    "teamType", Set.of("teamtype", "type"),
+                    "avatarUrl", Set.of("avatarurl", "avatar"),
+                    "description", Set.of("description", "teamdescription", "intro")
+            );
+            case "MEMBER_FIELD" -> Map.of(
+                    "memberName", Set.of("membername", "name"),
+                    "employeeNo", Set.of("employeeno", "studentno", "memberno"),
+                    "departmentName", Set.of("departmentname", "department"),
+                    "role", Set.of("role"),
+                    "remark", Set.of("remark", "note")
+            );
+            case "PROJECT_FIELD" -> Map.of(
+                    "title", Set.of("projecttitle", "projectname", "title", "name"),
+                    "imageUrl", Set.of("imageurl", "projectimage", "projectavatar", "logourl", "logo"),
+                    "description", Set.of("projectdescription", "description", "intro")
+            );
+            default -> Map.of();
+        };
+        return aliases.entrySet().stream()
+                .filter(entry -> entry.getValue().contains(normalized))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void persistCollectionSchemaSnapshot(Long registrationId, List<CollectedFieldDefinition> definitions) {
+        List<Map<String, Object>> snapshot = definitions.stream().map(field -> {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("scope", field.scope());
+            item.put("itemKey", field.itemKey());
+            item.put("title", field.title());
+            item.put("fieldType", field.fieldType());
+            item.put("required", field.required());
+            item.put("validationRule", field.validationRule());
+            item.put("options", field.options());
+            item.put("groupLabel", field.groupLabel());
+            return item;
+        }).toList();
+        jdbcTemplate.update(
+                "update competition_registration set collection_schema_snapshot_json = ?, updated_at = ? where id = ? and deleted = 0",
+                serialize(snapshot), LocalDateTime.now(), registrationId
+        );
     }
 
     private void validateMaterialSubmitRequest(CompetitionRegistrationDTO.MaterialSubmitRequest request) {
@@ -2372,6 +2686,7 @@ public class CompetitionRegistrationAppService {
                        payable_amount_minor as payableAmountMinor, currency, payment_order_no as paymentOrderNo,
                        participant_no as participantNo, team_snapshot_json as teamSnapshotJson,
                        project_snapshot_json as projectSnapshotJson, member_snapshot_json as memberSnapshotJson,
+                       collection_schema_snapshot_json as collectionSchemaSnapshotJson,
                        created_at as createdAt, updated_at as updatedAt
                 """;
     }
@@ -2415,6 +2730,43 @@ public class CompetitionRegistrationAppService {
     }
 
     private record ProjectSnapshot(Long projectId, Object summary) {
+    }
+
+    private String normalizeRegistrationReturnUrl(String value, Long registrationId) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            URI uri = URI.create(value.trim());
+            if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                    || !StringUtils.hasText(uri.getHost())
+                    || uri.getUserInfo() != null
+                    || uri.getFragment() != null
+                    || !"/competitions/register/payment-result".equals(uri.getPath())) {
+                throw new IllegalArgumentException("unsupported return URL");
+            }
+            String query = uri.getRawQuery();
+            if (StringUtils.hasText(query)
+                    && !query.equals("registrationId=" + registrationId)
+                    && !query.equals("registrationId=" + String.valueOf(registrationId))) {
+                throw new IllegalArgumentException("unsupported return URL query");
+            }
+            return uri.toString();
+        } catch (RuntimeException exception) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid registration payment return URL");
+        }
+    }
+
+    private record CollectedFieldDefinition(
+            String scope,
+            String itemKey,
+            String title,
+            String fieldType,
+            boolean required,
+            String validationRule,
+            String options,
+            String groupLabel
+    ) {
     }
 
     public static class CompetitionRow {

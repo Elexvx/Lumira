@@ -127,16 +127,42 @@ export type RegistrationProjectSnapshotPayload = {
 export type RegistrationUpsertPayload = {
   competitionId: number;
   teamId?: number;
-  projectId: number;
+  projectId?: number;
   registrationExtraValues?: Record<string, unknown>;
   teamSnapshot?: RegistrationSnapshotTeamPayload;
   projectSnapshot?: RegistrationProjectSnapshotPayload;
   members?: RegistrationSnapshotMemberPayload[];
 };
 
+export type RegistrationConfirmPayload = {
+  registration: RegistrationUpsertPayload;
+  project?: {
+    title: string;
+    category?: string;
+    description?: string;
+    imageUrl?: string;
+  };
+  materials?: {
+    stageId: number;
+    values: Array<{ fieldKey: string; fieldType: string; textValue?: string; fileId?: number; jsonValue?: string }>;
+  };
+};
+
 export const createRegistration = (data: RegistrationUpsertPayload) =>
   request<CompetitionRegistrationRecord>('/v2/aiadc/registrations', {
     method: 'POST',
+    data,
+  });
+
+export const confirmRegistration = (data: RegistrationConfirmPayload) =>
+  request<CompetitionRegistrationRecord>('/v2/aiadc/registrations/confirm', {
+    method: 'POST',
+    data,
+  });
+
+export const reconfirmRegistration = (id: number, data: RegistrationConfirmPayload) =>
+  request<CompetitionRegistrationRecord>(`/v2/aiadc/registrations/${id}/confirm`, {
+    method: 'PUT',
     data,
   });
 
@@ -189,7 +215,10 @@ export const submitRegistrationMaterials = (
 export const listRegistrationMaterials = (registrationId: number) =>
   request<CompetitionMaterialSubmissionRecord[]>(`/v2/aiadc/registrations/${registrationId}/materials`);
 
-export const createRegistrationPaymentOrder = (registrationId: number, data: { providerCode?: string; clientType?: string } = {}) =>
+export const createRegistrationPaymentOrder = (
+  registrationId: number,
+  data: { providerCode?: string; clientType?: string; returnUrl?: string } = {},
+) =>
   request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-order`, {
     method: 'POST',
     data,

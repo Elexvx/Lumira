@@ -12,6 +12,7 @@ export default {
   'nav.competitions.root': '赛事',
   'nav.competitions.management': '赛事管理',
   'nav.competitions.register': '赛事报名',
+  'nav.competitions.paymentResult': '支付结果',
   'nav.competitions.activityRegister': '活动报名',
   'nav.competitions.expertApply': '专家申请',
   'nav.competitions.create': '新增赛事',

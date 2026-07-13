@@ -1844,6 +1844,7 @@ CREATE TABLE `competition_registration` (
   `team_snapshot_json` longtext,
   `project_snapshot_json` longtext,
   `member_snapshot_json` longtext,
+  `collection_schema_snapshot_json` longtext,
   `created_by` bigint NOT NULL,
   `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

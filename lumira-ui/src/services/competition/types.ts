@@ -197,6 +197,7 @@ export interface CompetitionRegistrationRecord {
   teamSnapshotJson?: string | null;
   projectSnapshotJson?: string | null;
   memberSnapshotJson?: string | null;
+  collectionSchemaSnapshotJson?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }

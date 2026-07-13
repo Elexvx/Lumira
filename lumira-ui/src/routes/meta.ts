@@ -37,6 +37,7 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/competitions/': '/competitions/register',
   '/competitions/management/': '/competitions/management',
   '/competitions/register/': '/competitions/register',
+  '/competitions/register/payment-result/': '/competitions/register/payment-result',
   '/competitions/activity-register': '/activities/register',
   '/competitions/activity-register/': '/activities/register',
   '/competitions/expert-apply/': '/competitions/expert-apply',
@@ -283,6 +284,7 @@ const competitionRouteMeta: BackendRouteMeta[] = [
   { path: '/competitions', name: 'nav.competitions.root', icon: 'TrophyOutlined', access: 'isLogin' },
   { path: '/competitions/management', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
   { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
+  { path: '/competitions/register/payment-result', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
   { path: '/competitions/activity-register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
   { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts', hideInMenu: true },
   { path: '/competitions/create', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
@@ -320,6 +322,7 @@ const competitionRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/competitions', redirect: '/competitions/register', hideInMenu: true },
       { path: '/competitions/management', component: '@/pages/competition', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+      { path: '/competitions/register/payment-result', component: '@/pages/competition', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
       { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
       { path: '/competitions/activity-register', redirect: '/activities/register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
       { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts', hideInMenu: true },
