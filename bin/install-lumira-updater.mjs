@@ -49,6 +49,13 @@ for (const [key, value] of Object.entries({
 }
 
 const quoteSystemd = (value) => `"${String(value).replace(/([\\"])/g, '\\$1')}"`;
+const bareSystemdPath = (value) => {
+  const normalized = String(value);
+  if (/[\s"\\]/.test(normalized)) {
+    throw new Error(`systemd path must not contain whitespace, quotes, or backslashes: ${normalized}`);
+  }
+  return normalized;
+};
 const unit = `[Unit]
 Description=Lumira host update agent
 After=docker.service network-online.target
@@ -57,8 +64,8 @@ Requires=docker.service
 
 [Service]
 Type=simple
-WorkingDirectory=${quoteSystemd(repoRoot)}
-EnvironmentFile=${quoteSystemd(envPath)}
+WorkingDirectory=${bareSystemdPath(repoRoot)}
+EnvironmentFile=${bareSystemdPath(envPath)}
 ExecStart=${quoteSystemd(process.execPath)} ${quoteSystemd(updaterPath)}
 Restart=always
 RestartSec=3
@@ -77,7 +84,8 @@ if (dryRun) {
 writeFileSync(envPath, envContent, { mode: 0o600 });
 writeFileSync(servicePath, unit, { mode: 0o644 });
 run('systemctl', ['daemon-reload']);
-run('systemctl', ['enable', '--now', 'lumira-updater.service']);
+run('systemctl', ['enable', 'lumira-updater.service']);
+run('systemctl', ['restart', 'lumira-updater.service']);
 run('systemctl', ['is-active', '--quiet', 'lumira-updater.service']);
 let healthy = false;
 for (let attempt = 0; attempt < 20; attempt += 1) {

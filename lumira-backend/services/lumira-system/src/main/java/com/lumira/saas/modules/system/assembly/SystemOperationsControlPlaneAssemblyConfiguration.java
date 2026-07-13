@@ -32,6 +32,7 @@ import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordDictionaryCache;
 import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordDictionaryRepository;
+import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordManagementRepository;
 import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordPluginStateRepository;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordDictionaryVersionService;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordMetrics;
@@ -100,6 +101,7 @@ import org.springframework.context.annotation.Import;
         SensitiveWordController.class,
         SensitiveWordDictionaryCache.class,
         JdbcSensitiveWordDictionaryRepository.class,
+        JdbcSensitiveWordManagementRepository.class,
         JdbcSensitiveWordPluginStateRepository.class,
         SensitiveWordDictionaryVersionService.class,
         SensitiveWordFormFilter.class,

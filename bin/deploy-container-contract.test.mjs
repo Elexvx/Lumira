@@ -256,7 +256,10 @@ test('platform updater is reachable from the backend container and installed as 
   assert.match(envExample, /PLATFORM_UPDATE_AGENT_URL=http:\/\/host\.docker\.internal:9788/);
   assert.match(envExample, /PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS=host\.docker\.internal/);
   assert.match(installScript, /install-lumira-updater\.mjs/, 'platform installer must install the updater service');
-  assert.match(updaterInstaller, /systemctl[\s\S]*enable[\s\S]*--now[\s\S]*lumira-updater\.service/);
+  assert.match(updaterInstaller, /systemctl[\s\S]*enable[\s\S]*lumira-updater\.service/);
+  assert.match(updaterInstaller, /systemctl[\s\S]*restart[\s\S]*lumira-updater\.service/);
+  assert.doesNotMatch(updaterInstaller, /WorkingDirectory=\$\{quoteSystemd\(/);
+  assert.doesNotMatch(updaterInstaller, /EnvironmentFile=\$\{quoteSystemd\(/);
   assert.match(updaterInstaller, /docker[\s\S]*network[\s\S]*inspect[\s\S]*bridge/);
 });
 
