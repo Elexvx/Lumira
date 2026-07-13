@@ -1,6 +1,5 @@
 package com.lumira.saas.modules.draft.app;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -32,10 +31,10 @@ public class UserDraftAppService {
                         value.updatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()));
     }
 
-    public Draft save(CurrentUser user, String draftKey, JsonNode payload) {
+    public Draft save(CurrentUser user, String draftKey, Object payload) {
         Owner owner = requireOwner(user);
         String key = requireKey(draftKey);
-        if (payload == null || payload.isNull()) {
+        if (payload == null) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Draft payload is required");
         }
         String json = writeJson(payload);
@@ -66,16 +65,16 @@ public class UserDraftAppService {
         return key;
     }
 
-    private JsonNode readJson(String value) {
-        try { return objectMapper.readTree(value); }
+    private Object readJson(String value) {
+        try { return objectMapper.readValue(value, Object.class); }
         catch (Exception exception) { throw new BizException(ErrorCode.SYSTEM_ERROR, "Invalid stored draft"); }
     }
 
-    private String writeJson(JsonNode value) {
+    private String writeJson(Object value) {
         try { return objectMapper.writeValueAsString(value); }
         catch (Exception exception) { throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid draft payload"); }
     }
 
-    public record Draft(JsonNode payload, long updatedAt) {}
+    public record Draft(Object payload, long updatedAt) {}
     private record Owner(Long userId, String userUuid) {}
 }

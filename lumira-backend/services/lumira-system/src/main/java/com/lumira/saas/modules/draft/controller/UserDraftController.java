@@ -1,6 +1,5 @@
 package com.lumira.saas.modules.draft.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -32,7 +31,7 @@ public class UserDraftController {
     }
 
     @PutMapping("/{draftKey}")
-    public ApiResponse<UserDraftAppService.Draft> save(@PathVariable String draftKey, @RequestBody JsonNode payload) {
+    public ApiResponse<UserDraftAppService.Draft> save(@PathVariable String draftKey, @RequestBody Object payload) {
         return ApiResponse.success(service.save(securityContext.getCurrentUser(), draftKey, payload), TraceContext.getRequestId());
     }
 
