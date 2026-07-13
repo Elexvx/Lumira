@@ -3,9 +3,11 @@ package com.lumira.saas.modules.system.sensitive.infrastructure;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.modules.system.sensitive.repository.SensitiveWordDictionaryRepository;
 import java.util.List;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@Primary
 public class JdbcSensitiveWordDictionaryRepository implements SensitiveWordDictionaryRepository {
     private final MyBatisQueryOperations database;
 
