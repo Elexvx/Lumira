@@ -2,6 +2,8 @@
 
 import process from 'node:process';
 
+import { probeHttp } from './lib/http-utils.mjs';
+
 const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || (process.env.API_DOMAIN ? `https://${process.env.API_DOMAIN}` : 'http://127.0.0.1:8000');
 const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8080';
 const includeBackendCheck = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || process.env.DEPLOY_CHECK_ACTUATOR === 'true';
@@ -25,28 +27,6 @@ const checks = [
 
 function log(message) {
   console.log(`[check] ${message}`);
-}
-
-async function probeHttp(url) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5_000);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    return {
-      ok: response.ok,
-      status: response.status,
-      text: await response.text(),
-    };
-  } catch (err) {
-    return {
-      ok: false,
-      status: 0,
-      text: err instanceof Error ? err.message : String(err),
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 let failed = false;

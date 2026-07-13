@@ -1,23 +1,43 @@
-export async function probeHttp(url, options = {}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 5_000);
+import http from 'node:http';
+import https from 'node:https';
 
+export async function probeHttp(url, options = {}) {
   try {
-    const response = await fetch(url, { signal: controller.signal, headers: options.headers ?? {} });
-    return {
-      ok: response.ok,
-      status: response.status,
-      text: await response.text(),
-    };
+    return await request(url, options, 0);
   } catch (err) {
     return {
       ok: false,
       status: 0,
       text: err instanceof Error ? err.message : String(err),
     };
-  } finally {
-    clearTimeout(timeout);
   }
+}
+
+function request(url, options, redirectCount) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const transport = target.protocol === 'https:' ? https : http;
+    const req = transport.get(target, { headers: options.headers ?? {} }, (response) => {
+      const status = response.statusCode ?? 0;
+      const location = response.headers.location;
+      if (location && status >= 300 && status < 400 && redirectCount < 5) {
+        response.resume();
+        resolve(request(new URL(location, target).toString(), options, redirectCount + 1));
+        return;
+      }
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve({
+        ok: status >= 200 && status < 300,
+        status,
+        text: Buffer.concat(chunks).toString('utf8'),
+      }));
+    });
+    req.setTimeout(options.timeoutMs ?? 5_000, () => {
+      req.destroy(new Error('HTTP request timed out'));
+    });
+    req.on('error', reject);
+  });
 }
 
 export async function waitForHttp(url, label, options = {}) {
