@@ -212,6 +212,10 @@ public class WechatLoginSettingsService {
                     ? current.stateExpireMinutes()
                     : Math.max(1, request.getStateExpireMinutes());
 
+            if (enabled && (!StringUtils.hasText(appId) || !StringUtils.hasText(appSecret) || !StringUtils.hasText(redirectUri))) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "微信登录启用前必须完整配置 AppID、AppSecret 和回调地址");
+            }
+
             upsertConfigValue(ENABLED_KEY, "微信登录启用", String.valueOf(enabled), "是否启用微信扫码登录", operatorId);
             upsertConfigValue(APP_ID_KEY, "微信 AppID", appId, "微信开放平台网站应用 AppID", operatorId);
             upsertConfigValue(APP_SECRET_KEY, "微信 AppSecret", appSecret, "微信开放平台网站应用 AppSecret", operatorId);

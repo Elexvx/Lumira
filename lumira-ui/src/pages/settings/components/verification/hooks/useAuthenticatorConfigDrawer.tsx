@@ -429,6 +429,7 @@ const WechatDrawerContent = ({
           name="appSecret"
           label={t('AppSecret', 'AppSecret')}
           extra={wechatSettingsData?.appSecretConfigured ? t('当前密钥已脱敏显示，留空则保持现有密钥', 'The current secret is masked. Leave blank to keep the existing one.') : t('留空则保持现有密钥', 'Leave blank to keep the existing secret')}
+          rules={!wechatSettingsData?.appSecretConfigured && wechatEnabled ? [{ required: true, message: t('请输入 AppSecret', 'Please enter the AppSecret') }] : undefined}
         >
           <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder={t('留空则保持现有密钥', 'Leave blank to keep the existing secret')} />
         </Form.Item>
@@ -437,7 +438,7 @@ const WechatDrawerContent = ({
           label={t('回调地址', 'Callback URL')}
           rules={wechatEnabled ? [{ required: true, message: t('请输入回调地址', 'Please enter the callback URL') }] : undefined}
         >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('https://你的域名/api/v1/auth/wechat/callback', 'https://your-domain.com/api/v1/auth/wechat/callback')} />
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('https://你的域名/api/v2/auth/wechat/callback', 'https://your-domain.com/api/v2/auth/wechat/callback')} />
         </Form.Item>
         <Form.Item
           name="stateExpireMinutes"

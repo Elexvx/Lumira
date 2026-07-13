@@ -5868,39 +5868,48 @@ const CompetitionSettingsPage = () => {
     await activePanelRef.current?.flushPendingSave();
   }, []);
 
+  const flushPanelInBackground = useCallback((panel: CompetitionSettingsPanelHandle | null) => {
+    if (!panel) {
+      return;
+    }
+    window.setTimeout(() => {
+      void panel.flushPendingSave().catch(() => undefined);
+    }, 0);
+  }, []);
+
   const handleBack = useCallback(async () => {
     await flushActivePanel();
     history.push('/competitions/management');
   }, [flushActivePanel]);
 
-  const handleModuleChange = useCallback(async (nextKey: CompetitionSettingsModuleKey) => {
+  const handleModuleChange = useCallback((nextKey: CompetitionSettingsModuleKey) => {
     if (nextKey === activeKey) {
       return;
     }
-    const pendingSave = flushActivePanel();
+    const previousPanel = activePanelRef.current;
     setActiveKey(nextKey);
     updateNavigationUrl(
       nextKey,
       nextKey === 'registration' ? registrationDetail : nextKey === 'stages' ? stageDetail : undefined,
     );
-    await pendingSave;
-  }, [activeKey, flushActivePanel, registrationDetail, stageDetail, updateNavigationUrl]);
+    flushPanelInBackground(previousPanel);
+  }, [activeKey, flushPanelInBackground, registrationDetail, stageDetail, updateNavigationUrl]);
 
-  const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
-    const pendingSave = flushActivePanel();
+  const handleRegistrationDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
+    const previousPanel = activePanelRef.current;
     setRegistrationDetail(nextDetail);
     updateNavigationUrl('registration', nextDetail);
-    await pendingSave;
-  }, [flushActivePanel, updateNavigationUrl]);
+    flushPanelInBackground(previousPanel);
+  }, [flushPanelInBackground, updateNavigationUrl]);
 
-  const handleStageDetailChange = useCallback(async (nextKey: string) => {
-    const pendingSave = flushActivePanel();
+  const handleStageDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsStageTab;
+    const previousPanel = activePanelRef.current;
     setStageDetail(nextDetail);
     updateNavigationUrl('stages', nextDetail);
-    await pendingSave;
-  }, [flushActivePanel, updateNavigationUrl]);
+    flushPanelInBackground(previousPanel);
+  }, [flushPanelInBackground, updateNavigationUrl]);
 
   const publish = async () => {
     if (!settings) {
