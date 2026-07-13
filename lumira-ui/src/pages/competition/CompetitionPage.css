@@ -919,6 +919,84 @@
   width: 100%;
 }
 
+.competition-schedule-settings,
+.competition-schedule-settings__content {
+  width: 100%;
+}
+
+.competition-schedule-settings__status {
+  margin-bottom: var(--saas-spacing-lg);
+}
+
+.competition-schedule-settings__status .ant-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--saas-spacing-lg);
+}
+
+.competition-schedule-settings__status .ant-radio-wrapper {
+  margin-inline-end: 0;
+}
+
+.competition-schedule-table {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+}
+
+.competition-schedule-table__head,
+.competition-schedule-table__row {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 0.8fr)
+    minmax(320px, 1.4fr)
+    minmax(320px, 1.4fr)
+    72px;
+  gap: 16px;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 980px;
+  padding: 16px;
+}
+
+.competition-schedule-table__head {
+  padding-block: 14px;
+  color: var(--ant-color-text-heading);
+  font-weight: 600;
+  background: var(--ant-color-fill-quaternary);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-schedule-table__row {
+  align-items: start;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-schedule-table__row:last-child {
+  border-bottom: 0;
+}
+
+.competition-schedule-table__head > span,
+.competition-schedule-table__row > * {
+  min-width: 0;
+}
+
+.competition-schedule-table__head > span:last-child,
+.competition-schedule-table__row > .ant-btn:last-child {
+  justify-self: center;
+}
+
+.competition-schedule-table .ant-form-item {
+  margin-bottom: 0;
+}
+
+.competition-schedule-table__row > .ant-btn {
+  margin-top: 1px;
+}
+
 @media (max-width: 900px) {
   .competition-settings-layout {
     flex-direction: column;

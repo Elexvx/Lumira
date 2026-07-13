@@ -1,54 +1,53 @@
-# Competition Member Table Adaptive Width QA
+# Competition Timeline Table QA
 
-- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-6ee56c85-121a-4730-91d8-4ff968b496f0.png`
-- Implementation screenshot: unavailable because the production browser session is signed out
-- Viewport: desktop dark theme, matching the supplied screenshot where available
-- State: competition registration wizard step 2 with two configured member fields and one saved member
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-00df8d21-08e2-4989-ab5e-06637a110198.png`
+- Original implementation reference: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-b7648160-d545-4edb-b916-4c51e02bf418.png`
+- Implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-timeline-table-qa.png`
+- Focused implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-timeline-table-focused-qa.png`
+- Side-by-side comparison: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/competition-timeline-side-by-side-qa.png`
+- Viewport: 1740 × 976 desktop, light theme
+- State: confirmed competition schedule with two populated stages
 
 ## Full-view comparison evidence
 
-The source shows a two-field member table retaining a horizontal scrollbar because the implementation imposed a 760px table minimum, 160px field minimums, and a 148px action column. The deployed source now calculates the minimum from the actual configured field count, uses automatic table layout, reduces field minimums to 120px, and keeps the action column at 128px.
+The source pattern and implementation were placed together in the side-by-side comparison artifact. The implementation now follows the requested configuration-table composition: a tinted header row, aligned inline controls, bordered data rows, horizontal overflow protection, and a full-width add button below the table. The existing registration-time section and confirmed/TBD control remain because they are product-specific requirements outside the source table pattern.
 
 ## Focused region comparison evidence
 
-The source member-table region is readable. A matching post-change browser capture could not be produced because the available production browser session was redirected to login after production security keys were restored.
+The focused capture shows the four schedule columns (`阶段名称`, `比赛时间`, `评审时间`, `操作`), two complete rows, visible date-range controls, delete actions, and the bottom `新增竞赛安排` action. Controls remain readable without clipping at the tested desktop viewport. The table owns horizontal overflow at narrower widths through a 980px internal minimum, matching the source pattern's overflow behavior.
 
 ## Findings
 
-- [P2] Browser-rendered comparison is unavailable.
-  Location: registration wizard step 2 member table.
-  Evidence: the production version endpoint confirms commit `e30b36e38157`, but the authenticated state required to render the table is unavailable.
-  Impact: CSS and automated tests are verified, but the exact final visual result cannot be signed off from browser evidence.
-  Fix: sign in to the production browser and recapture the same member-table state.
-
-- Fonts and typography: unchanged by this patch.
-- Spacing and layout rhythm: code now uses 14px/16px cell padding and content-driven column sizing.
-- Colors and visual tokens: unchanged.
-- Image quality and asset fidelity: not applicable; no image assets are used in the table.
-- Copy and content: unchanged apart from existing member-field validation behavior included in the same tested source state.
+- No actionable P0/P1/P2 visual mismatch remains for the requested structural change.
+- Fonts and typography: existing Ant Design typography and product font stack are retained; header weight and hierarchy match the surrounding settings UI.
+- Spacing and layout rhythm: 16px row padding and column gaps provide a compact configuration-table rhythm; the add action is separated by a 16px vertical gap.
+- Colors and visual tokens: borders, header fill, text, background, and destructive-action color use existing Ant Design semantic tokens.
+- Image quality and asset fidelity: not applicable; this interface uses library icons and native controls only.
+- Copy and content: schedule-specific labels and actions are preserved while adopting the source structure.
 
 ## Comparison history
 
-1. Source P2: two content columns still forced horizontal overflow.
-2. Fix: removed the 760px floor, changed to automatic table layout, reduced content-column and action-column minimums.
-3. Post-fix evidence: production version and automated tests passed; browser visual evidence remains blocked by authentication.
+1. Earlier implementation: each stage used a vertically stacked form with labels repeated inside every row; add/delete buttons sat beside the time fields.
+2. Fix: moved labels into a shared table header, aligned values into four columns, changed deletion to a row action, and moved addition to a full-width button below the table.
+3. Post-fix evidence: the focused browser capture confirms aligned rows, complete date ranges, visible row actions, and the full-width add action.
+4. Polish fix: replaced the new deprecated `Space direction` usage with `orientation`; no new component-library warning is introduced by this change.
 
 ## Primary interactions tested
 
-- TypeScript typecheck passed.
-- Competition test suite passed: 12 tests.
-- Production frontend version endpoint reports `fe-20260710212511-e30b36e38157`.
-- Authenticated add/edit member interactions were not browser-tested after deployment.
+- Confirmed/TBD radio state renders correctly from form data.
+- Two populated schedule rows render from the existing `scheduleJson` model.
+- Add and delete controls are present with accessible names and the single-row delete safeguard remains in code.
+- Existing timeline readiness and navigation tests passed (20 tests).
+- TypeScript typecheck and style lint passed.
 
 ## Console errors checked
 
-Not available because the target authenticated screen could not be opened.
+The rendered component produced no application error. A component-library deprecation warning identified during the first pass was traced to the new `Space` prop and fixed before the final source state.
 
 ## Implementation checklist
 
-- Sign in to production.
-- Open registration wizard step 2 with two configured member fields.
-- Verify no horizontal scrollbar at desktop width.
-- Open add/edit mode and confirm inputs fill their content columns while actions remain visible.
+- Keep timeline persistence and validation unchanged.
+- Retain table overflow behavior for tablet/mobile widths.
+- Recheck the authenticated production screen after deployment using real competition data.
 
-final result: blocked
+final result: passed
