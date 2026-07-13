@@ -26,6 +26,7 @@ import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { normalizeLocale } from '@/i18n/locale';
+import { canSubmitPlatformUpdate } from './platformUpdateState';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -844,7 +845,7 @@ const PlatformUpdateContent = () => {
   const activeTask = updateStatus?.activeTask;
   const isTaskRunning = activeTask?.status === 'PENDING' || activeTask?.status === 'RUNNING';
   const updaterAvailable = updateStatus?.updaterAvailable === true;
-  const canInstall = statusKey === 'UPDATE_AVAILABLE' && Boolean(updateStatus?.latest?.serverImage) && updaterAvailable && !isTaskRunning;
+  const canInstall = canSubmitPlatformUpdate(updateStatus?.latest?.serverImage, activeTask?.status);
   const canRollback = updaterAvailable && !isTaskRunning;
 
   return (
@@ -874,13 +875,13 @@ const PlatformUpdateContent = () => {
           <Col xs={24} lg={3}>
             <Space wrap className="saas-update-actions">
               <Tooltip title={t('重新检查更新源', 'Re-check update source')}>
-                <Button type="primary" icon={<ReloadOutlined />} loading={query.isFetching} onClick={handleCheck}>
+                <Button icon={<ReloadOutlined />} loading={query.isFetching} onClick={handleCheck}>
                   {t('检查', 'Check')}
                 </Button>
               </Tooltip>
-              <Tooltip title={canInstall ? t('通过宿主机 updater 手动安装更新', 'Install through the host updater') : t('需要 manifest 镜像且没有运行中的任务', 'Requires manifest images and no running task')}>
-                <Button icon={<CloudDownloadOutlined />} disabled={!canInstall} loading={isTaskRunning} onClick={handleInstall}>
-                  {t('手动更新', 'Install')}
+              <Tooltip title={canInstall ? t('更新或重新部署最新发布版本', 'Update or redeploy the latest release') : t('更新源暂未提供可安装镜像', 'The update source does not provide an installable image yet')}>
+                <Button type="primary" icon={<CloudDownloadOutlined />} disabled={!canInstall} loading={isTaskRunning} onClick={handleInstall}>
+                  {t('更新', 'Update')}
                 </Button>
               </Tooltip>
               <Tooltip title={t('使用最近一次 updater 环境备份回滚', 'Rollback with the latest updater env backup')}>
@@ -914,14 +915,6 @@ const PlatformUpdateContent = () => {
           showIcon
           message={t('已使用本地版本信息', 'Using local version information')}
           description={updateStatus.errorMessage || t('远程更新源暂不可用，当前已回退到本地 Git 提交作为版本基准。', 'The remote update source is unavailable, so the local Git commit is used as the version baseline.')}
-        />
-      ) : null}
-      {updateStatus && !updaterAvailable ? (
-        <Alert
-          type="warning"
-          showIcon
-          message={t('平台更新代理未连接', 'Platform updater is not connected')}
-          description={t('检查版本仍可使用；手动更新和回滚需要先启动并配置 lumira-updater。', 'Version checks still work; install and rollback require lumira-updater to be running and configured.')}
         />
       ) : null}
       {activeTask ? (

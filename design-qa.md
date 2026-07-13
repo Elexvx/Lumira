@@ -1,54 +1,46 @@
-# Competition Member Table Adaptive Width QA
+# Platform Update Actions QA
 
-- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-6ee56c85-121a-4730-91d8-4ff968b496f0.png`
-- Implementation screenshot: unavailable because the production browser session is signed out
-- Viewport: desktop dark theme, matching the supplied screenshot where available
-- State: competition registration wizard step 2 with two configured member fields and one saved member
+- Source visual truth: browser annotations Comment 1 and Comment 2 on `https://bm.aiadc.org.cn/settings/monitoring?tab=update` supplied in the current task.
+- Implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/qa-platform-update-actions.png`
+- Viewport: 1407 x 991, desktop, light theme.
+- State: current release synchronized, installable manifest images present, updater availability probe false, no running update task.
 
 ## Full-view comparison evidence
 
-The source shows a two-field member table retaining a horizontal scrollbar because the implementation imposed a 760px table minimum, 160px field minimums, and a 148px action column. The deployed source now calculates the minimum from the actual configured field count, uses automatic table layout, reduces field minimums to 120px, and keeps the action column at 128px.
+The annotated source and the browser-rendered implementation were compared at the same desktop viewport in the same task. The existing page hierarchy, status card, version cards, check chain, typography, spacing, borders, and light-theme tokens remain unchanged. The requested warning block is absent, so the version cards move upward naturally without leaving an empty gap. The action stack remains aligned to the right edge of the status card.
 
 ## Focused region comparison evidence
 
-The source member-table region is readable. A matching post-change browser capture could not be produced because the available production browser session was redirected to login after production security keys were restored.
+The status-card action region was checked at readable scale. In the source, `检查` is the only visually active action and `手动更新` is muted. In the implementation, `检查` is a standard secondary button and `更新` is the blue primary button. The DOM snapshot confirms exactly one enabled `cloud-download 更新` button and no `平台更新代理未连接` alert. No additional focused image region is needed because this patch contains no custom imagery or non-standard assets.
 
 ## Findings
 
-- [P2] Browser-rendered comparison is unavailable.
-  Location: registration wizard step 2 member table.
-  Evidence: the production version endpoint confirms commit `e30b36e38157`, but the authenticated state required to render the table is unavailable.
-  Impact: CSS and automated tests are verified, but the exact final visual result cannot be signed off from browser evidence.
-  Fix: sign in to the production browser and recapture the same member-table state.
-
-- Fonts and typography: unchanged by this patch.
-- Spacing and layout rhythm: code now uses 14px/16px cell padding and content-driven column sizing.
-- Colors and visual tokens: unchanged.
-- Image quality and asset fidelity: not applicable; no image assets are used in the table.
-- Copy and content: unchanged apart from existing member-field validation behavior included in the same tested source state.
+- No actionable P0, P1, or P2 visual differences remain for the annotated scope.
+- Fonts and typography: existing family, sizes, weights, line heights, and hierarchy are preserved; the button label is intentionally shortened from `手动更新` to `更新`.
+- Spacing and layout rhythm: removing the warning closes the former vertical gap; card padding, action spacing, radii, and grid alignment remain consistent with the existing screen.
+- Colors and visual tokens: the existing Ant Design blue primary token is now applied to `更新`; `检查` uses the standard neutral button treatment.
+- Image quality and asset fidelity: not applicable; the screen uses the existing Ant Design icon library and contains no raster assets.
+- Copy and content: the unwanted updater warning is removed, and the primary action is named `更新` as requested.
 
 ## Comparison history
 
-1. Source P2: two content columns still forced horizontal overflow.
-2. Fix: removed the 760px floor, changed to automatic table layout, reduced content-column and action-column minimums.
-3. Post-fix evidence: production version and automated tests passed; browser visual evidence remains blocked by authentication.
+1. Source findings: [P1] the updater-disconnected alert occupies a full content block despite not helping the requested action; [P1] the update action is visually suppressed while check is primary.
+2. Fixes: removed the updater-disconnected alert, promoted `更新` to primary, demoted `检查` to secondary, and allowed update submission whenever an installable server image exists and no task is running.
+3. Post-fix evidence: `artifacts/qa-platform-update-actions.png`; DOM checks found the enabled update button and no updater alert. No P0/P1/P2 differences remain.
 
 ## Primary interactions tested
 
-- TypeScript typecheck passed.
-- Competition test suite passed: 12 tests.
-- Production frontend version endpoint reports `fe-20260710212511-e30b36e38157`.
-- Authenticated add/edit member interactions were not browser-tested after deployment.
+- Clicked the enabled `更新` button.
+- Confirmed the `确认手动安装平台更新？` modal opens with `开始更新` and `取消` actions.
+- Cancelled the modal without submitting a backend task.
+- Verified duplicate submissions remain blocked for `PENDING` and `RUNNING` tasks by unit tests.
 
 ## Console errors checked
 
-Not available because the target authenticated screen could not be opened.
+No uncaught runtime errors were observed. Existing Ant Design deprecation warnings for `Space`, `Statistic`, `Steps`, and `Descriptions` remain outside this patch's scope.
 
-## Implementation checklist
+## Follow-up polish
 
-- Sign in to production.
-- Open registration wizard step 2 with two configured member fields.
-- Verify no horizontal scrollbar at desktop width.
-- Open add/edit mode and confirm inputs fill their content columns while actions remain visible.
+- [P3] Migrate the existing deprecated Ant Design props in a separate maintenance pass.
 
-final result: blocked
+final result: passed
