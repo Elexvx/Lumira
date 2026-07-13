@@ -5797,12 +5797,18 @@ const CompetitionSettingsPage = () => {
     if (nextSearch === location.search) {
       return;
     }
-    const nextLocation = { pathname: location.pathname, search: nextSearch };
+    // Keep the browser URL and the router snapshot in sync. In the deployed
+    // shell the Umi history adapter can retain the previous location snapshot;
+    // updating the native history and emitting popstate makes the route change
+    // observable to React Router and prevents the old section/tab from being
+    // restored immediately.
+    const nextPath = `${location.pathname}${nextSearch}`;
     if (replace) {
-      history.replace(nextLocation);
+      window.history.replaceState({}, '', nextPath);
     } else {
-      history.push(nextLocation);
+      window.history.pushState({}, '', nextPath);
     }
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }, [location.pathname, location.search]);
 
   useEffect(() => {
