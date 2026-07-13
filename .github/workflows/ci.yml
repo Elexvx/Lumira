@@ -52,7 +52,7 @@ jobs:
       - lumira-backend
       - lumira-ui
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write
     env:
@@ -138,10 +138,32 @@ jobs:
         env:
           GIT_COMMIT: ${{ github.sha }}
           APP_VERSION: main
-          LUMIRA_SERVER_IMAGE: ${{ steps.images.outputs.lumira_server }}:sha-${{ steps.images.outputs.short_sha }}
-          LUMIRA_FRONTEND_IMAGE: ${{ steps.images.outputs.lumira_ui }}:sha-${{ steps.images.outputs.short_sha }}
+          LUMIRA_SERVER_IMAGE: ${{ steps.images.outputs.lumira_server }}@${{ steps.build_server.outputs.digest }}
+          LUMIRA_FRONTEND_IMAGE: ${{ steps.images.outputs.lumira_ui }}@${{ steps.build_ui.outputs.digest }}
           LUMIRA_RELEASE_NOTES: Lumira main build ${{ steps.images.outputs.short_sha }}
         run: node bin/generate-release-manifest.mjs
+      - name: Publish continuous release manifest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if gh release view continuous >/dev/null 2>&1; then
+            gh release edit continuous \
+              --title "Lumira continuous release" \
+              --notes-file tmp/release/lumira-release-manifest.json \
+              --prerelease
+          else
+            gh release create continuous \
+              --target "$GITHUB_SHA" \
+              --title "Lumira continuous release" \
+              --notes-file tmp/release/lumira-release-manifest.json \
+              --prerelease
+          fi
+          gh release upload continuous \
+            tmp/release/lumira-release-manifest.json \
+            tmp/release/image-supply-chain-evidence.json \
+            --clobber
       - name: Upload release manifest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4

@@ -195,17 +195,17 @@ OCR 同样由 File owner 的异步处理任务执行；抽取到文本时会写�
 - API 健康检查：`https://bm.aiadc.org.cn/api/health`
 - 版本检查：`https://bm.aiadc.org.cn/api/version`
 - 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/lumira/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
-- 平台手动更新：推荐配置 `PLATFORM_UPDATE_MANIFEST_URL` 指向官方 release manifest。后台发现新版本后，可通过宿主机侧 `lumira-updater` 手动安装。业务容器只调用本机 updater，不直接执行 Docker 或 shell。
-- 启动 updater 示例：
+- 平台手动更新：CI 会把 digest 固定的 manifest 发布到 `continuous` GitHub Release。后台发现新版本后，通过宿主机侧 `lumira-updater` 手动安装；业务容器不直接执行 Docker 或 shell。
+- Linux 首次安装会自动注册并启动 `lumira-updater.service`。已有服务器可补装：
 ```bash
-PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token \
-node bin/lumira-updater.mjs
+sudo node bin/install-lumira-updater.mjs
 ```
 
-`deploy/.env` 中保持同一个 token：
+`deploy/.env` 中的容器访问地址、允许主机和 token 必须保持一致：
 ```text
-PLATFORM_UPDATE_MANIFEST_URL=https://your-release-host/lumira-release-manifest.json
-PLATFORM_UPDATE_AGENT_URL=http://127.0.0.1:9788
+PLATFORM_UPDATE_MANIFEST_URL=https://api.github.com/repos/Elexvx/Lumira/releases/tags/continuous
+PLATFORM_UPDATE_AGENT_URL=http://host.docker.internal:9788
+PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS=host.docker.internal
 PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token
 ```
 

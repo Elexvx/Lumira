@@ -506,6 +506,13 @@ function generatedEnvDefaults() {
     SAAS_INTERNAL_PLUGIN_TOKEN: randomSecret('plugin-token'),
     SAAS_INTERNAL_TEAM_TOKEN: randomSecret('team-token'),
     SAAS_INTERNAL_JOB_TOKEN: randomSecret('job-token'),
+    PLATFORM_UPDATE_AGENT_TOKEN: randomSecret('updater-token'),
+    PLATFORM_UPDATE_SOURCE_URL: 'https://api.github.com/repos/Elexvx/lumira/commits/main',
+    PLATFORM_UPDATE_MANIFEST_URL: 'https://api.github.com/repos/Elexvx/Lumira/releases/tags/continuous',
+    PLATFORM_UPDATE_AGENT_URL: 'http://host.docker.internal:9788',
+    PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS: 'host.docker.internal',
+    LUMIRA_UPDATER_HOST: '127.0.0.1',
+    LUMIRA_UPDATER_PORT: '9788',
     XXL_JOB_ADMIN_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_ACCESS_TOKEN: randomSecret('xxl-token'),
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
@@ -578,6 +585,9 @@ function ensureEnvFile() {
   const generatedValues = generatedEnvDefaults();
   const legacyGeneratedValues = new Map([
     ['JAVA_OPTS', '-XX:MaxRAMPercentage=75 -Djava.security.egd=file:/dev/./urandom'],
+    ['PLATFORM_UPDATE_MANIFEST_URL', ''],
+    ['PLATFORM_UPDATE_AGENT_URL', 'http://127.0.0.1:9788'],
+    ['PLATFORM_UPDATE_AGENT_TOKEN', 'change-me-local-updater-token'],
   ]);
 
   if (existsSync(envPath)) {

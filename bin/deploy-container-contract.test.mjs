@@ -11,6 +11,9 @@ const envExample = readFileSync(path.join(repoRoot, 'deploy', '.env.example'), '
 const composeProd = readFileSync(path.join(repoRoot, 'deploy', 'docker-compose.prod.yml'), 'utf8');
 const apiNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'api.conf.template'), 'utf8');
 const edgeNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'edge.conf'), 'utf8');
+const updaterInstaller = readFileSync(path.join(repoRoot, 'bin', 'install-lumira-updater.mjs'), 'utf8');
+const releaseManifestGenerator = readFileSync(path.join(repoRoot, 'bin', 'generate-release-manifest.mjs'), 'utf8');
+const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
 
 test('deploy-container generates every scoped internal token used by production compose', () => {
   for (const key of [
@@ -237,6 +240,34 @@ test('deployment env example exposes async owner base URL overrides', () => {
   ]) {
     assert.match(envExample, new RegExp(`^${key}=`, 'm'), `${key} must be documented in deploy/.env.example`);
   }
+});
+
+test('platform updater is reachable from the backend container and installed as a host service', () => {
+  for (const key of [
+    'PLATFORM_UPDATE_SOURCE_URL',
+    'PLATFORM_UPDATE_MANIFEST_URL',
+    'PLATFORM_UPDATE_AGENT_URL',
+    'PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS',
+    'PLATFORM_UPDATE_AGENT_TOKEN',
+  ]) {
+    assert.match(composeProd, new RegExp(`\\b${key}:`), `lumira-server must receive ${key}`);
+  }
+  assert.match(composeProd, /host\.docker\.internal:host-gateway/, 'compose must map the Docker host gateway');
+  assert.match(envExample, /PLATFORM_UPDATE_AGENT_URL=http:\/\/host\.docker\.internal:9788/);
+  assert.match(envExample, /PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS=host\.docker\.internal/);
+  assert.match(installScript, /install-lumira-updater\.mjs/, 'platform installer must install the updater service');
+  assert.match(updaterInstaller, /systemctl[\s\S]*enable[\s\S]*--now[\s\S]*lumira-updater\.service/);
+  assert.match(updaterInstaller, /docker[\s\S]*network[\s\S]*inspect[\s\S]*bridge/);
+});
+
+test('continuous release manifest uses digest-pinned images and a stable GitHub release', () => {
+  assert.match(releaseManifestGenerator, /assertDigestPinned\(serverImage/);
+  assert.match(releaseManifestGenerator, /assertDigestPinned\(frontendImage/);
+  assert.match(ciWorkflow, /steps\.build_server\.outputs\.digest/);
+  assert.match(ciWorkflow, /steps\.build_ui\.outputs\.digest/);
+  assert.match(ciWorkflow, /gh release (?:view|create) continuous/);
+  assert.match(ciWorkflow, /gh release upload continuous/);
+  assert.match(envExample, /PLATFORM_UPDATE_MANIFEST_URL=https:\/\/api\.github\.com\/repos\/Elexvx\/Lumira\/releases\/tags\/continuous/);
 });
 
 test('frontend preview container stays opt-in for production compose', () => {
