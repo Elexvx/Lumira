@@ -6,6 +6,7 @@ import process from 'node:process';
 
 import { parseEnvFile, randomSecret, setEnvValue } from './lib/env-utils.mjs';
 import { commandExists, output, resolveRepoRoot, run } from './lib/exec-utils.mjs';
+import { probeHttp } from './lib/http-utils.mjs';
 
 const repoRoot = resolveRepoRoot(import.meta.url);
 const envPath = path.join(repoRoot, 'deploy', '.env');
@@ -80,18 +81,15 @@ run('systemctl', ['enable', '--now', 'lumira-updater.service']);
 run('systemctl', ['is-active', '--quiet', 'lumira-updater.service']);
 let healthy = false;
 for (let attempt = 0; attempt < 20; attempt += 1) {
-  try {
-    const response = await fetch(`http://${gateway}:${env.LUMIRA_UPDATER_PORT || '9788'}/v1/health`, {
-      headers: { 'x-lumira-updater-token': token },
-      signal: AbortSignal.timeout(1_000),
-    });
-    if (response.ok) {
-      healthy = true;
-      break;
-    }
-  } catch {
-    // The service can need a moment after systemd reports it active.
+  const response = await probeHttp(`http://${gateway}:${env.LUMIRA_UPDATER_PORT || '9788'}/v1/health`, {
+    headers: { 'x-lumira-updater-token': token },
+    timeoutMs: 1_000,
+  });
+  if (response.ok) {
+    healthy = true;
+    break;
   }
+  // The service can need a moment after systemd reports it active.
   await new Promise((resolve) => setTimeout(resolve, 500));
 }
 if (!healthy) {
