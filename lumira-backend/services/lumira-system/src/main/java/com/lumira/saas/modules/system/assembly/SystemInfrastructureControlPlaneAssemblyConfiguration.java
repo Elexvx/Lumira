@@ -5,6 +5,10 @@ import com.lumira.saas.infrastructure.config.JacksonCompatibilityConfig;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxService;
 import com.lumira.saas.infrastructure.event.PlatformEventProperties;
 import com.lumira.saas.infrastructure.event.PlatformEventPublisher;
+import com.lumira.saas.infrastructure.event.EventConsumptionGuard;
+import com.lumira.saas.infrastructure.event.LoggingPlatformEventDispatcher;
+import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
+import com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcher;
 import com.lumira.saas.infrastructure.event.domain.SystemDomainEventPublisher;
 import com.lumira.saas.infrastructure.pagination.KeysetCursorCodec;
 import com.lumira.saas.infrastructure.persistence.BatchJdbcHelper;
@@ -53,19 +57,23 @@ import org.springframework.context.annotation.Import;
         CacheTemplate.class,
         CaptchaService.class,
         FieldEncryptionMigrationRunner.class,
+        EventConsumptionGuard.class,
         InitialPasswordChangeGuard.class,
         JacksonCompatibilityConfig.class,
         JwtAuthFilter.class,
         JwtTokenService.class,
         KeysetCursorCodec.class,
         LoginProtectionService.class,
+        LoggingPlatformEventDispatcher.class,
         MyBatisQueryOperations.class,
         PasswordPolicyService.class,
         PlatformEventProperties.class,
         PlatformEventOutboxService.class,
+        PlatformEventOutboxRelay.class,
         PlatformEventPublisher.class,
         ReadModelVersionService.class,
         RedisConfig.class,
+        RedisStreamPlatformEventDispatcher.class,
         RedisStartupCleanupRunner.class,
         RuntimeSecurityPropertiesValidator.class,
         SecurityConfig.class,

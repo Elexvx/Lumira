@@ -25,10 +25,13 @@ import com.lumira.saas.modules.system.monitor.app.SystemMonitorAppService;
 import com.lumira.saas.modules.system.monitor.controller.SystemMonitorController;
 import com.lumira.saas.modules.system.online.OnlineSessionEventPublisher;
 import com.lumira.saas.modules.system.online.OnlineSessionEventSubscriber;
+import com.lumira.saas.modules.system.online.JdbcOnlineSessionUserRepository;
+import com.lumira.saas.modules.system.online.OnlineSessionEventIdentityVerifier;
 import com.lumira.saas.modules.system.online.OnlineSessionRedisConfig;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
+import com.lumira.saas.modules.system.profile.infrastructure.JdbcSystemProfileSettingsRepository;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordDictionaryCache;
 import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordDictionaryRepository;
@@ -41,6 +44,7 @@ import com.lumira.saas.modules.system.sensitive.app.SensitiveWordService;
 import com.lumira.saas.modules.system.sensitive.controller.SensitiveWordController;
 import com.lumira.saas.modules.system.sensitive.security.SensitiveWordFormFilter;
 import com.lumira.saas.modules.system.sensitive.security.SensitiveWordRequestBodyAdvice;
+import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatformSettingsRepository;
 import com.lumira.saas.modules.system.support.SmsVerificationSender;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateAppService;
@@ -55,6 +59,7 @@ import com.lumira.saas.modules.system.verification.WechatLoginProperties;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.modules.system.workorder.app.WorkOrderFeedbackPluginStateService;
 import com.lumira.saas.modules.system.workorder.infrastructure.JdbcWorkOrderPluginStateRepository;
+import com.lumira.saas.modules.system.workorder.infrastructure.JdbcWorkOrderFeedbackRepository;
 import com.lumira.saas.modules.system.workorder.app.WorkOrderFeedbackService;
 import com.lumira.saas.modules.system.workorder.controller.WorkOrderFeedbackController;
 import org.apache.ibatis.annotations.Mapper;
@@ -87,6 +92,8 @@ import org.springframework.context.annotation.Import;
         ExportTaskService.class,
         InternalSystemController.class,
         OnlineSessionController.class,
+        JdbcOnlineSessionUserRepository.class,
+        OnlineSessionEventIdentityVerifier.class,
         OnlineSessionEventPublisher.class,
         OnlineSessionEventSubscriber.class,
         OnlineSessionManagementAppService.class,
@@ -96,6 +103,7 @@ import org.springframework.context.annotation.Import;
         PlatformUpdateAppService.class,
         PlatformUpdateController.class,
         ProfileController.class,
+        JdbcSystemProfileSettingsRepository.class,
         PublicCaptchaController.class,
         PublicSystemController.class,
         SensitiveWordController.class,
@@ -112,6 +120,7 @@ import org.springframework.context.annotation.Import;
         SmsVerificationSender.class,
         SmtpMailService.class,
         SystemController.class,
+        JdbcSystemPlatformSettingsRepository.class,
         SystemDepartmentAppService.class,
         SystemDepartmentController.class,
         SystemInternalApiService.class,
@@ -131,6 +140,7 @@ import org.springframework.context.annotation.Import;
         WechatLoginSettingsService.class,
         WorkOrderFeedbackController.class,
         WorkOrderFeedbackPluginStateService.class,
+        JdbcWorkOrderFeedbackRepository.class,
         JdbcWorkOrderPluginStateRepository.class,
         WorkOrderFeedbackService.class
 })

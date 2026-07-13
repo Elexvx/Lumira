@@ -13,6 +13,10 @@ import com.lumira.file.event.PlatformEventOutboxService;
 import com.lumira.file.event.RedisStreamFileOutboxDispatcher;
 import com.lumira.file.event.domain.FileDomainEventPublisher;
 import com.lumira.file.infrastructure.security.FileJwtAuthFilter;
+import com.lumira.file.infrastructure.JdbcFileBusinessPolicyRepository;
+import com.lumira.file.infrastructure.JdbcFileProcessingArtifactRepository;
+import com.lumira.file.infrastructure.MyBatisFileObjectRepository;
+import com.lumira.file.infrastructure.MyBatisFileStorageSpaceRepository;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.processing.ClamAvFileSecurityScanEngine;
 import com.lumira.file.processing.DisabledFileOcrEngine;
@@ -64,6 +68,10 @@ import org.springframework.context.annotation.Import;
         PlatformEventOutboxService.class,
         com.lumira.file.infrastructure.security.JwtTokenService.class,
         FileJwtAuthFilter.class,
+        JdbcFileBusinessPolicyRepository.class,
+        JdbcFileProcessingArtifactRepository.class,
+        MyBatisFileObjectRepository.class,
+        MyBatisFileStorageSpaceRepository.class,
         ClamAvFileSecurityScanEngine.class,
         DisabledFileOcrEngine.class,
         FileAiParseProcessor.class,
