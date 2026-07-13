@@ -73,6 +73,7 @@ import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/load
 import { resolveRegistrationFieldScope } from '@/pages/competition/utils/registrationFieldScope';
 import {
   createCompetitionSettingsSearch,
+  getCompetitionSettingsStageTabFallback,
   parseCompetitionSettingsNavigation,
   type CompetitionSettingsRegistrationTab,
   type CompetitionSettingsSectionKey,
@@ -5797,27 +5798,29 @@ const CompetitionSettingsPage = () => {
     if (nextSearch === location.search) {
       return;
     }
-    // Keep the browser URL and the router snapshot in sync. In the deployed
-    // shell the Umi history adapter can retain the previous location snapshot;
-    // updating the native history and emitting popstate makes the route change
-    // observable to React Router and prevents the old section/tab from being
-    // restored immediately.
     const nextPath = `${location.pathname}${nextSearch}`;
     if (replace) {
-      window.history.replaceState({}, '', nextPath);
+      history.replace(nextPath);
     } else {
-      window.history.pushState({}, '', nextPath);
+      history.push(nextPath);
     }
-    window.dispatchEvent(new PopStateEvent('popstate'));
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    if (!settings || stageDetail === 'timeline' || materialStageTabs.some((tab) => tab.key === stageDetail)) {
+    if (!settings) {
       return;
     }
-    setStageDetail('timeline');
-    updateNavigationUrl('stages', 'timeline', true);
-  }, [materialStageTabs, settings, stageDetail, updateNavigationUrl]);
+    const fallbackStageTab = getCompetitionSettingsStageTabFallback(
+      activeKey,
+      stageDetail,
+      materialStageTabs.map((tab) => tab.key),
+    );
+    if (!fallbackStageTab) {
+      return;
+    }
+    setStageDetail(fallbackStageTab);
+    updateNavigationUrl('stages', fallbackStageTab, true);
+  }, [activeKey, materialStageTabs, settings, stageDetail, updateNavigationUrl]);
 
   useEffect(() => {
     const navigation = parseCompetitionSettingsNavigation(location.search);
