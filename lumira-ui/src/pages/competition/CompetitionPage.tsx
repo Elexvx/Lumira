@@ -73,6 +73,7 @@ import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/load
 import { resolveRegistrationFieldScope } from '@/pages/competition/utils/registrationFieldScope';
 import {
   createCompetitionSettingsSearch,
+  getCompetitionSettingsStageTabFallback,
   parseCompetitionSettingsNavigation,
   type CompetitionSettingsRegistrationTab,
   type CompetitionSettingsSectionKey,
@@ -5833,12 +5834,20 @@ const CompetitionSettingsPage = () => {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    if (!settings || stageDetail === 'timeline' || materialStageTabs.some((tab) => tab.key === stageDetail)) {
+    if (!settings) {
       return;
     }
-    setStageDetail('timeline');
-    updateNavigationUrl('stages', 'timeline', true);
-  }, [materialStageTabs, settings, stageDetail, updateNavigationUrl]);
+    const fallbackStageTab = getCompetitionSettingsStageTabFallback(
+      activeKey,
+      stageDetail,
+      materialStageTabs.map((tab) => tab.key),
+    );
+    if (!fallbackStageTab) {
+      return;
+    }
+    setStageDetail(fallbackStageTab);
+    updateNavigationUrl('stages', fallbackStageTab, true);
+  }, [activeKey, materialStageTabs, settings, stageDetail, updateNavigationUrl]);
 
   useEffect(() => {
     const navigation = parseCompetitionSettingsNavigation(location.search);
