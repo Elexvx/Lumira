@@ -5913,17 +5913,19 @@ const CompetitionSettingsPage = () => {
   }, [activeKey, flushActivePanel, registrationDetail, stageDetail, updateNavigationUrl]);
 
   const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
-    await flushActivePanel();
+    const pendingSave = flushActivePanel();
     const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
     setRegistrationDetail(nextDetail);
     updateNavigationUrl('registration', nextDetail);
+    await pendingSave;
   }, [flushActivePanel, updateNavigationUrl]);
 
   const handleStageDetailChange = useCallback(async (nextKey: string) => {
-    await flushActivePanel();
+    const pendingSave = flushActivePanel();
     const nextDetail = nextKey as CompetitionSettingsStageTab;
     setStageDetail(nextDetail);
     updateNavigationUrl('stages', nextDetail);
+    await pendingSave;
   }, [flushActivePanel, updateNavigationUrl]);
 
   const publish = async () => {
