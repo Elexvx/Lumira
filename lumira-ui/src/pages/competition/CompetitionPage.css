@@ -627,20 +627,6 @@
   display: none;
 }
 
-.competition-settings-review__list {
-  display: grid;
-  gap: 12px;
-  margin: 24px 0;
-}
-
-.competition-settings-review__actions {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
-  padding-top: 24px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
 .competition-config-list {
   width: 100%;
 }

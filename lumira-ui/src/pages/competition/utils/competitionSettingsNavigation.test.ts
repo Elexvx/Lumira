@@ -64,8 +64,16 @@ describe('competition settings URL navigation', () => {
     expect(parseCompetitionSettingsNavigation('?section=stages').stageTab).toBe('timeline');
   });
 
+  it('redirects the removed review section to basic settings', () => {
+    expect(parseCompetitionSettingsNavigation('?section=review')).toEqual({
+      section: 'basic',
+      registrationTab: 'PROJECT_FIELD',
+      stageTab: 'timeline',
+    });
+  });
+
   it('does not redirect another settings section while validating stage tabs', () => {
-    expect(getCompetitionSettingsStageTabFallback('review', 'preliminary', [])).toBeUndefined();
+    expect(getCompetitionSettingsStageTabFallback('basic', 'preliminary', [])).toBeUndefined();
     expect(getCompetitionSettingsStageTabFallback('payments', 'missing-stage', ['stage-1'])).toBeUndefined();
   });
 

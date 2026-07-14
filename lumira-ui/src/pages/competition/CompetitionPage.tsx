@@ -35,7 +35,6 @@ import {
   listCompetitions,
   listRegistrations,
   listRegistrationPaymentOptions,
-  publishCompetitionSettings,
   saveCompetitionSettingsModule,
   reconfirmRegistration,
   updateCompetitionStage,
@@ -4334,7 +4333,6 @@ const competitionSettingsMenuItems = [
   { key: 'registration' as const, label: '报名设置' },
   { key: 'stages' as const, label: '赛程与材料' },
   { key: 'payments' as const, label: '费用设置' },
-  { key: 'review' as const, label: '预览与发布' },
 ];
 
 const parseConfigItemMetadata = (contentJson?: string | null): ConfigItemMetadata => {
@@ -6193,7 +6191,6 @@ const CompetitionSettingsPage = () => {
   const [registrationDetail, setRegistrationDetail] = useState<CompetitionSettingsRegistrationTab>(initialNavigation.registrationTab);
   const [stageDetail, setStageDetail] = useState<CompetitionSettingsStageTab>(initialNavigation.stageTab);
   const [loading, setLoading] = useState(true);
-  const [publishing, setPublishing] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
   const [paymentProviderOptions, setPaymentProviderOptions] = useState<PaymentProviderOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
@@ -6326,23 +6323,6 @@ const CompetitionSettingsPage = () => {
     await pendingSave;
   }, [flushActivePanel, updateNavigationUrl]);
 
-  const publish = async () => {
-    if (!settings) {
-      return;
-    }
-    await flushActivePanel();
-    setPublishing(true);
-    try {
-      const published = await publishCompetitionSettings(settings.competition.uuid || competitionUuid);
-      setSettings({ ...settings, activeConfigSet: published });
-      message.success(formatMessage({ id: 'page.competition.settings.publishSuccess', defaultMessage: '配置已发布' }));
-    } catch (error) {
-      showErrorMessage(error, formatMessage({ id: 'page.competition.settings.publishFailed', defaultMessage: '配置发布失败' }));
-    } finally {
-      setPublishing(false);
-    }
-  };
-
   return (
     <ManagementPage
       title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: '赛事配置' })}
@@ -6460,42 +6440,6 @@ const CompetitionSettingsPage = () => {
                     : current)}
                   onSettingsSaved={setSettings}
                 />
-              ) : activeKey === 'review' ? (
-                <section className="competition-settings-review">
-                  <header className="competition-settings-section-header">
-                    <Typography.Title level={4}>预览与发布</Typography.Title>
-                    <Typography.Paragraph type="secondary">发布前确认参赛者将看到的报名流程和阶段材料。</Typography.Paragraph>
-                  </header>
-                  <div className="competition-settings-review__list">
-                    <Alert type="success" showIcon message="基础信息" description="赛事名称、报名范围和时间已保存。" />
-                    <Alert
-                      type={settings.fields.length ? 'success' : 'warning'}
-                      showIcon
-                      message="报名设置"
-                      description={settings.fields.length ? `已配置 ${settings.fields.length} 项报名与团队设置。` : '尚未配置报名字段，将使用系统默认字段。'}
-                    />
-                    <Alert
-                      type={settings.files.length + settings.stageMaterials.length ? 'success' : 'warning'}
-                      showIcon
-                      message="赛程与材料"
-                      description={settings.files.length + settings.stageMaterials.length
-                        ? `已配置 ${settings.files.length + settings.stageMaterials.length} 项提交材料，发布后将自动生成参赛表单。`
-                        : '尚未配置提交材料，参赛者可直接进入费用确认。'}
-                    />
-                    <Alert
-                      type={settings.payments.length ? 'success' : 'info'}
-                      showIcon
-                      message="费用设置"
-                      description={settings.payments.length ? `已启用 ${settings.payments.length} 种支付方式。` : '未配置支付渠道，请确认赛事是否免费。'}
-                    />
-                  </div>
-                  <Space className="competition-settings-review__actions">
-                    <Button onClick={() => void handleModuleChange('registration')}>返回修改</Button>
-                    <Button type="primary" loading={publishing} onClick={() => void publish()}>
-                      检查并发布
-                    </Button>
-                  </Space>
-                </section>
               ) : null}
             </main>
           </div>
