@@ -199,6 +199,8 @@ networks:
       PLATFORM_UPDATE_AGENT_TOKEN: token,
       PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES: 'node@sha256:',
       DEPLOY_CHECK_BASE_URL: `http://127.0.0.1:${proxyPort}`,
+      LUMIRA_SERVER_GREEN_GIT_COMMIT: 'stale-process-environment',
+      LUMIRA_SERVER_GREEN_APP_VERSION: 'stale-process-environment',
   };
   const startUpdater = () => {
     updater = spawn(process.execPath, [path.join(repoRoot, 'bin', 'lumira-updater.mjs')], {

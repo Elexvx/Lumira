@@ -135,6 +135,10 @@ function composeArgs(...args) {
   return ['compose', '--env-file', envPath, '-f', composePath, ...args];
 }
 
+function runCompose(task, ...args) {
+  return runCommand(task, 'docker', composeArgs(...args), { env: parseEnvFile(envPath) });
+}
+
 function updateEnv(values) {
   if (!existsSync(envPath)) throw new Error('deploy/.env not found');
   let next = readFileSync(envPath, 'utf8');
@@ -364,6 +368,27 @@ async function runtimeTopologyStatus(state) {
   return { slotRunning, databaseReachable, nginxValid, upstreamConsistent };
 }
 
+async function migrationNetworkReachable(manifest, state) {
+  if (dryRun || manifest.database.mode === 'none' || !manifest.images.migrator) return true;
+  const env = parseEnvFile(envPath);
+  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_default';
+  const databaseHost = env.DB_URL?.match(/^jdbc:mysql:\/\/([^/:?]+)/i)?.[1];
+  if (!databaseHost) return false;
+  const task = { taskId: 'migration-network-probe', log: [], updatedAt: '' };
+  try {
+    const activeContainer = `lumira-server-${normalizeSlot(state.activeSlot)}`;
+    const activeImage = (await runCommand(task, 'docker', ['inspect', '-f', '{{.Image}}', activeContainer])).trim();
+    const output = await runCommand(task, 'docker', [
+      'run', '--rm', '--network', network, '--entrypoint', 'getent', activeImage, 'hosts', databaseHost,
+    ]);
+    return output.trim().length > 0;
+  } catch {
+    return false;
+  } finally {
+    rmSync(taskPath(task.taskId), { force: true });
+  }
+}
+
 async function createPreflight(request) {
   const manifest = await resolveManifest(request);
   const state = deploymentState();
@@ -383,6 +408,7 @@ async function createPreflight(request) {
   if (!backupDirectoryWritable()) report.blockers.push('The backup directory is not writable.');
   if (!topology.slotRunning) report.blockers.push(`The active ${normalizeSlot(state.activeSlot)} slot is not running.`);
   if (!topology.databaseReachable) report.blockers.push('Database connectivity could not be verified through active-slot health.');
+  if (!await migrationNetworkReachable(manifest, state)) report.blockers.push('The migration network cannot resolve the configured database host.');
   if (!topology.nginxValid) report.blockers.push('The API proxy Nginx configuration is invalid.');
   if (!topology.upstreamConsistent) report.blockers.push('The persisted active slot and Nginx upstream configuration are inconsistent.');
   report.ready = report.blockers.length === 0;
@@ -486,7 +512,7 @@ function checkCancellation(task, { afterSwitch = false } = {}) {
 async function migrate(task, manifest) {
   if (manifest.database.mode === 'none' || !manifest.images.migrator) return;
   const env = parseEnvFile(envPath);
-  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || '1panel-network';
+  const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_default';
   await runCommand(task, 'docker', [
     'run', '--rm', '--network', network,
     '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
@@ -500,8 +526,8 @@ async function updateWorker(task, service, imageKey, image) {
   appendLog(task, `Pausing new work and allowing ${service} in-flight work to drain.`);
   await runCommand(task, 'docker', ['stop', '--time', '60', service]).catch((error) => appendLog(task, `${service} was already stopped: ${error.message}`));
   updateEnv({ [imageKey]: image });
-  await runCommand(task, 'docker', composeArgs('pull', service));
-  await runCommand(task, 'docker', composeArgs('up', '-d', '--no-deps', service));
+  await runCompose(task, 'pull', service);
+  await runCompose(task, 'up', '-d', '--no-deps', service);
 }
 
 async function containerIsRunning(task, containerName) {
@@ -522,7 +548,7 @@ async function rollbackTraffic(task, state, failedSlot) {
     GIT_COMMIT: previousRelease.commit,
     DATABASE_VERSION: previousRelease.databaseVersion,
   });
-  await runCommand(task, 'docker', composeArgs('--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`));
+  await runCompose(task, '--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`);
   await waitForSlot(task, previousSlot, state.slots?.[previousSlot]?.commit || '');
   await reloadProxy(task, previousSlot);
   if (UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('UPDATING_WORKERS')) {
@@ -593,7 +619,7 @@ async function runInstall(task, request) {
       GIT_COMMIT: manifest.commit,
       DATABASE_VERSION: manifest.database.targetVersion,
     });
-    await runCommand(task, 'docker', composeArgs('--profile', targetSlot, 'up', '-d', '--no-deps', `lumira-server-${targetSlot}`));
+    await runCompose(task, '--profile', targetSlot, 'up', '-d', '--no-deps', '--force-recreate', `lumira-server-${targetSlot}`);
 
     setPhase(task, 'VERIFYING_INACTIVE', `Verifying ${targetSlot} readiness and build identity.`);
     await waitForSlot(task, targetSlot, manifest.commit);
@@ -678,7 +704,7 @@ async function runRollback(task) {
     DATABASE_VERSION: state.slots[previousSlot].databaseVersion,
   });
   setPhase(task, 'STARTING_INACTIVE', `Restarting previous ${previousSlot} slot.`);
-  await runCommand(task, 'docker', composeArgs('--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`));
+  await runCompose(task, '--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`);
   setPhase(task, 'VERIFYING_INACTIVE', `Verifying previous ${previousSlot} slot.`);
   await waitForSlot(task, previousSlot, state.slots[previousSlot].commit);
   setPhase(task, 'SWITCHING_TRAFFIC', `Hot switching traffic back to ${previousSlot}.`);
