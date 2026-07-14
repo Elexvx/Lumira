@@ -13,16 +13,26 @@ const fixtureDir = path.join(repoRoot, 'bin', 'test-fixtures', 'updater-e2e');
 const oldCommit = '1111111111111111111111111111111111111111';
 const newCommit = '2222222222222222222222222222222222222222';
 const rejectedCommit = '3333333333333333333333333333333333333333';
-const interruptedCommit = '4444444444444444444444444444444444444444';
+const cancelledCommit = '4444444444444444444444444444444444444444';
+const interruptedCommit = '5555555555555555555555555555555555555555';
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const toWslPath = (value) => {
+  const match = String(value).match(/^([a-zA-Z]):[\\/](.*)$/);
+  return match ? `/mnt/${match[1].toLowerCase()}/${match[2].replaceAll('\\', '/')}` : value;
+};
 const command = (file, args, options = {}) => {
-  const result = spawnSync(file, args, {
+  const useWslDocker = process.platform === 'win32' && file === 'docker';
+  const executable = useWslDocker ? 'wsl' : file;
+  const commandArgs = useWslDocker
+    ? ['-d', process.env.LUMIRA_WSL_DISTRO || 'Ubuntu-24.04', '-u', 'root', '--', 'docker', ...args.map(toWslPath)]
+    : args;
+  const result = spawnSync(executable, commandArgs, {
     cwd: options.cwd || repoRoot,
     encoding: 'utf8',
     env: options.env || process.env,
     maxBuffer: 32 * 1024 * 1024,
-    shell: process.platform === 'win32',
+    shell: false,
   });
   if (result.status !== 0 && options.check !== false) {
     throw new Error(`${file} ${args.join(' ')} failed (${result.status})${result.error ? `: ${result.error.message}` : ''}\n${result.stdout || ''}\n${result.stderr || ''}`);
@@ -73,16 +83,20 @@ function queueCount(queueRoot, worker, state) {
 
 test('real Docker blue-green update and rollback keep HTTP available and drain workers without task loss', {
   skip: enabled ? false : 'set LUMIRA_DOCKER_E2E=true to run the Docker integration rehearsal',
-  timeout: 240_000,
+  timeout: 420_000,
 }, async (context) => {
-  for (const name of ['lumira-server-blue', 'lumira-server-green', 'lumira-api-proxy', 'lumira-async', 'lumira-job-executor']) {
+  const containerPrefix = `lumira-e2e-${process.pid}-`;
+  const containerNames = ['server-blue', 'server-green', 'api-proxy', 'async', 'job-executor']
+    .map((service) => `${containerPrefix}${service}`);
+  for (const name of containerNames) {
     const existing = command('docker', ['inspect', '-f', '{{.Name}}', name], { check: false });
     assert.equal(existing, '', `refusing to replace existing container ${name}`);
   }
 
-  command('docker', ['pull', 'node:22-alpine']);
-  command('docker', ['pull', 'nginx:1.29-alpine']);
-  const nodeImage = command('docker', ['image', 'inspect', 'node:22-alpine', '--format', '{{index .RepoDigests 0}}']);
+  for (const image of ['node:22-alpine', 'nginx:1.29-alpine']) {
+    if (!command('docker', ['image', 'inspect', image], { check: false })) command('docker', ['pull', image]);
+  }
+  const nodeImage = JSON.parse(command('docker', ['image', 'inspect', 'node:22-alpine']))[0].RepoDigests[0];
   assert.match(nodeImage, /^node@sha256:[0-9a-f]{64}$/);
 
   const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-docker-e2e-'));
@@ -90,6 +104,8 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
   const projectName = `lumirae2e${process.pid}`.toLowerCase();
   const updaterPort = await freePort();
   const proxyPort = await freePort();
+  const bluePort = await freePort();
+  const greenPort = await freePort();
   const token = `docker-e2e-${process.pid}`;
   const composeFile = path.join(deployDir, 'docker-compose.prod.yml');
   const envFile = path.join(deployDir, '.env');
@@ -106,7 +122,7 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
     updater?.kill('SIGTERM');
     await delay(100);
     compose('down', '-v', '--remove-orphans');
-    for (const name of ['lumira-server-blue', 'lumira-server-green', 'lumira-api-proxy', 'lumira-async', 'lumira-job-executor']) {
+    for (const name of containerNames) {
       command('docker', ['rm', '-f', name], { check: false });
     }
     rmSync(deployDir, { recursive: true, force: true });
@@ -122,7 +138,8 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
   lumira-server-blue: &server
     profiles: [blue]
     image: \${LUMIRA_SERVER_BLUE_IMAGE}
-    container_name: lumira-server-blue
+    container_name: ${containerPrefix}server-blue
+    ports: ["127.0.0.1:${bluePort}:8080"]
     command: ["node", "/fixtures/server.mjs"]
     environment:
       GIT_COMMIT: \${LUMIRA_SERVER_BLUE_GIT_COMMIT}
@@ -134,14 +151,15 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
     <<: *server
     profiles: [green]
     image: \${LUMIRA_SERVER_GREEN_IMAGE}
-    container_name: lumira-server-green
+    container_name: ${containerPrefix}server-green
+    ports: ["127.0.0.1:${greenPort}:8080"]
     environment:
       GIT_COMMIT: \${LUMIRA_SERVER_GREEN_GIT_COMMIT}
       APP_VERSION: \${LUMIRA_SERVER_GREEN_APP_VERSION}
       FAIL_PUBLIC_VERSION: \${LUMIRA_SERVER_GREEN_FAIL_PUBLIC_VERSION:-false}
   api-proxy:
     image: nginx:1.29-alpine
-    container_name: lumira-api-proxy
+    container_name: ${containerPrefix}api-proxy
     ports: ["127.0.0.1:\${E2E_PROXY_PORT}:80"]
     volumes:
       - "./nginx.conf:/etc/nginx/nginx.conf:ro"
@@ -149,14 +167,14 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
     networks: [default]
   lumira-async:
     image: \${LUMIRA_ASYNC_IMAGE}
-    container_name: lumira-async
+    container_name: ${containerPrefix}async
     command: ["node", "/fixtures/worker.mjs"]
     environment: { WORKER_QUEUE: /queue/async }
     volumes: ["\${E2E_FIXTURE_DIR}:/fixtures:ro", "\${E2E_QUEUE_DIR}:/queue"]
     networks: [default]
   lumira-job-executor:
     image: \${LUMIRA_JOB_EXECUTOR_IMAGE}
-    container_name: lumira-job-executor
+    container_name: ${containerPrefix}job-executor
     command: ["node", "/fixtures/worker.mjs"]
     environment: { WORKER_QUEUE: /queue/job }
     volumes: ["\${E2E_FIXTURE_DIR}:/fixtures:ro", "\${E2E_QUEUE_DIR}:/queue"]
@@ -166,8 +184,8 @@ networks:
 `);
   writeFileSync(envFile, [
     `COMPOSE_PROJECT_NAME=${projectName}`,
-    `E2E_FIXTURE_DIR=${fixtureDir}`,
-    `E2E_QUEUE_DIR=${queueRoot}`,
+    `E2E_FIXTURE_DIR=${toWslPath(fixtureDir)}`,
+    `E2E_QUEUE_DIR=${toWslPath(queueRoot)}`,
     `E2E_PROXY_PORT=${proxyPort}`,
     'LUMIRA_ACTIVE_SLOT=blue',
     `LUMIRA_SERVER_IMAGE=${nodeImage}`,
@@ -196,9 +214,14 @@ networks:
       LUMIRA_UPDATER_HOST: '127.0.0.1',
       LUMIRA_UPDATER_PORT: String(updaterPort),
       LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS: '1',
+      LUMIRA_UPDATER_SKIP_PULL_IF_PRESENT: 'true',
+      LUMIRA_CONTAINER_PREFIX: containerPrefix,
+      LUMIRA_WSL_DISTRO: process.env.LUMIRA_WSL_DISTRO || 'Ubuntu-24.04',
       PLATFORM_UPDATE_AGENT_TOKEN: token,
       PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES: 'node@sha256:',
       DEPLOY_CHECK_BASE_URL: `http://127.0.0.1:${proxyPort}`,
+      LUMIRA_SLOT_PROBE_URL_BLUE: `http://127.0.0.1:${bluePort}`,
+      LUMIRA_SLOT_PROBE_URL_GREEN: `http://127.0.0.1:${greenPort}`,
       LUMIRA_SERVER_GREEN_GIT_COMMIT: 'stale-process-environment',
       LUMIRA_SERVER_GREEN_APP_VERSION: 'stale-process-environment',
   };
@@ -298,13 +321,38 @@ networks:
   assert.match(automaticallyRolledBack.errorMessage, /failed after traffic switch and was rolled back/i);
 
   appendFileSync(envFile, '\nLUMIRA_SERVER_GREEN_FAIL_PUBLIC_VERSION=false\n');
+  trafficStage = 'post-switch-cancel';
+  const cancelledManifest = { ...manifest, version: 'cancelled', commit: cancelledCommit };
+  const cancelledPreflight = await call('/v1/update/preflight', { method: 'POST', body: JSON.stringify({ manifest: cancelledManifest }) });
+  assert.equal(cancelledPreflight.body.ready, true, JSON.stringify(cancelledPreflight.body.blockers));
+  const cancelledInstall = await call('/v1/update/install', { method: 'POST', body: JSON.stringify({ preflightId: cancelledPreflight.body.preflightId }) });
+  assert.equal(cancelledInstall.response.status, 202);
+  await waitFor(async () => {
+    const result = await call(`/v1/update/tasks/${cancelledInstall.body.taskId}`);
+    return result.body.phase === 'DRAINING_OLD' && result.body.status === 'RUNNING';
+  }, { description: 'post-switch drain phase before cancellation' });
+  const cancel = await call(`/v1/update/tasks/${cancelledInstall.body.taskId}/cancel`, { method: 'POST', body: '{}' });
+  assert.equal(cancel.response.status, 202);
+  assert.equal(cancel.body.cancelRequested, true);
+  assert.match(cancel.body.message, /rollback requested after traffic switch/i);
+  const cancelled = await waitFor(async () => {
+    const result = await call(`/v1/update/tasks/${cancelledInstall.body.taskId}`);
+    return ['ROLLED_BACK', 'FAILED', 'SUCCEEDED'].includes(result.body.status) ? result.body : false;
+  }, { description: 'post-switch cancellation rollback' });
+  assert.equal(cancelled.status, 'ROLLED_BACK', `${cancelled.errorMessage || ''}\n${updaterOutput.join('')}`);
+  assert.equal(cancelled.cancelRequested, true);
+
   trafficStage = 'crash-recovery';
   const interruptedManifest = { ...manifest, version: 'interrupted', commit: interruptedCommit };
   const interruptedPreflight = await call('/v1/update/preflight', { method: 'POST', body: JSON.stringify({ manifest: interruptedManifest }) });
   assert.equal(interruptedPreflight.body.ready, true, JSON.stringify(interruptedPreflight.body.blockers));
   const interruptedInstall = await call('/v1/update/install', { method: 'POST', body: JSON.stringify({ preflightId: interruptedPreflight.body.preflightId }) });
+  assert.equal(interruptedInstall.response.status, 202, JSON.stringify(interruptedInstall.body));
   await waitFor(async () => {
     const result = await call(`/v1/update/tasks/${interruptedInstall.body.taskId}`);
+    if (['FAILED', 'ROLLED_BACK', 'CANCELLED', 'SUCCEEDED'].includes(result.body.status)) {
+      throw new Error(`interrupted task reached ${result.body.status} before crash point: ${result.body.errorMessage || result.body.message}\n${updaterOutput.join('')}`);
+    }
     return result.body.phase === 'DRAINING_OLD' && result.body.status === 'RUNNING';
   }, { description: 'post-switch drain phase before simulated updater crash' });
   const crashedUpdater = updater;

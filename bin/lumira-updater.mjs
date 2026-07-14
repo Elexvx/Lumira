@@ -49,6 +49,8 @@ const host = process.env.LUMIRA_UPDATER_HOST || '127.0.0.1';
 const port = Number(process.env.LUMIRA_UPDATER_PORT || 9788);
 const token = process.env.PLATFORM_UPDATE_AGENT_TOKEN || process.env.LUMIRA_UPDATER_TOKEN || '';
 const dryRun = process.argv.includes('--dry-run') || process.env.LUMIRA_UPDATER_DRY_RUN === 'true';
+const containerPrefix = process.env.LUMIRA_CONTAINER_PREFIX || 'lumira-';
+const skipPullIfPresent = process.env.LUMIRA_UPDATER_SKIP_PULL_IF_PRESENT === 'true';
 const rollbackDrainSeconds = Math.max(0, Math.min(600, Number(process.env.LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS || 60)));
 const allowedImagePrefixes = String(process.env.PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES || 'ghcr.io/elexvx/lumira/')
   .split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
@@ -84,8 +86,20 @@ function readBody(req) {
 const taskPath = (taskId) => path.join(tasksDir, `${taskId}.json`);
 const preflightPath = (preflightId) => path.join(preflightDir, `${preflightId}.json`);
 const readJson = (file) => existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;
-const writeTask = (task) => atomicWrite(taskPath(task.taskId), `${JSON.stringify(task, null, 2)}\n`);
 const readTask = (taskId) => readJson(taskPath(taskId));
+const containerName = (service) => `${containerPrefix}${String(service).replace(/^lumira-/, '')}`;
+const serverContainer = (slot) => containerName(`server-${normalizeSlot(slot)}`);
+
+function writeTask(task) {
+  // Cancellation is written by the HTTP request handler while the update task
+  // continues to append logs and persist phase changes. Preserve those external
+  // control flags so a later write from the task cannot silently lose the
+  // administrator's cancellation/rollback request.
+  const persisted = readTask(task.taskId);
+  if (persisted?.cancelRequested) task.cancelRequested = true;
+  if (persisted?.rollbackRequested) task.rollbackRequested = true;
+  atomicWrite(taskPath(task.taskId), `${JSON.stringify(task, null, 2)}\n`);
+}
 
 function appendLog(task, message) {
   if (!message) return;
@@ -104,6 +118,18 @@ function setPhase(task, phase, message) {
   appendLog(task, message || phase);
 }
 
+function toWslPath(value) {
+  const match = String(value).match(/^([a-zA-Z]):[\\/](.*)$/);
+  return match ? `/mnt/${match[1].toLowerCase()}/${match[2].replaceAll('\\', '/')}` : value;
+}
+
+function commandInvocation(command, args) {
+  if (process.platform !== 'win32' || !['docker', 'bash'].includes(command)) return { command, args };
+  const distro = process.env.LUMIRA_WSL_DISTRO;
+  const prefix = distro ? ['-d', distro, '-u', 'root', '--'] : ['--'];
+  return { command: 'wsl', args: [...prefix, command, ...args.map(toWslPath)] };
+}
+
 function runCommand(task, command, args, options = {}) {
   appendLog(task, `$ ${command} ${args.join(' ')}`);
   if (dryRun) {
@@ -111,7 +137,8 @@ function runCommand(task, command, args, options = {}) {
     return Promise.resolve('');
   }
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const invocation = commandInvocation(command, args);
+    const child = spawn(invocation.command, invocation.args, {
       cwd: repoRoot,
       shell: false,
       env: { ...process.env, ...options.env },
@@ -234,7 +261,7 @@ async function recoverInterruptedTask() {
       interrupted.status = 'ROLLED_BACK';
     } else {
       if (interrupted.targetSlot) {
-        await runCommand(interrupted, 'docker', ['rm', '-f', `lumira-server-${normalizeSlot(interrupted.targetSlot)}`]).catch(() => {});
+        await runCommand(interrupted, 'docker', ['rm', '-f', serverContainer(interrupted.targetSlot)]).catch(() => {});
       }
       interrupted.status = 'FAILED';
       interrupted.errorMessage = 'Updater restarted before traffic switch; the inactive slot was cleaned up safely.';
@@ -255,7 +282,7 @@ async function cleanupExpiredRollbackSlot() {
   const state = deploymentState();
   if (!state.previousSlot || !state.rollbackDeadline || Date.parse(state.rollbackDeadline) > Date.now()) return;
   const housekeeping = { taskId: 'housekeeping', status: 'RUNNING', log: [], updatedAt: new Date().toISOString() };
-  await runCommand(housekeeping, 'docker', ['rm', '-f', `lumira-server-${normalizeSlot(state.previousSlot)}`]).catch(() => {});
+  await runCommand(housekeeping, 'docker', ['rm', '-f', serverContainer(state.previousSlot)]).catch(() => {});
   rmSync(taskPath(housekeeping.taskId), { force: true });
   state.previousSlot = null;
   state.rollbackDeadline = null;
@@ -317,7 +344,7 @@ async function proxyAvailable() {
   if (dryRun) return true;
   const task = { taskId: 'proxy-probe', log: [], updatedAt: '' };
   try {
-    const output = await runCommand(task, 'docker', ['inspect', '-f', '{{.State.Running}}', 'lumira-api-proxy']);
+    const output = await runCommand(task, 'docker', ['inspect', '-f', '{{.State.Running}}', containerName('api-proxy')]);
     return output.trim() === 'true';
   } catch {
     return false;
@@ -345,7 +372,7 @@ function backupDirectoryWritable() {
 async function runtimeTopologyStatus(state) {
   if (dryRun) return { slotRunning: true, databaseReachable: true, nginxValid: true, upstreamConsistent: true };
   const activeSlot = normalizeSlot(state.activeSlot);
-  const container = `lumira-server-${activeSlot}`;
+  const container = serverContainer(activeSlot);
   const task = { taskId: 'topology-probe', log: [], updatedAt: '' };
   let slotRunning = false;
   let databaseReachable = false;
@@ -354,9 +381,9 @@ async function runtimeTopologyStatus(state) {
     slotRunning = (await runCommand(task, 'docker', ['inspect', '-f', '{{.State.Running}}', container])).trim() === 'true';
     if (slotRunning) {
       const address = await containerAddress(task, container);
-      databaseReachable = await slotHealthy(address);
+      databaseReachable = await slotHealthy(address, activeSlot);
     }
-    await runCommand(task, 'docker', ['exec', 'lumira-api-proxy', 'nginx', '-t']);
+    await runCommand(task, 'docker', ['exec', containerName('api-proxy'), 'nginx', '-t']);
     nginxValid = true;
   } catch {
     // Individual flags become actionable blockers below.
@@ -376,7 +403,7 @@ async function migrationNetworkReachable(manifest, state) {
   if (!databaseHost) return false;
   const task = { taskId: 'migration-network-probe', log: [], updatedAt: '' };
   try {
-    const activeContainer = `lumira-server-${normalizeSlot(state.activeSlot)}`;
+    const activeContainer = serverContainer(state.activeSlot);
     const activeImage = (await runCommand(task, 'docker', ['inspect', '-f', '{{.Image}}', activeContainer])).trim();
     const output = await runCommand(task, 'docker', [
       'run', '--rm', '--network', network, '--entrypoint', 'getent', activeImage, 'hosts', databaseHost,
@@ -431,19 +458,24 @@ function requirePreflight(preflightId) {
   return preflight;
 }
 
-async function containerAddress(task, containerName) {
-  const targetOutput = await runCommand(task, 'docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', containerName]);
-  const proxyOutput = await runCommand(task, 'docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', 'lumira-api-proxy']);
+async function containerAddress(task, targetContainerName) {
+  const targetOutput = await runCommand(task, 'docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', targetContainerName]);
+  const proxyOutput = await runCommand(task, 'docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', containerName('api-proxy')]);
   const targetNetworks = JSON.parse(targetOutput);
   const proxyNetworks = JSON.parse(proxyOutput);
   const sharedNetwork = Object.keys(proxyNetworks).find((name) => targetNetworks[name]?.IPAddress);
-  if (!sharedNetwork) throw new Error(`${containerName} does not share a Docker network with lumira-api-proxy.`);
+  if (!sharedNetwork) throw new Error(`${targetContainerName} does not share a Docker network with ${containerName('api-proxy')}.`);
   return targetNetworks[sharedNetwork].IPAddress;
 }
 
-async function slotHealthy(address) {
+function slotBaseUrl(address, slot) {
+  return process.env[`LUMIRA_SLOT_PROBE_URL_${normalizeSlot(slot).toUpperCase()}`] || `http://${address}:8080`;
+}
+
+async function slotHealthy(address, slot) {
+  const baseUrl = slotBaseUrl(address, slot);
   for (const healthPath of ['/actuator/health/readiness', '/actuator/health']) {
-    const health = await probeHttp(`http://${address}:8080${healthPath}`, { timeoutMs: 3_000 });
+    const health = await probeHttp(`${baseUrl}${healthPath}`, { timeoutMs: 3_000 });
     if (health.ok && health.text.includes('UP')) return true;
   }
   return false;
@@ -451,11 +483,12 @@ async function slotHealthy(address) {
 
 async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {
   if (dryRun) return;
-  const address = await containerAddress(task, `lumira-server-${slot}`);
+  const address = await containerAddress(task, serverContainer(slot));
+  const baseUrl = slotBaseUrl(address, slot);
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
-    if (await slotHealthy(address)) {
-      const version = await probeHttp(`http://${address}:8080/api/v2/runtime/version`, { timeoutMs: 5_000 });
+    if (await slotHealthy(address, slot)) {
+      const version = await probeHttp(`${baseUrl}/api/v2/runtime/version`, { timeoutMs: 5_000 });
       if (!expectedCommit || (version.ok && version.text.includes(expectedCommit.slice(0, 12)))) return;
     }
     await sleep(2_000);
@@ -472,10 +505,10 @@ async function reloadProxy(task, slot) {
   const previous = existsSync(upstreamPath) ? readFileSync(upstreamPath, 'utf8') : null;
   writeActiveUpstreams(slot);
   try {
-    await runCommand(task, 'docker', ['cp', upstreamPath, 'lumira-api-proxy:/etc/nginx/lumira-upstreams/active-upstreams.conf'])
+    await runCommand(task, 'docker', ['cp', upstreamPath, `${containerName('api-proxy')}:/etc/nginx/lumira-upstreams/active-upstreams.conf`])
       .catch(() => appendLog(task, 'API proxy uses the read-only bind-mounted upstream file.'));
-    await runCommand(task, 'docker', ['exec', 'lumira-api-proxy', 'nginx', '-t']);
-    await runCommand(task, 'docker', ['exec', 'lumira-api-proxy', 'nginx', '-s', 'reload']);
+    await runCommand(task, 'docker', ['exec', containerName('api-proxy'), 'nginx', '-t']);
+    await runCommand(task, 'docker', ['exec', containerName('api-proxy'), 'nginx', '-s', 'reload']);
   } catch (error) {
     if (!dryRun && previous !== null) atomicWrite(upstreamPath, previous, 0o644);
     throw error;
@@ -524,11 +557,12 @@ async function migrate(task, manifest) {
 async function updateWorker(task, service, imageKey, image) {
   if (!image) return;
   appendLog(task, `Pausing new work and allowing ${service} in-flight work to drain.`);
-  await runCommand(task, 'docker', ['stop', '--time', '60', service]).catch((error) => appendLog(task, `${service} was already stopped: ${error.message}`));
+  const workerContainer = containerName(service);
+  await runCommand(task, 'docker', ['stop', '--time', '60', workerContainer]).catch((error) => appendLog(task, `${service} was already stopped: ${error.message}`));
   // Fixed container names may have been created by an older Compose project.
   // Removing the stopped container avoids a name conflict while preserving the
   // locally cached image as the fast rollback target.
-  await runCommand(task, 'docker', ['rm', '-f', service]).catch((error) => appendLog(task, `${service} cleanup warning: ${error.message}`));
+  await runCommand(task, 'docker', ['rm', '-f', workerContainer]).catch((error) => appendLog(task, `${service} cleanup warning: ${error.message}`));
   updateEnv({ [imageKey]: image });
   await runCompose(task, 'up', '-d', '--no-deps', '--force-recreate', service);
 }
@@ -536,6 +570,15 @@ async function updateWorker(task, service, imageKey, image) {
 async function containerIsRunning(task, containerName) {
   try {
     return (await runCommand(task, 'docker', ['inspect', '-f', '{{.State.Running}}', containerName])).trim() === 'true';
+  } catch {
+    return false;
+  }
+}
+
+async function imageIsPresent(task, image) {
+  try {
+    await runCommand(task, 'docker', ['image', 'inspect', image]);
+    return true;
   } catch {
     return false;
   }
@@ -561,7 +604,7 @@ async function rollbackTraffic(task, state, failedSlot) {
   if (failedSlot) {
     appendLog(task, `Draining Nginx workers from failed ${failedSlot} slot before stopping it.`);
     if (!dryRun) await sleep(rollbackDrainSeconds * 1000);
-    await runCommand(task, 'docker', ['stop', '--time', '60', `lumira-server-${failedSlot}`]).catch(() => {});
+    await runCommand(task, 'docker', ['stop', '--time', '60', serverContainer(failedSlot)]).catch(() => {});
   }
 }
 
@@ -598,10 +641,13 @@ async function runInstall(task, request) {
     checkCancellation(task);
 
     setPhase(task, 'PULLING', 'Pulling digest-pinned release images.');
-    localFrontendRunning = Boolean(manifest.images.frontend) && await containerIsRunning(task, 'lumira-ui');
+    localFrontendRunning = Boolean(manifest.images.frontend) && await containerIsRunning(task, containerName('ui'));
     const releaseImages = [manifest.images.server, manifest.images.async, manifest.images.jobExecutor, manifest.images.migrator];
     if (localFrontendRunning) releaseImages.push(manifest.images.frontend);
-    for (const image of releaseImages.filter(Boolean)) await runCommand(task, 'docker', ['pull', image]);
+    for (const image of new Set(releaseImages.filter(Boolean))) {
+      if (skipPullIfPresent && await imageIsPresent(task, image)) appendLog(task, `Using locally cached digest-pinned image ${image}.`);
+      else await runCommand(task, 'docker', ['pull', image]);
+    }
     checkCancellation(task);
 
     setPhase(task, 'MIGRATING', 'Applying expand-only database migrations.');
@@ -638,7 +684,7 @@ async function runInstall(task, request) {
 
     setPhase(task, 'DRAINING_OLD', `Gracefully draining old ${activeSlot} slot.`);
     if (!dryRun) await sleep(manifest.drainTimeoutSeconds * 1000);
-    await runCommand(task, 'docker', ['stop', '--time', '10', `lumira-server-${activeSlot}`]).catch((error) => appendLog(task, `Old slot stop warning: ${error.message}`));
+    await runCommand(task, 'docker', ['stop', '--time', '10', serverContainer(activeSlot)]).catch((error) => appendLog(task, `Old slot stop warning: ${error.message}`));
     if (await honorPostSwitchCancellation(task, state, targetSlot)) return;
 
     setPhase(task, 'UPDATING_WORKERS', 'Replacing async and job workers serially.');
@@ -681,7 +727,7 @@ async function runInstall(task, request) {
         appendLog(task, `Automatic traffic rollback failed: ${rollbackError.message}`);
       }
     } else {
-      await runCommand(task, 'docker', ['rm', '-f', `lumira-server-${targetSlot}`]).catch(() => {});
+      await runCommand(task, 'docker', ['rm', '-f', serverContainer(targetSlot)]).catch(() => {});
     }
     throw error;
   }
@@ -716,7 +762,7 @@ async function runRollback(task) {
   await verifyPublicTraffic(task, state.slots[previousSlot].commit);
   setPhase(task, 'DRAINING_OLD', `Draining rolled-back ${currentSlot} slot.`);
   if (!dryRun) await sleep(rollbackDrainSeconds * 1000);
-  await runCommand(task, 'docker', ['stop', '--time', '10', `lumira-server-${currentSlot}`]).catch(() => {});
+  await runCommand(task, 'docker', ['stop', '--time', '10', serverContainer(currentSlot)]).catch(() => {});
   setPhase(task, 'UPDATING_WORKERS', 'Restoring the previous compatible worker images.');
   const currentWorkers = state.workers || null;
   await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.previousWorkers?.asyncImage);
