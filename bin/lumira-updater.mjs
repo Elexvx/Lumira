@@ -407,9 +407,13 @@ function requirePreflight(preflightId) {
 }
 
 async function containerAddress(task, containerName) {
-  const output = await runCommand(task, 'docker', ['inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', containerName]);
-  if (!output.trim()) throw new Error(`Unable to resolve ${containerName} address.`);
-  return output.trim();
+  const targetOutput = await runCommand(task, 'docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', containerName]);
+  const proxyOutput = await runCommand(task, 'docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', 'lumira-api-proxy']);
+  const targetNetworks = JSON.parse(targetOutput);
+  const proxyNetworks = JSON.parse(proxyOutput);
+  const sharedNetwork = Object.keys(proxyNetworks).find((name) => targetNetworks[name]?.IPAddress);
+  if (!sharedNetwork) throw new Error(`${containerName} does not share a Docker network with lumira-api-proxy.`);
+  return targetNetworks[sharedNetwork].IPAddress;
 }
 
 async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {

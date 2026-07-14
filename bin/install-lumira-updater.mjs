@@ -7,7 +7,12 @@ import process from 'node:process';
 import { parseEnvFile, randomSecret, setEnvValue } from './lib/env-utils.mjs';
 import { commandExists, output, resolveRepoRoot, run } from './lib/exec-utils.mjs';
 import { probeHttp } from './lib/http-utils.mjs';
-import { createInitialDeploymentState, migrateLegacyApiProxyConfig, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
+import {
+  createInitialDeploymentState,
+  migrateLegacyApiProxyConfig,
+  renderActiveUpstreams,
+  repairDeploymentWorkerState,
+} from './lib/platform-update-contract.mjs';
 
 const repoRoot = resolveRepoRoot(import.meta.url);
 const argumentValue = (name) => {
@@ -110,11 +115,17 @@ writeFileSync(envPath, envContent, { mode: 0o600 });
 
 const generatedDir = path.join(deployDir, '.generated', 'api-proxy');
 const statePath = path.join(deployDir, '.update-state.json');
+const inspectContainerImage = (name) => output('docker', ['inspect', '-f', '{{.Config.Image}}', name], { cwd: repoRoot, check: false }).trim();
+const workerImages = {
+  asyncImage: inspectContainerImage('lumira-async') || env.LUMIRA_ASYNC_IMAGE,
+  jobExecutorImage: inspectContainerImage('lumira-job-executor') || env.LUMIRA_JOB_EXECUTOR_IMAGE,
+};
 mkdirSync(generatedDir, { recursive: true });
+let deploymentState;
 if (!existsSync(statePath)) {
   const activeSlot = env.LUMIRA_ACTIVE_SLOT === 'green' ? 'green' : 'blue';
   const slotPrefix = `LUMIRA_SERVER_${activeSlot.toUpperCase()}_`;
-  const initialState = createInitialDeploymentState({
+  deploymentState = createInitialDeploymentState({
     activeSlot,
     serverImage: env[`${slotPrefix}IMAGE`] || env.LUMIRA_SERVER_IMAGE,
     commit: env[`${slotPrefix}GIT_COMMIT`] || env.GIT_COMMIT,
@@ -122,8 +133,14 @@ if (!existsSync(statePath)) {
     buildVersion: env[`${slotPrefix}BUILD_VERSION`] || env.BUILD_VERSION,
     buildTime: env[`${slotPrefix}BUILD_TIME`] || env.BUILD_TIME,
     databaseVersion: env[`${slotPrefix}DATABASE_VERSION`] || env.DATABASE_VERSION,
+    ...workerImages,
   });
-  writeFileSync(statePath, `${JSON.stringify(initialState, null, 2)}\n`, { mode: 0o600 });
+} else {
+  deploymentState = JSON.parse(readFileSync(statePath, 'utf8'));
+}
+const repairedWorkers = repairDeploymentWorkerState(deploymentState, workerImages);
+if (!existsSync(statePath) || repairedWorkers.changed) {
+  writeFileSync(statePath, `${JSON.stringify(repairedWorkers.state, null, 2)}\n`, { mode: 0o600 });
 }
 writeFileSync(path.join(generatedDir, 'active-upstreams.conf'), renderActiveUpstreams(env.LUMIRA_ACTIVE_SLOT || 'blue', env), { mode: 0o644 });
 
