@@ -521,13 +521,17 @@ async function migrate(task, manifest) {
   ], { env: { DB_URL: env.DB_URL || '', DB_USERNAME: env.DB_USERNAME || 'root', DB_PASSWORD: env.DB_PASSWORD || '' } });
 }
 
-async function updateWorker(task, service, imageKey, image) {
+async function updateWorker(task, service, imageKey, image, { pull = true } = {}) {
   if (!image) return;
   appendLog(task, `Pausing new work and allowing ${service} in-flight work to drain.`);
   await runCommand(task, 'docker', ['stop', '--time', '60', service]).catch((error) => appendLog(task, `${service} was already stopped: ${error.message}`));
+  // Fixed container names may have been created by an older Compose project.
+  // Removing the stopped container avoids a name conflict while preserving the
+  // locally cached image as the fast rollback target.
+  await runCommand(task, 'docker', ['rm', '-f', service]).catch((error) => appendLog(task, `${service} cleanup warning: ${error.message}`));
   updateEnv({ [imageKey]: image });
-  await runCompose(task, 'pull', service);
-  await runCompose(task, 'up', '-d', '--no-deps', service);
+  if (pull) await runCompose(task, 'pull', service);
+  await runCompose(task, 'up', '-d', '--no-deps', '--force-recreate', service);
 }
 
 async function containerIsRunning(task, containerName) {
@@ -552,8 +556,8 @@ async function rollbackTraffic(task, state, failedSlot) {
   await waitForSlot(task, previousSlot, state.slots?.[previousSlot]?.commit || '');
   await reloadProxy(task, previousSlot);
   if (UPDATE_PHASES.indexOf(task.phase) >= UPDATE_PHASES.indexOf('UPDATING_WORKERS')) {
-    await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage);
-    await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage);
+    await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage, { pull: false });
+    await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage, { pull: false });
   }
   if (failedSlot) {
     appendLog(task, `Draining Nginx workers from failed ${failedSlot} slot before stopping it.`);
@@ -716,8 +720,8 @@ async function runRollback(task) {
   await runCommand(task, 'docker', ['stop', '--time', '10', `lumira-server-${currentSlot}`]).catch(() => {});
   setPhase(task, 'UPDATING_WORKERS', 'Restoring the previous compatible worker images.');
   const currentWorkers = state.workers || null;
-  await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.previousWorkers?.asyncImage);
-  await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.previousWorkers?.jobExecutorImage);
+  await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.previousWorkers?.asyncImage, { pull: false });
+  await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.previousWorkers?.jobExecutorImage, { pull: false });
   state.activeSlot = previousSlot;
   state.previousSlot = currentSlot;
   state.workers = state.previousWorkers || state.workers;
