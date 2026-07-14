@@ -7,6 +7,7 @@ describe('competition draft basic defaults', () => {
       status: 'draft',
       category: 'OTHER',
       organizer: 'Organizer',
+      participationScope: 'TBD',
       location: 'TBD',
     }, [{ role: 'Organizer', name: '' }])).toEqual({
       category: undefined,

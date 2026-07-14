@@ -1126,7 +1126,10 @@ public class CompetitionManagementAppService {
         normalized.setLocation(location == null || "TBD".equalsIgnoreCase(location)
                 ? ""
                 : trimRequired(location, "Competition location is required", MAX_MID_TEXT_LENGTH, "Competition location is too long"));
-        normalized.setParticipationScope(trimOptional(request.getParticipationScope(), MAX_MID_TEXT_LENGTH, "Participation scope is too long"));
+        String participationScope = trimToNull(request.getParticipationScope());
+        normalized.setParticipationScope(participationScope == null || "TBD".equalsIgnoreCase(participationScope)
+                ? null
+                : trimOptional(participationScope, MAX_MID_TEXT_LENGTH, "Participation scope is too long"));
         normalized.setParticipationRequirement(trimOptional(request.getParticipationRequirement(), MAX_LONG_TEXT_LENGTH, "Participation requirement is too long"));
         normalized.setScheduleJson(normalizeJson(request.getScheduleJson(), "Competition schedule JSON"));
         normalized.setDescription(trimOptional(request.getDescription(), MAX_LONG_TEXT_LENGTH, "Competition description is too long"));

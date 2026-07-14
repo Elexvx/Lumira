@@ -171,6 +171,7 @@ class CompetitionManagementAppServiceTest {
         CompetitionDTO.CompetitionUpsertRequest request = new CompetitionDTO.CompetitionUpsertRequest();
         request.setCompetitionStart("TBD");
         request.setLocation("TBD");
+        request.setParticipationScope("TBD");
 
         service.createCompetitionDraft(admin(), request);
 
@@ -179,6 +180,7 @@ class CompetitionManagementAppServiceTest {
         assertThat(jdbcTemplate.updateArguments.get(0)[9]).isNull();
         assertThat(jdbcTemplate.updateArguments.get(0)[13]).isEqualTo("");
         assertThat(jdbcTemplate.updateArguments.get(0)[15]).isEqualTo("");
+        assertThat(jdbcTemplate.updateArguments.get(0)[16]).isNull();
     }
 
     @Test
