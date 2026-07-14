@@ -11,10 +11,24 @@ const envExample = readFileSync(path.join(repoRoot, 'deploy', '.env.example'), '
 const composeProd = readFileSync(path.join(repoRoot, 'deploy', 'docker-compose.prod.yml'), 'utf8');
 const apiNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'api.conf.template'), 'utf8');
 const edgeNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'edge.conf'), 'utf8');
+const uiNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'lumira-ui.conf'), 'utf8');
 const updaterInstaller = readFileSync(path.join(repoRoot, 'bin', 'install-lumira-updater.mjs'), 'utf8');
 const updater = readFileSync(path.join(repoRoot, 'bin', 'lumira-updater.mjs'), 'utf8');
 const releaseManifestGenerator = readFileSync(path.join(repoRoot, 'bin', 'generate-release-manifest.mjs'), 'utf8');
 const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
+
+test('production disables the Hikari periodic JDBC keepalive explicitly', () => {
+  assert.match(
+    composeProd,
+    /SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME: \$\{SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME:-0\}/,
+    'production compose must not inherit HikariCP 6.2+ periodic keepalive defaults'
+  );
+  assert.match(
+    envExample,
+    /^SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME=0$/m,
+    'the production env template must document the keepalive safety override'
+  );
+});
 
 test('deploy-container generates every scoped internal token used by production compose', () => {
   for (const key of [
@@ -390,4 +404,10 @@ test('blue and green slots persist independent build identities for safe contain
     /lumira-server-blue:[\s\S]*?extra_hosts:\r?\n\s+- host\.docker\.internal:host-gateway/,
     'both blue-green slots must be able to reach the host updater through the anchored server definition'
   );
+});
+
+test('local frontend routes APIs through the stable blue-green proxy', () => {
+  assert.doesNotMatch(uiNginx, /lumira-server/, 'local frontend must not resolve the removed legacy server name');
+  assert.match(uiNginx, /proxy_pass http:\/\/api-proxy:80\/api\//);
+  assert.match(uiNginx, /proxy_pass http:\/\/api-proxy:80\/ws\//);
 });
