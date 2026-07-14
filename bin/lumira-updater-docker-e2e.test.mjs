@@ -129,7 +129,7 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
       APP_VERSION: \${LUMIRA_SERVER_BLUE_APP_VERSION}
       FAIL_PUBLIC_VERSION: \${LUMIRA_SERVER_BLUE_FAIL_PUBLIC_VERSION:-false}
     volumes: ["\${E2E_FIXTURE_DIR}:/fixtures:ro"]
-    networks: [default]
+    networks: [default, slot_aux]
   lumira-server-green:
     <<: *server
     profiles: [green]
@@ -161,6 +161,8 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
     environment: { WORKER_QUEUE: /queue/job }
     volumes: ["\${E2E_FIXTURE_DIR}:/fixtures:ro", "\${E2E_QUEUE_DIR}:/queue"]
     networks: [default]
+networks:
+  slot_aux:
 `);
   writeFileSync(envFile, [
     `COMPOSE_PROJECT_NAME=${projectName}`,

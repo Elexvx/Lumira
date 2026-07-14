@@ -10,6 +10,7 @@ import {
   normalizeReleaseManifest,
   phaseProgress,
   renderActiveUpstreams,
+  repairDeploymentWorkerState,
 } from './lib/platform-update-contract.mjs';
 
 const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${'a'.repeat(64)}`;
@@ -77,6 +78,18 @@ test('legacy API proxy migration preserves CRLF boundaries and is idempotent', (
   assert.doesNotMatch(migrated, /set \$(?:gateway|system)_upstream/);
   assert.match(migrated, /resolver 127\.0\.0\.11 valid=10s ipv6=off;\r\n    include \/etc\/nginx\/lumira-upstreams\/active-upstreams\.conf;\r\n\r\n    client_max_body_size/);
   assert.equal(migrateLegacyApiProxyConfig(migrated), migrated);
+});
+
+test('worker state repair fills missing bootstrap images without overwriting known images', () => {
+  const initial = createInitialDeploymentState({ asyncImage: 'async:known' });
+  const repaired = repairDeploymentWorkerState(initial, {
+    asyncImage: 'async:detected',
+    jobExecutorImage: 'job:detected',
+  });
+  assert.equal(repaired.changed, true);
+  assert.equal(repaired.state.workers.asyncImage, 'async:known');
+  assert.equal(repaired.state.workers.jobExecutorImage, 'job:detected');
+  assert.equal(repairDeploymentWorkerState(repaired.state, {}).changed, false);
 });
 
 test('phase progress is monotonic and reaches finalization', () => {

@@ -266,8 +266,13 @@ test('platform updater is reachable from the backend container and installed as 
   assert.match(updaterInstaller, /build-identity\.env/, 'updater installer must detect production build identity');
   assert.match(updaterInstaller, /parseEnvFile\(buildIdentityPath\)/, 'updater installer must initialize slots from the deployed build identity');
   assert.match(updaterInstaller, /composeEnvArgs\.push\('--env-file', buildIdentityPath\)/, 'legacy migration must pass the deployed build identity to Compose');
+  assert.match(updaterInstaller, /inspectContainerImage\('lumira-async'\)/, 'bootstrap must persist the running async image for rollback');
+  assert.match(updaterInstaller, /inspectContainerImage\('lumira-job-executor'\)/, 'bootstrap must persist the running job executor image for rollback');
+  assert.match(updaterInstaller, /repairDeploymentWorkerState\(deploymentState, workerImages\)/, 'rerunning bootstrap must repair incomplete worker state');
   assert.match(updaterInstaller, /containerNetworks\('lumira-api-proxy'\)/, 'legacy migration must select a network shared with the API proxy');
   assert.doesNotMatch(updaterInstaller, /range \.NetworkSettings\.Networks/, 'legacy migration must not concatenate addresses from multiple Docker networks');
+  assert.match(updater, /targetNetworks[\s\S]*proxyNetworks[\s\S]*sharedNetwork/, 'online updates must probe slots through a network shared with the API proxy');
+  assert.doesNotMatch(updater, /range \.NetworkSettings\.Networks/, 'online updates must not concatenate addresses from multiple Docker networks');
   assert.match(updaterInstaller, /if \(!blueHealthy\) \{[\s\S]*stopBlueSlot\(\)/, 'failed pre-switch health checks must clean up the inactive slot');
   assert.match(updaterInstaller, /ls', '-1', '\/etc\/nginx\/conf\.d'/, 'legacy migration must discover the generated API proxy config');
   assert.match(updaterInstaller, /candidate\.includes\('set \$gateway_upstream'\)/, 'legacy migration must select the config that owns API upstreams');

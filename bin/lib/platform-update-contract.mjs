@@ -116,6 +116,23 @@ export function createInitialDeploymentState(values = {}) {
   };
 }
 
+export function repairDeploymentWorkerState(state, workerImages = {}) {
+  const workers = { ...(state?.workers || {}) };
+  let changed = !state?.workers;
+  if (!workers.asyncImage && workerImages.asyncImage) {
+    workers.asyncImage = String(workerImages.asyncImage);
+    changed = true;
+  }
+  if (!workers.jobExecutorImage && workerImages.jobExecutorImage) {
+    workers.jobExecutorImage = String(workerImages.jobExecutorImage);
+    changed = true;
+  }
+  return {
+    changed,
+    state: changed ? { ...state, workers, updatedAt: new Date().toISOString() } : state,
+  };
+}
+
 export function buildPreflightReport({ manifest, state, freeMemoryBytes, freeDiskBytes, dockerAvailable = true, composeAvailable = true, proxyAvailable = true }) {
   const release = normalizeReleaseManifest(manifest);
   const activeSlot = normalizeSlot(state?.activeSlot);
