@@ -37,7 +37,8 @@ const command = (file, args, options = {}) => {
   if (result.status !== 0 && options.check !== false) {
     throw new Error(`${file} ${args.join(' ')} failed (${result.status})${result.error ? `: ${result.error.message}` : ''}\n${result.stdout || ''}\n${result.stderr || ''}`);
   }
-  return String(result.stdout || '').trim();
+  const output = String(result.stdout || '').trim();
+  return options.includeStatus ? { status: result.status, output } : output;
 };
 
 async function freePort() {
@@ -94,7 +95,8 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
   }
 
   for (const image of ['node:22-alpine', 'nginx:1.29-alpine']) {
-    if (!command('docker', ['image', 'inspect', image], { check: false })) command('docker', ['pull', image]);
+    const inspected = command('docker', ['image', 'inspect', image], { check: false, includeStatus: true });
+    if (inspected.status !== 0) command('docker', ['pull', image]);
   }
   const nodeImage = JSON.parse(command('docker', ['image', 'inspect', 'node:22-alpine']))[0].RepoDigests[0];
   assert.match(nodeImage, /^node@sha256:[0-9a-f]{64}$/);
