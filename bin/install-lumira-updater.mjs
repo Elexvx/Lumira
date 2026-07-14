@@ -128,21 +128,33 @@ if (!existsSync(statePath)) {
 writeFileSync(path.join(generatedDir, 'active-upstreams.conf'), renderActiveUpstreams(env.LUMIRA_ACTIVE_SLOT || 'blue', env), { mode: 0o644 });
 
 const containerRunning = (name) => output('docker', ['inspect', '-f', '{{.State.Running}}', name], { cwd: repoRoot, check: false }).trim() === 'true';
+const containerNetworks = (name) => JSON.parse(output('docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', name], { cwd: repoRoot }));
+const stopBlueSlot = () => run('docker', ['stop', '--time', '10', 'lumira-server-blue'], { cwd: repoRoot, check: false });
 const legacyRunning = containerRunning('lumira-server');
 if (legacyRunning) {
+  const composeEnvArgs = ['--env-file', envPath];
+  if (existsSync(buildIdentityPath)) composeEnvArgs.push('--env-file', buildIdentityPath);
   if (!containerRunning('lumira-server-blue')) {
-    const composeEnvArgs = ['--env-file', envPath];
-    if (existsSync(buildIdentityPath)) composeEnvArgs.push('--env-file', buildIdentityPath);
     run('docker', ['compose', ...composeEnvArgs, '-f', path.join(deployDir, 'docker-compose.prod.yml'), '--profile', 'blue', 'up', '-d', '--no-deps', 'lumira-server-blue'], { cwd: repoRoot });
   }
-  const blueAddress = output('docker', ['inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', 'lumira-server-blue'], { cwd: repoRoot }).trim();
+  const blueNetworks = containerNetworks('lumira-server-blue');
+  const proxyNetworks = containerNetworks('lumira-api-proxy');
+  const sharedNetwork = Object.keys(proxyNetworks).find((name) => blueNetworks[name]?.IPAddress);
+  if (!sharedNetwork) {
+    stopBlueSlot();
+    throw new Error('Blue slot does not share a Docker network with lumira-api-proxy; legacy server remains active.');
+  }
+  const blueAddress = blueNetworks[sharedNetwork].IPAddress;
   let blueHealthy = false;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const response = await probeHttp(`http://${blueAddress}:8080/actuator/health`, { timeoutMs: 1_000 });
     if (response.ok) { blueHealthy = true; break; }
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
-  if (!blueHealthy) throw new Error('Blue slot did not become healthy; legacy server remains active.');
+  if (!blueHealthy) {
+    stopBlueSlot();
+    throw new Error('Blue slot did not become healthy; legacy server remains active.');
+  }
 
   const liveConfig = output('docker', ['exec', 'lumira-api-proxy', 'cat', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot });
   const setPattern = /^\s*set \$(?:gateway_upstream|system_upstream|auth_upstream|file_upstream|message_upstream|plugin_upstream|payment_upstream|localization_upstream|team_upstream|ai_upstream)\s+[^;]+;\s*\r?\n/gm;
@@ -151,7 +163,10 @@ if (legacyRunning) {
     /(\s*resolver\s+127\.0\.0\.11[^;]*;\s*\r?\n)/,
     '$1    include /etc/nginx/lumira-upstreams/active-upstreams.conf;\n',
   );
-  if (!patchedConfig.includes('active-upstreams.conf')) throw new Error('Legacy API proxy upstream was not found; refusing to stop the legacy server.');
+  if (!patchedConfig.includes('active-upstreams.conf')) {
+    stopBlueSlot();
+    throw new Error('Legacy API proxy upstream was not found; refusing to stop the legacy server.');
+  }
   const temporaryConfig = path.join(deployDir, '.generated', 'legacy-blue-default.conf');
   writeFileSync(temporaryConfig, patchedConfig, { mode: 0o600 });
   try {
@@ -166,6 +181,9 @@ if (legacyRunning) {
     run('docker', ['stop', '--time', '10', 'lumira-server'], { cwd: repoRoot });
   } catch (error) {
     run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-legacy-default.conf', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot, check: false });
+    run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-t'], { cwd: repoRoot, check: false });
+    run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-s', 'reload'], { cwd: repoRoot, check: false });
+    stopBlueSlot();
     throw error;
   } finally {
     rmSync(temporaryConfig, { force: true });
