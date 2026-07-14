@@ -385,4 +385,9 @@ test('blue and green slots persist independent build identities for safe contain
     }
   }
   assert.match(updater, /LUMIRA_SERVER_\$\{targetSlot\.toUpperCase\(\)\}_GIT_COMMIT/);
+  assert.match(
+    composeProd,
+    /lumira-server-blue:[\s\S]*?extra_hosts:\r?\n\s+- host\.docker\.internal:host-gateway/,
+    'both blue-green slots must be able to reach the host updater through the anchored server definition'
+  );
 });
