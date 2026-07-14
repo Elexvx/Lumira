@@ -263,6 +263,9 @@ test('platform updater is reachable from the backend container and installed as 
   assert.doesNotMatch(updaterInstaller, /WorkingDirectory=\$\{quoteSystemd\(/);
   assert.doesNotMatch(updaterInstaller, /EnvironmentFile=\$\{quoteSystemd\(/);
   assert.match(updaterInstaller, /docker[\s\S]*network[\s\S]*inspect[\s\S]*bridge/);
+  assert.match(updaterInstaller, /build-identity\.env/, 'updater installer must detect production build identity');
+  assert.match(updaterInstaller, /parseEnvFile\(buildIdentityPath\)/, 'updater installer must initialize slots from the deployed build identity');
+  assert.match(updaterInstaller, /composeEnvArgs\.push\('--env-file', buildIdentityPath\)/, 'legacy migration must pass the deployed build identity to Compose');
 });
 
 test('continuous release manifest uses digest-pinned images and a stable GitHub release', () => {
