@@ -156,7 +156,24 @@ if (legacyRunning) {
     throw new Error('Blue slot did not become healthy; legacy server remains active.');
   }
 
-  const liveConfig = output('docker', ['exec', 'lumira-api-proxy', 'cat', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot });
+  const proxyConfigNames = output('docker', ['exec', 'lumira-api-proxy', 'ls', '-1', '/etc/nginx/conf.d'], { cwd: repoRoot })
+    .split(/\r?\n/)
+    .filter((name) => name.endsWith('.conf'));
+  let liveConfigPath = null;
+  let liveConfig = null;
+  for (const configName of proxyConfigNames) {
+    const candidatePath = path.posix.join('/etc/nginx/conf.d', configName);
+    const candidate = output('docker', ['exec', 'lumira-api-proxy', 'cat', candidatePath], { cwd: repoRoot });
+    if (candidate.includes('set $gateway_upstream')) {
+      liveConfigPath = candidatePath;
+      liveConfig = candidate;
+      break;
+    }
+  }
+  if (!liveConfigPath || !liveConfig) {
+    stopBlueSlot();
+    throw new Error('Active API proxy config was not found; refusing to stop the legacy server.');
+  }
   const setPattern = /^\s*set \$(?:gateway_upstream|system_upstream|auth_upstream|file_upstream|message_upstream|plugin_upstream|payment_upstream|localization_upstream|team_upstream|ai_upstream)\s+[^;]+;\s*\r?\n/gm;
   const withoutStaticUpstreams = liveConfig.replace(setPattern, '');
   const patchedConfig = withoutStaticUpstreams.replace(
@@ -167,20 +184,20 @@ if (legacyRunning) {
     stopBlueSlot();
     throw new Error('Legacy API proxy upstream was not found; refusing to stop the legacy server.');
   }
-  const temporaryConfig = path.join(deployDir, '.generated', 'legacy-blue-default.conf');
+  const temporaryConfig = path.join(deployDir, '.generated', 'legacy-blue-api.conf');
   writeFileSync(temporaryConfig, patchedConfig, { mode: 0o600 });
   try {
-    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/etc/nginx/conf.d/default.conf', '/tmp/lumira-legacy-default.conf'], { cwd: repoRoot });
+    run('docker', ['exec', 'lumira-api-proxy', 'cp', liveConfigPath, '/tmp/lumira-legacy-api.conf'], { cwd: repoRoot });
     run('docker', ['exec', 'lumira-api-proxy', 'mkdir', '-p', '/etc/nginx/lumira-upstreams'], { cwd: repoRoot });
     run('docker', ['cp', path.join(generatedDir, 'active-upstreams.conf'), 'lumira-api-proxy:/etc/nginx/lumira-upstreams/active-upstreams.conf'], { cwd: repoRoot });
-    run('docker', ['cp', temporaryConfig, 'lumira-api-proxy:/tmp/lumira-blue-default.conf'], { cwd: repoRoot });
-    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-blue-default.conf', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot });
+    run('docker', ['cp', temporaryConfig, 'lumira-api-proxy:/tmp/lumira-blue-api.conf'], { cwd: repoRoot });
+    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-blue-api.conf', liveConfigPath], { cwd: repoRoot });
     run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-t'], { cwd: repoRoot });
     run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-s', 'reload'], { cwd: repoRoot });
     await new Promise((resolve) => setTimeout(resolve, 60_000));
     run('docker', ['stop', '--time', '10', 'lumira-server'], { cwd: repoRoot });
   } catch (error) {
-    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-legacy-default.conf', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot, check: false });
+    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-legacy-api.conf', liveConfigPath], { cwd: repoRoot, check: false });
     run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-t'], { cwd: repoRoot, check: false });
     run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-s', 'reload'], { cwd: repoRoot, check: false });
     stopBlueSlot();
