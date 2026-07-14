@@ -350,8 +350,7 @@ async function runtimeTopologyStatus(state) {
     slotRunning = (await runCommand(task, 'docker', ['inspect', '-f', '{{.State.Running}}', container])).trim() === 'true';
     if (slotRunning) {
       const address = await containerAddress(task, container);
-      const readiness = await probeHttp(`http://${address}:8080/actuator/health/readiness`, { timeoutMs: 3_000 });
-      databaseReachable = readiness.ok && readiness.text.includes('UP');
+      databaseReachable = await slotHealthy(address);
     }
     await runCommand(task, 'docker', ['exec', 'lumira-api-proxy', 'nginx', '-t']);
     nginxValid = true;
@@ -383,7 +382,7 @@ async function createPreflight(request) {
   }
   if (!backupDirectoryWritable()) report.blockers.push('The backup directory is not writable.');
   if (!topology.slotRunning) report.blockers.push(`The active ${normalizeSlot(state.activeSlot)} slot is not running.`);
-  if (!topology.databaseReachable) report.blockers.push('Database connectivity could not be verified through active-slot readiness.');
+  if (!topology.databaseReachable) report.blockers.push('Database connectivity could not be verified through active-slot health.');
   if (!topology.nginxValid) report.blockers.push('The API proxy Nginx configuration is invalid.');
   if (!topology.upstreamConsistent) report.blockers.push('The persisted active slot and Nginx upstream configuration are inconsistent.');
   report.ready = report.blockers.length === 0;
@@ -416,13 +415,20 @@ async function containerAddress(task, containerName) {
   return targetNetworks[sharedNetwork].IPAddress;
 }
 
+async function slotHealthy(address) {
+  for (const healthPath of ['/actuator/health/readiness', '/actuator/health']) {
+    const health = await probeHttp(`http://${address}:8080${healthPath}`, { timeoutMs: 3_000 });
+    if (health.ok && health.text.includes('UP')) return true;
+  }
+  return false;
+}
+
 async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {
   if (dryRun) return;
   const address = await containerAddress(task, `lumira-server-${slot}`);
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
-    const readiness = await probeHttp(`http://${address}:8080/actuator/health/readiness`, { timeoutMs: 3_000 });
-    if (readiness.ok && readiness.text.includes('UP')) {
+    if (await slotHealthy(address)) {
       const version = await probeHttp(`http://${address}:8080/api/v2/runtime/version`, { timeoutMs: 5_000 });
       if (!expectedCommit || (version.ok && version.text.includes(expectedCommit.slice(0, 12)))) return;
     }
