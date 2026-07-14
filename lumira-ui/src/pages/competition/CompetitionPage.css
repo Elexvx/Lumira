@@ -786,6 +786,20 @@
   grid-column: 1 / -1;
 }
 
+.competition-config-grid__full .ant-form-item-control,
+.competition-config-grid__full .ant-form-item-control-input,
+.competition-config-grid__full .ant-form-item-control-input-content,
+.competition-config-grid__full .ant-input,
+.competition-config-grid__full textarea {
+  width: 100%;
+  max-width: 100%;
+}
+
+.saas-management-page .competition-config-grid__full .ant-form-item-control {
+  flex: 1 1 100%;
+  max-width: 100%;
+}
+
 .competition-config-grid .ant-form-item {
   min-width: 0;
 }
