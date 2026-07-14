@@ -292,6 +292,7 @@ test('continuous release manifest uses digest-pinned images and a stable GitHub 
 });
 
 test('frontend preview container stays opt-in for production compose', () => {
+  const localUiService = composeProd.slice(composeProd.indexOf('  lumira-ui:'), composeProd.indexOf('  edge-proxy:'));
   assert.match(
     composeProd,
     /lumira-ui:\r?\n\s+profiles:\r?\n\s+- local-lumira-ui/,
@@ -306,6 +307,11 @@ test('frontend preview container stays opt-in for production compose', () => {
     deployScript,
     /local-lumira-ui/,
     'deploy-container must enable the local-lumira-ui profile when explicitly deploying lumira-ui'
+  );
+  assert.doesNotMatch(
+    localUiService,
+    /lumira-server/,
+    'local lumira-ui must not depend on the removed legacy server service'
   );
 });
 

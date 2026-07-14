@@ -62,7 +62,7 @@ jobs:
       - name: Test updater state machine and deployment contracts
         run: node --test bin/*.test.mjs
       - name: Validate blue-green Compose topology
-        run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.prod.yml --profile blue --profile green config --quiet
+        run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.prod.yml --profile blue --profile green --profile local-lumira-ui config --quiet
       - name: Rehearse zero-downtime update and rollback with real Docker traffic
         env:
           LUMIRA_DOCKER_E2E: 'true'
