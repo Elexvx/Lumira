@@ -358,7 +358,7 @@ services:
         max-file: ${DOCKER_LOG_MAX_FILE:-3}
     mem_limit: ${SYSTEM_SERVICE_MEM_LIMIT:-768m}
     cpus: ${SYSTEM_SERVICE_CPUS:-1.0}
-    environment:
+    environment: &lumira-server-env
       TZ: Asia/Shanghai
       NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
       NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
@@ -459,11 +459,11 @@ services:
         is required}
       FRONTEND_VERSION: ${FRONTEND_VERSION:-0.1.0}
       BACKEND_VERSION: ${BACKEND_VERSION:-0.1.0}
-      DATABASE_VERSION: ${DATABASE_VERSION:-unknown}
-      APP_VERSION: ${APP_VERSION:-${BACKEND_VERSION:-0.1.0}}
-      BUILD_VERSION: ${BUILD_VERSION:-${BACKEND_VERSION:-0.1.0}}
-      BUILD_TIME: ${BUILD_TIME:-}
-      GIT_COMMIT: ${GIT_COMMIT:-}
+      DATABASE_VERSION: ${LUMIRA_SERVER_BLUE_DATABASE_VERSION:-${DATABASE_VERSION:-unknown}}
+      APP_VERSION: ${LUMIRA_SERVER_BLUE_APP_VERSION:-${APP_VERSION:-${BACKEND_VERSION:-0.1.0}}}
+      BUILD_VERSION: ${LUMIRA_SERVER_BLUE_BUILD_VERSION:-${BUILD_VERSION:-${BACKEND_VERSION:-0.1.0}}}
+      BUILD_TIME: ${LUMIRA_SERVER_BLUE_BUILD_TIME:-${BUILD_TIME:-}}
+      GIT_COMMIT: ${LUMIRA_SERVER_BLUE_GIT_COMMIT:-${GIT_COMMIT:-}}
       GIT_BRANCH: ${GIT_BRANCH:-}
       PLATFORM_UPDATE_SOURCE_URL: ${PLATFORM_UPDATE_SOURCE_URL:-https://api.github.com/repos/Elexvx/lumira/commits/main}
       PLATFORM_UPDATE_MANIFEST_URL: ${PLATFORM_UPDATE_MANIFEST_URL:-https://api.github.com/repos/Elexvx/Lumira/releases/tags/continuous}
@@ -500,6 +500,13 @@ services:
     - green
     image: ${LUMIRA_SERVER_GREEN_IMAGE:-${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}}
     container_name: lumira-server-green
+    environment:
+      <<: *lumira-server-env
+      DATABASE_VERSION: ${LUMIRA_SERVER_GREEN_DATABASE_VERSION:-${DATABASE_VERSION:-unknown}}
+      APP_VERSION: ${LUMIRA_SERVER_GREEN_APP_VERSION:-${APP_VERSION:-${BACKEND_VERSION:-0.1.0}}}
+      BUILD_VERSION: ${LUMIRA_SERVER_GREEN_BUILD_VERSION:-${BUILD_VERSION:-${BACKEND_VERSION:-0.1.0}}}
+      BUILD_TIME: ${LUMIRA_SERVER_GREEN_BUILD_TIME:-${BUILD_TIME:-}}
+      GIT_COMMIT: ${LUMIRA_SERVER_GREEN_GIT_COMMIT:-${GIT_COMMIT:-}}
   lumira-async:
     build:
       context: ..

@@ -63,6 +63,10 @@ jobs:
         run: node --test bin/*.test.mjs
       - name: Validate blue-green Compose topology
         run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.prod.yml --profile blue --profile green config --quiet
+      - name: Rehearse zero-downtime update and rollback with real Docker traffic
+        env:
+          LUMIRA_DOCKER_E2E: 'true'
+        run: node --test bin/lumira-updater-docker-e2e.test.mjs
       - name: Resolve image names
         id: images
         shell: bash

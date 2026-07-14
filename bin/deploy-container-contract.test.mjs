@@ -351,3 +351,13 @@ test('online migrator joins the configurable database network used by production
     'bundled MySQL must be reachable through the same database network as production migrations'
   );
 });
+
+test('blue and green slots persist independent build identities for safe container recreation', () => {
+  for (const slot of ['BLUE', 'GREEN']) {
+    for (const field of ['APP_VERSION', 'BUILD_VERSION', 'BUILD_TIME', 'GIT_COMMIT', 'DATABASE_VERSION']) {
+      assert.match(envExample, new RegExp(`^LUMIRA_SERVER_${slot}_${field}=`, 'm'));
+      assert.match(composeProd, new RegExp(`LUMIRA_SERVER_${slot}_${field}`));
+    }
+  }
+  assert.match(updater, /LUMIRA_SERVER_\$\{targetSlot\.toUpperCase\(\)\}_GIT_COMMIT/);
+});
