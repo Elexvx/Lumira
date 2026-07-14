@@ -180,6 +180,24 @@ export function renderActiveUpstreams(activeSlot, env = {}) {
   ].join('\n');
 }
 
+export function migrateLegacyApiProxyConfig(config) {
+  const source = String(config || '');
+  const includeDirective = 'include /etc/nginx/lumira-upstreams/active-upstreams.conf;';
+  const staticUpstreamPattern = /^[\t ]*set \$(?:gateway_upstream|system_upstream|auth_upstream|file_upstream|message_upstream|plugin_upstream|payment_upstream|localization_upstream|team_upstream|ai_upstream)[\t ]+[^;]+;[\t ]*\r?\n/gm;
+  const withoutStaticUpstreams = source.replace(staticUpstreamPattern, '');
+  if (withoutStaticUpstreams.includes(includeDirective)) return withoutStaticUpstreams;
+
+  const lineEnding = source.includes('\r\n') ? '\r\n' : '\n';
+  const migrated = withoutStaticUpstreams.replace(
+    /^([\t ]*resolver[\t ]+127\.0\.0\.11[^;]*;[\t ]*\r?\n)/m,
+    `$1    ${includeDirective}${lineEnding}`,
+  );
+  if (!migrated.includes(includeDirective)) {
+    throw new Error('Legacy API proxy resolver was not found');
+  }
+  return migrated;
+}
+
 export function phaseProgress(phase) {
   const index = UPDATE_PHASES.indexOf(phase);
   if (index < 0) return 0;
