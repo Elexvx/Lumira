@@ -4253,6 +4253,33 @@ type PaymentProviderOption = {
   disabled?: boolean;
 };
 
+const localizeLegacyConfigItemTitle = (item: CompetitionConfigItem): CompetitionConfigItem => {
+  const legacyTitles: Record<string, { english: string; chinese: string }> = {
+    'AGREEMENT:commitment': { english: 'Commitment', chinese: '赛事承诺书' },
+    'CONSENT:informed-consent': { english: 'Informed consent', chinese: '知情同意书' },
+    'REGISTRATION_FIELD:contact-name': { english: 'Contact name', chinese: '联系人姓名' },
+    'REQUIRED_FILE:work-file': { english: 'Work file', chinese: '作品文件' },
+  };
+  const localizedTitle = legacyTitles[`${item.itemType}:${item.itemKey}`];
+  return localizedTitle && item.title.trim().toLowerCase() === localizedTitle.english.toLowerCase()
+    ? { ...item, title: localizedTitle.chinese }
+    : item;
+};
+
+const localizeLegacyCompetitionSettings = (settings: CompetitionSettingsRecord): CompetitionSettingsRecord => ({
+  ...settings,
+  competition: {
+    ...settings.competition,
+    title: settings.competition.title === 'Untitled competition' ? '未命名赛事' : settings.competition.title,
+  },
+  documents: settings.documents.map(localizeLegacyConfigItemTitle),
+  fields: settings.fields.map(localizeLegacyConfigItemTitle),
+  files: settings.files.map(localizeLegacyConfigItemTitle),
+  stageMaterials: settings.stageMaterials.map(localizeLegacyConfigItemTitle),
+  payments: settings.payments.map(localizeLegacyConfigItemTitle),
+  timeline: settings.timeline.map(localizeLegacyConfigItemTitle),
+});
+
 const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
   {
     key: 'documents',
@@ -6235,7 +6262,7 @@ const CompetitionSettingsPage = () => {
     ])
       .then(([result, nextStorageSpaceOptions, nextPaymentProviderOptions]) => {
         if (mounted) {
-          setSettings(result);
+          setSettings(localizeLegacyCompetitionSettings(result));
           setStorageSpaceOptions(nextStorageSpaceOptions);
           setPaymentProviderOptions(nextPaymentProviderOptions);
         }
@@ -6308,9 +6335,9 @@ const CompetitionSettingsPage = () => {
     try {
       const published = await publishCompetitionSettings(settings.competition.uuid || competitionUuid);
       setSettings({ ...settings, activeConfigSet: published });
-      message.success(formatMessage({ id: 'page.competition.settings.publishSuccess', defaultMessage: 'Settings published' }));
+      message.success(formatMessage({ id: 'page.competition.settings.publishSuccess', defaultMessage: '配置已发布' }));
     } catch (error) {
-      showErrorMessage(error, formatMessage({ id: 'page.competition.settings.publishFailed', defaultMessage: 'Settings publish failed' }));
+      showErrorMessage(error, formatMessage({ id: 'page.competition.settings.publishFailed', defaultMessage: '配置发布失败' }));
     } finally {
       setPublishing(false);
     }
@@ -6318,10 +6345,10 @@ const CompetitionSettingsPage = () => {
 
   return (
     <ManagementPage
-      title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: 'Competition Settings' })}
+      title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: '赛事配置' })}
       extra={
         <Button onClick={() => void handleBack()}>
-          {formatMessage({ id: 'page.competition.settings.back', defaultMessage: 'Back' })}
+          {formatMessage({ id: 'page.competition.settings.back', defaultMessage: '返回' })}
         </Button>
       }
     >
@@ -6336,7 +6363,7 @@ const CompetitionSettingsPage = () => {
               </Typography.Title>
               <Typography.Text type="secondary">
                 {formatMessage(
-                  { id: 'page.competition.settings.no', defaultMessage: 'No. {competitionNo}' },
+                  { id: 'page.competition.settings.no', defaultMessage: '编号 {competitionNo}' },
                   { competitionNo: settings.competition.competitionNo || settings.competition.code },
                 )}
               </Typography.Text>
@@ -6473,7 +6500,7 @@ const CompetitionSettingsPage = () => {
             </main>
           </div>
         ) : (
-          <Alert type="error" showIcon message={formatMessage({ id: 'page.competition.settings.notFound', defaultMessage: 'Competition settings not found' })} />
+          <Alert type="error" showIcon message={formatMessage({ id: 'page.competition.settings.notFound', defaultMessage: '未找到赛事配置' })} />
         )}
       </ManagementPageBody>
     </ManagementPage>

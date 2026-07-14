@@ -559,7 +559,7 @@ class CompetitionManagementAppServiceTest {
         assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, publishRequest()))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
-                    assertThat(exception.getUserMessage()).contains("not ready to publish", "registration start is required");
+                    assertThat(exception.getUserMessage()).contains("赛事暂未满足发布条件", "请设置报名开始时间");
                 });
     }
 
@@ -575,9 +575,69 @@ class CompetitionManagementAppServiceTest {
         assertThatThrownBy(() -> service.publishSettings(admin(), "competition-uuid"))
                 .isInstanceOfSatisfying(BizException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
-                    assertThat(exception.getUserMessage()).contains("not ready to publish", "content is required");
+                    assertThat(exception.getUserMessage()).contains("赛事暂未满足发布条件", "报名文书“赛事承诺书”必须填写内容");
         });
         assertThat(jdbcTemplate.updates).noneMatch(sql -> sql.contains("update competition_config_set set status = 'PUBLISHED'"));
+    }
+
+    @Test
+    void publishSettingsUsesChineseLabelsForLegacyDefaultItems() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.ConfigItem contactName = configItem(
+                "REGISTRATION_FIELD",
+                "contact-name",
+                "Contact name",
+                null,
+                "{}"
+        );
+        CompetitionVO.ConfigItem workFile = configItem(
+                "REQUIRED_FILE",
+                "work-file",
+                "Work file",
+                null,
+                "{}"
+        );
+        jdbcTemplate.enqueue(List.of(competition("draft")), List.of(configSet()), List.of(contactName, workFile));
+
+        assertThatThrownBy(() -> service.publishSettings(admin(), "competition-uuid"))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getUserMessage()).isEqualTo(
+                            "赛事暂未满足发布条件：报名字段“联系人姓名”必须设置字段类型；提交材料“作品文件”必须设置允许上传的文件格式"
+                    );
+                });
+    }
+
+    @Test
+    void publishValidationAcceptsLegacyDefaultItemMetadata() throws Exception {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.ConfigItem contactName = configItem(
+                "REGISTRATION_FIELD",
+                "contact-name",
+                "Contact name",
+                null,
+                "{\"type\":\"input\",\"target\":\"registration\"}"
+        );
+        CompetitionVO.ConfigItem workFile = configItem(
+                "REQUIRED_FILE",
+                "work-file",
+                "Work file",
+                null,
+                "{\"accept\":\"*\",\"maxSizeMb\":100,\"maxCount\":1}"
+        );
+        jdbcTemplate.enqueue(List.of(contactName, workFile));
+        Method method = CompetitionManagementAppService.class.getDeclaredMethod(
+                "validateCompetitionReadyForPublish",
+                CompetitionVO.Competition.class,
+                CompetitionVO.ConfigSet.class
+        );
+        method.setAccessible(true);
+
+        method.invoke(service, competition("draft"), configSet());
+
+        assertThat(jdbcTemplate.queryResults).isEmpty();
     }
 
     @Test
