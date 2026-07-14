@@ -562,13 +562,17 @@ async function runInstall(task, request) {
   writeTask(task);
 
   let switched = false;
+  let localFrontendRunning = false;
   try {
     setPhase(task, 'BACKUP', 'Creating a platform backup before the online update.');
     await runCommand(task, 'bash', [path.join(deployDir, 'backup-platform.sh')]);
     checkCancellation(task);
 
     setPhase(task, 'PULLING', 'Pulling digest-pinned release images.');
-    for (const image of Object.values(manifest.images).filter(Boolean)) await runCommand(task, 'docker', ['pull', image]);
+    localFrontendRunning = Boolean(manifest.images.frontend) && await containerIsRunning(task, 'lumira-ui');
+    const releaseImages = [manifest.images.server, manifest.images.async, manifest.images.jobExecutor, manifest.images.migrator];
+    if (localFrontendRunning) releaseImages.push(manifest.images.frontend);
+    for (const image of releaseImages.filter(Boolean)) await runCommand(task, 'docker', ['pull', image]);
     checkCancellation(task);
 
     setPhase(task, 'MIGRATING', 'Applying expand-only database migrations.');
@@ -612,7 +616,7 @@ async function runInstall(task, request) {
     await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', manifest.images.async);
     if (await honorPostSwitchCancellation(task, state, targetSlot)) return;
     await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', manifest.images.jobExecutor);
-    if (manifest.images.frontend && await containerIsRunning(task, 'lumira-ui')) {
+    if (localFrontendRunning) {
       await updateWorker(task, 'lumira-ui', 'LUMIRA_FRONTEND_IMAGE', manifest.images.frontend);
     }
     if (await honorPostSwitchCancellation(task, state, targetSlot)) return;
