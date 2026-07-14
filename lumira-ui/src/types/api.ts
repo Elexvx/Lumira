@@ -1370,6 +1370,14 @@ export interface PlatformUpdateLatestVersion {
   url?: string | null;
   serverImage?: string | null;
   frontendImage?: string | null;
+  asyncImage?: string | null;
+  jobExecutorImage?: string | null;
+  migratorImage?: string | null;
+  schemaVersion?: number | null;
+  strategy?: string | null;
+  minUpdaterProtocol?: number | null;
+  migrationMode?: string | null;
+  databaseVersion?: string | null;
   migrationRequired?: boolean | null;
   rollbackSupported?: boolean | null;
 }
@@ -1380,6 +1388,14 @@ export interface PlatformUpdateManifest {
   minVersion?: string | null;
   serverImage?: string | null;
   frontendImage?: string | null;
+  asyncImage?: string | null;
+  jobExecutorImage?: string | null;
+  migratorImage?: string | null;
+  schemaVersion?: number | null;
+  strategy?: string | null;
+  minUpdaterProtocol?: number | null;
+  migrationMode?: string | null;
+  databaseVersion?: string | null;
   migrationRequired?: boolean | null;
   rollbackSupported?: boolean | null;
   releaseNotes?: string | null;
@@ -1389,6 +1405,14 @@ export interface PlatformUpdateTask {
   id: number;
   taskType?: string | null;
   status?: string | null;
+  strategy?: string | null;
+  phase?: string | null;
+  progressPercent?: number | null;
+  activeSlot?: string | null;
+  targetSlot?: string | null;
+  preflightId?: string | null;
+  manifestHash?: string | null;
+  rollbackOfTaskId?: number | null;
   targetVersion?: string | null;
   targetCommit?: string | null;
   serverImage?: string | null;
@@ -1405,6 +1429,31 @@ export interface PlatformUpdateTask {
   updatedAt?: string | null;
 }
 
+export interface PlatformUpdaterCapabilities {
+  protocolVersion?: number | null;
+  strategy?: string | null;
+  activeSlot?: string | null;
+  supportsPreflight?: boolean;
+  supportsCancel?: boolean;
+  supportsExpandOnlyMigration?: boolean;
+}
+
+export interface PlatformUpdatePreflight {
+  preflightId: string;
+  ready: boolean;
+  strategy?: string | null;
+  activeSlot?: string | null;
+  targetSlot?: string | null;
+  targetCommit?: string | null;
+  targetVersion?: string | null;
+  migrationMode?: string | null;
+  databaseTargetVersion?: string | null;
+  blockers?: string[];
+  warnings?: string[];
+  checkedAt?: string | null;
+  expiresAt?: string | null;
+}
+
 export interface PlatformUpdateStatus {
   current?: PlatformUpdateCurrentVersion | null;
   latest?: PlatformUpdateLatestVersion | null;
@@ -1416,6 +1465,7 @@ export interface PlatformUpdateStatus {
   latestKnown?: boolean;
   sourceReachable?: boolean;
   updaterAvailable?: boolean;
+  updaterCapabilities?: PlatformUpdaterCapabilities | null;
   comparisonBasis?: string | null;
   actionRequired?: string | null;
   sourceType?: string | null;

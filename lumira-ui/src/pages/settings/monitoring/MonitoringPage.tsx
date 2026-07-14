@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { getLocale, history, useAccess, useLocation } from '@umijs/max';
-import { Alert, Button, Card, Col, Descriptions, Modal, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Modal, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, GithubOutlined, ReloadOutlined, RollbackOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
@@ -10,6 +10,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type {
   PlatformUpdateStatus,
+  PlatformUpdatePreflight,
   PlatformUpdateTask,
   RedisMonitorClient,
   RedisMonitorCommandStat,
@@ -271,6 +272,7 @@ const usePlatformUpdateMonitor = () => {
         method: 'GET',
         ...API_OPTS.NO_REDIRECT,
       }),
+    refetchInterval: 2000,
   });
   const tasksQuery = useQuery({
     queryKey: ['platform-update-tasks'],
@@ -332,15 +334,58 @@ const usePlatformUpdateMonitor = () => {
   };
 
   const handleInstall = async () => {
+    if (updateStatus?.updaterAvailable !== true) {
+      Modal.info({
+        title: t('安装平台更新代理', 'Install platform updater'),
+        content: (
+          <Space direction="vertical">
+            <Typography.Text>{t('首次启用需要在服务器执行一次幂等安装。完成后，后续版本可从后台不停机更新。', 'A one-time idempotent host installation is required. Later releases can then update without planned HTTP downtime.')}</Typography.Text>
+            <Typography.Text code copyable>node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy</Typography.Text>
+          </Space>
+        ),
+      });
+      return;
+    }
+    const requiredProtocol = updateStatus.latest?.minUpdaterProtocol || 1;
+    const currentProtocol = updateStatus.updaterCapabilities?.protocolVersion || 1;
+    if (currentProtocol < requiredProtocol) {
+      Modal.warning({
+        title: t('更新代理版本过低', 'Updater protocol is too old'),
+        content: <Space direction="vertical"><Typography.Text>{t(`当前协议 ${currentProtocol}，此版本要求 ${requiredProtocol}。请先在服务器升级代理。`, `Current protocol is ${currentProtocol}; this release requires ${requiredProtocol}. Upgrade the host agent first.`)}</Typography.Text><Typography.Text code copyable>sudo node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy</Typography.Text></Space>,
+      });
+      return;
+    }
+    let preflight: PlatformUpdatePreflight;
+    try {
+      preflight = await request<PlatformUpdatePreflight>('/v1/system/update/preflight', {
+        method: 'POST',
+        ...API_OPTS.NO_REDIRECT,
+      });
+    } catch (error) {
+      showErrorMessage(error, t('更新预检失败', 'Update preflight failed'));
+      return;
+    }
     Modal.confirm({
-      title: t('确认手动安装平台更新？', 'Install platform update?'),
-      content: t('系统将通过宿主机 lumira-updater 执行备份、拉取镜像、重启和健康检查。请确认当前处于维护窗口。', 'Lumira will ask the host updater to back up, pull images, restart, and run health checks. Confirm you are in a maintenance window.'),
+      title: preflight.ready ? t('确认蓝绿不停机更新？', 'Confirm blue-green update?') : t('预检未通过', 'Preflight blocked'),
+      content: (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Descriptions size="small" column={1}>
+            <Descriptions.Item label={t('流量切换', 'Traffic switch')}>{preflight.activeSlot || '-'} → {preflight.targetSlot || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('数据库迁移', 'Database migration')}>{preflight.migrationMode || '-'}</Descriptions.Item>
+          </Descriptions>
+          {(preflight.blockers || []).map((item) => <Alert key={item} type="error" showIcon message={item} />)}
+          {(preflight.warnings || []).map((item) => <Alert key={item} type="warning" showIcon message={item} />)}
+          {preflight.ready ? <Typography.Text type="secondary">{t('新槽位验证通过后热切流并排空旧连接；回滚不会逆向恢复数据库。', 'Traffic hot-switches only after the new slot passes verification. Rollback never reverses database migrations.')}</Typography.Text> : null}
+        </Space>
+      ),
       okText: t('开始更新', 'Start update'),
       cancelText: t('取消', 'Cancel'),
+      okButtonProps: { disabled: !preflight.ready },
       onOk: async () => {
         try {
           await request<PlatformUpdateTask>('/v1/system/update/install', {
             method: 'POST',
+            data: { preflightId: preflight.preflightId, targetCommit: preflight.targetCommit },
             ...API_OPTS.NO_REDIRECT,
           });
           message.success(t('更新任务已提交', 'Update task submitted'));
@@ -355,7 +400,7 @@ const usePlatformUpdateMonitor = () => {
   const handleRollback = async () => {
     Modal.confirm({
       title: t('确认回滚平台版本？', 'Rollback platform version?'),
-      content: t('系统将使用 updater 最近一次保存的 deploy/.env 备份回滚镜像配置，并重新部署。', 'The updater will restore the latest saved deploy/.env backup and redeploy.'),
+      content: t('系统将热切回上一稳定槽位。数据库扩展迁移会保留，不会覆盖更新期间产生的业务数据。', 'Traffic will hot-switch to the previous stable slot. Expand-only database migrations remain in place and business data is not overwritten.'),
       okText: t('开始回滚', 'Start rollback'),
       cancelText: t('取消', 'Cancel'),
       okButtonProps: { danger: true },
@@ -374,6 +419,20 @@ const usePlatformUpdateMonitor = () => {
     });
   };
 
+  const handleCancel = async (task: PlatformUpdateTask) => {
+    try {
+      await request<PlatformUpdateTask>(`/v1/system/update/tasks/${task.id}/cancel`, {
+        method: 'POST',
+        ...API_OPTS.NO_REDIRECT,
+      });
+      const switched = Boolean(task.phase && ['SWITCHING_TRAFFIC', 'VERIFYING_ACTIVE', 'DRAINING_OLD', 'UPDATING_WORKERS', 'FINALIZING'].includes(task.phase));
+      message.success(switched ? t('已请求自动回滚流量', 'Traffic rollback requested') : t('已请求取消更新', 'Update cancellation requested'));
+      await refreshAll();
+    } catch (error) {
+      showErrorMessage(error, t('取消更新失败', 'Failed to cancel update'));
+    }
+  };
+
   const taskColumns = useMemo<ProColumns<PlatformUpdateTask>[]>(
     () => [
       { title: t('类型', 'Type'), dataIndex: 'taskType', width: 'var(--saas-spacing-120)', render: (_: unknown, record) => record.taskType || '-' },
@@ -388,6 +447,8 @@ const usePlatformUpdateMonitor = () => {
         },
       },
       { title: t('目标版本', 'Target version'), dataIndex: 'targetVersion', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.targetVersion || '-' },
+      { title: t('阶段', 'Phase'), dataIndex: 'phase', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.phase || '-' },
+      { title: t('进度', 'Progress'), dataIndex: 'progressPercent', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => <Progress percent={record.progressPercent || 0} size="small" /> },
       { title: t('目标提交', 'Target commit'), dataIndex: 'targetCommit', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => shortCommit(record.targetCommit) },
       { title: t('操作人', 'Operator'), dataIndex: 'createdByName', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => record.createdByName || '-' },
       { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record) => formatDateTime(record.updatedAt) },
@@ -408,6 +469,7 @@ const usePlatformUpdateMonitor = () => {
     handleCheck,
     handleInstall,
     handleRollback,
+    handleCancel,
     taskColumns,
     formatDateTime,
     shortCommit,
@@ -732,6 +794,7 @@ const useServiceMonitor = () => {
     serviceRows,
     serviceColumns,
   };
+
 };
 
 const useRedisMonitor = () => {
@@ -834,6 +897,7 @@ const PlatformUpdateContent = () => {
     handleCheck,
     handleInstall,
     handleRollback,
+    handleCancel,
     taskColumns,
     formatDateTime,
     shortCommit,
@@ -916,6 +980,18 @@ const PlatformUpdateContent = () => {
           message={t('已使用本地版本信息', 'Using local version information')}
           description={updateStatus.errorMessage || t('远程更新源暂不可用，当前已回退到本地 Git 提交作为版本基准。', 'The remote update source is unavailable, so the local Git commit is used as the version baseline.')}
         />
+      ) : null}
+      {activeTask ? (
+        <Card size="small" title={`${activeTask.taskType || 'UPDATE'} · ${activeTask.phase || activeTask.status || ''}`} extra={isTaskRunning ? <Button danger size="small" onClick={() => void handleCancel(activeTask)}>{t('取消 / 回滚', 'Cancel / rollback')}</Button> : null}>
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Progress percent={activeTask.progressPercent || 0} status={activeTask.status === 'FAILED' ? 'exception' : activeTask.status === 'SUCCEEDED' || activeTask.status === 'ROLLED_BACK' ? 'success' : 'active'} />
+            <Descriptions size="small" column={{ xs: 1, md: 3 }}>
+              <Descriptions.Item label={t('阶段', 'Phase')}>{activeTask.phase || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('活动槽位', 'Active slot')}>{activeTask.activeSlot || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('目标槽位', 'Target slot')}>{activeTask.targetSlot || '-'}</Descriptions.Item>
+            </Descriptions>
+          </Space>
+        </Card>
       ) : null}
       {activeTask ? (
         <Alert

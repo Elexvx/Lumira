@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statfsSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { arch, cpus, platform, release, totalmem } from 'node:os';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { parseEnvFile, setEnvValue, randomSecret, randomBase64Secret, defaultCapacityProfiles } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, commandExists, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
+import { renderActiveUpstreams } from './lib/platform-update-contract.mjs';
 const log = createLogger('install');
 const repoRoot = resolveRepoRoot(import.meta.url);
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
@@ -566,6 +567,7 @@ async function checkEnvironment(profileName) {
 
 function composeProfiles(options) {
   return [
+    '--profile', 'blue',
     ...(!options.useLocalMysql ? ['--profile', 'edge'] : []),
     ...(options.useLocalMysql ? ['--profile', 'local-mysql'] : []),
     ...(options.useObservability ? ['--profile', 'observability'] : []),
@@ -617,6 +619,14 @@ async function waitForComposeServicesRunning(options, expectedServices, label, t
 }
 
 function installContainers(options) {
+  const deployEnv = parseEnvFile(envPath);
+  const upstreamDirectory = path.join(repoRoot, 'deploy', '.generated', 'api-proxy');
+  mkdirSync(upstreamDirectory, { recursive: true });
+  writeFileSync(
+    path.join(upstreamDirectory, 'active-upstreams.conf'),
+    renderActiveUpstreams(deployEnv.LUMIRA_ACTIVE_SLOT || 'blue', deployEnv),
+    { mode: 0o644 },
+  );
   run('docker', composeArgs(options, 'config'), { stdio: 'ignore' });
   run('docker', composeArgs(options, 'pull', '--ignore-buildable'), { check: false });
   if (!skipBuild) {
@@ -632,7 +642,7 @@ function installContainers(options) {
     'redis',
   ]);
   composeUp(options, 'job admin', ['xxl-job-admin']);
-  composeUp(options, 'monolith backend', ['lumira-server']);
+  composeUp(options, 'monolith backend blue slot', ['lumira-server-blue']);
   composeUp(options, 'owner async runtime', ['lumira-async']);
   composeUp(options, 'job executor', ['lumira-job-executor']);
   composeUp(options, 'API proxy', ['api-proxy']);
@@ -661,7 +671,7 @@ async function runVerification(options, profile) {
     [
       'redis',
       'xxl-job-admin',
-      'lumira-server',
+      'lumira-server-blue',
       'lumira-async',
       'lumira-job-executor',
       'api-proxy',

@@ -12,6 +12,7 @@ const composeProd = readFileSync(path.join(repoRoot, 'deploy', 'docker-compose.p
 const apiNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'api.conf.template'), 'utf8');
 const edgeNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'edge.conf'), 'utf8');
 const updaterInstaller = readFileSync(path.join(repoRoot, 'bin', 'install-lumira-updater.mjs'), 'utf8');
+const updater = readFileSync(path.join(repoRoot, 'bin', 'lumira-updater.mjs'), 'utf8');
 const releaseManifestGenerator = readFileSync(path.join(repoRoot, 'bin', 'generate-release-manifest.mjs'), 'utf8');
 const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
 
@@ -109,7 +110,7 @@ test('install-platform starts async and job runtime services and does not promis
   );
   assert.match(
     installScript,
-    /waitForComposeServicesRunning\(\s*options,\s*\[\s*'redis',\s*'xxl-job-admin',\s*'lumira-server',\s*'lumira-async',\s*'lumira-job-executor',/m,
+    /waitForComposeServicesRunning\(\s*options,\s*\[\s*'redis',\s*'xxl-job-admin',\s*'lumira-server-blue',\s*'lumira-async',\s*'lumira-job-executor',/m,
     'install-platform must verify that the core runtime services are actually running after startup'
   );
   assert.match(
@@ -164,7 +165,8 @@ test('start-platform rejects legacy skip flags instead of silently ignoring them
 
 test('deploy-container allows selected deploys for every compose runtime service', () => {
   for (const serviceName of [
-    'lumira-server',
+    'lumira-server-blue',
+    'lumira-server-green',
     'lumira-async',
     'lumira-job-executor',
     'api-proxy',
@@ -338,4 +340,14 @@ test('api proxy template keeps split-owner routes explicit while defaulting comp
 
   assert.match(apiNginx, /location \^~ \/api\/p\/[\s\S]*proxy_pass http:\/\/\$plugin_upstream\$request_uri;/, 'plugin asset gateway must route to the plugin owner');
   assert.match(apiNginx, /location \^~ \/ws\/message[\s\S]*proxy_pass http:\/\/\$message_upstream\$request_uri;/, 'message websocket traffic must route to the message owner');
+});
+
+test('online migrator joins the configurable database network used by production', () => {
+  assert.match(envExample, /^DB_MIGRATION_NETWORK=1panel-network$/m);
+  assert.match(updater, /env\.DB_MIGRATION_NETWORK \|\| env\.DB_BACKUP_NETWORK \|\| '1panel-network'/);
+  assert.match(
+    composeProd,
+    /mysql:[\s\S]*?networks:\s*\n\s*- default\s*\n\s*- 1panel-network/,
+    'bundled MySQL must be reachable through the same database network as production migrations'
+  );
 });

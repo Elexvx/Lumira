@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 55s
   application:
     name: ${SPRING_APPLICATION_NAME:lumira-job-executor}
   profiles:

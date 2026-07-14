@@ -11,6 +11,7 @@ import readline from 'node:readline';
 import { parseEnvFile, randomSecret, randomBase64Secret } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
+import { normalizeSlot, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
 const log = createLogger('deploy');
 const repoRoot = resolveRepoRoot(import.meta.url);
 const envExamplePath = path.join(repoRoot, 'deploy', '.env.example');
@@ -22,6 +23,8 @@ const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafan
 const generatedDatabaseVersionSqlPath = path.join(repoRoot, 'deploy', '.generated', 'database-version', '002-database-version.sql');
 const edgeTlsDir = path.join(repoRoot, 'deploy', 'data', 'tls');
 const edgeTlsFiles = ['fullchain.pem', 'privkey.pem'];
+const generatedApiProxyDir = path.join(repoRoot, 'deploy', '.generated', 'api-proxy');
+const activeUpstreamsPath = path.join(generatedApiProxyDir, 'active-upstreams.conf');
 
 const rawArgs = process.argv.slice(2);
 const args = new Set(rawArgs);
@@ -39,10 +42,14 @@ const localMysql = args.has('--local-mysql');
 const skipDockerPrune = args.has('--skip-docker-prune');
 const allowUnknownBuildIdentity = args.has('--allow-unknown-build-identity') || process.env.ALLOW_UNKNOWN_BUILD_IDENTITY === 'true';
 const allowDirtyBuildIdentity = args.has('--allow-dirty-build-identity') || process.env.ALLOW_DIRTY_BUILD_IDENTITY === 'true';
-const serviceNames = parseServiceNames(rawArgs);
+const configuredActiveSlot = normalizeSlot(
+  process.env.LUMIRA_ACTIVE_SLOT || (existsSync(envPath) ? parseEnvFile(envPath).LUMIRA_ACTIVE_SLOT : 'blue')
+);
+const serviceNames = parseServiceNames(rawArgs).map((name) => name === 'lumira-server' ? `lumira-server-${configuredActiveSlot}` : name);
 const resetConfirmPhrase = 'DELETE_LEGENDARY_DATA';
 const allowedServices = new Set([
-  'lumira-server',
+  'lumira-server-blue',
+  'lumira-server-green',
   'lumira-async',
   'lumira-job-executor',
   'mysql',
@@ -536,6 +543,11 @@ function generatedEnvDefaults() {
     GRAFANA_ALERT_WEBHOOK_ENABLED: 'false',
     GRAFANA_ALERT_WEBHOOK_URL: '',
     LUMIRA_SERVER_IMAGE: 'ghcr.io/elexvx/lumira/lumira-server:main',
+    LUMIRA_SERVER_BLUE_IMAGE: 'ghcr.io/elexvx/lumira/lumira-server:main',
+    LUMIRA_SERVER_GREEN_IMAGE: 'ghcr.io/elexvx/lumira/lumira-server:main',
+    LUMIRA_ACTIVE_SLOT: 'blue',
+    LUMIRA_ASYNC_IMAGE: 'ghcr.io/elexvx/lumira/lumira-async:main',
+    LUMIRA_JOB_EXECUTOR_IMAGE: 'ghcr.io/elexvx/lumira/lumira-job-executor:main',
     LUMIRA_FRONTEND_IMAGE: 'ghcr.io/elexvx/lumira/lumira-ui:main',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'https://bm.aiadc.org.cn',
     REDIS_MAXMEMORY: '256mb',
@@ -663,7 +675,15 @@ function ensureEdgeTlsFiles() {
 }
 
 function shouldPrepareAppWritableVolumes() {
-  return serviceNames.length === 0 || serviceNames.includes('lumira-server');
+  return serviceNames.length === 0 || serviceNames.some((name) => name.startsWith('lumira-server-'));
+}
+
+function ensureActiveUpstreams() {
+  const env = mergedEnv();
+  const slot = normalizeSlot(env.LUMIRA_ACTIVE_SLOT || configuredActiveSlot);
+  mkdirSync(generatedApiProxyDir, { recursive: true });
+  writeFileSync(activeUpstreamsPath, renderActiveUpstreams(slot, env), { mode: 0o644 });
+  log(`API proxy upstream prepared for active slot=${slot}.`);
 }
 
 function resolveComposeProjectName() {
@@ -820,6 +840,9 @@ function composeArgs(...extraArgs) {
   const composeBuildIdentityPath = path.relative(repoRoot, buildIdentityPath).replaceAll(path.sep, '/');
   const composeFilePath = path.relative(repoRoot, composeFile).replaceAll(path.sep, '/');
   const profileArgs = [
+    '--profile', configuredActiveSlot,
+    ...(serviceNames.includes('lumira-server-blue') ? ['--profile', 'blue'] : []),
+    ...(serviceNames.includes('lumira-server-green') ? ['--profile', 'green'] : []),
     ...(!localMysql ? ['--profile', 'edge'] : []),
     ...(localMysql ? ['--profile', 'local-mysql'] : []),
     ...(useLocalFrontendPreview ? ['--profile', 'local-lumira-ui'] : []),
@@ -836,7 +859,7 @@ async function checkDeployment() {
   const runtimeServices = [
     'redis',
     'xxl-job-admin',
-    'lumira-server',
+    `lumira-server-${configuredActiveSlot}`,
     'lumira-async',
     'lumira-job-executor',
     'api-proxy',
@@ -866,7 +889,12 @@ async function checkSelectedServiceReadiness() {
 
   const baseUrl = resolvePublicBaseUrl();
   const checks = {
-    'lumira-server': [
+    'lumira-server-blue': [
+      [`${baseUrl}/api/v1/public/security-settings`, 'lumira-server public settings API'],
+      [`${baseUrl}/api/health`, 'lumira-server health API'],
+      [`${baseUrl}/api/v1/public/login-capabilities`, 'lumira-server login capabilities API'],
+    ],
+    'lumira-server-green': [
       [`${baseUrl}/api/v1/public/security-settings`, 'lumira-server public settings API'],
       [`${baseUrl}/api/health`, 'lumira-server health API'],
       [`${baseUrl}/api/v1/public/login-capabilities`, 'lumira-server login capabilities API'],
@@ -1017,6 +1045,7 @@ ensureDockerReady();
 ensureHostMountedDirectories();
 ensureEdgeTlsFiles();
 ensureObservabilityProvisioning();
+ensureActiveUpstreams();
 
 if (reset) {
   run('docker', composeArgs('down', '-v', '--remove-orphans'));

@@ -6,16 +6,9 @@ server {
     server_name _;
 
     resolver 127.0.0.11 valid=10s ipv6=off;
-    set $gateway_upstream ${GATEWAY_UPSTREAM};
-    set $system_upstream ${SYSTEM_SERVICE_UPSTREAM};
-    set $auth_upstream ${AUTH_SERVICE_UPSTREAM};
-    set $file_upstream ${FILE_SERVICE_UPSTREAM};
-    set $message_upstream ${MESSAGE_SERVICE_UPSTREAM};
-    set $plugin_upstream ${PLUGIN_SERVICE_UPSTREAM};
-    set $payment_upstream ${PAYMENT_SERVICE_UPSTREAM};
-    set $localization_upstream ${LOCALIZATION_SERVICE_UPSTREAM};
-    set $team_upstream ${TEAM_SERVICE_UPSTREAM};
-    set $ai_upstream ${AI_SERVICE_UPSTREAM};
+    # Generated atomically by lumira-updater. Keeping the variables inside the
+    # server context lets Nginx reload traffic without restarting the proxy.
+    include /etc/nginx/lumira-upstreams/active-upstreams.conf;
 
     client_max_body_size 200m;
     limit_req_status 429;

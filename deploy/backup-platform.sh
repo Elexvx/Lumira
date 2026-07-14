@@ -43,17 +43,39 @@ COMPOSE_FILE="${ROOT_DIR}/deploy/docker-compose.prod.yml"
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
 REDIS_SERVICE="${REDIS_SERVICE:-redis}"
 MYSQL_DATABASE="${MYSQL_DATABASE:-${DB_NAME:-saas_platform}}"
-MYSQL_USER="${MYSQL_USER:-${DB_USER:-root}}"
+MYSQL_USER="${MYSQL_USER:-${DB_USERNAME:-${DB_USER:-root}}}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-${DB_PASSWORD:-}}"
 
 echo "Creating MySQL backup..."
-if [[ "${DRY_RUN}" == "1" || "${DRY_RUN}" == "true" ]]; then
-  run docker compose -f "${COMPOSE_FILE}" exec -T "${MYSQL_SERVICE}" \
-    sh -c "MYSQL_PWD='***' mysqldump --single-transaction --routines --triggers -u'${MYSQL_USER}' '${MYSQL_DATABASE}'"
+MYSQL_CONTAINER_ID="$(docker compose -f "${COMPOSE_FILE}" ps -q "${MYSQL_SERVICE}" 2>/dev/null || true)"
+if [[ -n "${MYSQL_CONTAINER_ID}" ]] && [[ "$(docker inspect -f '{{.State.Running}}' "${MYSQL_CONTAINER_ID}" 2>/dev/null || true)" == "true" ]]; then
+  if [[ "${DRY_RUN}" == "1" || "${DRY_RUN}" == "true" ]]; then
+    run docker compose -f "${COMPOSE_FILE}" exec -T "${MYSQL_SERVICE}" \
+      sh -c "MYSQL_PWD='***' mysqldump --single-transaction --routines --triggers -u'${MYSQL_USER}' '${MYSQL_DATABASE}'"
+  else
+    docker compose -f "${COMPOSE_FILE}" exec -T "${MYSQL_SERVICE}" \
+    sh -c "MYSQL_PWD='${MYSQL_PASSWORD}' mysqldump --single-transaction --routines --triggers -u'${MYSQL_USER}' '${MYSQL_DATABASE}'" \
+    > "${OUT_DIR}/mysql-${MYSQL_DATABASE}.sql"
+  fi
 else
-  docker compose -f "${COMPOSE_FILE}" exec -T "${MYSQL_SERVICE}" \
-  sh -c "MYSQL_PWD='${MYSQL_PASSWORD}' mysqldump --single-transaction --routines --triggers -u'${MYSQL_USER}' '${MYSQL_DATABASE}'" \
-  > "${OUT_DIR}/mysql-${MYSQL_DATABASE}.sql"
+  DB_ENDPOINT="${DB_URL#jdbc:mysql://}"
+  DB_AUTHORITY="${DB_ENDPOINT%%/*}"
+  DB_PATH="${DB_ENDPOINT#*/}"
+  DB_HOST="${DB_HOST:-${DB_AUTHORITY%%:*}}"
+  DB_PORT="${DB_PORT:-${DB_AUTHORITY##*:}}"
+  [[ "${DB_PORT}" == "${DB_AUTHORITY}" ]] && DB_PORT=3306
+  [[ -z "${DB_NAME:-}" && "${DB_PATH}" != "${DB_ENDPOINT}" ]] && MYSQL_DATABASE="${DB_PATH%%\?*}"
+  DB_BACKUP_NETWORK="${DB_BACKUP_NETWORK:-1panel-network}"
+  MYSQL_CLIENT_IMAGE="${MYSQL_CLIENT_IMAGE:-mysql:8.4}"
+  if [[ "${DRY_RUN}" == "1" || "${DRY_RUN}" == "true" ]]; then
+    run docker run --rm --network "${DB_BACKUP_NETWORK}" --add-host host.docker.internal:host-gateway \
+      "${MYSQL_CLIENT_IMAGE}" mysqldump --single-transaction --routines --triggers -h"${DB_HOST}" -P"${DB_PORT}" -u"${MYSQL_USER}" "${MYSQL_DATABASE}"
+  else
+    docker run --rm --network "${DB_BACKUP_NETWORK}" --add-host host.docker.internal:host-gateway \
+      -e MYSQL_PWD="${MYSQL_PASSWORD}" "${MYSQL_CLIENT_IMAGE}" \
+      mysqldump --single-transaction --routines --triggers -h"${DB_HOST}" -P"${DB_PORT}" -u"${MYSQL_USER}" "${MYSQL_DATABASE}" \
+      > "${OUT_DIR}/mysql-${MYSQL_DATABASE}.sql"
+  fi
 fi
 
 echo "Creating Redis backup..."

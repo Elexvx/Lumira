@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Set;
@@ -111,9 +112,16 @@ public class PlatformUpdateController {
 
     @PostMapping("/install")
     @RepeatSubmit
-    public ApiResponse<PlatformUpdateVO.TaskVO> install() {
+    public ApiResponse<PlatformUpdateVO.TaskVO> install(@RequestBody(required = false) PlatformUpdateVO.InstallRequest request) {
         CurrentUser currentUser = require("system:update:install");
-        return ApiResponse.success(platformUpdateAppService.install(currentUser), TraceContext.getRequestId());
+        return ApiResponse.success(platformUpdateAppService.install(currentUser, request), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/preflight")
+    @RepeatSubmit
+    public ApiResponse<PlatformUpdateVO.PreflightVO> preflight() {
+        CurrentUser currentUser = require("system:update:install");
+        return ApiResponse.success(platformUpdateAppService.preflight(currentUser), TraceContext.getRequestId());
     }
 
     @PostMapping("/rollback")
@@ -133,6 +141,13 @@ public class PlatformUpdateController {
     public ApiResponse<PlatformUpdateVO.TaskVO> task(@PathVariable Long id) {
         CurrentUser currentUser = require("system:update:view");
         return ApiResponse.success(platformUpdateAppService.getTask(currentUser, id), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/tasks/{id}/cancel")
+    @RepeatSubmit
+    public ApiResponse<PlatformUpdateVO.TaskVO> cancel(@PathVariable Long id) {
+        CurrentUser currentUser = require("system:update:install");
+        return ApiResponse.success(platformUpdateAppService.cancel(currentUser, id), TraceContext.getRequestId());
     }
 
     private CurrentUser require(String permissionKey) {
