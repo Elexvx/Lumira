@@ -266,6 +266,10 @@ test('platform updater is reachable from the backend container and installed as 
   assert.match(updaterInstaller, /build-identity\.env/, 'updater installer must detect production build identity');
   assert.match(updaterInstaller, /parseEnvFile\(buildIdentityPath\)/, 'updater installer must initialize slots from the deployed build identity');
   assert.match(updaterInstaller, /composeEnvArgs\.push\('--env-file', buildIdentityPath\)/, 'legacy migration must pass the deployed build identity to Compose');
+  assert.match(updaterInstaller, /containerNetworks\('lumira-api-proxy'\)/, 'legacy migration must select a network shared with the API proxy');
+  assert.doesNotMatch(updaterInstaller, /range \.NetworkSettings\.Networks/, 'legacy migration must not concatenate addresses from multiple Docker networks');
+  assert.match(updaterInstaller, /if \(!blueHealthy\) \{[\s\S]*stopBlueSlot\(\)/, 'failed pre-switch health checks must clean up the inactive slot');
+  assert.match(updaterInstaller, /lumira-legacy-default\.conf[\s\S]*nginx[\s\S]*reload[\s\S]*stopBlueSlot\(\)/, 'failed proxy cutover must reload the legacy config before cleaning up blue');
 });
 
 test('continuous release manifest uses digest-pinned images and a stable GitHub release', () => {
