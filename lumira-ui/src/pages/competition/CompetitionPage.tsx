@@ -4633,16 +4633,17 @@ const isFormValidationError = (error: unknown) =>
   Boolean(error && typeof error === 'object' && 'errorFields' in error);
 
 type CompetitionSettingsPanelHandle = {
-  flushPendingSave: () => Promise<void>;
+  flushPendingSave: () => Promise<boolean>;
+  saveNow: () => Promise<boolean>;
 };
 
-const useDebouncedAutoSave = (save: () => Promise<void>) => {
+const useDebouncedAutoSave = (save: () => Promise<boolean>) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const savingRef = useRef(false);
   const pendingRef = useRef(false);
-  const activeSaveRef = useRef<Promise<void>>(Promise.resolve());
+  const activeSaveRef = useRef<Promise<boolean>>(Promise.resolve(true));
 
-  const runSave = useCallback(async () => {
+  const runSave = useCallback(async (): Promise<boolean> => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = undefined;
@@ -4655,9 +4656,10 @@ const useDebouncedAutoSave = (save: () => Promise<void>) => {
     }
     savingRef.current = true;
     pendingRef.current = false;
-    const task = (async () => {
+    const task: Promise<boolean> = (async (): Promise<boolean> => {
+      let saved = false;
       try {
-        await save();
+        saved = await save();
       } catch (error) {
         if (!isFormValidationError(error)) {
           throw error;
@@ -4666,8 +4668,9 @@ const useDebouncedAutoSave = (save: () => Promise<void>) => {
         savingRef.current = false;
       }
       if (pendingRef.current) {
-        await runSave();
+        saved = (await runSave()) && saved;
       }
+      return saved;
     })();
     activeSaveRef.current = task;
     return task;
@@ -4689,13 +4692,17 @@ const useDebouncedAutoSave = (save: () => Promise<void>) => {
       timerRef.current = undefined;
     }
     if (!pendingRef.current && !savingRef.current) {
-      return;
+      return true;
     }
     if (pendingRef.current) {
-      await runSave();
-      return;
+      return runSave();
     }
-    await activeSaveRef.current;
+    return activeSaveRef.current;
+  }, [runSave]);
+
+  const saveNow = useCallback(async () => {
+    pendingRef.current = true;
+    return runSave();
   }, [runSave]);
 
   useEffect(() => () => {
@@ -4704,7 +4711,7 @@ const useDebouncedAutoSave = (save: () => Promise<void>) => {
     }
   }, []);
 
-  return { scheduleSave, flushPendingSave };
+  return { scheduleSave, flushPendingSave, saveNow };
 };
 
 const renderConfigItemFields = (
@@ -5065,14 +5072,14 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   const save = useCallback(async () => {
     const values = form.getFieldsValue(true);
     if (!isConfigModuleReadyToSave(module.key, values.items || [])) {
-      return;
+      return false;
     }
     if (module.key === 'fields') {
       const minMembers = Number(values.teamMinMembers);
       const maxMembers = Number(values.teamMaxMembers);
       if (!Number.isInteger(minMembers) || !Number.isInteger(maxMembers)
         || minMembers < 1 || maxMembers > 20 || minMembers > maxMembers) {
-        return;
+        return false;
       }
     }
     try {
@@ -5108,11 +5115,13 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           })()
         : await saveCompetitionSettingsModule(competitionUuid, module.key, configItems, API_OPTS.SILENT);
       onSaved(saved);
+      return true;
     } catch (error) {
       showErrorMessage(error, formatMessage({ id: 'page.competition.settings.item.saveFailed', defaultMessage: 'Settings save failed' }));
+      return false;
     }
   }, [competitionUuid, fileStageCode, form, items, module.key, onSaved]);
-  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
 
   const confirmOptionsEditor = useCallback(() => {
     if (!optionsEditor) {
@@ -5135,7 +5144,8 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   useImperativeHandle(ref, () => ({
     flushPendingSave,
-  }), [flushPendingSave]);
+    saveNow,
+  }), [flushPendingSave, saveNow]);
 
   return (
     <section className="competition-config-module">
@@ -5478,7 +5488,7 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
   const save = useCallback(async () => {
     const values = form.getFieldsValue(true);
     if (!isBasicSettingsPageReadyToSave(values)) {
-      return;
+      return false;
     }
     try {
       const saved = await updateCompetition(competition.id, normalizePayload({
@@ -5487,15 +5497,18 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
         ...values,
       } as CompetitionFormValues), API_OPTS.SILENT);
       onSaved(saved);
+      return true;
     } catch (error) {
       showErrorMessage(error, '基础信息保存失败');
+      return false;
     }
   }, [competition, form, onSaved]);
-  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave,
-  }), [flushPendingSave]);
+    saveNow,
+  }), [flushPendingSave, saveNow]);
 
   return (
     <section className="competition-config-module">
@@ -5635,18 +5648,26 @@ const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandl
         ...values,
       } as CompetitionFormValues), API_OPTS.SILENT);
       onCompetitionSaved(saved);
+      return true;
     } catch (error) {
       showErrorMessage(error, '费用设置保存失败');
+      return false;
     }
   }, [competition, form, onCompetitionSaved]);
-  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(saveFeeSettings);
+  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(saveFeeSettings);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave: async () => {
-      await flushPendingSave();
-      await paymentMethodsRef.current?.flushPendingSave();
+      const feeSaved = await flushPendingSave();
+      const methodsSaved = await paymentMethodsRef.current?.flushPendingSave() ?? true;
+      return feeSaved && methodsSaved;
     },
-  }), [flushPendingSave]);
+    saveNow: async () => {
+      const feeSaved = await saveNow();
+      const methodsSaved = await paymentMethodsRef.current?.saveNow() ?? true;
+      return feeSaved && methodsSaved;
+    },
+  }), [flushPendingSave, saveNow]);
 
   return (
     <Space direction="vertical" size={24} style={{ width: '100%' }}>
@@ -5708,7 +5729,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
   const save = useCallback(async () => {
     const values = form.getFieldsValue(true);
     if (!isTimelineSettingsPageReadyToSave(values)) {
-      return;
+      return false;
     }
     try {
       const saved = await updateCompetition(competition.id, normalizePayload({
@@ -5717,15 +5738,18 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
         ...values,
       } as CompetitionFormValues), API_OPTS.SILENT);
       onSaved(saved);
+      return true;
     } catch (error) {
       showErrorMessage(error, '赛事时间保存失败');
+      return false;
     }
   }, [competition, form, onSaved]);
-  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+  const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave,
-  }), [flushPendingSave]);
+    saveNow,
+  }), [flushPendingSave, saveNow]);
 
   return (
     <section className="competition-config-module">
@@ -6138,8 +6162,14 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
 
   useImperativeHandle(ref, () => ({
     flushPendingSave: async () => {
-      await timelineRef.current?.flushPendingSave();
-      await materialsRef.current?.flushPendingSave();
+      const timelineSaved = await timelineRef.current?.flushPendingSave() ?? true;
+      const materialsSaved = await materialsRef.current?.flushPendingSave() ?? true;
+      return timelineSaved && materialsSaved;
+    },
+    saveNow: async () => {
+      const timelineSaved = await timelineRef.current?.saveNow() ?? true;
+      const materialsSaved = await materialsRef.current?.saveNow() ?? true;
+      return timelineSaved && materialsSaved;
     },
   }), []);
 
@@ -6193,6 +6223,7 @@ const CompetitionSettingsPage = () => {
   const [registrationDetail, setRegistrationDetail] = useState<CompetitionSettingsRegistrationTab>(initialNavigation.registrationTab);
   const [stageDetail, setStageDetail] = useState<CompetitionSettingsStageTab>(initialNavigation.stageTab);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
   const [paymentProviderOptions, setPaymentProviderOptions] = useState<PaymentProviderOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
@@ -6297,6 +6328,23 @@ const CompetitionSettingsPage = () => {
     history.push('/competitions/management');
   }, [flushActivePanel]);
 
+  const handleSave = useCallback(async () => {
+    if (!activePanelRef.current) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await activePanelRef.current.saveNow();
+      if (saved) {
+        message.success('保存成功');
+      } else {
+        message.warning('当前设置未保存，请检查必填项或错误提示');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
   const handleModuleChange = useCallback(async (nextKey: CompetitionSettingsModuleKey) => {
     if (nextKey === activeKey) {
       return;
@@ -6329,9 +6377,14 @@ const CompetitionSettingsPage = () => {
     <ManagementPage
       title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: '赛事配置' })}
       extra={
-        <Button onClick={() => void handleBack()}>
-          {formatMessage({ id: 'page.competition.settings.back', defaultMessage: '返回' })}
-        </Button>
+        <Space>
+          <Button onClick={() => void handleBack()}>
+            {formatMessage({ id: 'page.competition.settings.back', defaultMessage: '返回' })}
+          </Button>
+          <Button type="primary" loading={saving} disabled={loading || !settings} onClick={() => void handleSave()}>
+            保存
+          </Button>
+        </Space>
       }
     >
       <ManagementPageBody>
