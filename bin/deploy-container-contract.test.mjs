@@ -359,8 +359,11 @@ test('api proxy template keeps split-owner routes explicit while defaulting comp
 });
 
 test('online migrator joins the configurable database network used by production', () => {
-  assert.match(envExample, /^DB_MIGRATION_NETWORK=1panel-network$/m);
-  assert.match(updater, /env\.DB_MIGRATION_NETWORK \|\| env\.DB_BACKUP_NETWORK \|\| '1panel-network'/);
+  assert.match(envExample, /^DB_MIGRATION_NETWORK=deploy_default$/m);
+  assert.match(updater, /env\.DB_MIGRATION_NETWORK \|\| env\.DB_BACKUP_NETWORK \|\| 'deploy_default'/);
+  assert.match(updater, /'--force-recreate', `lumira-server-\$\{targetSlot\}`/);
+  assert.match(updater, /composeArgs\(\.\.\.args\), \{ env: parseEnvFile\(envPath\) \}/);
+  assert.match(updater, /The migration network cannot resolve the configured database host\./);
   assert.match(
     composeProd,
     /mysql:[\s\S]*?networks:\s*\n\s*- default\s*\n\s*- 1panel-network/,
