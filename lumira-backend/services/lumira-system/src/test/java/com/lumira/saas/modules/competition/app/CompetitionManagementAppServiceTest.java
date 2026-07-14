@@ -155,6 +155,33 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void createCompetitionDraftShouldPersistEmptyBasicPlaceholders() {
+        StubOperations jdbcTemplate = new StubOperations();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "admin", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-1", Set.of("*", "aiadc:competition:create", "aiadc:competition:view")));
+        CompetitionManagementAppService service =
+                new CompetitionManagementAppService(jdbcTemplate, mock(DictRuntimeService.class), permissionSnapshotService, systemInternalApi, null);
+        jdbcTemplate.enqueue(List.of(competition("draft")), List.of(configSet()));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = new CompetitionDTO.CompetitionUpsertRequest();
+        request.setCompetitionStart("TBD");
+        request.setLocation("TBD");
+
+        service.createCompetitionDraft(admin(), request);
+
+        assertThat(jdbcTemplate.updateArguments).hasSize(2);
+        assertThat(jdbcTemplate.updateArguments.get(0)[6]).isEqualTo("");
+        assertThat(jdbcTemplate.updateArguments.get(0)[9]).isNull();
+        assertThat(jdbcTemplate.updateArguments.get(0)[13]).isEqualTo("");
+        assertThat(jdbcTemplate.updateArguments.get(0)[15]).isEqualTo("");
+    }
+
+    @Test
     void createCompetitionShouldRejectRevokedSessionTicketBeforeDatabaseAccess() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
@@ -886,6 +913,7 @@ class CompetitionManagementAppServiceTest {
     private static final class StubOperations extends MyBatisQueryOperations {
         private final Queue<List<?>> queryResults = new ArrayDeque<>();
         private final List<String> updates = new ArrayList<>();
+        private final List<Object[]> updateArguments = new ArrayList<>();
         private final Queue<Integer> updateResults = new ArrayDeque<>();
         private int updateCount = 0;
         private int lastInsertIdQueries;
@@ -906,6 +934,7 @@ class CompetitionManagementAppServiceTest {
         @Override
         public int update(String sql, Object... args) {
             updates.add(sql);
+            updateArguments.add(args);
             return updateResults.isEmpty() ? updateCount : updateResults.remove();
         }
 
