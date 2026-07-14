@@ -1110,20 +1110,22 @@ public class CompetitionManagementAppService {
                 ? trimRequired(request.getTitle(), "Competition title is required", MAX_TITLE_LENGTH, "Competition title is too long")
                 : "未命名赛事");
         normalized.setShortName(trimOptional(request.getShortName(), MAX_TITLE_LENGTH, "Competition short name is too long"));
-        normalized.setCategory(trimToNull(category) == null ? "OTHER" : trimToNull(category));
+        normalized.setCategory(trimToNull(category) == null ? "" : trimToNull(category));
         normalized.setCompetitionLevel(trimOptional(competitionLevel, MAX_SHORT_TEXT_LENGTH, "Competition level is too long"));
         normalized.setLevel(trimOptional(competitionLevel == null ? request.getLevel() : competitionLevel, MAX_SHORT_TEXT_LENGTH, "Competition level is too long"));
         normalized.setOrganizer(trimOptional(request.getOrganizer(), MAX_TITLE_LENGTH, "Competition organizer is too long"));
         normalized.setOrganizersJson(normalizeJson(request.getOrganizersJson(), "Competition organizers JSON"));
         normalized.setRegistrationStart(trimOptional(request.getRegistrationStart(), MAX_SHORT_TEXT_LENGTH, "Registration start is too long"));
         normalized.setRegistrationEnd(trimOptional(request.getRegistrationEnd(), MAX_SHORT_TEXT_LENGTH, "Registration end is too long"));
-        normalized.setCompetitionStart(StringUtils.hasText(request.getCompetitionStart())
-                ? trimRequired(request.getCompetitionStart(), "Competition start is required", MAX_SHORT_TEXT_LENGTH, "Competition start is too long")
-                : "TBD");
+        String competitionStart = trimToNull(request.getCompetitionStart());
+        normalized.setCompetitionStart(competitionStart == null || "TBD".equalsIgnoreCase(competitionStart)
+                ? ""
+                : trimRequired(competitionStart, "Competition start is required", MAX_SHORT_TEXT_LENGTH, "Competition start is too long"));
         normalized.setCompetitionEnd(trimOptional(request.getCompetitionEnd(), MAX_SHORT_TEXT_LENGTH, "Competition end is too long"));
-        normalized.setLocation(StringUtils.hasText(request.getLocation())
-                ? trimRequired(request.getLocation(), "Competition location is required", MAX_MID_TEXT_LENGTH, "Competition location is too long")
-                : "TBD");
+        String location = trimToNull(request.getLocation());
+        normalized.setLocation(location == null || "TBD".equalsIgnoreCase(location)
+                ? ""
+                : trimRequired(location, "Competition location is required", MAX_MID_TEXT_LENGTH, "Competition location is too long"));
         normalized.setParticipationScope(trimOptional(request.getParticipationScope(), MAX_MID_TEXT_LENGTH, "Participation scope is too long"));
         normalized.setParticipationRequirement(trimOptional(request.getParticipationRequirement(), MAX_LONG_TEXT_LENGTH, "Participation requirement is too long"));
         normalized.setScheduleJson(normalizeJson(request.getScheduleJson(), "Competition schedule JSON"));

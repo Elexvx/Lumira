@@ -75,6 +75,7 @@ import {
   pickEnabledCollectedValues,
   retainAvailablePaymentProvider,
 } from '@/pages/competition/utils/registrationCheckout';
+import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import { resolveRegistrationFieldScope } from '@/pages/competition/utils/registrationFieldScope';
 import {
@@ -582,6 +583,7 @@ const normalizePayload = (values: CompetitionFormValues): CompetitionUpsertPaylo
 
 const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormValues> => {
   const organizers = parseJsonArray<CompetitionOrganizerFormItem>(record.organizersJson);
+  const draftBasicDefaults = normalizeCompetitionDraftBasicDefaults(record, organizers);
   const schedules = parseJsonArray<CompetitionJsonSchedule>(record.scheduleJson).map((item) => ({
     timeMode: normalizeTimeMode(item.timeMode),
     title: item.title,
@@ -594,14 +596,14 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
     locale: splitCompetitionLocales(record.locale),
     title: record.title,
     shortName: record.shortName || undefined,
-    category: normalizeOptionValue(record.category) || undefined,
+    category: normalizeOptionValue(draftBasicDefaults.category) || undefined,
     level: normalizeOptionValue(record.level) || undefined,
     competitionLevel: normalizeOptionValue(record.competitionLevel || record.level) || undefined,
-    organizer: normalizeMojibakeText(record.organizer),
-    organizers: organizers.length ? organizers : [{ role: '主办方', name: normalizeMojibakeText(record.organizer) || '' }],
+    organizer: normalizeMojibakeText(draftBasicDefaults.organizer),
+    organizers: draftBasicDefaults.organizers,
     registrationRange: parseRange(record.registrationStart, record.registrationEnd),
     schedules: schedules.length ? schedules : [{ timeMode: 'CONFIRMED', title: '竞赛时间', timeRange: parseRange(record.competitionStart, record.competitionEnd) }],
-    participationScope: record.participationScope || record.location || undefined,
+    participationScope: draftBasicDefaults.participationScope,
     participationRequirement: record.participationRequirement || undefined,
     contactName: record.contactName || undefined,
     contactQrCodeUrl: record.contactQrCodeUrl || undefined,
@@ -624,7 +626,7 @@ const defaultCompetitionFormValues: Partial<CompetitionFormValues> = {
   currency: 'CNY',
   sort: 100,
   featured: false,
-  organizers: [{ role: 'Organizer', name: '' }],
+  organizers: [{ role: '', name: '' }],
   schedules: [{ timeMode: 'TBD', title: '' }],
 };
 
