@@ -861,24 +861,24 @@ public class CompetitionManagementAppService {
 
     private void validateCompetitionReadyForPublish(CompetitionVO.Competition competition, CompetitionVO.ConfigSet configSet) {
         List<String> missing = new ArrayList<>();
-        requirePublishText(missing, competition.getTitle(), "competition title is required");
-        requirePublishText(missing, competition.getCategory(), "competition category is required");
-        requirePublishText(missing, firstText(competition.getCompetitionLevel(), competition.getLevel()), "competition level is required");
-        requirePublishText(missing, competition.getParticipationScope(), "participation scope is required");
-        requirePublishText(missing, competition.getFeeMode(), "fee mode is required");
-        requirePublishText(missing, competition.getCurrency(), "currency is required");
-        requirePublishText(missing, competition.getRegistrationStart(), "registration start is required");
-        requirePublishText(missing, competition.getRegistrationEnd(), "registration end is required");
-        requirePublishText(missing, competition.getCompetitionStart(), "competition start is required");
+        requirePublishText(missing, competition.getTitle(), "赛事名称不能为空");
+        requirePublishText(missing, competition.getCategory(), "请选择赛事类别");
+        requirePublishText(missing, firstText(competition.getCompetitionLevel(), competition.getLevel()), "请选择赛事级别");
+        requirePublishText(missing, competition.getParticipationScope(), "请填写报名范围");
+        requirePublishText(missing, competition.getFeeMode(), "请选择收费方式");
+        requirePublishText(missing, competition.getCurrency(), "请选择结算币种");
+        requirePublishText(missing, competition.getRegistrationStart(), "请设置报名开始时间");
+        requirePublishText(missing, competition.getRegistrationEnd(), "请设置报名结束时间");
+        requirePublishText(missing, competition.getCompetitionStart(), "请设置赛事开始时间");
 
         List<CompetitionVO.ConfigItem> items = listConfigItems(competition.getUuid(), configSet.getId(), CONFIG_ITEM_TYPES);
         validateEnabledConfigItems(missing, items);
         if (!missing.isEmpty()) {
-            String message = missing.stream().limit(8).collect(Collectors.joining(", "));
+            String message = missing.stream().limit(8).collect(Collectors.joining("；"));
             if (missing.size() > 8) {
-                message += ", and " + (missing.size() - 8) + " more";
+                message += "；另有 " + (missing.size() - 8) + " 项未完成";
             }
-            throw biz(ErrorCode.VALIDATION_ERROR, "Competition is not ready to publish: " + message);
+            throw biz(ErrorCode.VALIDATION_ERROR, "赛事暂未满足发布条件：" + message);
         }
     }
 
@@ -889,19 +889,20 @@ public class CompetitionManagementAppService {
             }
             String moduleLabel = configItemModuleLabel(item.getItemType());
             String itemLabel = itemLabel(item);
-            requirePublishText(missing, item.getTitle(), moduleLabel + " " + itemLabel + " title is required");
-            requirePublishText(missing, item.getItemKey(), moduleLabel + " " + itemLabel + " key is required");
+            String itemReference = moduleLabel + "“" + itemLabel + "”";
+            requirePublishText(missing, item.getTitle(), moduleLabel + "名称不能为空");
+            requirePublishText(missing, item.getItemKey(), itemReference + "标识不能为空");
             if ("AGREEMENT".equals(item.getItemType()) || "CONSENT".equals(item.getItemType())) {
-                requirePublishText(missing, item.getContentText(), moduleLabel + " " + itemLabel + " content is required");
+                requirePublishText(missing, item.getContentText(), itemReference + "必须填写内容");
             } else if (Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD").contains(item.getItemType())) {
-                requirePublishText(missing, metadataValue(item, "fieldType"), moduleLabel + " " + itemLabel + " field type is required");
+                requirePublishText(missing, fieldTypeForPublish(item), itemReference + "必须设置字段类型");
             } else if ("REQUIRED_FILE".equals(item.getItemType())) {
-                requirePublishText(missing, metadataValue(item, "fileFormat"), moduleLabel + " " + itemLabel + " file format is required");
+                requirePublishText(missing, fileFormatForPublish(item), itemReference + "必须设置允许上传的文件格式");
             } else if ("STAGE_MATERIAL".equals(item.getItemType())) {
-                requirePublishText(missing, metadataValue(item, "stageName"), moduleLabel + " " + itemLabel + " stage name is required");
-                requirePublishText(missing, metadataValue(item, "materialType"), moduleLabel + " " + itemLabel + " material type is required");
+                requirePublishText(missing, metadataValue(item, "stageName"), itemReference + "必须设置所属阶段");
+                requirePublishText(missing, metadataValue(item, "materialType"), itemReference + "必须设置材料类型");
             } else if ("TIMELINE".equals(item.getItemType())) {
-                requirePublishText(missing, metadataValue(item, "timelineKind"), moduleLabel + " " + itemLabel + " timeline kind is required");
+                requirePublishText(missing, metadataValue(item, "timelineKind"), itemReference + "必须设置时间类型");
             }
         }
     }
@@ -925,19 +926,32 @@ public class CompetitionManagementAppService {
     }
 
     private String itemLabel(CompetitionVO.ConfigItem item) {
-        return StringUtils.hasText(item.getTitle()) ? item.getTitle().trim() : configItemModuleLabel(item.getItemType()) + " item";
+        String title = StringUtils.hasText(item.getTitle()) ? item.getTitle().trim() : "未命名";
+        if ("contact-name".equals(item.getItemKey()) && "Contact name".equalsIgnoreCase(title)) {
+            return "联系人姓名";
+        }
+        if ("work-file".equals(item.getItemKey()) && "Work file".equalsIgnoreCase(title)) {
+            return "作品文件";
+        }
+        if ("commitment".equals(item.getItemKey()) && "Commitment".equalsIgnoreCase(title)) {
+            return "赛事承诺书";
+        }
+        if ("informed-consent".equals(item.getItemKey()) && "Informed consent".equalsIgnoreCase(title)) {
+            return "知情同意书";
+        }
+        return title;
     }
 
     private String configItemModuleLabel(String itemType) {
         return switch (itemType == null ? "" : itemType) {
-            case "AGREEMENT", "CONSENT" -> "document";
-            case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD" -> "field";
-            case "TEAM_SETTINGS" -> "team settings";
-            case "PAYMENT_SETTINGS" -> "payment settings";
-            case "REQUIRED_FILE" -> "file";
-            case "STAGE_MATERIAL" -> "stage material";
-            case "TIMELINE" -> "timeline";
-            default -> "config";
+            case "AGREEMENT", "CONSENT" -> "报名文书";
+            case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD" -> "报名字段";
+            case "TEAM_SETTINGS" -> "团队设置";
+            case "PAYMENT_SETTINGS" -> "支付设置";
+            case "REQUIRED_FILE" -> "提交材料";
+            case "STAGE_MATERIAL" -> "阶段材料";
+            case "TIMELINE" -> "时间节点";
+            default -> "配置项";
         };
     }
 
@@ -955,6 +969,37 @@ public class CompetitionManagementAppService {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private String fieldTypeForPublish(CompetitionVO.ConfigItem item) {
+        String fieldType = metadataValue(item, "fieldType");
+        if (StringUtils.hasText(fieldType)) {
+            return fieldType;
+        }
+        String legacyType = metadataValue(item, "type");
+        if (!StringUtils.hasText(legacyType)) {
+            return null;
+        }
+        return switch (legacyType.trim().toLowerCase(Locale.ROOT)) {
+            case "input", "text" -> "TEXT";
+            case "textarea" -> "TEXTAREA";
+            case "number" -> "NUMBER";
+            case "date" -> "DATE";
+            case "select", "radio" -> "SELECT";
+            case "multiselect", "multi-select", "checkbox" -> "MULTI_SELECT";
+            case "mobile", "phone" -> "MOBILE";
+            case "email" -> "EMAIL";
+            case "image", "upload" -> "IMAGE";
+            default -> null;
+        };
+    }
+
+    private String fileFormatForPublish(CompetitionVO.ConfigItem item) {
+        String fileFormat = metadataValue(item, "fileFormat");
+        if (StringUtils.hasText(fileFormat)) {
+            return fileFormat;
+        }
+        return StringUtils.hasText(metadataValue(item, "accept")) ? "ANY" : null;
     }
 
     private CompetitionDTO.CompetitionUpsertRequest normalizeRequest(CompetitionDTO.CompetitionUpsertRequest request, String fallbackCode) {
@@ -987,7 +1032,7 @@ public class CompetitionManagementAppService {
                 ? trimRequired(request.getCode(), "Competition code is required", MAX_CODE_LENGTH, "Competition code is too long")
                 : trimRequired(existing.getCompetitionNo(), "Competition code is required", MAX_CODE_LENGTH, "Competition code is too long"));
         normalized.setLocale(normalizeLocales(request.getLocale(), "zh", LOCALES, "Invalid competition locale"));
-        normalized.setTitle(trimRequired(firstText(request.getTitle(), existing.getTitle(), "Untitled competition"), "Competition title is required", MAX_TITLE_LENGTH, "Competition title is too long"));
+        normalized.setTitle(trimRequired(firstText(request.getTitle(), existing.getTitle(), "未命名赛事"), "Competition title is required", MAX_TITLE_LENGTH, "Competition title is too long"));
         normalized.setShortName(trimOptional(request.getShortName(), MAX_TITLE_LENGTH, "Competition short name is too long"));
         normalized.setCategory(dictRuntimeService.normalizeValue(
                 COMPETITION_CATEGORY_DICT,
@@ -1063,7 +1108,7 @@ public class CompetitionManagementAppService {
         normalized.setLocale(normalizeLocales(request.getLocale(), "zh", LOCALES, "Invalid competition locale"));
         normalized.setTitle(StringUtils.hasText(request.getTitle())
                 ? trimRequired(request.getTitle(), "Competition title is required", MAX_TITLE_LENGTH, "Competition title is too long")
-                : "Untitled competition");
+                : "未命名赛事");
         normalized.setShortName(trimOptional(request.getShortName(), MAX_TITLE_LENGTH, "Competition short name is too long"));
         normalized.setCategory(trimToNull(category) == null ? "OTHER" : trimToNull(category));
         normalized.setCompetitionLevel(trimOptional(competitionLevel, MAX_SHORT_TEXT_LENGTH, "Competition level is too long"));
