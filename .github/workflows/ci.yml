@@ -59,6 +59,10 @@ jobs:
       REGISTRY: ghcr.io
     steps:
       - uses: actions/checkout@v4
+      - name: Test updater state machine and deployment contracts
+        run: node --test bin/*.test.mjs
+      - name: Validate blue-green Compose topology
+        run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.prod.yml --profile blue --profile green config --quiet
       - name: Resolve image names
         id: images
         shell: bash
@@ -67,7 +71,12 @@ jobs:
           short_sha="${GITHUB_SHA::12}"
           echo "lumira_server=${REGISTRY}/${owner}/lumira/lumira-server" >> "$GITHUB_OUTPUT"
           echo "lumira_ui=${REGISTRY}/${owner}/lumira/lumira-ui" >> "$GITHUB_OUTPUT"
+          echo "lumira_async=${REGISTRY}/${owner}/lumira/lumira-async" >> "$GITHUB_OUTPUT"
+          echo "lumira_job_executor=${REGISTRY}/${owner}/lumira/lumira-job-executor" >> "$GITHUB_OUTPUT"
+          echo "lumira_migrator=${REGISTRY}/${owner}/lumira/lumira-migrator" >> "$GITHUB_OUTPUT"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
+      - name: Enforce expand-only online migrations
+        run: node bin/check-expand-only-migrations.mjs
       - uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -107,6 +116,54 @@ jobs:
           sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           cache-from: type=gha,scope=lumira-ui
           cache-to: type=gha,mode=max,scope=lumira-ui
+      - name: Build lumira-async image
+        id: build_async
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/service.Dockerfile
+          build-args: |
+            SERVICE_DIR=services/lumira-async
+            SERVICE_MODULE=services/lumira-async
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.images.outputs.lumira_async }}:main
+            ${{ steps.images.outputs.lumira_async }}:sha-${{ steps.images.outputs.short_sha }}
+          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-from: type=gha,scope=lumira-async
+          cache-to: type=gha,mode=max,scope=lumira-async
+      - name: Build lumira-job-executor image
+        id: build_job_executor
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/service.Dockerfile
+          build-args: |
+            SERVICE_DIR=services/lumira-quartz
+            SERVICE_MODULE=services/lumira-quartz
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.images.outputs.lumira_job_executor }}:main
+            ${{ steps.images.outputs.lumira_job_executor }}:sha-${{ steps.images.outputs.short_sha }}
+          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-from: type=gha,scope=lumira-job-executor
+          cache-to: type=gha,mode=max,scope=lumira-job-executor
+      - name: Build lumira-migrator image
+        id: build_migrator
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/docker/migrator.Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ steps.images.outputs.lumira_migrator }}:main
+            ${{ steps.images.outputs.lumira_migrator }}:sha-${{ steps.images.outputs.short_sha }}
+          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-from: type=gha,scope=lumira-migrator
+          cache-to: type=gha,mode=max,scope=lumira-migrator
       - name: Write image supply-chain evidence
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
@@ -129,6 +186,24 @@ jobs:
                 "digest": "${{ steps.build_ui.outputs.digest }}",
                 "sbom": "enabled",
                 "provenance": "enabled"
+              },
+              "lumiraAsync": {
+                "image": "${{ steps.images.outputs.lumira_async }}:sha-${{ steps.images.outputs.short_sha }}",
+                "digest": "${{ steps.build_async.outputs.digest }}",
+                "sbom": "enabled",
+                "provenance": "enabled"
+              },
+              "lumiraJobExecutor": {
+                "image": "${{ steps.images.outputs.lumira_job_executor }}:sha-${{ steps.images.outputs.short_sha }}",
+                "digest": "${{ steps.build_job_executor.outputs.digest }}",
+                "sbom": "enabled",
+                "provenance": "enabled"
+              },
+              "lumiraMigrator": {
+                "image": "${{ steps.images.outputs.lumira_migrator }}:sha-${{ steps.images.outputs.short_sha }}",
+                "digest": "${{ steps.build_migrator.outputs.digest }}",
+                "sbom": "enabled",
+                "provenance": "enabled"
               }
             }
           }
@@ -140,6 +215,11 @@ jobs:
           APP_VERSION: main
           LUMIRA_SERVER_IMAGE: ${{ steps.images.outputs.lumira_server }}@${{ steps.build_server.outputs.digest }}
           LUMIRA_FRONTEND_IMAGE: ${{ steps.images.outputs.lumira_ui }}@${{ steps.build_ui.outputs.digest }}
+          LUMIRA_ASYNC_IMAGE: ${{ steps.images.outputs.lumira_async }}@${{ steps.build_async.outputs.digest }}
+          LUMIRA_JOB_EXECUTOR_IMAGE: ${{ steps.images.outputs.lumira_job_executor }}@${{ steps.build_job_executor.outputs.digest }}
+          LUMIRA_MIGRATOR_IMAGE: ${{ steps.images.outputs.lumira_migrator }}@${{ steps.build_migrator.outputs.digest }}
+          LUMIRA_RELEASE_MIGRATION_MODE: expand-only
+          LUMIRA_RELEASE_DATABASE_VERSION: '202607140001'
           LUMIRA_RELEASE_NOTES: Lumira main build ${{ steps.images.outputs.short_sha }}
         run: node bin/generate-release-manifest.mjs
       - name: Publish continuous release manifest

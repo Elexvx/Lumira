@@ -112,6 +112,9 @@ services:
     - mysql_data:/var/lib/mysql
     - ../lumira-backend/sql/saas.sql:/docker-entrypoint-initdb.d/001-saas.sql:ro
     - ./.generated/database-version/002-database-version.sql:/docker-entrypoint-initdb.d/002-database-version.sql:ro
+    networks:
+    - default
+    - 1panel-network
     healthcheck:
       test:
       - CMD-SHELL
@@ -195,8 +198,7 @@ services:
       AI_SERVICE_UPSTREAM: ${AI_SERVICE_UPSTREAM:-lumira-server:8080}
     volumes:
     - ./nginx/api.conf.template:/etc/nginx/templates/api.conf.template:ro
-    depends_on:
-    - lumira-server
+    - ./.generated/api-proxy:/etc/nginx/lumira-upstreams:ro
   lumira-ui:
     profiles:
     - local-lumira-ui
@@ -333,7 +335,9 @@ services:
     - prometheus
     - loki
     - tempo
-  lumira-server:
+  lumira-server-blue: &lumira-server
+    profiles:
+    - blue
     build:
       context: ..
       dockerfile: deploy/docker/service.Dockerfile
@@ -343,9 +347,10 @@ services:
         OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
         SERVICE_DIR: services/lumira-admin
         SERVICE_MODULE: services/lumira-admin
-    image: ${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}
-    container_name: lumira-server
+    image: ${LUMIRA_SERVER_BLUE_IMAGE:-${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}}
+    container_name: lumira-server-blue
     restart: unless-stopped
+    stop_grace_period: 60s
     logging:
       driver: json-file
       options:
@@ -489,6 +494,12 @@ services:
     networks:
     - default
     - 1panel-network
+  lumira-server-green:
+    <<: *lumira-server
+    profiles:
+    - green
+    image: ${LUMIRA_SERVER_GREEN_IMAGE:-${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}}
+    container_name: lumira-server-green
   lumira-async:
     build:
       context: ..
@@ -502,6 +513,7 @@ services:
     image: ${LUMIRA_ASYNC_IMAGE:-lumira/lumira-async:0.1.0}
     container_name: lumira-async
     restart: unless-stopped
+    stop_grace_period: 60s
     logging:
       driver: json-file
       options:
@@ -516,8 +528,8 @@ services:
       SAAS_INTERNAL_PAYMENT_TOKEN: ${SAAS_INTERNAL_PAYMENT_TOKEN:?SAAS_INTERNAL_PAYMENT_TOKEN is required}
       SAAS_INTERNAL_PLUGIN_TOKEN: ${SAAS_INTERNAL_PLUGIN_TOKEN:?SAAS_INTERNAL_PLUGIN_TOKEN is required}
       SAAS_INTERNAL_JOB_TOKEN: ${SAAS_INTERNAL_JOB_TOKEN:?SAAS_INTERNAL_JOB_TOKEN is required}
-      AUTH_SERVICE_BASE_URL: ${AUTH_SERVICE_BASE_URL:-http://lumira-server:8080}
-      TEAM_SERVICE_BASE_URL: ${TEAM_SERVICE_BASE_URL:-http://lumira-server:8080}
+      AUTH_SERVICE_BASE_URL: ${AUTH_SERVICE_BASE_URL:-http://api-proxy:80}
+      TEAM_SERVICE_BASE_URL: ${TEAM_SERVICE_BASE_URL:-http://api-proxy:80}
       SPRING_PROFILES_ACTIVE: ${ASYNC_RUNTIME_PROFILES_ACTIVE:-prod}
       LEGENDARY_MONOLITH: 'true'
       LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED: ${LUMIRA_ASYNC_RUNTIME_CONTROL_PLANE_ENABLED:-false}
@@ -559,6 +571,7 @@ services:
     image: ${LUMIRA_JOB_EXECUTOR_IMAGE:-lumira/lumira-job-executor:0.1.0}
     container_name: lumira-job-executor
     restart: unless-stopped
+    stop_grace_period: 60s
     logging: *id001
     mem_limit: ${JOB_EXECUTOR_MEM_LIMIT:-256m}
     cpus: ${JOB_EXECUTOR_CPUS:-0.5}

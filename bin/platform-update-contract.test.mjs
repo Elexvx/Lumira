@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  UPDATE_PHASES,
+  buildPreflightReport,
+  createInitialDeploymentState,
+  inactiveSlot,
+  normalizeReleaseManifest,
+  phaseProgress,
+  renderActiveUpstreams,
+} from './lib/platform-update-contract.mjs';
+
+const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${'a'.repeat(64)}`;
+const manifestV2 = (overrides = {}) => ({
+  schemaVersion: 2,
+  version: '2.0.0',
+  commit: 'abcdef0123456789',
+  images: {
+    server: digest('server'),
+    frontend: digest('frontend'),
+    async: digest('async'),
+    jobExecutor: digest('job'),
+    migrator: digest('migrator'),
+  },
+  update: {
+    strategy: 'single-host-blue-green',
+    minUpdaterProtocol: 2,
+    database: { mode: 'expand-only', targetVersion: '202607140001' },
+  },
+  ...overrides,
+});
+
+test('manifest v2 requires digest-pinned runtime images', () => {
+  const normalized = normalizeReleaseManifest(manifestV2());
+  assert.equal(normalized.images.async, digest('async'));
+  assert.throws(() => normalizeReleaseManifest(manifestV2({ images: { server: 'server:latest' } })), /sha256 digest/);
+});
+
+test('manifest v1 remains readable for compatibility but is blocked for online updates', () => {
+  const legacy = { schemaVersion: 1, commit: 'abcdef0', serverImage: digest('server') };
+  assert.equal(normalizeReleaseManifest(legacy).strategy, 'legacy-recreate');
+  const report = buildPreflightReport({ manifest: legacy, state: createInitialDeploymentState(), freeMemoryBytes: 2 ** 31, freeDiskBytes: 4 * 2 ** 30 });
+  assert.equal(report.ready, false);
+  assert.match(report.blockers.join(' '), /blue-green/);
+});
+
+test('preflight selects the inactive slot and enforces overlap resources', () => {
+  const state = createInitialDeploymentState({ activeSlot: 'green' });
+  const ready = buildPreflightReport({ manifest: manifestV2(), state, freeMemoryBytes: 2 ** 30, freeDiskBytes: 4 * 2 ** 30 });
+  assert.equal(ready.ready, true);
+  assert.equal(ready.targetSlot, 'blue');
+  const blocked = buildPreflightReport({ manifest: manifestV2(), state, freeMemoryBytes: 128, freeDiskBytes: 128 });
+  assert.equal(blocked.ready, false);
+  assert.equal(blocked.blockers.length, 2);
+});
+
+test('upstream rendering points every monolith route at the active slot', () => {
+  const rendered = renderActiveUpstreams('green');
+  assert.equal((rendered.match(/lumira-server-green:8080/g) || []).length, 10);
+  assert.equal(inactiveSlot('green'), 'blue');
+});
+
+test('phase progress is monotonic and reaches finalization', () => {
+  const progress = UPDATE_PHASES.map(phaseProgress);
+  assert.deepEqual([...progress].sort((a, b) => a - b), progress);
+  assert.ok(progress.at(-1) >= 90);
+});

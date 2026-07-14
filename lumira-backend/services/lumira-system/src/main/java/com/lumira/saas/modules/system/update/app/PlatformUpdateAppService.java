@@ -17,6 +17,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.update.entity.PlatformUpdateTaskEntity;
 import com.lumira.saas.modules.system.update.mapper.PlatformUpdateTaskMapper;
 import com.lumira.saas.modules.system.update.vo.PlatformUpdateVO;
+import io.micrometer.core.instrument.Metrics;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -27,6 +28,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -69,7 +72,8 @@ public class PlatformUpdateAppService {
     private static final int MAX_UPDATER_TEXT_LENGTH = 2000;
     private static final Pattern COMMIT_PATTERN = Pattern.compile("^[0-9a-fA-F]{7,64}$");
     private static final Pattern DIGEST_PINNED_IMAGE_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,446}@sha256:[0-9a-fA-F]{64}$");
-    private static final Set<String> UPDATER_STATUSES = Set.of("PENDING", TASK_RUNNING, "SUCCEEDED", "FAILED", "ROLLED_BACK");
+    private static final Set<String> UPDATER_STATUSES = Set.of("PENDING", TASK_RUNNING, "SUCCEEDED", "FAILED", "ROLLED_BACK", "CANCELLED");
+    private static final String ACTIVE_TASK_KEY = "GLOBAL";
 
     private final Environment environment;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
@@ -185,6 +189,10 @@ public class PlatformUpdateAppService {
         PlatformUpdateVO.StatusVO status = cachedStatus;
         if (status == null) {
             status = checkLatestInternal();
+        } else {
+            PlatformUpdateVO.UpdaterCapabilitiesVO capabilities = updaterCapabilities();
+            status.setUpdaterCapabilities(capabilities);
+            status.setUpdaterAvailable(capabilities != null);
         }
         status.setActiveTask(findActiveTask());
         return status;
@@ -211,7 +219,9 @@ public class PlatformUpdateAppService {
         status.setCurrentKnown(hasKnownCommit(current.getCommitId()));
         status.setLatestKnown(false);
         status.setSourceReachable(false);
-        status.setUpdaterAvailable(isUpdaterAvailable());
+        PlatformUpdateVO.UpdaterCapabilitiesVO capabilities = updaterCapabilities();
+        status.setUpdaterCapabilities(capabilities);
+        status.setUpdaterAvailable(capabilities != null);
         status.setUpdateAvailable(false);
 
         try {
@@ -226,6 +236,14 @@ public class PlatformUpdateAppService {
                 PlatformUpdateVO.ManifestVO manifest = new PlatformUpdateVO.ManifestVO();
                 manifest.setServerImage(latest.getServerImage());
                 manifest.setFrontendImage(latest.getFrontendImage());
+                manifest.setAsyncImage(latest.getAsyncImage());
+                manifest.setJobExecutorImage(latest.getJobExecutorImage());
+                manifest.setMigratorImage(latest.getMigratorImage());
+                manifest.setSchemaVersion(latest.getSchemaVersion());
+                manifest.setStrategy(latest.getStrategy());
+                manifest.setMinUpdaterProtocol(latest.getMinUpdaterProtocol());
+                manifest.setMigrationMode(latest.getMigrationMode());
+                manifest.setDatabaseVersion(latest.getDatabaseVersion());
                 manifest.setMigrationRequired(latest.getMigrationRequired());
                 manifest.setRollbackSupported(latest.getRollbackSupported());
                 manifest.setReleaseNotes(latest.getTitle());
@@ -237,8 +255,8 @@ public class PlatformUpdateAppService {
                 status.setNotes(List.of("The system only displays status and will not install updates automatically.", "Configure PLATFORM_UPDATE_MANIFEST_URL to show images and release notes."));
             } else if (updateAvailable) {
                 status.setStatus(STATUS_UPDATE_AVAILABLE);
-                status.setActionRequired("A new version is available. Admins can install it manually after confirming backups and a maintenance window.");
-                status.setNotes(List.of("Installation is executed by the host lumira-updater agent.", "The business service does not execute shell commands or control Docker directly."));
+                status.setActionRequired("A new version is available. Run preflight and confirm the blue-green update.");
+                status.setNotes(List.of("HTTP/API traffic is switched with an Nginx hot reload.", "Database migrations must remain expand-only so the previous slot can be restored safely."));
             } else {
                 status.setStatus(STATUS_UP_TO_DATE);
                 status.setActionRequired("No action required.");
@@ -276,18 +294,40 @@ public class PlatformUpdateAppService {
         return status;
     }
 
-    public PlatformUpdateVO.TaskVO install(CurrentUser currentUser) {
+    public PlatformUpdateVO.PreflightVO preflight(CurrentUser currentUser) {
         requirePermission(currentUser, PERMISSION_INSTALL);
         PlatformUpdateVO.StatusVO status = checkLatestInternal();
-        if (!Boolean.TRUE.equals(status.getUpdaterAvailable())) {
-            throw new IllegalStateException("Platform update agent is unavailable. Configure and start lumira-updater first.");
+        requireUpdater(status);
+        PlatformUpdateVO.LatestVersionVO latest = requireInstallableLatest(status);
+        try {
+            JsonNode response = postUpdater("/v1/update/preflight", Map.of("manifest", manifestPayload(latest)));
+            PlatformUpdateVO.PreflightVO result = toPreflightVO(response);
+            Metrics.counter("lumira.platform.update.preflight", "ready", String.valueOf(Boolean.TRUE.equals(result.getReady()))).increment();
+            return result;
+        } catch (Exception ex) {
+            throw new IllegalStateException("Platform update preflight failed: " + ex.getMessage(), ex);
         }
-        PlatformUpdateVO.LatestVersionVO latest = status.getLatest();
-        if (latest == null || !StringUtils.hasText(latest.getServerImage())) {
-            throw new IllegalStateException("Current update source does not provide an installable serverImage. Configure the release manifest.");
+    }
+
+    public PlatformUpdateVO.TaskVO install(CurrentUser currentUser) {
+        return install(currentUser, null);
+    }
+
+    public PlatformUpdateVO.TaskVO install(CurrentUser currentUser, PlatformUpdateVO.InstallRequest request) {
+        requirePermission(currentUser, PERMISSION_INSTALL);
+        PlatformUpdateVO.StatusVO status = checkLatestInternal();
+        requireUpdater(status);
+        PlatformUpdateVO.LatestVersionVO latest = requireInstallableLatest(status);
+        if (request != null && StringUtils.hasText(request.getTargetCommit())
+                && !latest.getCommitId().equalsIgnoreCase(normalizeCommit(request.getTargetCommit(), false))) {
+            throw new IllegalStateException("The release changed after preflight. Run preflight again.");
         }
         PlatformUpdateTaskEntity task = createTask(TASK_INSTALL, latest, currentUser);
-        return startUpdaterTask(task, "/v1/update/install");
+        task.setPreflightId(request == null ? null : boundedText(request.getPreflightId(), 128, "preflightId"));
+        return startUpdaterTask(task, "/v1/update/install", new UpdaterRequest(
+                task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(),
+                task.getPreflightId(), manifestPayload(latest)
+        ));
     }
 
     public PlatformUpdateVO.TaskVO rollback(CurrentUser currentUser) {
@@ -297,7 +337,31 @@ public class PlatformUpdateAppService {
         }
         PlatformUpdateVO.LatestVersionVO latest = getStatusInternal().getLatest();
         PlatformUpdateTaskEntity task = createTask(TASK_ROLLBACK, latest, currentUser);
-        return startUpdaterTask(task, "/v1/update/rollback");
+        return startUpdaterTask(task, "/v1/update/rollback", new UpdaterRequest(
+                task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(), null, null
+        ));
+    }
+
+    public PlatformUpdateVO.TaskVO cancel(CurrentUser currentUser, Long id) {
+        requirePermission(currentUser, PERMISSION_INSTALL);
+        requirePositiveId(id, "Update task id is required");
+        PlatformUpdateTaskEntity task = taskMapper.selectById(id);
+        if (task == null || !StringUtils.hasText(task.getUpdaterTaskId())) {
+            throw new IllegalArgumentException("Update task does not exist or has not started: " + id);
+        }
+        if (isTerminal(task.getStatus())) return toTaskVO(task);
+        PlatformUpdateTaskEntity expected = snapshotTask(task);
+        try {
+            JsonNode response = postUpdater("/v1/update/tasks/" + task.getUpdaterTaskId() + "/cancel", Map.of());
+            applyUpdaterState(task, response);
+            task.setUpdatedAt(LocalDateTime.now());
+            updateTaskIfUnchanged(task, expected);
+            Metrics.counter("lumira.platform.update.cancel.requested", "phase", firstText(task.getPhase(), "unknown")).increment();
+            log.info("platform_update_cancel_requested taskId={} updaterTaskId={} phase={} actor={}", task.getId(), task.getUpdaterTaskId(), task.getPhase(), currentUser.getUsername());
+            return toTaskVO(task);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Unable to cancel or roll back update task: " + ex.getMessage(), ex);
+        }
     }
 
     public List<PlatformUpdateVO.TaskVO> listTasks(CurrentUser currentUser) {
@@ -330,20 +394,22 @@ public class PlatformUpdateAppService {
         }
     }
 
-    private PlatformUpdateVO.TaskVO startUpdaterTask(PlatformUpdateTaskEntity task, String path) {
+    private PlatformUpdateVO.TaskVO startUpdaterTask(PlatformUpdateTaskEntity task, String path, Object request) {
         PlatformUpdateTaskEntity expected = snapshotTask(task);
         try {
-            JsonNode response = postUpdater(path, task);
+            JsonNode response = postUpdater(path, request);
             task.setUpdaterTaskId(normalizeUpdaterTaskId(firstText(response.path("taskId").asText(null), response.path("id").asText(null))));
             task.setStatus(normalizeUpdaterStatus(firstText(response.path("status").asText(null), TASK_RUNNING), TASK_RUNNING));
             task.setLogSummary(boundedText(response.path("message").asText(null), MAX_UPDATER_TEXT_LENGTH, "updater message"));
             task.setBackupPath(boundedText(response.path("backupPath").asText(null), MAX_URL_LENGTH, "updater backupPath"));
+            applyUpdaterState(task, response);
             task.setUpdatedAt(LocalDateTime.now());
             updateTaskIfUnchanged(task, expected);
         } catch (Exception ex) {
             task.setStatus("FAILED");
             task.setErrorMessage(ex.getMessage());
             task.setFinishedAt(LocalDateTime.now());
+            task.setActiveKey(null);
             task.setUpdatedAt(LocalDateTime.now());
             updateTaskIfUnchanged(task, expected);
         }
@@ -357,12 +423,19 @@ public class PlatformUpdateAppService {
         PlatformUpdateTaskEntity expected = snapshotTask(task);
         try {
             JsonNode response = getUpdater("/v1/update/tasks/" + task.getUpdaterTaskId());
-            task.setStatus(normalizeUpdaterStatus(firstText(response.path("status").asText(null), task.getStatus()), task.getStatus()));
+            applyUpdaterState(task, response);
             task.setBackupPath(boundedText(firstText(response.path("backupPath").asText(null), task.getBackupPath()), MAX_URL_LENGTH, "updater backupPath"));
             task.setLogSummary(boundedText(firstText(response.path("message").asText(null), response.path("logSummary").asText(null), task.getLogSummary()), MAX_UPDATER_TEXT_LENGTH, "updater logSummary"));
             task.setErrorMessage(boundedText(firstText(response.path("errorMessage").asText(null), task.getErrorMessage()), MAX_UPDATER_TEXT_LENGTH, "updater errorMessage"));
             if (isTerminal(task.getStatus()) && task.getFinishedAt() == null) {
                 task.setFinishedAt(LocalDateTime.now());
+                task.setActiveKey(null);
+                Metrics.counter("lumira.platform.update.completed", "type", task.getTaskType(), "status", task.getStatus()).increment();
+                if (task.getStartedAt() != null) {
+                    Metrics.timer("lumira.platform.update.duration", "type", task.getTaskType(), "status", task.getStatus())
+                            .record(Duration.between(task.getStartedAt(), task.getFinishedAt()));
+                }
+                log.info("platform_update_completed taskId={} updaterTaskId={} status={} phase={} activeSlot={} targetSlot={}", task.getId(), task.getUpdaterTaskId(), task.getStatus(), task.getPhase(), task.getActiveSlot(), task.getTargetSlot());
             }
             task.setUpdatedAt(LocalDateTime.now());
             updateTaskIfUnchanged(task, expected);
@@ -388,6 +461,10 @@ public class PlatformUpdateAppService {
         LocalDateTime now = LocalDateTime.now();
         task.setTaskType(taskType);
         task.setStatus("PENDING");
+        task.setStrategy(firstText(latest == null ? null : latest.getStrategy(), "single-host-blue-green"));
+        task.setPhase("PREFLIGHT");
+        task.setProgressPercent(0);
+        task.setActiveKey(ACTIVE_TASK_KEY);
         task.setTargetVersion(latest == null ? null : boundedText(latest.getVersion(), MAX_VERSION_LENGTH, "version"));
         task.setTargetCommit(latest == null ? null : normalizeCommit(latest.getCommitId(), false));
         task.setServerImage(latest == null ? null : requireDigestPinnedImage(latest.getServerImage(), "serverImage"));
@@ -402,6 +479,8 @@ public class PlatformUpdateAppService {
         if (inserted != 1) {
             throw biz(ErrorCode.BIZ_ERROR, "Platform update task changed, please retry");
         }
+        Metrics.counter("lumira.platform.update.started", "type", taskType, "strategy", task.getStrategy()).increment();
+        log.info("platform_update_started taskId={} type={} targetCommit={} strategy={} actor={}", task.getId(), taskType, task.getTargetCommit(), task.getStrategy(), task.getCreatedByName());
         return task;
     }
 
@@ -411,6 +490,7 @@ public class PlatformUpdateAppService {
         snapshot.setTaskType(task.getTaskType());
         snapshot.setStatus(task.getStatus());
         snapshot.setUpdaterTaskId(task.getUpdaterTaskId());
+        snapshot.setActiveKey(task.getActiveKey());
         snapshot.setCreatedBy(task.getCreatedBy());
         snapshot.setCreatedByUuid(task.getCreatedByUuid());
         return snapshot;
@@ -574,14 +654,8 @@ public class PlatformUpdateAppService {
         return simulatedRoleId == null || simulatedRoleId <= 0 ? null : simulatedRoleId;
     }
 
-    private JsonNode postUpdater(String path, PlatformUpdateTaskEntity task) throws Exception {
-        String body = objectMapper.writeValueAsString(new UpdaterRequest(
-                task.getTargetVersion(),
-                task.getTargetCommit(),
-                task.getServerImage(),
-                task.getFrontendImage(),
-                task.getId()
-        ));
+    private JsonNode postUpdater(String path, Object request) throws Exception {
+        String body = objectMapper.writeValueAsString(request == null ? Map.of() : request);
         HttpRequest.Builder builder = HttpRequest.newBuilder(updaterUri(path))
                 .timeout(Duration.ofSeconds(8))
                 .header("Content-Type", "application/json")
@@ -676,6 +750,9 @@ public class PlatformUpdateAppService {
 
     private PlatformUpdateVO.LatestVersionVO fromManifest(JsonNode root) {
         JsonNode manifest = unwrapGithubReleaseManifest(root);
+        JsonNode images = manifest.path("images");
+        JsonNode update = manifest.path("update");
+        JsonNode database = update.path("database");
         PlatformUpdateVO.LatestVersionVO latest = new PlatformUpdateVO.LatestVersionVO();
         latest.setCommitId(normalizeCommit(firstText(manifest.path("commit").asText(null), manifest.path("commitId").asText(null)), true));
         latest.setVersion(boundedText(firstText(manifest.path("version").asText(null), latest.getCommitId()), MAX_VERSION_LENGTH, "version"));
@@ -683,10 +760,28 @@ public class PlatformUpdateAppService {
         latest.setReleasedAt(boundedText(manifest.path("releasedAt").asText(null), MAX_RELEASED_AT_LENGTH, "releasedAt"));
         latest.setTitle(boundedText(firstText(manifest.path("releaseNotes").asText(null), manifest.path("title").asText(null), "Lumira release"), MAX_TITLE_LENGTH, "releaseNotes"));
         latest.setUrl(boundedText(firstText(manifest.path("url").asText(null), manifest.path("releaseUrl").asText(null), root.path("html_url").asText(null)), MAX_URL_LENGTH, "releaseUrl"));
-        latest.setServerImage(requireDigestPinnedImage(manifest.path("serverImage").asText(null), "serverImage"));
-        latest.setFrontendImage(requireDigestPinnedImage(manifest.path("frontendImage").asText(null), "frontendImage"));
-        latest.setMigrationRequired(manifest.path("migrationRequired").asBoolean(false));
-        latest.setRollbackSupported(manifest.path("rollbackSupported").asBoolean(true));
+        latest.setServerImage(requireDigestPinnedImage(firstText(images.path("server").asText(null), manifest.path("serverImage").asText(null)), "serverImage"));
+        latest.setFrontendImage(requireDigestPinnedImage(firstText(images.path("frontend").asText(null), manifest.path("frontendImage").asText(null)), "frontendImage"));
+        latest.setAsyncImage(requireDigestPinnedImage(images.path("async").asText(null), "images.async"));
+        latest.setJobExecutorImage(requireDigestPinnedImage(images.path("jobExecutor").asText(null), "images.jobExecutor"));
+        latest.setMigratorImage(requireDigestPinnedImage(images.path("migrator").asText(null), "images.migrator"));
+        latest.setSchemaVersion(manifest.path("schemaVersion").asInt(1));
+        latest.setStrategy(firstText(update.path("strategy").asText(null), latest.getSchemaVersion() >= 2 ? "single-host-blue-green" : "legacy-restart"));
+        latest.setMinUpdaterProtocol(update.path("minUpdaterProtocol").asInt(latest.getSchemaVersion() >= 2 ? 2 : 1));
+        latest.setMigrationMode(firstText(database.path("mode").asText(null), "expand-only"));
+        latest.setDatabaseVersion(database.path("targetVersion").asText(null));
+        latest.setMigrationRequired(database.has("required")
+                ? database.path("required").asBoolean(false)
+                : manifest.path("migrationRequired").asBoolean(false));
+        latest.setRollbackSupported(update.path("rollbackCompatible").asBoolean(manifest.path("rollbackSupported").asBoolean(true)));
+        if (latest.getSchemaVersion() >= 2) {
+            if (!StringUtils.hasText(latest.getAsyncImage()) || !StringUtils.hasText(latest.getJobExecutorImage()) || !StringUtils.hasText(latest.getMigratorImage())) {
+                throw new IllegalStateException("Update manifest v2 must pin server, async, jobExecutor, and migrator images");
+            }
+            if (!"expand-only".equalsIgnoreCase(latest.getMigrationMode())) {
+                throw new IllegalStateException("Online update manifest must declare expand-only database migration mode");
+            }
+        }
         return latest;
     }
 
@@ -993,13 +1088,25 @@ public class PlatformUpdateAppService {
     }
 
     private boolean isUpdaterAvailable() {
+        return updaterCapabilities() != null;
+    }
+
+    private PlatformUpdateVO.UpdaterCapabilitiesVO updaterCapabilities() {
         try {
-            JsonNode response = getUpdater("/v1/health");
+            JsonNode response = getUpdater("/v1/capabilities");
             String status = firstText(response.path("status").asText(null), response.path("state").asText(null));
-            return status == null || !"DOWN".equalsIgnoreCase(status);
+            if ("DOWN".equalsIgnoreCase(status)) return null;
+            PlatformUpdateVO.UpdaterCapabilitiesVO capabilities = new PlatformUpdateVO.UpdaterCapabilitiesVO();
+            capabilities.setProtocolVersion(response.path("protocolVersion").asInt(1));
+            capabilities.setStrategy(response.path("strategy").asText("legacy-restart"));
+            capabilities.setActiveSlot(response.path("activeSlot").asText(null));
+            capabilities.setSupportsPreflight(response.path("supportsPreflight").asBoolean(false));
+            capabilities.setSupportsCancel(response.path("supportsCancel").asBoolean(false));
+            capabilities.setSupportsExpandOnlyMigration(response.path("supportsExpandOnlyMigration").asBoolean(false));
+            return capabilities;
         } catch (Exception ex) {
             log.debug("Platform updater agent is unavailable", ex);
-            return false;
+            return null;
         }
     }
 
@@ -1033,7 +1140,97 @@ public class PlatformUpdateAppService {
     }
 
     private boolean isTerminal(String status) {
-        return "SUCCEEDED".equals(status) || "FAILED".equals(status) || "ROLLED_BACK".equals(status);
+        return "SUCCEEDED".equals(status) || "FAILED".equals(status) || "ROLLED_BACK".equals(status) || "CANCELLED".equals(status);
+    }
+
+    private void requireUpdater(PlatformUpdateVO.StatusVO status) {
+        if (!Boolean.TRUE.equals(status.getUpdaterAvailable())) {
+            throw new IllegalStateException("Platform update agent is unavailable. Install and start lumira-updater first.");
+        }
+        PlatformUpdateVO.LatestVersionVO latest = status.getLatest();
+        PlatformUpdateVO.UpdaterCapabilitiesVO capabilities = status.getUpdaterCapabilities();
+        if (latest != null && latest.getMinUpdaterProtocol() != null && capabilities != null
+                && capabilities.getProtocolVersion() < latest.getMinUpdaterProtocol()) {
+            throw new IllegalStateException("lumira-updater protocol is too old for this release. Upgrade the host agent first.");
+        }
+    }
+
+    private PlatformUpdateVO.LatestVersionVO requireInstallableLatest(PlatformUpdateVO.StatusVO status) {
+        PlatformUpdateVO.LatestVersionVO latest = status.getLatest();
+        if (latest == null || !StringUtils.hasText(latest.getServerImage())) {
+            throw new IllegalStateException("Current update source does not provide an installable digest-pinned server image.");
+        }
+        return latest;
+    }
+
+    private Map<String, Object> manifestPayload(PlatformUpdateVO.LatestVersionVO latest) {
+        Map<String, Object> images = new LinkedHashMap<>();
+        images.put("server", latest.getServerImage());
+        images.put("frontend", latest.getFrontendImage());
+        images.put("async", latest.getAsyncImage());
+        images.put("jobExecutor", latest.getJobExecutorImage());
+        images.put("migrator", latest.getMigratorImage());
+        Map<String, Object> database = new LinkedHashMap<>();
+        database.put("mode", latest.getMigrationMode());
+        database.put("targetVersion", latest.getDatabaseVersion());
+        database.put("required", latest.getMigrationRequired());
+        Map<String, Object> update = new LinkedHashMap<>();
+        update.put("strategy", latest.getStrategy());
+        update.put("minUpdaterProtocol", latest.getMinUpdaterProtocol());
+        update.put("rollbackCompatible", latest.getRollbackSupported());
+        update.put("database", database);
+        Map<String, Object> manifest = new LinkedHashMap<>();
+        manifest.put("schemaVersion", latest.getSchemaVersion());
+        manifest.put("version", latest.getVersion());
+        manifest.put("commit", latest.getCommitId());
+        manifest.put("branch", latest.getBranch());
+        manifest.put("serverImage", latest.getServerImage());
+        manifest.put("frontendImage", latest.getFrontendImage());
+        manifest.put("images", images);
+        manifest.put("update", update);
+        manifest.put("migrationRequired", latest.getMigrationRequired());
+        manifest.put("rollbackSupported", latest.getRollbackSupported());
+        return manifest;
+    }
+
+    private PlatformUpdateVO.PreflightVO toPreflightVO(JsonNode response) {
+        PlatformUpdateVO.PreflightVO vo = new PlatformUpdateVO.PreflightVO();
+        vo.setPreflightId(response.path("preflightId").asText(null));
+        vo.setReady(response.path("ready").asBoolean(false));
+        vo.setStrategy(response.path("strategy").asText(null));
+        vo.setActiveSlot(response.path("activeSlot").asText(null));
+        vo.setTargetSlot(response.path("targetSlot").asText(null));
+        vo.setTargetCommit(response.path("targetCommit").asText(null));
+        vo.setTargetVersion(response.path("targetVersion").asText(null));
+        vo.setMigrationMode(response.path("migrationMode").asText(null));
+        vo.setDatabaseTargetVersion(response.path("databaseTargetVersion").asText(null));
+        vo.setBlockers(jsonStringList(response.path("blockers")));
+        vo.setWarnings(jsonStringList(response.path("warnings")));
+        vo.setCheckedAt(response.path("checkedAt").asText(null));
+        vo.setExpiresAt(response.path("expiresAt").asText(null));
+        return vo;
+    }
+
+    private List<String> jsonStringList(JsonNode node) {
+        if (!node.isArray()) return List.of();
+        return java.util.stream.StreamSupport.stream(node.spliterator(), false)
+                .map(JsonNode::asText).filter(StringUtils::hasText).toList();
+    }
+
+    private void applyUpdaterState(PlatformUpdateTaskEntity task, JsonNode response) {
+        task.setStatus(normalizeUpdaterStatus(firstText(response.path("status").asText(null), task.getStatus()), task.getStatus()));
+        task.setStrategy(boundedText(firstText(response.path("strategy").asText(null), task.getStrategy()), 64, "strategy"));
+        task.setPhase(boundedText(firstText(response.path("phase").asText(null), task.getPhase()), 64, "phase"));
+        if (response.has("progressPercent")) task.setProgressPercent(Math.max(0, Math.min(100, response.path("progressPercent").asInt())));
+        task.setActiveSlot(boundedText(firstText(response.path("activeSlot").asText(null), task.getActiveSlot()), 16, "activeSlot"));
+        task.setTargetSlot(boundedText(firstText(response.path("targetSlot").asText(null), task.getTargetSlot()), 16, "targetSlot"));
+        task.setTargetVersion(boundedText(firstText(response.path("targetVersion").asText(null), task.getTargetVersion()), MAX_VERSION_LENGTH, "targetVersion"));
+        task.setTargetCommit(normalizeCommit(firstText(response.path("targetCommit").asText(null), task.getTargetCommit()), true));
+        task.setServerImage(requireDigestPinnedImage(firstText(response.path("serverImage").asText(null), task.getServerImage()), "serverImage"));
+        task.setPreflightId(boundedText(firstText(response.path("preflightId").asText(null), task.getPreflightId()), 128, "preflightId"));
+        task.setManifestHash(boundedText(firstText(response.path("manifestHash").asText(null), task.getManifestHash()), 128, "manifestHash"));
+        if (response.path("rollbackOfTaskId").canConvertToLong()) task.setRollbackOfTaskId(response.path("rollbackOfTaskId").asLong());
+        if (isTerminal(task.getStatus())) task.setActiveKey(null);
     }
 
     private String resolveSourceType(String sourceUrl) {
@@ -1105,6 +1302,14 @@ public class PlatformUpdateAppService {
         vo.setId(entity.getId());
         vo.setTaskType(entity.getTaskType());
         vo.setStatus(entity.getStatus());
+        vo.setStrategy(entity.getStrategy());
+        vo.setPhase(entity.getPhase());
+        vo.setProgressPercent(entity.getProgressPercent());
+        vo.setActiveSlot(entity.getActiveSlot());
+        vo.setTargetSlot(entity.getTargetSlot());
+        vo.setPreflightId(entity.getPreflightId());
+        vo.setManifestHash(entity.getManifestHash());
+        vo.setRollbackOfTaskId(entity.getRollbackOfTaskId());
         vo.setTargetVersion(entity.getTargetVersion());
         vo.setTargetCommit(entity.getTargetCommit());
         vo.setServerImage(entity.getServerImage());
@@ -1133,6 +1338,7 @@ public class PlatformUpdateAppService {
         }
     }
 
-    private record UpdaterRequest(String targetVersion, String targetCommit, String serverImage, String frontendImage, Long platformTaskId) {
+    private record UpdaterRequest(String targetVersion, String targetCommit, String serverImage, String frontendImage,
+                                  Long platformTaskId, String preflightId, Map<String, Object> manifest) {
     }
 }

@@ -195,10 +195,11 @@ OCR 同样由 File owner 的异步处理任务执行；抽取到文本时会写�
 - API 健康检查：`https://bm.aiadc.org.cn/api/health`
 - 版本检查：`https://bm.aiadc.org.cn/api/version`
 - 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/lumira/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
-- 平台手动更新：CI 会把 digest 固定的 manifest 发布到 `continuous` GitHub Release。后台发现新版本后，通过宿主机侧 `lumira-updater` 手动安装；业务容器不直接执行 Docker 或 shell。
-- Linux 首次安装会自动注册并启动 `lumira-updater.service`。已有服务器可补装：
+- 平台手动更新：CI 会把四个运行时镜像的 digest 固定 manifest 发布到 `continuous` GitHub Release。后台先执行资源、拓扑和迁移预检，再由宿主机 `lumira-updater` 启动空闲槽、验证、热切流并排空旧槽。
+- HTTP/API 更新期间没有计划内中断；WebSocket 在 60 秒排空上限后可能重连。异步和 XXL-Job worker 会串行停止领取、等待在途工作、替换并恢复。
+- Linux 首次安装会幂等注册并启动 `lumira-updater.service`。安装器也会把现有 `lumira-server` 无中断迁移到 blue 槽。已有服务器可补装：
 ```bash
-sudo node bin/install-lumira-updater.mjs
+sudo node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy
 ```
 
 `deploy/.env` 中的容器访问地址、允许主机和 token 必须保持一致：
@@ -207,7 +208,10 @@ PLATFORM_UPDATE_MANIFEST_URL=https://api.github.com/repos/Elexvx/Lumira/releases
 PLATFORM_UPDATE_AGENT_URL=http://host.docker.internal:9788
 PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS=host.docker.internal
 PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token
+PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES=ghcr.io/elexvx/lumira/
 ```
+
+在线版本只能包含 Expand-only 数据库迁移。删除、重命名、缩窄类型和强制非空等收缩操作必须在兼容窗口结束后单独人工执行。自动回滚只切回上一应用槽位，不恢复数据库备份；上一槽位默认保留 30 分钟。
 
 演练 updater 流程但不改写 `.env`、不执行部署命令时：
 

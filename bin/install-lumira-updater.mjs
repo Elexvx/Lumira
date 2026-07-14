@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
 import { parseEnvFile, randomSecret, setEnvValue } from './lib/env-utils.mjs';
 import { commandExists, output, resolveRepoRoot, run } from './lib/exec-utils.mjs';
 import { probeHttp } from './lib/http-utils.mjs';
+import { createInitialDeploymentState, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
 
 const repoRoot = resolveRepoRoot(import.meta.url);
-const envPath = path.join(repoRoot, 'deploy', '.env');
+const argumentValue = (name) => {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : null;
+};
+const deployDir = path.resolve(argumentValue('--deploy-dir') || process.env.LUMIRA_DEPLOY_DIR || path.join(repoRoot, 'deploy'));
+const envPath = path.join(deployDir, '.env');
 const updaterPath = path.join(repoRoot, 'bin', 'lumira-updater.mjs');
 const servicePath = '/etc/systemd/system/lumira-updater.service';
 const dryRun = process.argv.includes('--dry-run');
@@ -44,6 +50,10 @@ for (const [key, value] of Object.entries({
   PLATFORM_UPDATE_AGENT_TOKEN: token,
   LUMIRA_UPDATER_HOST: gateway,
   LUMIRA_UPDATER_PORT: env.LUMIRA_UPDATER_PORT || '9788',
+  LUMIRA_DEPLOY_DIR: deployDir,
+  LUMIRA_ACTIVE_SLOT: env.LUMIRA_ACTIVE_SLOT || 'blue',
+  LUMIRA_SERVER_BLUE_IMAGE: env.LUMIRA_SERVER_BLUE_IMAGE || env.LUMIRA_SERVER_IMAGE,
+  LUMIRA_SERVER_GREEN_IMAGE: env.LUMIRA_SERVER_GREEN_IMAGE || env.LUMIRA_SERVER_IMAGE,
 })) {
   envContent = setEnvValue(envContent, key, value);
 }
@@ -66,6 +76,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=${bareSystemdPath(repoRoot)}
 EnvironmentFile=${bareSystemdPath(envPath)}
+Environment=LUMIRA_DEPLOY_DIR=${bareSystemdPath(deployDir)}
 ExecStart=${quoteSystemd(process.execPath)} ${quoteSystemd(updaterPath)}
 Restart=always
 RestartSec=3
@@ -82,6 +93,63 @@ if (dryRun) {
 }
 
 writeFileSync(envPath, envContent, { mode: 0o600 });
+
+const generatedDir = path.join(deployDir, '.generated', 'api-proxy');
+const statePath = path.join(deployDir, '.update-state.json');
+mkdirSync(generatedDir, { recursive: true });
+if (!existsSync(statePath)) {
+  const initialState = createInitialDeploymentState({
+    activeSlot: env.LUMIRA_ACTIVE_SLOT || 'blue',
+    serverImage: env.LUMIRA_SERVER_IMAGE,
+    commit: env.GIT_COMMIT,
+  });
+  writeFileSync(statePath, `${JSON.stringify(initialState, null, 2)}\n`, { mode: 0o600 });
+}
+writeFileSync(path.join(generatedDir, 'active-upstreams.conf'), renderActiveUpstreams(env.LUMIRA_ACTIVE_SLOT || 'blue', env), { mode: 0o644 });
+
+const containerRunning = (name) => output('docker', ['inspect', '-f', '{{.State.Running}}', name], { cwd: repoRoot, check: false }).trim() === 'true';
+const legacyRunning = containerRunning('lumira-server');
+if (legacyRunning) {
+  if (!containerRunning('lumira-server-blue')) {
+    run('docker', ['compose', '--env-file', envPath, '-f', path.join(deployDir, 'docker-compose.prod.yml'), '--profile', 'blue', 'up', '-d', '--no-deps', 'lumira-server-blue'], { cwd: repoRoot });
+  }
+  const blueAddress = output('docker', ['inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', 'lumira-server-blue'], { cwd: repoRoot }).trim();
+  let blueHealthy = false;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const response = await probeHttp(`http://${blueAddress}:8080/actuator/health`, { timeoutMs: 1_000 });
+    if (response.ok) { blueHealthy = true; break; }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  if (!blueHealthy) throw new Error('Blue slot did not become healthy; legacy server remains active.');
+
+  const liveConfig = output('docker', ['exec', 'lumira-api-proxy', 'cat', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot });
+  const setPattern = /^\s*set \$(?:gateway_upstream|system_upstream|auth_upstream|file_upstream|message_upstream|plugin_upstream|payment_upstream|localization_upstream|team_upstream|ai_upstream)\s+[^;]+;\s*\r?\n/gm;
+  const withoutStaticUpstreams = liveConfig.replace(setPattern, '');
+  const patchedConfig = withoutStaticUpstreams.replace(
+    /(\s*resolver\s+127\.0\.0\.11[^;]*;\s*\r?\n)/,
+    '$1    include /etc/nginx/lumira-upstreams/active-upstreams.conf;\n',
+  );
+  if (!patchedConfig.includes('active-upstreams.conf')) throw new Error('Legacy API proxy upstream was not found; refusing to stop the legacy server.');
+  const temporaryConfig = path.join(deployDir, '.generated', 'legacy-blue-default.conf');
+  writeFileSync(temporaryConfig, patchedConfig, { mode: 0o600 });
+  try {
+    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/etc/nginx/conf.d/default.conf', '/tmp/lumira-legacy-default.conf'], { cwd: repoRoot });
+    run('docker', ['exec', 'lumira-api-proxy', 'mkdir', '-p', '/etc/nginx/lumira-upstreams'], { cwd: repoRoot });
+    run('docker', ['cp', path.join(generatedDir, 'active-upstreams.conf'), 'lumira-api-proxy:/etc/nginx/lumira-upstreams/active-upstreams.conf'], { cwd: repoRoot });
+    run('docker', ['cp', temporaryConfig, 'lumira-api-proxy:/tmp/lumira-blue-default.conf'], { cwd: repoRoot });
+    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-blue-default.conf', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot });
+    run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-t'], { cwd: repoRoot });
+    run('docker', ['exec', 'lumira-api-proxy', 'nginx', '-s', 'reload'], { cwd: repoRoot });
+    await new Promise((resolve) => setTimeout(resolve, 60_000));
+    run('docker', ['stop', '--time', '10', 'lumira-server'], { cwd: repoRoot });
+  } catch (error) {
+    run('docker', ['exec', 'lumira-api-proxy', 'cp', '/tmp/lumira-legacy-default.conf', '/etc/nginx/conf.d/default.conf'], { cwd: repoRoot, check: false });
+    throw error;
+  } finally {
+    rmSync(temporaryConfig, { force: true });
+  }
+}
+
 writeFileSync(servicePath, unit, { mode: 0o644 });
 run('systemctl', ['daemon-reload']);
 run('systemctl', ['enable', 'lumira-updater.service']);

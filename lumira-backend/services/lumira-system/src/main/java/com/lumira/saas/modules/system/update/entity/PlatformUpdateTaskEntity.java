@@ -11,6 +11,15 @@ public class PlatformUpdateTaskEntity {
     private Long id;
     private String taskType;
     private String status;
+    private String strategy;
+    private String phase;
+    private Integer progressPercent;
+    private String activeSlot;
+    private String targetSlot;
+    private String preflightId;
+    private String manifestHash;
+    private Long rollbackOfTaskId;
+    private String activeKey;
     private String targetVersion;
     private String targetCommit;
     private String serverImage;
@@ -33,6 +42,24 @@ public class PlatformUpdateTaskEntity {
     public void setTaskType(String taskType) { this.taskType = taskType; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getStrategy() { return strategy; }
+    public void setStrategy(String strategy) { this.strategy = strategy; }
+    public String getPhase() { return phase; }
+    public void setPhase(String phase) { this.phase = phase; }
+    public Integer getProgressPercent() { return progressPercent; }
+    public void setProgressPercent(Integer progressPercent) { this.progressPercent = progressPercent; }
+    public String getActiveSlot() { return activeSlot; }
+    public void setActiveSlot(String activeSlot) { this.activeSlot = activeSlot; }
+    public String getTargetSlot() { return targetSlot; }
+    public void setTargetSlot(String targetSlot) { this.targetSlot = targetSlot; }
+    public String getPreflightId() { return preflightId; }
+    public void setPreflightId(String preflightId) { this.preflightId = preflightId; }
+    public String getManifestHash() { return manifestHash; }
+    public void setManifestHash(String manifestHash) { this.manifestHash = manifestHash; }
+    public Long getRollbackOfTaskId() { return rollbackOfTaskId; }
+    public void setRollbackOfTaskId(Long rollbackOfTaskId) { this.rollbackOfTaskId = rollbackOfTaskId; }
+    public String getActiveKey() { return activeKey; }
+    public void setActiveKey(String activeKey) { this.activeKey = activeKey; }
     public String getTargetVersion() { return targetVersion; }
     public void setTargetVersion(String targetVersion) { this.targetVersion = targetVersion; }
     public String getTargetCommit() { return targetCommit; }

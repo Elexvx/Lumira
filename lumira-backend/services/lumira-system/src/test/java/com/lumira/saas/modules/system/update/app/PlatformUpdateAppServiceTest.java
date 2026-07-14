@@ -86,6 +86,43 @@ class PlatformUpdateAppServiceTest {
     }
 
     @Test
+    void fromManifestShouldReadBlueGreenV2Contract() throws Exception {
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class), mockBuildPropertiesProvider(), new ObjectMapper(), mock(PlatformUpdateTaskMapper.class)
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod("fromManifest", com.fasterxml.jackson.databind.JsonNode.class);
+        method.setAccessible(true);
+        String image = "ghcr.io/elexvx/lumira/runtime@sha256:" + "a".repeat(64);
+        var manifest = new ObjectMapper().readTree("""
+                {
+                  "schemaVersion": 2,
+                  "version": "2.0.0",
+                  "commit": "036d591f3bc3d8468fb10771ae33377f5bd64f63",
+                  "images": {
+                    "server": "%s", "frontend": "%s", "async": "%s",
+                    "jobExecutor": "%s", "migrator": "%s"
+                  },
+                  "update": {
+                    "strategy": "single-host-blue-green",
+                    "minUpdaterProtocol": 2,
+                    "database": { "mode": "expand-only", "targetVersion": "202607140001", "required": true }
+                  }
+                }
+                """.formatted(image, image, image, image, image));
+
+        PlatformUpdateVO.LatestVersionVO latest = (PlatformUpdateVO.LatestVersionVO) method.invoke(service, manifest);
+
+        assertThat(latest.getSchemaVersion()).isEqualTo(2);
+        assertThat(latest.getStrategy()).isEqualTo("single-host-blue-green");
+        assertThat(latest.getAsyncImage()).isEqualTo(image);
+        assertThat(latest.getJobExecutorImage()).isEqualTo(image);
+        assertThat(latest.getMigratorImage()).isEqualTo(image);
+        assertThat(latest.getMigrationMode()).isEqualTo("expand-only");
+        assertThat(latest.getDatabaseVersion()).isEqualTo("202607140001");
+        assertThat(latest.getMigrationRequired()).isTrue();
+    }
+
+    @Test
     void validateManifestSourceUrlShouldRequireHttps() throws Exception {
         PlatformUpdateAppService service = new PlatformUpdateAppService(
                 mock(Environment.class),

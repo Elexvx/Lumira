@@ -934,6 +934,15 @@ CREATE TABLE `platform_update_task` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `task_type` varchar(32) NOT NULL,
   `status` varchar(32) NOT NULL,
+  `strategy` varchar(64) DEFAULT NULL,
+  `phase` varchar(64) DEFAULT NULL,
+  `progress_percent` int DEFAULT NULL,
+  `active_slot` varchar(16) DEFAULT NULL,
+  `target_slot` varchar(16) DEFAULT NULL,
+  `preflight_id` varchar(64) DEFAULT NULL,
+  `manifest_hash` char(64) DEFAULT NULL,
+  `rollback_of_task_id` bigint DEFAULT NULL,
+  `active_key` varchar(32) DEFAULT NULL,
   `target_version` varchar(64) DEFAULT NULL,
   `target_commit` varchar(64) DEFAULT NULL,
   `server_image` varchar(255) DEFAULT NULL,
@@ -953,7 +962,8 @@ CREATE TABLE `platform_update_task` (
   KEY `idx_platform_update_task_creator_uuid` (`created_by_uuid`,`created_at`),
   KEY `idx_platform_update_task_created_at` (`created_at`),
   KEY `idx_platform_update_task_status` (`status`),
-  KEY `idx_platform_update_task_updater_task_id` (`updater_task_id`)
+  KEY `idx_platform_update_task_updater_task_id` (`updater_task_id`),
+  UNIQUE KEY `uk_platform_update_task_active_key` (`active_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `plugin_event_outbox` (

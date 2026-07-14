@@ -12,11 +12,18 @@ const version = first(process.env.APP_VERSION, process.env.BUILD_VERSION, proces
 const owner = (process.env.GITHUB_REPOSITORY_OWNER || 'elexvx').toLowerCase();
 const serverImage = first(process.env.LUMIRA_SERVER_IMAGE, `ghcr.io/${owner}/lumira/lumira-server:sha-${commit}`);
 const frontendImage = first(process.env.LUMIRA_FRONTEND_IMAGE, `ghcr.io/${owner}/lumira/lumira-ui:sha-${commit}`);
+const asyncImage = first(process.env.LUMIRA_ASYNC_IMAGE, `ghcr.io/${owner}/lumira/lumira-async:sha-${commit}`);
+const jobExecutorImage = first(process.env.LUMIRA_JOB_EXECUTOR_IMAGE, `ghcr.io/${owner}/lumira/lumira-job-executor:sha-${commit}`);
+const migratorImage = first(process.env.LUMIRA_MIGRATOR_IMAGE, `ghcr.io/${owner}/lumira/lumira-migrator:sha-${commit}`);
 
 assertDigestPinned(serverImage, 'LUMIRA_SERVER_IMAGE');
 assertDigestPinned(frontendImage, 'LUMIRA_FRONTEND_IMAGE');
+assertDigestPinned(asyncImage, 'LUMIRA_ASYNC_IMAGE');
+assertDigestPinned(jobExecutorImage, 'LUMIRA_JOB_EXECUTOR_IMAGE');
+assertDigestPinned(migratorImage, 'LUMIRA_MIGRATOR_IMAGE');
 
 const manifest = {
+  schemaVersion: 2,
   app: 'lumira',
   channel: process.env.LUMIRA_RELEASE_CHANNEL || 'stable',
   version,
@@ -24,6 +31,24 @@ const manifest = {
   releasedAt: new Date().toISOString(),
   serverImage,
   frontendImage,
+  images: {
+    server: serverImage,
+    frontend: frontendImage,
+    async: asyncImage,
+    jobExecutor: jobExecutorImage,
+    migrator: migratorImage,
+  },
+  update: {
+    strategy: 'single-host-blue-green',
+    minUpdaterProtocol: 2,
+    drainTimeoutSeconds: Number(process.env.LUMIRA_RELEASE_DRAIN_TIMEOUT_SECONDS || 60),
+    rollbackWindowSeconds: Number(process.env.LUMIRA_RELEASE_ROLLBACK_WINDOW_SECONDS || 1800),
+    database: {
+      mode: process.env.LUMIRA_RELEASE_MIGRATION_MODE || 'expand-only',
+      targetVersion: process.env.LUMIRA_RELEASE_DATABASE_VERSION || '',
+      rollbackMode: 'forward-compatible',
+    },
+  },
   minVersion: process.env.LUMIRA_RELEASE_MIN_VERSION || '',
   migrationRequired: process.env.LUMIRA_RELEASE_MIGRATION_REQUIRED === 'true',
   rollbackSupported: process.env.LUMIRA_RELEASE_ROLLBACK_SUPPORTED !== 'false',
