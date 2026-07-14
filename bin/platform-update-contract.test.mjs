@@ -6,6 +6,7 @@ import {
   buildPreflightReport,
   createInitialDeploymentState,
   inactiveSlot,
+  migrateLegacyApiProxyConfig,
   normalizeReleaseManifest,
   phaseProgress,
   renderActiveUpstreams,
@@ -59,6 +60,23 @@ test('upstream rendering points every monolith route at the active slot', () => 
   const rendered = renderActiveUpstreams('green');
   assert.equal((rendered.match(/lumira-server-green:8080/g) || []).length, 10);
   assert.equal(inactiveSlot('green'), 'blue');
+});
+
+test('legacy API proxy migration preserves CRLF boundaries and is idempotent', () => {
+  const legacy = [
+    'server {',
+    '    resolver 127.0.0.11 valid=10s ipv6=off;',
+    '    set $gateway_upstream lumira-server:8080;',
+    '    set $system_upstream lumira-server:8080;',
+    '',
+    '    client_max_body_size 200m;',
+    '}',
+    '',
+  ].join('\r\n');
+  const migrated = migrateLegacyApiProxyConfig(legacy);
+  assert.doesNotMatch(migrated, /set \$(?:gateway|system)_upstream/);
+  assert.match(migrated, /resolver 127\.0\.0\.11 valid=10s ipv6=off;\r\n    include \/etc\/nginx\/lumira-upstreams\/active-upstreams\.conf;\r\n\r\n    client_max_body_size/);
+  assert.equal(migrateLegacyApiProxyConfig(migrated), migrated);
 });
 
 test('phase progress is monotonic and reaches finalization', () => {

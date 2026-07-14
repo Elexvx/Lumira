@@ -7,7 +7,7 @@ import process from 'node:process';
 import { parseEnvFile, randomSecret, setEnvValue } from './lib/env-utils.mjs';
 import { commandExists, output, resolveRepoRoot, run } from './lib/exec-utils.mjs';
 import { probeHttp } from './lib/http-utils.mjs';
-import { createInitialDeploymentState, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
+import { createInitialDeploymentState, migrateLegacyApiProxyConfig, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
 
 const repoRoot = resolveRepoRoot(import.meta.url);
 const argumentValue = (name) => {
@@ -174,15 +174,12 @@ if (legacyRunning) {
     stopBlueSlot();
     throw new Error('Active API proxy config was not found; refusing to stop the legacy server.');
   }
-  const setPattern = /^\s*set \$(?:gateway_upstream|system_upstream|auth_upstream|file_upstream|message_upstream|plugin_upstream|payment_upstream|localization_upstream|team_upstream|ai_upstream)\s+[^;]+;\s*\r?\n/gm;
-  const withoutStaticUpstreams = liveConfig.replace(setPattern, '');
-  const patchedConfig = withoutStaticUpstreams.replace(
-    /(\s*resolver\s+127\.0\.0\.11[^;]*;\s*\r?\n)/,
-    '$1    include /etc/nginx/lumira-upstreams/active-upstreams.conf;\n',
-  );
-  if (!patchedConfig.includes('active-upstreams.conf')) {
+  let patchedConfig;
+  try {
+    patchedConfig = migrateLegacyApiProxyConfig(liveConfig);
+  } catch (error) {
     stopBlueSlot();
-    throw new Error('Legacy API proxy upstream was not found; refusing to stop the legacy server.');
+    throw new Error('Legacy API proxy upstream was not found; refusing to stop the legacy server.', { cause: error });
   }
   const temporaryConfig = path.join(deployDir, '.generated', 'legacy-blue-api.conf');
   writeFileSync(temporaryConfig, patchedConfig, { mode: 0o600 });
