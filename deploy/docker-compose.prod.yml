@@ -220,8 +220,6 @@ services:
     cpus: ${FRONTEND_CPUS:-0.25}
     ports:
     - ${FRONTEND_BIND:-127.0.0.1:8001}:80
-    depends_on:
-    - lumira-server
   edge-proxy:
     profiles:
     - edge
