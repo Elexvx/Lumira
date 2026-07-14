@@ -269,7 +269,10 @@ test('platform updater is reachable from the backend container and installed as 
   assert.match(updaterInstaller, /containerNetworks\('lumira-api-proxy'\)/, 'legacy migration must select a network shared with the API proxy');
   assert.doesNotMatch(updaterInstaller, /range \.NetworkSettings\.Networks/, 'legacy migration must not concatenate addresses from multiple Docker networks');
   assert.match(updaterInstaller, /if \(!blueHealthy\) \{[\s\S]*stopBlueSlot\(\)/, 'failed pre-switch health checks must clean up the inactive slot');
-  assert.match(updaterInstaller, /lumira-legacy-default\.conf[\s\S]*nginx[\s\S]*reload[\s\S]*stopBlueSlot\(\)/, 'failed proxy cutover must reload the legacy config before cleaning up blue');
+  assert.match(updaterInstaller, /ls', '-1', '\/etc\/nginx\/conf\.d'/, 'legacy migration must discover the generated API proxy config');
+  assert.match(updaterInstaller, /candidate\.includes\('set \$gateway_upstream'\)/, 'legacy migration must select the config that owns API upstreams');
+  assert.doesNotMatch(updaterInstaller, /cat', '\/etc\/nginx\/conf\.d\/default\.conf'/, 'legacy migration must not assume the image default config handles API traffic');
+  assert.match(updaterInstaller, /lumira-legacy-api\.conf[\s\S]*nginx[\s\S]*reload[\s\S]*stopBlueSlot\(\)/, 'failed proxy cutover must reload the legacy config before cleaning up blue');
 });
 
 test('continuous release manifest uses digest-pinned images and a stable GitHub release', () => {
