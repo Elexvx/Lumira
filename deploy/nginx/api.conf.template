@@ -11,6 +11,12 @@ server {
     include /etc/nginx/lumira-upstreams/active-upstreams.conf;
 
     client_max_body_size 200m;
+    # A reloaded worker must stop receiving keep-alive HTTP requests well
+    # before the updater's 60-second old-slot drain deadline. Without an
+    # absolute lifetime, a busy client can keep an old worker alive forever.
+    keepalive_timeout 15s;
+    keepalive_time 30s;
+    keepalive_requests 100;
     limit_req_status 429;
     limit_conn_status 429;
     limit_conn api_conn_per_ip 80;

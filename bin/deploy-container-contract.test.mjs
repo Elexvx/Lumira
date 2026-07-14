@@ -30,6 +30,12 @@ test('production disables the Hikari periodic JDBC keepalive explicitly', () => 
   );
 });
 
+test('api proxy retires old keep-alive clients before the blue-green drain deadline', () => {
+  assert.match(apiNginx, /^\s*keepalive_timeout 15s;$/m);
+  assert.match(apiNginx, /^\s*keepalive_time 30s;$/m);
+  assert.match(apiNginx, /^\s*keepalive_requests 100;$/m);
+});
+
 test('deploy-container generates every scoped internal token used by production compose', () => {
   for (const key of [
     'SAAS_INTERNAL_SYSTEM_TOKEN',
