@@ -66,4 +66,6 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   assert.equal(task.targetSlot, 'green');
   assert.equal(task.log.some((line) => line.includes(manifest.images.frontend)), false);
   assert.equal(task.log.some((line) => line.includes(manifest.images.server)), true);
+  assert.equal(task.log.some((line) => line.includes('$ docker rm -f lumira-async')), true);
+  assert.equal(task.log.some((line) => line.includes('up -d --no-deps --force-recreate lumira-async')), true);
 });
