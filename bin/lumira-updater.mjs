@@ -49,6 +49,7 @@ const host = process.env.LUMIRA_UPDATER_HOST || '127.0.0.1';
 const port = Number(process.env.LUMIRA_UPDATER_PORT || 9788);
 const token = process.env.PLATFORM_UPDATE_AGENT_TOKEN || process.env.LUMIRA_UPDATER_TOKEN || '';
 const dryRun = process.argv.includes('--dry-run') || process.env.LUMIRA_UPDATER_DRY_RUN === 'true';
+const rollbackDrainSeconds = Math.max(0, Math.min(600, Number(process.env.LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS || 60)));
 const allowedImagePrefixes = String(process.env.PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES || 'ghcr.io/elexvx/lumira/')
   .split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
 
@@ -147,11 +148,16 @@ function deploymentState() {
   const existing = readJson(statePath);
   if (existing) return existing;
   const env = parseEnvFile(envPath);
+  const activeSlot = normalizeSlot(env.LUMIRA_ACTIVE_SLOT || 'blue');
+  const slotPrefix = `LUMIRA_SERVER_${activeSlot.toUpperCase()}_`;
   const initial = createInitialDeploymentState({
-    activeSlot: env.LUMIRA_ACTIVE_SLOT || 'blue',
-    commit: env.GIT_COMMIT,
-    version: env.APP_VERSION,
-    serverImage: env.LUMIRA_SERVER_IMAGE,
+    activeSlot,
+    commit: env[`${slotPrefix}GIT_COMMIT`] || env.GIT_COMMIT,
+    version: env[`${slotPrefix}APP_VERSION`] || env.APP_VERSION,
+    buildVersion: env[`${slotPrefix}BUILD_VERSION`] || env.BUILD_VERSION,
+    buildTime: env[`${slotPrefix}BUILD_TIME`] || env.BUILD_TIME,
+    databaseVersion: env[`${slotPrefix}DATABASE_VERSION`] || env.DATABASE_VERSION,
+    serverImage: env[`${slotPrefix}IMAGE`] || env.LUMIRA_SERVER_IMAGE,
     asyncImage: env.LUMIRA_ASYNC_IMAGE,
     jobExecutorImage: env.LUMIRA_JOB_EXECUTOR_IMAGE,
   });
@@ -498,6 +504,14 @@ async function containerIsRunning(task, containerName) {
 
 async function rollbackTraffic(task, state, failedSlot) {
   const previousSlot = normalizeSlot(state.activeSlot);
+  const previousRelease = state.slots?.[previousSlot] || {};
+  updateEnv({
+    APP_VERSION: previousRelease.version,
+    BUILD_VERSION: previousRelease.buildVersion || previousRelease.version,
+    BUILD_TIME: previousRelease.buildTime,
+    GIT_COMMIT: previousRelease.commit,
+    DATABASE_VERSION: previousRelease.databaseVersion,
+  });
   await runCommand(task, 'docker', composeArgs('--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`));
   await waitForSlot(task, previousSlot, state.slots?.[previousSlot]?.commit || '');
   await reloadProxy(task, previousSlot);
@@ -505,7 +519,11 @@ async function rollbackTraffic(task, state, failedSlot) {
     await updateWorker(task, 'lumira-async', 'LUMIRA_ASYNC_IMAGE', state.workers?.asyncImage);
     await updateWorker(task, 'lumira-job-executor', 'LUMIRA_JOB_EXECUTOR_IMAGE', state.workers?.jobExecutorImage);
   }
-  if (failedSlot) await runCommand(task, 'docker', ['stop', '--time', '60', `lumira-server-${failedSlot}`]).catch(() => {});
+  if (failedSlot) {
+    appendLog(task, `Draining Nginx workers from failed ${failedSlot} slot before stopping it.`);
+    if (!dryRun) await sleep(rollbackDrainSeconds * 1000);
+    await runCommand(task, 'docker', ['stop', '--time', '60', `lumira-server-${failedSlot}`]).catch(() => {});
+  }
 }
 
 async function honorPostSwitchCancellation(task, state, failedSlot) {
@@ -520,6 +538,7 @@ async function runInstall(task, request) {
   const preflight = request.preflightId ? requirePreflight(request.preflightId) : await createPreflight(request);
   if (!preflight.ready) throw new Error(`Preflight failed: ${preflight.blockers.join(' ')}`);
   const manifest = preflight.manifest;
+  const targetBuildTime = manifest.releasedAt || new Date().toISOString();
   const state = deploymentState();
   const activeSlot = normalizeSlot(state.activeSlot);
   const targetSlot = inactiveSlot(activeSlot);
@@ -549,8 +568,14 @@ async function runInstall(task, request) {
     setPhase(task, 'STARTING_INACTIVE', `Starting inactive ${targetSlot} slot.`);
     updateEnv({
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_IMAGE`]: manifest.images.server,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_APP_VERSION`]: manifest.version,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_BUILD_VERSION`]: `${manifest.version}+${manifest.commit}`,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_BUILD_TIME`]: targetBuildTime,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_GIT_COMMIT`]: manifest.commit,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_DATABASE_VERSION`]: manifest.database.targetVersion,
       APP_VERSION: manifest.version,
       BUILD_VERSION: `${manifest.version}+${manifest.commit}`,
+      BUILD_TIME: targetBuildTime,
       GIT_COMMIT: manifest.commit,
       DATABASE_VERSION: manifest.database.targetVersion,
     });
@@ -589,6 +614,9 @@ async function runInstall(task, request) {
     state.slots[targetSlot] = {
       commit: manifest.commit,
       version: manifest.version,
+      buildVersion: `${manifest.version}+${manifest.commit}`,
+      buildTime: targetBuildTime,
+      databaseVersion: manifest.database.targetVersion,
       serverImage: manifest.images.server,
       activatedAt: new Date().toISOString(),
     };
@@ -599,8 +627,19 @@ async function runInstall(task, request) {
     writeDeploymentState(state);
     updateEnv({ LUMIRA_ACTIVE_SLOT: targetSlot, LUMIRA_SERVER_IMAGE: manifest.images.server });
   } catch (error) {
-    if (switched) await rollbackTraffic(task, state, targetSlot).catch((rollbackError) => appendLog(task, `Automatic traffic rollback failed: ${rollbackError.message}`));
-    else await runCommand(task, 'docker', ['rm', '-f', `lumira-server-${targetSlot}`]).catch(() => {});
+    if (switched) {
+      try {
+        await rollbackTraffic(task, state, targetSlot);
+        task.status = 'ROLLED_BACK';
+        task.errorMessage = `Update failed after traffic switch and was rolled back: ${error instanceof Error ? error.message : String(error)}`;
+        appendLog(task, task.errorMessage);
+        return;
+      } catch (rollbackError) {
+        appendLog(task, `Automatic traffic rollback failed: ${rollbackError.message}`);
+      }
+    } else {
+      await runCommand(task, 'docker', ['rm', '-f', `lumira-server-${targetSlot}`]).catch(() => {});
+    }
     throw error;
   }
 }
@@ -617,6 +656,13 @@ async function runRollback(task) {
   task.targetCommit = state.slots[previousSlot].commit;
   task.serverImage = state.slots[previousSlot].serverImage;
   task.rollbackOfTaskId = state.lastSuccessfulPlatformTaskId || null;
+  updateEnv({
+    APP_VERSION: state.slots[previousSlot].version,
+    BUILD_VERSION: state.slots[previousSlot].buildVersion || state.slots[previousSlot].version,
+    BUILD_TIME: state.slots[previousSlot].buildTime,
+    GIT_COMMIT: state.slots[previousSlot].commit,
+    DATABASE_VERSION: state.slots[previousSlot].databaseVersion,
+  });
   setPhase(task, 'STARTING_INACTIVE', `Restarting previous ${previousSlot} slot.`);
   await runCommand(task, 'docker', composeArgs('--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`));
   setPhase(task, 'VERIFYING_INACTIVE', `Verifying previous ${previousSlot} slot.`);
@@ -626,7 +672,7 @@ async function runRollback(task) {
   setPhase(task, 'VERIFYING_ACTIVE', 'Verifying public traffic after rollback.');
   await verifyPublicTraffic(task, state.slots[previousSlot].commit);
   setPhase(task, 'DRAINING_OLD', `Draining rolled-back ${currentSlot} slot.`);
-  if (!dryRun) await sleep(60_000);
+  if (!dryRun) await sleep(rollbackDrainSeconds * 1000);
   await runCommand(task, 'docker', ['stop', '--time', '10', `lumira-server-${currentSlot}`]).catch(() => {});
   setPhase(task, 'UPDATING_WORKERS', 'Restoring the previous compatible worker images.');
   const currentWorkers = state.workers || null;

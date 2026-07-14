@@ -54,6 +54,16 @@ for (const [key, value] of Object.entries({
   LUMIRA_ACTIVE_SLOT: env.LUMIRA_ACTIVE_SLOT || 'blue',
   LUMIRA_SERVER_BLUE_IMAGE: env.LUMIRA_SERVER_BLUE_IMAGE || env.LUMIRA_SERVER_IMAGE,
   LUMIRA_SERVER_GREEN_IMAGE: env.LUMIRA_SERVER_GREEN_IMAGE || env.LUMIRA_SERVER_IMAGE,
+  LUMIRA_SERVER_BLUE_APP_VERSION: env.LUMIRA_SERVER_BLUE_APP_VERSION || env.APP_VERSION,
+  LUMIRA_SERVER_GREEN_APP_VERSION: env.LUMIRA_SERVER_GREEN_APP_VERSION || env.APP_VERSION,
+  LUMIRA_SERVER_BLUE_BUILD_VERSION: env.LUMIRA_SERVER_BLUE_BUILD_VERSION || env.BUILD_VERSION,
+  LUMIRA_SERVER_GREEN_BUILD_VERSION: env.LUMIRA_SERVER_GREEN_BUILD_VERSION || env.BUILD_VERSION,
+  LUMIRA_SERVER_BLUE_BUILD_TIME: env.LUMIRA_SERVER_BLUE_BUILD_TIME || env.BUILD_TIME,
+  LUMIRA_SERVER_GREEN_BUILD_TIME: env.LUMIRA_SERVER_GREEN_BUILD_TIME || env.BUILD_TIME,
+  LUMIRA_SERVER_BLUE_GIT_COMMIT: env.LUMIRA_SERVER_BLUE_GIT_COMMIT || env.GIT_COMMIT,
+  LUMIRA_SERVER_GREEN_GIT_COMMIT: env.LUMIRA_SERVER_GREEN_GIT_COMMIT || env.GIT_COMMIT,
+  LUMIRA_SERVER_BLUE_DATABASE_VERSION: env.LUMIRA_SERVER_BLUE_DATABASE_VERSION || env.DATABASE_VERSION,
+  LUMIRA_SERVER_GREEN_DATABASE_VERSION: env.LUMIRA_SERVER_GREEN_DATABASE_VERSION || env.DATABASE_VERSION,
 })) {
   envContent = setEnvValue(envContent, key, value);
 }
@@ -98,10 +108,16 @@ const generatedDir = path.join(deployDir, '.generated', 'api-proxy');
 const statePath = path.join(deployDir, '.update-state.json');
 mkdirSync(generatedDir, { recursive: true });
 if (!existsSync(statePath)) {
+  const activeSlot = env.LUMIRA_ACTIVE_SLOT === 'green' ? 'green' : 'blue';
+  const slotPrefix = `LUMIRA_SERVER_${activeSlot.toUpperCase()}_`;
   const initialState = createInitialDeploymentState({
-    activeSlot: env.LUMIRA_ACTIVE_SLOT || 'blue',
-    serverImage: env.LUMIRA_SERVER_IMAGE,
-    commit: env.GIT_COMMIT,
+    activeSlot,
+    serverImage: env[`${slotPrefix}IMAGE`] || env.LUMIRA_SERVER_IMAGE,
+    commit: env[`${slotPrefix}GIT_COMMIT`] || env.GIT_COMMIT,
+    version: env[`${slotPrefix}APP_VERSION`] || env.APP_VERSION,
+    buildVersion: env[`${slotPrefix}BUILD_VERSION`] || env.BUILD_VERSION,
+    buildTime: env[`${slotPrefix}BUILD_TIME`] || env.BUILD_TIME,
+    databaseVersion: env[`${slotPrefix}DATABASE_VERSION`] || env.DATABASE_VERSION,
   });
   writeFileSync(statePath, `${JSON.stringify(initialState, null, 2)}\n`, { mode: 0o600 });
 }

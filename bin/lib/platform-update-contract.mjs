@@ -89,6 +89,9 @@ export function createInitialDeploymentState(values = {}) {
   const current = {
     commit: String(values.commit || ''),
     version: String(values.version || ''),
+    buildVersion: String(values.buildVersion || values.version || ''),
+    buildTime: String(values.buildTime || ''),
+    databaseVersion: String(values.databaseVersion || ''),
     serverImage: String(values.serverImage || ''),
     activatedAt: values.activatedAt || new Date().toISOString(),
   };
