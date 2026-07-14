@@ -16,6 +16,7 @@ const argumentValue = (name) => {
 };
 const deployDir = path.resolve(argumentValue('--deploy-dir') || process.env.LUMIRA_DEPLOY_DIR || path.join(repoRoot, 'deploy'));
 const envPath = path.join(deployDir, '.env');
+const buildIdentityPath = path.join(deployDir, 'build-identity.env');
 const updaterPath = path.join(repoRoot, 'bin', 'lumira-updater.mjs');
 const servicePath = '/etc/systemd/system/lumira-updater.service';
 const dryRun = process.argv.includes('--dry-run');
@@ -39,7 +40,10 @@ if (!gateway) {
 }
 
 let envContent = readFileSync(envPath, 'utf8');
-const env = parseEnvFile(envPath);
+const env = {
+  ...parseEnvFile(envPath),
+  ...(existsSync(buildIdentityPath) ? parseEnvFile(buildIdentityPath) : {}),
+};
 const token = !env.PLATFORM_UPDATE_AGENT_TOKEN || env.PLATFORM_UPDATE_AGENT_TOKEN.startsWith('change-me')
   ? randomSecret('updater-token')
   : env.PLATFORM_UPDATE_AGENT_TOKEN;
@@ -127,7 +131,9 @@ const containerRunning = (name) => output('docker', ['inspect', '-f', '{{.State.
 const legacyRunning = containerRunning('lumira-server');
 if (legacyRunning) {
   if (!containerRunning('lumira-server-blue')) {
-    run('docker', ['compose', '--env-file', envPath, '-f', path.join(deployDir, 'docker-compose.prod.yml'), '--profile', 'blue', 'up', '-d', '--no-deps', 'lumira-server-blue'], { cwd: repoRoot });
+    const composeEnvArgs = ['--env-file', envPath];
+    if (existsSync(buildIdentityPath)) composeEnvArgs.push('--env-file', buildIdentityPath);
+    run('docker', ['compose', ...composeEnvArgs, '-f', path.join(deployDir, 'docker-compose.prod.yml'), '--profile', 'blue', 'up', '-d', '--no-deps', 'lumira-server-blue'], { cwd: repoRoot });
   }
   const blueAddress = output('docker', ['inspect', '-f', '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}', 'lumira-server-blue'], { cwd: repoRoot }).trim();
   let blueHealthy = false;
