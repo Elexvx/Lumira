@@ -5149,24 +5149,24 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   return (
     <section className="competition-config-module">
-      <div className="competition-config-module__header">
-        <Typography.Title className="competition-config-module__title" level={4}>
-          {module.key === 'files' && fileStageCode
-            ? `${resolveFileStageName(fileStageCode)}材料`
-            : module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
-            ? (fieldGroupLabel || '项目信息')
-            : getCompetitionSettingsModuleLabel(module)}
-        </Typography.Title>
-      </div>
-      <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        {module.key === 'files' && fileStageCode
-          ? `配置${resolveFileStageName(fileStageCode)}阶段参赛团队需要提交或补充的作品、证明及授权文件。`
-          : module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
-          ? fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
-            ? '配置报名时需要收集的知识产权、权利状态及分布区域信息。下拉和多选内容可通过“设置选项”动态调整。'
-            : '配置报名时需要收集的项目名称、项目简介及其他项目基础信息。'
-          : getCompetitionSettingsModuleDescription(module)}
-      </Typography.Paragraph>
+      {module.key === 'files' && fileStageCode ? null : (
+        <>
+          <div className="competition-config-module__header">
+            <Typography.Title className="competition-config-module__title" level={4}>
+              {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
+                ? (fieldGroupLabel || '项目信息')
+                : getCompetitionSettingsModuleLabel(module)}
+            </Typography.Title>
+          </div>
+          <Typography.Paragraph className="competition-config-module__description" type="secondary">
+            {module.key === 'fields' && fieldScope === 'PROJECT_FIELD'
+              ? fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+                ? '配置报名时需要收集的知识产权、权利状态及分布区域信息。下拉和多选内容可通过“设置选项”动态调整。'
+                : '配置报名时需要收集的项目名称、项目简介及其他项目基础信息。'
+              : getCompetitionSettingsModuleDescription(module)}
+          </Typography.Paragraph>
+        </>
+      )}
       {module.key === 'payments' && !paymentProviderOptions.length ? (
         <Alert
           showIcon
