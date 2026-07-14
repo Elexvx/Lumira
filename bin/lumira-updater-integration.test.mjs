@@ -64,4 +64,6 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   assert.equal(task.status, 'SUCCEEDED');
   assert.equal(task.progressPercent, 100);
   assert.equal(task.targetSlot, 'green');
+  assert.equal(task.log.some((line) => line.includes(manifest.images.frontend)), false);
+  assert.equal(task.log.some((line) => line.includes(manifest.images.server)), true);
 });
