@@ -26,8 +26,14 @@ export const normalizeCompetitionDraftBasicDefaults = (
     && !trimToUndefined(organizers[0]?.name);
   const hasLegacyOrganizerText = source.status === 'draft'
     && normalizedOrganizer?.toLowerCase() === 'organizer';
-  const hasLegacyLocation = !trimToUndefined(source.participationScope)
-    && source.location?.trim().toUpperCase() === 'TBD';
+  const normalizedParticipationScope = trimToUndefined(source.participationScope);
+  const normalizedLocation = trimToUndefined(source.location);
+  const hasLegacyLocation = source.status === 'draft'
+    && [normalizedParticipationScope, normalizedLocation]
+      .filter(Boolean)
+      .every((value) => value?.toUpperCase() === 'TBD')
+    && [normalizedParticipationScope, normalizedLocation]
+      .some((value) => value?.toUpperCase() === 'TBD');
   const hasLegacyCategory = source.status === 'draft'
     && source.category?.trim().toUpperCase() === 'OTHER'
     && !trimToUndefined(source.competitionLevel || source.level)
@@ -45,7 +51,8 @@ export const normalizeCompetitionDraftBasicDefaults = (
             role: normalizedOrganizer && !hasLegacyOrganizerText ? '主办方' : '',
             name: hasLegacyOrganizerText ? '' : normalizedOrganizer || '',
           }],
-    participationScope: trimToUndefined(source.participationScope)
-      || (hasLegacyLocation ? undefined : trimToUndefined(source.location)),
+    participationScope: hasLegacyLocation
+      ? undefined
+      : normalizedParticipationScope || normalizedLocation,
   };
 };
