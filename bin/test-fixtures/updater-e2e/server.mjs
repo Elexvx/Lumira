@@ -6,7 +6,12 @@ const server = http.createServer((request, response) => {
     ? 'invalid-public-build'
     : commit;
   response.setHeader('content-type', 'application/json');
-  if (request.url === '/actuator/health/readiness' || request.url === '/actuator/health' || request.url === '/api/health') {
+  if (request.url === '/actuator/health/readiness') {
+    response.statusCode = 401;
+    response.end(JSON.stringify({ status: 'UNAUTHORIZED' }));
+    return;
+  }
+  if (request.url === '/actuator/health' || request.url === '/api/health') {
     response.end(JSON.stringify({ status: 'UP', commit: reportedCommit }));
     return;
   }

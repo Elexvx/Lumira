@@ -273,6 +273,7 @@ test('platform updater is reachable from the backend container and installed as 
   assert.doesNotMatch(updaterInstaller, /range \.NetworkSettings\.Networks/, 'legacy migration must not concatenate addresses from multiple Docker networks');
   assert.match(updater, /targetNetworks[\s\S]*proxyNetworks[\s\S]*sharedNetwork/, 'online updates must probe slots through a network shared with the API proxy');
   assert.doesNotMatch(updater, /range \.NetworkSettings\.Networks/, 'online updates must not concatenate addresses from multiple Docker networks');
+  assert.match(updater, /\['\/actuator\/health\/readiness', '\/actuator\/health'\]/, 'slot health checks must support secured readiness groups with a general-health fallback');
   assert.match(updaterInstaller, /if \(!blueHealthy\) \{[\s\S]*stopBlueSlot\(\)/, 'failed pre-switch health checks must clean up the inactive slot');
   assert.match(updaterInstaller, /ls', '-1', '\/etc\/nginx\/conf\.d'/, 'legacy migration must discover the generated API proxy config');
   assert.match(updaterInstaller, /candidate\.includes\('set \$gateway_upstream'\)/, 'legacy migration must select the config that owns API upstreams');
