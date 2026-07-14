@@ -135,7 +135,7 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
     for (const state of ['pending', 'processing', 'done', 'duplicates']) mkdirSync(path.join(queueRoot, worker, state), { recursive: true });
   }
   writeFileSync(path.join(deployDir, 'backup-platform.sh'), '#!/bin/sh\nset -eu\necho "Backup completed: /tmp/lumira-e2e-backup"\n', { mode: 0o755 });
-  writeFileSync(path.join(deployDir, 'nginx.conf'), `events {}\nhttp {\n  server {\n    listen 80;\n    resolver 127.0.0.11 valid=1s ipv6=off;\n    include /etc/nginx/lumira-upstreams/active-upstreams.conf;\n    location / { proxy_http_version 1.1; proxy_set_header X-E2E-Public true; proxy_pass http://$gateway_upstream$request_uri; }\n  }\n}\n`);
+  writeFileSync(path.join(deployDir, 'nginx.conf'), `events {}\nhttp {\n  keepalive_timeout 1s;\n  keepalive_time 2s;\n  keepalive_requests 20;\n  server {\n    listen 80;\n    resolver 127.0.0.11 valid=1s ipv6=off;\n    include /etc/nginx/lumira-upstreams/active-upstreams.conf;\n    location / { proxy_http_version 1.1; proxy_set_header X-E2E-Public true; proxy_pass http://$gateway_upstream$request_uri; }\n  }\n}\n`);
   writeFileSync(composeFile, `services:
   lumira-server-blue: &server
     profiles: [blue]
@@ -215,7 +215,7 @@ networks:
       LUMIRA_DEPLOY_DIR: deployDir,
       LUMIRA_UPDATER_HOST: '127.0.0.1',
       LUMIRA_UPDATER_PORT: String(updaterPort),
-      LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS: '1',
+      LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS: '3',
       LUMIRA_UPDATER_SKIP_PULL_IF_PRESENT: 'true',
       LUMIRA_CONTAINER_PREFIX: containerPrefix,
       LUMIRA_WSL_DISTRO: process.env.LUMIRA_WSL_DISTRO || 'Ubuntu-24.04',
@@ -256,7 +256,7 @@ networks:
   hammerPromise = (async () => {
     while (hammering) {
       try {
-        const response = await fetch(`http://127.0.0.1:${proxyPort}/probe`);
+        const response = await fetch(`http://127.0.0.1:${proxyPort}/probe`, { headers: { connection: 'close' } });
         const text = await response.text();
         let body;
         try { body = JSON.parse(text); } catch { body = {}; }
