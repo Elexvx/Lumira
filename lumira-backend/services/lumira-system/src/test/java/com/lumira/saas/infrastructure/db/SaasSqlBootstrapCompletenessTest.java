@@ -149,6 +149,25 @@ class SaasSqlBootstrapCompletenessTest {
                 .contains("('platform', 'runtime-appearance', 1, 'sql-bootstrap', NOW())");
     }
 
+    @Test
+    void consolidatedSaasSqlSeedsProjectDictionariesRequiredByProjectManagement() throws IOException {
+        String sql = readSaasSql();
+
+        assertThat(sql)
+                .contains("('aiadc_project_locale', '项目语言', 'ENABLED', 1")
+                .contains("('aiadc_project_status', '项目状态', 'ENABLED', 1")
+                .contains("('aiadc_project_rating', '项目评级', 'ENABLED', 1")
+                .contains("('aiadc_project_filter_all', '项目全部筛选标记', 'ENABLED', 1")
+                .contains("SELECT `id`, 'zh', '中文', 10, 'ENABLED', '项目默认语言'")
+                .contains("SELECT `id`, 'en', 'English', 20, 'ENABLED', 'Project locale'")
+                .contains("SELECT `id`, 'draft', '草稿', 10, 'ENABLED', '项目默认状态'")
+                .contains("SELECT `id`, 'published', '已发布', 20, 'ENABLED', '项目状态'")
+                .contains("SELECT `id`, 'popular', '热门', 10, 'ENABLED', '项目默认评级'")
+                .contains("SELECT `id`, 'excellent', '优秀', 20, 'ENABLED', '项目评级'")
+                .contains("SELECT `id`, 'new', '最新', 30, 'ENABLED', '项目评级'")
+                .contains("SELECT `id`, 'all', '全部', 10, 'ENABLED', '项目查询全部筛选标记'");
+    }
+
     private static Set<String> permissionKeys(String valuesBlock) {
         Set<String> keys = new LinkedHashSet<>();
         Matcher matcher = Pattern.compile("\\(\\s*'([^']+)'\\s*,").matcher(valuesBlock);

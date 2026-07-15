@@ -19,6 +19,8 @@ describe('registration checkout helpers', () => {
   it('calculates team, member and zero-fee amounts', () => {
     expect(calculateRegistrationPayableAmount(2500, 'TEAM', 3)).toBe(2500);
     expect(calculateRegistrationPayableAmount(2500, 'MEMBER', 3)).toBe(7500);
+    expect(calculateRegistrationPayableAmount(1234, 'MEMBER', 3)).toBe(3702);
+    expect(calculateRegistrationPayableAmount(1234, 'MEMBER', 0)).toBe(0);
     expect(calculateRegistrationPayableAmount(0, 'MEMBER', 3)).toBe(0);
   });
 

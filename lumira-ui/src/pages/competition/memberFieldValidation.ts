@@ -24,9 +24,22 @@ export const validateMemberTextField = (
   itemKey: string | undefined,
   title: string | undefined,
   value: unknown,
+  fieldType?: string,
+  validationRule?: string,
 ): string | undefined => {
   if (typeof value !== 'string' || !value) {
     return undefined;
+  }
+  const normalizedType = (fieldType || '').toUpperCase();
+  const normalizedRule = (validationRule || '').toUpperCase();
+  if ((normalizedType === 'MOBILE' || normalizedRule === 'CHINA_MOBILE') && !/^1[3-9]\d{9}$/.test(value)) {
+    return `请输入正确的${title || '手机号'}`;
+  }
+  if ((normalizedType === 'EMAIL' || normalizedRule === 'EMAIL') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return `请输入正确的${title || '邮箱'}`;
+  }
+  if (normalizedRule === 'ID_CARD' && !/^(?:\d{15}|\d{17}[\dXx])$/.test(value)) {
+    return `请输入正确的${title || '身份证号'}`;
   }
   const target = resolveMemberFieldValidationTarget(itemKey, title);
   if (!target) {

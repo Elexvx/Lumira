@@ -20,4 +20,13 @@ describe('validateMemberTextField', () => {
     expect(validateMemberTextField('custom-school', '学校', '++++++')).toContain('只能输入');
     expect(validateMemberTextField('custom-school', '学校', 'Peking  University')).toContain('连续空格');
   });
+
+  it('validates configured mobile, email, and identity-card fields', () => {
+    expect(validateMemberTextField('mobile', '手机号', '123', 'MOBILE')).toContain('正确');
+    expect(validateMemberTextField('mobile', '手机号', '13800138000', 'MOBILE')).toBeUndefined();
+    expect(validateMemberTextField('email', '邮箱', 'bad-email', 'EMAIL')).toContain('正确');
+    expect(validateMemberTextField('email', '邮箱', 'student@example.com', 'EMAIL')).toBeUndefined();
+    expect(validateMemberTextField('idCard', '身份证号', '123', 'TEXT', 'ID_CARD')).toContain('正确');
+    expect(validateMemberTextField('idCard', '身份证号', '110101200001011234', 'TEXT', 'ID_CARD')).toBeUndefined();
+  });
 });
