@@ -7,6 +7,10 @@ export type RegistrationFieldScope = Extract<
 
 const normalizeFieldKey = (value?: string) => (value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
 
+export const isDeprecatedRegistrationContactField = (
+  item: Pick<CompetitionConfigItem, 'itemType' | 'itemKey'>,
+) => item.itemType === 'REGISTRATION_FIELD' && normalizeFieldKey(item.itemKey) === 'contactname';
+
 const parseMetadata = (contentJson?: string | null): Record<string, unknown> => {
   if (!contentJson) {
     return {};

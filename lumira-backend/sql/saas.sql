@@ -2211,7 +2211,6 @@ INSERT INTO `competition_config_item_template`
 VALUES
 ('DEFAULT','AGREEMENT','commitment','赛事承诺书','{}','请配置赛事承诺书内容。',10,1,1,0),
 ('DEFAULT','CONSENT','informed-consent','知情同意书','{}','请配置知情同意书内容。',20,1,1,0),
-('DEFAULT','REGISTRATION_FIELD','contact-name','联系人姓名','{"fieldType":"TEXT","placeholder":"请输入联系人姓名","validationRule":"NONE","target":"registration"}',NULL,10,1,1,0),
 ('DEFAULT','REQUIRED_FILE','work-file','作品文件','{"fileFormat":"ANY","accept":"*","maxSizeMb":100,"maxCount":1}',NULL,10,1,1,0),
 ('DEFAULT','TEAM_SETTINGS','team-size-limits','团队人数限制','{"teamMinMembers":1,"teamMaxMembers":20,"standardField":true}',NULL,0,0,1,0),
 ('DEFAULT','TEAM_FIELD','teamName','团队名称','{"fieldType":"TEXT","placeholder":"请输入团队名称","validationRule":"NONE","standardField":true}',NULL,10,1,1,0),

@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { resolveRegistrationFieldScope } from './registrationFieldScope';
+import { isDeprecatedRegistrationContactField, resolveRegistrationFieldScope } from './registrationFieldScope';
 
 describe('resolveRegistrationFieldScope', () => {
+  it('identifies the deprecated registration contact field', () => {
+    expect(isDeprecatedRegistrationContactField({
+      itemType: 'REGISTRATION_FIELD',
+      itemKey: 'contact-name',
+    })).toBe(true);
+    expect(isDeprecatedRegistrationContactField({
+      itemType: 'MEMBER_FIELD',
+      itemKey: 'contact-name',
+    })).toBe(false);
+  });
+
   it('moves a legacy contact-name field into member fields', () => {
     expect(resolveRegistrationFieldScope({
       itemType: 'TEAM_FIELD',

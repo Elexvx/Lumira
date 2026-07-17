@@ -77,7 +77,10 @@ import {
 } from '@/pages/competition/utils/registrationCheckout';
 import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
-import { resolveRegistrationFieldScope } from '@/pages/competition/utils/registrationFieldScope';
+import {
+  isDeprecatedRegistrationContactField,
+  resolveRegistrationFieldScope,
+} from '@/pages/competition/utils/registrationFieldScope';
 import {
   createCompetitionSettingsSearch,
   getCompetitionSettingsStageTabFallback,
@@ -1906,7 +1909,9 @@ const splitConfiguredRegistrationFields = (
   scope: Extract<CompetitionConfigItemType, 'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'>,
 ): RegistrationCollectedFieldSplit => {
   const configuredFields = items
-    .filter((item) => item.enabled !== false && resolveRegistrationFieldScope(item) === scope)
+    .filter((item) => item.enabled !== false
+      && !isDeprecatedRegistrationContactField(item)
+      && resolveRegistrationFieldScope(item) === scope)
     .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
     .map(toRegistrationCollectedField);
 
@@ -6351,11 +6356,18 @@ const CompetitionSettingsPage = () => {
     }
     await flushActivePanel();
     setActiveKey(nextKey);
-    updateNavigationUrl(
-      nextKey,
-      nextKey === 'registration' ? registrationDetail : nextKey === 'stages' ? stageDetail : undefined,
-    );
-  }, [activeKey, flushActivePanel, registrationDetail, stageDetail, updateNavigationUrl]);
+    if (nextKey === 'registration') {
+      setRegistrationDetail('MEMBER_FIELD');
+      updateNavigationUrl(nextKey, 'MEMBER_FIELD');
+      return;
+    }
+    if (nextKey === 'stages') {
+      setStageDetail('timeline');
+      updateNavigationUrl(nextKey, 'timeline');
+      return;
+    }
+    updateNavigationUrl(nextKey);
+  }, [activeKey, flushActivePanel, updateNavigationUrl]);
 
   const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
     const pendingSave = flushActivePanel();
