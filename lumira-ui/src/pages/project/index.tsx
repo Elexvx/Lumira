@@ -1860,13 +1860,6 @@ const ProjectPage = () => {
     setEditingRecord(undefined);
   };
 
-  const openCreatePage = () => {
-    history.push({
-      pathname: '/projects/create',
-      search: createProjectStepSearch(0),
-    });
-  };
-
   const openEditDrawer = useCallback((record: ProjectRecord) => {
     setEditingRecord(record);
     form.resetFields();
@@ -2085,18 +2078,6 @@ const ProjectPage = () => {
           scroll={{ x: 1180 }}
           request={requestProjects}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          toolBarRender={() =>
-            actionPermission.buildToolbarActions([
-              {
-                permission: 'aiadc:project:create',
-                value: (
-                  <Button key="create" type="primary" icon={<PlusOutlined />} onClick={openCreatePage}>
-                    新增项目
-                  </Button>
-                ),
-              },
-            ])
-          }
         />
       </ManagementPageBody>
 

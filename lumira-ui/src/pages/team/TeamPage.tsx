@@ -570,18 +570,6 @@ const TeamListPage = () => {
           }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: <Empty description="暂无团队" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
-          toolBarRender={() =>
-            actionPermission.buildToolbarActions([
-              {
-                value: (
-                  <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => history.push('/team/create')}>
-                    新增团队
-                  </Button>
-                ),
-                permission: 'team:create',
-              },
-            ])
-          }
         />
       </ManagementPageBody>
       <ManagementDrawer
