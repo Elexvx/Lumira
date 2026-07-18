@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
@@ -96,6 +96,12 @@ import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { validateMemberTextField } from './memberFieldValidation';
+import {
+  DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS,
+  isIndependentMemberRoleField,
+  normalizeIndependentMemberRoleMetadata,
+  reorderScopedConfigItems,
+} from './utils/competitionFieldConfig';
 import './CompetitionPage.css';
 
 type CompetitionTimeMode = 'CONFIRMED' | 'TBD';
@@ -161,21 +167,8 @@ type RegistrationTeamDraft = RegistrationSnapshotTeamPayload & {
   initialMembers?: RegistrationTeamMemberDraft[];
 };
 
-type RegistrationMemberRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
 type RegistrationMemberEditorKey = number | 'new';
 const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
-
-const registrationTeamRoleOptions: RegistrationMemberRole[] = ['ADMIN', 'MANAGER', 'MEMBER'];
-const zhRegistrationTeamRoleLabel: Record<string, string> = {
-  ADMIN: '管理员',
-  MANAGER: '协作者',
-  MEMBER: '成员',
-};
-const enRegistrationTeamRoleLabel: Record<string, string> = {
-  ADMIN: 'Admin',
-  MANAGER: 'Manager',
-  MEMBER: 'Member',
-};
 const zhFallbackRegistrationTeamTypeOptions = [
   { value: 'GENERAL', label: '通用团队' },
   { value: 'DEV', label: '开发团队' },
@@ -297,7 +290,6 @@ const useCompetitionDictFallbackOptions = () => {
   return useMemo(() => ({
     categoryOptions: isEnglish ? enCategoryOptions : zhCategoryOptions,
     levelOptions: isEnglish ? enLevelOptions : zhLevelOptions,
-    registrationTeamRoleLabel: isEnglish ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel,
     registrationTeamTypeOptions: isEnglish ? enFallbackRegistrationTeamTypeOptions : zhFallbackRegistrationTeamTypeOptions,
   }), [isEnglish]);
 };
@@ -1860,9 +1852,14 @@ const RegistrationImageFieldInput = ({ value, onChange }: RegistrationImageField
 };
 
 const toRegistrationCollectedField = (item: CompetitionConfigItem): RegistrationCollectedField => {
-  const metadata = parseConfigItemMetadata(item.contentJson);
+  const scope = resolveRegistrationFieldScope(item);
+  const metadata = normalizeIndependentMemberRoleMetadata(
+    scope,
+    item.itemKey,
+    parseConfigItemMetadata(item.contentJson),
+  );
   return {
-    scope: resolveRegistrationFieldScope(item),
+    scope,
     itemKey: item.itemKey,
     title: item.title || item.itemKey,
     fieldType: metadata.fieldType || 'TEXT',
@@ -1928,7 +1925,7 @@ const splitConfiguredRegistrationFields = (
   const customFields: RegistrationCollectedField[] = [];
   configuredFields.forEach((field) => {
     const standardKey = resolveStandardCollectedFieldKey(scope, field.itemKey);
-    if (standardKey) {
+    if (standardKey && !isIndependentMemberRoleField(field.scope, field.itemKey, field.fieldType)) {
       overrides.set(standardKey, field);
       return;
     }
@@ -1975,8 +1972,12 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
   const placeholder = field.placeholder || field.title || undefined;
   switch ((field.fieldType || 'TEXT').toUpperCase()) {
     case 'ROLE': {
-      const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
-      return <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }))} />;
+      return (
+        <Select
+          options={parseConfigFieldOptions(field.options || DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS)}
+          placeholder={placeholder}
+        />
+      );
     }
     case 'NUMBER':
       return <InputNumber min={0} style={{ width: '100%' }} placeholder={placeholder} />;
@@ -1999,19 +2000,23 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
   }
 };
 
-const resolveMemberStandardFieldKey = (itemKey?: string) =>
-  resolveStandardCollectedFieldKey('MEMBER_FIELD', itemKey) as keyof Pick<
+const resolveMemberStandardFieldKey = (field: RegistrationCollectedField) => {
+  if (isIndependentMemberRoleField(field.scope, field.itemKey, field.fieldType)) {
+    return undefined;
+  }
+  return resolveStandardCollectedFieldKey('MEMBER_FIELD', field.itemKey) as keyof Pick<
     RegistrationTeamMemberDraft,
     'memberName' | 'employeeNo' | 'departmentName' | 'role' | 'remark'
   > | undefined;
+};
 
 const resolveMemberFieldFormName = (field: RegistrationCollectedField) => {
-  const standardFieldKey = resolveMemberStandardFieldKey(field.itemKey);
+  const standardFieldKey = resolveMemberStandardFieldKey(field);
   return standardFieldKey || ['extraValues', field.itemKey];
 };
 
 const getMemberCollectedFieldValue = (member: RegistrationTeamMemberDraft, field: RegistrationCollectedField) => {
-  const standardFieldKey = resolveMemberStandardFieldKey(field.itemKey);
+  const standardFieldKey = resolveMemberStandardFieldKey(field);
   return standardFieldKey ? member[standardFieldKey] : member.extraValues?.[field.itemKey];
 };
 
@@ -2020,7 +2025,7 @@ const setMemberCollectedFieldValue = (
   field: RegistrationCollectedField,
   value: unknown,
 ): RegistrationTeamMemberDraft => {
-  const standardFieldKey = resolveMemberStandardFieldKey(field.itemKey);
+  const standardFieldKey = resolveMemberStandardFieldKey(field);
   if (standardFieldKey) {
     return {
       ...member,
@@ -2321,10 +2326,6 @@ const CompetitionRegistrationPage = () => {
         requiredSystemRegistrationField('MEMBER_FIELD', 'memberName', '成员姓名'),
         ...memberFieldSplit.allFields,
       ], [memberFieldSplit]);
-  const memberRoleOptions = useMemo(() => {
-    const roleLabelMap = normalizeLocale(getLocale()) === 'en-US' ? enRegistrationTeamRoleLabel : zhRegistrationTeamRoleLabel;
-    return registrationTeamRoleOptions.map((role) => ({ value: role, label: roleLabelMap[role] }));
-  }, []);
   // Team name, member name and project title are persistence invariants in the
   // registration API. Older or partially migrated configurations may not
   // contain them, so keep only these three safe fallbacks. Every optional
@@ -3034,7 +3035,7 @@ const CompetitionRegistrationPage = () => {
         );
         const enabledMemberStandardKeys = new Set(
           effectiveMemberRegistrationFields
-            .map((field) => resolveMemberStandardFieldKey(field.itemKey))
+            .map((field) => resolveMemberStandardFieldKey(field))
             .filter(Boolean),
         );
         const members = normalizeRegistrationMembers(teamDraft.initialMembers).map((member) => ({
@@ -3390,13 +3391,16 @@ const CompetitionRegistrationPage = () => {
     const fieldValue = getMemberCollectedFieldValue(member, field);
     const fieldType = (field.fieldType || 'TEXT').toUpperCase();
     if (fieldType === 'ROLE') {
-      return resolveOptionLabel(buildOptionLabelMap(memberRoleOptions), fieldValue) || '-';
+      return resolveOptionLabel(
+        buildOptionLabelMap(parseConfigFieldOptions(field.options || DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS)),
+        fieldValue,
+      ) || '-';
     }
     if (fieldType === 'SELECT' || fieldType === 'MULTI_SELECT') {
       return resolveOptionLabel(buildOptionLabelMap(parseConfigFieldOptions(field.options)), fieldValue) || '-';
     }
     return normalizeDisplayText(fieldValue) || '-';
-  }, [memberRoleOptions]);
+  }, []);
 
   const competitionTitleMap = useMemo(
     () => new Map(registrationCompetitionOptions.map((item) => [item.id, item.title || item.code])),
@@ -3571,7 +3575,7 @@ const CompetitionRegistrationPage = () => {
           return (
             <Select
               value={normalizeOptionValue(fieldValue)}
-              options={memberRoleOptions}
+              options={parseConfigFieldOptions(field.options || DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS)}
               placeholder={placeholder}
               onChange={(value) => updateMemberEditorField(field, value)}
             />
@@ -4405,7 +4409,14 @@ const getRegistrationDocumentKey = (item: CompetitionConfigItem, index: number) 
 
 const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetitionConfigItem[] =>
   items.map((item) => {
-    const metadata = parseConfigItemMetadata(item.contentJson);
+    const fieldScope = ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType)
+      ? resolveRegistrationFieldScope(item)
+      : undefined;
+    const metadata = normalizeIndependentMemberRoleMetadata(
+      fieldScope,
+      item.itemKey,
+      parseConfigItemMetadata(item.contentJson),
+    );
     return {
       ...item,
       metadata: {
@@ -4418,9 +4429,7 @@ const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetit
         fileFormat: item.itemType === 'REQUIRED_FILE' || item.itemType === 'STAGE_MATERIAL'
           ? normalizeFileFormat(metadata.fileFormat)
           : undefined,
-        fieldScope: ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType)
-          ? resolveRegistrationFieldScope(item)
-          : undefined,
+        fieldScope,
         documentKind: item.itemType === 'AGREEMENT' || item.itemType === 'CONSENT' ? item.itemType : undefined,
         readingSeconds: item.itemType === 'AGREEMENT' || item.itemType === 'CONSENT'
           ? normalizeReadingSeconds(metadata.readingSeconds)
@@ -4495,7 +4504,6 @@ const fieldTypeOptions = [
   { label: '单行文本', value: 'TEXT' },
   { label: '多行文本', value: 'TEXTAREA' },
   { label: '图片上传', value: 'IMAGE' },
-  { label: '成员角色', value: 'ROLE' },
   { label: '数字', value: 'NUMBER' },
   { label: '日期', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
@@ -4868,6 +4876,7 @@ const renderFieldSettingsTable = (
   remove: (index: number | number[]) => void,
   scope: RegistrationFieldScope,
   scheduleSave: () => void,
+  reorderField: (fields: Array<{ key: number; name: number }>, fromIndex: number, toIndex: number) => void,
   openOptionsEditor: (fieldName: number, fieldTitle?: string, options?: string) => void,
   fieldGroupLabel?: string,
 ) => {
@@ -4885,7 +4894,7 @@ const renderFieldSettingsTable = (
           <span>启用</span>
           <span>操作</span>
         </div>
-        {fields.map((field) => (
+        {fields.map((field, index) => (
           <div className="competition-field-table__row" key={field.key}>
             <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入字段名称' }]}>
               <Input placeholder="字段名称" maxLength={64} />
@@ -4929,9 +4938,31 @@ const renderFieldSettingsTable = (
             <Form.Item name={[field.name, 'requiredFlag']} valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Form.Item name={[field.name, 'sortOrder']}>
-              <InputNumber min={0} precision={0} controls={false} style={{ width: '100%' }} />
-            </Form.Item>
+            <div className="competition-field-table__sort-cell">
+              <Form.Item name={[field.name, 'sortOrder']} hidden>
+                <InputNumber />
+              </Form.Item>
+              <Space className="competition-field-table__sort-actions" size={0}>
+                <Button
+                  aria-label={`上移字段 ${index + 1}`}
+                  disabled={index === 0}
+                  icon={<ArrowUpOutlined />}
+                  size="small"
+                  title="上移"
+                  type="text"
+                  onClick={() => reorderField(fields, index, index - 1)}
+                />
+                <Button
+                  aria-label={`下移字段 ${index + 1}`}
+                  disabled={index === fields.length - 1}
+                  icon={<ArrowDownOutlined />}
+                  size="small"
+                  title="下移"
+                  type="text"
+                  onClick={() => reorderField(fields, index, index + 1)}
+                />
+              </Space>
+            </div>
             <Form.Item name={[field.name, 'enabled']} valuePropName="checked">
               <Switch />
             </Form.Item>
@@ -5131,6 +5162,25 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   }, [competitionUuid, fileStageCode, form, items, module.key, onSaved]);
   const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
 
+  const reorderField = useCallback((
+    scopedFields: Array<{ key: number; name: number }>,
+    fromIndex: number,
+    toIndex: number,
+  ) => {
+    const currentItems = (form.getFieldValue('items') || []) as EditableCompetitionConfigItem[];
+    const nextItems = reorderScopedConfigItems(
+      currentItems,
+      scopedFields.map((field) => field.name),
+      fromIndex,
+      toIndex,
+    );
+    if (nextItems === currentItems) {
+      return;
+    }
+    form.setFieldValue('items', nextItems);
+    scheduleSave();
+  }, [form, scheduleSave]);
+
   const confirmOptionsEditor = useCallback(() => {
     if (!optionsEditor) {
       return;
@@ -5259,6 +5309,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                           remove,
                           scopeOption.value,
                           scheduleSave,
+                          reorderField,
                           (fieldName, fieldTitle, options) => setOptionsEditor({
                             fieldName,
                             fieldTitle,
@@ -5275,6 +5326,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                               remove,
                               'MEMBER_FIELD',
                               scheduleSave,
+                              reorderField,
                               (fieldName, fieldTitle, options) => setOptionsEditor({
                                 fieldName,
                                 fieldTitle,

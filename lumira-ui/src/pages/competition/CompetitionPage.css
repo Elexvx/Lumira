@@ -919,6 +919,12 @@
   width: 100%;
 }
 
+.competition-field-table__sort-cell,
+.competition-field-table__sort-actions {
+  display: inline-flex;
+  justify-content: center;
+}
+
 .competition-schedule-settings,
 .competition-schedule-settings__content {
   width: 100%;
