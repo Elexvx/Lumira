@@ -2,6 +2,19 @@
   padding: 0 0 32px;
 }
 
+.project-table-identity {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+}
+
+.project-table-identity > .ant-typography {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .project-create-shell {
   border-radius: var(--saas-card-radius);
 }

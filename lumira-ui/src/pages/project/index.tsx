@@ -1925,14 +1925,19 @@ const ProjectPage = () => {
       {
         title: '项目',
         dataIndex: 'keyword',
+        width: 240,
         fieldProps: {
           placeholder: '输入项目名称/编码/简介/标签',
         },
         render: (_, record) => (
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong>{record.title}</Typography.Text>
-            <Typography.Text type="secondary">{record.code}</Typography.Text>
-          </Space>
+          <div className="project-table-identity">
+            <Typography.Text strong ellipsis={{ tooltip: record.title }}>
+              {record.title}
+            </Typography.Text>
+            <Typography.Text type="secondary" ellipsis={{ tooltip: record.code }}>
+              {record.code}
+            </Typography.Text>
+          </div>
         ),
       },
       {
