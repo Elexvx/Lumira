@@ -5185,6 +5185,43 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         />
       ) : null}
       <Form form={form} layout="vertical" initialValues={getInitialValues()} onValuesChange={scheduleSave}>
+        {module.key === 'fields' && fieldScope === 'TEAM_FIELD' ? (
+          <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
+            <div className="competition-config-grid">
+              <Form.Item
+                name="teamMinMembers"
+                label="团队最小人数"
+                dependencies={['teamMaxMembers']}
+                rules={[
+                  { required: true, message: '请输入团队最小人数' },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => Number(value) <= Number(getFieldValue('teamMaxMembers'))
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('最小人数不能大于最大人数')),
+                  }),
+                ]}
+              >
+                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                name="teamMaxMembers"
+                label="团队最大人数"
+                dependencies={['teamMinMembers']}
+                rules={[
+                  { required: true, message: '请输入团队最大人数' },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value) => Number(value) >= Number(getFieldValue('teamMinMembers'))
+                      ? Promise.resolve()
+                      : Promise.reject(new Error('最大人数不能小于最小人数')),
+                  }),
+                ]}
+              >
+                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </div>
+            <Typography.Text type="secondary">报名时团队成员数必须在该范围内。</Typography.Text>
+          </Card>
+        ) : null}
         <Form.List name="items">
           {(fields, { add, remove }) =>
             module.key === 'fields' ? (
@@ -5216,43 +5253,6 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     label: fieldGroupLabel || scopeOption.label,
                     children: (
                       <Space className="competition-config-list" direction="vertical" size={16}>
-                        {scopeOption.value === 'TEAM_FIELD' ? (
-                          <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
-                            <div className="competition-config-grid">
-                              <Form.Item
-                                name="teamMinMembers"
-                                label="团队最小人数"
-                                dependencies={['teamMaxMembers']}
-                                rules={[
-                                  { required: true, message: '请输入团队最小人数' },
-                                  ({ getFieldValue }) => ({
-                                    validator: (_, value) => Number(value) <= Number(getFieldValue('teamMaxMembers'))
-                                      ? Promise.resolve()
-                                      : Promise.reject(new Error('最小人数不能大于最大人数')),
-                                  }),
-                                ]}
-                              >
-                                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
-                              </Form.Item>
-                              <Form.Item
-                                name="teamMaxMembers"
-                                label="团队最大人数"
-                                dependencies={['teamMinMembers']}
-                                rules={[
-                                  { required: true, message: '请输入团队最大人数' },
-                                  ({ getFieldValue }) => ({
-                                    validator: (_, value) => Number(value) >= Number(getFieldValue('teamMinMembers'))
-                                      ? Promise.resolve()
-                                      : Promise.reject(new Error('最大人数不能小于最小人数')),
-                                  }),
-                                ]}
-                              >
-                                <InputNumber min={1} max={20} precision={0} style={{ width: '100%' }} />
-                              </Form.Item>
-                            </div>
-                            <Typography.Text type="secondary">报名时团队成员数必须在该范围内。</Typography.Text>
-                          </Card>
-                        ) : null}
                         {renderFieldSettingsTable(
                           scopedFields,
                           add,
