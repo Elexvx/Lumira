@@ -79,6 +79,7 @@ import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/util
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import {
   isDeprecatedRegistrationContactField,
+  removeDeprecatedRegistrationContactFields,
   resolveRegistrationFieldScope,
 } from '@/pages/competition/utils/registrationFieldScope';
 import {
@@ -5028,7 +5029,9 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
 
   const getInitialValues = useCallback(() => {
     const limits = getTeamMemberLimits(items);
-    const sourceItems = items.filter((item) => item.itemType !== 'TEAM_SETTINGS');
+    const sourceItems = removeDeprecatedRegistrationContactFields(
+      items.filter((item) => item.itemType !== 'TEAM_SETTINGS'),
+    );
     const stageItems = fileStageCode
       ? sourceItems.filter((item) => getFileConfigItemStageCode(item) === fileStageCode)
       : [];

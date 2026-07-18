@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isDeprecatedRegistrationContactField, resolveRegistrationFieldScope } from './registrationFieldScope';
+import {
+  isDeprecatedRegistrationContactField,
+  removeDeprecatedRegistrationContactFields,
+  resolveRegistrationFieldScope,
+} from './registrationFieldScope';
 
 describe('resolveRegistrationFieldScope', () => {
   it('identifies the deprecated registration contact field', () => {
@@ -11,6 +15,15 @@ describe('resolveRegistrationFieldScope', () => {
       itemType: 'MEMBER_FIELD',
       itemKey: 'contact-name',
     })).toBe(false);
+  });
+
+  it('removes deprecated contact fields before editing and saving settings', () => {
+    expect(removeDeprecatedRegistrationContactFields([
+      { itemType: 'REGISTRATION_FIELD', itemKey: 'contact-name', title: '联系人姓名' },
+      { itemType: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称' },
+    ])).toEqual([
+      { itemType: 'TEAM_FIELD', itemKey: 'teamName', title: '团队名称' },
+    ]);
   });
 
   it('moves a legacy contact-name field into member fields', () => {

@@ -11,6 +11,10 @@ export const isDeprecatedRegistrationContactField = (
   item: Pick<CompetitionConfigItem, 'itemType' | 'itemKey'>,
 ) => item.itemType === 'REGISTRATION_FIELD' && normalizeFieldKey(item.itemKey) === 'contactname';
 
+export const removeDeprecatedRegistrationContactFields = <T extends Pick<CompetitionConfigItem, 'itemType' | 'itemKey'>>(
+  items: T[],
+) => items.filter((item) => !isDeprecatedRegistrationContactField(item));
+
 const parseMetadata = (contentJson?: string | null): Record<string, unknown> => {
   if (!contentJson) {
     return {};
