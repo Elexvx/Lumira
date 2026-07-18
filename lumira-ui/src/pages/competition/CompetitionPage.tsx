@@ -2963,7 +2963,6 @@ const CompetitionRegistrationPage = () => {
       message.error('当前账号没有编辑赛事报名权限');
       return;
     }
-    setLoading(true);
     try {
       if (step === 0) {
         await form.validateFields();
@@ -3014,6 +3013,7 @@ const CompetitionRegistrationPage = () => {
           message.error('请先选择赛事并填写项目名称');
           return;
         }
+        setLoading(true);
         await loadStageFormForCompetition(competitionId);
         setWizardStep(3);
       } else if (step === 3) {
@@ -3089,6 +3089,7 @@ const CompetitionRegistrationPage = () => {
             })),
           } : undefined,
         };
+        setLoading(true);
         const registration = registrationId
           ? await reconfirmRegistration(registrationId, confirmPayload)
           : await confirmRegistration(confirmPayload);
