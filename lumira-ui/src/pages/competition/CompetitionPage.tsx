@@ -100,6 +100,7 @@ import {
   DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS,
   isIndependentMemberRoleField,
   normalizeIndependentMemberRoleMetadata,
+  prioritizeRequiredMemberNameField,
   reorderScopedConfigItems,
 } from './utils/competitionFieldConfig';
 import './CompetitionPage.css';
@@ -2320,12 +2321,13 @@ const CompetitionRegistrationPage = () => {
     () => splitConfiguredRegistrationFields(registrationFields, 'PROJECT_FIELD'),
     [registrationFields],
   );
-  const effectiveMemberRegistrationFields = useMemo(() => memberFieldSplit.overrides.has('memberName')
-    ? memberFieldSplit.allFields
-    : [
-        requiredSystemRegistrationField('MEMBER_FIELD', 'memberName', '成员姓名'),
-        ...memberFieldSplit.allFields,
-      ], [memberFieldSplit]);
+  const effectiveMemberRegistrationFields = useMemo(
+    () => prioritizeRequiredMemberNameField(
+      memberFieldSplit.allFields,
+      requiredSystemRegistrationField('MEMBER_FIELD', 'memberName', '成员姓名'),
+    ),
+    [memberFieldSplit.allFields],
+  );
   // Team name, member name and project title are persistence invariants in the
   // registration API. Older or partially migrated configurations may not
   // contain them, so keep only these three safe fallbacks. Every optional

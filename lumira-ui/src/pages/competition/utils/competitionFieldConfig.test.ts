@@ -3,6 +3,7 @@ import {
   DEFAULT_INDEPENDENT_MEMBER_ROLE_OPTIONS,
   isIndependentMemberRoleField,
   normalizeIndependentMemberRoleMetadata,
+  prioritizeRequiredMemberNameField,
   reorderScopedConfigItems,
 } from './competitionFieldConfig';
 
@@ -23,6 +24,31 @@ describe('competition field configuration', () => {
       fieldType: 'SELECT',
       options: '指导老师\n参赛学生',
     });
+  });
+
+  it('keeps member name first and required without changing the other field order', () => {
+    const fields = [
+      { itemKey: 'mobile', required: true },
+      { itemKey: 'role', required: false },
+      { itemKey: 'memberName', required: false },
+      { itemKey: 'school', required: false },
+    ];
+    expect(prioritizeRequiredMemberNameField(fields, { itemKey: 'memberName', required: true })).toEqual([
+      { itemKey: 'memberName', required: true },
+      { itemKey: 'mobile', required: true },
+      { itemKey: 'role', required: false },
+      { itemKey: 'school', required: false },
+    ]);
+  });
+
+  it('adds a required member name fallback before configured fields', () => {
+    expect(prioritizeRequiredMemberNameField(
+      [{ itemKey: 'mobile', required: true }],
+      { itemKey: 'memberName', required: true },
+    )).toEqual([
+      { itemKey: 'memberName', required: true },
+      { itemKey: 'mobile', required: true },
+    ]);
   });
 
   it('reorders only the selected scope and normalizes its sort order', () => {

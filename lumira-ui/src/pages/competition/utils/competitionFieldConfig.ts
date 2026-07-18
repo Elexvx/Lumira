@@ -26,6 +26,23 @@ export const isIndependentMemberRoleField = (
   fieldType: string | undefined,
 ) => scope === 'MEMBER_FIELD' && itemKey === 'role' && fieldType?.toUpperCase() !== 'ROLE';
 
+const normalizeFieldKey = (value?: string) => (value || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+export const prioritizeRequiredMemberNameField = <T extends { itemKey: string; required?: boolean }>(
+  fields: T[],
+  fallback: T,
+): T[] => {
+  const memberNameIndex = fields.findIndex((field) => ['membername', 'name'].includes(normalizeFieldKey(field.itemKey)));
+  if (memberNameIndex < 0) {
+    return [{ ...fallback, required: true }, ...fields];
+  }
+  const memberNameField = fields[memberNameIndex];
+  return [
+    { ...memberNameField, required: true },
+    ...fields.filter((_, index) => index !== memberNameIndex),
+  ];
+};
+
 export const reorderScopedConfigItems = <T extends { sortOrder?: number }>(
   items: T[],
   scopedIndexes: number[],
