@@ -1,6 +1,8 @@
 -- Replace the ambiguous member grade year field with explicit enrollment and graduation dates.
 -- Existing registration snapshots remain unchanged; only active competition configuration is migrated.
 
+SET NAMES utf8mb4;
+
 DROP TEMPORARY TABLE IF EXISTS `_competition_member_grade_year_migration`;
 CREATE TEMPORARY TABLE `_competition_member_grade_year_migration` AS
 SELECT
