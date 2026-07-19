@@ -22,6 +22,16 @@ test('fresh bootstrap and online migration both contain activity persistence', (
   }
 });
 
+test('member grade year migration creates separate enrollment dates without touching registration snapshots', () => {
+  const migration = read('deploy/migrations/V202607190002__replace_member_grade_year_with_enrollment_dates.sql');
+  assert.match(migration, /'enrollmentDate', '入学时间'/);
+  assert.match(migration, /'graduationDate', '毕业时间'/);
+  assert.match(migration, /grade_year\.`required_flag`/);
+  assert.match(migration, /item\.`deleted` = 1/);
+  assert.doesNotMatch(migration, /competition_registration/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const executableSql = bootstrap.replace(/\/\*[\s\S]*?\*\//g, '');
