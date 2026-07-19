@@ -32,6 +32,15 @@ test('member grade year migration creates separate enrollment dates without touc
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
+test('member enrollment date fields are relabeled as year-only fields', () => {
+  const migration = read('deploy/migrations/V202607190003__rename_member_enrollment_year_fields.sql');
+  assert.match(migration, /`item_key` = 'enrollmentDate'/);
+  assert.match(migration, /`title` = '入学年份'/);
+  assert.match(migration, /`item_key` = 'graduationDate'/);
+  assert.match(migration, /`title` = '毕业年份'/);
+  assert.doesNotMatch(migration, /competition_registration/);
+});
+
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const executableSql = bootstrap.replace(/\/\*[\s\S]*?\*\//g, '');

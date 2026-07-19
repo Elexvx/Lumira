@@ -78,7 +78,11 @@ import {
 } from '@/pages/competition/utils/registrationCheckout';
 import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
-import { normalizeRegistrationDateValue } from '@/pages/competition/utils/registrationDateValue';
+import {
+  formatRegistrationYearValue,
+  isRegistrationYearField,
+  normalizeRegistrationDateValue,
+} from '@/pages/competition/utils/registrationDateValue';
 import {
   CHINA_MOBILE_PATTERN,
   resolveRegistrationFieldValidationRule,
@@ -2010,8 +2014,17 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
       return <Input.TextArea rows={2} placeholder={placeholder} />;
     case 'IMAGE':
       return <RegistrationImageFieldInput />;
-    case 'DATE':
-      return <RegistrationDatePicker style={{ width: '100%' }} placeholder={placeholder} />;
+    case 'DATE': {
+      const yearOnly = isRegistrationYearField(field.itemKey);
+      return (
+        <RegistrationDatePicker
+          style={{ width: '100%' }}
+          picker={yearOnly ? 'year' : undefined}
+          format={yearOnly ? 'YYYY' : undefined}
+          placeholder={placeholder}
+        />
+      );
+    }
     case 'SELECT':
       return <Select options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
     case 'MULTI_SELECT':
@@ -2182,6 +2195,9 @@ const renderCollectedFieldReviewValue = (field: RegistrationCollectedField, valu
   if (fieldType === 'SELECT' || fieldType === 'MULTI_SELECT') {
     const display = resolveOptionLabel(buildOptionLabelMap(parseConfigFieldOptions(field.options)), value);
     return <Typography.Text>{display || normalizeDisplayText(value)}</Typography.Text>;
+  }
+  if (fieldType === 'DATE' && isRegistrationYearField(field.itemKey)) {
+    return <Typography.Text>{formatRegistrationYearValue(value) || '-'}</Typography.Text>;
   }
   return <Typography.Text>{normalizeDisplayText(normalizeSnapshotValue(value)) || '-'}</Typography.Text>;
 };
@@ -3666,6 +3682,8 @@ const CompetitionRegistrationPage = () => {
           return (
             <DatePicker
               style={{ width: '100%' }}
+              picker={isRegistrationYearField(field.itemKey) ? 'year' : undefined}
+              format={isRegistrationYearField(field.itemKey) ? 'YYYY' : undefined}
               value={dayjs.isDayjs(fieldValue) ? fieldValue : (typeof fieldValue === 'string' ? parseDateTime(fieldValue) : undefined)}
               placeholder={placeholder}
               onChange={(value) => updateMemberEditorField(field, value ?? undefined)}

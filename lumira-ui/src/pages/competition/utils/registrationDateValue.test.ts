@@ -1,7 +1,11 @@
 import dayjs from 'dayjs';
 import { describe, expect, it } from 'vitest';
 
-import { normalizeRegistrationDateValue } from './registrationDateValue';
+import {
+  formatRegistrationYearValue,
+  isRegistrationYearField,
+  normalizeRegistrationDateValue,
+} from './registrationDateValue';
 
 describe('normalizeRegistrationDateValue', () => {
   it('keeps a valid Dayjs value', () => {
@@ -18,5 +22,18 @@ describe('normalizeRegistrationDateValue', () => {
   it('rejects values that DatePicker cannot consume', () => {
     expect(normalizeRegistrationDateValue('not-a-date')).toBeUndefined();
     expect(normalizeRegistrationDateValue({ value: '2026-09-01' })).toBeUndefined();
+  });
+});
+
+describe('registration year fields', () => {
+  it('recognizes enrollment and graduation fields only', () => {
+    expect(isRegistrationYearField('enrollmentDate')).toBe(true);
+    expect(isRegistrationYearField('graduation_date')).toBe(true);
+    expect(isRegistrationYearField('grantDate')).toBe(false);
+  });
+
+  it('displays existing date snapshots as a four-digit year', () => {
+    expect(formatRegistrationYearValue('2026-07-01')).toBe('2026');
+    expect(formatRegistrationYearValue('invalid')).toBeUndefined();
   });
 });
