@@ -1,6 +1,6 @@
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
+import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Spin, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
 import type { DatePickerProps, UploadFile } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -61,7 +61,7 @@ import type {
   CompetitionStatus,
   CompetitionUpsertPayload,
 } from '@/services/competition/types';
-import { request } from '@/services/common/request';
+import { request, requestFile } from '@/services/common/request';
 import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult, PaymentProviderSettings } from '@/types/api';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
@@ -1759,6 +1759,11 @@ const MaterialFileUploadInput = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [fileRecord, setFileRecord] = useState<FileObjectRecord>();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewRecord, setPreviewRecord] = useState<FileObjectRecord>();
+  const [previewUrl, setPreviewUrl] = useState('');
+  const previewUrlRef = useRef('');
   const maxSizeMb = Number(field.maxSizeMb) || 20;
   const fileFormatLabel = competitionMaterialFileFormatConfig[(field.fileFormat || 'ANY').toUpperCase()]?.label || '任意格式文件';
   const uploadedFileList: UploadFile[] = value ? [{
@@ -1767,6 +1772,57 @@ const MaterialFileUploadInput = ({
     status: 'done',
     url: fileRecord ? normalizeUploadUrl(fileRecord.previewUrl || fileRecord.publicUrl) : undefined,
   }] : [];
+
+  const clearPreviewUrl = useCallback(() => {
+    if (previewUrlRef.current) {
+      window.URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = '';
+    }
+    setPreviewUrl('');
+  }, []);
+
+  const closePreview = useCallback(() => {
+    setPreviewOpen(false);
+    setPreviewLoading(false);
+    setPreviewRecord(undefined);
+    clearPreviewUrl();
+  }, [clearPreviewUrl]);
+
+  const handlePreview = useCallback(async () => {
+    if (!value) {
+      return;
+    }
+
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    clearPreviewUrl();
+    try {
+      const record = fileRecord || await request<FileObjectRecord>(`/v1/files/${value}`, {
+        method: 'GET',
+        silent: true,
+      });
+      setFileRecord(record);
+      setPreviewRecord(record);
+      if (!['PDF', 'IMAGE', 'TEXT'].includes(record.previewMode)) {
+        message.warning('当前文件格式暂不支持在线预览');
+        setPreviewOpen(false);
+        return;
+      }
+
+      const blob = await requestFile(`/v1/files/${value}/preview`, {
+        method: 'GET',
+        silent: true,
+      });
+      const objectUrl = window.URL.createObjectURL(blob);
+      previewUrlRef.current = objectUrl;
+      setPreviewUrl(objectUrl);
+    } catch (error) {
+      setPreviewOpen(false);
+      showErrorMessage(error, '文件预览加载失败');
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [clearPreviewUrl, fileRecord, value]);
 
   useEffect(() => {
     if (!value) {
@@ -1786,19 +1842,28 @@ const MaterialFileUploadInput = ({
     };
   }, [value]);
 
+  useEffect(() => () => {
+    if (previewUrlRef.current) {
+      window.URL.revokeObjectURL(previewUrlRef.current);
+    }
+  }, []);
+
   return (
-    <Upload.Dragger
-      accept={getCompetitionMaterialFileAccept(field)}
-      maxCount={1}
-      fileList={uploadedFileList}
-      showUploadList={{ showPreviewIcon: false, showRemoveIcon: true }}
-      disabled={uploading}
-      onRemove={() => {
-        setFileRecord(undefined);
-        onChange?.(undefined);
-        return true;
-      }}
-      beforeUpload={async (file) => {
+    <>
+      <Upload.Dragger
+        accept={getCompetitionMaterialFileAccept(field)}
+        maxCount={1}
+        fileList={uploadedFileList}
+        showUploadList={{ showPreviewIcon: true, showRemoveIcon: true }}
+        disabled={uploading}
+        onPreview={() => void handlePreview()}
+        onRemove={() => {
+          closePreview();
+          setFileRecord(undefined);
+          onChange?.(undefined);
+          return true;
+        }}
+        beforeUpload={async (file) => {
           const validationMessage = validateCompetitionMaterialFile(file as File, field);
           if (validationMessage) {
             message.error(validationMessage);
@@ -1831,18 +1896,49 @@ const MaterialFileUploadInput = ({
             setUploading(false);
           }
           return Upload.LIST_IGNORE;
-      }}
-    >
-      <p className="ant-upload-drag-icon">
-        <UploadOutlined />
-      </p>
-      <p className="ant-upload-text">
-        {uploading ? '文件上传中...' : value ? '拖拽文件到这里，或点击重新上传' : '拖拽文件到这里，或点击上传'}
-      </p>
-      <p className="ant-upload-hint">
-        支持{fileFormatLabel}，单个文件不超过 {maxSizeMb}MB
-      </p>
-    </Upload.Dragger>
+        }}
+      >
+        <p className="ant-upload-drag-icon">
+          <UploadOutlined />
+        </p>
+        <p className="ant-upload-text">
+          {uploading ? '文件上传中...' : value ? '拖拽文件到这里，或点击重新上传' : '拖拽文件到这里，或点击上传'}
+        </p>
+        <p className="ant-upload-hint">
+          支持{fileFormatLabel}，单个文件不超过 {maxSizeMb}MB
+        </p>
+      </Upload.Dragger>
+
+      <Modal
+        title={previewRecord?.originalFileName || '文件预览'}
+        open={previewOpen}
+        width={960}
+        centered
+        destroyOnHidden
+        footer={<Button onClick={closePreview}>关闭</Button>}
+        onCancel={closePreview}
+      >
+        <Spin spinning={previewLoading} tip="文件预览加载中">
+          <div className="competition-material-preview">
+            {previewUrl && previewRecord?.previewMode === 'IMAGE' ? (
+              <Image
+                src={previewUrl}
+                alt={previewRecord.originalFileName}
+                preview={false}
+                className="competition-material-preview__image"
+              />
+            ) : null}
+            {previewUrl && (previewRecord?.previewMode === 'PDF' || previewRecord?.previewMode === 'TEXT') ? (
+              <iframe
+                title={previewRecord.originalFileName}
+                src={previewRecord.previewMode === 'PDF' ? `${previewUrl}#view=FitH` : previewUrl}
+                className="competition-material-preview__frame"
+              />
+            ) : null}
+          </div>
+        </Spin>
+      </Modal>
+    </>
   );
 };
 
