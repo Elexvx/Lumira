@@ -72,6 +72,40 @@ class DocumentUploadServiceTest {
     }
 
     @Test
+    void acceptsSafeZipArchive() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
+        DocumentUploadService service = service(properties);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "preliminary-materials.zip",
+                "application/x-zip-compressed",
+                zipBytes("materials/readme.txt")
+        );
+
+        DocumentUploadService.StoredDocument storedDocument = service.upload(file);
+
+        assertEquals("zip", storedDocument.fileExtension());
+        assertEquals("application/zip", storedDocument.contentType());
+        assertEquals("UNSUPPORTED", storedDocument.previewMode());
+    }
+
+    @Test
+    void rejectsFakeZipArchive() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
+        DocumentUploadService service = service(properties);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "preliminary-materials.zip",
+                "application/zip",
+                "not a zip archive".getBytes()
+        );
+
+        assertThrows(BizException.class, () -> service.upload(file));
+    }
+
+    @Test
     void rejectsOpenXmlWithoutContentTypesEntry() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
@@ -119,6 +153,16 @@ class DocumentUploadServiceTest {
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             zip.putNextEntry(new ZipEntry(entryName));
             zip.write("<document/>".getBytes());
+            zip.closeEntry();
+        }
+        return output.toByteArray();
+    }
+
+    private byte[] zipBytes(String entryName) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(output)) {
+            zip.putNextEntry(new ZipEntry(entryName));
+            zip.write("competition material".getBytes());
             zip.closeEntry();
         }
         return output.toByteArray();

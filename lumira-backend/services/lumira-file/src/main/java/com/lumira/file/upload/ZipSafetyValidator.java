@@ -8,6 +8,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -22,6 +23,14 @@ public class ZipSafetyValidator {
     }
 
     public void validateOpenXmlPackage(byte[] bytes, String expectedDirectory) {
+        validateZipPackage(bytes, expectedDirectory, "Document file is invalid or unsafe");
+    }
+
+    public void validateArchive(byte[] bytes) {
+        validateZipPackage(bytes, null, "压缩包无效或不安全");
+    }
+
+    private void validateZipPackage(byte[] bytes, String expectedDirectory, String userMessage) {
         int entries = 0;
         long totalUncompressed = 0L;
         boolean hasContentTypes = false;
@@ -32,13 +41,13 @@ public class ZipSafetyValidator {
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 entries++;
                 if (entries > uploadProperties.getZipMaxEntries()) {
-                    throw blocked();
+                    throw blocked(userMessage);
                 }
-                validateEntryName(entry.getName());
+                validateEntryName(entry.getName(), userMessage);
                 if ("[Content_Types].xml".equals(entry.getName())) {
                     hasContentTypes = true;
                 }
-                if (entry.getName().startsWith(expectedDirectory)) {
+                if (StringUtils.hasText(expectedDirectory) && entry.getName().startsWith(expectedDirectory)) {
                     hasExpectedDirectory = true;
                 }
                 long entryBytes = 0L;
@@ -48,37 +57,43 @@ public class ZipSafetyValidator {
                     totalUncompressed += read;
                     if (entryBytes > uploadProperties.getZipMaxSingleEntryBytes()
                             || totalUncompressed > uploadProperties.getZipMaxUncompressedBytes()) {
-                        throw blocked();
+                        throw blocked(userMessage);
                     }
                 }
             }
         } catch (BizException exception) {
             throw exception;
         } catch (IOException exception) {
-            throw blocked();
+            throw blocked(userMessage);
         }
-        if (!hasContentTypes || !hasExpectedDirectory) {
-            throw blocked();
+        if (entries == 0 || (StringUtils.hasText(expectedDirectory) && (!hasContentTypes || !hasExpectedDirectory))) {
+            throw blocked(userMessage);
         }
         if (bytes.length > 0 && totalUncompressed / Math.max(1L, bytes.length) > uploadProperties.getZipMaxCompressionRatio()) {
-            throw blocked();
+            throw blocked(userMessage);
         }
     }
 
-    private void validateEntryName(String name) {
+    private void validateEntryName(String name, String userMessage) {
         if (!StringUtils.hasText(name)) {
-            throw blocked();
+            throw blocked(userMessage);
         }
         String normalized = name.replace('\\', '/');
+        boolean absolute;
+        try {
+            absolute = Path.of(normalized).isAbsolute();
+        } catch (InvalidPathException exception) {
+            throw blocked(userMessage);
+        }
         if (normalized.startsWith("/")
                 || normalized.contains("../")
                 || normalized.contains("/..")
-                || Path.of(normalized).isAbsolute()) {
-            throw blocked();
+                || absolute) {
+            throw blocked(userMessage);
         }
     }
 
-    private BizException blocked() {
-        return new BizException(ErrorCode.BAD_REQUEST, "Unsafe zip document rejected", "Document file is invalid or unsafe");
+    private BizException blocked(String userMessage) {
+        return new BizException(ErrorCode.BAD_REQUEST, "Unsafe zip file rejected", userMessage);
     }
 }

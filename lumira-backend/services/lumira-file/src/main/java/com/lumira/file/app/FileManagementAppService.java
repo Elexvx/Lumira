@@ -293,7 +293,7 @@ public class FileManagementAppService {
         if (DocumentUploadService.supports(originalFilename, contentType)) {
             return uploadDocument(currentUser, file, category, tags, remark, uploadBucket, visibilityScope);
         }
-        throw visibleBizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 文件");
+        throw visibleBizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 或压缩包文件");
     }
 
     @Transactional
@@ -1569,4 +1569,3 @@ public class FileManagementAppService {
     }
 
 }
-
