@@ -25,16 +25,21 @@ if (new Set(versions).size !== versions.length) throw new Error('Duplicate datab
 const latest = migrations.at(-1);
 const bootstrapSql = readFileSync(path.join(repoRoot, 'lumira-backend', 'sql', 'saas.sql'), 'utf8');
 const migrationChain = migrations.map((migration) => migration.source).join('\n');
-const requiredActivityContracts = [
+const requiredDatabaseContracts = [
   'CREATE TABLE `aiadc_activity_registration`',
   "'aiadc_activity_locale'",
   "'aiadc_activity_status'",
   "'aiadc_activity_public_status'",
+  'CREATE TABLE `sys_profile_field_definition`',
+  "'profile_settings_page_key'",
 ];
 
-for (const contract of requiredActivityContracts) {
-  if (!bootstrapSql.includes(contract)) throw new Error(`Fresh database bootstrap is missing: ${contract}`);
-  if (!migrationChain.includes(contract.replace('CREATE TABLE `', 'CREATE TABLE IF NOT EXISTS `'))) {
+for (const contract of requiredDatabaseContracts) {
+  const idempotentContract = contract.replace('CREATE TABLE `', 'CREATE TABLE IF NOT EXISTS `');
+  if (!bootstrapSql.includes(contract) && !bootstrapSql.includes(idempotentContract)) {
+    throw new Error(`Fresh database bootstrap is missing: ${contract}`);
+  }
+  if (!migrationChain.includes(idempotentContract)) {
     throw new Error(`Online migration chain is missing: ${contract}`);
   }
 }

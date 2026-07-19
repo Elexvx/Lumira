@@ -59,6 +59,26 @@ test('online migration seeds the file service business dictionaries', () => {
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
+test('profile and team-member field definitions remain isolated in fresh and existing databases', () => {
+  const migration = read('deploy/migrations/V202607190005__profile_field_definition_persistence.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+
+  for (const marker of [
+    'sys_profile_field_definition',
+    'profile_settings_page_key',
+    "'PROFILE'",
+    "'TEAM_MEMBER'",
+    'profile.field.real-name.visible',
+    'team.member.field.member-name.visible',
+  ]) {
+    assert.match(migration, new RegExp(marker));
+    assert.match(baseline, new RegExp(marker));
+  }
+  assert.match(migration, /UNIQUE KEY `uk_profile_field_page_key` \(`page_key`,`field_key`\)/);
+  assert.doesNotMatch(migration, /competition_registration/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const executableSql = bootstrap.replace(/\/\*[\s\S]*?\*\//g, '');
