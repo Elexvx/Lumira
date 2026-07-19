@@ -3070,6 +3070,7 @@ const CompetitionRegistrationPage = () => {
           message.error('赛事信息不存在');
           return;
         }
+        await loadStageFormForCompetition(competitionId);
         setWizardStep(registrationWizardStep.preliminaryMaterials);
       } else if (step === registrationWizardStep.preliminaryMaterials) {
         if (stageFormLoading) {
