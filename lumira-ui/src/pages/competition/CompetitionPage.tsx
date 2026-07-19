@@ -2503,11 +2503,11 @@ const CompetitionRegistrationPage = () => {
   const [memberEditorKey, setMemberEditorKey] = useState<RegistrationMemberEditorKey>();
   const [memberEditorDraft, setMemberEditorDraft] = useState<RegistrationTeamMemberDraft>();
   const [memberEditorErrors, setMemberEditorErrors] = useState<Record<string, string>>({});
-  const selectedCompetitionId = Form.useWatch('competitionId', form);
+  const selectedCompetitionId = Form.useWatch('competitionId', { form, preserve: true });
   const selectedProjectId = Form.useWatch('projectId', form);
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
   const newProjectImageUrl = Form.useWatch('newProjectImageUrl', form);
-  const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], form) || []) as RegistrationTeamMemberDraft[];
+  const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], { form, preserve: true }) || []) as RegistrationTeamMemberDraft[];
   const registrationCompetitionOptions = useMemo(
     () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
     [competitions, registrationCompetitionFallback],
