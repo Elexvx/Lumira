@@ -34,7 +34,11 @@ class SaasSqlBootstrapCompletenessTest {
                 .contains("CREATE TABLE `sys_role`")
                 .contains("CREATE TABLE `sys_role_permission`")
                 .contains("CREATE TABLE `sys_user_role`")
-                .contains("CREATE TABLE `ddd_read_model_version`");
+                .contains("CREATE TABLE `ddd_read_model_version`")
+                .contains("CREATE TABLE `aiadc_activity_registration`")
+                .contains("'aiadc_activity_locale'")
+                .contains("'aiadc_activity_status'")
+                .contains("'aiadc_activity_public_status'");
 
         Set<String> permissionKeys = permissionKeys(extractValuesBlock(sql, "sys_permission"));
         assertThat(permissionKeys)

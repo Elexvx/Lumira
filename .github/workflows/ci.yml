@@ -79,8 +79,14 @@ jobs:
           echo "lumira_job_executor=${REGISTRY}/${owner}/lumira/lumira-job-executor" >> "$GITHUB_OUTPUT"
           echo "lumira_migrator=${REGISTRY}/${owner}/lumira/lumira-migrator" >> "$GITHUB_OUTPUT"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
-      - name: Enforce expand-only online migrations
-        run: node bin/check-expand-only-migrations.mjs
+      - name: Validate database migration contract
+        id: database_migrations
+        shell: bash
+        run: |
+          node bin/check-expand-only-migrations.mjs
+          node bin/check-database-migrations.mjs
+          bin/test-database-bootstrap.sh
+          echo "version=$(node bin/check-database-migrations.mjs --print-version)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -223,7 +229,8 @@ jobs:
           LUMIRA_JOB_EXECUTOR_IMAGE: ${{ steps.images.outputs.lumira_job_executor }}@${{ steps.build_job_executor.outputs.digest }}
           LUMIRA_MIGRATOR_IMAGE: ${{ steps.images.outputs.lumira_migrator }}@${{ steps.build_migrator.outputs.digest }}
           LUMIRA_RELEASE_MIGRATION_MODE: expand-only
-          LUMIRA_RELEASE_DATABASE_VERSION: '202607140001'
+          LUMIRA_RELEASE_DATABASE_VERSION: ${{ steps.database_migrations.outputs.version }}
+          LUMIRA_RELEASE_MIGRATION_REQUIRED: 'true'
           LUMIRA_RELEASE_NOTES: Lumira main build ${{ steps.images.outputs.short_sha }}
         run: node bin/generate-release-manifest.mjs
       - name: Publish continuous release manifest

@@ -423,7 +423,7 @@ async function createPreflight(request) {
   const report = buildPreflightReport({
     manifest,
     state,
-    freeMemoryBytes: os.freemem(),
+    freeMemoryBytes: dryRun ? 2 * 1024 ** 3 : os.freemem(),
     freeDiskBytes: await freeDiskBytes(),
     dockerAvailable: await commandAvailable('docker', ['version', '--format', '{{.Server.Version}}']),
     composeAvailable: await commandAvailable('docker', ['compose', 'version']),

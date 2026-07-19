@@ -37,6 +37,7 @@ const reset = args.has('--reset');
 const help = args.has('--help') || args.has('-h');
 const skipCheck = args.has('--skip-check');
 const skipReadiness = args.has('--skip-readiness');
+const skipMigrations = args.has('--skip-migrations');
 const observability = args.has('--observability');
 const localMysql = args.has('--local-mysql');
 const skipDockerPrune = args.has('--skip-docker-prune');
@@ -393,6 +394,7 @@ Options:
   --ps        Show container status.
   --skip-check Skip deployment health checks after startup.
   --skip-readiness Skip selected-service readiness waits.
+  --skip-migrations Skip database migrations. Use only for non-database frontend or emergency diagnostics.
   --skip-docker-prune Skip automatic Docker build cache cleanup before rebuilds.
   --allow-unknown-build-identity Allow deployment when GIT_COMMIT/GIT_BRANCH cannot be determined.
   --allow-dirty-build-identity Allow deployment from a dirty Git working tree.
@@ -548,6 +550,7 @@ function generatedEnvDefaults() {
     LUMIRA_ACTIVE_SLOT: 'blue',
     LUMIRA_ASYNC_IMAGE: 'ghcr.io/elexvx/lumira/lumira-async:main',
     LUMIRA_JOB_EXECUTOR_IMAGE: 'ghcr.io/elexvx/lumira/lumira-job-executor:main',
+    LUMIRA_MIGRATOR_IMAGE: 'ghcr.io/elexvx/lumira/lumira-migrator:main',
     LUMIRA_FRONTEND_IMAGE: 'ghcr.io/elexvx/lumira/lumira-ui:main',
     CORS_ALLOWED_ORIGIN_PATTERNS: 'https://bm.aiadc.org.cn',
     REDIS_MAXMEMORY: '256mb',
@@ -852,6 +855,61 @@ function composeArgs(...extraArgs) {
   return ['compose', ...envFileArgs, '-f', composeFilePath, ...profileArgs, ...extraArgs];
 }
 
+function shouldRunDatabaseMigrations() {
+  if (skipMigrations) return false;
+  if (serviceNames.length === 0) return true;
+  return serviceNames.some((serviceName) => [
+    'lumira-server-blue',
+    'lumira-server-green',
+    'lumira-async',
+    'lumira-job-executor',
+  ].includes(serviceName));
+}
+
+async function runDatabaseMigrations() {
+  if (!shouldRunDatabaseMigrations()) {
+    log(skipMigrations ? 'Database migrations explicitly skipped.' : 'Selected services do not require database migrations.');
+    return;
+  }
+
+  const env = mergedEnv();
+  const dependencyServices = localMysql ? ['mysql', 'redis'] : ['redis'];
+  log(`Preparing database migration network with: ${dependencyServices.join(', ')}.`);
+  runWithRetry('docker', composeArgs('up', '-d', ...dependencyServices), 1);
+
+  let migratorImage = env.LUMIRA_MIGRATOR_IMAGE || 'ghcr.io/elexvx/lumira/lumira-migrator:main';
+  if (rebuild) {
+    migratorImage = 'lumira/lumira-migrator:local';
+    runWithRetry('docker', [
+      'build',
+      '-f', 'deploy/docker/migrator.Dockerfile',
+      '-t', migratorImage,
+      '.',
+    ], 1);
+  } else {
+    const imageStatus = output('docker', ['image', 'inspect', migratorImage]);
+    if (pullImages || imageStatus.status !== 0) {
+      runWithRetry('docker', ['pull', migratorImage], 1);
+    }
+  }
+
+  const migrationNetwork = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || `${resolveComposeProjectName()}_default`;
+  log(`Running expand-only database migrations on network=${migrationNetwork}.`);
+  run('docker', [
+    'run', '--rm', '--network', migrationNetwork,
+    '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
+    migratorImage,
+  ], {
+    env: {
+      ...process.env,
+      DB_URL: env.DB_URL || '',
+      DB_USERNAME: env.DB_USERNAME || 'root',
+      DB_PASSWORD: env.DB_PASSWORD || '',
+    },
+  });
+  log('Database migrations completed before application startup.');
+}
+
 
 
 async function checkDeployment() {
@@ -1071,6 +1129,7 @@ run('docker', composeArgs('config'), { stdio: 'ignore' });
 validateServiceNames();
 maybePruneDockerBuildCache('before-build');
 ensureDockerVolumeOwnership();
+await runDatabaseMigrations();
 
 if (serviceNames.length > 0) {
   log(`Deploying selected service(s) without dependency restart: ${serviceNames.join(', ')}`);

@@ -5,6 +5,11 @@ set -eu
 : "${DB_USERNAME:?DB_USERNAME is required}"
 : "${DB_PASSWORD:?DB_PASSWORD is required}"
 
+set -- migrate
+if [ -n "${DATABASE_TARGET_VERSION:-}" ]; then
+  set -- -target="$DATABASE_TARGET_VERSION" "$@"
+fi
+
 exec flyway \
   -url="$DB_URL" \
   -user="$DB_USERNAME" \
@@ -15,4 +20,4 @@ exec flyway \
   -table=lumira_platform_update_schema_history \
   -connectRetries=20 \
   -validateMigrationNaming=true \
-  migrate
+  "$@"

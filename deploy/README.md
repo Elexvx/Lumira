@@ -112,6 +112,15 @@ node bin/install-platform.mjs --local-mysql --lumira-ui
 node bin/deploy-container.mjs --pull
 ```
 
+部署脚本会在启动后端、异步任务或调度执行器之前，先运行独立的 Flyway 迁移容器：
+
+- 全新空库由 `lumira-backend/sql/saas.sql` 创建完整结构和基础数据。
+- 已有数据库按 `deploy/migrations/V<version>__<name>.sql` 顺序升级，执行记录保存在 `lumira_platform_update_schema_history`。
+- 迁移失败时部署立即停止，不会启动与数据库版本不匹配的新应用。
+- 仅部署前端时不会触发数据库迁移。`--skip-migrations` 只用于明确不涉及数据库的应急诊断，不应作为常规发布参数。
+
+CI 会用一次性 MySQL 8.4 容器实际导入全新数据库、校验在线迁移链的一致性，并自动把最新迁移版本写入发布清单，禁止手工维护数据库目标版本。
+
 `main` 分支 CI 会在后端 Maven 测试、前端 lint/typecheck/test 都通过后，自动构建并发布镜像：
 
 - `ghcr.io/elexvx/lumira/lumira-server:main`

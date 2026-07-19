@@ -2632,6 +2632,10 @@ CREATE TABLE ai_tool_execution_audit (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Consolidated indexes from archived Flyway migrations.
+-- The CREATE TABLE statements above already include the archived columns and most
+-- indexes. Keep the historical statements commented for provenance; executing
+-- them would add the same columns twice on a fresh database.
+/*
 ALTER TABLE `sys_config`
     ADD INDEX `idx_sys_config_scope_key_deleted` (`config_scope`, `config_key`, `deleted`);
 
@@ -2983,6 +2987,48 @@ ALTER TABLE `competition_submission_snapshot`
     ADD INDEX `idx_competition_submission_snapshot_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
 CREATE INDEX `idx_sensitive_word_enabled`
     ON `sys_sensitive_word` (`enabled`, `deleted`, `normalized_word`);
+*/
+
+-- Secondary indexes that are not embedded in the CREATE TABLE definitions.
+ALTER TABLE `sys_config` ADD INDEX `idx_sys_config_scope_key_deleted` (`config_scope`, `config_key`, `deleted`);
+ALTER TABLE `audit_login_log` ADD INDEX `idx_audit_login_user_result_recent` (`user_id`, `login_result`, `created_at`, `id`);
+ALTER TABLE `audit_operation_log` ADD INDEX `idx_audit_operation_user_recent` (`username`, `created_at`, `id`);
+ALTER TABLE `msg_notice` ADD INDEX `idx_msg_notice_visible_recent` (`publish_status`, `deleted`, `id`);
+ALTER TABLE `msg_notice` ADD INDEX `idx_msg_notice_visible_target_user_uuid_recent` (`publish_status`, `deleted`, `target_user_id`, `target_user_uuid`, `id`);
+ALTER TABLE `msg_notice` ADD INDEX `idx_msg_notice_visible_target_role_recent` (`publish_status`, `deleted`, `target_role_id`, `id`);
+ALTER TABLE `sys_user_role` ADD INDEX `idx_sys_user_role_user_deleted` (`user_id`, `user_uuid`, `deleted`, `role_id`);
+ALTER TABLE `sys_role_permission` ADD INDEX `idx_sys_role_permission_role_deleted_perm` (`role_id`, `deleted`, `permission_key`);
+ALTER TABLE `sys_localization_entry` ADD INDEX `idx_sys_localization_entry_namespace_deleted_status` (`namespace_id`, `deleted`, `status`, `updated_at`);
+ALTER TABLE `sys_localization_translation` ADD INDEX `idx_sys_localization_translation_locale_deleted_entry` (`locale_code`, `deleted`, `entry_id`);
+ALTER TABLE `sys_localization_namespace` ADD INDEX `idx_sys_localization_namespace_deleted_sort` (`deleted`, `sort_no`, `id`);
+ALTER TABLE `payment_event_outbox` ADD INDEX `idx_payment_outbox_deleted_status_retry_created` (`deleted`, `status`, `next_retry_at`, `created_at`, `id`);
+ALTER TABLE `payment_event_outbox` ADD INDEX `idx_payment_outbox_deleted_status` (`deleted`, `status`);
+ALTER TABLE `payment_webhook_event` ADD INDEX `idx_payment_webhook_event_provider_nonce_deleted_received` (`provider_code`, `nonce`, `deleted`, `received_at`);
+ALTER TABLE `payment_webhook_event` ADD INDEX `idx_payment_webhook_event_provider_event_deleted_id` (`provider_code`, `event_id`, `deleted`, `id`);
+ALTER TABLE `payment_provider_config` ADD INDEX `idx_payment_provider_config_provider_deleted_id` (`provider_code`, `deleted`, `id`);
+ALTER TABLE `payment_provider_config` ADD INDEX `idx_payment_provider_config_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `payment_event_outbox` ADD INDEX `idx_payment_outbox_owner_queue` (`deleted`, `source_type`, `status`, `next_retry_at`, `created_at`, `id`);
+ALTER TABLE `payment_event_outbox` ADD INDEX `idx_payment_outbox_claim_token` (`claim_token`);
+ALTER TABLE `sys_plugin_definition` ADD INDEX `idx_sys_plugin_definition_deleted_status_sort_code` (`deleted`, `status`, `sort_no`, `plugin_code`);
+ALTER TABLE `sys_plugin_version` ADD INDEX `idx_sys_plugin_version_plugin_deleted_status_created` (`plugin_code`, `deleted`, `created_at`);
+ALTER TABLE `sys_plugin_version` ADD INDEX `idx_sys_plugin_version_plugin_active_deleted` (`plugin_code`, `is_active`, `deleted`);
+ALTER TABLE `sys_plugin_runtime_log` ADD INDEX `idx_sys_plugin_runtime_log_code_deleted_id` (`plugin_code`, `deleted`, `id`);
+ALTER TABLE `sys_plugin_menu_rel` ADD INDEX `idx_sys_plugin_menu_rel_code_version_deleted_sort` (`plugin_code`, `plugin_version`, `deleted`, `sort_no`, `id`);
+ALTER TABLE `sys_plugin_permission_rel` ADD INDEX `idx_sys_plugin_permission_rel_code_version_deleted` (`plugin_code`, `plugin_version`, `deleted`, `id`);
+ALTER TABLE `sys_plugin_definition` ADD INDEX `idx_sys_plugin_definition_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_version` ADD INDEX `idx_sys_plugin_version_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_dependency` ADD INDEX `idx_sys_plugin_dependency_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_menu_rel` ADD INDEX `idx_sys_plugin_menu_rel_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_permission_rel` ADD INDEX `idx_sys_plugin_permission_rel_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_runtime_log` ADD INDEX `idx_sys_plugin_runtime_log_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `sys_plugin_schema_history` ADD INDEX `idx_sys_plugin_schema_history_creator_uuid` (`created_by`, `created_by_uuid`, `created_at`);
+ALTER TABLE `plugin_event_outbox` ADD INDEX `idx_plugin_event_outbox_deleted_status_retry_created` (`deleted`, `status`, `next_retry_at`, `created_at`, `id`);
+ALTER TABLE `plugin_event_outbox` ADD INDEX `idx_plugin_event_outbox_claim_token` (`claim_token`);
+ALTER TABLE `msg_notice_read` ADD INDEX `idx_msg_notice_read_notice_user_deleted` (`notice_id`, `user_id`, `user_uuid`, `deleted`);
+ALTER TABLE `file_object` ADD INDEX `idx_file_object_deleted_bucket` (`deleted`, `bucket`);
+ALTER TABLE `file_object` ADD INDEX `idx_file_object_deleted_created_id` (`deleted`, `created_at`, `id`);
+ALTER TABLE `file_storage_space` ADD INDEX `idx_file_storage_space_deleted_default_id` (`deleted`, `default_flag`, `id`);
+CREATE INDEX `idx_sensitive_word_enabled` ON `sys_sensitive_word` (`enabled`, `deleted`, `normalized_word`);
 
 -- Bootstrap protected administrator.
 -- The BCrypt hashes below are for the initial password `123456`.
@@ -4682,8 +4728,6 @@ UNION ALL SELECT `id`, 'IMAGE_CATEGORY', '工单反馈', 40, 'ENABLED', NULL, 0,
 UNION ALL SELECT `id`, 'IMAGE_REMARK', '工单反馈富文本图片', 50, 'ENABLED', NULL, 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code`='work_order_feedback_default'
 ON DUPLICATE KEY UPDATE `item_label`=VALUES(`item_label`), `sort_no`=VALUES(`sort_no`),
     `status`='ENABLED', `remark`=VALUES(`remark`), `deleted`=0;
-+
-
 -- Database-owned profile and team-member field metadata.
 CREATE TABLE IF NOT EXISTS `sys_profile_field_definition` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -4740,8 +4784,6 @@ VALUES
 ('TEAM_MEMBER','role','Role','Team member role','teamMember','Team member','team.member.field.role.visible','team.member.field.role.weight',1,5,'SELECT',0,'Select role',40,'ENABLED',0,0,0),
 ('TEAM_MEMBER','remark','Remark','Team member remark','teamMember','Team member','team.member.field.remark.visible','team.member.field.remark.weight',1,5,'TEXTAREA',0,'Enter remark',50,'ENABLED',0,0,0)
 ON DUPLICATE KEY UPDATE `field_label`=VALUES(`field_label`),`field_description`=VALUES(`field_description`),`group_key`=VALUES(`group_key`),`group_label`=VALUES(`group_label`),`visible_config_key`=VALUES(`visible_config_key`),`weight_config_key`=VALUES(`weight_config_key`),`default_visible`=VALUES(`default_visible`),`default_weight`=VALUES(`default_weight`),`field_type`=VALUES(`field_type`),`required_flag`=VALUES(`required_flag`),`placeholder`=VALUES(`placeholder`),`sort_no`=VALUES(`sort_no`),`status`='ENABLED',`deleted`=0;
-+
-
 -- Database-owned platform setting groups and defaults.
 CREATE TABLE IF NOT EXISTS `sys_platform_setting_definition` (
   `id` bigint NOT NULL AUTO_INCREMENT,
