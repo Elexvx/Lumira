@@ -1,6 +1,7 @@
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
+import type { DatePickerProps } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import ImgCrop from 'antd-img-crop';
@@ -77,6 +78,7 @@ import {
 } from '@/pages/competition/utils/registrationCheckout';
 import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
+import { normalizeRegistrationDateValue } from '@/pages/competition/utils/registrationDateValue';
 import {
   REGISTRATION_WIZARD_FLOW_VERSION,
   normalizeRegistrationWizardDraftStep,
@@ -1964,6 +1966,14 @@ const buildCollectedFieldRule = (field: RegistrationCollectedField) =>
       : []),
   ];
 
+type RegistrationDatePickerProps = Omit<DatePickerProps, 'value'> & {
+  value?: unknown;
+};
+
+const RegistrationDatePicker = ({ value, ...props }: RegistrationDatePickerProps) => (
+  <DatePicker {...props} value={normalizeRegistrationDateValue(value)} />
+);
+
 const requiredSystemRegistrationField = (
   scope: RegistrationCollectedField['scope'],
   itemKey: string,
@@ -1994,7 +2004,7 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
     case 'IMAGE':
       return <RegistrationImageFieldInput />;
     case 'DATE':
-      return <DatePicker style={{ width: '100%' }} placeholder={placeholder} />;
+      return <RegistrationDatePicker style={{ width: '100%' }} placeholder={placeholder} />;
     case 'SELECT':
       return <Select options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
     case 'MULTI_SELECT':
