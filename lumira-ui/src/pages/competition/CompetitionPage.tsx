@@ -93,6 +93,7 @@ import {
   normalizeRegistrationWizardDraftStep,
   registrationWizardStep,
   registrationWizardStepItems,
+  resolveAllowedRegistrationWizardStep,
 } from '@/pages/competition/utils/registrationWizardFlow';
 import {
   isDeprecatedRegistrationContactField,
@@ -2431,30 +2432,13 @@ const getAllowedRegistrationWizardStep = (
   documentsAccepted: boolean,
   activeRegistrationId?: number,
 ) => {
-  const normalizedStep = Math.max(0, Math.min(requestedStep, registrationWizardMaxStep));
-  if (normalizedStep <= 0) {
-    return 0;
-  }
-  if (!toPositiveId(values.competitionId) || !documentsAccepted) {
-    return 0;
-  }
-  if (normalizedStep <= 1) {
-    return 1;
-  }
   const members = values.newTeam?.initialMembers || [];
-  if (!trimOptional(values.newTeamName) || !members.length) {
-    return 1;
-  }
-  if (normalizedStep <= 2) {
-    return 2;
-  }
-  if (!activeRegistrationId && !toPositiveId(values.projectId) && !trimOptional(values.newProjectTitle)) {
-    return 2;
-  }
-  if (normalizedStep >= 5 && !activeRegistrationId) {
-    return 4;
-  }
-  return normalizedStep;
+  return resolveAllowedRegistrationWizardStep(requestedStep, {
+    competitionReady: Boolean(toPositiveId(values.competitionId) && documentsAccepted),
+    teamReady: Boolean(trimOptional(values.newTeamName) && members.length),
+    projectReady: Boolean(activeRegistrationId || toPositiveId(values.projectId) || trimOptional(values.newProjectTitle)),
+    hasActiveRegistration: Boolean(activeRegistrationId),
+  });
 };
 
 const CompetitionRegistrationPage = () => {

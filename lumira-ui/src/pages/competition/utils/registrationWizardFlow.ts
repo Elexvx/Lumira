@@ -18,6 +18,45 @@ export const registrationWizardStepItems = [
   { title: '支付方式' },
 ];
 
+type RegistrationWizardAccessState = {
+  competitionReady: boolean;
+  teamReady: boolean;
+  projectReady: boolean;
+  hasActiveRegistration: boolean;
+};
+
+export const resolveAllowedRegistrationWizardStep = (
+  requestedStep: number,
+  accessState: RegistrationWizardAccessState,
+) => {
+  const normalizedStep = Math.min(
+    Math.max(Number(requestedStep) || registrationWizardStep.competition, registrationWizardStep.competition),
+    registrationWizardStep.payment,
+  );
+  if (normalizedStep <= registrationWizardStep.competition) {
+    return registrationWizardStep.competition;
+  }
+  if (!accessState.competitionReady) {
+    return registrationWizardStep.competition;
+  }
+  if (normalizedStep <= registrationWizardStep.team) {
+    return registrationWizardStep.team;
+  }
+  if (!accessState.teamReady) {
+    return registrationWizardStep.team;
+  }
+  if (normalizedStep <= registrationWizardStep.projectEvidence) {
+    return normalizedStep;
+  }
+  if (!accessState.projectReady) {
+    return registrationWizardStep.projectEvidence;
+  }
+  if (normalizedStep >= registrationWizardStep.payment && !accessState.hasActiveRegistration) {
+    return registrationWizardStep.review;
+  }
+  return normalizedStep;
+};
+
 export const normalizeRegistrationWizardDraftStep = (
   currentStep: number | undefined,
   flowVersion: number | undefined,

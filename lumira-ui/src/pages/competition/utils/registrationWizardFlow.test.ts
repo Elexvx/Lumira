@@ -4,6 +4,7 @@ import {
   normalizeRegistrationWizardDraftStep,
   registrationWizardStep,
   registrationWizardStepItems,
+  resolveAllowedRegistrationWizardStep,
 } from './registrationWizardFlow';
 
 describe('competition registration wizard flow', () => {
@@ -25,5 +26,29 @@ describe('competition registration wizard flow', () => {
     expect(normalizeRegistrationWizardDraftStep(2, REGISTRATION_WIZARD_FLOW_VERSION)).toBe(
       registrationWizardStep.preliminaryMaterials,
     );
+  });
+
+  it('allows the project step before project information has been entered', () => {
+    expect(resolveAllowedRegistrationWizardStep(registrationWizardStep.projectEvidence, {
+      competitionReady: true,
+      teamReady: true,
+      projectReady: false,
+      hasActiveRegistration: false,
+    })).toBe(registrationWizardStep.projectEvidence);
+  });
+
+  it('requires project information only when continuing to review', () => {
+    expect(resolveAllowedRegistrationWizardStep(registrationWizardStep.review, {
+      competitionReady: true,
+      teamReady: true,
+      projectReady: false,
+      hasActiveRegistration: false,
+    })).toBe(registrationWizardStep.projectEvidence);
+    expect(resolveAllowedRegistrationWizardStep(registrationWizardStep.review, {
+      competitionReady: true,
+      teamReady: true,
+      projectReady: true,
+      hasActiveRegistration: false,
+    })).toBe(registrationWizardStep.review);
   });
 });
