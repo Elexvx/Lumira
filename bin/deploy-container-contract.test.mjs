@@ -304,6 +304,7 @@ test('platform updater is reachable from the backend container and installed as 
 test('continuous release manifest uses digest-pinned images and a stable GitHub release', () => {
   assert.match(releaseManifestGenerator, /assertDigestPinned\(serverImage/);
   assert.match(releaseManifestGenerator, /assertDigestPinned\(frontendImage/);
+  assert.match(ciWorkflow, /concurrency:\r?\n\s+group: ci-\$\{\{ github\.ref \}\}\r?\n\s+cancel-in-progress: true/);
   assert.match(ciWorkflow, /steps\.build_server\.outputs\.digest/);
   assert.match(ciWorkflow, /steps\.build_ui\.outputs\.digest/);
   assert.match(ciWorkflow, /gh release (?:view|create) continuous/);
