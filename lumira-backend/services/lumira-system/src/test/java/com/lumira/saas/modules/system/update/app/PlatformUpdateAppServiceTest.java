@@ -25,6 +25,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -697,6 +698,36 @@ class PlatformUpdateAppServiceTest {
         assertThat(captor.getValue().getCreatedByUuid()).isEqualTo("user-uuid-1001");
         assertThat(captor.getValue().getCreatedByName()).isEqualTo("operator-live");
         assertThat(currentUser.getUsername()).isEqualTo("operator-live");
+    }
+
+    @Test
+    void createTaskShouldReleaseTerminalGlobalLockBeforeInsert() throws Exception {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        when(taskMapper.update(org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any())).thenReturn(1);
+        when(taskMapper.insert(any(PlatformUpdateTaskEntity.class))).thenReturn(1);
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod(
+                "createTask",
+                String.class,
+                PlatformUpdateVO.LatestVersionVO.class,
+                CurrentUser.class
+        );
+        method.setAccessible(true);
+        PlatformUpdateVO.LatestVersionVO latest = new PlatformUpdateVO.LatestVersionVO();
+        latest.setVersion("1.2.3");
+        latest.setCommitId("abcdef1");
+        latest.setServerImage("ghcr.io/example/lumira-server@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+
+        method.invoke(service, "INSTALL", latest, updateUser(Set.of("*", "system:update:install")));
+
+        var ordered = inOrder(taskMapper);
+        ordered.verify(taskMapper).update(org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.any());
+        ordered.verify(taskMapper).insert(any(PlatformUpdateTaskEntity.class));
     }
 
     @Test

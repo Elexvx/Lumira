@@ -4,6 +4,7 @@ import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.runtime.ServiceVersionInfo;
@@ -38,6 +39,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -457,6 +459,11 @@ public class PlatformUpdateAppService {
     }
 
     private PlatformUpdateTaskEntity createTask(String taskType, PlatformUpdateVO.LatestVersionVO latest, CurrentUser currentUser) {
+        Long actorUserId = requireTrustedUserId(currentUser);
+        String actorUserUuid = currentUser.getUserUuid().trim();
+        String actorUsername = currentUser.getUsername().trim();
+        releaseStaleTerminalTaskLock();
+
         PlatformUpdateTaskEntity task = new PlatformUpdateTaskEntity();
         LocalDateTime now = LocalDateTime.now();
         task.setTaskType(taskType);
@@ -469,19 +476,31 @@ public class PlatformUpdateAppService {
         task.setTargetCommit(latest == null ? null : normalizeCommit(latest.getCommitId(), false));
         task.setServerImage(latest == null ? null : requireDigestPinnedImage(latest.getServerImage(), "serverImage"));
         task.setFrontendImage(latest == null ? null : requireDigestPinnedImage(latest.getFrontendImage(), "frontendImage"));
-        task.setCreatedBy(requireTrustedUserId(currentUser));
-        task.setCreatedByUuid(trustedUserUuid(currentUser));
-        task.setCreatedByName(trustedUsername(currentUser));
+        task.setCreatedBy(actorUserId);
+        task.setCreatedByUuid(actorUserUuid);
+        task.setCreatedByName(actorUsername);
         task.setStartedAt(now);
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
-        int inserted = taskMapper.insert(task);
+        int inserted;
+        try {
+            inserted = taskMapper.insert(task);
+        } catch (DuplicateKeyException exception) {
+            throw biz(ErrorCode.BIZ_ERROR, "已有平台更新任务正在运行，请刷新任务列表后重试");
+        }
         if (inserted != 1) {
             throw biz(ErrorCode.BIZ_ERROR, "Platform update task changed, please retry");
         }
         Metrics.counter("lumira.platform.update.started", "type", taskType, "strategy", task.getStrategy()).increment();
         log.info("platform_update_started taskId={} type={} targetCommit={} strategy={} actor={}", task.getId(), taskType, task.getTargetCommit(), task.getStrategy(), task.getCreatedByName());
         return task;
+    }
+
+    private void releaseStaleTerminalTaskLock() {
+        taskMapper.update(null, new UpdateWrapper<PlatformUpdateTaskEntity>()
+                .set("active_key", null)
+                .eq("active_key", ACTIVE_TASK_KEY)
+                .notIn("status", "PENDING", TASK_RUNNING));
     }
 
     private PlatformUpdateTaskEntity snapshotTask(PlatformUpdateTaskEntity task) {
@@ -523,16 +542,6 @@ public class PlatformUpdateAppService {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
         return currentUser.getUserId();
-    }
-
-    private String trustedUsername(CurrentUser currentUser) {
-        requireTrustedUserId(currentUser);
-        return currentUser.getUsername();
-    }
-
-    private String trustedUserUuid(CurrentUser currentUser) {
-        requireTrustedUserId(currentUser);
-        return currentUser.getUserUuid().trim();
     }
 
     private Long requirePermission(CurrentUser currentUser, String permissionKey) {
