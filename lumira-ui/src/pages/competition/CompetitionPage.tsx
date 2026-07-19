@@ -1,7 +1,7 @@
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
-import type { DatePickerProps } from 'antd';
+import type { DatePickerProps, UploadFile } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import ImgCrop from 'antd-img-crop';
@@ -1754,6 +1754,12 @@ const MaterialFileUploadInput = ({
   const [fileRecord, setFileRecord] = useState<FileObjectRecord>();
   const maxSizeMb = Number(field.maxSizeMb) || 20;
   const fileFormatLabel = competitionMaterialFileFormatConfig[(field.fileFormat || 'ANY').toUpperCase()]?.label || '任意格式文件';
+  const uploadedFileList: UploadFile[] = value ? [{
+    uid: String(value),
+    name: fileRecord?.originalFileName || '已上传文件',
+    status: 'done',
+    url: fileRecord ? normalizeUploadUrl(fileRecord.previewUrl || fileRecord.publicUrl) : undefined,
+  }] : [];
 
   useEffect(() => {
     if (!value) {
@@ -1774,13 +1780,18 @@ const MaterialFileUploadInput = ({
   }, [value]);
 
   return (
-    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-      <Upload.Dragger
-        accept={getCompetitionMaterialFileAccept(field)}
-        maxCount={1}
-        showUploadList={false}
-        disabled={uploading}
-        beforeUpload={async (file) => {
+    <Upload.Dragger
+      accept={getCompetitionMaterialFileAccept(field)}
+      maxCount={1}
+      fileList={uploadedFileList}
+      showUploadList={{ showPreviewIcon: false, showRemoveIcon: true }}
+      disabled={uploading}
+      onRemove={() => {
+        setFileRecord(undefined);
+        onChange?.(undefined);
+        return true;
+      }}
+      beforeUpload={async (file) => {
           const validationMessage = validateCompetitionMaterialFile(file as File, field);
           if (validationMessage) {
             message.error(validationMessage);
@@ -1813,32 +1824,18 @@ const MaterialFileUploadInput = ({
             setUploading(false);
           }
           return Upload.LIST_IGNORE;
-        }}
-      >
-        <p className="ant-upload-drag-icon">
-          <UploadOutlined />
-        </p>
-        <p className="ant-upload-text">
-          {uploading ? '文件上传中...' : value ? '拖拽文件到这里，或点击重新上传' : '拖拽文件到这里，或点击上传'}
-        </p>
-        <p className="ant-upload-hint">
-          支持{fileFormatLabel}，单个文件不超过 {maxSizeMb}MB
-        </p>
-      </Upload.Dragger>
-      {value ? (
-        <Space size={8} wrap style={{ width: '100%' }}>
-          <Typography.Text
-            ellipsis={{ tooltip: fileRecord?.originalFileName || '已上传文件' }}
-            style={{ maxWidth: 420 }}
-          >
-            {fileRecord?.originalFileName || '已上传文件'}
-          </Typography.Text>
-          <Button size="small" type="link" onClick={() => onChange?.(undefined)}>
-            移除
-          </Button>
-        </Space>
-      ) : null}
-    </Space>
+      }}
+    >
+      <p className="ant-upload-drag-icon">
+        <UploadOutlined />
+      </p>
+      <p className="ant-upload-text">
+        {uploading ? '文件上传中...' : value ? '拖拽文件到这里，或点击重新上传' : '拖拽文件到这里，或点击上传'}
+      </p>
+      <p className="ant-upload-hint">
+        支持{fileFormatLabel}，单个文件不超过 {maxSizeMb}MB
+      </p>
+    </Upload.Dragger>
   );
 };
 
