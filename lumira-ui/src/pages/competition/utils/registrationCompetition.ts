@@ -1,9 +1,16 @@
-import type { CompetitionRecord } from '@/services/competition/types';
+import type { CompetitionFeeMode, CompetitionRecord } from '@/services/competition/types';
 
 export type RegistrationCompetitionDraftMeta = {
   competitionTitle?: string;
   competitionUuid?: string;
+  feeMode?: CompetitionFeeMode | null;
+  entryFeeMinor?: number | null;
+  currency?: string | null;
 };
+
+export const hasRegistrationCompetitionPricing = (
+  competition?: Pick<CompetitionRecord, 'feeMode' | 'entryFeeMinor'>,
+) => Boolean(competition?.feeMode && competition.entryFeeMinor !== null && competition.entryFeeMinor !== undefined);
 
 export const buildRegistrationCompetitionFallback = (
   competitionId?: number,
@@ -27,6 +34,9 @@ export const buildRegistrationCompetitionFallback = (
     competitionStart: '',
     location: '',
     status: 'published',
+    feeMode: draftMeta?.feeMode,
+    entryFeeMinor: draftMeta?.entryFeeMinor,
+    currency: draftMeta?.currency,
     featured: false,
     sort: competitionId,
   };

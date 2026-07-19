@@ -69,7 +69,11 @@ import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPa
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import PaymentResultPage from '@/pages/competition/PaymentResultPage';
 import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
-import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from '@/pages/competition/utils/registrationCompetition';
+import {
+  buildRegistrationCompetitionFallback,
+  hasRegistrationCompetitionPricing,
+  mergeRegistrationCompetitionOptions,
+} from '@/pages/competition/utils/registrationCompetition';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import { buildRegistrationProjectSelectionValues } from '@/pages/competition/utils/registrationProjectSelection';
 import {
@@ -253,6 +257,9 @@ type CompetitionCreateDraftStorage = {
 type CompetitionRegistrationDraftStorage = {
   competitionTitle?: string;
   competitionUuid?: string;
+  competitionFeeMode?: CompetitionFeeMode | null;
+  competitionEntryFeeMinor?: number | null;
+  competitionCurrency?: string | null;
   registrationId?: number;
   currentStep?: number;
   flowVersion?: number;
@@ -2651,6 +2658,9 @@ const CompetitionRegistrationPage = () => {
     const draftState: CompetitionRegistrationDraftStorage = {
       competitionTitle: selectedCompetition?.title || latestDraft?.competitionTitle,
       competitionUuid: selectedCompetition?.uuid || latestDraft?.competitionUuid,
+      competitionFeeMode: selectedCompetition?.feeMode ?? latestDraft?.competitionFeeMode,
+      competitionEntryFeeMinor: selectedCompetition?.entryFeeMinor ?? latestDraft?.competitionEntryFeeMinor,
+      competitionCurrency: selectedCompetition?.currency ?? latestDraft?.competitionCurrency,
       registrationId: nextRegistrationId,
       currentStep: nextStep,
       flowVersion: REGISTRATION_WIZARD_FLOW_VERSION,
@@ -2667,7 +2677,7 @@ const CompetitionRegistrationPage = () => {
     void writeCompetitionRegistrationDraft(registrationDraftStorageKey, draftState);
     setRegistrationDraftSavedAt(savedAt);
     return draftState;
-  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationDraftStorageKey, registrationId, selectedCompetition?.title, selectedCompetition?.uuid, step]);
+  }, [acceptedDocumentKeys, collectRegistrationValues, paymentStatus, registrationDraftStorageKey, registrationId, selectedCompetition?.currency, selectedCompetition?.entryFeeMinor, selectedCompetition?.feeMode, selectedCompetition?.title, selectedCompetition?.uuid, step]);
   const persistRegistrationDraft = useCallback((
     nextValues: Partial<RegistrationFormValues> = collectRegistrationValues(),
     nextStep = step,
@@ -2730,6 +2740,9 @@ const CompetitionRegistrationPage = () => {
       {
         competitionUuid: draft?.competitionUuid,
         competitionTitle: draft?.competitionTitle,
+        feeMode: draft?.competitionFeeMode,
+        entryFeeMinor: draft?.competitionEntryFeeMinor,
+        currency: draft?.competitionCurrency,
       },
     ));
     latestRegistrationDraftRef.current = draft;
@@ -2903,7 +2916,8 @@ const CompetitionRegistrationPage = () => {
         mounted = false;
       };
     }
-    if (competitions.some((item) => item.id === competitionId)) {
+    const loadedCompetition = competitions.find((item) => item.id === competitionId);
+    if (hasRegistrationCompetitionPricing(loadedCompetition)) {
       setRegistrationCompetitionFallback(undefined);
       return () => {
         mounted = false;
@@ -2912,10 +2926,13 @@ const CompetitionRegistrationPage = () => {
     const persistedFallback = buildRegistrationCompetitionFallback(competitionId, {
       competitionUuid: latestRegistrationDraftRef.current?.competitionUuid,
       competitionTitle: latestRegistrationDraftRef.current?.competitionTitle,
+      feeMode: latestRegistrationDraftRef.current?.competitionFeeMode,
+      entryFeeMinor: latestRegistrationDraftRef.current?.competitionEntryFeeMinor,
+      currency: latestRegistrationDraftRef.current?.competitionCurrency,
     });
     if (persistedFallback) {
       setRegistrationCompetitionFallback(persistedFallback);
-      if (persistedFallback.uuid) {
+      if (hasRegistrationCompetitionPricing(persistedFallback)) {
         return () => {
           mounted = false;
         };
@@ -3307,6 +3324,10 @@ const CompetitionRegistrationPage = () => {
         setWizardStep(registrationWizardStep.review);
       } else if (step === registrationWizardStep.review) {
         await form.validateFields();
+        if (!hasRegistrationCompetitionPricing(selectedCompetition)) {
+          message.error('赛事收费信息仍在加载，请稍后重试');
+          return;
+        }
         const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
         if (!competitionId) {
           message.error('赛事信息不存在');
@@ -3697,8 +3718,10 @@ const CompetitionRegistrationPage = () => {
     );
     return matchedScopes.some((scope) => scope.scopeType === 'ALL');
   }, [initialState?.currentUser?.dataScopes]);
+  const registrationCompetitionPricingReady = hasRegistrationCompetitionPricing(selectedCompetition);
   const nextButtonDisabled = (step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted))
-    || (step === registrationWizardStep.preliminaryMaterials && stageFormLoading);
+    || (step === registrationWizardStep.preliminaryMaterials && stageFormLoading)
+    || (step === registrationWizardStep.review && !registrationCompetitionPricingReady);
   const canAdvanceRegistration = registrationId ? canUpdateRegistration : canCreateRegistration;
   const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
     ? `下一步（剩余 ${pendingRegistrationDocumentCount} 项）`
@@ -4543,8 +4566,17 @@ const CompetitionRegistrationPage = () => {
                     </Space> : <Typography.Text type="secondary">无需提交初赛材料</Typography.Text>}
                   </Card>
                   <Card size="small" title="应付金额">
-                    <Typography.Title level={3} style={{ margin: 0 }}>{formatRegistrationAmount(previewPayableAmount, selectedCompetition?.currency)}</Typography.Title>
-                    <Typography.Text type="secondary">{selectedCompetition?.feeMode === 'MEMBER' ? `按 ${registrationMembers.length} 位学生计费` : '按团队计费'}</Typography.Text>
+                    {registrationCompetitionPricingReady ? (
+                      <>
+                        <Typography.Title level={3} style={{ margin: 0 }}>{formatRegistrationAmount(previewPayableAmount, selectedCompetition?.currency)}</Typography.Title>
+                        <Typography.Text type="secondary">{selectedCompetition?.feeMode === 'MEMBER' ? `按 ${registrationMembers.length} 位学生计费` : '按团队计费'}</Typography.Text>
+                      </>
+                    ) : (
+                      <Space>
+                        <Spin size="small" />
+                        <Typography.Text type="secondary">正在加载赛事收费规则</Typography.Text>
+                      </Space>
+                    )}
                   </Card>
                 </Space>
               ) : null}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRegistrationCompetitionFallback, mergeRegistrationCompetitionOptions } from './registrationCompetition';
+import {
+  buildRegistrationCompetitionFallback,
+  hasRegistrationCompetitionPricing,
+  mergeRegistrationCompetitionOptions,
+} from './registrationCompetition';
 
 describe('registrationCompetition helpers', () => {
   it('builds a fallback competition from persisted draft metadata', () => {
@@ -46,5 +50,25 @@ describe('registrationCompetition helpers', () => {
 
     expect(mergeRegistrationCompetitionOptions(options, fallback)).toHaveLength(2);
     expect(mergeRegistrationCompetitionOptions([...options, fallback!], fallback)).toHaveLength(2);
+  });
+
+  it('preserves pricing metadata in a restored competition fallback', () => {
+    const fallback = buildRegistrationCompetitionFallback(103, {
+      competitionUuid: 'competition-uuid-103',
+      competitionTitle: 'Competition 103',
+      feeMode: 'MEMBER',
+      entryFeeMinor: 1234,
+      currency: 'CNY',
+    });
+
+    expect(fallback).toMatchObject({ feeMode: 'MEMBER', entryFeeMinor: 1234, currency: 'CNY' });
+    expect(hasRegistrationCompetitionPricing(fallback)).toBe(true);
+  });
+
+  it('does not treat an incomplete restored competition as priced', () => {
+    expect(hasRegistrationCompetitionPricing(buildRegistrationCompetitionFallback(103, {
+      competitionUuid: 'competition-uuid-103',
+      competitionTitle: 'Competition 103',
+    }))).toBe(false);
   });
 });
