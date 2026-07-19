@@ -232,7 +232,7 @@ const getCompetitionMaterialStageTabs = (competition: CompetitionRecord): Compet
     .map((schedule, index) => ({
       key: `stage-${index + 1}`,
       label: `${schedule.title}材料设置`,
-      stageCode: `STAGE_${index + 1}`,
+      stageCode: index === 0 ? 'PRELIMINARY' : index === 1 ? 'FINAL' : `STAGE_${index + 1}`,
       stageName: schedule.title || `阶段${index + 1}`,
     }));
 
@@ -4519,9 +4519,9 @@ const buildAutomaticConfigItemKey = (itemType: CompetitionConfigItemType, title:
 };
 
 const normalizeFileStageCode = (value?: string): NonNullable<ConfigItemMetadata['stageCode']> =>
-  value === 'PRELIMINARY' || value === '初赛'
+  value === 'PRELIMINARY' || value === '初赛' || value === 'STAGE_1'
     ? 'PRELIMINARY'
-    : value === 'FINAL' || value === '决赛'
+    : value === 'FINAL' || value === '决赛' || value === 'STAGE_2'
       ? 'FINAL'
       : value?.trim() || 'GENERAL';
 
