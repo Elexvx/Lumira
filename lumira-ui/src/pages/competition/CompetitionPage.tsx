@@ -80,6 +80,11 @@ import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/util
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import { normalizeRegistrationDateValue } from '@/pages/competition/utils/registrationDateValue';
 import {
+  CHINA_MOBILE_PATTERN,
+  resolveRegistrationFieldValidationRule,
+  validateRegistrationFieldValue,
+} from '@/pages/competition/utils/registrationFieldValidation';
+import {
   REGISTRATION_WIZARD_FLOW_VERSION,
   normalizeRegistrationWizardDraftStep,
   registrationWizardStep,
@@ -1952,19 +1957,21 @@ const parseConfigFieldOptions = (options?: string) =>
     .filter(Boolean)
     .map((item) => ({ label: item, value: item }));
 
-const buildCollectedFieldRule = (field: RegistrationCollectedField) =>
-  [
+const buildCollectedFieldRule = (field: RegistrationCollectedField) => {
+  const validationRule = resolveRegistrationFieldValidationRule(field.fieldType, field.validationRule);
+  return [
     ...(field.required ? [{ required: true, message: `请输入${field.title}` }] : []),
-    ...((field.validationRule || '').toUpperCase() === 'CHINA_MOBILE'
-      ? [{ pattern: /^1[3-9]\d{9}$/, message: `请输入正确的${field.title}` }]
+    ...(validationRule === 'CHINA_MOBILE'
+      ? [{ pattern: CHINA_MOBILE_PATTERN, message: `请输入正确的${field.title}` }]
       : []),
-    ...((field.validationRule || '').toUpperCase() === 'EMAIL'
+    ...(validationRule === 'EMAIL'
       ? [{ type: 'email' as const, message: `请输入正确的${field.title}` }]
       : []),
-    ...((field.validationRule || '').toUpperCase() === 'ID_CARD'
+    ...(validationRule === 'ID_CARD'
       ? [{ pattern: /^(?:\d{15}|\d{17}[\dXx])$/, message: `请输入正确的${field.title}` }]
       : []),
   ];
+};
 
 type RegistrationDatePickerProps = Omit<DatePickerProps, 'value'> & {
   value?: unknown;
@@ -2010,7 +2017,7 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
     case 'MULTI_SELECT':
       return <Select mode="multiple" options={parseConfigFieldOptions(field.options)} placeholder={placeholder} />;
     case 'MOBILE':
-      return <Input placeholder={placeholder} maxLength={20} />;
+      return <Input inputMode="numeric" placeholder={placeholder} maxLength={11} />;
     case 'EMAIL':
       return <Input placeholder={placeholder} maxLength={128} />;
     default:
@@ -3336,7 +3343,8 @@ const CompetitionRegistrationPage = () => {
     setMemberEditorDraft((current) => (current ? setMemberCollectedFieldValue(current, field, value) : current));
     const validationError = field.required && !hasCollectedValue(value)
       ? `请填写${field.title}`
-      : validateMemberTextField(field.itemKey, field.title, value);
+      : validateRegistrationFieldValue(field.fieldType, field.validationRule, field.title, value)
+        || validateMemberTextField(field.itemKey, field.title, value);
     setMemberEditorErrors((current) => {
       if (validationError) {
         if (current[field.itemKey] === validationError) {
@@ -3363,7 +3371,8 @@ const CompetitionRegistrationPage = () => {
         errors[field.itemKey] = `请填写${field.title}`;
         return errors;
       }
-      const validationError = validateMemberTextField(field.itemKey, field.title, value);
+      const validationError = validateRegistrationFieldValue(field.fieldType, field.validationRule, field.title, value)
+        || validateMemberTextField(field.itemKey, field.title, value);
       if (validationError) {
         errors[field.itemKey] = validationError;
       }
@@ -3687,8 +3696,9 @@ const CompetitionRegistrationPage = () => {
           return (
             <Input
               value={fieldValue == null ? undefined : String(fieldValue)}
+              inputMode={fieldType === 'MOBILE' ? 'numeric' : undefined}
               placeholder={placeholder}
-              maxLength={fieldType === 'MOBILE' ? 20 : 128}
+              maxLength={fieldType === 'MOBILE' ? 11 : 128}
               onChange={(event) => updateMemberEditorField(field, event.target.value)}
             />
           );
@@ -4521,15 +4531,24 @@ const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfi
     const documentMetadata = isDocumentItem
       ? { ...metadata, readingSeconds: normalizeReadingSeconds(metadata?.readingSeconds) }
       : metadata;
-    const nextMetadata = fileStageCode
+    const normalizedFieldMetadata = ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(itemType)
       ? {
           ...documentMetadata,
-          stageCode: fileStageCode,
-          stageName: resolveFileStageName(fileStageCode),
-          fileFormat: normalizeFileFormat(documentMetadata?.fileFormat),
-          materialType: fileStageCode === 'GENERAL' ? undefined : 'FILE',
+          validationRule: resolveRegistrationFieldValidationRule(
+            documentMetadata?.fieldType,
+            documentMetadata?.validationRule,
+          ),
         }
       : documentMetadata;
+    const nextMetadata = fileStageCode
+      ? {
+          ...normalizedFieldMetadata,
+          stageCode: fileStageCode,
+          stageName: resolveFileStageName(fileStageCode),
+          fileFormat: normalizeFileFormat(normalizedFieldMetadata?.fileFormat),
+          materialType: fileStageCode === 'GENERAL' ? undefined : 'FILE',
+        }
+      : normalizedFieldMetadata;
     return {
       ...item,
       itemType,
@@ -4551,8 +4570,8 @@ const fieldTypeOptions = [
   { label: '日期', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
   { label: '多选', value: 'MULTI_SELECT' },
-  { label: '手机号', value: 'MOBILE' },
-  { label: '邮箱', value: 'EMAIL' },
+  { label: '手机号（自动校验）', value: 'MOBILE' },
+  { label: '邮箱（自动校验）', value: 'EMAIL' },
 ];
 
 const validationRuleOptions = [
