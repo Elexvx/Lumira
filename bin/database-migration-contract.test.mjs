@@ -41,6 +41,24 @@ test('member enrollment date fields are relabeled as year-only fields', () => {
   assert.doesNotMatch(migration, /competition_registration/);
 });
 
+test('online migration seeds the file service business dictionaries', () => {
+  const migration = read('deploy/migrations/V202607190004__file_business_policy_dictionary.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const markers = [
+    'file_storage_provider',
+    'file_preview_extension',
+    'file_preview_content_type',
+    'file_runtime_default',
+    'UNSUPPORTED_PREVIEW_MODE',
+  ];
+
+  for (const marker of markers) {
+    assert.match(migration, new RegExp(marker));
+    assert.match(baseline, new RegExp(marker));
+  }
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const executableSql = bootstrap.replace(/\/\*[\s\S]*?\*\//g, '');
