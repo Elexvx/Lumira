@@ -78,6 +78,12 @@ import {
 import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import {
+  REGISTRATION_WIZARD_FLOW_VERSION,
+  normalizeRegistrationWizardDraftStep,
+  registrationWizardStep,
+  registrationWizardStepItems,
+} from '@/pages/competition/utils/registrationWizardFlow';
+import {
   isDeprecatedRegistrationContactField,
   removeDeprecatedRegistrationContactFields,
   resolveRegistrationFieldScope,
@@ -234,6 +240,7 @@ type CompetitionRegistrationDraftStorage = {
   competitionUuid?: string;
   registrationId?: number;
   currentStep?: number;
+  flowVersion?: number;
   acceptedDocumentKeys?: string[];
   confirmedTeamId?: number;
   confirmedProjectId?: number;
@@ -2268,6 +2275,7 @@ const CompetitionRegistrationPage = () => {
   const [documentReadingCountdowns, setDocumentReadingCountdowns] = useState<Record<string, number>>({});
   const [acceptedDocumentKeys, setAcceptedDocumentKeys] = useState<string[]>([]);
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
+  const [stageFormLoading, setStageFormLoading] = useState(false);
   const [registrationId, setRegistrationId] = useState<number>();
   const [registrationRecord, setRegistrationRecord] = useState<CompetitionRegistrationRecord>();
   const [paymentStatus, setPaymentStatus] = useState<string>();
@@ -2446,6 +2454,7 @@ const CompetitionRegistrationPage = () => {
       competitionUuid: selectedCompetition?.uuid || latestDraft?.competitionUuid,
       registrationId: nextRegistrationId,
       currentStep: nextStep,
+      flowVersion: REGISTRATION_WIZARD_FLOW_VERSION,
       acceptedDocumentKeys: nextAcceptedDocumentKeys,
       confirmedTeamId: confirmedTeamIdRef.current,
       confirmedProjectId: confirmedProjectIdRef.current,
@@ -2870,8 +2879,26 @@ const CompetitionRegistrationPage = () => {
   };
 
   const loadStageFormForCompetition = useCallback(async (competitionId: number) => {
-    setStageForm(await loadOptionalPreliminaryStageForm(competitionId, listCompetitionStages, getCompetitionStageForm));
+    setStageFormLoading(true);
+    try {
+      setStageForm(await loadOptionalPreliminaryStageForm(competitionId, listCompetitionStages, getCompetitionStageForm));
+    } finally {
+      setStageFormLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (step !== registrationWizardStep.preliminaryMaterials) {
+      return;
+    }
+    const competitionId = toPositiveId(selectedCompetitionId);
+    if (!competitionId) {
+      return;
+    }
+    void loadStageFormForCompetition(competitionId).catch((error) => {
+      showErrorMessage(error, '初赛材料表单加载失败');
+    });
+  }, [loadStageFormForCompetition, selectedCompetitionId, step]);
 
   const startNewRegistration = async () => {
     const draft = await readCompetitionRegistrationDraft(registrationDraftStorageKey);
@@ -2883,7 +2910,7 @@ const CompetitionRegistrationPage = () => {
     setMemberModalOpen(false);
     setEditingMemberIndex(undefined);
     cancelMemberInlineEditor();
-    setWizardStep(draft?.currentStep || 0, false, {
+    setWizardStep(normalizeRegistrationWizardDraftStep(draft?.currentStep, draft?.flowVersion), false, {
       acceptedDocumentKeys: draft?.acceptedDocumentKeys || [],
       registrationId: draft?.registrationId,
       paymentStatus: draft?.paymentStatus,
@@ -3005,21 +3032,28 @@ const CompetitionRegistrationPage = () => {
         await form.validateFields();
         form.setFieldValue('teamId', undefined);
         confirmedTeamIdRef.current = undefined;
-        setWizardStep(2);
-      } else if (step === 2) {
+        const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
+        if (!competitionId) {
+          message.error('赛事信息不存在');
+          return;
+        }
+        setWizardStep(registrationWizardStep.preliminaryMaterials);
+      } else if (step === registrationWizardStep.preliminaryMaterials) {
+        if (stageFormLoading) {
+          message.info('初赛材料表单仍在加载，请稍后');
+          return;
+        }
+        await form.validateFields();
+        setWizardStep(registrationWizardStep.projectEvidence);
+      } else if (step === registrationWizardStep.projectEvidence) {
         await form.validateFields();
         const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
         if (!competitionId || (!toPositiveId(form.getFieldValue('projectId')) && !form.getFieldValue('newProjectTitle')?.trim())) {
           message.error('请先选择赛事并填写项目名称');
           return;
         }
-        setLoading(true);
-        await loadStageFormForCompetition(competitionId);
-        setWizardStep(3);
-      } else if (step === 3) {
-        await form.validateFields();
-        setWizardStep(4);
-      } else if (step === 4) {
+        setWizardStep(registrationWizardStep.review);
+      } else if (step === registrationWizardStep.review) {
         await form.validateFields();
         const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
         if (!competitionId) {
@@ -3415,11 +3449,12 @@ const CompetitionRegistrationPage = () => {
     );
     return matchedScopes.some((scope) => scope.scopeType === 'ALL');
   }, [initialState?.currentUser?.dataScopes]);
-  const nextButtonDisabled = step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted);
+  const nextButtonDisabled = (step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted))
+    || (step === registrationWizardStep.preliminaryMaterials && stageFormLoading);
   const canAdvanceRegistration = registrationId ? canUpdateRegistration : canCreateRegistration;
   const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
     ? `下一步（剩余 ${pendingRegistrationDocumentCount} 项）`
-    : step === 4 ? '确认并生成订单' : '\u4e0b\u4e00\u6b65';
+    : step === registrationWizardStep.review ? '确认并生成订单' : '\u4e0b\u4e00\u6b65';
   const previewPayableAmount = calculateRegistrationPayableAmount(
     selectedCompetition?.entryFeeMinor,
     selectedCompetition?.feeMode,
@@ -3892,14 +3927,7 @@ const CompetitionRegistrationPage = () => {
           <Steps
             current={step}
             responsive
-            items={[
-              { title: '选择赛事' },
-              { title: '团队与学生' },
-              { title: '项目与知识产权' },
-              { title: '初赛材料' },
-              { title: '信息确认' },
-              { title: '支付方式' },
-            ]}
+            items={registrationWizardStepItems}
           />
           <Form<RegistrationFormValues>
             form={form}
@@ -3978,9 +4006,9 @@ const CompetitionRegistrationPage = () => {
                 </>
               ) : null}
               {step === 1 ? renderTeamForm() : null}
-              {step === 2 ? (
+              {step === registrationWizardStep.projectEvidence ? (
                 <>
-                  <Typography.Title level={5}>项目与知识产权信息</Typography.Title>
+                  <Typography.Title level={5}>项目与知识产权佐证</Typography.Title>
                   <Typography.Paragraph type="secondary">
                     请填写项目基本信息及已申请、已登记或已授权的知识产权，并标明知识产权分布区域。
                   </Typography.Paragraph>
@@ -4056,8 +4084,10 @@ const CompetitionRegistrationPage = () => {
                   ))}
                 </>
               ) : null}
-              {step === 3 ? (
-                fields.length ? (
+              {step === registrationWizardStep.preliminaryMaterials ? (
+                stageFormLoading ? (
+                  <Alert type="info" showIcon message="正在加载初赛材料表单..." />
+                ) : fields.length ? (
                   fields.map((field) => (
                     <Form.Item
                       key={field.key}
@@ -4078,7 +4108,7 @@ const CompetitionRegistrationPage = () => {
                   <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入信息确认。" />
                 )
               ) : null}
-              {step === 4 ? (
+              {step === registrationWizardStep.review ? (
                 <Space direction="vertical" style={{ width: '100%' }} size={16}>
                   <Alert type="info" showIcon message="请核对以下全部报名信息。确认后将生成报名订单；生成支付订单后内容将不能修改。" />
                   <Card size="small" title="赛事与报名信息" extra={<Button type="link" onClick={() => setWizardStep(0)}>返回修改</Button>}>
@@ -4115,7 +4145,7 @@ const CompetitionRegistrationPage = () => {
                       ))}
                     </Space>
                   </Card>
-                  <Card size="small" title="项目与知识产权" extra={<Button type="link" onClick={() => setWizardStep(2)}>返回修改</Button>}>
+                  <Card size="small" title="项目与知识产权佐证" extra={<Button type="link" onClick={() => setWizardStep(registrationWizardStep.projectEvidence)}>返回修改</Button>}>
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Typography.Text><Typography.Text strong>{projectTitleField.title}：</Typography.Text>{form.getFieldValue('newProjectTitle') || '-'}</Typography.Text>
                       {projectImageField && form.getFieldValue('newProjectImageUrl') ? <Image width={72} height={72} src={normalizeUploadUrl(form.getFieldValue('newProjectImageUrl'))} alt={projectImageField.title} /> : null}
@@ -4125,7 +4155,7 @@ const CompetitionRegistrationPage = () => {
                       ))}
                     </Space>
                   </Card>
-                  <Card size="small" title="初赛材料" extra={<Button type="link" onClick={() => setWizardStep(3)}>返回修改</Button>}>
+                  <Card size="small" title="初赛材料" extra={<Button type="link" onClick={() => setWizardStep(registrationWizardStep.preliminaryMaterials)}>返回修改</Button>}>
                     {fields.length ? <Space direction="vertical">
                       {fields.map((field) => (
                         <Typography.Text key={field.key}>
