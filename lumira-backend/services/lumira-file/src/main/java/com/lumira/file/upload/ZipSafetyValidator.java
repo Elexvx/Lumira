@@ -35,6 +35,9 @@ public class ZipSafetyValidator {
         long totalUncompressed = 0L;
         boolean hasContentTypes = false;
         boolean hasExpectedDirectory = false;
+        long maxSingleEntryBytes = StringUtils.hasText(expectedDirectory)
+                ? uploadProperties.getZipMaxSingleEntryBytes()
+                : uploadProperties.getZipMaxUncompressedBytes();
         byte[] buffer = new byte[8192];
         try (ZipInputStream zipInputStream = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry;
@@ -55,7 +58,7 @@ public class ZipSafetyValidator {
                 while ((read = zipInputStream.read(buffer)) != -1) {
                     entryBytes += read;
                     totalUncompressed += read;
-                    if (entryBytes > uploadProperties.getZipMaxSingleEntryBytes()
+                    if (entryBytes > maxSingleEntryBytes
                             || totalUncompressed > uploadProperties.getZipMaxUncompressedBytes()) {
                         throw blocked(userMessage);
                     }

@@ -75,6 +75,7 @@ class DocumentUploadServiceTest {
     void acceptsSafeZipArchive() throws Exception {
         UploadProperties properties = new UploadProperties();
         properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
+        properties.setZipMaxSingleEntryBytes(8L);
         DocumentUploadService service = service(properties);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
