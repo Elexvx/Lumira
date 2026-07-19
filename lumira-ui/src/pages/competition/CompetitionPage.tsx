@@ -1710,6 +1710,12 @@ const validateCompetitionMaterialFile = (file: File, field: CompetitionStageForm
   return undefined;
 };
 
+const getCompetitionMaterialFileAccept = (field: CompetitionStageFormField) => {
+  const format = (field.fileFormat || 'ANY').toUpperCase();
+  const config = competitionMaterialFileFormatConfig[format];
+  return config ? config.extensions.map((extension) => `.${extension}`).join(',') : undefined;
+};
+
 const enrichCompetitionStageFormFields = (
   fields: CompetitionStageFormField[],
   configItems: CompetitionConfigItem[],
@@ -1745,10 +1751,32 @@ const MaterialFileUploadInput = ({
   onChange?: (value?: number) => void;
 }) => {
   const [uploading, setUploading] = useState(false);
+  const [fileRecord, setFileRecord] = useState<FileObjectRecord>();
+  const maxSizeMb = Number(field.maxSizeMb) || 20;
+  const fileFormatLabel = competitionMaterialFileFormatConfig[(field.fileFormat || 'ANY').toUpperCase()]?.label || '任意格式文件';
+
+  useEffect(() => {
+    if (!value) {
+      setFileRecord(undefined);
+      return;
+    }
+    let active = true;
+    void request<FileObjectRecord>(`/v1/files/${value}`, { method: 'GET', silent: true })
+      .then((record) => {
+        if (active) setFileRecord(record);
+      })
+      .catch(() => {
+        if (active) setFileRecord(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [value]);
 
   return (
-    <Space direction="vertical" size={8}>
-      <Upload
+    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      <Upload.Dragger
+        accept={getCompetitionMaterialFileAccept(field)}
         maxCount={1}
         showUploadList={false}
         disabled={uploading}
@@ -1776,6 +1804,7 @@ const MaterialFileUploadInput = ({
               data: formData,
               silent: true,
             });
+            setFileRecord(uploaded);
             onChange?.(uploaded.id);
             message.success('文件上传成功');
           } catch (error) {
@@ -1786,22 +1815,29 @@ const MaterialFileUploadInput = ({
           return Upload.LIST_IGNORE;
         }}
       >
-        <Button icon={<UploadOutlined />} loading={uploading}>
-          {value ? '重新上传' : '上传文件'}
-        </Button>
-      </Upload>
+        <p className="ant-upload-drag-icon">
+          <UploadOutlined />
+        </p>
+        <p className="ant-upload-text">
+          {uploading ? '文件上传中...' : value ? '拖拽文件到这里，或点击重新上传' : '拖拽文件到这里，或点击上传'}
+        </p>
+        <p className="ant-upload-hint">
+          支持{fileFormatLabel}，单个文件不超过 {maxSizeMb}MB
+        </p>
+      </Upload.Dragger>
       {value ? (
-        <Space size={8}>
-          <Tag color="blue">文件 ID：{value}</Tag>
+        <Space size={8} wrap style={{ width: '100%' }}>
+          <Typography.Text
+            ellipsis={{ tooltip: fileRecord?.originalFileName || '已上传文件' }}
+            style={{ maxWidth: 420 }}
+          >
+            {fileRecord?.originalFileName || '已上传文件'}
+          </Typography.Text>
           <Button size="small" type="link" onClick={() => onChange?.(undefined)}>
             移除
           </Button>
         </Space>
-      ) : (
-        <Typography.Text type="secondary">
-          {field.storageKey ? `将上传到存储空间：${field.storageKey}` : '未指定存储空间，将使用默认存储空间'}
-        </Typography.Text>
-      )}
+      ) : null}
     </Space>
   );
 };
