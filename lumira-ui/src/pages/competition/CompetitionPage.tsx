@@ -260,6 +260,13 @@ type CompetitionRegistrationDraftStorage = {
   values?: Partial<RegistrationFormValues>;
 };
 
+type CompetitionRegistrationListRecord = CompetitionRegistrationRecord & {
+  isCurrentUserDraft?: boolean;
+  draftCompetitionTitle?: string;
+  draftTeamName?: string;
+  draftProjectTitle?: string;
+};
+
 const COMPETITION_CATEGORY_DICT = 'aiadc_competition_category';
 const COMPETITION_LEVEL_DICT = 'aiadc_competition_level';
 const COMPETITION_CREATE_DRAFT_STORAGE_KEY = 'competition.create';
@@ -1839,6 +1846,42 @@ const MaterialFileUploadInput = ({
   );
 };
 
+const buildCurrentUserRegistrationDraftRecord = (
+  draft: CompetitionRegistrationDraftStorage | undefined,
+  ownerUserId?: number,
+): CompetitionRegistrationListRecord | undefined => {
+  const values = draft?.values || {};
+  const hasDraftProgress = Boolean(
+    (draft?.currentStep || 0) > 0
+      || draft?.acceptedDocumentKeys?.length
+      || hasCompetitionRegistrationDraftContent(values),
+  );
+  if (!draft || draft.registrationId || !hasDraftProgress) {
+    return undefined;
+  }
+
+  return {
+    id: 0,
+    registrationNo: '\u62a5\u540d\u8349\u7a3f',
+    competitionId: toPositiveId(values.competitionId) || 0,
+    teamId: toPositiveId(values.teamId) || 0,
+    projectId: toPositiveId(values.projectId) || 0,
+    ownerUserId,
+    status: 'DRAFT',
+    feeMode: 'TEAM',
+    entryFeeMinor: 0,
+    memberCount: values.newTeam?.initialMembers?.length || 0,
+    payableAmountMinor: 0,
+    currency: 'CNY',
+    createdAt: draft.savedAt ? new Date(draft.savedAt).toISOString() : undefined,
+    updatedAt: draft.savedAt ? new Date(draft.savedAt).toISOString() : undefined,
+    isCurrentUserDraft: true,
+    draftCompetitionTitle: draft.competitionTitle,
+    draftTeamName: trimOptional(values.newTeamName),
+    draftProjectTitle: trimOptional(values.newProjectTitle),
+  };
+};
+
 type RegistrationCollectedField = {
   scope?: Extract<CompetitionConfigItemType, 'REGISTRATION_FIELD' | 'TEAM_FIELD' | 'MEMBER_FIELD' | 'PROJECT_FIELD'>;
   itemKey: string;
@@ -2166,6 +2209,7 @@ const normalizeRegistrationMembers = (members?: RegistrationTeamMemberDraft[]): 
     .filter((member) => hasCollectedValue(member));
 
 const registrationStatusValueEnum = {
+  DRAFT: { text: '\u8349\u7a3f' },
   CREATED: { text: '\u5f85\u63d0\u4ea4\u6750\u6599' },
   MATERIAL_SUBMITTED: { text: '\u6750\u6599\u5df2\u63d0\u4ea4' },
   PENDING_PAYMENT: { text: '\u5f85\u652f\u4ed8' },
@@ -2175,6 +2219,7 @@ const registrationStatusValueEnum = {
 };
 
 const registrationStatusColor: Record<string, string> = {
+  DRAFT: 'default',
   CREATED: 'processing',
   MATERIAL_SUBMITTED: 'warning',
   PENDING_PAYMENT: 'warning',
@@ -2551,7 +2596,7 @@ const CompetitionRegistrationPage = () => {
       void clearCompetitionRegistrationDraft(registrationDraftStorageKey);
       latestRegistrationDraftRef.current = undefined;
       setRegistrationDraftSavedAt(undefined);
-      return;
+      return undefined;
     }
     const draftState = writeCurrentRegistrationDraftState(
       nextValues,
@@ -2569,6 +2614,7 @@ const CompetitionRegistrationPage = () => {
         writeCurrentRegistrationDraftState(draftState.values, draftState.currentStep, draftState.acceptedDocumentKeys);
       }
     }, 600);
+    return draftState;
   }, [
     acceptedDocumentKeys,
     collectRegistrationValues,
@@ -2644,11 +2690,21 @@ const CompetitionRegistrationPage = () => {
     });
   }, [acceptedDocumentKeys, collectRegistrationValues, location.pathname, paymentStatus, persistRegistrationDraft, registrationId]);
 
-  const showRegistrationList = useCallback(() => {
-    persistRegistrationDraft();
+  const showRegistrationList = useCallback(async () => {
+    const draftState = persistRegistrationDraft();
+    try {
+      if (draftState) {
+        await writeCompetitionRegistrationDraft(registrationDraftStorageKey, draftState);
+      } else {
+        await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
+      }
+    } catch (error) {
+      showErrorMessage(error, '\u62a5\u540d\u8349\u7a3f\u4fdd\u5b58\u5931\u8d25');
+      return;
+    }
     setViewMode('list');
     history.replace({ pathname: location.pathname, search: '' });
-  }, [location.pathname, persistRegistrationDraft]);
+  }, [location.pathname, persistRegistrationDraft, registrationDraftStorageKey]);
 
   useEffect(() => {
     let mounted = true;
@@ -2969,7 +3025,13 @@ const CompetitionRegistrationPage = () => {
     });
   }, [loadStageFormForCompetition, registrationDraftHydrated, selectedCompetitionId, step]);
 
-  const startNewRegistration = async () => {
+  const cancelMemberInlineEditor = useCallback(() => {
+    setMemberEditorKey(undefined);
+    setMemberEditorDraft(undefined);
+    setMemberEditorErrors({});
+  }, []);
+
+  const startNewRegistration = useCallback(async () => {
     const draft = await readCompetitionRegistrationDraft(registrationDraftStorageKey);
     hydrateRegistrationDraft(draft);
     setStageForm(undefined);
@@ -2984,7 +3046,7 @@ const CompetitionRegistrationPage = () => {
       registrationId: draft?.registrationId,
       paymentStatus: draft?.paymentStatus,
     });
-  };
+  }, [cancelMemberInlineEditor, hydrateRegistrationDraft, registrationDraftStorageKey, setWizardStep]);
 
   const openRegistrationFlow = useCallback(async (record: CompetitionRegistrationRecord) => {
     setLoading(true);
@@ -3474,12 +3536,6 @@ const CompetitionRegistrationPage = () => {
     setMemberEditorErrors({});
   }, [form]);
 
-  const cancelMemberInlineEditor = useCallback(() => {
-    setMemberEditorKey(undefined);
-    setMemberEditorDraft(undefined);
-    setMemberEditorErrors({});
-  }, []);
-
   const removeMemberInline = useCallback((index: number) => {
     removeMember(index);
     setMemberEditorKey((current) => {
@@ -3533,7 +3589,7 @@ const CompetitionRegistrationPage = () => {
     registrationMembers.length,
   );
 
-  const registrationColumns = useMemo<ProColumns<CompetitionRegistrationRecord>[]>(
+  const registrationColumns = useMemo<ProColumns<CompetitionRegistrationListRecord>[]>(
     () => [
       {
         title: '\u62a5\u540d\u8bb0\u5f55',
@@ -3561,21 +3617,27 @@ const CompetitionRegistrationPage = () => {
         dataIndex: 'competitionId',
         search: false,
         ellipsis: true,
-        render: (_, record) => competitionTitleMap.get(record.competitionId) || `\u8d5b\u4e8b ${record.competitionId}`,
+        render: (_, record) => record.draftCompetitionTitle
+          || competitionTitleMap.get(record.competitionId)
+          || (record.competitionId ? `\u8d5b\u4e8b ${record.competitionId}` : '-'),
       },
       {
         title: '\u56e2\u961f',
         dataIndex: 'teamId',
         search: false,
         ellipsis: true,
-        render: (_, record) => parseSnapshotName(record.teamSnapshotJson, ['teamName', 'name']) || `\u56e2\u961f ${record.teamId}`,
+        render: (_, record) => record.draftTeamName
+          || parseSnapshotName(record.teamSnapshotJson, ['teamName', 'name'])
+          || (record.teamId ? `\u56e2\u961f ${record.teamId}` : '-'),
       },
       {
         title: '\u9879\u76ee',
         dataIndex: 'projectId',
         search: false,
         ellipsis: true,
-        render: (_, record) => parseSnapshotName(record.projectSnapshotJson, ['title', 'projectTitle', 'name']) || `\u9879\u76ee ${record.projectId}`,
+        render: (_, record) => record.draftProjectTitle
+          || parseSnapshotName(record.projectSnapshotJson, ['title', 'projectTitle', 'name'])
+          || (record.projectId ? `\u9879\u76ee ${record.projectId}` : '-'),
       },
       {
         title: '\u72b6\u6001',
@@ -3590,7 +3652,9 @@ const CompetitionRegistrationPage = () => {
         dataIndex: 'payableAmountMinor',
         search: false,
         width: 128,
-        render: (_, record) => formatRegistrationAmount(record.payableAmountMinor, record.currency),
+        render: (_, record) => record.isCurrentUserDraft
+          ? '-'
+          : formatRegistrationAmount(record.payableAmountMinor, record.currency),
       },
       {
         title: '\u62a5\u540d\u65f6\u95f4',
@@ -3607,10 +3671,15 @@ const CompetitionRegistrationPage = () => {
         align: 'right',
         render: (_, record) => (
           <Space size={4}>
-            <Button type="text" icon={<EyeOutlined />} loading={loading && registrationId === record.id} onClick={() => void openRegistrationFlow(record)}>
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              loading={!record.isCurrentUserDraft && loading && registrationId === record.id}
+              onClick={() => void (record.isCurrentUserDraft ? startNewRegistration() : openRegistrationFlow(record))}
+            >
               {record.status === 'PAID' || record.status === 'CONFIRMED' ? '\u67e5\u770b' : '\u7ee7\u7eed'}
             </Button>
-            {record.status === 'PENDING_PAYMENT' ? (
+            {!record.isCurrentUserDraft && record.status === 'PENDING_PAYMENT' ? (
               <Button danger type="text" icon={<DeleteOutlined />} onClick={() => removePendingRegistration(record)}>
                 取消报名
               </Button>
@@ -3619,7 +3688,7 @@ const CompetitionRegistrationPage = () => {
         ),
       },
     ],
-    [competitionTitleMap, loading, openRegistrationFlow, registrationId, removePendingRegistration, responsive.isDesktop],
+    [competitionTitleMap, loading, openRegistrationFlow, registrationId, removePendingRegistration, responsive.isDesktop, startNewRegistration],
   );
   const registrationBreadcrumb = useMemo(
     () => ({
@@ -3632,24 +3701,75 @@ const CompetitionRegistrationPage = () => {
     return (
       <ManagementPage title={'\u8d5b\u4e8b\u62a5\u540d'} breadcrumb={registrationBreadcrumb}>
         <ManagementPageBody>
-          <ManagementTable<CompetitionRegistrationRecord>
+          <ManagementTable<CompetitionRegistrationListRecord>
             actionRef={registrationActionRef}
-            rowKey="id"
+            rowKey={(record) => record.isCurrentUserDraft ? `draft:${registrationDraftStorageKey}` : record.id}
             columns={registrationColumns}
             isMobile={responsive.isMobile}
             scroll={{ x: 1360 }}
             request={async (params) => {
-              const response = await listRegistrations({
-                pageNo: params.current,
-                pageSize: params.pageSize,
-              });
+              const pageNo = Math.max(1, Number(params.current) || 1);
+              const pageSize = Math.max(1, Number(params.pageSize) || 10);
               const currentUserId = initialState?.currentUser?.userId;
-              const scopedRecords = currentUserId == null || canViewAllRegistrations
-                ? (response.records || [])
-                : (response.records || []).filter((record) => record.ownerUserId == null || record.ownerUserId === currentUserId);
+              const draft = await readCompetitionRegistrationDraft(registrationDraftStorageKey);
+              const draftRecord = buildCurrentUserRegistrationDraftRecord(draft, currentUserId);
+              const requestedStatus = typeof params.status === 'string' ? params.status : undefined;
+              const registrationKeyword = typeof params.registrationNo === 'string'
+                ? params.registrationNo.trim().toLowerCase()
+                : '';
+              const draftMatchesKeyword = !registrationKeyword || Boolean(draftRecord && [
+                draftRecord.registrationNo,
+                draftRecord.draftCompetitionTitle,
+                draftRecord.draftTeamName,
+                draftRecord.draftProjectTitle,
+              ].some((value) => value?.toLowerCase().includes(registrationKeyword)));
+
+              const loadFormalPage = async (formalPageNo: number) => {
+                const response = await listRegistrations({ pageNo: formalPageNo, pageSize });
+                const records = currentUserId == null || canViewAllRegistrations
+                  ? (response.records || [])
+                  : (response.records || []).filter((record) => record.ownerUserId == null || record.ownerUserId === currentUserId);
+                return { records, total: response.total };
+              };
+
+              if (requestedStatus === 'DRAFT') {
+                return {
+                  data: pageNo === 1 && draftRecord && draftMatchesKeyword ? [draftRecord] : [],
+                  total: draftRecord && draftMatchesKeyword ? 1 : 0,
+                  success: true,
+                };
+              }
+
+              if (!draftRecord || !draftMatchesKeyword || requestedStatus) {
+                const response = await loadFormalPage(pageNo);
+                return {
+                  data: response.records,
+                  total: response.total,
+                  success: true,
+                };
+              }
+
+              // The current user's draft is a private, non-registration row. Shift the
+              // formal-record window by one so table pagination remains stable.
+              const formalStart = Math.max(0, (pageNo - 1) * pageSize - 1);
+              const formalEnd = Math.max(0, pageNo * pageSize - 1);
+              const firstFormalPage = Math.floor(formalStart / pageSize) + 1;
+              const lastFormalPage = formalEnd > formalStart
+                ? Math.floor((formalEnd - 1) / pageSize) + 1
+                : firstFormalPage;
+              const formalPages = await Promise.all(
+                Array.from(
+                  { length: lastFormalPage - firstFormalPage + 1 },
+                  (_, index) => loadFormalPage(firstFormalPage + index),
+                ),
+              );
+              const formalPageOffset = formalStart - (firstFormalPage - 1) * pageSize;
+              const formalRecords = formalPages
+                .flatMap((response) => response.records)
+                .slice(formalPageOffset, formalPageOffset + (formalEnd - formalStart));
               return {
-                data: scopedRecords,
-                total: currentUserId == null || canViewAllRegistrations ? response.total : scopedRecords.length,
+                data: pageNo === 1 ? [draftRecord, ...formalRecords] : formalRecords,
+                total: (formalPages[0]?.total || 0) + 1,
                 success: true,
               };
             }}
