@@ -2924,14 +2924,17 @@ const CompetitionRegistrationPage = () => {
     if (step !== registrationWizardStep.preliminaryMaterials) {
       return;
     }
-    const competitionId = toPositiveId(selectedCompetitionId);
+    const competitionId = toPositiveId(selectedCompetitionId)
+      || (registrationDraftHydrated
+        ? toPositiveId(latestRegistrationDraftRef.current?.values?.competitionId)
+        : undefined);
     if (!competitionId) {
       return;
     }
     void loadStageFormForCompetition(competitionId).catch((error) => {
       showErrorMessage(error, '初赛材料表单加载失败');
     });
-  }, [loadStageFormForCompetition, selectedCompetitionId, step]);
+  }, [loadStageFormForCompetition, registrationDraftHydrated, selectedCompetitionId, step]);
 
   const startNewRegistration = async () => {
     const draft = await readCompetitionRegistrationDraft(registrationDraftStorageKey);
