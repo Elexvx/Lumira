@@ -1988,7 +1988,9 @@ public class CompetitionRegistrationAppService {
         String text = String.valueOf(value).trim();
         if ("DATE".equals(field.fieldType())) {
             try {
-                LocalDate.parse(text);
+                if (!isYearOnlyMemberDateField(field) || !text.matches("\\d{4}")) {
+                    LocalDate.parse(text);
+                }
             } catch (RuntimeException exception) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Invalid date: " + field.title());
             }
@@ -2004,6 +2006,11 @@ public class CompetitionRegistrationAppService {
                 && !EMAIL_PATTERN.matcher(text).matches()) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid email address: " + field.title());
         }
+    }
+
+    private boolean isYearOnlyMemberDateField(CollectedFieldDefinition field) {
+        return "MEMBER_FIELD".equals(field.scope())
+                && Set.of("enrollmentDate", "graduationDate").contains(field.itemKey());
     }
 
     private String resolveStandardCollectedFieldKey(String scope, String itemKey) {

@@ -164,13 +164,19 @@ class CompetitionRegistrationAppServiceTest {
         sql.competitionFeeMode = "MEMBER";
         sql.competitionEntryFeeMinor = 5_000L;
         sql.collectionFieldRows.add(configField("MEMBER_FIELD", "role", "成员角色", "ROLE", true));
+        sql.collectionFieldRows.add(configField("MEMBER_FIELD", "enrollmentDate", "入学年份", "DATE", true));
+        sql.collectionFieldRows.add(configField("MEMBER_FIELD", "graduationDate", "毕业年份", "DATE", true));
         CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
         request.getMembers().get(0).setExtraValues(Map.of(
                 "mobile", "13800138000",
+                "enrollmentDate", "2025",
+                "graduationDate", "2029",
                 "role", "负责人"
         ));
         request.getMembers().get(1).setExtraValues(Map.of(
                 "mobile", "13900139000",
+                "enrollmentDate", "2024",
+                "graduationDate", "2028",
                 "role", "成员"
         ));
 
