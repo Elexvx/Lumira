@@ -2,6 +2,11 @@ export const INTELLECTUAL_PROPERTY_ENTRIES_KEY = 'intellectualProperties';
 
 export type RegistrationIntellectualPropertyEntry = Record<string, unknown>;
 
+type RegistrationIntellectualPropertyField = {
+  itemKey: string;
+  required?: boolean;
+};
+
 const hasMeaningfulValue = (value: unknown): boolean => {
   if (Array.isArray(value)) {
     return value.some(hasMeaningfulValue);
@@ -79,3 +84,17 @@ export const buildRegistrationProjectExtraValues = (
 export const hasRegistrationIntellectualPropertyContent = (
   extraValues: Record<string, unknown> | null | undefined,
 ) => hasMeaningfulValue(extraValues);
+
+export const getMissingRequiredIntellectualPropertyFields = <T extends RegistrationIntellectualPropertyField>(
+  fields: T[],
+  entries: RegistrationIntellectualPropertyEntry[],
+) => {
+  const requiredFields = fields.filter((field) => field.required);
+  if (!requiredFields.length) {
+    return [];
+  }
+  if (!entries.length) {
+    return requiredFields;
+  }
+  return requiredFields.filter((field) => entries.some((entry) => !hasMeaningfulValue(entry[field.itemKey])));
+};

@@ -166,7 +166,7 @@ public class CompetitionRegistrationAppService {
         selectParams.add((safePageNo - 1) * safePageSize);
         selectParams.add(safePageSize);
         List<CompetitionRegistrationVO.Registration> records = jdbcTemplate.query(
-                registrationSelect() + where + " order by created_at desc, id desc limit ?, ?",
+                registrationListSelect() + where + " order by created_at desc, id desc limit ?, ?",
                 new BeanPropertyRowMapper<>(CompetitionRegistrationVO.Registration.class),
                 selectParams.toArray()
         );
@@ -219,10 +219,12 @@ public class CompetitionRegistrationAppService {
                          or c.title like ?
                          or t.team_name like ?
                          or p.title like ?
+                         or json_unquote(json_extract(cr.team_snapshot_json, '$.teamName')) like ?
+                         or json_unquote(json_extract(cr.project_snapshot_json, '$.title')) like ?
                      )
                     """);
             String likeKeyword = "%" + normalizedKeyword + "%";
-            for (int i = 0; i < 8; i += 1) {
+            for (int i = 0; i < 10; i += 1) {
                 params.add(likeKeyword);
             }
         }
@@ -319,7 +321,18 @@ public class CompetitionRegistrationAppService {
         CompetitionRegistrationDTO.RegistrationCreateRequest registration = request.getRegistration();
         requireRequest(registration, "Registration payload is required");
         if (registration.getProjectId() == null || registration.getProjectId() <= 0) {
-            registration.setProjectId(createInlineProject(currentUser, request.getProject()));
+            CompetitionRegistrationDTO.ProjectDraftRequest project = request.getProject();
+            requireRequest(project, "Project information is required");
+            CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshot = registration.getProjectSnapshot();
+            if (projectSnapshot == null) {
+                projectSnapshot = new CompetitionRegistrationDTO.ProjectSnapshotRequest();
+                registration.setProjectSnapshot(projectSnapshot);
+            }
+            projectSnapshot.setTitle(project.getTitle());
+            projectSnapshot.setCategory(project.getCategory());
+            projectSnapshot.setDescription(project.getDescription());
+            projectSnapshot.setImageUrl(project.getImageUrl());
+            registration.setProjectId(0L);
         }
         CompetitionRegistrationVO.Registration confirmed;
         if (registrationId == null) {
@@ -361,9 +374,9 @@ public class CompetitionRegistrationAppService {
                         insert into competition_registration (
                             registration_no, competition_id, team_id, project_id, owner_user_id, owner_user_uuid,
                             status, fee_mode, entry_fee_minor, member_count, payable_amount_minor, currency,
-                            team_snapshot_json, project_snapshot_json, member_snapshot_json,
+                            registration_snapshot_json, team_snapshot_json, project_snapshot_json, member_snapshot_json,
                             created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
                                 generateRegistrationNo(),
                 competition.id(),
@@ -377,6 +390,7 @@ public class CompetitionRegistrationAppService {
                 memberCount,
                 payableAmountMinor,
                 competition.currency(),
+                serializeRegistrationSnapshot(request.getRegistrationExtraValues()),
                 serialize(team.summary()),
                 serialize(project.summary()),
                 serialize(team.members()),
@@ -413,8 +427,9 @@ public class CompetitionRegistrationAppService {
                 """
                         update competition_registration
                         set competition_id = ?, team_id = ?, project_id = ?, fee_mode = ?, entry_fee_minor = ?,
-                            member_count = ?, payable_amount_minor = ?, currency = ?, team_snapshot_json = ?,
-                            project_snapshot_json = ?, member_snapshot_json = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            member_count = ?, payable_amount_minor = ?, currency = ?, registration_snapshot_json = ?,
+                            team_snapshot_json = ?, project_snapshot_json = ?, member_snapshot_json = ?,
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ? and registration_no = ? and owner_user_id = ? and owner_user_uuid = ?
                           and status = ? and deleted = 0
                         """,
@@ -426,6 +441,7 @@ public class CompetitionRegistrationAppService {
                 memberCount,
                 payableAmountMinor,
                 competition.currency(),
+                serializeRegistrationSnapshot(request.getRegistrationExtraValues()),
                 serialize(team.summary()),
                 serialize(project.summary()),
                 serialize(team.members()),
@@ -610,7 +626,8 @@ public class CompetitionRegistrationAppService {
                         select r.id as registrationId, r.registration_no as registrationNo, r.competition_id as competitionId,
                                ? as stageId,
                                coalesce(json_unquote(json_extract(r.team_snapshot_json, '$.teamName')), concat('Team #', r.team_id)) as teamName,
-                               coalesce(p.title, concat('Project #', r.project_id)) as projectTitle,
+                               coalesce(json_unquote(json_extract(r.project_snapshot_json, '$.title')),
+                                        p.title, concat('Project #', r.project_id)) as projectTitle,
                                rr.score, coalesce(rr.decision, 'PENDING') as decision, rr.review_comment as reviewComment,
                                rr.published_at as publishedAt, ms.submitted_at as submittedAt
                         from competition_registration r
@@ -1534,7 +1551,7 @@ public class CompetitionRegistrationAppService {
             }
             snapshot = resolveTeamSnapshot(requireUserId(currentUser), requireUserUuid(currentUser), teamId);
         }
-        return appendRegistrationExtraValues(snapshot, request.getRegistrationExtraValues());
+        return snapshot;
     }
 
     private boolean hasInlineRegistrationTeam(CompetitionRegistrationDTO.RegistrationCreateRequest request) {
@@ -1568,16 +1585,6 @@ public class CompetitionRegistrationAppService {
         return new TeamSnapshot(request.getTeamId() == null ? 0L : request.getTeamId(), summary, members);
     }
 
-    private TeamSnapshot appendRegistrationExtraValues(TeamSnapshot snapshot, Map<String, Object> registrationExtraValues) {
-        if (registrationExtraValues == null || registrationExtraValues.isEmpty()) {
-            return snapshot;
-        }
-        requireJsonSize(registrationExtraValues, "Registration extra values are too large");
-        Map<String, Object> summary = new LinkedHashMap<>(toMutableMap(snapshot.summary()));
-        summary.put("registrationExtraValues", registrationExtraValues);
-        return new TeamSnapshot(snapshot.teamId(), summary, snapshot.members());
-    }
-
     private List<Map<String, Object>> normalizeInlineMembers(List<CompetitionRegistrationDTO.MemberSnapshotRequest> members) {
         List<Map<String, Object>> normalized = new ArrayList<>();
         if (members != null && members.size() > MAX_INLINE_MEMBERS) {
@@ -1588,7 +1595,7 @@ public class CompetitionRegistrationAppService {
             row.put("memberName", trimToNull(member.getMemberName()));
             row.put("employeeNo", trimToNull(member.getEmployeeNo()));
             row.put("departmentName", trimToNull(member.getDepartmentName()));
-            row.put("role", trimToNull(member.getRole()));
+            row.put("systemRole", trimToNull(member.getRole()));
             row.put("remark", trimToNull(member.getRemark()));
             if (member.getExtraValues() != null && !member.getExtraValues().isEmpty()) {
                 requireJsonSize(member.getExtraValues(), "Member extra values are too large");
@@ -1610,7 +1617,7 @@ public class CompetitionRegistrationAppService {
                 throw biz(ErrorCode.NOT_FOUND, "Team not found");
             }
             List<TeamMemberDTO> members = api.listActiveMembers(requesterUserId, requesterUserUuid, teamId);
-            return new TeamSnapshot(teamId, team, members == null ? List.of() : members);
+            return new TeamSnapshot(teamId, team, normalizeSystemTeamMembers(members));
         }
         Map<String, Object> team = singleRow(
                 """
@@ -1638,7 +1645,8 @@ public class CompetitionRegistrationAppService {
         }
         List<Map<String, Object>> members = jdbcTemplate.queryForList(
                 """
-                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid, role, status,
+                        select id, team_id as teamId, user_id as userId, user_uuid as userUuid,
+                               role as systemRole, status,
                                extra_values_json as extraValuesJson, joined_at as joinedAt
                         from team_member
                         where team_id = ? and status = 'ACTIVE' and deleted = 0
@@ -1649,8 +1657,40 @@ public class CompetitionRegistrationAppService {
         return new TeamSnapshot(teamId, team, members);
     }
 
+    private List<Map<String, Object>> normalizeSystemTeamMembers(List<TeamMemberDTO> members) {
+        List<Map<String, Object>> snapshots = new ArrayList<>();
+        for (TeamMemberDTO member : members == null ? List.<TeamMemberDTO>of() : members) {
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("id", member.getId());
+            snapshot.put("teamId", member.getTeamId());
+            snapshot.put("userId", member.getUserId());
+            snapshot.put("userUuid", member.getUserUuid());
+            snapshot.put("systemRole", trimToNull(member.getRole()));
+            snapshot.put("status", trimToNull(member.getStatus()));
+            snapshot.put("extraValuesJson", trimToNull(member.getExtraValuesJson()));
+            snapshot.put("joinedAt", member.getJoinedAt());
+            snapshot.entrySet().removeIf(entry -> entry.getValue() == null);
+            snapshots.add(snapshot);
+        }
+        return snapshots;
+    }
+
     private ProjectSnapshot requireProjectSnapshot(Long projectId, CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshotRequest) {
-        requirePositiveId(projectId, "Project id is required");
+        if (projectId == null || projectId <= 0) {
+            requireRequest(projectSnapshotRequest, "Project information is required");
+            Map<String, Object> inlineProject = new LinkedHashMap<>();
+            inlineProject.put("title", trimRequired(projectSnapshotRequest.getTitle(), "Project title is required"));
+            inlineProject.put("category", StringUtils.hasText(projectSnapshotRequest.getCategory())
+                    ? projectSnapshotRequest.getCategory().trim() : "INNOVATION");
+            inlineProject.put("description", trimToNull(projectSnapshotRequest.getDescription()));
+            inlineProject.put("imageUrl", trimToNull(projectSnapshotRequest.getImageUrl()));
+            if (projectSnapshotRequest.getExtraValues() != null && !projectSnapshotRequest.getExtraValues().isEmpty()) {
+                requireJsonSize(projectSnapshotRequest.getExtraValues(), "Project extra values are too large");
+                inlineProject.put("extraValues", projectSnapshotRequest.getExtraValues());
+            }
+            inlineProject.entrySet().removeIf((entry) -> entry.getValue() == null);
+            return new ProjectSnapshot(0L, inlineProject);
+        }
         Map<String, Object> project = singleRow(
                 """
                         select id, code, locale, title, category, description,
@@ -1770,7 +1810,10 @@ public class CompetitionRegistrationAppService {
 
     private void validateRegistrationCreateRequest(CompetitionRegistrationDTO.RegistrationCreateRequest request) {
         requirePositiveId(request.getCompetitionId(), "Competition id is required");
-        requirePositiveId(request.getProjectId(), "Project id is required");
+        if ((request.getProjectId() == null || request.getProjectId() <= 0)
+                && (request.getProjectSnapshot() == null || !StringUtils.hasText(request.getProjectSnapshot().getTitle()))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Project information is required");
+        }
         if (request.getTeamId() != null && request.getTeamId() <= 0) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Team id is invalid");
         }
@@ -1796,37 +1839,6 @@ public class CompetitionRegistrationAppService {
             requireLength(member.getRemark(), 512, "Member remark is too large");
             requireJsonSize(member.getExtraValues(), "Member extra values are too large");
         }
-    }
-
-    private Long createInlineProject(CurrentUser currentUser, CompetitionRegistrationDTO.ProjectDraftRequest project) {
-        requireRequest(project, "Project information is required");
-        String title = trimRequired(project.getTitle(), "Project title is required");
-        Long userId = requireUserId(currentUser);
-        String userUuid = requireUserUuid(currentUser);
-        String code = "proj-" + NO_TIME_FORMATTER.format(LocalDateTime.now()) + "-"
-                + Integer.toString(ThreadLocalRandom.current().nextInt(36 * 36 * 36), 36).toUpperCase(Locale.ROOT);
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into aiadc_project (
-                            code, locale, title, category, description, image_url, owner_name, rating, sort, status,
-                            tags, cta_label, cta_href, featured, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, 'zh', ?, ?, ?, ?, ?, 'new', 100, 'draft', null, null, null, 0, ?, ?, ?, ?, 0)
-                        """,
-                code,
-                title,
-                StringUtils.hasText(project.getCategory()) ? project.getCategory().trim() : "INNOVATION",
-                trimToNull(project.getDescription()),
-                trimToNull(project.getImageUrl()),
-                currentUser.getUsername(),
-                userId,
-                userUuid,
-                userId,
-                userUuid
-        );
-        requireRegistrationWrite(inserted, "Project changed while confirming registration");
-        Long projectId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        requirePositiveId(projectId, "Project could not be created");
-        return projectId;
     }
 
     private List<CollectedFieldDefinition> validateCollectedFields(
@@ -2007,6 +2019,10 @@ public class CompetitionRegistrationAppService {
     }
 
     private String resolveStandardCollectedFieldKey(String scope, String itemKey) {
+        // Registration role selection is separate from the formal team membership role.
+        if ("MEMBER_FIELD".equals(scope) && "role".equals(itemKey)) {
+            return null;
+        }
         String normalized = itemKey == null ? "" : itemKey.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
         Map<String, Set<String>> aliases = switch (scope) {
             case "TEAM_FIELD" -> Map.of(
@@ -2677,6 +2693,13 @@ public class CompetitionRegistrationAppService {
         }
     }
 
+    private String serializeRegistrationSnapshot(Map<String, Object> registrationExtraValues) {
+        Map<String, Object> values = registrationExtraValues == null
+                ? Map.of() : new LinkedHashMap<>(registrationExtraValues);
+        requireJsonSize(values, "Registration extra values are too large");
+        return serialize(values);
+    }
+
     private String registrationSelect() {
         return """
                 select id, registration_no as registrationNo, competition_id as competitionId,
@@ -2684,9 +2707,26 @@ public class CompetitionRegistrationAppService {
                        owner_user_uuid as ownerUserUuid, status,
                        fee_mode as feeMode, entry_fee_minor as entryFeeMinor, member_count as memberCount,
                        payable_amount_minor as payableAmountMinor, currency, payment_order_no as paymentOrderNo,
-                       participant_no as participantNo, team_snapshot_json as teamSnapshotJson,
+                       participant_no as participantNo, registration_snapshot_json as registrationSnapshotJson,
+                       team_snapshot_json as teamSnapshotJson,
                        project_snapshot_json as projectSnapshotJson, member_snapshot_json as memberSnapshotJson,
                        collection_schema_snapshot_json as collectionSchemaSnapshotJson,
+                       created_at as createdAt, updated_at as updatedAt
+                """;
+    }
+
+    private String registrationListSelect() {
+        return """
+                select id, registration_no as registrationNo, competition_id as competitionId,
+                       team_id as teamId, project_id as projectId, owner_user_id as ownerUserId,
+                       owner_user_uuid as ownerUserUuid, status,
+                       fee_mode as feeMode, entry_fee_minor as entryFeeMinor, member_count as memberCount,
+                       payable_amount_minor as payableAmountMinor, currency, payment_order_no as paymentOrderNo,
+                       participant_no as participantNo,
+                       case when json_valid(team_snapshot_json)
+                           then json_unquote(json_extract(team_snapshot_json, '$.teamName')) end as teamName,
+                       case when json_valid(project_snapshot_json)
+                           then json_unquote(json_extract(project_snapshot_json, '$.title')) end as projectTitle,
                        created_at as createdAt, updated_at as updatedAt
                 """;
     }
@@ -2705,8 +2745,12 @@ public class CompetitionRegistrationAppService {
         return """
                 select cr.id as registrationId, cr.registration_no as registrationNo,
                        cr.competition_id as competitionId, c.code as competitionCode, c.title as competitionTitle,
-                       cr.team_id as teamId, t.team_name as teamName,
-                       cr.project_id as projectId, p.title as projectTitle,
+                       cr.team_id as teamId,
+                       coalesce(json_unquote(json_extract(cr.team_snapshot_json, '$.teamName')),
+                                t.team_name, concat('Team #', cr.team_id)) as teamName,
+                       cr.project_id as projectId,
+                       coalesce(json_unquote(json_extract(cr.project_snapshot_json, '$.title')),
+                                p.title, concat('Project #', cr.project_id)) as projectTitle,
                        cr.owner_user_id as ownerUserId, cr.status as registrationStatus,
                        cr.participant_no as participantNo, cr.member_count as memberCount,
                        cr.payable_amount_minor as payableAmountMinor,

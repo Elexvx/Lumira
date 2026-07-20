@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildRegistrationProjectExtraValues,
+  getMissingRequiredIntellectualPropertyFields,
   hasRegistrationIntellectualPropertyContent,
   INTELLECTUAL_PROPERTY_ENTRIES_KEY,
   migrateRegistrationIntellectualPropertyValues,
@@ -68,5 +69,17 @@ describe('registration intellectual property values', () => {
       ipType: 'SOFTWARE_COPYRIGHT',
       [INTELLECTUAL_PROPERTY_ENTRIES_KEY]: [{ ipName: '软件平台' }],
     });
+  });
+
+  it('finds required evidence fields missing from any entry', () => {
+    const fields = [
+      { itemKey: 'ipType', required: true },
+      { itemKey: 'ipName', required: true },
+      { itemKey: 'applicationNo', required: false },
+    ];
+    expect(getMissingRequiredIntellectualPropertyFields(fields, [
+      { ipType: 'SOFTWARE_COPYRIGHT', ipName: '软件平台' },
+      { ipType: 'INVENTION_PATENT' },
+    ])).toEqual([fields[1]]);
   });
 });

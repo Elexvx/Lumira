@@ -18,6 +18,31 @@ export const registrationWizardStepItems = [
   { title: '支付方式' },
 ];
 
+export const resolveRegistrationResumeStep = ({
+  hasPaymentOrder,
+  hasIncompleteTeamOrProject,
+  hasMissingRequiredMaterials,
+  hasMissingRequiredEvidence,
+}: {
+  hasPaymentOrder: boolean;
+  hasIncompleteTeamOrProject: boolean;
+  hasMissingRequiredMaterials: boolean;
+  hasMissingRequiredEvidence: boolean;
+}) => {
+  if (hasPaymentOrder) {
+    return registrationWizardStep.payment;
+  }
+  if (hasIncompleteTeamOrProject) {
+    return registrationWizardStep.team;
+  }
+  if (hasMissingRequiredMaterials) {
+    return registrationWizardStep.preliminaryMaterials;
+  }
+  return hasMissingRequiredEvidence
+    ? registrationWizardStep.projectEvidence
+    : registrationWizardStep.review;
+};
+
 type RegistrationWizardAccessState = {
   competitionReady: boolean;
   teamReady: boolean;

@@ -105,7 +105,7 @@ public class PaymentEventStreamConsumer {
         redis.opsForStream().acknowledge(STREAM, GROUP, message.getId());
     }
 
-    private void ensureConsumerGroup() {
+    void ensureConsumerGroup() {
         try {
             redis.opsForStream().createGroup(STREAM, ReadOffset.from("0-0"), GROUP);
         } catch (RuntimeException firstFailure) {
@@ -124,7 +124,15 @@ public class PaymentEventStreamConsumer {
     }
 
     private boolean isBusyGroup(RuntimeException exception) {
-        return String.valueOf(exception.getMessage()).contains("BUSYGROUP");
+        Throwable current = exception;
+        while (current != null) {
+            if (String.valueOf(current.getMessage()).contains("BUSYGROUP")
+                    || "RedisBusyException".equals(current.getClass().getSimpleName())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private Long positiveLong(JsonNode node) {

@@ -3,14 +3,17 @@ package com.lumira.asyncruntime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.saas.modules.competition.event.CompetitionPaymentEventHandler;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.StreamOperations;
 
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -20,6 +23,39 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaymentEventStreamConsumerTest {
+
+    @Test
+    void startsWhenExistingConsumerGroupErrorIsWrapped() {
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        StreamOperations<String, String, String> stream = mock(StreamOperations.class);
+        doReturn(stream).when(redis).opsForStream();
+        doThrow(new RedisSystemException(
+                "Error in execution",
+                new RuntimeException("BUSYGROUP Consumer Group name already exists")
+        )).when(stream).createGroup(
+                PaymentEventStreamConsumer.STREAM,
+                ReadOffset.from("0-0"),
+                PaymentEventStreamConsumer.GROUP
+        );
+        RedisConnectionFactory connectionFactory = mock(RedisConnectionFactory.class);
+        PaymentEventStreamConsumer consumer = new PaymentEventStreamConsumer(
+                connectionFactory,
+                redis,
+                new ObjectMapper(),
+                mock(CompetitionPaymentEventHandler.class),
+                "consumer-1"
+        );
+
+        consumer.ensureConsumerGroup();
+
+        verify(stream).createGroup(
+                PaymentEventStreamConsumer.STREAM,
+                ReadOffset.from("0-0"),
+                PaymentEventStreamConsumer.GROUP
+        );
+        verify(stream, never()).add(any(MapRecord.class));
+    }
 
     @Test
     void handlesPaidEventBeforeAcknowledging() {
