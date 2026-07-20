@@ -12,13 +12,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.PendingMessages;
 import org.springframework.data.redis.connection.stream.ReadOffset;
+import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
+import org.springframework.data.domain.Range;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -27,6 +31,7 @@ public class PaymentEventStreamConsumer {
     private static final Logger log = LoggerFactory.getLogger(PaymentEventStreamConsumer.class);
     static final String STREAM = "lumira.events.payment.v1";
     static final String GROUP = "competition-payment-v1";
+    private static final int PENDING_RECOVERY_LIMIT = 1_000;
 
     private final RedisConnectionFactory connectionFactory;
     private final org.springframework.data.redis.core.StringRedisTemplate redis;
@@ -54,6 +59,7 @@ public class PaymentEventStreamConsumer {
     @PostConstruct
     void start() {
         ensureConsumerGroup();
+        recoverPendingMessages();
         var options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
                 .<String, MapRecord<String, String, String>>builder()
                 .pollTimeout(Duration.ofSeconds(2))
@@ -62,11 +68,6 @@ public class PaymentEventStreamConsumer {
         container.receive(
                 Consumer.from(GROUP, consumerName),
                 StreamOffset.create(STREAM, ReadOffset.lastConsumed()),
-                this::onMessage
-        );
-        container.receive(
-                Consumer.from(GROUP, consumerName),
-                StreamOffset.create(STREAM, ReadOffset.from("0")),
                 this::onMessage
         );
         container.start();
@@ -121,6 +122,34 @@ public class PaymentEventStreamConsumer {
                 }
             }
         }
+    }
+
+    void recoverPendingMessages() {
+        var stream = redis.<String, String>opsForStream();
+        PendingMessages pending = stream.pending(
+                STREAM,
+                GROUP,
+                Range.unbounded(),
+                PENDING_RECOVERY_LIMIT
+        );
+        if (pending == null || pending.isEmpty()) {
+            return;
+        }
+        RecordId[] ids = pending.stream()
+                .map(message -> message.getId())
+                .toArray(RecordId[]::new);
+        List<MapRecord<String, String, String>> claimed = stream.claim(
+                STREAM,
+                GROUP,
+                consumerName,
+                Duration.ZERO,
+                ids
+        );
+        if (claimed == null || claimed.isEmpty()) {
+            return;
+        }
+        log.info("Recovering {} pending payment events for consumer={}", claimed.size(), consumerName);
+        claimed.forEach(this::onMessage);
     }
 
     private boolean isBusyGroup(RuntimeException exception) {
