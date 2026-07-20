@@ -122,6 +122,7 @@ import {
   type CompetitionSettingsStageTab,
 } from '@/pages/competition/utils/competitionSettingsNavigation';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
+import { CompetitionPaymentStep } from '@/pages/competition/components/CompetitionPaymentStep';
 import { message, modal } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, extractErrorMessage, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
@@ -4624,32 +4625,21 @@ const CompetitionRegistrationPage = () => {
                 </Space>
               ) : null}
               {step === 5 ? (
-                <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                  <Alert
-                    type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
-                    showIcon
-                    message={`报名编号：${registrationRecord?.registrationNo || registrationId || '-'}，应付金额：${formatRegistrationAmount(registrationRecord?.payableAmountMinor ?? previewPayableAmount, registrationRecord?.currency || selectedCompetition?.currency)}`}
-                    description="支付方式必须单选。选定后生成支付链接，不会自动跳转。"
-                  />
-                  {paymentStatus !== 'CONFIRMED' && paymentStatus !== 'PAID' ? (
-                    paymentOptions.length ? (
-                      <Radio.Group value={selectedPaymentProvider} onChange={(event) => setSelectedPaymentProvider(event.target.value)}>
-                        <Space direction="vertical">
-                          {paymentOptions.map((option) => (
-                            <Radio key={option.providerCode} value={option.providerCode}>
-                              {option.displayName}
-                              <Typography.Text type="secondary"> {option.paymentScene}</Typography.Text>
-                            </Radio>
-                          ))}
-                        </Space>
-                      </Radio.Group>
-                    ) : <Alert type="warning" showIcon message="当前设备暂无可用支付方式，请联系管理员。" />
-                  ) : null}
-                </Space>
+                <CompetitionPaymentStep
+                  registrationNo={registrationRecord?.registrationNo || String(registrationId || '-')}
+                  amount={formatRegistrationAmount(
+                    registrationRecord?.payableAmountMinor ?? previewPayableAmount,
+                    registrationRecord?.currency || selectedCompetition?.currency,
+                  )}
+                  paymentStatus={paymentStatus}
+                  paymentOptions={paymentOptions}
+                  selectedProvider={selectedPaymentProvider}
+                  onSelectProvider={setSelectedPaymentProvider}
+                />
               ) : null}
             </div>
           </Form>
-          <div className="competition-create-actions">
+          <div className={`competition-create-actions${step === 5 ? ' competition-create-actions--payment' : ''}`}>
             {registrationDraftSavedAt ? (
               <Typography.Text className="competition-create-draft-status" type="secondary">
                 草稿已自动保存
@@ -4661,7 +4651,7 @@ const CompetitionRegistrationPage = () => {
                 {nextButtonText}
               </Button>
             ) : (
-              <Button type="primary" loading={loading} disabled={stageFormLoading || !canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
+              <Button className="competition-payment-submit" type="primary" loading={loading} disabled={stageFormLoading || !canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
                 立即支付
               </Button>
             )}
