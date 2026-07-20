@@ -12,6 +12,7 @@ public enum ErrorCode {
     ACCOUNT_NOT_FOUND(401, "A0407", "账号不存在", "账号或密码错误"),
     PASSWORD_ERROR(401, "A0408", "密码错误", "账号或密码错误"),
     BAD_REQUEST(400, "A0409", "请求错误", "请检查请求内容后重试"),
+    METHOD_NOT_ALLOWED(405, "A0410", "请求方法不允许", "当前请求方式不受支持"),
     UNPROCESSABLE_ENTITY(422, "A0422", "参数无法处理", "输入信息有误，请检查后重试"),
     LOGIN_RATE_LIMITED(429, "B6001", "登录频率受限", "登录过于频繁，请稍后再试"),
     CAPTCHA_INVALID(400, "B6002", "验证码错误", "验证码错误或已过期，请刷新后重试"),

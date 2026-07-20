@@ -58,6 +58,7 @@ class BackendJobClientTest {
     private JobExecutorProperties baseProperties() {
         JobExecutorProperties properties = new JobExecutorProperties();
         properties.setBackendBaseUrl("http://127.0.0.1:1");
+        properties.setSystemServiceBaseUrl("http://127.0.0.1:6");
         properties.setMessageServiceBaseUrl("http://127.0.0.1:2");
         properties.getInternal().setMessageToken("message-token");
         properties.getInternal().setFileToken("file-token");

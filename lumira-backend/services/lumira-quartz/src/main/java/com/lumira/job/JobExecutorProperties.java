@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class JobExecutorProperties {
 
     private String backendBaseUrl;
+    private String systemServiceBaseUrl;
     private String messageServiceBaseUrl;
     private String fileServiceBaseUrl;
     private String paymentServiceBaseUrl;
@@ -19,6 +20,14 @@ public class JobExecutorProperties {
 
     public void setBackendBaseUrl(String backendBaseUrl) {
         this.backendBaseUrl = backendBaseUrl;
+    }
+
+    public String getSystemServiceBaseUrl() {
+        return systemServiceBaseUrl;
+    }
+
+    public void setSystemServiceBaseUrl(String systemServiceBaseUrl) {
+        this.systemServiceBaseUrl = systemServiceBaseUrl;
     }
 
     public String getMessageServiceBaseUrl() {

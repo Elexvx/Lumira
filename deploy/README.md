@@ -427,7 +427,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node bin/deploy-container.mjs --reset
 - `deploy/.env` 不要提交到 Git。
 - 对外只暴露 `https://bm.aiadc.org.cn`，容器内部服务端口只在内网访问。
 - `DB_PASSWORD`、`JWT_SECRET`、`FIELD_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_INTERNAL_SYSTEM_TOKEN`、`SAAS_INTERNAL_AUTH_TOKEN`、`SAAS_INTERNAL_AUTH_SYSTEM_TOKEN`、`SAAS_INTERNAL_FILE_TOKEN`、`SAAS_INTERNAL_MESSAGE_TOKEN`、`SAAS_INTERNAL_PAYMENT_TOKEN`、`SAAS_INTERNAL_PLUGIN_TOKEN`、`SAAS_INTERNAL_TEAM_TOKEN`、`SAAS_INTERNAL_JOB_TOKEN` 必须使用强随机值。
-- 独立部署插件服务时配置 `SAAS_JOB_PLUGIN_SERVICE_BASE_URL`，聚合部署可沿用默认的 lumira-server 地址。
+- 聚合部署中，异步 owner 任务默认访问 `lumira-async`；需要控制面数据的用户导出任务通过 `SAAS_JOB_SYSTEM_SERVICE_BASE_URL=http://api-proxy:80` 到达当前蓝绿槽位。独立部署 owner 服务时再覆盖对应的 `SAAS_JOB_*_SERVICE_BASE_URL`。
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
 - `LUMIRA_INITIAL_ADMIN_PASSWORD` can set a production-only first-login password; leave it unset to use the factory default `admin / 123456`, which still requires an immediate password change.
 - HTTPS/CDN/WAF 放在容器前面，API proxy 只承担容器内反向代理。
