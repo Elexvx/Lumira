@@ -1877,7 +1877,7 @@ public class CompetitionRegistrationAppService {
                         from aiadc_competition competition
                         join competition_config_set config
                           on config.competition_uuid = competition.uuid and config.deleted = 0
-                         and config.status = 'PUBLISHED'
+                         and config.status in ('DRAFT', 'PUBLISHED')
                         join competition_config_item item
                           on item.config_set_id = config.id and item.competition_uuid = competition.uuid
                          and item.enabled = 1 and item.deleted = 0
@@ -1886,7 +1886,7 @@ public class CompetitionRegistrationAppService {
                           and config.id = (
                               select max(current_config.id) from competition_config_set current_config
                               where current_config.competition_uuid = competition.uuid
-                                and current_config.status = 'PUBLISHED' and current_config.deleted = 0
+                                and current_config.status in ('DRAFT', 'PUBLISHED') and current_config.deleted = 0
                           )
                         order by item.sort_order asc, item.id asc
                         """,

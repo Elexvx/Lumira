@@ -179,6 +179,9 @@ class CompetitionRegistrationAppServiceTest {
 
         assertThat(registration.getStatus()).isEqualTo("PENDING_PAYMENT");
         assertThat(registration.getPayableAmountMinor()).isEqualTo(10_000L);
+        assertThat(sql.lastCollectionFieldQuery)
+                .contains("config.status in ('draft', 'published')")
+                .contains("current_config.status in ('draft', 'published')");
         JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
         assertThat(members.get(0).path("extraValues").path("role").asText()).isEqualTo("负责人");
         assertThat(members.get(1).path("extraValues").path("role").asText()).isEqualTo("成员");
@@ -1701,6 +1704,7 @@ class CompetitionRegistrationAppServiceTest {
         private String lastRegistrationInsertSql;
         private Object[] lastRegistrationInsertArgs = new Object[0];
         private String lastRegistrationUpdateSql;
+        private String lastCollectionFieldQuery;
         private List<Object> lastRegistrationUpdateArgs = List.of();
         private String lastStageInsertSql;
         private List<Object> lastStageInsertArgs = List.of();
@@ -2033,6 +2037,7 @@ class CompetitionRegistrationAppServiceTest {
             String normalized = sql.toLowerCase();
             if (normalized.contains("from aiadc_competition competition")
                     && normalized.contains("competition_config_item")) {
+                lastCollectionFieldQuery = normalized;
                 return collectionFieldRows;
             }
             if (normalized.contains("from competition_payment_order_task")) {
