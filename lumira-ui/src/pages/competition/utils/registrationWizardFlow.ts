@@ -43,6 +43,14 @@ export const resolveRegistrationResumeStep = ({
     : registrationWizardStep.review;
 };
 
+export const shouldLoadPreliminaryStageForm = (step: number) => (
+  step >= registrationWizardStep.preliminaryMaterials
+);
+
+export const isMissingPreliminaryMaterialsError = (message: string) => (
+  message.includes('Preliminary materials must be submitted before payment')
+);
+
 type RegistrationWizardAccessState = {
   competitionReady: boolean;
   teamReady: boolean;

@@ -46,6 +46,7 @@ saas:
     field-secret: ${FIELD_SECRET:}
   job:
     backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}
+    system-service-base-url: ${SAAS_JOB_SYSTEM_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
     message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
     file-service-base-url: ${SAAS_JOB_FILE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
     payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}

@@ -6,15 +6,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.PendingMessage;
+import org.springframework.data.redis.connection.stream.PendingMessages;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.StreamOperations;
+import org.springframework.data.domain.Range;
 
+import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doReturn;
@@ -23,6 +30,62 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaymentEventStreamConsumerTest {
+
+    @Test
+    void claimsEachPendingEventOnceDuringStartupRecovery() {
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        StreamOperations<String, String, String> stream = mock(StreamOperations.class);
+        doReturn(stream).when(redis).opsForStream();
+        RecordId id = RecordId.of("3-0");
+        PendingMessages pending = new PendingMessages(
+                PaymentEventStreamConsumer.GROUP,
+                List.of(new PendingMessage(
+                        id,
+                        Consumer.from(PaymentEventStreamConsumer.GROUP, "old-consumer"),
+                        Duration.ofSeconds(30),
+                        1
+                ))
+        );
+        MapRecord<String, String, String> claimed = MapRecord
+                .create(PaymentEventStreamConsumer.STREAM, Map.of(
+                        "eventType", "_BOOTSTRAP",
+                        "payload", "{}"
+                ))
+                .withId(id);
+        when(stream.pending(
+                eq(PaymentEventStreamConsumer.STREAM),
+                eq(PaymentEventStreamConsumer.GROUP),
+                any(Range.class),
+                anyLong()
+        )).thenReturn(pending);
+        when(stream.claim(
+                PaymentEventStreamConsumer.STREAM,
+                PaymentEventStreamConsumer.GROUP,
+                "consumer-1",
+                Duration.ZERO,
+                id
+        )).thenReturn(List.of(claimed));
+        PaymentEventStreamConsumer consumer = new PaymentEventStreamConsumer(
+                mock(RedisConnectionFactory.class), redis, new ObjectMapper(),
+                mock(CompetitionPaymentEventHandler.class), "consumer-1"
+        );
+
+        consumer.recoverPendingMessages();
+
+        verify(stream).claim(
+                PaymentEventStreamConsumer.STREAM,
+                PaymentEventStreamConsumer.GROUP,
+                "consumer-1",
+                Duration.ZERO,
+                id
+        );
+        verify(stream).acknowledge(
+                PaymentEventStreamConsumer.STREAM,
+                PaymentEventStreamConsumer.GROUP,
+                id
+        );
+    }
 
     @Test
     void startsWhenExistingConsumerGroupErrorIsWrapped() {

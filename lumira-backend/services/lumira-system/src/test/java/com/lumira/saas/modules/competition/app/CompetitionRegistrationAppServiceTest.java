@@ -195,27 +195,63 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
-    void createRegistrationAcceptsConfiguredIndependentMemberRole() throws Exception {
+    void createRegistrationAcceptsConfiguredMemberRoleAndReachesPayment() throws Exception {
         RegistrationSql sql = new RegistrationSql();
+        sql.competitionFeeMode = "MEMBER";
+        sql.competitionEntryFeeMinor = 5_000L;
         sql.collectionFieldRows.add(configField("MEMBER_FIELD", "role", "成员角色", "ROLE", true));
+        sql.collectionFieldRows.add(configField("MEMBER_FIELD", "enrollmentDate", "入学年份", "DATE", true));
+        sql.collectionFieldRows.add(configField("MEMBER_FIELD", "graduationDate", "毕业年份", "DATE", true));
+        Map<String, Object> intellectualPropertyType = configField(
+                "PROJECT_FIELD", "intellectualPropertyType", "知识产权类型", "TEXT", true);
+        intellectualPropertyType.put("contentJson", "{\"fieldType\":\"TEXT\",\"groupLabel\":\"知识产权信息\"}");
+        sql.collectionFieldRows.add(intellectualPropertyType);
+        Map<String, Object> intellectualPropertyName = configField(
+                "PROJECT_FIELD", "intellectualPropertyName", "知识产权名称", "TEXT", true);
+        intellectualPropertyName.put("contentJson", "{\"fieldType\":\"TEXT\",\"groupLabel\":\"知识产权信息\"}");
+        sql.collectionFieldRows.add(intellectualPropertyName);
+        Map<String, Object> grantDate = configField(
+                "PROJECT_FIELD", "grantDate", "授权/登记日期", "DATE", false);
+        grantDate.put("contentJson", "{\"fieldType\":\"DATE\",\"groupLabel\":\"知识产权信息\"}");
+        sql.collectionFieldRows.add(grantDate);
         CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
         request.getMembers().get(0).setExtraValues(Map.of(
                 "mobile", "13800138000",
+                "enrollmentDate", "2025",
+                "graduationDate", "2029",
                 "role", "负责人"
         ));
         request.getMembers().get(1).setExtraValues(Map.of(
                 "mobile", "13900139000",
+                "enrollmentDate", "2024",
+                "graduationDate", "2028",
                 "role", "成员"
         ));
+        CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshot = new CompetitionRegistrationDTO.ProjectSnapshotRequest();
+        projectSnapshot.setExtraValues(Map.of(
+                "intellectualProperties", List.of(Map.of(
+                        "intellectualPropertyType", "软件著作权",
+                        "intellectualPropertyName", "报名流程验收软件",
+                        "grantDate", "2026-07-29T16:00:00.000Z"
+                ))
+        ));
+        request.setProjectSnapshot(projectSnapshot);
 
         CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
                 .createRegistration(student(), request);
 
+        assertThat(registration.getStatus()).isEqualTo("PENDING_PAYMENT");
+        assertThat(registration.getPayableAmountMinor()).isEqualTo(10_000L);
+        assertThat(sql.lastCollectionFieldQuery)
+                .contains("config.status in ('draft', 'published')")
+                .contains("current_config.status in ('draft', 'published')");
         JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
         assertThat(members.get(0).has("role")).isFalse();
         assertThat(members.get(0).path("systemRole").asText()).isEqualTo("MEMBER");
         assertThat(members.get(0).path("extraValues").path("role").asText()).isEqualTo("负责人");
         assertThat(members.get(1).path("extraValues").path("role").asText()).isEqualTo("成员");
+        JsonNode project = objectMapper.readTree(registration.getProjectSnapshotJson());
+        assertThat(project.path("extraValues").path("intellectualProperties")).hasSize(1);
     }
 
     @Test
@@ -1178,6 +1214,21 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void paymentOrderCreationShouldIgnoreDisabledPreliminaryStage() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        sql.preliminaryStageId = 71L;
+        sql.preliminaryStageEnabled = false;
+
+        CompetitionRegistrationVO.PaymentOrder order = service(sql, teamApiWithMembers(1001L, 1))
+                .createPaymentOrder(student(), 1L, new CompetitionRegistrationDTO.PaymentOrderRequest());
+
+        assertThat(order.getStatus()).isIn("PENDING", "QUEUED");
+        assertThat(sql.paymentOrderTask).isNotNull();
+        assertThat(sql.lastPreliminaryStageQuery).contains("stage.status = 'ENABLED'");
+    }
+
+    @Test
     void paymentOrderQueueShouldPreserveSimulatedRoleScope() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
@@ -1728,6 +1779,8 @@ class CompetitionRegistrationAppServiceTest {
         private Map<String, Object> stageForm;
         private Long lastInsertedId = 1L;
         private Long preliminaryStageId;
+        private boolean preliminaryStageEnabled = true;
+        private String lastPreliminaryStageQuery;
         private Long submittedMaterialCount = 0L;
         private Long existingMaterialSubmissionId;
         private int paymentOrderInserts;
@@ -1743,6 +1796,7 @@ class CompetitionRegistrationAppServiceTest {
         private String lastRegistrationInsertSql;
         private Object[] lastRegistrationInsertArgs = new Object[0];
         private String lastRegistrationUpdateSql;
+        private String lastCollectionFieldQuery;
         private List<Object> lastRegistrationUpdateArgs = List.of();
         private String lastStageInsertSql;
         private List<Object> lastStageInsertArgs = List.of();
@@ -1986,6 +2040,10 @@ class CompetitionRegistrationAppServiceTest {
                 return requiredType.cast(lastInsertedId);
             }
             if (normalized.contains("from competition_stage") && !normalized.contains("from competition_stage_form")) {
+                lastPreliminaryStageQuery = sql;
+                if (normalized.contains("stage.status = 'enabled'") && !preliminaryStageEnabled) {
+                    return null;
+                }
                 return requiredType.cast(preliminaryStageId);
             }
             if (normalized.contains("from registration_material_submission")
@@ -2081,6 +2139,7 @@ class CompetitionRegistrationAppServiceTest {
             String normalized = sql.toLowerCase();
             if (normalized.contains("from aiadc_competition competition")
                     && normalized.contains("competition_config_item")) {
+                lastCollectionFieldQuery = normalized;
                 return collectionFieldRows;
             }
             if (normalized.contains("from competition_payment_order_task")) {

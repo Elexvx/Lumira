@@ -22,6 +22,7 @@ public class BackendJobClient {
             };
 
     private final RestClient restClient;
+    private final RestClient systemRestClient;
     private final RestClient messageRestClient;
     private final RestClient fileRestClient;
     private final RestClient paymentRestClient;
@@ -31,12 +32,21 @@ public class BackendJobClient {
     public BackendJobClient(JobExecutorProperties properties) {
         this.properties = properties;
         String backendBaseUrl = requireTrustedBaseUrl(properties.getBackendBaseUrl(), "backendBaseUrl");
+        String systemServiceBaseUrl = optionalTrustedBaseUrl(
+                properties.getSystemServiceBaseUrl(),
+                backendBaseUrl,
+                "systemServiceBaseUrl"
+        );
         String messageBaseUrl = requireTrustedBaseUrl(properties.getMessageServiceBaseUrl(), "messageServiceBaseUrl");
         String fileBaseUrl = optionalTrustedBaseUrl(properties.getFileServiceBaseUrl(), backendBaseUrl, "fileServiceBaseUrl");
         String paymentBaseUrl = optionalTrustedBaseUrl(properties.getPaymentServiceBaseUrl(), backendBaseUrl, "paymentServiceBaseUrl");
         String pluginBaseUrl = optionalTrustedBaseUrl(properties.getPluginServiceBaseUrl(), backendBaseUrl, "pluginServiceBaseUrl");
         this.restClient = RestClient.builder()
                 .baseUrl(backendBaseUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+        this.systemRestClient = RestClient.builder()
+                .baseUrl(systemServiceBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
         this.messageRestClient = RestClient.builder()
@@ -90,7 +100,7 @@ public class BackendJobClient {
     }
 
     public int processExportTasks() {
-        return postForInt("/internal/jobs/export/run?limit=20");
+        return postForInt(systemRestClient, "/internal/jobs/user-export/run?limit=20");
     }
 
     private void post(String path) {

@@ -107,11 +107,13 @@ import {
 } from '@/pages/competition/utils/registrationFieldValidation';
 import {
   REGISTRATION_WIZARD_FLOW_VERSION,
+  isMissingPreliminaryMaterialsError,
   normalizeRegistrationWizardDraftStep,
   registrationWizardStep,
   registrationWizardStepItems,
   resolveAllowedRegistrationWizardStep,
   resolveRegistrationResumeStep,
+  shouldLoadPreliminaryStageForm,
 } from '@/pages/competition/utils/registrationWizardFlow';
 import {
   isDeprecatedRegistrationContactField,
@@ -127,8 +129,9 @@ import {
   type CompetitionSettingsStageTab,
 } from '@/pages/competition/utils/competitionSettingsNavigation';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
+import { CompetitionPaymentStep } from '@/pages/competition/components/CompetitionPaymentStep';
 import { message, modal } from '@/theme/antdFeedbackBridge';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { API_OPTS, extractErrorMessage, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { validateMemberTextField } from './memberFieldValidation';
@@ -3145,7 +3148,7 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   useEffect(() => {
-    if (step !== registrationWizardStep.preliminaryMaterials) {
+    if (!shouldLoadPreliminaryStageForm(step)) {
       return;
     }
     const competitionId = toPositiveId(selectedCompetitionId)
@@ -3516,7 +3519,13 @@ const CompetitionRegistrationPage = () => {
       registrationActionRef.current?.reload();
       if (!order.paymentUrl) message.info('支付链接正在生成，弹窗会自动刷新');
     } catch (error) {
-      showErrorMessage(error, '支付订单生成失败');
+      const errorMessage = extractErrorMessage(error, '支付订单生成失败');
+      if (isMissingPreliminaryMaterialsError(errorMessage)) {
+        message.error('请先提交初赛材料');
+        setWizardStep(registrationWizardStep.preliminaryMaterials);
+      } else {
+        showErrorMessage(error, '支付订单生成失败');
+      }
     } finally {
       setLoading(false);
     }
@@ -3581,6 +3590,13 @@ const CompetitionRegistrationPage = () => {
         if (active) setPaymentOrder(order);
       })
       .catch(() => undefined);
+    void getRegistration(registrationId)
+      .then((registration) => {
+        if (!active) return;
+        setRegistrationRecord(registration);
+        setPaymentStatus(registration.status);
+      })
+      .catch((error) => showErrorMessage(error, '报名信息加载失败'));
     return () => { active = false; };
   }, [paymentStatus, registrationId, step]);
 
@@ -4726,32 +4742,21 @@ const CompetitionRegistrationPage = () => {
                 </Space>
               ) : null}
               {step === 5 ? (
-                <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                  <Alert
-                    type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
-                    showIcon
-                    message={`报名编号：${registrationRecord?.registrationNo || registrationId || '-'}，应付金额：${formatRegistrationAmount(registrationRecord?.payableAmountMinor ?? previewPayableAmount, registrationRecord?.currency || selectedCompetition?.currency)}`}
-                    description="支付方式必须单选。选定后生成支付链接，不会自动跳转。"
-                  />
-                  {paymentStatus !== 'CONFIRMED' && paymentStatus !== 'PAID' ? (
-                    paymentOptions.length ? (
-                      <Radio.Group value={selectedPaymentProvider} onChange={(event) => setSelectedPaymentProvider(event.target.value)}>
-                        <Space direction="vertical">
-                          {paymentOptions.map((option) => (
-                            <Radio key={option.providerCode} value={option.providerCode}>
-                              {option.displayName}
-                              <Typography.Text type="secondary"> {option.paymentScene}</Typography.Text>
-                            </Radio>
-                          ))}
-                        </Space>
-                      </Radio.Group>
-                    ) : <Alert type="warning" showIcon message="当前设备暂无可用支付方式，请联系管理员。" />
-                  ) : null}
-                </Space>
+                <CompetitionPaymentStep
+                  registrationNo={registrationRecord?.registrationNo || String(registrationId || '-')}
+                  amount={formatRegistrationAmount(
+                    registrationRecord?.payableAmountMinor ?? previewPayableAmount,
+                    registrationRecord?.currency || selectedCompetition?.currency,
+                  )}
+                  paymentStatus={paymentStatus}
+                  paymentOptions={paymentOptions}
+                  selectedProvider={selectedPaymentProvider}
+                  onSelectProvider={setSelectedPaymentProvider}
+                />
               ) : null}
             </div>
           </Form>
-          <div className="competition-create-actions">
+          <div className={`competition-create-actions${step === 5 ? ' competition-create-actions--payment' : ''}`}>
             {registrationDraftSavedAt ? (
               <Typography.Text className="competition-create-draft-status" type="secondary">
                 草稿已自动保存
@@ -4763,7 +4768,7 @@ const CompetitionRegistrationPage = () => {
                 {nextButtonText}
               </Button>
             ) : (
-              <Button type="primary" loading={loading} disabled={!canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
+              <Button className="competition-payment-submit" type="primary" loading={loading} disabled={stageFormLoading || !canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
                 立即支付
               </Button>
             )}

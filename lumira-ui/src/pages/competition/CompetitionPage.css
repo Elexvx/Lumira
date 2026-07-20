@@ -312,6 +312,161 @@
   align-self: center;
 }
 
+.competition-payment-step {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.competition-payment-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.competition-payment-summary__icon {
+  flex: none;
+  margin-top: 2px;
+  color: #1677ff;
+  font-size: 36px;
+}
+
+.competition-payment-summary__content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.competition-payment-summary__title {
+  margin: 0 0 4px !important;
+}
+
+.competition-payment-summary__number {
+  word-break: break-all;
+}
+
+.competition-payment-summary__amount-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.competition-payment-summary__amount-label {
+  color: var(--ant-color-text);
+  font-weight: 600;
+}
+
+.competition-payment-summary__amount {
+  color: #ff4d22;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.competition-payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.competition-payment-methods__title {
+  margin: 0 0 4px !important;
+}
+
+.competition-payment-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.competition-payment-option.ant-radio-wrapper {
+  display: flex;
+  min-height: 82px;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  cursor: pointer;
+  border: 1px solid var(--ant-color-border);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.competition-payment-option:hover {
+  border-color: var(--ant-color-primary-border-hover);
+}
+
+.competition-payment-option:has(.ant-radio-checked) {
+  border-color: #1677ff;
+  background: var(--ant-color-primary-bg);
+  box-shadow: 0 0 0 2px rgb(22 119 255 / 12%);
+}
+
+.competition-payment-option:focus-within {
+  outline: 2px solid var(--ant-color-primary-border);
+  outline-offset: 2px;
+}
+
+.competition-payment-option > .ant-radio {
+  flex: none;
+}
+
+.competition-payment-option > span:last-child {
+  display: contents;
+}
+
+.competition-payment-option__logo {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #1677ff;
+  color: #fff;
+  font-size: 28px;
+}
+
+.competition-payment-option__content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.competition-payment-option__name-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.competition-payment-option__name {
+  font-size: 17px;
+}
+
+.competition-payment-option__tag {
+  margin: 0;
+  line-height: 20px;
+}
+
+.competition-payment-option__scene {
+  font-size: 13px;
+}
+
+.competition-create-actions--payment .competition-payment-submit {
+  min-width: 160px;
+}
+
 .competition-dynamic-list,
 .competition-qr-upload {
   width: 100%;
@@ -532,6 +687,19 @@
 
   .competition-create-actions .ant-btn {
     flex: 1 1 calc(50% - var(--saas-spacing-sm));
+  }
+
+  .competition-payment-summary {
+    padding: 20px;
+  }
+
+  .competition-payment-options {
+    grid-template-columns: 1fr;
+  }
+
+  .competition-payment-summary__amount-row {
+    flex-direction: column;
+    gap: 4px;
   }
 
   .competition-dynamic-list__row,

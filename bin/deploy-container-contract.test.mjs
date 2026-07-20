@@ -256,6 +256,7 @@ test('deployment env example exposes async owner base URL overrides', () => {
     'TEAM_SERVICE_UPSTREAM',
     'AI_SERVICE_UPSTREAM',
     'SAAS_JOB_MESSAGE_SERVICE_BASE_URL',
+    'SAAS_JOB_SYSTEM_SERVICE_BASE_URL',
     'SAAS_JOB_FILE_SERVICE_BASE_URL',
     'SAAS_JOB_PAYMENT_SERVICE_BASE_URL',
     'SAAS_JOB_PLUGIN_SERVICE_BASE_URL',
@@ -383,6 +384,14 @@ test('api proxy template keeps split-owner routes explicit while defaulting comp
 
   assert.match(apiNginx, /location \^~ \/api\/p\/[\s\S]*proxy_pass http:\/\/\$plugin_upstream\$request_uri;/, 'plugin asset gateway must route to the plugin owner');
   assert.match(apiNginx, /location \^~ \/ws\/message[\s\S]*proxy_pass http:\/\/\$message_upstream\$request_uri;/, 'message websocket traffic must route to the message owner');
+});
+
+test('api proxy routes user export jobs to the active control plane slot', () => {
+  assert.match(
+    apiNginx,
+    /location \^~ \/internal\/jobs\/user-export[\s\S]*proxy_pass http:\/\/\$system_upstream\$request_uri/,
+    'user export jobs must reach the active control plane instead of the async runtime'
+  );
 });
 
 test('online migrator joins the configurable database network used by production', () => {

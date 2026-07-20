@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   REGISTRATION_WIZARD_FLOW_VERSION,
+  isMissingPreliminaryMaterialsError,
   normalizeRegistrationWizardDraftStep,
   registrationWizardStep,
   registrationWizardStepItems,
   resolveAllowedRegistrationWizardStep,
   resolveRegistrationResumeStep,
+  shouldLoadPreliminaryStageForm,
 } from './registrationWizardFlow';
 
 describe('competition registration wizard flow', () => {
@@ -19,6 +21,18 @@ describe('competition registration wizard flow', () => {
       '支付方式',
     ]);
     expect(registrationWizardStep.preliminaryMaterials).toBeLessThan(registrationWizardStep.projectEvidence);
+  });
+
+  it('loads preliminary material configuration after direct wizard re-entry', () => {
+    expect(shouldLoadPreliminaryStageForm(registrationWizardStep.competition)).toBe(false);
+    expect(shouldLoadPreliminaryStageForm(registrationWizardStep.preliminaryMaterials)).toBe(true);
+    expect(shouldLoadPreliminaryStageForm(registrationWizardStep.review)).toBe(true);
+    expect(shouldLoadPreliminaryStageForm(registrationWizardStep.payment)).toBe(true);
+  });
+
+  it('recognizes the payment material gate returned by the backend', () => {
+    expect(isMissingPreliminaryMaterialsError('Preliminary materials must be submitted before payment')).toBe(true);
+    expect(isMissingPreliminaryMaterialsError('Invalid date')).toBe(false);
   });
 
   it('moves legacy drafts to the matching content step after the order changes', () => {

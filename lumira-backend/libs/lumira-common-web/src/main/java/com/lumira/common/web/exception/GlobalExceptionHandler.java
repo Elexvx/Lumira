@@ -17,6 +17,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -120,6 +121,24 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 ApiResponse.fail(ErrorCode.NOT_FOUND, TraceContext.getRequestId(), request.getRequestURI()),
                 ErrorCode.NOT_FOUND.getHttpStatus()
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception,
+            HttpServletRequest request
+    ) {
+        log.warn(
+                "Method not allowed requestId={} traceId={} method={} path={}",
+                TraceContext.getRequestId(),
+                TraceContext.getTraceId(),
+                request.getMethod(),
+                request.getRequestURI()
+        );
+        return buildResponse(
+                ApiResponse.fail(ErrorCode.METHOD_NOT_ALLOWED, TraceContext.getRequestId(), request.getRequestURI()),
+                ErrorCode.METHOD_NOT_ALLOWED.getHttpStatus()
         );
     }
 
