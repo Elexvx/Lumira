@@ -2791,21 +2791,14 @@ const CompetitionRegistrationPage = () => {
     });
   }, [acceptedDocumentKeys, collectRegistrationValues, location.pathname, paymentStatus, persistRegistrationDraft, registrationId]);
 
-  const showRegistrationList = useCallback(async () => {
-    const draftState = persistRegistrationDraft();
-    try {
-      if (draftState) {
-        await writeCompetitionRegistrationDraft(registrationDraftStorageKey, draftState);
-      } else {
-        await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
-      }
-    } catch (error) {
-      showErrorMessage(error, '\u62a5\u540d\u8349\u7a3f\u4fdd\u5b58\u5931\u8d25');
-      return;
+  const showRegistrationList = useCallback(() => {
+    if (registrationDraftSaveTimerRef.current) {
+      clearTimeout(registrationDraftSaveTimerRef.current);
+      registrationDraftSaveTimerRef.current = undefined;
     }
     setViewMode('list');
     history.replace({ pathname: location.pathname, search: '' });
-  }, [location.pathname, persistRegistrationDraft, registrationDraftStorageKey]);
+  }, [location.pathname]);
 
   useEffect(() => {
     let mounted = true;
@@ -3705,6 +3698,9 @@ const CompetitionRegistrationPage = () => {
     if (fieldType === 'SELECT' || fieldType === 'MULTI_SELECT') {
       return resolveOptionLabel(buildOptionLabelMap(parseConfigFieldOptions(field.options)), fieldValue) || '-';
     }
+    if (fieldType === 'DATE' && isRegistrationYearField(field.itemKey)) {
+      return formatRegistrationYearValue(fieldValue) || '-';
+    }
     return normalizeDisplayText(fieldValue) || '-';
   }, []);
 
@@ -3978,17 +3974,22 @@ const CompetitionRegistrationPage = () => {
               onChange={(event) => updateMemberEditorField(field, event.target.value)}
             />
           );
-        case 'DATE':
+        case 'DATE': {
+          const yearOnly = isRegistrationYearField(field.itemKey);
           return (
             <DatePicker
               style={{ width: '100%' }}
-              picker={isRegistrationYearField(field.itemKey) ? 'year' : undefined}
-              format={isRegistrationYearField(field.itemKey) ? 'YYYY' : undefined}
+              picker={yearOnly ? 'year' : undefined}
+              format={yearOnly ? 'YYYY' : undefined}
               value={dayjs.isDayjs(fieldValue) ? fieldValue : (typeof fieldValue === 'string' ? parseDateTime(fieldValue) : undefined)}
               placeholder={placeholder}
-              onChange={(value) => updateMemberEditorField(field, value ?? undefined)}
+              onChange={(value) => updateMemberEditorField(
+                field,
+                yearOnly ? formatRegistrationYearValue(value) : value ?? undefined,
+              )}
             />
           );
+        }
         case 'SELECT':
           return (
             <Select

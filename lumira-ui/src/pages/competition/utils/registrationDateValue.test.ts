@@ -34,6 +34,8 @@ describe('registration year fields', () => {
 
   it('displays existing date snapshots as a four-digit year', () => {
     expect(formatRegistrationYearValue('2026-07-01')).toBe('2026');
+    expect(formatRegistrationYearValue('2025-07-18T16:00:00.000Z')).toBe('2025');
+    expect(formatRegistrationYearValue('2029')).toBe('2029');
     expect(formatRegistrationYearValue('invalid')).toBeUndefined();
   });
 });
