@@ -2007,6 +2007,10 @@ public class CompetitionRegistrationAppService {
     }
 
     private String resolveStandardCollectedFieldKey(String scope, String itemKey) {
+        // The configured registration role is distinct from the formal team membership role.
+        if ("MEMBER_FIELD".equals(scope) && "role".equals(itemKey)) {
+            return null;
+        }
         String normalized = itemKey == null ? "" : itemKey.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
         Map<String, Set<String>> aliases = switch (scope) {
             case "TEAM_FIELD" -> Map.of(

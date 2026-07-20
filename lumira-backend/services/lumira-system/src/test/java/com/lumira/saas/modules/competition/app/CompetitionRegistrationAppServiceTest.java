@@ -159,6 +159,32 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationAcceptsConfiguredMemberRoleAndReachesPayment() throws Exception {
+        RegistrationSql sql = new RegistrationSql();
+        sql.competitionFeeMode = "MEMBER";
+        sql.competitionEntryFeeMinor = 5_000L;
+        sql.collectionFieldRows.add(configField("MEMBER_FIELD", "role", "成员角色", "ROLE", true));
+        CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
+        request.getMembers().get(0).setExtraValues(Map.of(
+                "mobile", "13800138000",
+                "role", "负责人"
+        ));
+        request.getMembers().get(1).setExtraValues(Map.of(
+                "mobile", "13900139000",
+                "role", "成员"
+        ));
+
+        CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
+                .createRegistration(student(), request);
+
+        assertThat(registration.getStatus()).isEqualTo("PENDING_PAYMENT");
+        assertThat(registration.getPayableAmountMinor()).isEqualTo(10_000L);
+        JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
+        assertThat(members.get(0).path("extraValues").path("role").asText()).isEqualTo("负责人");
+        assertThat(members.get(1).path("extraValues").path("role").asText()).isEqualTo("成员");
+    }
+
+    @Test
     void createRegistrationValidatesFieldFormatAndPersistsDefinitionSnapshot() throws Exception {
         RegistrationSql sql = new RegistrationSql();
         sql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "email", "邮箱", "EMAIL", true));
