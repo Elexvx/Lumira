@@ -1170,6 +1170,21 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void paymentOrderCreationShouldIgnoreDisabledPreliminaryStage() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        sql.preliminaryStageId = 71L;
+        sql.preliminaryStageEnabled = false;
+
+        CompetitionRegistrationVO.PaymentOrder order = service(sql, teamApiWithMembers(1001L, 1))
+                .createPaymentOrder(student(), 1L, new CompetitionRegistrationDTO.PaymentOrderRequest());
+
+        assertThat(order.getStatus()).isIn("PENDING", "QUEUED");
+        assertThat(sql.paymentOrderTask).isNotNull();
+        assertThat(sql.lastPreliminaryStageQuery).contains("stage.status = 'ENABLED'");
+    }
+
+    @Test
     void paymentOrderQueueShouldPreserveSimulatedRoleScope() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
@@ -1720,6 +1735,8 @@ class CompetitionRegistrationAppServiceTest {
         private Map<String, Object> stageForm;
         private Long lastInsertedId = 1L;
         private Long preliminaryStageId;
+        private boolean preliminaryStageEnabled = true;
+        private String lastPreliminaryStageQuery;
         private Long submittedMaterialCount = 0L;
         private Long existingMaterialSubmissionId;
         private int paymentOrderInserts;
@@ -1971,6 +1988,10 @@ class CompetitionRegistrationAppServiceTest {
                 return requiredType.cast(lastInsertedId);
             }
             if (normalized.contains("from competition_stage") && !normalized.contains("from competition_stage_form")) {
+                lastPreliminaryStageQuery = sql;
+                if (normalized.contains("stage.status = 'enabled'") && !preliminaryStageEnabled) {
+                    return null;
+                }
                 return requiredType.cast(preliminaryStageId);
             }
             if (normalized.contains("from registration_material_submission")

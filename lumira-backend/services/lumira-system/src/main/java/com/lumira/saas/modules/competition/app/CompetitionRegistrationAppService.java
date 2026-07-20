@@ -1501,7 +1501,8 @@ public class CompetitionRegistrationAppService {
                         join competition_stage_form form
                           on form.stage_id = stage.id and form.competition_id = stage.competition_id
                          and form.status = 'ENABLED' and form.deleted = 0
-                        where stage.competition_id = ? and stage.stage_code = 'PRELIMINARY' and stage.deleted = 0
+                        where stage.competition_id = ? and stage.stage_code = 'PRELIMINARY'
+                          and stage.status = 'ENABLED' and stage.deleted = 0
                         order by stage.id asc limit 1
                         """,
                 Long.class,
