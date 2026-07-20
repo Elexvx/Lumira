@@ -98,6 +98,14 @@
   width: 100%;
 }
 
+.competition-registration-project-form {
+  width: 100%;
+  max-width: 760px;
+  margin: 32px auto 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
 .competition-registration-member-manager {
   width: 100%;
   max-width: var(--saas-form-control-max-width);
@@ -153,16 +161,21 @@
 }
 
 .competition-registration-member-manager__actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
   width: 148px;
   min-width: 148px !important;
   max-width: 148px;
   padding-inline: 8px !important;
   background: var(--ant-color-bg-container);
   border-left: 1px solid var(--ant-color-border-secondary);
+  box-shadow: -8px 0 12px -12px rgb(0 0 0 / 35%);
   white-space: nowrap;
 }
 
 .competition-registration-member-manager__table thead .competition-registration-member-manager__actions {
+  z-index: 2;
   background: var(--ant-color-fill-quaternary);
 }
 

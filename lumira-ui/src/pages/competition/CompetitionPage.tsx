@@ -34,7 +34,6 @@ import {
   getRegistrationPaymentStatus,
   listCompetitionStages,
   listCompetitions,
-  listProjects,
   listRegistrations,
   listRegistrationPaymentOptions,
   saveCompetitionSettingsModule,
@@ -61,7 +60,6 @@ import type {
   CompetitionStageRecord,
   CompetitionStatus,
   CompetitionUpsertPayload,
-  ProjectRecord,
 } from '@/services/competition/types';
 import { request, requestFile } from '@/services/common/request';
 import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult, PaymentProviderSettings } from '@/types/api';
@@ -75,7 +73,13 @@ import {
   mergeRegistrationCompetitionOptions,
 } from '@/pages/competition/utils/registrationCompetition';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
-import { buildRegistrationProjectSelectionValues } from '@/pages/competition/utils/registrationProjectSelection';
+import {
+  buildRegistrationProjectExtraValues,
+  hasRegistrationIntellectualPropertyContent,
+  INTELLECTUAL_PROPERTY_ENTRIES_KEY,
+  migrateRegistrationIntellectualPropertyValues,
+  normalizeRegistrationIntellectualPropertyEntries,
+} from '@/pages/competition/utils/registrationIntellectualProperties';
 import {
   buildRegistrationPaymentResultUrl,
   calculateRegistrationPayableAmount,
@@ -907,7 +911,7 @@ const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationForm
       || trimOptional(values.newProjectTitle)
       || trimOptional(values.newProjectImageUrl)
       || trimOptional(values.newProjectDescription)
-      || Object.values(values.newProjectExtraValues || {}).some((value) => value !== undefined && value !== null && String(value).trim())
+      || hasRegistrationIntellectualPropertyContent(values.newProjectExtraValues)
       || Object.values(materials).some((value) => value !== undefined && value !== null && String(value).trim())
   );
 };
@@ -2488,8 +2492,6 @@ const CompetitionRegistrationPage = () => {
   const [registrationDraftSavedAt, setRegistrationDraftSavedAt] = useState<number>();
   const [registrationDraftHydrated, setRegistrationDraftHydrated] = useState(false);
   const [registrationCompetitionFallback, setRegistrationCompetitionFallback] = useState<CompetitionRecord>();
-  const [registrationProjects, setRegistrationProjects] = useState<ProjectRecord[]>([]);
-  const [registrationProjectsLoading, setRegistrationProjectsLoading] = useState(false);
   const [teamAvatarUploading, setTeamAvatarUploading] = useState(false);
   const [projectAvatarUploading, setProjectAvatarUploading] = useState(false);
   const confirmedTeamIdRef = useRef<number | undefined>(undefined);
@@ -2504,9 +2506,9 @@ const CompetitionRegistrationPage = () => {
   const [memberEditorDraft, setMemberEditorDraft] = useState<RegistrationTeamMemberDraft>();
   const [memberEditorErrors, setMemberEditorErrors] = useState<Record<string, string>>({});
   const selectedCompetitionId = Form.useWatch('competitionId', { form, preserve: true });
-  const selectedProjectId = Form.useWatch('projectId', form);
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
   const newProjectImageUrl = Form.useWatch('newProjectImageUrl', form);
+  const newProjectExtraValues = Form.useWatch('newProjectExtraValues', { form, preserve: true }) as Record<string, unknown> | undefined;
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], { form, preserve: true }) || []) as RegistrationTeamMemberDraft[];
   const registrationCompetitionOptions = useMemo(
     () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
@@ -2517,7 +2519,6 @@ const CompetitionRegistrationPage = () => {
     [stageForm, stageMaterialConfigs],
   );
   const selectedCompetition = registrationCompetitionOptions.find((item) => item.id === toPositiveId(selectedCompetitionId));
-  const selectedRegistrationProject = registrationProjects.find((item) => item.id === toPositiveId(selectedProjectId));
   const registrationScopeFields = useMemo(
     () => splitConfiguredRegistrationFields(registrationFields, 'REGISTRATION_FIELD').customFields,
     [registrationFields],
@@ -2553,8 +2554,22 @@ const CompetitionRegistrationPage = () => {
     || requiredSystemRegistrationField('PROJECT_FIELD', 'title', '项目名称');
   const projectImageField = projectFieldSplit.overrides.get('imageUrl');
   const projectDescriptionField = projectFieldSplit.overrides.get('description');
-  const projectCustomFields = projectFieldSplit.customFields.filter((field) => field.groupLabel !== INTELLECTUAL_PROPERTY_GROUP_LABEL);
-  const intellectualPropertyFields = projectFieldSplit.customFields.filter((field) => field.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL);
+  const projectCustomFields = useMemo(
+    () => projectFieldSplit.customFields.filter((field) => field.groupLabel !== INTELLECTUAL_PROPERTY_GROUP_LABEL),
+    [projectFieldSplit.customFields],
+  );
+  const intellectualPropertyFields = useMemo(
+    () => projectFieldSplit.customFields.filter((field) => field.groupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL),
+    [projectFieldSplit.customFields],
+  );
+  const intellectualPropertyFieldKeys = useMemo(
+    () => intellectualPropertyFields.map((field) => field.itemKey),
+    [intellectualPropertyFields],
+  );
+  const intellectualPropertyEntries = normalizeRegistrationIntellectualPropertyEntries(
+    newProjectExtraValues,
+    intellectualPropertyFieldKeys,
+  );
   const registrationDocumentStates = useMemo(
     () =>
       registrationDocuments.map((item, index) => {
@@ -2629,7 +2644,6 @@ const CompetitionRegistrationPage = () => {
   const canCreateRegistration = registrationActionPermission.can('aiadc:registration:create');
   const canUpdateRegistration = registrationActionPermission.can('aiadc:registration:update');
   const canPayRegistration = registrationActionPermission.can('aiadc:registration:pay');
-  const canViewRegistrationProjects = registrationActionPermission.can('aiadc:project:view');
   const canLoadRegistrationCompetitions = registrationActionPermission.can([
     'aiadc:competition:view',
     'aiadc:registration:view',
@@ -2727,10 +2741,17 @@ const CompetitionRegistrationPage = () => {
       ...defaultRegistrationFormValues,
       ...(draft?.values || {}),
     });
+    values.newProjectExtraValues = migrateRegistrationIntellectualPropertyValues(
+      values.newProjectExtraValues,
+      intellectualPropertyFieldKeys,
+    );
+    if (!draft?.registrationId) {
+      values.projectId = undefined;
+    }
     form.resetFields();
     form.setFieldsValue(values);
     confirmedTeamIdRef.current = draft?.confirmedTeamId;
-    confirmedProjectIdRef.current = draft?.confirmedProjectId;
+    confirmedProjectIdRef.current = draft?.registrationId ? draft.confirmedProjectId : undefined;
     setRegistrationId(draft?.registrationId);
     setPaymentStatus(draft?.paymentStatus);
     setAcceptedDocumentKeys(draft?.acceptedDocumentKeys || []);
@@ -2747,7 +2768,7 @@ const CompetitionRegistrationPage = () => {
     ));
     latestRegistrationDraftRef.current = draft;
     return values;
-  }, [form]);
+  }, [form, intellectualPropertyFieldKeys]);
   const acceptRegistrationDocument = useCallback((documentKey: string, checked: boolean) => {
     setAcceptedDocumentKeys((current) => {
       const nextKeys = checked
@@ -2826,27 +2847,6 @@ const CompetitionRegistrationPage = () => {
   }, [canLoadRegistrationCompetitions, canViewRegistrationList, viewMode]);
 
   useEffect(() => {
-    if (!canViewRegistrationProjects || viewMode !== 'wizard' || step < registrationWizardStep.projectEvidence) {
-      return;
-    }
-    let mounted = true;
-    setRegistrationProjectsLoading(true);
-    void listProjects({ pageNo: 1, pageSize: 100 })
-      .then((response) => {
-        if (mounted) setRegistrationProjects(response.records || []);
-      })
-      .catch(() => {
-        if (mounted) setRegistrationProjects([]);
-      })
-      .finally(() => {
-        if (mounted) setRegistrationProjectsLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [canViewRegistrationProjects, step, viewMode]);
-
-  useEffect(() => {
     let cancelled = false;
     void readCompetitionRegistrationDraft(registrationDraftStorageKey)
       .then((draft) => {
@@ -2886,7 +2886,7 @@ const CompetitionRegistrationPage = () => {
         pathname: location.pathname,
         search: createRegistrationWizardSearch(allowedStep),
       });
-      message.warning(allowedStep === 0 ? '请先选择赛事并确认报名文书' : allowedStep === 1 ? '请先补全团队信息' : '请先补全项目信息');
+      message.warning(allowedStep === 0 ? '请先选择赛事并确认报名文书' : '请先补全团队、学生及项目信息');
       return;
     }
     setStep((currentValue) => (currentValue === requestedStep ? currentValue : requestedStep));
@@ -3119,17 +3119,6 @@ const CompetitionRegistrationPage = () => {
     }
   };
 
-  const selectRegistrationProject = useCallback((projectId?: number) => {
-    const selectedProject = registrationProjects.find((item) => item.id === projectId);
-    confirmedProjectIdRef.current = selectedProject?.id;
-    const projectValues: Partial<RegistrationFormValues> = buildRegistrationProjectSelectionValues(selectedProject);
-    form.setFieldsValue(projectValues);
-    persistRegistrationDraft({
-      ...collectRegistrationValues(),
-      ...projectValues,
-    });
-  }, [collectRegistrationValues, form, persistRegistrationDraft, registrationProjects]);
-
   const loadStageFormForCompetition = useCallback(async (competitionId: number) => {
     setStageFormLoading(true);
     try {
@@ -3203,7 +3192,10 @@ const CompetitionRegistrationPage = () => {
         newProjectTitle: projectSnapshot.title,
         newProjectDescription: projectSnapshot.description,
         newProjectImageUrl: projectSnapshot.imageUrl,
-        newProjectExtraValues: projectSnapshot.extraValues,
+        newProjectExtraValues: migrateRegistrationIntellectualPropertyValues(
+          projectSnapshot.extraValues,
+          intellectualPropertyFieldKeys,
+        ),
       });
       confirmedTeamIdRef.current = teamId;
       confirmedProjectIdRef.current = projectId;
@@ -3222,7 +3214,7 @@ const CompetitionRegistrationPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [form, loadStageFormForCompetition, setWizardStep]);
+  }, [form, intellectualPropertyFieldKeys, loadStageFormForCompetition, setWizardStep]);
 
   const removePendingRegistration = useCallback((record: CompetitionRegistrationRecord) => {
     modal.confirm({
@@ -3269,6 +3261,9 @@ const CompetitionRegistrationPage = () => {
         confirmedTeamIdRef.current = undefined;
         confirmedProjectIdRef.current = undefined;
         form.setFieldValue('teamId', undefined);
+        if (!registrationId) {
+          form.setFieldValue('projectId', undefined);
+        }
         setWizardStep(1);
       } else if (step === 1) {
         const teamName = form.getFieldValue('newTeamName')?.trim();
@@ -3287,6 +3282,10 @@ const CompetitionRegistrationPage = () => {
         }
         if (members.length > teamMemberLimits.maxMembers) {
           message.error(`团队最多只能有 ${teamMemberLimits.maxMembers} 位成员`);
+          return;
+        }
+        if (!form.getFieldValue('newProjectTitle')?.trim()) {
+          message.error(`请输入${projectTitleField.title}`);
           return;
         }
         form.setFieldValue(['newTeam', 'initialMembers'], members);
@@ -3309,11 +3308,6 @@ const CompetitionRegistrationPage = () => {
         setWizardStep(registrationWizardStep.projectEvidence);
       } else if (step === registrationWizardStep.projectEvidence) {
         await form.validateFields();
-        const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
-        if (!competitionId || (!toPositiveId(form.getFieldValue('projectId')) && !form.getFieldValue('newProjectTitle')?.trim())) {
-          message.error('请先选择赛事并填写项目名称');
-          return;
-        }
         setWizardStep(registrationWizardStep.review);
       } else if (step === registrationWizardStep.review) {
         await form.validateFields();
@@ -3331,9 +3325,10 @@ const CompetitionRegistrationPage = () => {
           normalizeSnapshotValue(form.getFieldValue('registrationExtraValues')) as Record<string, unknown> | undefined,
           registrationScopeFields.map((field) => field.itemKey),
         );
-        const projectExtraValues = pickEnabledCollectedValues(
+        const projectExtraValues = buildRegistrationProjectExtraValues(
           normalizeSnapshotValue(form.getFieldValue('newProjectExtraValues')) as Record<string, unknown> | undefined,
-          projectFieldSplit.customFields.map((field) => field.itemKey),
+          projectCustomFields.map((field) => field.itemKey),
+          intellectualPropertyFieldKeys,
         );
         const enabledMemberStandardKeys = new Set(
           effectiveMemberRegistrationFields
@@ -4127,6 +4122,88 @@ const CompetitionRegistrationPage = () => {
     );
   };
 
+  const renderRegistrationProjectForm = () => (
+    <section className="competition-registration-project-form">
+      <Typography.Title level={5}>本次报名项目</Typography.Title>
+      <Typography.Paragraph type="secondary">
+        每次报名均新建项目；后续步骤只填写参赛材料和项目佐证材料，不再重复填写项目基本信息。
+      </Typography.Paragraph>
+      <Form.Item name="projectId" hidden>
+        <Input />
+      </Form.Item>
+      <Form.Item name="newProjectTitle" label={projectTitleField.title} rules={buildCollectedFieldRule(projectTitleField)}>
+        <Input maxLength={128} placeholder={projectTitleField.placeholder || projectTitleField.title} />
+      </Form.Item>
+      <Form.Item
+        name="newProjectImageUrl"
+        hidden
+        rules={projectImageField ? buildCollectedFieldRule(projectImageField) : undefined}
+      >
+        <Input />
+      </Form.Item>
+      {projectImageField ? (
+        <Form.Item label={projectImageField.title} required={projectImageField.required}>
+          <Space>
+            <Avatar
+              shape="square"
+              size={64}
+              src={normalizeUploadUrl(newProjectImageUrl) || undefined}
+              icon={<EyeOutlined />}
+            />
+            <Upload
+              accept="image/*"
+              showUploadList={false}
+              disabled={projectAvatarUploading}
+              beforeUpload={async (file) => {
+                await uploadRegistrationProjectAvatar(file);
+                return Upload.LIST_IGNORE;
+              }}
+            >
+              <Button icon={<UploadOutlined />} loading={projectAvatarUploading}>上传</Button>
+            </Upload>
+            {newProjectImageUrl ? (
+              <Button
+                type="link"
+                onClick={() => {
+                  form.setFieldValue('newProjectImageUrl', undefined);
+                  persistRegistrationDraft({
+                    ...collectRegistrationValues(),
+                    newProjectImageUrl: undefined,
+                  });
+                }}
+              >
+                移除
+              </Button>
+            ) : null}
+          </Space>
+        </Form.Item>
+      ) : null}
+      {projectDescriptionField ? (
+        <Form.Item
+          name="newProjectDescription"
+          label={projectDescriptionField.title}
+          rules={buildCollectedFieldRule(projectDescriptionField)}
+        >
+          <Input.TextArea
+            rows={3}
+            maxLength={1000}
+            placeholder={projectDescriptionField.placeholder || projectDescriptionField.title}
+          />
+        </Form.Item>
+      ) : null}
+      {projectCustomFields.map((field) => (
+        <Form.Item
+          key={field.itemKey}
+          name={['newProjectExtraValues', field.itemKey]}
+          label={field.title}
+          rules={buildCollectedFieldRule(field)}
+        >
+          {renderRegistrationCollectedFieldInput(field)}
+        </Form.Item>
+      ))}
+    </section>
+  );
+
   const renderTeamForm = () => (
     <>
       <section className="competition-registration-team-form">
@@ -4344,138 +4421,77 @@ const CompetitionRegistrationPage = () => {
                   ))}
                 </>
               ) : null}
-              {step === 1 ? renderTeamForm() : null}
+              {step === registrationWizardStep.team ? (
+                <>
+                  {renderTeamForm()}
+                  {renderRegistrationProjectForm()}
+                </>
+              ) : null}
               {step === registrationWizardStep.projectEvidence ? (
                 <>
-                  <Typography.Title level={5}>项目与知识产权佐证</Typography.Title>
+                  <Typography.Title level={5}>项目佐证材料</Typography.Title>
                   <Typography.Paragraph type="secondary">
-                    可选择前面已维护的项目；未选择时填写新项目基本信息。知识产权信息按本次报名补充。
+                    项目基本信息已在“团队与学生”步骤填写，本步骤只补充赛事配置的知识产权佐证信息。
                   </Typography.Paragraph>
-                  {canViewRegistrationProjects ? (
+                  {intellectualPropertyFields.length ? (
                     <>
-                      <Form.Item name="projectId" label="已有项目">
-                        <Select
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          loading={registrationProjectsLoading}
-                          placeholder="选择已维护的项目；不选择则填写新项目"
-                          options={registrationProjects.map((project) => ({
-                            label: project.title,
-                            value: project.id,
-                          }))}
-                          onChange={(value) => selectRegistrationProject(toPositiveId(value))}
-                        />
-                      </Form.Item>
-                      {registrationProjects.length ? (
-                        <Alert
-                          type="info"
-                          showIcon
-                          message="选择已有项目后会直接复用名称、头像和简介，不会重复创建项目。"
-                          style={{ marginBottom: 16 }}
-                        />
-                      ) : null}
-                    </>
-                  ) : null}
-                  {toPositiveId(selectedProjectId) ? (
-                    <Card size="small" title="已选择项目" style={{ marginBottom: 16 }}>
-                      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                        <Space align="start">
-                          {selectedRegistrationProject?.imageUrl ? (
-                            <Avatar
-                              shape="square"
-                              size={64}
-                              src={normalizeUploadUrl(selectedRegistrationProject.imageUrl) || undefined}
-                            />
-                          ) : null}
-                          <Space direction="vertical" size={4}>
-                            <Typography.Text strong>
-                              {selectedRegistrationProject?.title || form.getFieldValue('newProjectTitle') || `项目 ${selectedProjectId}`}
-                            </Typography.Text>
-                            {selectedRegistrationProject?.description ? (
-                              <Typography.Text type="secondary">{selectedRegistrationProject.description}</Typography.Text>
-                            ) : null}
-                          </Space>
-                        </Space>
-                        <Typography.Text type="secondary">
-                          项目基本信息来自项目管理，下方只需补充本次报名的项目扩展及知识产权信息。
-                        </Typography.Text>
-                      </Space>
-                    </Card>
-                  ) : (
-                    <>
-                      <Form.Item name="newProjectTitle" label={projectTitleField.title} rules={buildCollectedFieldRule(projectTitleField)}>
-                        <Input maxLength={128} placeholder={projectTitleField.placeholder || projectTitleField.title} />
-                      </Form.Item>
-                      <Form.Item
-                        name="newProjectImageUrl"
-                        hidden
-                        rules={projectImageField ? buildCollectedFieldRule(projectImageField) : undefined}
+                      <Typography.Title level={5}>知识产权信息</Typography.Title>
+                      <Typography.Paragraph type="secondary">可添加多项软件著作权或专利，每项信息单独保存。</Typography.Paragraph>
+                      <Form.List
+                        name={['newProjectExtraValues', INTELLECTUAL_PROPERTY_ENTRIES_KEY]}
+                        initialValue={intellectualPropertyEntries.length ? intellectualPropertyEntries : [{}]}
+                        rules={intellectualPropertyFields.some((field) => field.required) ? [{
+                          validator: async (_, entries) => {
+                            if (!normalizeRegistrationIntellectualPropertyEntries(
+                              { [INTELLECTUAL_PROPERTY_ENTRIES_KEY]: entries },
+                              intellectualPropertyFieldKeys,
+                            ).length) {
+                              throw new Error('请至少填写一项知识产权信息');
+                            }
+                          },
+                        }] : undefined}
                       >
-                        <Input />
-                      </Form.Item>
-                      {projectImageField ? <Form.Item label={projectImageField.title} required={projectImageField.required}>
-                        <Space>
-                          <Avatar
-                            shape="square"
-                            size={64}
-                            src={normalizeUploadUrl(newProjectImageUrl) || undefined}
-                            icon={<EyeOutlined />}
-                          />
-                          <Upload
-                            accept="image/*"
-                            showUploadList={false}
-                            disabled={projectAvatarUploading}
-                            beforeUpload={async (file) => {
-                              await uploadRegistrationProjectAvatar(file);
-                              return Upload.LIST_IGNORE;
-                            }}
-                          >
-                            <Button icon={<UploadOutlined />} loading={projectAvatarUploading}>上传</Button>
-                          </Upload>
-                          {newProjectImageUrl ? (
-                            <Button
-                              type="link"
-                              onClick={() => {
-                                form.setFieldValue('newProjectImageUrl', undefined);
-                                persistRegistrationDraft({
-                                  ...collectRegistrationValues(),
-                                  newProjectImageUrl: undefined,
-                                });
-                              }}
-                            >
-                              移除
+                        {(entryFields, { add, remove }, { errors }) => (
+                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                            {entryFields.map((entryField, index) => (
+                              <Card
+                                key={entryField.key}
+                                size="small"
+                                title={`知识产权 ${index + 1}`}
+                                extra={entryFields.length > 1 ? (
+                                  <Button
+                                    type="link"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => remove(entryField.name)}
+                                  >
+                                    删除
+                                  </Button>
+                                ) : null}
+                              >
+                                {intellectualPropertyFields.map((field) => (
+                                  <Form.Item
+                                    key={field.itemKey}
+                                    name={[entryField.name, field.itemKey]}
+                                    label={field.title}
+                                    rules={buildCollectedFieldRule(field)}
+                                  >
+                                    {renderRegistrationCollectedFieldInput(field)}
+                                  </Form.Item>
+                                ))}
+                              </Card>
+                            ))}
+                            <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({})} block>
+                              添加知识产权
                             </Button>
-                          ) : null}
-                        </Space>
-                      </Form.Item> : null}
-                      {projectDescriptionField ? <Form.Item name="newProjectDescription" label={projectDescriptionField.title} rules={buildCollectedFieldRule(projectDescriptionField)}>
-                        <Input.TextArea rows={3} maxLength={1000} placeholder={projectDescriptionField.placeholder || projectDescriptionField.title} />
-                      </Form.Item> : null}
+                            <Form.ErrorList errors={errors} />
+                          </Space>
+                        )}
+                      </Form.List>
                     </>
+                  ) : (
+                    <Alert type="info" showIcon message="当前赛事未配置项目佐证字段，可直接进入信息确认。" />
                   )}
-                  {projectCustomFields.length ? <Typography.Title level={5}>项目扩展信息</Typography.Title> : null}
-                  {projectCustomFields.map((field) => (
-                    <Form.Item
-                      key={field.itemKey}
-                      name={['newProjectExtraValues', field.itemKey]}
-                      label={field.title}
-                      rules={buildCollectedFieldRule(field)}
-                    >
-                      {renderRegistrationCollectedFieldInput(field)}
-                    </Form.Item>
-                  ))}
-                  {intellectualPropertyFields.length ? <Typography.Title level={5}>知识产权信息</Typography.Title> : null}
-                  {intellectualPropertyFields.map((field) => (
-                    <Form.Item
-                      key={field.itemKey}
-                      name={['newProjectExtraValues', field.itemKey]}
-                      label={field.title}
-                      rules={buildCollectedFieldRule(field)}
-                    >
-                      {renderRegistrationCollectedFieldInput(field)}
-                    </Form.Item>
-                  ))}
                 </>
               ) : null}
               {step === registrationWizardStep.preliminaryMaterials ? (
@@ -4539,14 +4555,32 @@ const CompetitionRegistrationPage = () => {
                       ))}
                     </Space>
                   </Card>
-                  <Card size="small" title="项目与知识产权佐证" extra={<Button type="link" onClick={() => setWizardStep(registrationWizardStep.projectEvidence)}>返回修改</Button>}>
+                  <Card size="small" title="本次报名项目" extra={<Button type="link" onClick={() => setWizardStep(registrationWizardStep.team)}>返回修改</Button>}>
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Typography.Text><Typography.Text strong>{projectTitleField.title}：</Typography.Text>{form.getFieldValue('newProjectTitle') || '-'}</Typography.Text>
                       {projectImageField && form.getFieldValue('newProjectImageUrl') ? <Image width={72} height={72} src={normalizeUploadUrl(form.getFieldValue('newProjectImageUrl'))} alt={projectImageField.title} /> : null}
                       {projectDescriptionField ? <Typography.Text><Typography.Text strong>{projectDescriptionField.title}：</Typography.Text>{form.getFieldValue('newProjectDescription') || '-'}</Typography.Text> : null}
-                      {[...projectCustomFields, ...intellectualPropertyFields].map((field) => (
+                      {projectCustomFields.map((field) => (
                         <Space key={field.itemKey} align="start"><Typography.Text strong>{field.title}：</Typography.Text>{renderCollectedFieldReviewValue(field, form.getFieldValue(['newProjectExtraValues', field.itemKey]))}</Space>
                       ))}
+                    </Space>
+                  </Card>
+                  <Card size="small" title="项目佐证材料" extra={<Button type="link" onClick={() => setWizardStep(registrationWizardStep.projectEvidence)}>返回修改</Button>}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      {intellectualPropertyEntries.length ? intellectualPropertyEntries.map((entry, index) => (
+                        <Card key={`review-intellectual-property-${index + 1}`} size="small" title={`知识产权 ${index + 1}`}>
+                          <Space direction="vertical">
+                            {intellectualPropertyFields.map((field) => (
+                              <Space key={field.itemKey} align="start">
+                                <Typography.Text strong>{field.title}：</Typography.Text>
+                                {renderCollectedFieldReviewValue(field, entry[field.itemKey])}
+                              </Space>
+                            ))}
+                          </Space>
+                        </Card>
+                      )) : intellectualPropertyFields.length ? (
+                        <Typography.Text type="secondary">未填写知识产权信息</Typography.Text>
+                      ) : null}
                     </Space>
                   </Card>
                   <Card size="small" title="初赛材料" extra={<Button type="link" onClick={() => setWizardStep(registrationWizardStep.preliminaryMaterials)}>返回修改</Button>}>

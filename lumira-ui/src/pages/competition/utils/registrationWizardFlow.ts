@@ -13,7 +13,7 @@ export const registrationWizardStepItems = [
   { title: '选择赛事' },
   { title: '团队与学生' },
   { title: '初赛材料' },
-  { title: '项目与知识产权佐证' },
+  { title: '项目佐证材料' },
   { title: '信息确认' },
   { title: '支付方式' },
 ];
@@ -45,11 +45,11 @@ export const resolveAllowedRegistrationWizardStep = (
   if (!accessState.teamReady) {
     return registrationWizardStep.team;
   }
+  if (!accessState.projectReady) {
+    return registrationWizardStep.team;
+  }
   if (normalizedStep <= registrationWizardStep.projectEvidence) {
     return normalizedStep;
-  }
-  if (!accessState.projectReady) {
-    return registrationWizardStep.projectEvidence;
   }
   if (normalizedStep >= registrationWizardStep.payment && !accessState.hasActiveRegistration) {
     return registrationWizardStep.review;

@@ -8,12 +8,12 @@ import {
 } from './registrationWizardFlow';
 
 describe('competition registration wizard flow', () => {
-  it('collects preliminary materials before project and intellectual property evidence', () => {
+  it('collects project basics with the team before sequential materials', () => {
     expect(registrationWizardStepItems.map((item) => item.title)).toEqual([
       '选择赛事',
       '团队与学生',
       '初赛材料',
-      '项目与知识产权佐证',
+      '项目佐证材料',
       '信息确认',
       '支付方式',
     ]);
@@ -28,22 +28,22 @@ describe('competition registration wizard flow', () => {
     );
   });
 
-  it('allows the project step before project information has been entered', () => {
+  it('keeps the user on the team step until the new project is entered', () => {
     expect(resolveAllowedRegistrationWizardStep(registrationWizardStep.projectEvidence, {
       competitionReady: true,
       teamReady: true,
       projectReady: false,
       hasActiveRegistration: false,
-    })).toBe(registrationWizardStep.projectEvidence);
+    })).toBe(registrationWizardStep.team);
   });
 
-  it('requires project information only when continuing to review', () => {
+  it('allows sequential materials and review after the project is entered', () => {
     expect(resolveAllowedRegistrationWizardStep(registrationWizardStep.review, {
       competitionReady: true,
       teamReady: true,
       projectReady: false,
       hasActiveRegistration: false,
-    })).toBe(registrationWizardStep.projectEvidence);
+    })).toBe(registrationWizardStep.team);
     expect(resolveAllowedRegistrationWizardStep(registrationWizardStep.review, {
       competitionReady: true,
       teamReady: true,
