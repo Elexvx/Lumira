@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { getLocale, history, useAccess, useLocation } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Modal, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
-import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, GithubOutlined, ReloadOutlined, RollbackOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, GithubOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
 import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -1091,21 +1091,6 @@ const PlatformUpdateContent = () => {
             dataSource={tasksQuery.data || []}
             columns={taskColumns}
           />
-        </Card>
-        <Card title={t('安全边界', 'Safety boundary')}>
-          <Space direction="vertical" size={sectionGap}>
-            <Typography.Text>
-              <SafetyCertificateOutlined /> {t('只读检查更新源，不自动拉取代码。', 'Read-only source check; no automatic code pull.')}
-            </Typography.Text>
-            <Typography.Text>
-              <SafetyCertificateOutlined /> {t('发布仍需要备份、部署、健康检查和审计记录。', 'Releasing still requires backup, deployment, health checks, and audit records.')}
-            </Typography.Text>
-            {(updateStatus?.notes || []).map((note) => (
-              <Typography.Text type="secondary" key={note}>
-                {note}
-              </Typography.Text>
-            ))}
-          </Space>
         </Card>
       </Space>
     </div>
