@@ -32,6 +32,7 @@ import {
   getCompetitionSettings,
   getCompetitionStageForm,
   getRegistrationPaymentStatus,
+  listRegistrationMaterials,
   listCompetitionStages,
   listCompetitions,
   listRegistrations,
@@ -74,7 +75,12 @@ import {
 } from '@/pages/competition/utils/registrationCompetition';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import {
+  getMissingRequiredRegistrationMaterials,
+  restoreRegistrationMaterialValues,
+} from '@/pages/competition/utils/registrationMaterials';
+import {
   buildRegistrationProjectExtraValues,
+  getMissingRequiredIntellectualPropertyFields,
   hasRegistrationIntellectualPropertyContent,
   INTELLECTUAL_PROPERTY_ENTRIES_KEY,
   migrateRegistrationIntellectualPropertyValues,
@@ -106,6 +112,7 @@ import {
   registrationWizardStep,
   registrationWizardStepItems,
   resolveAllowedRegistrationWizardStep,
+  resolveRegistrationResumeStep,
   shouldLoadPreliminaryStageForm,
 } from '@/pages/competition/utils/registrationWizardFlow';
 import {
@@ -2512,6 +2519,7 @@ const CompetitionRegistrationPage = () => {
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
   const newProjectImageUrl = Form.useWatch('newProjectImageUrl', form);
   const newProjectExtraValues = Form.useWatch('newProjectExtraValues', { form, preserve: true }) as Record<string, unknown> | undefined;
+  const registrationMaterialValues = Form.useWatch('materials', { form, preserve: true }) as Record<string, unknown> | undefined;
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], { form, preserve: true }) || []) as RegistrationTeamMemberDraft[];
   const registrationCompetitionOptions = useMemo(
     () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
@@ -2520,6 +2528,10 @@ const CompetitionRegistrationPage = () => {
   const fields = useMemo(
     () => enrichCompetitionStageFormFields(parseFormFields(stageForm), stageMaterialConfigs),
     [stageForm, stageMaterialConfigs],
+  );
+  const missingRequiredMaterialFields = useMemo(
+    () => getMissingRequiredRegistrationMaterials(fields, registrationMaterialValues || {}),
+    [fields, registrationMaterialValues],
   );
   const selectedCompetition = registrationCompetitionOptions.find((item) => item.id === toPositiveId(selectedCompetitionId));
   const registrationScopeFields = useMemo(
@@ -2572,6 +2584,10 @@ const CompetitionRegistrationPage = () => {
   const intellectualPropertyEntries = normalizeRegistrationIntellectualPropertyEntries(
     newProjectExtraValues,
     intellectualPropertyFieldKeys,
+  );
+  const missingRequiredEvidenceFields = useMemo(
+    () => getMissingRequiredIntellectualPropertyFields(intellectualPropertyFields, intellectualPropertyEntries),
+    [intellectualPropertyEntries, intellectualPropertyFields],
   );
   const registrationDocumentStates = useMemo(
     () =>
@@ -3179,36 +3195,78 @@ const CompetitionRegistrationPage = () => {
         return;
       }
       const competitionId = toPositiveId(latest.competitionId);
+      const [activeStageForm, materialSubmissions] = await Promise.all([
+        competitionId
+          ? loadOptionalPreliminaryStageForm(competitionId, listCompetitionStages, getCompetitionStageForm)
+          : Promise.resolve(undefined),
+        listRegistrationMaterials(record.id),
+      ]);
       const teamId = toPositiveId(latest.teamId);
       const projectId = toPositiveId(latest.projectId);
       const teamSnapshot = parseRegistrationSnapshot<RegistrationSnapshotTeamPayload & { registrationExtraValues?: Record<string, unknown> }>(latest.teamSnapshotJson);
+      const registrationSnapshot = parseRegistrationSnapshot<Record<string, unknown>>(latest.registrationSnapshotJson);
       const projectSnapshot = parseRegistrationSnapshot<{ title?: string; description?: string; imageUrl?: string; extraValues?: Record<string, unknown> }>(latest.projectSnapshotJson);
       const members = parseRegistrationSnapshot<RegistrationTeamMemberDraft[]>(latest.memberSnapshotJson, []);
+      const restoredProjectExtraValues = migrateRegistrationIntellectualPropertyValues(
+        projectSnapshot.extraValues,
+        intellectualPropertyFieldKeys,
+      );
       form.resetFields();
       form.setFieldsValue({
         competitionId,
         teamId,
         projectId,
-        registrationExtraValues: teamSnapshot.registrationExtraValues,
+        registrationExtraValues: Object.keys(registrationSnapshot).length
+          ? registrationSnapshot
+          : teamSnapshot.registrationExtraValues,
         newTeamName: teamSnapshot.teamName,
         newTeam: { ...teamSnapshot, initialMembers: members },
         newProjectTitle: projectSnapshot.title,
         newProjectDescription: projectSnapshot.description,
         newProjectImageUrl: projectSnapshot.imageUrl,
-        newProjectExtraValues: migrateRegistrationIntellectualPropertyValues(
-          projectSnapshot.extraValues,
-          intellectualPropertyFieldKeys,
-        ),
+        newProjectExtraValues: restoredProjectExtraValues,
       });
       confirmedTeamIdRef.current = teamId;
       confirmedProjectIdRef.current = projectId;
       setRegistrationId(latest.id);
       setRegistrationRecord(latest);
       setPaymentStatus(latest.status);
-      if (competitionId) {
-        await loadStageFormForCompetition(competitionId);
+      setStageForm(activeStageForm);
+      const restoredMaterialValues = activeStageForm
+        ? restoreRegistrationMaterialValues(materialSubmissions, activeStageForm.stageId)
+        : {};
+      if (activeStageForm) {
+        form.setFieldValue('materials', restoredMaterialValues);
       }
-      setWizardStep(latest.paymentOrderNo ? 5 : 4, false, {
+      const restoredMaterialFields = activeStageForm
+        ? enrichCompetitionStageFormFields(parseFormFields(activeStageForm), stageMaterialConfigs)
+        : [];
+      const hasMissingRequiredMaterials = getMissingRequiredRegistrationMaterials(
+        restoredMaterialFields,
+        restoredMaterialValues,
+      ).length > 0;
+      const restoredIntellectualPropertyEntries = normalizeRegistrationIntellectualPropertyEntries(
+        restoredProjectExtraValues,
+        intellectualPropertyFieldKeys,
+      );
+      const hasMissingRequiredEvidence = getMissingRequiredIntellectualPropertyFields(
+        intellectualPropertyFields,
+        restoredIntellectualPropertyEntries,
+      ).length > 0;
+      const hasIncompleteTeamOrProject = !trimOptional(teamSnapshot.teamName)
+        || members.length < teamMemberLimits.minMembers
+        || members.length > teamMemberLimits.maxMembers
+        || !trimOptional(projectSnapshot.title);
+      const resumeStep = resolveRegistrationResumeStep({
+        hasPaymentOrder: Boolean(latest.paymentOrderNo),
+        hasIncompleteTeamOrProject,
+        hasMissingRequiredMaterials,
+        hasMissingRequiredEvidence,
+      });
+      if (resumeStep !== registrationWizardStep.review && resumeStep !== registrationWizardStep.payment) {
+        message.info(`请先完成${registrationWizardStepItems[resumeStep].title}`);
+      }
+      setWizardStep(resumeStep, false, {
         registrationId: latest.id,
         paymentStatus: latest.status,
       });
@@ -3217,7 +3275,7 @@ const CompetitionRegistrationPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [form, intellectualPropertyFieldKeys, loadStageFormForCompetition, setWizardStep]);
+  }, [form, intellectualPropertyFieldKeys, intellectualPropertyFields, setWizardStep, stageMaterialConfigs, teamMemberLimits.maxMembers, teamMemberLimits.minMembers]);
 
   const removePendingRegistration = useCallback((record: CompetitionRegistrationRecord) => {
     modal.confirm({
@@ -3248,7 +3306,10 @@ const CompetitionRegistrationPage = () => {
     }
     try {
       if (step === 0) {
-        await form.validateFields();
+        await form.validateFields([
+          'competitionId',
+          ...registrationScopeFields.map((field) => ['registrationExtraValues', field.itemKey]),
+        ]);
         if (registrationDocumentsLoading) {
           message.info('报名文书仍在加载，请稍后');
           return;
@@ -3292,7 +3353,14 @@ const CompetitionRegistrationPage = () => {
           return;
         }
         form.setFieldValue(['newTeam', 'initialMembers'], members);
-        await form.validateFields();
+        await form.validateFields([
+          'newTeamName',
+          'newTeam',
+          'newProjectTitle',
+          ...(projectImageField ? ['newProjectImageUrl'] : []),
+          ...(projectDescriptionField ? ['newProjectDescription'] : []),
+          ...projectCustomFields.map((field) => ['newProjectExtraValues', field.itemKey]),
+        ], { recursive: true });
         form.setFieldValue('teamId', undefined);
         confirmedTeamIdRef.current = undefined;
         const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
@@ -3307,12 +3375,24 @@ const CompetitionRegistrationPage = () => {
           message.info('初赛材料表单仍在加载，请稍后');
           return;
         }
-        await form.validateFields();
+        await form.validateFields(fields.map((field) => ['materials', field.key]));
         setWizardStep(registrationWizardStep.projectEvidence);
       } else if (step === registrationWizardStep.projectEvidence) {
-        await form.validateFields();
+        await form.validateFields([
+          ['newProjectExtraValues', INTELLECTUAL_PROPERTY_ENTRIES_KEY],
+        ], { recursive: true });
         setWizardStep(registrationWizardStep.review);
       } else if (step === registrationWizardStep.review) {
+        if (missingRequiredMaterialFields.length) {
+          message.warning(`请先上传 ${missingRequiredMaterialFields.map((field) => field.label || field.key).join('、')}`);
+          setWizardStep(registrationWizardStep.preliminaryMaterials);
+          return;
+        }
+        if (missingRequiredEvidenceFields.length) {
+          message.warning(`请先填写 ${missingRequiredEvidenceFields.map((field) => field.title).join('、')}`);
+          setWizardStep(registrationWizardStep.projectEvidence);
+          return;
+        }
         await form.validateFields();
         if (!hasRegistrationCompetitionPricing(selectedCompetition)) {
           message.error('赛事收费信息仍在加载，请稍后重试');
@@ -3732,7 +3812,13 @@ const CompetitionRegistrationPage = () => {
   const canAdvanceRegistration = registrationId ? canUpdateRegistration : canCreateRegistration;
   const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
     ? `下一步（剩余 ${pendingRegistrationDocumentCount} 项）`
-    : step === registrationWizardStep.review ? '确认并生成订单' : '\u4e0b\u4e00\u6b65';
+    : step === registrationWizardStep.review
+      ? missingRequiredMaterialFields.length
+        ? '去上传材料'
+        : missingRequiredEvidenceFields.length
+          ? '去完善项目佐证'
+          : '确认并生成订单'
+      : '\u4e0b\u4e00\u6b65';
   const previewPayableAmount = calculateRegistrationPayableAmount(
     selectedCompetition?.entryFeeMinor,
     selectedCompetition?.feeMode,
@@ -3777,6 +3863,7 @@ const CompetitionRegistrationPage = () => {
         search: false,
         ellipsis: true,
         render: (_, record) => record.draftTeamName
+          || record.teamName
           || parseSnapshotName(record.teamSnapshotJson, ['teamName', 'name'])
           || (record.teamId ? `\u56e2\u961f ${record.teamId}` : '-'),
       },
@@ -3786,6 +3873,7 @@ const CompetitionRegistrationPage = () => {
         search: false,
         ellipsis: true,
         render: (_, record) => record.draftProjectTitle
+          || record.projectTitle
           || parseSnapshotName(record.projectSnapshotJson, ['title', 'projectTitle', 'name'])
           || (record.projectId ? `\u9879\u76ee ${record.projectId}` : '-'),
       },
@@ -4067,9 +4155,6 @@ const CompetitionRegistrationPage = () => {
             <Typography.Title className="competition-registration-member-manager__title" level={5}>
               成员管理
             </Typography.Title>
-            <Typography.Text type="secondary">
-              成员字段跟随赛事管理中的报名字段配置，支持逐行添加和编辑。
-            </Typography.Text>
           </div>
         </div>
         <div className="competition-registration-member-manager__table-scroll">
@@ -4141,9 +4226,6 @@ const CompetitionRegistrationPage = () => {
   const renderRegistrationProjectForm = () => (
     <section className="competition-registration-project-form">
       <Typography.Title level={5}>本次报名项目</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        每次报名均新建项目；后续步骤只填写参赛材料和项目佐证材料，不再重复填写项目基本信息。
-      </Typography.Paragraph>
       <Form.Item name="projectId" hidden>
         <Input />
       </Form.Item>
@@ -4445,10 +4527,6 @@ const CompetitionRegistrationPage = () => {
               ) : null}
               {step === registrationWizardStep.projectEvidence ? (
                 <>
-                  <Typography.Title level={5}>项目佐证材料</Typography.Title>
-                  <Typography.Paragraph type="secondary">
-                    项目基本信息已在“团队与学生”步骤填写，本步骤只补充赛事配置的知识产权佐证信息。
-                  </Typography.Paragraph>
                   {intellectualPropertyFields.length ? (
                     <>
                       <Typography.Title level={5}>知识产权信息</Typography.Title>
@@ -4514,22 +4592,34 @@ const CompetitionRegistrationPage = () => {
                 stageFormLoading ? (
                   <Alert type="info" showIcon message="正在加载初赛材料表单..." />
                 ) : fields.length ? (
-                  fields.map((field) => (
-                    <Form.Item
-                      key={field.key}
-                      name={["materials", field.key]}
-                      label={field.label || field.key}
-                      rules={[{ required: Boolean(field.required), message: `请填写${field.label || field.key}` }]}
-                    >
-                      {field.type === 'textarea' ? (
-                        <Input.TextArea rows={4} maxLength={field.maxLength} />
-                      ) : field.type === 'file' ? (
-                        <MaterialFileUploadInput field={field} />
-                      ) : (
-                        <Input maxLength={field.maxLength} />
-                      )}
-                    </Form.Item>
-                  ))
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Alert
+                      type="info"
+                      showIcon
+                      message={fields.some((field) => field.required)
+                        ? `请完成初赛材料，其中 ${fields.filter((field) => field.required).length} 项为必填。`
+                        : '本步骤材料均为选填，可按需提交。'}
+                    />
+                    {fields.map((field) => (
+                      <Form.Item
+                        key={field.key}
+                        name={["materials", field.key]}
+                        label={field.label || field.key}
+                        rules={[{
+                          required: Boolean(field.required),
+                          message: `请${field.type === 'file' ? '上传' : '填写'}${field.label || field.key}`,
+                        }]}
+                      >
+                        {field.type === 'textarea' ? (
+                          <Input.TextArea rows={4} maxLength={field.maxLength} />
+                        ) : field.type === 'file' ? (
+                          <MaterialFileUploadInput field={field} />
+                        ) : (
+                          <Input maxLength={field.maxLength} />
+                        )}
+                      </Form.Item>
+                    ))}
+                  </Space>
                 ) : (
                   <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入信息确认。" />
                 )
@@ -4537,6 +4627,24 @@ const CompetitionRegistrationPage = () => {
               {step === registrationWizardStep.review ? (
                 <Space direction="vertical" style={{ width: '100%' }} size={16}>
                   <Alert type="info" showIcon message="请核对以下全部报名信息。确认后将生成报名订单；生成支付订单后内容将不能修改。" />
+                  {missingRequiredMaterialFields.length ? (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message={`还有 ${missingRequiredMaterialFields.length} 项必填材料未上传`}
+                      description={missingRequiredMaterialFields.map((field) => field.label || field.key).join('、')}
+                      action={<Button size="small" onClick={() => setWizardStep(registrationWizardStep.preliminaryMaterials)}>去上传材料</Button>}
+                    />
+                  ) : null}
+                  {!missingRequiredMaterialFields.length && missingRequiredEvidenceFields.length ? (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message={`还有 ${missingRequiredEvidenceFields.length} 项项目佐证信息未填写`}
+                      description={missingRequiredEvidenceFields.map((field) => field.title).join('、')}
+                      action={<Button size="small" onClick={() => setWizardStep(registrationWizardStep.projectEvidence)}>去完善</Button>}
+                    />
+                  ) : null}
                   <Card size="small" title="赛事与报名信息" extra={<Button type="link" onClick={() => setWizardStep(0)}>返回修改</Button>}>
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Typography.Text><Typography.Text strong>赛事：</Typography.Text>{selectedCompetition?.title || '-'}</Typography.Text>
@@ -4610,7 +4718,9 @@ const CompetitionRegistrationPage = () => {
                             return fileRecord ? <Space size={4}>
                               <span>{fileRecord.originalFileName}</span>
                               <Button type="link" size="small" href={normalizeUploadUrl(fileRecord.previewUrl || fileRecord.publicUrl)} target="_blank" rel="noopener noreferrer">查看</Button>
-                            </Space> : `附件文件 #${fileId || '-'}`;
+                            </Space> : fileId
+                              ? '已上传文件'
+                              : <Typography.Text type="danger">未上传</Typography.Text>;
                           })() : normalizeDisplayText(form.getFieldValue(['materials', field.key])) || '-'}
                         </Typography.Text>
                       ))}

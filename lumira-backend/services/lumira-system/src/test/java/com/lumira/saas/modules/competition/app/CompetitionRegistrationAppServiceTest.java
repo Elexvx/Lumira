@@ -78,6 +78,7 @@ class CompetitionRegistrationAppServiceTest {
         assertThat(objectMapper.readTree(registration.getTeamSnapshotJson()).path("teamName").asText()).isEqualTo("AI Team");
         assertThat(objectMapper.readTree(registration.getMemberSnapshotJson())).hasSize(2);
         assertThat(objectMapper.readTree(registration.getProjectSnapshotJson()).path("title").asText()).isEqualTo("AI Project");
+        assertThat(objectMapper.readTree(registration.getRegistrationSnapshotJson())).isEmpty();
         assertThat(sql.lastRegistrationInsertSql).contains("created_by_uuid", "updated_by_uuid");
         assertThat(sql.lastRegistrationInsertArgs).contains(1001L, "user-uuid-1001");
         assertThat(sql.wroteTeamTables).isFalse();
@@ -118,16 +119,18 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
-    void createRegistrationPersistsRegistrationAndProjectExtraValues() throws Exception {
+    void createRegistrationPersistsEachCollectedScopeInIndependentSnapshots() throws Exception {
         RegistrationSql sql = new RegistrationSql();
         sql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "contactName", "联系人", "TEXT", false));
         sql.collectionFieldRows.add(configField("REGISTRATION_FIELD", "school", "学校", "TEXT", false));
+        sql.collectionFieldRows.add(configField("TEAM_FIELD", "campus", "校区", "TEXT", false));
         sql.collectionFieldRows.add(configField("PROJECT_FIELD", "advisor", "指导老师", "TEXT", false));
         sql.competitionFeeMode = "MEMBER";
         sql.competitionEntryFeeMinor = 5_000L;
         CompetitionRegistrationAppService service = service(sql, teamApiRejectingLookup());
         CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
         request.setRegistrationExtraValues(Map.of("contactName", "张三", "school", "AIADC University"));
+        request.getTeamSnapshot().setExtraValues(Map.of("campus", "Main Campus"));
         CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshot = new CompetitionRegistrationDTO.ProjectSnapshotRequest();
         projectSnapshot.setExtraValues(Map.of("advisor", "李老师"));
         request.setProjectSnapshot(projectSnapshot);
@@ -136,9 +139,42 @@ class CompetitionRegistrationAppServiceTest {
 
         JsonNode team = objectMapper.readTree(registration.getTeamSnapshotJson());
         JsonNode project = objectMapper.readTree(registration.getProjectSnapshotJson());
-        assertThat(team.path("registrationExtraValues").path("contactName").asText()).isEqualTo("张三");
-        assertThat(team.path("registrationExtraValues").path("school").asText()).isEqualTo("AIADC University");
+        JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
+        JsonNode registrationValues = objectMapper.readTree(registration.getRegistrationSnapshotJson());
+        JsonNode schema = objectMapper.readTree(registration.getCollectionSchemaSnapshotJson());
+        assertThat(registrationValues.path("contactName").asText()).isEqualTo("张三");
+        assertThat(registrationValues.path("school").asText()).isEqualTo("AIADC University");
+        assertThat(team.has("registrationExtraValues")).isFalse();
+        assertThat(team.path("extraValues").path("campus").asText()).isEqualTo("Main Campus");
+        assertThat(members.get(0).path("extraValues").path("mobile").asText()).isEqualTo("13800138000");
         assertThat(project.path("extraValues").path("advisor").asText()).isEqualTo("李老师");
+        assertThat(schema.toString()).contains(
+                "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD",
+                "contactName", "campus", "mobile", "advisor"
+        );
+    }
+
+    @Test
+    void confirmRegistrationPersistsInlineProjectOnlyInRegistrationSnapshot() throws Exception {
+        RegistrationSql sql = new RegistrationSql();
+        sql.competitionEntryFeeMinor = 8_800L;
+        CompetitionRegistrationDTO.RegistrationCreateRequest registration = inlineRegistrationRequest();
+        registration.setProjectId(null);
+        CompetitionRegistrationDTO.RegistrationConfirmRequest request = new CompetitionRegistrationDTO.RegistrationConfirmRequest();
+        request.setRegistration(registration);
+        CompetitionRegistrationDTO.ProjectDraftRequest project = new CompetitionRegistrationDTO.ProjectDraftRequest();
+        project.setTitle("Registration-only Project");
+        project.setCategory("INNOVATION");
+        project.setDescription("Stored with the registration");
+        request.setProject(project);
+
+        CompetitionRegistrationVO.Registration result = service(sql, teamApiRejectingLookup())
+                .confirmRegistration(student(), null, request);
+
+        assertThat(result.getProjectId()).isZero();
+        assertThat(objectMapper.readTree(result.getProjectSnapshotJson()).path("title").asText())
+                .isEqualTo("Registration-only Project");
+        assertThat(sql.wroteProjectTables).isFalse();
     }
 
     @Test
@@ -210,6 +246,8 @@ class CompetitionRegistrationAppServiceTest {
                 .contains("config.status in ('draft', 'published')")
                 .contains("current_config.status in ('draft', 'published')");
         JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
+        assertThat(members.get(0).has("role")).isFalse();
+        assertThat(members.get(0).path("systemRole").asText()).isEqualTo("MEMBER");
         assertThat(members.get(0).path("extraValues").path("role").asText()).isEqualTo("负责人");
         assertThat(members.get(1).path("extraValues").path("role").asText()).isEqualTo("成员");
         JsonNode project = objectMapper.readTree(registration.getProjectSnapshotJson());
@@ -545,12 +583,18 @@ class CompetitionRegistrationAppServiceTest {
         editor.setPermissions(Set.of("aiadc:registration:view", "aiadc:registration:update"));
         editor.setDataScopes(List.of(new DataPermissionRule("competition:registration", DataScopeType.SELF, List.of(), List.of())));
 
-        PageResponse<CompetitionRegistrationVO.Registration> page = service.listRegistrations(editor, 1, 10);
+        PageResponse<CompetitionRegistrationVO.Registration> page = service.listRegistrations(editor, 1, 1_000);
 
         assertThat(page.getTotal()).isEqualTo(1);
         assertThat(page.getRecords()).hasSize(1);
+        assertThat(page.getPageSize()).isEqualTo(100);
         assertThat(sql.lastRegistrationCountSql).contains("owner_user_id = ?");
         assertThat(sql.lastRegistrationQuerySql).contains("owner_user_id = ?");
+        assertThat(sql.lastRegistrationQueryArgs.getLast()).isEqualTo(100L);
+        assertThat(sql.lastRegistrationQuerySql)
+                .doesNotContain("registration_snapshot_json as registrationSnapshotJson")
+                .doesNotContain("member_snapshot_json as memberSnapshotJson")
+                .contains("as teamName", "as projectTitle");
     }
 
     @Test
@@ -1743,10 +1787,12 @@ class CompetitionRegistrationAppServiceTest {
         private int materialValueInserts;
         private int confirmUpdates;
         private boolean wroteTeamTables;
+        private boolean wroteProjectTables;
         private String paymentRequestJson;
         private String paymentOrderNo;
         private String lastRegistrationCountSql;
         private String lastRegistrationQuerySql;
+        private List<Object> lastRegistrationQueryArgs = List.of();
         private String lastRegistrationInsertSql;
         private Object[] lastRegistrationInsertArgs = new Object[0];
         private String lastRegistrationUpdateSql;
@@ -1819,6 +1865,11 @@ class CompetitionRegistrationAppServiceTest {
                     || normalized.contains("delete from team_member")) {
                 wroteTeamTables = true;
             }
+            if (normalized.contains("insert into aiadc_project")
+                    || normalized.contains("update aiadc_project")
+                    || normalized.contains("delete from aiadc_project")) {
+                wroteProjectTables = true;
+            }
             if (normalized.contains("insert into competition_registration")) {
                 lastRegistrationInsertSql = sql;
                 lastRegistrationInsertArgs = args;
@@ -1833,9 +1884,10 @@ class CompetitionRegistrationAppServiceTest {
                 registration.put("entryFeeMinor", args[8]);
                 registration.put("memberCount", args[9]);
                 registration.put("currency", args[11]);
-                registration.put("teamSnapshotJson", args[12]);
-                registration.put("projectSnapshotJson", args[13]);
-                registration.put("memberSnapshotJson", args[14]);
+                registration.put("registrationSnapshotJson", args[12]);
+                registration.put("teamSnapshotJson", args[13]);
+                registration.put("projectSnapshotJson", args[14]);
+                registration.put("memberSnapshotJson", args[15]);
                 return updateResults.isEmpty() ? 1 : updateResults.remove();
             }
             if (normalized.contains("set collection_schema_snapshot_json = ?")) {
@@ -2164,6 +2216,7 @@ class CompetitionRegistrationAppServiceTest {
             }
             if (normalized.contains("from competition_registration where deleted = 0")) {
                 lastRegistrationQuerySql = sql;
+                lastRegistrationQueryArgs = Arrays.asList(args);
                 return registration == null ? List.of() : List.of(map(rowMapper, registration));
             }
             return super.query(sql, rowMapper, args);
@@ -2186,6 +2239,7 @@ class CompetitionRegistrationAppServiceTest {
             row.put("currency", "CNY");
             row.put("paymentOrderNo", paymentOrderNo);
             row.put("participantNo", null);
+            row.put("registrationSnapshotJson", "{}");
             row.put("teamSnapshotJson", "{}");
             row.put("projectSnapshotJson", "{}");
             row.put("memberSnapshotJson", "[]");

@@ -20,7 +20,6 @@ public final class CompetitionRegistrationDTO {
         @NotNull
         private Long competitionId;
         private Long teamId;
-        @NotNull
         private Long projectId;
         private Map<String, Object> registrationExtraValues;
         @Valid
@@ -116,8 +115,24 @@ public final class CompetitionRegistrationDTO {
     }
 
     public static class ProjectSnapshotRequest {
+        @Size(max = 128)
+        private String title;
+        @Size(max = 64)
+        private String category;
+        @Size(max = 1000)
+        private String description;
+        @Size(max = 1024)
+        private String imageUrl;
         private Map<String, Object> extraValues;
 
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getCategory() { return category; }
+        public void setCategory(String category) { this.category = category; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public String getImageUrl() { return imageUrl; }
+        public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
         public Map<String, Object> getExtraValues() { return extraValues; }
         public void setExtraValues(Map<String, Object> extraValues) { this.extraValues = extraValues; }
     }

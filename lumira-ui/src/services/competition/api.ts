@@ -121,6 +121,10 @@ export type RegistrationSnapshotTeamPayload = {
 };
 
 export type RegistrationProjectSnapshotPayload = {
+  title?: string;
+  category?: string;
+  description?: string;
+  imageUrl?: string;
   extraValues?: Record<string, unknown>;
 };
 

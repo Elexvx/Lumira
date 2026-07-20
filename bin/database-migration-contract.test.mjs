@@ -79,6 +79,20 @@ test('profile and team-member field definitions remain isolated in fresh and exi
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
+test('competition registration snapshots stay in one registration row', () => {
+  const migration = read('deploy/migrations/V202607190006__isolate_competition_registration_snapshots.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+
+  assert.match(baseline, /`registration_snapshot_json` longtext/);
+  assert.match(baseline, /idx_competition_registration_export.*`competition_id`,`deleted`,`id`/);
+  assert.match(migration, /ADD COLUMN `registration_snapshot_json` longtext/);
+  assert.match(migration, /idx_competition_registration_export.*`competition_id`, `deleted`, `id`/);
+  assert.match(migration, /JSON_EXTRACT\(`team_snapshot_json`, '\$\.registrationExtraValues'\)/);
+  assert.match(migration, /JSON_REMOVE\(`team_snapshot_json`, '\$\.registrationExtraValues'\)/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\b(aiadc_project|team_member|sys_user)\b/i);
+});
+
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const executableSql = bootstrap.replace(/\/\*[\s\S]*?\*\//g, '');

@@ -1851,6 +1851,7 @@ CREATE TABLE `competition_registration` (
   `currency` varchar(16) NOT NULL DEFAULT 'CNY',
   `payment_order_no` varchar(64) DEFAULT NULL,
   `participant_no` varchar(64) DEFAULT NULL,
+  `registration_snapshot_json` longtext,
   `team_snapshot_json` longtext,
   `project_snapshot_json` longtext,
   `member_snapshot_json` longtext,
@@ -1869,6 +1870,7 @@ CREATE TABLE `competition_registration` (
   KEY `idx_competition_registration_owner_uuid` (`owner_user_uuid`,`deleted`,`created_at`),
   KEY `idx_competition_registration_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_competition_registration_competition` (`competition_id`,`status`,`deleted`),
+  KEY `idx_competition_registration_export` (`competition_id`,`deleted`,`id`),
   KEY `idx_competition_registration_payment` (`payment_order_no`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

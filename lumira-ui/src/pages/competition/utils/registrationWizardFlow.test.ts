@@ -6,6 +6,7 @@ import {
   registrationWizardStep,
   registrationWizardStepItems,
   resolveAllowedRegistrationWizardStep,
+  resolveRegistrationResumeStep,
   shouldLoadPreliminaryStageForm,
 } from './registrationWizardFlow';
 
@@ -64,5 +65,44 @@ describe('competition registration wizard flow', () => {
       projectReady: true,
       hasActiveRegistration: false,
     })).toBe(registrationWizardStep.review);
+  });
+
+  it('resumes incomplete registrations at the missing material step', () => {
+    expect(resolveRegistrationResumeStep({
+      hasPaymentOrder: false,
+      hasIncompleteTeamOrProject: false,
+      hasMissingRequiredMaterials: true,
+      hasMissingRequiredEvidence: false,
+    })).toBe(registrationWizardStep.preliminaryMaterials);
+    expect(resolveRegistrationResumeStep({
+      hasPaymentOrder: false,
+      hasIncompleteTeamOrProject: false,
+      hasMissingRequiredMaterials: false,
+      hasMissingRequiredEvidence: false,
+    })).toBe(registrationWizardStep.review);
+  });
+
+  it('resumes at the earliest incomplete page', () => {
+    expect(resolveRegistrationResumeStep({
+      hasPaymentOrder: false,
+      hasIncompleteTeamOrProject: true,
+      hasMissingRequiredMaterials: true,
+      hasMissingRequiredEvidence: true,
+    })).toBe(registrationWizardStep.team);
+    expect(resolveRegistrationResumeStep({
+      hasPaymentOrder: false,
+      hasIncompleteTeamOrProject: false,
+      hasMissingRequiredMaterials: false,
+      hasMissingRequiredEvidence: true,
+    })).toBe(registrationWizardStep.projectEvidence);
+  });
+
+  it('resumes an existing payment order at payment', () => {
+    expect(resolveRegistrationResumeStep({
+      hasPaymentOrder: true,
+      hasIncompleteTeamOrProject: true,
+      hasMissingRequiredMaterials: true,
+      hasMissingRequiredEvidence: true,
+    })).toBe(registrationWizardStep.payment);
   });
 });

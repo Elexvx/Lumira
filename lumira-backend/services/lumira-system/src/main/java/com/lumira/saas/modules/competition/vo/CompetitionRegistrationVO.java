@@ -23,6 +23,9 @@ public final class CompetitionRegistrationVO {
         private String currency;
         private String paymentOrderNo;
         private String participantNo;
+        private String teamName;
+        private String projectTitle;
+        private String registrationSnapshotJson;
         private String teamSnapshotJson;
         private String projectSnapshotJson;
         private String memberSnapshotJson;
@@ -60,6 +63,12 @@ public final class CompetitionRegistrationVO {
         public void setPaymentOrderNo(String paymentOrderNo) { this.paymentOrderNo = paymentOrderNo; }
         public String getParticipantNo() { return participantNo; }
         public void setParticipantNo(String participantNo) { this.participantNo = participantNo; }
+        public String getTeamName() { return teamName; }
+        public void setTeamName(String teamName) { this.teamName = teamName; }
+        public String getProjectTitle() { return projectTitle; }
+        public void setProjectTitle(String projectTitle) { this.projectTitle = projectTitle; }
+        public String getRegistrationSnapshotJson() { return registrationSnapshotJson; }
+        public void setRegistrationSnapshotJson(String registrationSnapshotJson) { this.registrationSnapshotJson = registrationSnapshotJson; }
         public String getTeamSnapshotJson() { return teamSnapshotJson; }
         public void setTeamSnapshotJson(String teamSnapshotJson) { this.teamSnapshotJson = teamSnapshotJson; }
         public String getProjectSnapshotJson() { return projectSnapshotJson; }

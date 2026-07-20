@@ -194,6 +194,9 @@ export interface CompetitionRegistrationRecord {
   currency: string;
   paymentOrderNo?: string | null;
   participantNo?: string | null;
+  teamName?: string | null;
+  projectTitle?: string | null;
+  registrationSnapshotJson?: string | null;
   teamSnapshotJson?: string | null;
   projectSnapshotJson?: string | null;
   memberSnapshotJson?: string | null;
