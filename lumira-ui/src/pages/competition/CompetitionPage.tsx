@@ -3510,6 +3510,13 @@ const CompetitionRegistrationPage = () => {
         if (active) setPaymentOrder(order);
       })
       .catch(() => undefined);
+    void getRegistration(registrationId)
+      .then((registration) => {
+        if (!active) return;
+        setRegistrationRecord(registration);
+        setPaymentStatus(registration.status);
+      })
+      .catch((error) => showErrorMessage(error, '报名信息加载失败'));
     return () => { active = false; };
   }, [paymentStatus, registrationId, step]);
 
