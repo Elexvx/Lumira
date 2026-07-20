@@ -166,6 +166,14 @@ class CompetitionRegistrationAppServiceTest {
         sql.collectionFieldRows.add(configField("MEMBER_FIELD", "role", "成员角色", "ROLE", true));
         sql.collectionFieldRows.add(configField("MEMBER_FIELD", "enrollmentDate", "入学年份", "DATE", true));
         sql.collectionFieldRows.add(configField("MEMBER_FIELD", "graduationDate", "毕业年份", "DATE", true));
+        Map<String, Object> intellectualPropertyType = configField(
+                "PROJECT_FIELD", "intellectualPropertyType", "知识产权类型", "TEXT", true);
+        intellectualPropertyType.put("contentJson", "{\"fieldType\":\"TEXT\",\"groupLabel\":\"知识产权信息\"}");
+        sql.collectionFieldRows.add(intellectualPropertyType);
+        Map<String, Object> intellectualPropertyName = configField(
+                "PROJECT_FIELD", "intellectualPropertyName", "知识产权名称", "TEXT", true);
+        intellectualPropertyName.put("contentJson", "{\"fieldType\":\"TEXT\",\"groupLabel\":\"知识产权信息\"}");
+        sql.collectionFieldRows.add(intellectualPropertyName);
         CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
         request.getMembers().get(0).setExtraValues(Map.of(
                 "mobile", "13800138000",

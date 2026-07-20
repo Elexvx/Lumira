@@ -84,6 +84,8 @@ public class CompetitionRegistrationAppService {
     private static final Set<String> COLLECTION_FIELD_TYPES = Set.of(
             "TEXT", "TEXTAREA", "IMAGE", "ROLE", "NUMBER", "DATE", "SELECT", "MULTI_SELECT", "MOBILE", "EMAIL"
     );
+    private static final String INTELLECTUAL_PROPERTY_GROUP = "知识产权信息";
+    private static final String INTELLECTUAL_PROPERTY_ENTRIES_KEY = "intellectualProperties";
     private static final Pattern MOBILE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
@@ -1947,6 +1949,9 @@ public class CompetitionRegistrationAppService {
             }
         }
         for (CollectedFieldDefinition field : scoped) {
+            if (isIntellectualPropertyField(field)) {
+                continue;
+            }
             String standardKey = resolveStandardCollectedFieldKey(scope, field.itemKey());
             Object value = standardKey == null ? extras.get(field.itemKey()) : standardValues.get(standardKey);
             if (field.required() && !hasCollectedValue(value)) {
@@ -1954,6 +1959,51 @@ public class CompetitionRegistrationAppService {
             }
             if (hasCollectedValue(value)) {
                 validateCollectedValue(field, value);
+            }
+        }
+        validateIntellectualPropertyValues(extras, scoped.stream()
+                .filter(this::isIntellectualPropertyField)
+                .toList());
+    }
+
+    private void validateIntellectualPropertyValues(
+            Map<String, Object> extraValues,
+            List<CollectedFieldDefinition> fields
+    ) {
+        if (fields.isEmpty()) return;
+        Object rawEntries = extraValues.get(INTELLECTUAL_PROPERTY_ENTRIES_KEY);
+        List<?> entries;
+        if (rawEntries instanceof List<?> list) {
+            entries = list;
+        } else {
+            Map<String, Object> legacyEntry = fields.stream()
+                    .filter(field -> extraValues.containsKey(field.itemKey()))
+                    .collect(java.util.stream.Collectors.toMap(
+                            CollectedFieldDefinition::itemKey,
+                            field -> extraValues.get(field.itemKey()),
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
+            entries = legacyEntry.isEmpty() ? List.of() : List.of(legacyEntry);
+        }
+        if (entries.isEmpty()) {
+            fields.stream().filter(CollectedFieldDefinition::required).findFirst().ifPresent(field -> {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Required registration field is missing: " + field.title());
+            });
+            return;
+        }
+        for (Object entry : entries) {
+            if (!(entry instanceof Map<?, ?> values)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Registration field has an invalid value: " + INTELLECTUAL_PROPERTY_GROUP);
+            }
+            for (CollectedFieldDefinition field : fields) {
+                Object value = values.get(field.itemKey());
+                if (field.required() && !hasCollectedValue(value)) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "Required registration field is missing: " + field.title());
+                }
+                if (hasCollectedValue(value)) {
+                    validateCollectedValue(field, value);
+                }
             }
         }
     }
@@ -2021,7 +2071,11 @@ public class CompetitionRegistrationAppService {
     }
 
     private boolean isWorkflowCollectedField(String scope, String itemKey) {
-        return "PROJECT_FIELD".equals(scope) && "intellectualProperties".equals(itemKey);
+        return "PROJECT_FIELD".equals(scope) && INTELLECTUAL_PROPERTY_ENTRIES_KEY.equals(itemKey);
+    }
+
+    private boolean isIntellectualPropertyField(CollectedFieldDefinition field) {
+        return "PROJECT_FIELD".equals(field.scope()) && INTELLECTUAL_PROPERTY_GROUP.equals(field.groupLabel());
     }
 
     private String resolveStandardCollectedFieldKey(String scope, String itemKey) {
