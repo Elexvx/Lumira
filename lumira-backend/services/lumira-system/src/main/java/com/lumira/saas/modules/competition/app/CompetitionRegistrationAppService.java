@@ -1927,15 +1927,22 @@ public class CompetitionRegistrationAppService {
     ) {
         List<CollectedFieldDefinition> scoped = definitions.stream().filter(field -> scope.equals(field.scope())).toList();
         if (scoped.isEmpty()) {
-            if (extraValues != null && !extraValues.isEmpty()) {
-                throw biz(ErrorCode.VALIDATION_ERROR, "Unknown or disabled registration field: " + extraValues.keySet().iterator().next());
+            if (extraValues != null) {
+                String unknownKey = extraValues.keySet().stream()
+                        .filter(key -> !isWorkflowCollectedField(scope, key))
+                        .findFirst()
+                        .orElse(null);
+                if (unknownKey != null) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "Unknown or disabled registration field: " + unknownKey);
+                }
             }
             return;
         }
         Map<String, Object> extras = extraValues == null ? Map.of() : extraValues;
         Set<String> configuredKeys = scoped.stream().map(CollectedFieldDefinition::itemKey).collect(java.util.stream.Collectors.toSet());
         for (String key : extras.keySet()) {
-            if (!configuredKeys.contains(key) || resolveStandardCollectedFieldKey(scope, key) != null) {
+            if ((!configuredKeys.contains(key) && !isWorkflowCollectedField(scope, key))
+                    || resolveStandardCollectedFieldKey(scope, key) != null) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Unknown or disabled registration field: " + key);
             }
         }
@@ -2011,6 +2018,10 @@ public class CompetitionRegistrationAppService {
     private boolean isYearOnlyMemberDateField(CollectedFieldDefinition field) {
         return "MEMBER_FIELD".equals(field.scope())
                 && Set.of("enrollmentDate", "graduationDate").contains(field.itemKey());
+    }
+
+    private boolean isWorkflowCollectedField(String scope, String itemKey) {
+        return "PROJECT_FIELD".equals(scope) && "intellectualProperties".equals(itemKey);
     }
 
     private String resolveStandardCollectedFieldKey(String scope, String itemKey) {

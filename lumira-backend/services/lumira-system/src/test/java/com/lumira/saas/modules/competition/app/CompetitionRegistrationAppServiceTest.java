@@ -179,6 +179,14 @@ class CompetitionRegistrationAppServiceTest {
                 "graduationDate", "2028",
                 "role", "成员"
         ));
+        CompetitionRegistrationDTO.ProjectSnapshotRequest projectSnapshot = new CompetitionRegistrationDTO.ProjectSnapshotRequest();
+        projectSnapshot.setExtraValues(Map.of(
+                "intellectualProperties", List.of(Map.of(
+                        "intellectualPropertyType", "软件著作权",
+                        "intellectualPropertyName", "报名流程验收软件"
+                ))
+        ));
+        request.setProjectSnapshot(projectSnapshot);
 
         CompetitionRegistrationVO.Registration registration = service(sql, teamApiRejectingLookup())
                 .createRegistration(student(), request);
@@ -191,6 +199,8 @@ class CompetitionRegistrationAppServiceTest {
         JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
         assertThat(members.get(0).path("extraValues").path("role").asText()).isEqualTo("负责人");
         assertThat(members.get(1).path("extraValues").path("role").asText()).isEqualTo("成员");
+        JsonNode project = objectMapper.readTree(registration.getProjectSnapshotJson());
+        assertThat(project.path("extraValues").path("intellectualProperties")).hasSize(1);
     }
 
     @Test
