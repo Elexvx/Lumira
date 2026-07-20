@@ -18,6 +18,14 @@ export const registrationWizardStepItems = [
   { title: '支付方式' },
 ];
 
+export const shouldLoadPreliminaryStageForm = (step: number) => (
+  step >= registrationWizardStep.preliminaryMaterials
+);
+
+export const isMissingPreliminaryMaterialsError = (message: string) => (
+  message.includes('Preliminary materials must be submitted before payment')
+);
+
 type RegistrationWizardAccessState = {
   competitionReady: boolean;
   teamReady: boolean;

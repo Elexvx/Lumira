@@ -101,10 +101,12 @@ import {
 } from '@/pages/competition/utils/registrationFieldValidation';
 import {
   REGISTRATION_WIZARD_FLOW_VERSION,
+  isMissingPreliminaryMaterialsError,
   normalizeRegistrationWizardDraftStep,
   registrationWizardStep,
   registrationWizardStepItems,
   resolveAllowedRegistrationWizardStep,
+  shouldLoadPreliminaryStageForm,
 } from '@/pages/competition/utils/registrationWizardFlow';
 import {
   isDeprecatedRegistrationContactField,
@@ -121,7 +123,7 @@ import {
 } from '@/pages/competition/utils/competitionSettingsNavigation';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message, modal } from '@/theme/antdFeedbackBridge';
-import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { API_OPTS, extractErrorMessage, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { validateMemberTextField } from './memberFieldValidation';
@@ -3129,7 +3131,7 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   useEffect(() => {
-    if (step !== registrationWizardStep.preliminaryMaterials) {
+    if (!shouldLoadPreliminaryStageForm(step)) {
       return;
     }
     const competitionId = toPositiveId(selectedCompetitionId)
@@ -3436,7 +3438,13 @@ const CompetitionRegistrationPage = () => {
       registrationActionRef.current?.reload();
       if (!order.paymentUrl) message.info('支付链接正在生成，弹窗会自动刷新');
     } catch (error) {
-      showErrorMessage(error, '支付订单生成失败');
+      const errorMessage = extractErrorMessage(error, '支付订单生成失败');
+      if (isMissingPreliminaryMaterialsError(errorMessage)) {
+        message.error('请先提交初赛材料');
+        setWizardStep(registrationWizardStep.preliminaryMaterials);
+      } else {
+        showErrorMessage(error, '支付订单生成失败');
+      }
     } finally {
       setLoading(false);
     }
@@ -4653,7 +4661,7 @@ const CompetitionRegistrationPage = () => {
                 {nextButtonText}
               </Button>
             ) : (
-              <Button type="primary" loading={loading} disabled={!canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
+              <Button type="primary" loading={loading} disabled={stageFormLoading || !canPayRegistration || !selectedPaymentProvider} onClick={() => void pay()}>
                 立即支付
               </Button>
             )}
