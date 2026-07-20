@@ -621,6 +621,7 @@ const ProjectForm = ({
   <Form<ProjectFormValues>
     form={form}
     layout="vertical"
+    className="project-management-form"
     onValuesChange={onValuesChange}
     initialValues={{
       locale: 'zh',
@@ -631,56 +632,57 @@ const ProjectForm = ({
       featured: false,
     }}
   >
-    <Form.Item name="title" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
-      <Input maxLength={128} />
-    </Form.Item>
-    {showCode ? (
-      <Form.Item name="code" label="项目编码">
-        <Input maxLength={64} placeholder="不填时自动生成" />
+    <div className="project-management-form__grid">
+      <Form.Item
+        name="title"
+        label="项目名称"
+        rules={[{ required: true, message: '请输入项目名称' }]}
+        className="project-management-form__wide"
+      >
+        <Input maxLength={128} />
       </Form.Item>
-    ) : null}
-    <Space size="middle" style={{ width: '100%' }} align="start" wrap>
-      <Form.Item name="category" label="项目分类" rules={[{ required: true, message: '请选择项目分类' }]} style={{ flex: 1, minWidth: 180 }}>
+      {showCode ? (
+        <Form.Item name="code" label="项目编码" className="project-management-form__wide">
+          <Input maxLength={64} placeholder="不填时自动生成" />
+        </Form.Item>
+      ) : null}
+      <Form.Item name="category" label="项目分类" rules={[{ required: true, message: '请选择项目分类' }]}>
         <Select showSearch options={categoryOptions} optionFilterProp="label" />
       </Form.Item>
-      <Form.Item name="locale" label="语言" rules={[{ required: true }]} style={{ flex: 1, minWidth: 160 }}>
+      <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
         <Select options={localeOptions} />
       </Form.Item>
-    </Space>
-    <Form.Item name="description" label="项目简介">
-      <Input.TextArea rows={4} maxLength={1000} showCount />
-    </Form.Item>
-    <Form.Item name="ownerName" label="项目负责人">
-      <Input maxLength={128} />
-    </Form.Item>
-    <Space size="middle" style={{ width: '100%' }} align="start" wrap>
-      <Form.Item name="rating" label="推荐等级" style={{ flex: 1, minWidth: 160 }}>
+      <Form.Item name="description" label="项目简介" className="project-management-form__wide">
+        <Input.TextArea rows={4} maxLength={1000} showCount />
+      </Form.Item>
+      <Form.Item name="ownerName" label="项目负责人" className="project-management-form__wide">
+        <Input maxLength={128} />
+      </Form.Item>
+      <Form.Item name="rating" label="推荐等级">
         <Select options={ratingOptions} />
       </Form.Item>
-      <Form.Item name="status" label="状态" rules={[{ required: true }]} style={{ flex: 1, minWidth: 160 }}>
+      <Form.Item name="status" label="状态" rules={[{ required: true }]}>
         <Select options={statusOptions} />
       </Form.Item>
-      <Form.Item name="sort" label="排序" style={{ flex: 1, minWidth: 140 }}>
+      <Form.Item name="sort" label="排序">
         <InputNumber min={0} max={9999} style={{ width: '100%' }} />
       </Form.Item>
-    </Space>
-    <Form.Item name="featured" label="重点项目" valuePropName="checked">
-      <Switch checkedChildren="是" unCheckedChildren="否" />
-    </Form.Item>
-    <Form.Item name="tags" label="标签">
-      <Input maxLength={1000} placeholder="多个标签用英文逗号分隔" />
-    </Form.Item>
-    <Form.Item name="imageUrl" label="封面地址">
-      <Input maxLength={512} />
-    </Form.Item>
-    <Space size="middle" style={{ width: '100%' }} align="start" wrap>
-      <Form.Item name="ctaLabel" label="按钮文案" style={{ flex: 1, minWidth: 180 }}>
-        <Input maxLength={64} />
+      <Form.Item name="featured" label="重点项目" valuePropName="checked">
+        <Switch checkedChildren="是" unCheckedChildren="否" />
       </Form.Item>
-      <Form.Item name="ctaHref" label="按钮链接" style={{ flex: 1, minWidth: 180 }}>
+      <Form.Item name="tags" label="标签" className="project-management-form__wide">
+        <Input maxLength={1000} placeholder="多个标签用英文逗号分隔" />
+      </Form.Item>
+      <Form.Item name="imageUrl" label="封面地址" className="project-management-form__wide">
         <Input maxLength={512} />
       </Form.Item>
-    </Space>
+      <Form.Item name="ctaLabel" label="按钮文案">
+        <Input maxLength={64} />
+      </Form.Item>
+      <Form.Item name="ctaHref" label="按钮链接">
+        <Input maxLength={512} />
+      </Form.Item>
+    </div>
   </Form>
 );
 

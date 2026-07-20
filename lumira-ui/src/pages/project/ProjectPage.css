@@ -2,6 +2,30 @@
   padding: 0 0 32px;
 }
 
+.project-management-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
+.project-management-form__grid > .ant-form-item {
+  min-width: 0;
+}
+
+.project-management-form__wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 575px) {
+  .project-management-form__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .project-management-form__wide {
+    grid-column: auto;
+  }
+}
+
 .project-table-identity {
   display: flex;
   min-width: 0;
