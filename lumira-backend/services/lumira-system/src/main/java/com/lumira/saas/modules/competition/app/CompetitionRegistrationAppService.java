@@ -2043,14 +2043,8 @@ public class CompetitionRegistrationAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, "Registration field contains an unavailable option: " + field.title());
         }
         String text = String.valueOf(value).trim();
-        if ("DATE".equals(field.fieldType())) {
-            try {
-                if (!isYearOnlyMemberDateField(field) || !text.matches("\\d{4}")) {
-                    LocalDate.parse(text);
-                }
-            } catch (RuntimeException exception) {
-                throw biz(ErrorCode.VALIDATION_ERROR, "Invalid date: " + field.title());
-            }
+        if ("DATE".equals(field.fieldType()) && !isValidCollectedDate(field, text)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid date: " + field.title());
         }
         if ("IMAGE".equals(field.fieldType()) && (!StringUtils.hasText(text) || text.length() > 2048)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid image value: " + field.title());
@@ -2068,6 +2062,23 @@ public class CompetitionRegistrationAppService {
     private boolean isYearOnlyMemberDateField(CollectedFieldDefinition field) {
         return "MEMBER_FIELD".equals(field.scope())
                 && Set.of("enrollmentDate", "graduationDate").contains(field.itemKey());
+    }
+
+    private boolean isValidCollectedDate(CollectedFieldDefinition field, String text) {
+        if (isYearOnlyMemberDateField(field) && text.matches("\\d{4}")) {
+            return true;
+        }
+        try {
+            LocalDate.parse(text);
+            return true;
+        } catch (DateTimeParseException ignored) {
+            try {
+                DateTimeFormatter.ISO_DATE_TIME.parse(text);
+                return true;
+            } catch (DateTimeParseException invalidDateTime) {
+                return false;
+            }
+        }
     }
 
     private boolean isWorkflowCollectedField(String scope, String itemKey) {

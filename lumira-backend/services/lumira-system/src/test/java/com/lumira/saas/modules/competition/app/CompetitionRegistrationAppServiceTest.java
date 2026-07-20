@@ -174,6 +174,10 @@ class CompetitionRegistrationAppServiceTest {
                 "PROJECT_FIELD", "intellectualPropertyName", "知识产权名称", "TEXT", true);
         intellectualPropertyName.put("contentJson", "{\"fieldType\":\"TEXT\",\"groupLabel\":\"知识产权信息\"}");
         sql.collectionFieldRows.add(intellectualPropertyName);
+        Map<String, Object> grantDate = configField(
+                "PROJECT_FIELD", "grantDate", "授权/登记日期", "DATE", false);
+        grantDate.put("contentJson", "{\"fieldType\":\"DATE\",\"groupLabel\":\"知识产权信息\"}");
+        sql.collectionFieldRows.add(grantDate);
         CompetitionRegistrationDTO.RegistrationCreateRequest request = inlineRegistrationRequest();
         request.getMembers().get(0).setExtraValues(Map.of(
                 "mobile", "13800138000",
@@ -191,7 +195,8 @@ class CompetitionRegistrationAppServiceTest {
         projectSnapshot.setExtraValues(Map.of(
                 "intellectualProperties", List.of(Map.of(
                         "intellectualPropertyType", "软件著作权",
-                        "intellectualPropertyName", "报名流程验收软件"
+                        "intellectualPropertyName", "报名流程验收软件",
+                        "grantDate", "2026-07-29T16:00:00.000Z"
                 ))
         ));
         request.setProjectSnapshot(projectSnapshot);
