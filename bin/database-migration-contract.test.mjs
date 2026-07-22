@@ -85,8 +85,12 @@ test('competition registration snapshots stay in one registration row', () => {
 
   assert.match(baseline, /`registration_snapshot_json` longtext/);
   assert.match(baseline, /idx_competition_registration_export.*`competition_id`,`deleted`,`id`/);
-  assert.match(migration, /ADD COLUMN `registration_snapshot_json` longtext/);
-  assert.match(migration, /idx_competition_registration_export.*`competition_id`, `deleted`, `id`/);
+  assert.match(migration, /information_schema\.columns/);
+  assert.match(migration, /column_name = 'registration_snapshot_json'/);
+  assert.match(migration, /ADD COLUMN `?registration_snapshot_json`? longtext/);
+  assert.match(migration, /information_schema\.statistics/);
+  assert.match(migration, /index_name = 'idx_competition_registration_export'/);
+  assert.match(migration, /idx_competition_registration_export.*`?competition_id`?, `?deleted`?, `?id`?/);
   assert.match(migration, /JSON_EXTRACT\(`team_snapshot_json`, '\$\.registrationExtraValues'\)/);
   assert.match(migration, /JSON_REMOVE\(`team_snapshot_json`, '\$\.registrationExtraValues'\)/);
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
