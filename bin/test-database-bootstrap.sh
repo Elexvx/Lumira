@@ -48,4 +48,19 @@ if [ "$result" != "1
   exit 1
 fi
 
-echo 'Fresh database bootstrap contract passed.'
+for migration in "$repo_root"/deploy/migrations/V*.sql; do
+  echo "Applying $(basename "$migration") to fresh database bootstrap..."
+  docker exec -i "$container_name" mysql -uroot -p"$password" saas < "$migration"
+done
+
+snapshot_contract=$(docker exec "$container_name" mysql -N -uroot -p"$password" -e \
+  "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='saas' AND table_name='competition_registration' AND column_name='registration_snapshot_json'; SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='saas' AND table_name='competition_registration' AND index_name='idx_competition_registration_export';" \
+  2>/dev/null)
+
+if [ "$snapshot_contract" != "1
+1" ]; then
+  echo "Unexpected registration snapshot migration result: $snapshot_contract" >&2
+  exit 1
+fi
+
+echo 'Fresh database bootstrap and online migration chain passed.'
