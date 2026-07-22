@@ -54,7 +54,7 @@ for migration in "$repo_root"/deploy/migrations/V*.sql; do
 done
 
 snapshot_contract=$(docker exec "$container_name" mysql -N -uroot -p"$password" -e \
-  "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='saas' AND table_name='competition_registration' AND column_name='registration_snapshot_json'; SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='saas' AND table_name='competition_registration' AND index_name='idx_competition_registration_export';" \
+  "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='saas' AND table_name='competition_registration' AND column_name='registration_snapshot_json'; SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema='saas' AND table_name='competition_registration' AND index_name='idx_competition_registration_export';" \
   2>/dev/null)
 
 if [ "$snapshot_contract" != "1
