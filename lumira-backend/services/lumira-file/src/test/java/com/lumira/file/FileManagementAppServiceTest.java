@@ -3,6 +3,7 @@ package com.lumira.file;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
@@ -531,6 +532,40 @@ class FileManagementAppServiceTest {
         assertThat(typed.getHasMore()).isFalse();
         assertThat(typed.getTotalCapped()).isFalse();
         assertThat(typed.getRecords()).hasSize(2);
+    }
+
+    @Test
+    void listStorageSpaceOptions_shouldAllowCompetitionEditorsWithoutFileManagementPermission() {
+        CurrentUser currentUser = currentUser("aiadc:competition:update");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("aiadc:competition:update"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+        when(fileStorageSpaceMapper.listWithUsage(100L, 0L)).thenReturn(storageSpaceEntities(2));
+
+        List<StorageSpaceOptionDTO> options = service.listStorageSpaceOptions(currentUser);
+
+        assertThat(options)
+                .extracting(StorageSpaceOptionDTO::storageKey)
+                .containsExactly("bucket-0", "bucket-1");
+    }
+
+    @Test
+    void listStorageSpaceOptions_shouldRejectUsersWithoutCompetitionOrFileManagementPermission() {
+        CurrentUser currentUser = currentUser("system:file:view");
+        when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
+                List.of("system:file:view"),
+                List.of(),
+                List.of(),
+                List.of()
+        ));
+
+        assertThatThrownBy(() -> service.listStorageSpaceOptions(currentUser))
+                .isInstanceOf(com.lumira.common.exception.BizException.class);
+
+        verifyNoInteractions(fileStorageSpaceMapper);
     }
 
     @Test

@@ -574,6 +574,29 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void saveSettingsModuleShouldRequireStorageLocationForMaterialItems() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionDTO.ConfigItemRequest material = new CompetitionDTO.ConfigItemRequest();
+        material.setItemType("STAGE_MATERIAL");
+        material.setItemKey("work-file");
+        material.setTitle("作品文件");
+        material.setContentJson("""
+                {"stageCode":"PRELIMINARY","fileFormat":"DOCUMENT","maxSizeMb":100}
+                """);
+        CompetitionDTO.SettingsModuleRequest request = new CompetitionDTO.SettingsModuleRequest();
+        request.setItems(List.of(material));
+
+        assertThatThrownBy(() -> service.saveSettingsModule(admin(), "competition-uuid", "stage-materials", request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getMessage()).contains("作品文件", "必须选择保存位置");
+                });
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
     void updateCompetitionRejectsPublishingWhenRequiredScheduleIsMissing() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionManagementAppService service = service(jdbcTemplate);
@@ -768,6 +791,59 @@ class CompetitionManagementAppServiceTest {
                 .contains("competition_uuid = ?")
                 .contains("config_set_id = ?")
                 .contains("id in");
+    }
+
+    @Test
+    void saveSettingsModuleShouldSynchronizeMaterialConfigIntoParticipantStageForm() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        String metadata = """
+                {"stageCode":"PRELIMINARY","fileFormat":"DOCUMENT","maxSizeMb":100,"storageKey":"competition_materials"}
+                """;
+        CompetitionDTO.ConfigItemRequest materialRequest = new CompetitionDTO.ConfigItemRequest();
+        materialRequest.setItemType("STAGE_MATERIAL");
+        materialRequest.setItemKey("work-file");
+        materialRequest.setTitle("作品文件");
+        materialRequest.setContentJson(metadata);
+        materialRequest.setRequiredFlag(true);
+        materialRequest.setEnabled(true);
+        CompetitionDTO.SettingsModuleRequest request = new CompetitionDTO.SettingsModuleRequest();
+        request.setItems(List.of(materialRequest));
+        CompetitionVO.ConfigItem material = configItem(
+                "STAGE_MATERIAL",
+                "work-file",
+                "作品文件",
+                null,
+                metadata
+        );
+        material.setRequiredFlag(true);
+        jdbcTemplate.enqueue(
+                List.of(competition("published")),
+                List.of(configSet()),
+                List.of(),
+                List.of(material),
+                List.of(competition("published")),
+                List.of(configSet()),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(material),
+                List.of()
+        );
+        jdbcTemplate.updateCount = 1;
+
+        service.saveSettingsModule(admin(), "competition-uuid", "materials", request);
+
+        assertThat(jdbcTemplate.updates)
+                .anyMatch(sql -> sql.contains("update competition_stage set stage_name"));
+        assertThat(jdbcTemplate.updates)
+                .anyMatch(sql -> sql.contains("update competition_stage_form set form_name"));
+        assertThat(jdbcTemplate.updateArguments)
+                .anyMatch(arguments -> java.util.Arrays.stream(arguments)
+                        .anyMatch(argument -> argument instanceof String value
+                                && value.contains("\"storageKey\":\"competition_materials\"")
+                                && value.contains("\"required\":true")));
     }
 
     @Test

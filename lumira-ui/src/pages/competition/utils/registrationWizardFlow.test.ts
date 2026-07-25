@@ -14,7 +14,7 @@ describe('competition registration wizard flow', () => {
   it('collects project basics with the team before sequential materials', () => {
     expect(registrationWizardStepItems.map((item) => item.title)).toEqual([
       '选择赛事',
-      '团队与学生',
+      '基本信息',
       '初赛材料',
       '项目佐证材料',
       '信息确认',

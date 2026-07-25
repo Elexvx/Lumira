@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CompetitionStageFormRecord, CompetitionStageRecord } from '@/services/competition/types';
+import { ErrorCode } from '@/enums/errorCode';
+import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { loadOptionalPreliminaryStageForm } from './loadOptionalStageForm';
 
 const stage = (id: number, stageCode: string): CompetitionStageRecord => ({
@@ -42,19 +44,33 @@ describe('loadOptionalPreliminaryStageForm', () => {
     await expect(loadOptionalPreliminaryStageForm(7, vi.fn().mockResolvedValue([]), vi.fn())).resolves.toBeUndefined();
   });
 
-  it('阶段列表加载失败时降级为 undefined', async () => {
+  it('阶段列表加载失败时向上抛出真实错误', async () => {
     await expect(
       loadOptionalPreliminaryStageForm(7, vi.fn().mockRejectedValue(new Error('403')), vi.fn()),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow('403');
   });
 
-  it('阶段表单加载失败时降级为 undefined', async () => {
+  it('阶段表单不存在时降级为 undefined', async () => {
     await expect(
       loadOptionalPreliminaryStageForm(
         7,
         vi.fn().mockResolvedValue([stage(12, 'PRELIMINARY')]),
-        vi.fn().mockRejectedValue(new Error('missing form')),
+        vi.fn().mockRejectedValue(new ApiRequestError(
+          ErrorCode.NOT_FOUND,
+          'missing form',
+          { httpStatus: 404 },
+        )),
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it('阶段表单服务异常时向上抛出真实错误', async () => {
+    await expect(
+      loadOptionalPreliminaryStageForm(
+        7,
+        vi.fn().mockResolvedValue([stage(12, 'PRELIMINARY')]),
+        vi.fn().mockRejectedValue(new Error('500')),
+      ),
+    ).rejects.toThrow('500');
   });
 });

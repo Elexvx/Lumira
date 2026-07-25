@@ -54,6 +54,24 @@ describe('competition settings page-level save guards', () => {
     })).toBe(false);
   });
 
+  it('requires a storage space and complete upload constraints for material items', () => {
+    const material = {
+      title: '作品文件',
+      itemKey: 'work-file',
+      metadata: {
+        stageCode: 'PRELIMINARY',
+        fileFormat: 'DOCUMENT',
+        maxSizeMb: 100,
+      },
+    };
+
+    expect(isConfigModuleReadyToSave('files', [material])).toBe(false);
+    expect(isConfigModuleReadyToSave('files', [{
+      ...material,
+      metadata: { ...material.metadata, storageKey: 'competition_materials' },
+    }])).toBe(true);
+  });
+
   it('requires the review range that is rendered in detailed timeline settings', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],

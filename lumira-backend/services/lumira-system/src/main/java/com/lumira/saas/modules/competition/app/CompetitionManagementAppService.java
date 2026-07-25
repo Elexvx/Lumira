@@ -69,6 +69,7 @@ public class CompetitionManagementAppService {
             "payments", Set.of("PAYMENT_SETTINGS"),
             "files", Set.of("REQUIRED_FILE"),
             "stage-materials", Set.of("STAGE_MATERIAL"),
+            "materials", Set.of("REQUIRED_FILE", "STAGE_MATERIAL"),
             "timeline", Set.of("TIMELINE")
     );
     private static final String COMPETITION_CATEGORY_DICT = "aiadc_competition_category";
@@ -589,6 +590,9 @@ public class CompetitionManagementAppService {
                     concatParams(List.of(userId, userUuid, LocalDateTime.now(), competition.getUuid(), configSet.getId()), deletedIds).toArray()
             );
             requireCompetitionWrite(deleted, "Competition config item changed, please retry");
+        }
+        if ("files".equals(module) || "stage-materials".equals(module) || "materials".equals(module)) {
+            synchronizeStageForms(competition, configSet, userId, userUuid);
         }
         recordConfigAudit(currentUser, competition.getUuid(), "SAVE_SETTINGS", module.toUpperCase(Locale.ROOT), "Saved " + request.getItems().size() + " config items");
         return getCompetitionSettings(currentUser, competition.getUuid());
@@ -1295,7 +1299,35 @@ public class CompetitionManagementAppService {
         normalized.setSortOrder(request.getSortOrder());
         normalized.setRequiredFlag(Boolean.TRUE.equals(request.getRequiredFlag()));
         normalized.setEnabled(request.getEnabled() == null || Boolean.TRUE.equals(request.getEnabled()));
+        validateMaterialConfigItem(normalized);
         return normalized;
+    }
+
+    private void validateMaterialConfigItem(CompetitionDTO.ConfigItemRequest item) {
+        if (!"REQUIRED_FILE".equals(item.getItemType()) && !"STAGE_MATERIAL".equals(item.getItemType())) {
+            return;
+        }
+        JsonNode metadata;
+        try {
+            metadata = StringUtils.hasText(item.getContentJson())
+                    ? OBJECT_MAPPER.readTree(item.getContentJson())
+                    : OBJECT_MAPPER.createObjectNode();
+        } catch (Exception error) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "材料配置格式不正确");
+        }
+        String label = "材料“" + item.getTitle() + "”";
+        if (!StringUtils.hasText(metadata.path("stageCode").asText(null))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "必须设置所属阶段");
+        }
+        if (!StringUtils.hasText(metadata.path("fileFormat").asText(null))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "必须设置文件格式");
+        }
+        if (!metadata.path("maxSizeMb").canConvertToInt() || metadata.path("maxSizeMb").asInt() <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "必须设置有效的文件大小上限");
+        }
+        if (!StringUtils.hasText(metadata.path("storageKey").asText(null))) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "必须选择保存位置");
+        }
     }
 
     private String configItemIdentity(CompetitionVO.ConfigItem item) {

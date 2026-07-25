@@ -25,6 +25,9 @@ export type CompetitionSettingsConfigItemDraft = {
     fieldType?: string | null;
     options?: string | null;
     stageCode?: string | null;
+    fileFormat?: string | null;
+    maxSizeMb?: number | null;
+    storageKey?: string | null;
   } | null;
 };
 
@@ -178,7 +181,12 @@ export const isConfigModuleReadyToSave = (
         && (!['SELECT', 'MULTI_SELECT'].includes(item.metadata?.fieldType || '') || hasText(item.metadata?.options));
     }
     if (moduleKey === 'files') {
-      return hasText(item.title) && hasText(item.itemKey) && hasText(item.metadata?.stageCode);
+      return hasText(item.title)
+        && hasText(item.itemKey)
+        && hasText(item.metadata?.stageCode)
+        && hasText(item.metadata?.fileFormat)
+        && Number(item.metadata?.maxSizeMb) > 0
+        && hasText(item.metadata?.storageKey);
     }
     return hasText(item.title) && hasText(item.itemKey);
   });

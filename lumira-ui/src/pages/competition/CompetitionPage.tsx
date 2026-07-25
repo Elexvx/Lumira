@@ -4,6 +4,7 @@ import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, 
 import type { DatePickerProps, UploadFile } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
@@ -39,7 +40,6 @@ import {
   saveCompetitionSettingsModule,
   reconfirmRegistration,
   updateCompetitionStage,
-  upsertCompetitionStageForm,
   updateCompetition,
   updateCompetitionDraft,
   type RegistrationSnapshotMemberPayload,
@@ -62,7 +62,7 @@ import type {
   CompetitionUpsertPayload,
 } from '@/services/competition/types';
 import { request, requestFile } from '@/services/common/request';
-import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult, PaymentProviderSettings } from '@/types/api';
+import type { FileObjectRecord, PaymentProviderSettings } from '@/types/api';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import PaymentResultPage from '@/pages/competition/PaymentResultPage';
@@ -4069,7 +4069,7 @@ const CompetitionRegistrationPage = () => {
 
   const renderRegistrationProjectForm = () => (
     <section className="competition-registration-project-form">
-      <Typography.Title level={5}>本次报名项目</Typography.Title>
+      <Typography.Title level={5}>项目信息</Typography.Title>
       <Form.Item name="projectId" hidden>
         <Input />
       </Form.Item>
@@ -4166,19 +4166,42 @@ const CompetitionRegistrationPage = () => {
           {teamAvatarField ? <Form.Item label={teamAvatarField.title} required={teamAvatarField.required}>
             <Space>
               <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                disabled={teamAvatarUploading}
-                beforeUpload={async (file) => {
-                  await uploadRegistrationTeamAvatar(file);
-                  return Upload.LIST_IGNORE;
+              <ImgCrop
+                aspect={1}
+                cropShape="rect"
+                showGrid
+                zoomSlider
+                rotationSlider
+                modalTitle="裁剪团队头像"
+                modalOk="确认上传"
+                modalCancel="取消"
+                modalWidth={520}
+                beforeCrop={(file) => {
+                  if (!file.type.startsWith('image/')) {
+                    message.error('请上传图片文件');
+                    return false;
+                  }
+                  if (file.size > 20 * 1024 * 1024) {
+                    message.error('请上传小于 20MB 的图片');
+                    return false;
+                  }
+                  return true;
                 }}
               >
-                <Button icon={<UploadOutlined />} loading={teamAvatarUploading}>
-                  上传
-                </Button>
-              </Upload>
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  disabled={teamAvatarUploading}
+                  beforeUpload={async (file) => {
+                    await uploadRegistrationTeamAvatar(file);
+                    return Upload.LIST_IGNORE;
+                  }}
+                >
+                  <Button icon={<UploadOutlined />} loading={teamAvatarUploading}>
+                    上传
+                  </Button>
+                </Upload>
+              </ImgCrop>
               {newTeamAvatarUrl ? (
                 <Button
                   type="link"
@@ -4685,6 +4708,13 @@ type EditableCompetitionConfigItem = CompetitionConfigItem & {
 type StorageSpaceOption = {
   label: string;
   value: string;
+  defaultStorage?: boolean;
+};
+
+type StorageSpaceOptionRecord = {
+  title: string;
+  storageKey: string;
+  defaultStorage?: boolean | null;
 };
 
 type PaymentProviderOption = {
@@ -4970,24 +5000,21 @@ const fileStageOptions = [
   { label: '决赛', value: 'FINAL' },
 ];
 
-const buildStorageSpaceOptions = (records: FileStorageSpaceRecord[]): StorageSpaceOption[] =>
-  records
-    .filter((item) => item.status !== 'DISABLED')
+const buildStorageSpaceOptions = (records: StorageSpaceOptionRecord[]): StorageSpaceOption[] =>
+  [...records]
+    .sort((left, right) => Number(Boolean(right.defaultStorage)) - Number(Boolean(left.defaultStorage)))
     .map((item) => ({
       value: item.storageKey,
-      label: [item.title || item.storageKey, item.storageKey, item.bucketName].filter(Boolean).join(' / '),
+      label: `${[item.title || item.storageKey, item.storageKey].filter(Boolean).join(' / ')}${item.defaultStorage ? '（默认）' : ''}`,
+      defaultStorage: Boolean(item.defaultStorage),
     }));
 
 const loadStorageSpaceOptions = async () => {
-  const result = await request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
+  const records = await request<StorageSpaceOptionRecord[]>('/v1/files/storage-space-options', {
     method: 'GET',
-    params: {
-      pageNo: 1,
-      pageSize: 1000,
-    },
     ...API_OPTS.SILENT,
   });
-  return buildStorageSpaceOptions(result.records || []);
+  return buildStorageSpaceOptions(records || []);
 };
 
 type RegistrationFieldScope = Extract<
@@ -5259,19 +5286,31 @@ const renderConfigItemFields = (
         <Form.Item name={[fieldName, 'title']} label="文件名称" rules={[{ required: true, message: '请输入文件名称' }]}>
           <Input placeholder="例如 参赛作品、授权证明" maxLength={64} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'metadata', 'fileFormat']} label="文件格式">
+        <Form.Item
+          name={[fieldName, 'metadata', 'fileFormat']}
+          label="文件格式"
+          rules={[{ required: true, message: '请选择文件格式' }]}
+        >
           <Select options={fileFormatOptions} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'metadata', 'storageKey']} label="关联存储空间">
+        <Form.Item
+          name={[fieldName, 'metadata', 'storageKey']}
+          label="保存位置"
+          rules={[{ required: true, message: '请选择保存位置' }]}
+        >
           <Select
-            allowClear
             showSearch
             optionFilterProp="label"
-            placeholder="默认存储空间"
+            placeholder="请选择保存位置"
             options={storageSpaceOptions}
+            notFoundContent="没有可用的存储空间"
           />
         </Form.Item>
-        <Form.Item name={[fieldName, 'metadata', 'maxSizeMb']} label="大小上限 MB">
+        <Form.Item
+          name={[fieldName, 'metadata', 'maxSizeMb']}
+          label="大小上限 MB"
+          rules={[{ required: true, message: '请输入大小上限' }]}
+        >
           <InputNumber min={1} max={1024} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="上传说明">
@@ -5587,8 +5626,12 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
             const groupedItems = splitFileConfigItemsByModule(fileStageCode
               ? [...preservedItems, ...configItems]
               : configItems);
-            await saveCompetitionSettingsModule(competitionUuid, 'files', groupedItems.files, API_OPTS.SILENT);
-            return saveCompetitionSettingsModule(competitionUuid, 'stage-materials', groupedItems.stageMaterials, API_OPTS.SILENT);
+            return saveCompetitionSettingsModule(
+              competitionUuid,
+              'materials',
+              [...groupedItems.files, ...groupedItems.stageMaterials],
+              API_OPTS.SILENT,
+            );
           })()
         : await saveCompetitionSettingsModule(competitionUuid, module.key, configItems, API_OPTS.SILENT);
       onSaved(saved);
@@ -6613,56 +6656,8 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
 }, ref) => {
   const timelineRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const materialsRef = useRef<CompetitionSettingsPanelHandle | null>(null);
-  const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
   const materialStageTabs = useMemo(() => getCompetitionMaterialStageTabs(competition), [competition]);
   const activeStage = materialStageTabs.find((stage) => stage.key === activeTab) || materialStageTabs[0];
-
-  useEffect(() => {
-    let active = true;
-    void listCompetitionStages(competition.id)
-      .then((records) => {
-        if (active) setStages(records || []);
-      })
-      .catch((error) => showErrorMessage(error, '赛事阶段加载失败'));
-    return () => { active = false; };
-  }, [competition.id]);
-
-  const syncStageForms = useCallback(async (
-    materialItems: CompetitionConfigItem[],
-    currentStages: CompetitionStageRecord[],
-  ) => {
-    await Promise.all(currentStages.map((stage) => {
-      const exactItems = materialItems.filter((item) => (
-        getFileConfigItemStageCode(item) === stage.stageCode
-      ));
-      const fallbackItems = materialItems.filter((item) => (
-        getFileConfigItemStageCode(item) === 'GENERAL'
-      ));
-      const stageItems = exactItems.length ? exactItems : fallbackItems;
-      const formSchemaJson = JSON.stringify({
-        fields: stageItems
-          .filter((item) => item.enabled !== false)
-          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0))
-          .map((item) => {
-            const metadata = parseConfigItemMetadata(item.contentJson);
-            return {
-              key: item.itemKey,
-              label: item.title,
-              type: 'file',
-              required: Boolean(item.requiredFlag),
-              fileFormat: normalizeFileFormat(metadata.fileFormat),
-              maxSizeMb: metadata.maxSizeMb || 20,
-              storageKey: metadata.storageKey,
-            };
-          }),
-      });
-      return upsertCompetitionStageForm(stage.id, {
-        formName: `${stage.stageName}参赛材料`,
-        formSchemaJson,
-        status: 'ENABLED',
-      });
-    }));
-  }, []);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave: async () => {
@@ -6676,19 +6671,6 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
       return timelineSaved && materialsSaved;
     },
   }), []);
-
-  useEffect(() => {
-    if (!stages.length) return;
-    void syncStageForms(items, stages).catch((error) => showErrorMessage(error, '阶段材料模板同步失败'));
-  }, [items, stages, syncStageForms]);
-
-  const handleMaterialsSaved = useCallback(async (saved: CompetitionSettingsRecord) => {
-    onSettingsSaved(saved);
-    const materialItems = [...saved.files, ...saved.stageMaterials]
-      .filter((item) => item.enabled !== false)
-      .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
-    await syncStageForms(materialItems, stages);
-  }, [onSettingsSaved, stages, syncStageForms]);
 
   return activeTab === 'timeline' ? (
     <CompetitionTimelineSettingsPanel ref={timelineRef} competition={competition} onSaved={onCompetitionSaved} />
@@ -6709,7 +6691,7 @@ const CompetitionStageAndMaterialPanel = forwardRef<CompetitionSettingsPanelHand
         items={items}
         storageSpaceOptions={storageSpaceOptions}
         fileStageCode={activeStage.stageCode}
-        onSaved={(saved) => void handleMaterialsSaved(saved)}
+        onSaved={onSettingsSaved}
       />
     </section>
   ) : null;
@@ -6791,7 +6773,10 @@ const CompetitionSettingsPage = () => {
     setLoading(true);
     Promise.all([
       getCompetitionSettings(competitionUuid),
-      loadStorageSpaceOptions().catch(() => [] as StorageSpaceOption[]),
+      loadStorageSpaceOptions().catch((error) => {
+        showErrorMessage(error, '保存位置加载失败');
+        return [] as StorageSpaceOption[];
+      }),
       loadConfiguredPaymentProviderOptions().catch(() => [] as PaymentProviderOption[]),
     ])
       .then(([result, nextStorageSpaceOptions, nextPaymentProviderOptions]) => {

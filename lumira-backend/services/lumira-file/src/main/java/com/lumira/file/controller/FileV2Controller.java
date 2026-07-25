@@ -5,6 +5,7 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.api.file.StorageSpaceDTO;
+import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -131,6 +132,14 @@ public class FileV2Controller {
         require("system:file:manage");
         return ApiResponse.success(
                 fileManagementAppService.listStorageSpaces(currentUser(), pageNo, pageSize),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/storage-space-options")
+    public ApiResponse<List<StorageSpaceOptionDTO>> storageSpaceOptions() {
+        return ApiResponse.success(
+                fileManagementAppService.listStorageSpaceOptions(currentUser()),
                 TraceContext.getRequestId()
         );
     }

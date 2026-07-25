@@ -54,6 +54,7 @@ class FileV2ControllerTest {
         assertThat(getEndpoints)
                 .contains(
                         "list:",
+                        "storageSpaceOptions:/storage-space-options",
                         "storageSpaces:/storage-spaces",
                         "storageSpace:/storage-spaces/{storageKey}",
                         "detail:/{id}",

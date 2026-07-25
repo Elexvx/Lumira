@@ -11,7 +11,7 @@ export const registrationWizardStep = {
 
 export const registrationWizardStepItems = [
   { title: '选择赛事' },
-  { title: '团队与学生' },
+  { title: '基本信息' },
   { title: '初赛材料' },
   { title: '项目佐证材料' },
   { title: '信息确认' },

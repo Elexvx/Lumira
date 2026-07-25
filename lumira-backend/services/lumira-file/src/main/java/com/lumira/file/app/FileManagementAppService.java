@@ -5,6 +5,7 @@ import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
 import com.lumira.api.file.StorageSpaceDTO;
+import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -477,6 +478,26 @@ public class FileManagementAppService {
         response.setPageNo(safePageNo);
         response.setPageSize(safePageSize);
         return response;
+    }
+
+    public List<StorageSpaceOptionDTO> listStorageSpaceOptions(CurrentUser currentUser) {
+        TrustedCurrentUser actor = resolveTrustedCurrentUser(currentUser);
+        if (!hasPermission(actor, "system:file:manage")
+                && !hasPermission(actor, "aiadc:competition:update")) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "Permission denied");
+        }
+        ensureDefaultStorageSpaces();
+        return storageSpaceRepository
+                .listWithUsage(MAX_PAGE_SIZE, 0L)
+                .stream()
+                .filter(item -> "ENABLED".equalsIgnoreCase(item.getStatus()))
+                .map(this::mapStorageSpace)
+                .map(item -> new StorageSpaceOptionDTO(
+                        item.title(),
+                        item.storageKey(),
+                        item.defaultStorage()
+                ))
+                .toList();
     }
 
     private long calculateFileListTotalCountLimit(long pageSize, long offset) {
