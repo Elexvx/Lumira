@@ -58,14 +58,6 @@
   letter-spacing: 0;
 }
 
-.saas-login-page__brand-subtitle {
-  margin-top: 10px;
-  color: rgba(31, 41, 55, 0.7);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 3px;
-}
-
 .saas-login-page__panel {
   width: 100%;
   min-height: 488px;
@@ -774,10 +766,6 @@ html[data-theme='dark'] .saas-login-page__agreement {
 
   .saas-login-page__brand-title {
     font-size: 34px;
-  }
-
-  .saas-login-page__brand-subtitle {
-    letter-spacing: 2px;
   }
 
   .saas-login-page__panel {

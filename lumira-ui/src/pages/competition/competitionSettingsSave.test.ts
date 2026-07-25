@@ -1,18 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from './competitionSettingsSave';
+import {
+  getCompetitionCreateMissingFields,
+  isBasicSettingsPageReadyToSave,
+  isConfigModuleReadyToSave,
+  isPaymentSettingsPageReadyToSave,
+  isTimelineSettingsPageReadyToSave,
+} from './competitionSettingsSave';
 
 describe('competition settings page-level save guards', () => {
-  it('allows the basic page to save without timeline fields', () => {
+  it('validates the basic page from only the fields rendered on that page', () => {
     expect(isBasicSettingsPageReadyToSave({
       title: 'AI application contest',
       category: 'OTHER',
       competitionLevel: 'NATIONAL',
       organizers: [{ role: 'Host', name: 'Contest committee' }],
       participationScope: 'Students',
-      feeMode: 'TEAM',
-      entryFeeMinor: 0,
-      currency: 'CNY',
-      locale: ['zh'],
     })).toBe(true);
   });
 
@@ -23,10 +25,18 @@ describe('competition settings page-level save guards', () => {
       competitionLevel: 'NATIONAL',
       organizers: [{ role: 'Host', name: 'Contest committee' }],
       participationScope: 'Students',
+    })).toBe(false);
+  });
+
+  it('validates the payment page from the same fee fields used during creation', () => {
+    expect(isPaymentSettingsPageReadyToSave({
       feeMode: 'TEAM',
       entryFeeMinor: 0,
       currency: 'CNY',
-      locale: ['zh'],
+    })).toBe(true);
+    expect(isPaymentSettingsPageReadyToSave({
+      feeMode: 'TEAM',
+      currency: 'CNY',
     })).toBe(false);
   });
 
@@ -42,6 +52,67 @@ describe('competition settings page-level save guards', () => {
       registrationRange: ['2026.07.01 09:00', '2026.07.31 18:00'],
       schedules: [{ timeMode: 'CONFIRMED', title: 'Final' }],
     })).toBe(false);
+  });
+
+  it('requires the review range that is rendered in detailed timeline settings', () => {
+    expect(isTimelineSettingsPageReadyToSave({
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
+      schedules: [{
+        timeMode: 'CONFIRMED',
+        title: 'Preliminary',
+        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
+      }],
+    })).toBe(false);
+  });
+
+  it('allows a competition to start exactly when registration closes', () => {
+    expect(isTimelineSettingsPageReadyToSave({
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
+      schedules: [{
+        timeMode: 'CONFIRMED',
+        title: 'Preliminary',
+        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
+        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
+      }],
+    })).toBe(true);
+  });
+
+  it('rejects a competition that starts before registration closes', () => {
+    expect(isTimelineSettingsPageReadyToSave({
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
+      schedules: [{
+        timeMode: 'CONFIRMED',
+        title: 'Preliminary',
+        timeRange: ['2026-09-29 23:59', '2026-10-18 00:00'],
+        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
+      }],
+    })).toBe(false);
+  });
+
+  it('uses the same basic, payment, and timeline validation for competition creation', () => {
+    const completeValues = {
+      title: 'AI application contest',
+      category: 'OTHER',
+      competitionLevel: 'NATIONAL',
+      organizers: [{ role: 'Host', name: 'Contest committee' }],
+      participationScope: 'Students',
+      feeMode: 'TEAM' as const,
+      entryFeeMinor: 0,
+      currency: 'CNY',
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'] as [string, string],
+      schedules: [{
+        timeMode: 'CONFIRMED' as const,
+        title: 'Preliminary',
+        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'] as [string, string],
+        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'] as [string, string],
+      }],
+    };
+
+    expect(getCompetitionCreateMissingFields(completeValues)).toEqual([]);
+    expect(getCompetitionCreateMissingFields({
+      ...completeValues,
+      schedules: [{ ...completeValues.schedules[0], reviewRange: undefined }],
+    })).toContain('评审时间');
   });
 
   it('keeps field-module autosave quiet while a new row title is still blank', () => {

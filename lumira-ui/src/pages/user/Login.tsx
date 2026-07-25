@@ -107,9 +107,6 @@ const LoginPageMainSection = ({
     <main className="saas-login-page__stage">
       <header className="saas-login-page__brand" aria-label={brandingWebsiteName}>
         <div className="saas-login-page__brand-title">{brandingWebsiteName}</div>
-        <div className="saas-login-page__brand-subtitle">
-          {formatMessage({ id: 'page.login.brandSubtitle', defaultMessage: '智慧平台 · 安全登录' })}
-        </div>
       </header>
       <section className="saas-login-page__panel" aria-label={formatMessage({ id: 'page.login.title', defaultMessage: 'Login' })}>
         <aside className="saas-login-page__qr-panel">

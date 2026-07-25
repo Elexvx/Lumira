@@ -1,5 +1,6 @@
 import type { Dayjs } from 'dayjs';
 import type { CompetitionLocale, CompetitionUpsertPayload } from '@/services/competition/types';
+import { isScheduleAtOrAfterRegistrationEnd } from './utils/competitionTimeline';
 
 export type CompetitionSettingsOrganizerFormItem = {
   role?: string;
@@ -63,33 +64,99 @@ const hasCompleteTimeRange = (range?: CompetitionSettingsFormValues['registratio
 const hasCompleteOrganizer = (organizers?: CompetitionSettingsOrganizerFormItem[]) =>
   (organizers || []).some((organizer) => trimOptional(organizer.role) && trimOptional(organizer.name));
 
-const hasCompleteSchedules = (schedules?: CompetitionSettingsScheduleFormItem[]) => {
-  const normalized = schedules?.length ? schedules : [{ timeMode: 'TBD' as const }];
-  if (normalized[0]?.timeMode !== 'CONFIRMED') {
-    return true;
+const appendMissingField = (missingFields: string[], field: string) => {
+  if (!missingFields.includes(field)) {
+    missingFields.push(field);
   }
-  return normalized.every((schedule) => (
-    trimOptional(schedule.title)
-      && hasCompleteTimeRange(schedule.timeRange)
-      && hasCompleteTimeRange(schedule.reviewRange)
-  ));
 };
 
+export const getBasicSettingsMissingFields = (values: Partial<CompetitionSettingsFormValues>) => {
+  const missingFields: string[] = [];
+  if (!trimOptional(values.title)) {
+    appendMissingField(missingFields, '竞赛名称');
+  }
+  if (!hasCompleteOrganizer(values.organizers)) {
+    appendMissingField(missingFields, '组织者列表');
+  }
+  if (!normalizeOptionValue(values.category)) {
+    appendMissingField(missingFields, '竞赛类别');
+  }
+  if (!normalizeOptionValue(values.competitionLevel || values.level)) {
+    appendMissingField(missingFields, '竞赛级别');
+  }
+  if (!trimOptional(values.participationScope)) {
+    appendMissingField(missingFields, '参赛范围');
+  }
+  return missingFields;
+};
+
+export const getPaymentSettingsMissingFields = (values: Partial<CompetitionSettingsFormValues>) => {
+  const missingFields: string[] = [];
+  if (!values.feeMode) {
+    appendMissingField(missingFields, '收费方式');
+  }
+  if (values.entryFeeMinor === undefined || values.entryFeeMinor === null || Number.isNaN(Number(values.entryFeeMinor))) {
+    appendMissingField(missingFields, '参赛费用');
+  }
+  if (!trimOptional(values.currency)) {
+    appendMissingField(missingFields, '货币');
+  }
+  return missingFields;
+};
+
+export const getTimelineSettingsMissingFields = (
+  values: Partial<CompetitionSettingsFormValues>,
+  options: { requireScheduleMode?: boolean } = {},
+) => {
+  const missingFields: string[] = [];
+  if (!hasCompleteTimeRange(values.registrationRange)) {
+    appendMissingField(missingFields, '报名时间');
+  }
+
+  const schedules = values.schedules || [];
+  const firstSchedule = schedules[0];
+  if (!firstSchedule?.timeMode) {
+    if (options.requireScheduleMode) {
+      appendMissingField(missingFields, '竞赛安排');
+    }
+    return missingFields;
+  }
+  if (firstSchedule.timeMode !== 'CONFIRMED') {
+    return missingFields;
+  }
+
+  const confirmedSchedules = schedules.filter((schedule) => schedule.timeMode === 'CONFIRMED');
+  if (!confirmedSchedules.length || confirmedSchedules.some((schedule) => (
+    !trimOptional(schedule.title) || !hasCompleteTimeRange(schedule.timeRange)
+  ))) {
+    appendMissingField(missingFields, '竞赛安排');
+  }
+  if (confirmedSchedules.some((schedule) => !hasCompleteTimeRange(schedule.reviewRange))) {
+    appendMissingField(missingFields, '评审时间');
+  }
+  if (confirmedSchedules.some((schedule) => (
+    hasCompleteTimeRange(schedule.timeRange)
+      && !isScheduleAtOrAfterRegistrationEnd(schedule.timeRange, values.registrationRange)
+  ))) {
+    appendMissingField(missingFields, '竞赛开始时间不得早于报名结束时间');
+  }
+  return missingFields;
+};
+
+export const getCompetitionCreateMissingFields = (values: Partial<CompetitionSettingsFormValues>) => [
+  ...getBasicSettingsMissingFields(values),
+  ...getPaymentSettingsMissingFields(values),
+  ...getTimelineSettingsMissingFields(values, { requireScheduleMode: true }),
+];
+
 export const isBasicSettingsPageReadyToSave = (values: Partial<CompetitionSettingsFormValues>) =>
-  Boolean(
-    trimOptional(values.title) &&
-      normalizeOptionValue(values.category) &&
-      normalizeOptionValue(values.competitionLevel || values.level) &&
-      hasCompleteOrganizer(values.organizers) &&
-      trimOptional(values.participationScope) &&
-      values.feeMode &&
-      values.entryFeeMinor !== undefined &&
-      trimOptional(values.currency) &&
-      values.locale?.length,
-  );
+  getBasicSettingsMissingFields(values).length === 0;
+
+export const isPaymentSettingsPageReadyToSave = (values: Partial<CompetitionSettingsFormValues>) =>
+  getPaymentSettingsMissingFields(values).length === 0;
 
 export const isTimelineSettingsPageReadyToSave = (values: Partial<CompetitionSettingsFormValues>) =>
-  Boolean(hasCompleteTimeRange(values.registrationRange) && hasCompleteSchedules(values.schedules));
+  getTimelineSettingsMissingFields(values).length === 0;
 
 const hasText = (value?: string | null) => Boolean(trimOptional(value));
 

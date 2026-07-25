@@ -4,7 +4,6 @@ import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, 
 import type { DatePickerProps, UploadFile } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
@@ -67,7 +66,13 @@ import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult, PaymentProv
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import PaymentResultPage from '@/pages/competition/PaymentResultPage';
-import { isBasicSettingsPageReadyToSave, isConfigModuleReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
+import {
+  getCompetitionCreateMissingFields,
+  isBasicSettingsPageReadyToSave,
+  isConfigModuleReadyToSave,
+  isPaymentSettingsPageReadyToSave,
+  isTimelineSettingsPageReadyToSave,
+} from '@/pages/competition/competitionSettingsSave';
 import {
   buildRegistrationCompetitionFallback,
   hasRegistrationCompetitionPricing,
@@ -94,6 +99,7 @@ import {
   retainAvailablePaymentProvider,
 } from '@/pages/competition/utils/registrationCheckout';
 import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
+import { isScheduleAtOrAfterRegistrationEnd } from '@/pages/competition/utils/competitionTimeline';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import {
   formatRegistrationYearValue,
@@ -302,11 +308,6 @@ const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
     initialMembers: [],
   },
 };
-
-const localeOptions: Array<{ label: string; value: CompetitionLocale }> = [
-  { label: '中文', value: 'zh' },
-  { label: 'English', value: 'en' },
-];
 
 const zhCategoryOptions = [
   { label: '创新赛', value: 'INNOVATION' },
@@ -695,6 +696,7 @@ const serializeCompetitionCreateDraftValues = (values: Partial<CompetitionFormVa
   schedules: values.schedules?.map((schedule) => ({
     ...schedule,
     timeRange: serializeDraftRangeValue(schedule.timeRange),
+    reviewRange: serializeDraftRangeValue(schedule.reviewRange),
   })),
 });
 
@@ -823,21 +825,7 @@ const getCompleteTimeRange = (
   return start && end ? [start, end] : undefined;
 };
 
-const isScheduleWithinRegistrationRange = (
-  scheduleRange: CompetitionScheduleFormItem['timeRange'],
-  registrationRange: CompetitionFormValues['registrationRange'],
-) => {
-  const scheduleBounds = getCompleteTimeRange(scheduleRange);
-  const registrationBounds = getCompleteTimeRange(registrationRange);
-  if (!scheduleBounds || !registrationBounds) {
-    return false;
-  }
-  const [scheduleStart, scheduleEnd] = scheduleBounds;
-  const [registrationStart, registrationEnd] = registrationBounds;
-  return !scheduleStart.isBefore(registrationStart) && !scheduleEnd.isAfter(registrationEnd);
-};
-
-const isOutsideRegistrationDate = (
+const isBeforeRegistrationEndDate = (
   current: Dayjs,
   registrationRange: CompetitionFormValues['registrationRange'],
 ) => {
@@ -845,8 +833,8 @@ const isOutsideRegistrationDate = (
   if (!current || !registrationBounds) {
     return false;
   }
-  const [registrationStart, registrationEnd] = registrationBounds;
-  return current.isBefore(registrationStart, 'day') || current.isAfter(registrationEnd, 'day');
+  const [, registrationEnd] = registrationBounds;
+  return current.isBefore(registrationEnd, 'day');
 };
 
 const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormValues>): Partial<CompetitionFormValues> => {
@@ -860,6 +848,7 @@ const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormVal
       ...schedule,
       timeMode: normalizeTimeMode(schedule.timeMode),
       timeRange: restoreDraftRangeValue(schedule.timeRange),
+      reviewRange: restoreDraftRangeValue(schedule.reviewRange),
     })),
   };
 };
@@ -947,62 +936,9 @@ const hasCompetitionCreateDraftContent = (values: Partial<CompetitionFormValues>
         normalizeTimeMode(schedule.timeMode) === 'CONFIRMED'
         || trimOptional(schedule.title)
         || getCompleteTimeRange(schedule.timeRange)
+        || getCompleteTimeRange(schedule.reviewRange)
       ))
   );
-};
-
-const getCompetitionCreateMissingFields = (values: Partial<CompetitionFormValues>) => {
-  const missingFields: string[] = [];
-  const organizers = values.organizers || [];
-  const organizerComplete = organizers.some((organizer) => trimOptional(organizer.role) && trimOptional(organizer.name));
-  const firstSchedule = values.schedules?.[0];
-
-  if (!trimOptional(values.title)) {
-    missingFields.push('竞赛名称');
-  }
-  if (!organizerComplete) {
-    missingFields.push('组织者列表');
-  }
-  if (!normalizeOptionValue(values.category)) {
-    missingFields.push('竞赛类别');
-  }
-  if (!normalizeOptionValue(values.competitionLevel || values.level)) {
-    missingFields.push('竞赛级别');
-  }
-  if (!trimOptional(values.participationScope)) {
-    missingFields.push('参赛范围');
-  }
-  if (!values.feeMode) {
-    missingFields.push('收费方式');
-  }
-  if (values.entryFeeMinor === undefined || values.entryFeeMinor === null || Number.isNaN(Number(values.entryFeeMinor))) {
-    missingFields.push('参赛费用');
-  }
-  if (!trimOptional(values.currency)) {
-    missingFields.push('货币');
-  }
-  if (!getCompleteTimeRange(values.registrationRange)) {
-    missingFields.push('报名时间');
-  }
-  if (!firstSchedule?.timeMode) {
-    missingFields.push('竞赛安排');
-  }
-  if (firstSchedule?.timeMode === 'CONFIRMED') {
-    const hasValidSchedule = values.schedules?.some((schedule) => trimOptional(schedule.title) && Array.isArray(schedule.timeRange) && schedule.timeRange.length === 2);
-    if (!hasValidSchedule) {
-      missingFields.push('竞赛安排');
-    }
-    const hasOutOfRangeSchedule = values.schedules?.some(
-      (schedule) => getCompleteTimeRange(schedule.timeRange) && !isScheduleWithinRegistrationRange(schedule.timeRange, values.registrationRange),
-    );
-    if (hasOutOfRangeSchedule) {
-      missingFields.push('竞赛安排需在报名时间内');
-    }
-  }
-  if (!values.locale?.length) {
-    missingFields.push('语言');
-  }
-  return missingFields;
 };
 
 const getAllowedCompetitionCreateStep = (requestedStep: number, values: Partial<CompetitionFormValues>, acceptedTerms: boolean) => {
@@ -1017,22 +953,6 @@ const getAllowedCompetitionCreateStep = (requestedStep: number, values: Partial<
     return 1;
   }
   return getCompetitionCreateMissingFields(values).length ? 1 : normalizedStep;
-};
-
-const uploadCompetitionImage = async (file: File) => {
-  if (!file.type.startsWith('image/')) {
-    message.error('请上传图片文件');
-    return undefined;
-  }
-  const formData = new FormData();
-  formData.append('file', file);
-  const uploadedUrl = await request<string>('/v1/system/uploads/image', {
-    method: 'POST',
-    headers: {},
-    data: formData,
-    ...API_OPTS.NO_REDIRECT,
-  });
-  return normalizeUploadUrl(uploadedUrl);
 };
 
 const parseFeaturedFilter = (value: unknown) => {
@@ -1059,27 +979,8 @@ const CompetitionBasicFields = ({
   levelOptions: Array<{ label: string; value: string }>;
   onDraftChange?: () => void;
 }) => {
-  const contactQrCodeUrl = Form.useWatch('contactQrCodeUrl', form);
   const schedules = Form.useWatch('schedules', form) || [];
   const registrationRange = Form.useWatch('registrationRange', form);
-  const [uploadingQrCode, setUploadingQrCode] = useState(false);
-  const qrPreviewUrl = normalizeUploadUrl(contactQrCodeUrl);
-
-  const handleQrCodeUpload = async (file: File) => {
-    setUploadingQrCode(true);
-    try {
-      const uploadedUrl = await uploadCompetitionImage(file);
-      if (uploadedUrl) {
-        form.setFieldValue('contactQrCodeUrl', uploadedUrl);
-        onDraftChange?.();
-        message.success('联系方式二维码已上传');
-      }
-    } catch (error) {
-      showErrorMessage(error, '联系方式二维码上传失败');
-    } finally {
-      setUploadingQrCode(false);
-    }
-  };
 
   return (
     <>
@@ -1121,9 +1022,6 @@ const CompetitionBasicFields = ({
       </Form.Item>
       <Form.Item name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
         <Input maxLength={255} placeholder="请输入参赛范围" />
-      </Form.Item>
-      <Form.Item name="participationRequirement" label="参赛要求">
-        <Input.TextArea rows={4} placeholder="请输入参赛要求" />
       </Form.Item>
       <Space size="middle" className="competition-inline-fields" align="start">
         <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请选择收费方式' }]} className="competition-inline-fields__item">
@@ -1174,11 +1072,17 @@ const CompetitionBasicFields = ({
                   <Space direction="vertical" size={8} className="competition-dynamic-list">
                     {fields.map((field, index) => (
                       <div key={field.key} className="competition-schedule-row">
-                        <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入赛程名称' }]} className="competition-schedule-row__title">
+                        <Form.Item
+                          name={[field.name, 'title']}
+                          label="阶段名称"
+                          rules={[{ required: true, message: '请输入阶段名称' }]}
+                          className="competition-schedule-row__title"
+                        >
                           <Input maxLength={128} placeholder="例如：初赛" />
                         </Form.Item>
                         <Form.Item
                           name={[field.name, 'timeRange']}
+                          label="比赛时间"
                           rules={[
                             { required: true, message: '请选择比赛时间' },
                             {
@@ -1189,15 +1093,32 @@ const CompetitionBasicFields = ({
                                 if (!getCompleteTimeRange(registrationRange)) {
                                   return Promise.reject(new Error('请先选择报名时间'));
                                 }
-                                return isScheduleWithinRegistrationRange(value, registrationRange)
+                                return isScheduleAtOrAfterRegistrationEnd(value, registrationRange)
                                   ? Promise.resolve()
-                                  : Promise.reject(new Error('竞赛安排需在报名时间内'));
+                                  : Promise.reject(new Error('竞赛开始时间不得早于报名结束时间'));
                               },
                             },
                           ]}
                           className="competition-schedule-row__time"
                         >
-                          <CompetitionDateTimeRangePicker disabledDate={(current) => isOutsideRegistrationDate(current, registrationRange)} />
+                          <CompetitionDateTimeRangePicker disabledDate={(current) => isBeforeRegistrationEndDate(current, registrationRange)} />
+                        </Form.Item>
+                        <Form.Item
+                          name={[field.name, 'reviewRange']}
+                          label="评审时间"
+                          rules={[
+                            { required: true, message: '请选择评审时间' },
+                            {
+                              validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => (
+                                getCompleteTimeRange(value)
+                                  ? Promise.resolve()
+                                  : Promise.reject(new Error('请选择评审开始和结束时间'))
+                              ),
+                            },
+                          ]}
+                          className="competition-schedule-row__review-time"
+                        >
+                          <CompetitionDateTimeRangePicker />
                         </Form.Item>
                         <div className="competition-schedule-row__actions">
                           {index === fields.length - 1 ? (
@@ -1219,83 +1140,6 @@ const CompetitionBasicFields = ({
           </Form.Item>
         )}
       </Form.List>
-      <Form.Item name="contactName" label="联系主办方">
-        <Input maxLength={128} placeholder="请输入主办方联系方式" />
-      </Form.Item>
-      <Form.Item label="上传联系方式二维码">
-        <Space direction="vertical" size={8} className="competition-qr-upload">
-          <ImgCrop
-            modalTitle="Crop QR Code"
-            rotationSlider
-            aspect={1}
-            beforeCrop={(file) => {
-              if (!file.type.startsWith('image/')) {
-                message.error('请上传图片文件');
-                return false;
-              }
-              return true;
-            }}
-          >
-            <Upload
-              accept="image/*"
-              showUploadList={false}
-              disabled={uploadingQrCode}
-              beforeUpload={async (file) => {
-                await handleQrCodeUpload(file);
-                return Upload.LIST_IGNORE;
-              }}
-            >
-              <div
-                className={`competition-qr-upload__preview${uploadingQrCode ? ' is-uploading' : ''}${qrPreviewUrl ? ' has-image' : ''}`}
-                role="button"
-                aria-label="Upload contact QR code"
-                tabIndex={uploadingQrCode ? -1 : 0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.currentTarget.click();
-                  }
-                }}
-              >
-                {qrPreviewUrl ? (
-                  <Image width={144} height={144} src={qrPreviewUrl} preview={false} />
-                ) : (
-                  <Space direction="vertical" size={6} align="center">
-                    <UploadOutlined />
-                    <Typography.Text type="secondary">点击上传二维码</Typography.Text>
-                  </Space>
-                )}
-                {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '上传中...' : '点击更换二维码'}</span> : null}
-              </div>
-            </Upload>
-          </ImgCrop>
-          <Space wrap>
-            <Button
-              disabled={!contactQrCodeUrl || uploadingQrCode}
-              onClick={() => {
-                form.setFieldValue('contactQrCodeUrl', undefined);
-                onDraftChange?.();
-              }}
-            >
-              清空二维码
-            </Button>
-          </Space>
-          <Form.Item name="contactQrCodeUrl" hidden>
-            <Input />
-          </Form.Item>
-        </Space>
-      </Form.Item>
-      <Space size={0} className="competition-inline-fields" align="start">
-        <Form.Item name="locale" label="语言" rules={[{ required: true }]} className="competition-inline-fields__item">
-          <Select mode="multiple" maxTagCount="responsive" options={localeOptions} />
-        </Form.Item>
-        <Form.Item name="sort" label="排序" className="competition-inline-fields__item">
-          <InputNumber min={0} max={9999} style={{ width: '100%' }} />
-        </Form.Item>
-      </Space>
-      <Form.Item name="featured" label="推荐赛事" valuePropName="checked">
-        <Switch checkedChildren="是" unCheckedChildren="否" />
-      </Form.Item>
       <Form.Item name="code" hidden>
         <Input />
       </Form.Item>
@@ -6244,9 +6088,6 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
             <Form.Item className="competition-basic-section__full" name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
               <Input maxLength={255} placeholder="请输入参赛范围" />
             </Form.Item>
-            <Form.Item className="competition-basic-section__full" name="participationRequirement" label="参赛要求">
-              <Input.TextArea rows={4} placeholder="请输入参赛要求" />
-            </Form.Item>
           </div>
         </section>
 
@@ -6294,6 +6135,9 @@ const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandl
   }, [competition, form]);
 
   const saveFeeSettings = useCallback(async () => {
+    if (!isPaymentSettingsPageReadyToSave(form.getFieldsValue(true))) {
+      return false;
+    }
     const values = await form.validateFields();
     try {
       const saved = await updateCompetition(competition.id, normalizePayload({
@@ -6374,6 +6218,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
   const schedules = Form.useWatch('schedules', form) || [];
+  const registrationRange = Form.useWatch('registrationRange', form);
 
   useEffect(() => {
     form.resetFields();
@@ -6489,12 +6334,17 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                                   if (!getCompleteTimeRange(value)) {
                                     return Promise.reject(new Error('请选择开始和结束时间'));
                                   }
-                                  return Promise.resolve();
+                                  if (!getCompleteTimeRange(registrationRange)) {
+                                    return Promise.reject(new Error('请先选择报名时间'));
+                                  }
+                                  return isScheduleAtOrAfterRegistrationEnd(value, registrationRange)
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('竞赛开始时间不得早于报名结束时间'));
                                 },
                               },
                             ]}
                           >
-                            <CompetitionDateTimeRangePicker />
+                            <CompetitionDateTimeRangePicker disabledDate={(current) => isBeforeRegistrationEndDate(current, registrationRange)} />
                           </Form.Item>
                           <Form.Item
                             name={[field.name, 'reviewRange']}
