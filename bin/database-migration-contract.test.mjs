@@ -97,6 +97,32 @@ test('competition registration snapshots stay in one registration row', () => {
   assert.doesNotMatch(migration, /\b(aiadc_project|team_member|sys_user)\b/i);
 });
 
+test('seed user UIDs stay as exact 18-digit strings in fresh and existing databases', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202607260001__repair_seed_user_numeric_uids.sql');
+
+  assert.match(bootstrap, /VALUES \(1001, '900000000000001001', 'admin'/);
+  assert.match(bootstrap, /VALUES \(1002, '900000000000001002', 'user'/);
+  assert.match(bootstrap, /REGEXP '\^\[1-9\]\[0-9\]\{17\}\$'/);
+  assert.doesNotMatch(bootstrap, /100000000000000000\s*\+\s*RAND\(\)/);
+  assert.doesNotMatch(bootstrap, /CAST\s*\(\s*FLOOR\s*\([^)]*RAND\(\)/i);
+
+  assert.match(migration, /old_admin_uid VARCHAR\(36\)/);
+  assert.match(migration, /old_user_uid VARCHAR\(36\)/);
+  assert.match(migration, /'900000000000001001'/);
+  assert.match(migration, /'900000000000001002'/);
+  assert.match(migration, /START TRANSACTION;/);
+  assert.match(migration, /COMMIT;/);
+  assert.match(migration, /ROLLBACK;/);
+  assert.match(migration, /information_schema`\.`columns/);
+  assert.match(migration, /'user_uuid'/);
+  assert.match(migration, /'created_by_uuid'/);
+  assert.match(migration, /'updated_by_uuid'/);
+  assert.match(migration, /PREPARE repair_uid_statement/);
+  assert.match(migration, /UPDATE `/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const executableSql = bootstrap.replace(/\/\*[\s\S]*?\*\//g, '');

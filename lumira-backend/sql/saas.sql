@@ -3737,9 +3737,9 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_user` (`id`, `uuid`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES (1001, CAST(FLOOR(100000000000000000 + RAND() * 900000000000000000) AS CHAR), 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+VALUES (1001, '900000000000001001', 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
-    `uuid` = IF(`uuid` REGEXP '^[0-9]+$', `uuid`, VALUES(`uuid`)),
+    `uuid` = IF(`uuid` REGEXP '^[1-9][0-9]{17}$', `uuid`, VALUES(`uuid`)),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `password_hash` = VALUES(`password_hash`),
@@ -3940,9 +3940,9 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_user` (`id`, `uuid`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES (1002, CAST(FLOOR(100000000000000000 + RAND() * 900000000000000000) AS CHAR), 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+VALUES (1002, '900000000000001002', 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
-    `uuid` = IF(`uuid` REGEXP '^[0-9]+$', `uuid`, VALUES(`uuid`)),
+    `uuid` = IF(`uuid` REGEXP '^[1-9][0-9]{17}$', `uuid`, VALUES(`uuid`)),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `password_hash` = VALUES(`password_hash`),
