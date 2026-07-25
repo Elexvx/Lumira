@@ -24,6 +24,7 @@ import { AgreementMarkdownEditor } from './personalization/components/AgreementM
 import { BrandingTab } from './personalization/components/BrandingTab';
 import { FloatingWindowTab } from './personalization/components/FloatingWindowTab';
 import { WatermarkTab } from './personalization/components/WatermarkTab';
+import { buildBrandingAssetSettings, isBrandingAssetTarget } from './personalization/brandingAssetSettings';
 import { DEFAULT_AGREEMENT_SETTINGS } from '@/agreement/settings';
 import type { AgreementSettings, BrandingSettings, FileStorageSpaceRecord, FloatingWindowSettings, PagedResult, WatermarkSettings } from '@/types/api';
 import { useStandardFormProps } from '@/features/form/config';
@@ -228,6 +229,25 @@ const PersonalizationSettingsPage = () => {
     applyFavicon(previewState.websiteFaviconUrl);
   }, [previewState.websiteFaviconUrl]);
 
+  const commitBrandingSettings = useCallback(
+    async (brandingValues: BrandingSettings) => {
+      const updatedBranding = await request<BrandingSettings>('/v1/system/branding-settings', {
+        method: 'PUT',
+        data: normalizeBrandingSettings(brandingValues),
+        ...API_OPTS.NO_REDIRECT,
+      });
+      brandingForm.setFieldsValue(updatedBranding);
+      setInitialState((prev: AppInitialState | undefined) =>
+        prev ? { ...prev, brandingSettings: updatedBranding, brandingRevision: (prev.brandingRevision ?? 0) + 1 } : prev,
+      );
+      setPreviewState(updatedBranding);
+      persistBrandingSettings(updatedBranding);
+      applyBrandingRuntime(updatedBranding);
+      return updatedBranding;
+    },
+    [brandingForm, setInitialState],
+  );
+
   useEffect(() => {
     let ignore = false;
     request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
@@ -304,8 +324,18 @@ const PersonalizationSettingsPage = () => {
           setWatermarkPreview,
           setFloatingPreview,
         });
-        message.success(t('图片已上传', 'Image uploaded'));
+        if (isBrandingAssetTarget(target)) {
+          await commitBrandingSettings(buildBrandingAssetSettings(previousBranding, target, normalizedUrl));
+        }
+        message.success(
+          isBrandingAssetTarget(target)
+            ? t('图片已上传并立即生效', 'Image uploaded and applied immediately')
+            : t('图片已上传', 'Image uploaded'),
+        );
       } catch (error) {
+        brandingForm.setFieldsValue(previousBranding);
+        watermarkForm.setFieldsValue(previousWatermark);
+        floatingForm.setFieldsValue(previousFloating);
         setPreviewState(normalizeBrandingSettings(previousBranding));
         setWatermarkPreview((prev) => ({ ...prev, imageUrl: normalizeUploadUrl(previousWatermark.imageUrl) }));
         setFloatingPreview(normalizeFloatingWindowSettings(previousFloating));
@@ -315,7 +345,17 @@ const PersonalizationSettingsPage = () => {
         setUploadingTarget(null);
       }
     },
-    [brandingForm, canUpdate, floatingForm, imageUploadSizeMb, setFloatingPreview, setPreviewState, setWatermarkPreview, watermarkForm],
+    [
+      brandingForm,
+      canUpdate,
+      commitBrandingSettings,
+      floatingForm,
+      imageUploadSizeMb,
+      setFloatingPreview,
+      setPreviewState,
+      setWatermarkPreview,
+      watermarkForm,
+    ],
   );
 
   const handleClearBrandingField = useCallback(
@@ -325,13 +365,23 @@ const PersonalizationSettingsPage = () => {
         content: t(`确认清除${label}吗？清除后该内容会立即从当前设置中移除。`, `Clear ${label}? This will remove it from the current settings immediately.`),
         okText: t('确认清除', 'Clear'),
         okButtonProps: { danger: true },
-        onOk: () => {
+        onOk: async () => {
+          const previousBranding = normalizeBrandingSettings(brandingForm.getFieldsValue(true));
+          const nextBranding = normalizeBrandingSettings({ ...previousBranding, [field]: '' });
           brandingForm.setFieldValue(field, '');
           setPreviewState((prev) => ({ ...prev, [field]: '' }));
+          try {
+            await commitBrandingSettings(nextBranding);
+            message.success(t('品牌图片已清除并立即生效', 'Branding image cleared and applied immediately'));
+          } catch (error) {
+            brandingForm.setFieldsValue(previousBranding);
+            setPreviewState(previousBranding);
+            showErrorMessage(error, t('品牌图片清除失败，请稍后重试', 'Failed to clear the branding image. Please try again later.'));
+          }
         },
       });
     },
-    [brandingForm],
+    [brandingForm, commitBrandingSettings],
   );
   const handleClearWatermarkImage = useCallback(() => {
     confirmAction({
@@ -363,25 +413,14 @@ const PersonalizationSettingsPage = () => {
     try {
       await brandingForm.validateFields();
       const brandingValues = brandingForm.getFieldsValue(true);
-      const updatedBranding = await request<BrandingSettings>('/v1/system/branding-settings', {
-        method: 'PUT',
-        data: normalizeBrandingSettings(brandingValues),
-        ...API_OPTS.NO_REDIRECT,
-      });
-      brandingForm.setFieldsValue(updatedBranding);
-      setInitialState((prev: AppInitialState | undefined) =>
-        prev ? { ...prev, brandingSettings: updatedBranding, brandingRevision: (prev.brandingRevision ?? 0) + 1 } : prev,
-      );
-      setPreviewState(updatedBranding);
-      persistBrandingSettings(updatedBranding);
-      applyBrandingRuntime(updatedBranding);
+      await commitBrandingSettings(normalizeBrandingSettings(brandingValues));
       message.success(t('品牌设置已保存并即时生效', 'Branding settings saved and applied immediately'));
     } catch (error) {
       showErrorMessage(error, t('品牌设置保存失败，请稍后重试', 'Failed to save branding settings. Please try again later.'));
     } finally {
       setBrandingSaving(false);
     }
-  }, [brandingForm, canUpdate, setInitialState, setPreviewState]);
+  }, [brandingForm, canUpdate, commitBrandingSettings]);
   const handleSaveWatermark = useCallback(async () => {
     if (!canUpdate) return;
     setWatermarkSaving(true);
