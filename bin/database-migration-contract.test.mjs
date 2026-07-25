@@ -97,32 +97,40 @@ test('competition registration snapshots stay in one registration row', () => {
   assert.doesNotMatch(migration, /\b(aiadc_project|team_member|sys_user)\b/i);
 });
 
-test('seed user UIDs stay as exact 18-digit strings in fresh and existing databases', () => {
+test('seed user UIDs stay random and exact in fresh and existing databases', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
-  const migration = read('deploy/migrations/V202607260001__repair_seed_user_numeric_uids.sql');
+  const repairMigration = read('deploy/migrations/V202607260001__repair_seed_user_numeric_uids.sql');
+  const randomizeMigration = read('deploy/migrations/V202607260002__randomize_fixed_seed_user_uids.sql');
 
-  assert.match(bootstrap, /VALUES \(1001, '900000000000001001', 'admin'/);
-  assert.match(bootstrap, /VALUES \(1002, '900000000000001002', 'user'/);
+  assert.match(bootstrap, /VALUES \(\s*1001,\s*CONCAT\([\s\S]*?RANDOM_BYTES\(1\)[\s\S]*?'admin'/);
+  assert.match(bootstrap, /VALUES \(\s*1002,\s*CONCAT\([\s\S]*?RANDOM_BYTES\(1\)[\s\S]*?'user'/);
+  assert.ok((bootstrap.match(/RANDOM_BYTES\(/g) || []).length >= 6);
   assert.match(bootstrap, /REGEXP '\^\[1-9\]\[0-9\]\{17\}\$'/);
   assert.doesNotMatch(bootstrap, /100000000000000000\s*\+\s*RAND\(\)/);
   assert.doesNotMatch(bootstrap, /CAST\s*\(\s*FLOOR\s*\([^)]*RAND\(\)/i);
+  assert.doesNotMatch(bootstrap, /VALUES \(\s*100[12],\s*'90000000000000100[12]'/);
 
-  assert.match(migration, /old_admin_uid VARCHAR\(36\)/);
-  assert.match(migration, /old_user_uid VARCHAR\(36\)/);
-  assert.match(migration, /'900000000000001001'/);
-  assert.match(migration, /'900000000000001002'/);
-  assert.match(migration, /START TRANSACTION;/);
-  assert.match(migration, /COMMIT;/);
-  assert.match(migration, /ROLLBACK;/);
-  assert.match(migration, /information_schema`\.`columns/);
-  assert.match(migration, /'user_uuid'/);
-  assert.match(migration, /'created_by_uuid'/);
-  assert.match(migration, /'updated_by_uuid'/);
-  assert.match(migration, /PREPARE repair_uid_statement/);
-  assert.match(migration, /UPDATE `/);
-  assert.match(migration, /CASE BINARY `/);
-  assert.match(migration, /IN \(BINARY \?, BINARY \?\)/);
-  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.match(repairMigration, /old_admin_uid VARCHAR\(36\)/);
+  assert.match(repairMigration, /old_user_uid VARCHAR\(36\)/);
+  assert.match(repairMigration, /'900000000000001001'/);
+  assert.match(repairMigration, /'900000000000001002'/);
+  assert.match(repairMigration, /START TRANSACTION;/);
+  assert.match(repairMigration, /COMMIT;/);
+  assert.match(repairMigration, /ROLLBACK;/);
+  assert.match(repairMigration, /information_schema`\.`columns/);
+  assert.match(repairMigration, /PREPARE repair_uid_statement/);
+
+  assert.match(randomizeMigration, /RANDOM_BYTES\(1\)/);
+  assert.match(randomizeMigration, /RANDOM_BYTES\(4\)/);
+  assert.match(randomizeMigration, /REPEAT[\s\S]*UNTIL NOT EXISTS/);
+  assert.match(randomizeMigration, /new_user_uid AS BINARY\) <> CAST\(new_admin_uid AS BINARY\)/);
+  assert.match(randomizeMigration, /START TRANSACTION;/);
+  assert.match(randomizeMigration, /COMMIT;/);
+  assert.match(randomizeMigration, /ROLLBACK;/);
+  assert.match(randomizeMigration, /PREPARE randomize_uid_statement/);
+  assert.match(randomizeMigration, /CASE CAST\(`/);
+  assert.match(randomizeMigration, /IN \(CAST\(\? AS BINARY\), CAST\(\? AS BINARY\)\)/);
+  assert.doesNotMatch(randomizeMigration, /\bDELETE\s+FROM\b/i);
 });
 
 test('fresh bootstrap does not execute archived duplicate column migrations', () => {
