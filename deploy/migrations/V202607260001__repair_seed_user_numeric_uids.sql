@@ -69,7 +69,7 @@ BEGIN
        AND old_admin_uid <> new_admin_uid
        AND EXISTS (
            SELECT 1 FROM `sys_user`
-           WHERE `uuid` = new_admin_uid AND `id` <> 1001
+           WHERE BINARY `uuid` = BINARY new_admin_uid AND `id` <> 1001
        ) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Cannot repair admin UID because the target UID is already in use';
@@ -79,7 +79,7 @@ BEGIN
        AND old_user_uid <> new_user_uid
        AND EXISTS (
            SELECT 1 FROM `sys_user`
-           WHERE `uuid` = new_user_uid AND `id` <> 1002
+           WHERE BINARY `uuid` = BINARY new_user_uid AND `id` <> 1002
        ) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Cannot repair common-user UID because the target UID is already in use';
@@ -99,13 +99,13 @@ BEGIN
             REPLACE(reference_table, '`', '``'),
             '` SET `',
             REPLACE(reference_column, '`', '``'),
-            '` = CASE `',
+            '` = CASE BINARY `',
             REPLACE(reference_column, '`', '``'),
-            '` WHEN ? THEN ? WHEN ? THEN ? ELSE `',
+            '` WHEN BINARY ? THEN ? WHEN BINARY ? THEN ? ELSE `',
             REPLACE(reference_column, '`', '``'),
-            '` END WHERE `',
+            '` END WHERE BINARY `',
             REPLACE(reference_column, '`', '``'),
-            '` IN (?, ?)'
+            '` IN (BINARY ?, BINARY ?)'
         );
         SET @old_admin_uid = old_admin_uid;
         SET @new_admin_uid = new_admin_uid;

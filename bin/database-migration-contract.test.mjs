@@ -120,6 +120,8 @@ test('seed user UIDs stay as exact 18-digit strings in fresh and existing databa
   assert.match(migration, /'updated_by_uuid'/);
   assert.match(migration, /PREPARE repair_uid_statement/);
   assert.match(migration, /UPDATE `/);
+  assert.match(migration, /CASE BINARY `/);
+  assert.match(migration, /IN \(BINARY \?, BINARY \?\)/);
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
