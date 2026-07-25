@@ -195,6 +195,11 @@ class SystemRoleManagementAppServiceTest {
         service.createRole(currentUser(), request);
 
         assertEquals(List.of("*:SELF"), jdbcTemplate.insertedDataScopes);
+        assertThat(jdbcTemplate.updateSql).anySatisfy(sql -> assertThat(sql)
+                .contains("insert into sys_role_data_scope")
+                .contains("on duplicate key update")
+                .contains("scope_type = values(scope_type)")
+                .contains("deleted = 0"));
         verify(permissionSnapshotService).invalidatePermissions();
     }
 
@@ -298,7 +303,25 @@ class SystemRoleManagementAppServiceTest {
                 .contains("insert into sys_role_permission")
                 .contains("from sys_role r")
                 .contains("r.role_code = ?")
-                .contains("r.role_type = ?"));
+                .contains("r.role_type = ?")
+                .contains("on duplicate key update")
+                .contains("deleted = 0"));
+        verify(permissionSnapshotService).invalidatePermissions();
+    }
+
+    @Test
+    void updateRolePermissionsShouldAcceptReactivatedRowsReportedAsTwoAffectedRowsEach() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.rolePermissionInsertResult = 4;
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+
+        assertTrue(service.updateRolePermissions(
+                currentUser(),
+                2001L,
+                List.of("system:user:view", "system:role:view")
+        ));
+
         verify(permissionSnapshotService).invalidatePermissions();
     }
 
@@ -583,6 +606,20 @@ class SystemRoleManagementAppServiceTest {
 
         assertEquals(ErrorCode.NOT_FOUND, exception.getErrorCode());
         assertTrue(exception.getMessage().contains("Role data scope changed, please retry"));
+    }
+
+    @Test
+    void updateRoleShouldReactivateExistingDataScopeReportedAsTwoAffectedRows() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        jdbcTemplate.roleDataScopeInsertResult = 2;
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, mock(PermissionSnapshotService.class));
+        SystemDTO.RoleUpsertRequest request = roleRequest("commonuser", "Common User", List.of("system:user:view"));
+        request.setDataScopes(List.of(dataScope("system:user", "SELF")));
+
+        SystemVO.RoleDetailVO role = service.updateRole(currentUser(), 2001L, request);
+
+        assertEquals(2001L, role.getId());
+        assertEquals(List.of("system:user:SELF"), jdbcTemplate.insertedDataScopes);
     }
 
     @Test

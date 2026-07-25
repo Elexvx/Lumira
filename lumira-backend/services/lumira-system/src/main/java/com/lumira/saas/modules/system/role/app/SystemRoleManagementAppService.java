@@ -819,8 +819,15 @@ public class SystemRoleManagementAppService {
                 params.add(existingRole.getRoleType());
             }
         }
+        sql.append("""
+                 on duplicate key update
+                    updated_by = values(updated_by),
+                    updated_by_uuid = values(updated_by_uuid),
+                    updated_at = current_timestamp,
+                    deleted = 0
+                """);
         int inserted = jdbcTemplate.update(sql.toString(), params.toArray());
-        requireExactRoleWrite(inserted, permissionKeys.size(), "Role changed, please retry");
+        requireCompleteUpsert(inserted, permissionKeys.size(), "Role changed, please retry");
     }
 
     private void requireRoleWrite(int updated, String message) {
@@ -829,8 +836,8 @@ public class SystemRoleManagementAppService {
         }
     }
 
-    private void requireExactRoleWrite(int updated, int expected, String message) {
-        if (updated != expected) {
+    private void requireCompleteUpsert(int updated, int expected, String message) {
+        if (updated < expected || updated > expected * 2) {
             throw new BizException(ErrorCode.NOT_FOUND, message);
         }
     }
@@ -1003,8 +1010,18 @@ public class SystemRoleManagementAppService {
             params.add(operatorId);
             params.add(operatorUuid);
         }
+        sql.append("""
+                 on duplicate key update
+                    scope_type = values(scope_type),
+                    custom_dept_ids = values(custom_dept_ids),
+                    custom_user_ids = values(custom_user_ids),
+                    updated_by = values(updated_by),
+                    updated_by_uuid = values(updated_by_uuid),
+                    updated_at = current_timestamp,
+                    deleted = 0
+                """);
         int inserted = jdbcTemplate.update(sql.toString(), params.toArray());
-        requireExactRoleWrite(inserted, scopes.size(), "Role data scope changed, please retry");
+        requireCompleteUpsert(inserted, scopes.size(), "Role data scope changed, please retry");
     }
 
     private RoleDataScopeRequest defaultDataScope(String roleCode) {
