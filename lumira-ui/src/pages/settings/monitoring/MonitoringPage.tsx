@@ -913,7 +913,12 @@ const PlatformUpdateContent = () => {
   const canRollback = updaterAvailable && !isTaskRunning;
 
   return (
-    <div className="saas-update-center saas-monitoring-tab-pane">
+    <Space
+      direction="vertical"
+      size={sectionGap}
+      style={{ width: '100%' }}
+      className="saas-update-center saas-monitoring-tab-pane"
+    >
       <Card loading={query.isLoading && !updateStatus}>
         <Row gutter={rowGutter} align="middle">
           <Col xs={24} lg={10}>
@@ -1001,7 +1006,7 @@ const PlatformUpdateContent = () => {
           description={activeTask.errorMessage || activeTask.logSummary || t('更新代理正在处理任务，请稍后刷新状态。', 'The updater agent is processing the task. Refresh status later.')}
         />
       ) : null}
-      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-monitoring-tab-pane">
+      <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
         <Row gutter={rowGutter}>
           <Col xs={24} lg={12}>
             <Card title={t('当前运行版本', 'Current running version')} className="saas-update-version-card">
@@ -1093,7 +1098,7 @@ const PlatformUpdateContent = () => {
           />
         </Card>
       </Space>
-    </div>
+    </Space>
   );
 };
 
