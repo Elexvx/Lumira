@@ -11,22 +11,22 @@ export const loadOptionalPreliminaryStageForm = async (
   getStageForm: GetCompetitionStageForm,
 ): Promise<CompetitionStageFormRecord | undefined> => {
   const stages = await listStages(competitionId);
-  const editableStages = stages.filter((item) => item.materialEditable !== false);
-  const active = editableStages.find((item) => item.stageCode === 'PRELIMINARY')
-    || editableStages.find((item) => item.stageCode === 'FINAL')
-    || editableStages[0]
-    || stages.find((item) => item.stageCode === 'PRELIMINARY')
-    || stages[0];
-  if (!active) {
-    return undefined;
-  }
-  try {
-    return await getStageForm(active.id);
-  } catch (error) {
-    if (error instanceof ApiRequestError
-      && (error.httpStatus === 404 || error.code === ErrorCode.NOT_FOUND)) {
-      return undefined;
+  const candidates = [
+    ...stages.filter((item) => item.stageCode === 'PRELIMINARY'),
+    ...stages.filter((item) => item.stageCode !== 'PRELIMINARY' && item.materialEditable !== false),
+    ...stages.filter((item) => item.stageCode !== 'PRELIMINARY'),
+  ].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
+
+  for (const candidate of candidates) {
+    try {
+      return await getStageForm(candidate.id);
+    } catch (error) {
+      if (error instanceof ApiRequestError
+        && (error.httpStatus === 404 || error.code === ErrorCode.NOT_FOUND)) {
+        continue;
+      }
+      throw error;
     }
-    throw error;
   }
+  return undefined;
 };
