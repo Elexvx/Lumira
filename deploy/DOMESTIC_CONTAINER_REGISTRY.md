@@ -35,7 +35,7 @@ docker login registry.cn-hangzhou.aliyuncs.com
 `deploy/.env` 示例：
 
 ```text
-PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES=ghcr.io/elexvx/lumira/,registry.cn-hangzhou.aliyuncs.com/aiadc/
+PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES=ghcr.io/elexvx/lumira/,swr.cn-east-3.myhuaweicloud.com/aiadc/
 ```
 
 修改后重启 `lumira-updater`，再推送主分支或重新运行镜像流水线。不要把仓库密码写入 Git、`deploy/.env.example` 或发布产物。

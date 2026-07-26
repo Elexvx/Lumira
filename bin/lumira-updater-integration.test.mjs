@@ -7,6 +7,7 @@ import test from 'node:test';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${'b'.repeat(64)}`;
+const domesticDigest = (name) => `swr.cn-east-3.myhuaweicloud.com/aiadc/${name}@sha256:${'c'.repeat(64)}`;
 
 test('updater v2 exposes capabilities, preflight, and persistent task state', { timeout: 20_000 }, async (context) => {
   const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-test-'));
@@ -52,6 +53,35 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   const preflight = await call('/v1/update/preflight', { method: 'POST', body: JSON.stringify({ manifest }) });
   assert.equal(preflight.body.ready, true);
   assert.equal(preflight.body.targetSlot, 'green');
+
+  const domesticManifest = {
+    ...manifest,
+    commit: 'fedcba9876543210',
+    images: {
+      server: domesticDigest('lumira-server'),
+      frontend: domesticDigest('lumira-ui'),
+      async: domesticDigest('lumira-async'),
+      jobExecutor: domesticDigest('lumira-job-executor'),
+      migrator: domesticDigest('lumira-migrator'),
+    },
+  };
+  const domesticPreflight = await call('/v1/update/preflight', {
+    method: 'POST',
+    body: JSON.stringify({ manifest: domesticManifest }),
+  });
+  assert.equal(domesticPreflight.body.ready, true, JSON.stringify(domesticPreflight.body.blockers));
+
+  const untrustedPreflight = await call('/v1/update/preflight', {
+    method: 'POST',
+    body: JSON.stringify({
+      manifest: {
+        ...manifest,
+        images: { ...manifest.images, server: `untrusted.example/lumira-server@sha256:${'d'.repeat(64)}` },
+      },
+    }),
+  });
+  assert.equal(untrustedPreflight.body.ready, false);
+  assert.match(untrustedPreflight.body.blockers.join(' '), /Image registry is not allowed/);
 
   const install = await call('/v1/update/install', { method: 'POST', body: JSON.stringify({ preflightId: preflight.body.preflightId }) });
   assert.equal(install.response.status, 202);

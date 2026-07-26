@@ -54,7 +54,10 @@ const skipPullIfPresent = process.env.LUMIRA_UPDATER_SKIP_PULL_IF_PRESENT === 't
 const rollbackDrainSeconds = Math.max(0, Math.min(600, Number(process.env.LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS || 60)));
 const pullNoProgressTimeoutMs = Math.max(30_000, Math.min(30 * 60_000, Number(process.env.LUMIRA_UPDATER_PULL_NO_PROGRESS_TIMEOUT_MS || 5 * 60_000)));
 const pullTimeoutMs = Math.max(pullNoProgressTimeoutMs, Math.min(2 * 60 * 60_000, Number(process.env.LUMIRA_UPDATER_PULL_TIMEOUT_MS || 30 * 60_000)));
-const allowedImagePrefixes = String(process.env.PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES || 'ghcr.io/elexvx/lumira/')
+const allowedImagePrefixes = String(
+  process.env.PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES
+    || 'ghcr.io/elexvx/lumira/,swr.cn-east-3.myhuaweicloud.com/aiadc/',
+)
   .split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
 const activeCommandControllers = new Map();
 

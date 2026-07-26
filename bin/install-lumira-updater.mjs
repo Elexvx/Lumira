@@ -57,6 +57,8 @@ for (const [key, value] of Object.entries({
   PLATFORM_UPDATE_AGENT_URL: 'http://host.docker.internal:9788',
   PLATFORM_UPDATE_AGENT_ALLOWED_HOSTS: 'host.docker.internal',
   PLATFORM_UPDATE_AGENT_TOKEN: token,
+  PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES: env.PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES
+    || 'ghcr.io/elexvx/lumira/,swr.cn-east-3.myhuaweicloud.com/aiadc/',
   LUMIRA_UPDATER_HOST: gateway,
   LUMIRA_UPDATER_PORT: env.LUMIRA_UPDATER_PORT || '9788',
   LUMIRA_DEPLOY_DIR: deployDir,
