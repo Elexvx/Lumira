@@ -52,6 +52,7 @@ public class PaymentWebhookService {
     private final PaymentOutboxService outboxService;
     private final DomainEventPublisher domainEventPublisher;
     private final SecurityAuditEventService securityAuditEventService;
+    private final WechatPayV3Service wechatPayV3Service;
 
     @Autowired
     public PaymentWebhookService(
@@ -61,7 +62,8 @@ public class PaymentWebhookService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SecurityAuditEventService securityAuditEventService
+            SecurityAuditEventService securityAuditEventService,
+            WechatPayV3Service wechatPayV3Service
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -70,6 +72,28 @@ public class PaymentWebhookService {
         this.outboxService = outboxService;
         this.domainEventPublisher = domainEventPublisher;
         this.securityAuditEventService = securityAuditEventService;
+        this.wechatPayV3Service = wechatPayV3Service;
+    }
+
+    public PaymentWebhookService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            PaymentManagementAppService paymentManagementAppService,
+            PaymentProviderCatalog providerCatalog,
+            PaymentOutboxService outboxService,
+            @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            SecurityAuditEventService securityAuditEventService
+    ) {
+        this(
+                jdbcTemplate,
+                objectMapper,
+                paymentManagementAppService,
+                providerCatalog,
+                outboxService,
+                domainEventPublisher,
+                securityAuditEventService,
+                new WechatPayV3Service(objectMapper)
+        );
     }
 
     public PaymentWebhookService(
@@ -80,34 +104,55 @@ public class PaymentWebhookService {
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
-        this(jdbcTemplate, objectMapper, paymentManagementAppService, providerCatalog, outboxService, domainEventPublisher, null);
+        this(
+                jdbcTemplate,
+                objectMapper,
+                paymentManagementAppService,
+                providerCatalog,
+                outboxService,
+                domainEventPublisher,
+                null,
+                new WechatPayV3Service(objectMapper)
+        );
     }
 
     @Transactional
     public PaymentWebhookEventDTO handleWebhook(String providerCode, String payload, Map<String, String> headers) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        String normalizedPayload = StringUtils.hasText(payload) ? payload.trim() : "{}";
+        String normalizedProvider = providerCatalog.normalize(providerCode);
+        String normalizedPayload = StringUtils.hasText(payload)
+                ? ("wechat_pay".equals(normalizedProvider) ? payload : payload.trim())
+                : "{}";
         if (normalizedPayload.getBytes(StandardCharsets.UTF_8).length > MAX_WEBHOOK_PAYLOAD_BYTES) {
             recordRejectedWebhook(providerCode, "PAYLOAD_TOO_LARGE", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook payload too large", "Webhook request is invalid");
         }
         Map<String, String> payloadFields = parsePayloadFields(normalizedPayload);
+        String processingPayload = normalizedPayload;
         PaymentProviderSettingsDTO settings = paymentManagementAppService.getRequiredProviderSettings(providerCode);
         String eventId = resolveEventId(headers, normalizedPayload);
         String eventType = resolveEventType(headers, normalizedPayload);
         String signature = resolveSignature(headers, normalizedPayload);
-        String timestamp = resolveHeader(headers, "timestamp", "X-Timestamp");
-        String nonce = resolveHeader(headers, "nonce", "X-Nonce");
-        if ("alipay".equals(providerCatalog.normalize(providerCode))) {
+        String timestamp = resolveHeader(headers, "timestamp", "X-Timestamp", "Wechatpay-Timestamp");
+        String nonce = resolveHeader(headers, "nonce", "X-Nonce", "Wechatpay-Nonce");
+        if ("alipay".equals(normalizedProvider)) {
             eventId = firstText(payloadFields, "notify_id", "trade_no", "out_trade_no");
             eventType = firstText(payloadFields, "notify_type", "trade_status");
             signature = firstText(payloadFields, "sign");
             timestamp = firstText(payloadFields, "notify_time", "gmt_payment");
         }
 
-        if (!verifySignature(definition, settings, normalizedPayload, payloadFields, signature, timestamp, nonce)) {
+        if (!verifySignature(definition, settings, normalizedPayload, payloadFields, signature, timestamp, nonce, headers)) {
             recordRejectedWebhook(providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
+        }
+        if ("wechat_pay".equals(normalizedProvider)) {
+            WechatPayV3Service.WechatNotification notification =
+                    wechatPayV3Service.decryptNotification(settings, normalizedPayload);
+            eventId = notification.eventId();
+            eventType = notification.eventType();
+            processingPayload = notification.normalizedPayload();
+            payloadFields = parsePayloadFields(processingPayload);
         }
         verifyProviderIdentity(providerCode, settings, payloadFields, normalizedPayload, headers);
         if (!isFreshTimestamp(timestamp)) {
@@ -169,7 +214,7 @@ public class PaymentWebhookService {
             throw new BizException(ErrorCode.BIZ_ERROR, "Payment webhook event changed during insert");
         }
 
-        String processMessage = applyEvent(providerCode, normalizedPayload, eventType);
+        String processMessage = applyEvent(providerCode, processingPayload, eventType);
         if (!markProcessed(providerCode, eventId, eventType, processMessage)) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Payment webhook event was changed during processing");
         }
@@ -266,6 +311,9 @@ public class PaymentWebhookService {
         Map<String, String> payloadFields = parsePayloadFields(payload);
         String normalizedEvent = normalizeText(eventType).toLowerCase(Locale.ROOT);
         if (normalizedEvent.contains("refund")) {
+            if ("wechat_pay".equals(normalizedProvider) && !normalizedEvent.contains("success")) {
+                return "WeChat Pay refund status ignored: " + normalizeText(eventType);
+            }
             String refundNo = extractField(payload, "refundNo", "refund_no", "id");
             if (StringUtils.hasText(refundNo)) {
                 PaymentRefundRow refund = findRefundForWebhook(normalizedProvider, refundNo.trim());
@@ -312,6 +360,8 @@ public class PaymentWebhookService {
             if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
                 return "Alipay trade status ignored: " + normalizeText(tradeStatus);
             }
+        } else if ("wechat_pay".equals(normalizedProvider) && !normalizedEvent.contains("success")) {
+            return "WeChat Pay transaction status ignored: " + normalizeText(eventType);
         }
 
         String orderNo = extractField(payload, "orderNo", "order_no", "merchantOrderNo", "out_trade_no", "id");
@@ -477,7 +527,8 @@ public class PaymentWebhookService {
             Map<String, String> payloadFields,
             String signature,
             String timestamp,
-            String nonce
+            String nonce,
+            Map<String, String> headers
     ) {
         if (!StringUtils.hasText(signature)) {
             return false;
@@ -485,7 +536,14 @@ public class PaymentWebhookService {
         String normalized = providerCatalog.normalize(definition.providerCode());
         return switch (normalized) {
             case "alipay" -> verifyRsaSignature(settings.getPublicKey(), buildAlipaySignContent(payloadFields), signature);
-            case "wechat_pay" -> verifyHmacSignature(settings.getApiV3Key(), buildWechatSignedString(timestamp, nonce, payload), signature);
+            case "wechat_pay" -> wechatPayV3Service.verifyNotificationSignature(
+                    settings,
+                    timestamp,
+                    nonce,
+                    signature,
+                    resolveHeader(headers, "Wechatpay-Serial"),
+                    payload
+            );
             case "stripe" -> verifyHmacSignature(settings.getWebhookSecret(), buildStripeSignedString(timestamp, payload), signature);
             case "paypal" -> verifyHmacSignature(settings.getWebhookSecret(), payload, signature);
             default -> false;
@@ -499,7 +557,18 @@ public class PaymentWebhookService {
             String payload,
             Map<String, String> headers
     ) {
-        if (!"alipay".equals(providerCatalog.normalize(providerCode))) {
+        String normalizedProvider = providerCatalog.normalize(providerCode);
+        if ("wechat_pay".equals(normalizedProvider)) {
+            String callbackMerchantId = firstText(payloadFields, "mchid");
+            String callbackAppId = firstText(payloadFields, "appid");
+            if (!secureTextEquals(callbackMerchantId, settings.getMerchantId())
+                    || !secureTextEquals(callbackAppId, settings.getAppId())) {
+                recordRejectedWebhook(providerCode, "PROVIDER_IDENTITY_MISMATCH", payload, headers);
+                throw new BizException(ErrorCode.BAD_REQUEST, "WeChat Pay merchant identity mismatch", "Webhook request is invalid");
+            }
+            return;
+        }
+        if (!"alipay".equals(normalizedProvider)) {
             return;
         }
         String callbackAppId = firstText(payloadFields, "app_id");
@@ -549,10 +618,6 @@ public class PaymentWebhookService {
         }
     }
 
-    private String buildWechatSignedString(String timestamp, String nonce, String payload) {
-        return normalizeText(timestamp) + "\n" + normalizeText(nonce) + "\n" + payload + "\n";
-    }
-
     private String buildStripeSignedString(String timestamp, String payload) {
         return normalizeText(timestamp) + "." + payload;
     }
@@ -599,6 +664,27 @@ public class PaymentWebhookService {
     private void assertWebhookAmountMatchesOrder(String providerCode, Map<String, String> fields, PaymentOrderRow order) {
         if (order == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
+        }
+        if ("wechat_pay".equals(providerCode)) {
+            String totalAmount = firstText(fields, "amountMinor");
+            if (!StringUtils.hasText(totalAmount)) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "WeChat Pay amount is missing", "Webhook request is invalid");
+            }
+            try {
+                long amountMinor = Long.parseLong(totalAmount.trim());
+                if (order.getAmountMinor() == null || order.getAmountMinor() != amountMinor) {
+                    throw new BizException(ErrorCode.BAD_REQUEST, "WeChat Pay amount does not match local order", "Webhook request is invalid");
+                }
+            } catch (NumberFormatException exception) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "WeChat Pay amount is invalid", "Webhook request is invalid");
+            }
+            String callbackCurrency = firstText(fields, "currency");
+            if (StringUtils.hasText(callbackCurrency)
+                    && StringUtils.hasText(order.getCurrency())
+                    && !callbackCurrency.equalsIgnoreCase(order.getCurrency())) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "WeChat Pay currency does not match local order", "Webhook request is invalid");
+            }
+            return;
         }
         if (!"alipay".equals(providerCode)) {
             return;
@@ -701,6 +787,16 @@ public class PaymentWebhookService {
         return result == 0;
     }
 
+    private boolean secureTextEquals(String left, String right) {
+        if (!StringUtils.hasText(left) || !StringUtils.hasText(right)) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                left.trim().getBytes(StandardCharsets.UTF_8),
+                right.trim().getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
     private String resolveEventId(Map<String, String> headers, String payload) {
         String payloadEventId = extractField(payload, "eventId", "event_id", "id", "notification_id");
         if (StringUtils.hasText(payloadEventId)) {
@@ -718,7 +814,7 @@ public class PaymentWebhookService {
     }
 
     private String resolveSignature(Map<String, String> headers, String payload) {
-        String headerSignature = resolveHeader(headers, "signature", "X-Signature", "Stripe-Signature");
+        String headerSignature = resolveHeader(headers, "signature", "X-Signature", "Stripe-Signature", "Wechatpay-Signature");
         if (StringUtils.hasText(headerSignature)) {
             return headerSignature.trim();
         }

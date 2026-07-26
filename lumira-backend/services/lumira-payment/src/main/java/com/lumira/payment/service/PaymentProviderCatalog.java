@@ -28,9 +28,9 @@ public final class PaymentProviderCatalog {
                     "微信支付",
                     "SANDBOX",
                     "CNY",
-                    List.of("appId", "merchantId", "merchantSerialNo", "apiV3Key", "platformCertSerialNo", "privateKey", "notifyUrl"),
-                    Set.of("privateKey", "apiV3Key", "platformCertSerialNo"),
-                    "HMAC-SHA256"
+                    List.of("appId", "merchantId", "merchantSerialNo", "apiV3Key", "platformCertSerialNo", "publicKey", "privateKey", "notifyUrl"),
+                    Set.of("privateKey", "apiV3Key"),
+                    "WECHATPAY2-SHA256-RSA2048"
             ),
             "stripe", new PaymentProviderDefinition(
                     "stripe",

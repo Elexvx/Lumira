@@ -52,6 +52,7 @@ public class PaymentTransactionService {
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private final PaymentActorResolver actorResolver;
     private final AlipayPagePayService alipayPagePayService;
+    private final WechatPayV3Service wechatPayV3Service;
 
     @Autowired
     public PaymentTransactionService(
@@ -61,7 +62,8 @@ public class PaymentTransactionService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            WechatPayV3Service wechatPayV3Service
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -72,6 +74,28 @@ public class PaymentTransactionService {
         this.systemInternalApiProvider = systemInternalApiProvider;
         this.actorResolver = new PaymentActorResolver();
         this.alipayPagePayService = new AlipayPagePayService(objectMapper);
+        this.wechatPayV3Service = wechatPayV3Service;
+    }
+
+    public PaymentTransactionService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            PaymentManagementAppService paymentManagementAppService,
+            PaymentProviderCatalog providerCatalog,
+            PaymentOutboxService outboxService,
+            @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+    ) {
+        this(
+                jdbcTemplate,
+                objectMapper,
+                paymentManagementAppService,
+                providerCatalog,
+                outboxService,
+                domainEventPublisher,
+                systemInternalApiProvider,
+                new WechatPayV3Service(objectMapper)
+        );
     }
 
     @Transactional
@@ -173,7 +197,7 @@ public class PaymentTransactionService {
         row.setClientIp(normalizeText(request.clientIp()));
         row.setNotifyUrl(resolveText(request.notifyUrl(), settings.getNotifyUrl()));
         row.setReturnUrl(resolveText(request.returnUrl(), settings.getReturnUrl()));
-        row.setPaymentUrl(buildPaymentUrl(settings, row));
+        row.setPaymentUrl(buildPaymentUrl(settings, row, request.metadata()));
         row.setRequestJson(serialize(Map.of(
                 "providerCode", row.getProviderCode(),
                 "orderNo", row.getOrderNo(),
@@ -291,6 +315,11 @@ public class PaymentTransactionService {
         }
         if ("alipay".equalsIgnoreCase(row.getProviderCode())) {
             alipayPagePayService.closeTrade(
+                    paymentManagementAppService.getRequiredProviderSettings(row.getProviderCode()),
+                    row.getOrderNo()
+            );
+        } else if ("wechat_pay".equalsIgnoreCase(row.getProviderCode())) {
+            wechatPayV3Service.closePayment(
                     paymentManagementAppService.getRequiredProviderSettings(row.getProviderCode()),
                     row.getOrderNo()
             );
@@ -812,7 +841,11 @@ public class PaymentTransactionService {
         return providerCatalog.normalize(providerCode) + "-refund-" + normalizeIdentifier(refundNo) + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
     }
 
-    private String buildPaymentUrl(PaymentProviderSettingsDTO settings, PaymentOrderRow order) {
+    private String buildPaymentUrl(
+            PaymentProviderSettingsDTO settings,
+            PaymentOrderRow order,
+            Map<String, Object> metadata
+    ) {
         if ("alipay".equals(order.getProviderCode())) {
             return alipayPagePayService.buildPagePayUrl(
                     settings,
@@ -822,6 +855,18 @@ public class PaymentTransactionService {
                     order.getNotifyUrl(),
                     order.getReturnUrl()
             );
+        }
+        if ("wechat_pay".equals(order.getProviderCode())) {
+            return wechatPayV3Service.createPayment(
+                    settings,
+                    order.getOrderNo(),
+                    order.getSubject(),
+                    order.getAmountMinor(),
+                    order.getCurrency(),
+                    order.getNotifyUrl(),
+                    order.getClientIp(),
+                    metadata == null ? Map.of() : metadata
+            ).paymentUrl();
         }
         if (StringUtils.hasText(settings.getApiBaseUrl())) {
             return resolveText(settings.getApiBaseUrl(), "") + "/checkout/" + order.getOrderNo();
