@@ -2,7 +2,6 @@
 
 import http from 'node:http';
 import os from 'node:os';
-import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   closeSync,
@@ -21,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parseEnvFile, setEnvValue } from './lib/env-utils.mjs';
 import { probeHttp, sleep } from './lib/http-utils.mjs';
+import { runManagedCommand } from './lib/managed-command.mjs';
 import {
   TERMINAL_UPDATE_STATUSES,
   UPDATER_PROTOCOL_VERSION,
@@ -52,8 +52,11 @@ const dryRun = process.argv.includes('--dry-run') || process.env.LUMIRA_UPDATER_
 const containerPrefix = process.env.LUMIRA_CONTAINER_PREFIX || 'lumira-';
 const skipPullIfPresent = process.env.LUMIRA_UPDATER_SKIP_PULL_IF_PRESENT === 'true';
 const rollbackDrainSeconds = Math.max(0, Math.min(600, Number(process.env.LUMIRA_UPDATER_ROLLBACK_DRAIN_SECONDS || 60)));
+const pullNoProgressTimeoutMs = Math.max(30_000, Math.min(30 * 60_000, Number(process.env.LUMIRA_UPDATER_PULL_NO_PROGRESS_TIMEOUT_MS || 5 * 60_000)));
+const pullTimeoutMs = Math.max(pullNoProgressTimeoutMs, Math.min(2 * 60 * 60_000, Number(process.env.LUMIRA_UPDATER_PULL_TIMEOUT_MS || 30 * 60_000)));
 const allowedImagePrefixes = String(process.env.PLATFORM_UPDATE_ALLOWED_IMAGE_PREFIXES || 'ghcr.io/elexvx/lumira/')
   .split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
+const activeCommandControllers = new Map();
 
 for (const directory of [tasksDir, preflightDir, upstreamDir]) mkdirSync(directory, { recursive: true });
 
@@ -136,25 +139,23 @@ function runCommand(task, command, args, options = {}) {
     appendLog(task, `[dry-run] skipped ${command}`);
     return Promise.resolve('');
   }
-  return new Promise((resolve, reject) => {
-    const invocation = commandInvocation(command, args);
-    const child = spawn(invocation.command, invocation.args, {
-      cwd: repoRoot,
-      shell: false,
-      env: { ...process.env, ...options.env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    let output = '';
-    child.stdout.on('data', (chunk) => {
-      output += chunk.toString();
-      appendLog(task, chunk.toString().trim());
-    });
-    child.stderr.on('data', (chunk) => {
-      output += chunk.toString();
-      appendLog(task, chunk.toString().trim());
-    });
-    child.on('error', reject);
-    child.on('close', (code) => code === 0 ? resolve(output.trim()) : reject(new Error(`${command} exited with ${code}`)));
+  const invocation = commandInvocation(command, args);
+  let controller;
+  const promise = runManagedCommand({
+    command: invocation.command,
+    args: invocation.args,
+    cwd: repoRoot,
+    env: { ...process.env, ...options.env },
+    noProgressTimeoutMs: options.noProgressTimeoutMs,
+    timeoutMs: options.timeoutMs,
+    onOutput: (text) => appendLog(task, text.trim()),
+    onController: (value) => {
+      controller = value;
+      activeCommandControllers.set(task.taskId, value);
+    },
+  });
+  return promise.finally(() => {
+    if (activeCommandControllers.get(task.taskId) === controller) activeCommandControllers.delete(task.taskId);
   });
 }
 
@@ -646,7 +647,10 @@ async function runInstall(task, request) {
     if (localFrontendRunning) releaseImages.push(manifest.images.frontend);
     for (const image of new Set(releaseImages.filter(Boolean))) {
       if (skipPullIfPresent && await imageIsPresent(task, image)) appendLog(task, `Using locally cached digest-pinned image ${image}.`);
-      else await runCommand(task, 'docker', ['pull', image]);
+      else await runCommand(task, 'docker', ['pull', image], {
+        noProgressTimeoutMs: pullNoProgressTimeoutMs,
+        timeoutMs: pullTimeoutMs,
+      });
     }
     checkCancellation(task);
 
@@ -822,6 +826,9 @@ function cancelTask(taskId) {
     ? 'Rollback requested after traffic switch'
     : 'Cancellation requested';
   writeTask(task);
+  const error = new Error('Update cancelled by administrator.');
+  error.code = 'UPDATE_CANCELLED';
+  activeCommandControllers.get(taskId)?.cancel(error);
   return task;
 }
 
