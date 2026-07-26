@@ -8,6 +8,7 @@ import com.lumira.payment.service.PaymentOutboxService;
 import com.lumira.payment.service.PaymentProviderCatalog;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
+import com.lumira.payment.service.WechatPayV3Service;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -19,7 +20,8 @@ import org.springframework.context.annotation.Import;
         PaymentOutboxService.class,
         PaymentProviderCatalog.class,
         PaymentTransactionService.class,
-        PaymentWebhookService.class
+        PaymentWebhookService.class,
+        WechatPayV3Service.class
 })
 public class PaymentRuntimeAssemblyConfiguration {
 
