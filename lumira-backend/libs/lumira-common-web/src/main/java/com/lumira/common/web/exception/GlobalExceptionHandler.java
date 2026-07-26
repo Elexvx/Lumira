@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,6 +66,25 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return buildResponse(response, ErrorCode.BAD_REQUEST.getHttpStatus());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request
+    ) {
+        log.warn(
+                "Request parameter type mismatch requestId={} traceId={} method={} path={} parameter={}",
+                TraceContext.getRequestId(),
+                TraceContext.getTraceId(),
+                request.getMethod(),
+                request.getRequestURI(),
+                exception.getName()
+        );
+        return buildResponse(
+                ApiResponse.fail(ErrorCode.VALIDATION_ERROR, TraceContext.getRequestId(), request.getRequestURI()),
+                ErrorCode.VALIDATION_ERROR.getHttpStatus()
+        );
     }
 
     @ExceptionHandler(BizException.class)

@@ -5011,7 +5011,7 @@ const buildStorageSpaceOptions = (records: StorageSpaceOptionRecord[]): StorageS
     }));
 
 const loadStorageSpaceOptions = async () => {
-  const records = await request<StorageSpaceOptionRecord[]>('/v1/files/storage-space-options', {
+  const records = await request<StorageSpaceOptionRecord[]>('/v2/files/storage-space-options', {
     method: 'GET',
     ...API_OPTS.SILENT,
   });

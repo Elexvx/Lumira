@@ -1,8 +1,10 @@
 package com.lumira.file.controller;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -22,6 +24,29 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class FileControllerTest {
+
+    @Test
+    void storageSpaceOptionsShouldRemainAvailableOnV1ForExistingClients() {
+        FileManagementAppService fileManagementAppService = mock(FileManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        FileController controller = new FileController(
+                fileManagementAppService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trustedCurrentUser("aiadc:competition:update");
+        List<StorageSpaceOptionDTO> options = List.of(
+                new StorageSpaceOptionDTO("默认空间", "default", true)
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(fileManagementAppService.listStorageSpaceOptions(currentUser)).thenReturn(options);
+
+        ApiResponse<List<StorageSpaceOptionDTO>> response = controller.storageSpaceOptions();
+
+        assertThat(response.getData()).isEqualTo(options);
+        verify(fileManagementAppService).listStorageSpaceOptions(currentUser);
+    }
 
     @Test
     void storageSpacesShouldRejectTrustedUserWhenResolverIsUnavailable() {
