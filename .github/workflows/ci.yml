@@ -192,6 +192,7 @@ jobs:
           cache-from: type=gha,scope=lumira-migrator
           cache-to: type=gha,mode=max,scope=lumira-migrator
       - name: Mirror release images to domestic registry
+        id: mirror_images
         if: >-
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
@@ -212,25 +213,65 @@ jobs:
           short_sha="${{ steps.images.outputs.short_sha }}"
           image_names=(lumira-server lumira-ui lumira-async lumira-job-executor lumira-migrator)
           image_digests=("${SERVER_DIGEST}" "${UI_DIGEST}" "${ASYNC_DIGEST}" "${JOB_EXECUTOR_DIGEST}" "${MIGRATOR_DIGEST}")
+          output_names=(lumira_server_digest lumira_ui_digest lumira_async_digest lumira_job_executor_digest lumira_migrator_digest)
+          evidence_args=()
 
           for index in "${!image_names[@]}"; do
             image_name="${image_names[$index]}"
             source_image="${source_prefix}/${image_name}@${image_digests[$index]}"
             target_image="${target_prefix}/${image_name}"
+            source_manifest="$(docker buildx imagetools inspect "${source_image}" --raw)"
+            platform_digest="$(
+              jq -r '
+                if (.manifests | type) == "array" then
+                  first(
+                    .manifests[]
+                    | select(
+                        .platform.os == "linux"
+                        and .platform.architecture == "amd64"
+                        and ((.annotations["vnd.docker.reference.type"] // "") != "attestation-manifest")
+                      )
+                    | .digest
+                  ) // empty
+                else
+                  empty
+                end
+              ' <<<"${source_manifest}"
+            )"
+            if [[ -z "${platform_digest}" ]]; then
+              platform_digest="${image_digests[$index]}"
+            fi
+
             docker buildx imagetools create \
+              --prefer-index=false \
               --tag "${target_image}:main" \
               --tag "${target_image}:sha-${short_sha}" \
-              "${source_image}"
-            docker buildx imagetools inspect "${target_image}:sha-${short_sha}" >/dev/null
+              "${source_prefix}/${image_name}@${platform_digest}"
+            target_manifest="$(docker buildx imagetools inspect "${target_image}:sha-${short_sha}" --raw)"
+            target_digest="sha256:$(printf '%s' "${target_manifest}" | sha256sum | cut -d' ' -f1)"
+            echo "${output_names[$index]}=${target_digest}" >> "$GITHUB_OUTPUT"
+            evidence_args+=("${image_name}" "${target_digest}")
           done
 
-          node - <<'NODE'
+          node - "${evidence_args[@]}" <<'NODE'
           const { writeFileSync } = require('node:fs');
           const names = ['lumira-server', 'lumira-ui', 'lumira-async', 'lumira-job-executor', 'lumira-migrator'];
+          const values = process.argv.slice(2);
+          const digests = Object.fromEntries(
+            Array.from({ length: values.length / 2 }, (_, index) => [
+              values[index * 2],
+              values[index * 2 + 1],
+            ]),
+          );
           const evidence = {
             commit: process.env.GITHUB_SHA,
             registry: process.env.CN_REGISTRY,
             namespace: process.env.CN_REGISTRY_NAMESPACE,
+            digests,
+            immutable: Object.fromEntries(names.map((name) => [
+              name,
+              `${process.env.CN_REGISTRY}/${process.env.CN_REGISTRY_NAMESPACE}/${name}@${digests[name]}`,
+            ])),
             tags: Object.fromEntries(names.map((name) => [
               name,
               [
@@ -292,24 +333,39 @@ jobs:
         run: |
           if [[ -n "${CN_REGISTRY}" && -n "${CN_REGISTRY_NAMESPACE}" ]]; then
             prefix="${CN_REGISTRY}/${CN_REGISTRY_NAMESPACE}"
+            server_digest="${{ steps.mirror_images.outputs.lumira_server_digest }}"
+            ui_digest="${{ steps.mirror_images.outputs.lumira_ui_digest }}"
+            async_digest="${{ steps.mirror_images.outputs.lumira_async_digest }}"
+            job_executor_digest="${{ steps.mirror_images.outputs.lumira_job_executor_digest }}"
+            migrator_digest="${{ steps.mirror_images.outputs.lumira_migrator_digest }}"
           else
             prefix="${REGISTRY}/$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')/lumira"
+            server_digest="${{ steps.build_server.outputs.digest }}"
+            ui_digest="${{ steps.build_ui.outputs.digest }}"
+            async_digest="${{ steps.build_async.outputs.digest }}"
+            job_executor_digest="${{ steps.build_job_executor.outputs.digest }}"
+            migrator_digest="${{ steps.build_migrator.outputs.digest }}"
           fi
           echo "lumira_server=${prefix}/lumira-server" >> "$GITHUB_OUTPUT"
           echo "lumira_ui=${prefix}/lumira-ui" >> "$GITHUB_OUTPUT"
           echo "lumira_async=${prefix}/lumira-async" >> "$GITHUB_OUTPUT"
           echo "lumira_job_executor=${prefix}/lumira-job-executor" >> "$GITHUB_OUTPUT"
           echo "lumira_migrator=${prefix}/lumira-migrator" >> "$GITHUB_OUTPUT"
+          echo "lumira_server_digest=${server_digest}" >> "$GITHUB_OUTPUT"
+          echo "lumira_ui_digest=${ui_digest}" >> "$GITHUB_OUTPUT"
+          echo "lumira_async_digest=${async_digest}" >> "$GITHUB_OUTPUT"
+          echo "lumira_job_executor_digest=${job_executor_digest}" >> "$GITHUB_OUTPUT"
+          echo "lumira_migrator_digest=${migrator_digest}" >> "$GITHUB_OUTPUT"
       - name: Generate release manifest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GIT_COMMIT: ${{ github.sha }}
           APP_VERSION: main
-          LUMIRA_SERVER_IMAGE: ${{ steps.release_images.outputs.lumira_server }}@${{ steps.build_server.outputs.digest }}
-          LUMIRA_FRONTEND_IMAGE: ${{ steps.release_images.outputs.lumira_ui }}@${{ steps.build_ui.outputs.digest }}
-          LUMIRA_ASYNC_IMAGE: ${{ steps.release_images.outputs.lumira_async }}@${{ steps.build_async.outputs.digest }}
-          LUMIRA_JOB_EXECUTOR_IMAGE: ${{ steps.release_images.outputs.lumira_job_executor }}@${{ steps.build_job_executor.outputs.digest }}
-          LUMIRA_MIGRATOR_IMAGE: ${{ steps.release_images.outputs.lumira_migrator }}@${{ steps.build_migrator.outputs.digest }}
+          LUMIRA_SERVER_IMAGE: ${{ steps.release_images.outputs.lumira_server }}@${{ steps.release_images.outputs.lumira_server_digest }}
+          LUMIRA_FRONTEND_IMAGE: ${{ steps.release_images.outputs.lumira_ui }}@${{ steps.release_images.outputs.lumira_ui_digest }}
+          LUMIRA_ASYNC_IMAGE: ${{ steps.release_images.outputs.lumira_async }}@${{ steps.release_images.outputs.lumira_async_digest }}
+          LUMIRA_JOB_EXECUTOR_IMAGE: ${{ steps.release_images.outputs.lumira_job_executor }}@${{ steps.release_images.outputs.lumira_job_executor_digest }}
+          LUMIRA_MIGRATOR_IMAGE: ${{ steps.release_images.outputs.lumira_migrator }}@${{ steps.release_images.outputs.lumira_migrator_digest }}
           LUMIRA_RELEASE_MIGRATION_MODE: expand-only
           LUMIRA_RELEASE_DATABASE_VERSION: ${{ steps.database_migrations.outputs.version }}
           LUMIRA_RELEASE_MIGRATION_REQUIRED: 'true'
