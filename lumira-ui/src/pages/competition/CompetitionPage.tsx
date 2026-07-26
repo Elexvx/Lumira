@@ -72,6 +72,7 @@ import {
   isConfigModuleReadyToSave,
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
+  mergeStageMaterialSaveItems,
 } from '@/pages/competition/competitionSettingsSave';
 import {
   buildRegistrationCompetitionFallback,
@@ -5611,20 +5612,13 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         : fieldItems;
       const saved = module.key === 'files'
         ? await (async () => {
-            const oppositeStageCode = fileStageCode === 'PRELIMINARY' ? 'FINAL' : 'PRELIMINARY';
-            const hasOppositeStageItems = fileStageCode && items.some((item) => (
-              getFileConfigItemStageCode(item) === oppositeStageCode
-            ));
-            const preservedItems = fileStageCode
-              ? items.filter((item) => {
-                  const itemStageCode = getFileConfigItemStageCode(item);
-                  if (itemStageCode === fileStageCode) return false;
-                  if (itemStageCode === 'GENERAL') return !hasOppositeStageItems;
-                  return true;
-                })
-              : [];
             const groupedItems = splitFileConfigItemsByModule(fileStageCode
-              ? [...preservedItems, ...configItems]
+              ? mergeStageMaterialSaveItems(
+                  items,
+                  fileStageCode,
+                  configItems,
+                  getFileConfigItemStageCode,
+                )
               : configItems);
             return saveCompetitionSettingsModule(
               competitionUuid,

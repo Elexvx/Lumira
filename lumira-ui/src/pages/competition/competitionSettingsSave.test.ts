@@ -5,6 +5,7 @@ import {
   isConfigModuleReadyToSave,
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
+  mergeStageMaterialSaveItems,
 } from './competitionSettingsSave';
 
 describe('competition settings page-level save guards', () => {
@@ -71,6 +72,33 @@ describe('competition settings page-level save guards', () => {
       metadata: { ...material.metadata, storageKey: 'competition_materials' },
     }])).toBe(true);
   });
+
+  it.each(['PRELIMINARY', 'FINAL'])(
+    'replaces a same-key legacy general material when saving the %s stage',
+    (stageCode) => {
+      const existingItems = [
+        { id: 3, itemKey: 'work-file', stageCode: 'GENERAL' },
+        { id: 8, itemKey: 'registration-proof', stageCode: 'GENERAL' },
+        { id: 13, itemKey: 'final-report', stageCode: 'FINAL' },
+      ];
+      const currentStageItems = [
+        { id: 32, itemKey: 'work-file', stageCode },
+      ];
+
+      expect(mergeStageMaterialSaveItems(
+        existingItems,
+        stageCode,
+        currentStageItems,
+        (item) => item.stageCode,
+      )).toEqual([
+        { id: 8, itemKey: 'registration-proof', stageCode: 'GENERAL' },
+        ...(stageCode === 'PRELIMINARY'
+          ? [{ id: 13, itemKey: 'final-report', stageCode: 'FINAL' }]
+          : []),
+        { id: 32, itemKey: 'work-file', stageCode },
+      ]);
+    },
+  );
 
   it('requires the review range that is rendered in detailed timeline settings', () => {
     expect(isTimelineSettingsPageReadyToSave({

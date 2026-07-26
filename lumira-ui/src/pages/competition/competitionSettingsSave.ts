@@ -31,6 +31,10 @@ export type CompetitionSettingsConfigItemDraft = {
   } | null;
 };
 
+type StageMaterialSaveItem = {
+  itemKey?: string | null;
+};
+
 export type CompetitionSettingsFormValues = Omit<Partial<CompetitionUpsertPayload>, 'locale'> & {
   locale?: CompetitionLocale[];
   registrationRange?: [Dayjs, Dayjs] | [string, string];
@@ -190,4 +194,28 @@ export const isConfigModuleReadyToSave = (
     }
     return hasText(item.title) && hasText(item.itemKey);
   });
+};
+
+export const mergeStageMaterialSaveItems = <T extends StageMaterialSaveItem>(
+  existingItems: T[],
+  currentStageCode: string,
+  currentStageItems: T[],
+  getStageCode: (item: T) => string,
+) => {
+  const replacementKeys = new Set(
+    currentStageItems
+      .map((item) => trimOptional(item.itemKey))
+      .filter((itemKey): itemKey is string => Boolean(itemKey)),
+  );
+  const preservedItems = existingItems.filter((item) => {
+    const itemStageCode = getStageCode(item);
+    if (itemStageCode === currentStageCode) {
+      return false;
+    }
+    if (itemStageCode === 'GENERAL' && replacementKeys.has(trimOptional(item.itemKey) || '')) {
+      return false;
+    }
+    return true;
+  });
+  return [...preservedItems, ...currentStageItems];
 };
