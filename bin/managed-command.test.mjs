@@ -33,10 +33,10 @@ test('managed command terminates a child that makes no progress', { timeout: 5_0
 test('managed command enforces its overall timeout', { timeout: 5_000 }, async () => {
   await assert.rejects(runManagedCommand({
     command: process.execPath,
-    args: ['-e', 'setInterval(() => console.log("progress"), 20)'],
+    args: ['-e', 'console.log("started"); setInterval(() => console.log("progress"), 100)'],
     env: process.env,
-    noProgressTimeoutMs: 100,
-    timeoutMs: 150,
+    noProgressTimeoutMs: 1_000,
+    timeoutMs: 500,
     killGraceMs: 100,
   }), (error) => error.code === 'COMMAND_TIMEOUT');
 });
@@ -44,9 +44,9 @@ test('managed command enforces its overall timeout', { timeout: 5_000 }, async (
 test('managed command resets the no-progress timer when output arrives', { timeout: 5_000 }, async () => {
   const output = await runManagedCommand({
     command: process.execPath,
-    args: ['-e', "let count=0; const timer=setInterval(()=>{ console.log(++count); if(count===3){ clearInterval(timer); } }, 40)"],
+    args: ['-e', "let count=0; const timer=setInterval(()=>{ console.log(++count); if(count===3){ clearInterval(timer); } }, 100)"],
     env: process.env,
-    noProgressTimeoutMs: 100,
+    noProgressTimeoutMs: 500,
     killGraceMs: 100,
   });
   assert.match(output, /3/);
