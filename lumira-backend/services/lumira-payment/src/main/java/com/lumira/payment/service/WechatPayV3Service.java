@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -47,6 +48,7 @@ public class WechatPayV3Service {
     private final HttpClient httpClient;
     private final Clock clock;
 
+    @Autowired
     public WechatPayV3Service(ObjectMapper objectMapper) {
         this(
                 objectMapper,
