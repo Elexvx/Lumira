@@ -69,4 +69,25 @@ describe('tokenManager', () => {
     expect(restored.tokenManager.getAccessToken()).toBe('access-token');
     expect(restored.tokenManager.hasToken()).toBe(true);
   });
+
+  it('reloads a rotated access token into an already-open tab without rebroadcasting it', async () => {
+    const { tokenManager, TOKEN_STORAGE_KEY } = await import('@/auth/token');
+
+    tokenManager.setTokens({
+      accessToken: 'token-before-role-switch',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+    });
+    const generationBeforeSync = tokenManager.getTokenGeneration();
+    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
+      accessToken: 'token-after-role-switch',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+      expiresAt: Date.now() + 3600_000,
+    }));
+
+    expect(tokenManager.syncFromStorage()).toBe(true);
+    expect(tokenManager.getAccessToken()).toBe('token-after-role-switch');
+    expect(tokenManager.getTokenGeneration()).toBe(generationBeforeSync + 1);
+  });
 });

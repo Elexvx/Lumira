@@ -422,10 +422,12 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     const authChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
     if (authChannel) {
       authChannel.onmessage = (event: MessageEvent<{ type?: string }>) => {
-        if (event.data?.type === 'updated' && tokenManager.hasToken()) {
-          controller.resetLogoutGuard();
-          controller.scheduleTokenExpiration();
-          controller.scheduleTimeout(controller.getLastActivityAt());
+        if (event.data?.type === 'updated') {
+          if (tokenManager.syncFromStorage()) {
+            controller.resetLogoutGuard();
+            controller.scheduleTokenExpiration();
+            controller.scheduleTimeout(controller.getLastActivityAt());
+          }
           return;
         }
         if (event.data?.type === 'cleared') {

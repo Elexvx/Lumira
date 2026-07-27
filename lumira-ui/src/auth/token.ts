@@ -57,6 +57,22 @@ let memoryTokenState: AuthTokenState | null = readStoredTokenState();
 
 const getTokenState = (): AuthTokenState | null => memoryTokenState;
 
+const tokenStatesMatch = (left: AuthTokenState | null, right: AuthTokenState | null) =>
+  left?.accessToken === right?.accessToken &&
+  left?.tokenType === right?.tokenType &&
+  left?.expiresIn === right?.expiresIn &&
+  left?.expiresAt === right?.expiresAt;
+
+const syncTokenStateFromStorage = () => {
+  const storedTokenState = readStoredTokenState();
+  if (!tokenStatesMatch(memoryTokenState, storedTokenState)) {
+    memoryTokenState = storedTokenState;
+    authTokenGeneration += 1;
+    bumpAuthSessionEpoch();
+  }
+  return Boolean(memoryTokenState?.accessToken);
+};
+
 const clearStoredTokenState = () => {
   safeStorage('sessionStorage')?.removeItem(TOKEN_STORAGE_KEY);
   safeStorage('localStorage')?.removeItem(TOKEN_STORAGE_KEY);
@@ -95,6 +111,7 @@ export const tokenManager = {
   getRefreshToken: () => '',
   getTokenGeneration: () => authTokenGeneration,
   hasToken: () => Boolean(getTokenState()?.accessToken),
+  syncFromStorage: syncTokenStateFromStorage,
   setTokens: (payload: { accessToken: string; refreshToken?: string; tokenType?: string; expiresIn: number; remember?: boolean }) => {
     const expiresAt = Date.now() + payload.expiresIn * 1000;
     writeTokenState({

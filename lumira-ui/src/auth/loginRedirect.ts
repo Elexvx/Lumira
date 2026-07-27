@@ -2,7 +2,7 @@ import { DEFAULT_HOME_PATH, LOGIN_PATH } from '@/app.constants';
 import buildAccess from '@/access';
 import { getCurrentRoleDefaultHomePath } from '@/auth/defaultHomePath';
 import { isLoginInProgress } from '@/auth/loginFlowState';
-import { AUTH_SESSION_BROADCAST_CHANNEL } from '@/auth/token';
+import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
 import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
 import type { CurrentUser, MenuNode } from '@/types/api';
 
@@ -189,6 +189,7 @@ export const createLoginSessionBroadcastListener = (
       return;
     }
 
+    tokenManager.syncFromStorage();
     onNavigate(redirectTarget);
   };
   return () => channel.close();
