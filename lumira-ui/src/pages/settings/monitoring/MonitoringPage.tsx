@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { getLocale, history, useAccess, useLocation } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Modal, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
-import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, GithubOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
+import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
 import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -286,7 +286,6 @@ const usePlatformUpdateMonitor = () => {
   const updateStatus = query.data;
   const statusKey = resolveStatusKey(updateStatus);
   const currentStatusMeta = statusMeta[statusKey] || statusMeta.UNKNOWN;
-  const latestUrl = updateStatus?.latest?.url;
   const canCompare = Boolean(updateStatus?.currentKnown && updateStatus?.latestKnown);
   const detailDescription = updateStatus?.errorMessage || updateStatus?.actionRequired || t('无需处理。', 'No action required.');
 
@@ -463,7 +462,6 @@ const usePlatformUpdateMonitor = () => {
     updateStatus,
     statusKey,
     currentStatusMeta,
-    latestUrl,
     detailDescription,
     checkSteps,
     handleCheck,
@@ -891,7 +889,6 @@ const PlatformUpdateContent = () => {
     updateStatus,
     statusKey,
     currentStatusMeta,
-    latestUrl,
     detailDescription,
     checkSteps,
     handleCheck,
@@ -958,11 +955,6 @@ const PlatformUpdateContent = () => {
                   {t('回滚', 'Rollback')}
                 </Button>
               </Tooltip>
-              {latestUrl ? (
-              <Tooltip title={t('打开更新源提交', 'Open source commit')}>
-                  <Button icon={<GithubOutlined />} href={latestUrl} target="_blank" rel="noreferrer" />
-                </Tooltip>
-              ) : null}
             </Space>
           </Col>
         </Row>
