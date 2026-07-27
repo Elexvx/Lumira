@@ -107,6 +107,18 @@ public class PaymentController {
         );
     }
 
+    @GetMapping("/manual/orders")
+    public ApiResponse<PageResponse<PaymentOrderDTO>> manualOrders(
+            @RequestParam(defaultValue = "1") int pageNo,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        CurrentUser currentUser = requireOrderView();
+        return ApiResponse.success(
+                paymentTransactionService.listManualOrdersForUser(currentUser, pageNo, pageSize),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping("/sandbox/orders")
     @RepeatSubmit
     public ApiResponse<PaymentOrderDTO> createSandboxOrder(@Valid @RequestBody PaymentCreateOrderRequestDTO request) {
@@ -133,6 +145,16 @@ public class PaymentController {
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
         CurrentUser currentUser = requireOrderView();
         return ApiResponse.success(paymentTransactionService.getOrderForUser(currentUser, orderNo), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/orders/{orderNo}/cancel")
+    @RepeatSubmit
+    public ApiResponse<PaymentOrderDTO> cancelOrder(@PathVariable String orderNo) {
+        CurrentUser currentUser = requireOrderManage();
+        return ApiResponse.success(
+                paymentTransactionService.cancelManualPendingOrderForUser(currentUser, orderNo),
+                TraceContext.getRequestId()
+        );
     }
 
     @PostMapping("/orders/{orderNo}/refunds")

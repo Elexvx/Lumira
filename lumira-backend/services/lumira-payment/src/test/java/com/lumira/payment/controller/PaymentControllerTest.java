@@ -7,6 +7,7 @@ import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
+import com.lumira.common.vo.PageResponse;
 import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
@@ -110,6 +111,75 @@ class PaymentControllerTest {
         assertThat(response.getData()).isSameAs(order);
         verify(paymentTransactionService).createSandboxOrder(currentUser, request);
         verify(permissionGuard, never()).requirePermission(currentUser, "payment:order:create");
+    }
+
+    @Test
+    void manualOrders_shouldRequireViewPermissionAndReturnCurrentUsersHistory() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:view")));
+        PageResponse<PaymentOrderDTO> page = new PageResponse<>();
+        when(paymentTransactionService.listManualOrdersForUser(currentUser, 1, 50)).thenReturn(page);
+
+        var response = controller.manualOrders(1, 50);
+
+        assertThat(response.getData()).isSameAs(page);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:view");
+        verify(paymentTransactionService).listManualOrdersForUser(currentUser, 1, 50);
+    }
+
+    @Test
+    void cancelOrder_shouldRequireCreatePermissionAndDelegateForCurrentUser() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create")));
+        PaymentOrderDTO cancelled = new PaymentOrderDTO(
+                "MAN-ALI-P-1-CANCEL",
+                "alipay",
+                "po-1",
+                "manual",
+                1L,
+                "CNY",
+                "CANCELLED",
+                null,
+                null,
+                null,
+                null,
+                Map.of(),
+                "ORDER_CANCELLED",
+                "Payment order was cancelled before payment",
+                null,
+                null,
+                null
+        );
+        when(paymentTransactionService.cancelManualPendingOrderForUser(currentUser, "MAN-ALI-P-1-CANCEL"))
+                .thenReturn(cancelled);
+
+        var response = controller.cancelOrder("MAN-ALI-P-1-CANCEL");
+
+        assertThat(response.getData()).isSameAs(cancelled);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).cancelManualPendingOrderForUser(currentUser, "MAN-ALI-P-1-CANCEL");
     }
 
     @Test

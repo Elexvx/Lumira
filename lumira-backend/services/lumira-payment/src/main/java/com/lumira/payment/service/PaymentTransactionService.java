@@ -160,6 +160,60 @@ public class PaymentTransactionService {
         return response;
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentOrderDTO> listManualOrdersForUser(
+            CurrentUser currentUser,
+            int pageNo,
+            int pageSize
+    ) {
+        Actor actor = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_VIEW);
+        int normalizedPageNo = Math.max(pageNo, 1);
+        int normalizedPageSize = Math.min(Math.max(pageSize, 1), 100);
+        int offset = (normalizedPageNo - 1) * normalizedPageSize;
+        Long total = jdbcTemplate.queryForObject(
+                """
+                        select count(*)
+                        from payment_order
+                        where created_by = ? and created_by_uuid = ?
+                          and (order_no like 'MAN-%' or order_no like 'SBX-%')
+                          and deleted = 0
+                        """,
+                Long.class,
+                actor.userId(),
+                actor.userUuid()
+        );
+        List<PaymentOrderDTO> records = jdbcTemplate.query(
+                """
+                        select id, order_no as orderNo, provider_code as providerCode,
+                               provider_order_no as providerOrderNo, subject, amount_minor as amountMinor,
+                               currency, status, payment_url as paymentUrl, client_ip as clientIp,
+                               notify_url as notifyUrl, return_url as returnUrl, request_json as requestJson,
+                               response_json as responseJson, idempotency_key as idempotencyKey,
+                               failure_code as failureCode, failure_message as failureMessage,
+                               expires_at as expiresAt, paid_at as paidAt, created_by as createdBy,
+                               created_by_uuid as createdByUuid, created_at as createdAt,
+                               updated_by as updatedBy, updated_at as updatedAt, deleted
+                        from payment_order
+                        where created_by = ? and created_by_uuid = ?
+                          and (order_no like 'MAN-%' or order_no like 'SBX-%')
+                          and deleted = 0
+                        order by created_at desc, id desc
+                        limit ? offset ?
+                        """,
+                new BeanPropertyRowMapper<>(PaymentOrderRow.class),
+                actor.userId(),
+                actor.userUuid(),
+                normalizedPageSize,
+                offset
+        ).stream().map(this::toOrderDto).toList();
+        PageResponse<PaymentOrderDTO> response = new PageResponse<>();
+        response.setPageNo(normalizedPageNo);
+        response.setPageSize(normalizedPageSize);
+        response.setTotal(total == null ? 0 : total);
+        response.setRecords(records);
+        return response;
+    }
+
     private PaymentOrderDTO createOrder(Actor actor, PaymentCreateOrderRequestDTO request, PaymentProviderSettingsDTO settings) {
         Long actorUserId = actor.userId();
         if (!settings.isEnabled()) {
@@ -307,11 +361,28 @@ public class PaymentTransactionService {
         if (row == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
         }
+        return cancelPendingOrder(actor, row);
+    }
+
+    @Transactional
+    public PaymentOrderDTO cancelManualPendingOrderForUser(CurrentUser currentUser, String orderNo) {
+        Actor actor = trustedActor(currentUser, PERMISSION_PAYMENT_ORDER_CREATE);
+        PaymentOrderRow row = findOrderByOrderNoAndCreatedBy(normalizeIdentifier(orderNo), actor);
+        if (row == null || !isManualOrderNo(row.getOrderNo())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Manual payment order does not exist");
+        }
+        return cancelPendingOrder(actor, row);
+    }
+
+    private PaymentOrderDTO cancelPendingOrder(Actor actor, PaymentOrderRow row) {
         if (List.of("PAID", "SUCCESS", "SETTLED", "REFUNDING", "REFUNDED").contains(row.getStatus())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Paid payment orders cannot be cancelled");
         }
         if ("CANCELLED".equals(row.getStatus())) {
             return toOrderDto(row);
+        }
+        if (!List.of("CREATED", "PENDING").contains(row.getStatus())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Only created or pending payment orders can be cancelled");
         }
         if ("alipay".equalsIgnoreCase(row.getProviderCode())) {
             alipayPagePayService.closeTrade(
@@ -328,7 +399,7 @@ public class PaymentTransactionService {
                 """
                         update payment_order
                         set status = 'CANCELLED', payment_url = null, failure_code = 'ORDER_CANCELLED',
-                            failure_message = 'Registration was deleted before payment',
+                            failure_message = 'Payment order was cancelled before payment',
                             updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ? and order_no = ? and created_by = ? and created_by_uuid = ?
                           and status in ('CREATED', 'PENDING') and deleted = 0
@@ -338,6 +409,10 @@ public class PaymentTransactionService {
         );
         requireSinglePaymentUpdate(updated, "Payment order state changed, please retry");
         return toOrderDto(findOrderByOrderNo(row.getOrderNo()));
+    }
+
+    private boolean isManualOrderNo(String orderNo) {
+        return orderNo != null && (orderNo.startsWith("MAN-") || orderNo.startsWith("SBX-"));
     }
 
     @Transactional

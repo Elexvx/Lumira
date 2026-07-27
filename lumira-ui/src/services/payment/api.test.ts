@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPaymentOrder, createSandboxPaymentOrder } from './api';
+import {
+  cancelPaymentOrder,
+  createPaymentOrder,
+  createSandboxPaymentOrder,
+  listManualPaymentOrders,
+} from './api';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -36,5 +41,26 @@ describe('payment order API', () => {
       method: 'POST',
       data: order,
     });
+  });
+
+  it('lists persisted manual orders for the current user', () => {
+    listManualPaymentOrders({ pageNo: 1, pageSize: 50 });
+    expect(mocks.request).toHaveBeenCalledWith('/v1/payment/manual/orders', {
+      method: 'GET',
+      params: {
+        pageNo: 1,
+        pageSize: 50,
+        _t: expect.any(Number),
+      },
+      autoRedirectOnUnauthorized: false,
+    });
+  });
+
+  it('cancels a pending order through the user payment endpoint', () => {
+    cancelPaymentOrder('MAN-ALI-P-1-CANCEL');
+    expect(mocks.request).toHaveBeenCalledWith(
+      '/v1/payment/orders/MAN-ALI-P-1-CANCEL/cancel',
+      { method: 'POST' },
+    );
   });
 });

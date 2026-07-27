@@ -16,6 +16,7 @@ import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
+import com.lumira.common.vo.PageResponse;
 import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -113,6 +115,18 @@ public class PaymentV2Controller {
         );
     }
 
+    @GetMapping("/manual/orders")
+    public ApiResponse<PageResponse<PaymentOrderDTO>> manualOrders(
+            @RequestParam(defaultValue = "1") int pageNo,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        CurrentUser currentUser = requirePermission("payment:order:view");
+        return ApiResponse.success(
+                paymentTransactionService.listManualOrdersForUser(currentUser, pageNo, pageSize),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping("/sandbox/orders")
     @RepeatSubmit
     public ApiResponse<PaymentOrderDTO> createSandboxOrder(@Valid @RequestBody PaymentCreateOrderRequestDTO request) {
@@ -127,6 +141,16 @@ public class PaymentV2Controller {
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
         CurrentUser currentUser = requirePermission("payment:order:view");
         return ApiResponse.success(paymentTransactionService.getOrderForUser(currentUser, orderNo), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/orders/{orderNo}/cancel")
+    @RepeatSubmit
+    public ApiResponse<PaymentOrderDTO> cancelOrder(@PathVariable String orderNo) {
+        CurrentUser currentUser = requirePermission("payment:order:create");
+        return ApiResponse.success(
+                paymentTransactionService.cancelManualPendingOrderForUser(currentUser, orderNo),
+                TraceContext.getRequestId()
+        );
     }
 
     @PostMapping("/orders/{orderNo}/refunds")

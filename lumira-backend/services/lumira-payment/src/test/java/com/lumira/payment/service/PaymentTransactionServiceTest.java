@@ -70,6 +70,113 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void listManualOrdersForUserShouldPersistProductionAndSandboxHistoryForCreator() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow row = orderRow(1001L);
+        row.setOrderNo("MAN-ALI-P-1785154717636-1B2NDY");
+        doReturn(1L).when(jdbcTemplate).queryForObject(
+                any(String.class),
+                eq(Long.class),
+                eq(1001L),
+                eq("user-uuid-1001")
+        );
+        doReturn(List.of(row)).when(jdbcTemplate).query(
+                any(String.class),
+                anyOrderRowMapper(),
+                eq(1001L),
+                eq("user-uuid-1001"),
+                eq(20),
+                eq(20)
+        );
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PageResponse<PaymentOrderDTO> page = service.listManualOrdersForUser(currentUser(), 2, 20);
+
+        assertThat(page.getPageNo()).isEqualTo(2);
+        assertThat(page.getPageSize()).isEqualTo(20);
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).extracting(PaymentOrderDTO::orderNo)
+                .containsExactly("MAN-ALI-P-1785154717636-1B2NDY");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).query(
+                sqlCaptor.capture(),
+                anyOrderRowMapper(),
+                eq(1001L),
+                eq("user-uuid-1001"),
+                eq(20),
+                eq(20)
+        );
+        assertThat(sqlCaptor.getValue())
+                .contains("created_by = ? and created_by_uuid = ?")
+                .contains("order_no like 'MAN-%'")
+                .contains("order_no like 'SBX-%'")
+                .contains("order by created_at desc, id desc");
+    }
+
+    @Test
+    void cancelManualPendingOrderForUserShouldCancelOnlyCreatorsPendingManualOrder() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow pending = orderRow(1001L);
+        pending.setOrderNo("MAN-ALI-P-1-CANCEL");
+        PaymentOrderRow cancelled = orderRow(1001L);
+        cancelled.setOrderNo("MAN-ALI-P-1-CANCEL");
+        cancelled.setStatus("CANCELLED");
+        cancelled.setPaymentUrl(null);
+        when(jdbcTemplate.queryForObject(
+                any(String.class),
+                anyOrderRowMapper(),
+                eq("MAN-ALI-P-1-CANCEL"),
+                eq(1001L),
+                eq("user-uuid-1001")
+        )).thenReturn(pending);
+        when(jdbcTemplate.queryForObject(
+                any(String.class),
+                anyOrderRowMapper(),
+                eq("MAN-ALI-P-1-CANCEL")
+        )).thenReturn(cancelled);
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentOrderDTO result = service.cancelManualPendingOrderForUser(
+                currentUser(),
+                "MAN-ALI-P-1-CANCEL"
+        );
+
+        assertThat(result.status()).isEqualTo("CANCELLED");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).update(sqlCaptor.capture(), any(Object[].class));
+        assertThat(sqlCaptor.getValue())
+                .contains("status = 'CANCELLED'")
+                .contains("created_by = ? and created_by_uuid = ?")
+                .contains("status in ('CREATED', 'PENDING')");
+    }
+
+    @Test
+    void cancelManualPendingOrderForUserShouldRejectNonManualOrder() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow pending = orderRow(1001L);
+        pending.setOrderNo("REGISTRATION-1");
+        when(jdbcTemplate.queryForObject(
+                any(String.class),
+                anyOrderRowMapper(),
+                eq("REGISTRATION-1"),
+                eq(1001L),
+                eq("user-uuid-1001")
+        )).thenReturn(pending);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.cancelManualPendingOrderForUser(
+                currentUser(),
+                "REGISTRATION-1"
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.NOT_FOUND);
+
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
     void getOrderForUserShouldConstrainByCreator() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentOrderRow row = orderRow(1001L);

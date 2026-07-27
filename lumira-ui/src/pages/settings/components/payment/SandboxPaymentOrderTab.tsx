@@ -8,6 +8,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Popconfirm,
   QRCode,
   Select,
   Space,
@@ -20,10 +21,11 @@ import { getLocale } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { normalizeLocale } from '@/i18n/locale';
 import {
+  cancelPaymentOrder,
   createPaymentOrder,
   createSandboxPaymentOrder,
   getPaymentOrder,
-  listSandboxPaymentOrders,
+  listManualPaymentOrders,
 } from '@/services/payment/api';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { PaymentOrderRecord, PaymentProviderSettings } from '@/types/api';
@@ -34,6 +36,7 @@ import {
 } from './paymentDisplay';
 import {
   buildManualPaymentRequest,
+  isManualPaymentOrderCancellable,
   isWechatNativeOrder,
   listManualPaymentProviders,
   listWechatManualScenes,
@@ -79,6 +82,7 @@ export const SandboxPaymentOrderTab = ({
   const [activeOrder, setActiveOrder] = useState<PaymentOrderRecord>();
   const [detailOrder, setDetailOrder] = useState<PaymentOrderRecord>();
   const [detailLoading, setDetailLoading] = useState(false);
+  const [cancellingOrderNo, setCancellingOrderNo] = useState<string>();
 
   const providers = useMemo(() => listManualPaymentProviders(paymentSettings), [paymentSettings]);
   const selectedSettings = useMemo(
@@ -88,10 +92,6 @@ export const SandboxPaymentOrderTab = ({
   const selectedEnvironment = normalizePaymentEnvironment(selectedSettings?.environment);
   const isProduction = selectedEnvironment === 'PRODUCTION';
   const wechatScenes = useMemo(() => listWechatManualScenes(selectedSettings), [selectedSettings]);
-  const hasSandboxProvider = providers.some(
-    (item) => normalizePaymentEnvironment(item.environment) === 'SANDBOX',
-  );
-
   const upsertOrder = useCallback((order: PaymentOrderRecord) => {
     setOrders((current) => sortPaymentOrdersNewestFirst([
       order,
@@ -100,22 +100,14 @@ export const SandboxPaymentOrderTab = ({
   }, []);
 
   const loadOrders = useCallback(async () => {
-    if (!hasSandboxProvider) {
-      return;
-    }
     setLoading(true);
     try {
-      const page = await listSandboxPaymentOrders({ pageNo: 1, pageSize: 50 });
-      setOrders((current) => sortPaymentOrdersNewestFirst([
-        ...current.filter((item) => (
-          resolveManualOrderEnvironment(item, paymentSettings) !== 'SANDBOX'
-        )),
-        ...page.records,
-      ]));
+      const page = await listManualPaymentOrders({ pageNo: 1, pageSize: 50 });
+      setOrders(sortPaymentOrdersNewestFirst(page.records));
     } finally {
       setLoading(false);
     }
-  }, [hasSandboxProvider, paymentSettings]);
+  }, []);
 
   useEffect(() => {
     void loadOrders();
@@ -246,6 +238,19 @@ export const SandboxPaymentOrderTab = ({
     }
   }, [upsertOrder]);
 
+  const cancelOrder = useCallback(async (record: PaymentOrderRecord) => {
+    setCancellingOrderNo(record.orderNo);
+    try {
+      const cancelled = await cancelPaymentOrder(record.orderNo);
+      upsertOrder(cancelled);
+      setActiveOrder((current) => current?.orderNo === cancelled.orderNo ? cancelled : current);
+      setDetailOrder((current) => current?.orderNo === cancelled.orderNo ? cancelled : current);
+      message.success(t('订单已取消', 'Payment order cancelled'));
+    } finally {
+      setCancellingOrderNo(undefined);
+    }
+  }, [upsertOrder]);
+
   const renderPaymentAction = (order: PaymentOrderRecord, compact = false) => {
     if (!order.paymentUrl || !isPending(order.status)) {
       return null;
@@ -323,7 +328,34 @@ export const SandboxPaymentOrderTab = ({
         isEnglishLocale() ? 'en-US' : 'zh-CN',
       ),
     },
-  ], [openOrderDetail, paymentSettings]);
+    {
+      title: t('操作', 'Actions'),
+      width: 120,
+      fixed: 'right',
+      render: (_, record) => (
+        isManualPaymentOrderCancellable(record) && canCreateOrders ? (
+          <Popconfirm
+            title={t('确认取消该订单？', 'Cancel this payment order?')}
+            description={t(
+              '取消后原付款链接或二维码将失效，且无法恢复。',
+              'The existing checkout link or QR code will stop working and cannot be restored.',
+            )}
+            okText={t('确认取消', 'Cancel order')}
+            cancelText={t('保留订单', 'Keep order')}
+            onConfirm={() => cancelOrder(record)}
+          >
+            <Button
+              danger
+              type="link"
+              loading={cancellingOrderNo === record.orderNo}
+            >
+              {t('取消订单', 'Cancel')}
+            </Button>
+          </Popconfirm>
+        ) : '-'
+      ),
+    },
+  ], [canCreateOrders, cancelOrder, cancellingOrderNo, openOrderDetail, paymentSettings]);
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -348,8 +380,8 @@ export const SandboxPaymentOrderTab = ({
           </Typography.Text>
         </div>
         <Space wrap>
-          <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()} loading={loading} disabled={!hasSandboxProvider}>
-            {t('刷新沙箱记录', 'Refresh sandbox history')}
+          <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()} loading={loading}>
+            {t('刷新订单记录', 'Refresh order history')}
           </Button>
           <Button
             type="primary"
@@ -379,8 +411,8 @@ export const SandboxPaymentOrderTab = ({
         type="info"
         message={t('生产订单记录说明', 'Production order history')}
         description={t(
-          '本页会持续显示本次会话创建的生产订单；刷新页面后可通过付款返回地址恢复当前订单。沙箱历史可直接刷新。',
-          'Production orders created in this session remain visible here. The payment return URL restores the current order after reload; sandbox history can be refreshed.',
+          '生产和沙箱手动订单会保存在系统中，刷新页面后仍可查看；待支付订单可在列表中取消。',
+          'Production and sandbox manual orders remain available after refresh. Pending orders can be cancelled from the list.',
         )}
       />
 

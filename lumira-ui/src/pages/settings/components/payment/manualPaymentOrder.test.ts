@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PaymentOrderRecord, PaymentProviderSettings } from '@/types/api';
 import {
   buildManualPaymentRequest,
+  isManualPaymentOrderCancellable,
   listManualPaymentProviders,
   listWechatManualScenes,
   resolveManualOrderEnvironment,
@@ -125,5 +126,22 @@ describe('manualPaymentOrder', () => {
 
     expect(resolveManualOrderEnvironment(order, [])).toBe('PRODUCTION');
     expect(resolveManualOrderScene(order)).toBe('NATIVE');
+  });
+
+  it('allows only created or pending manual orders to be cancelled', () => {
+    const order = {
+      orderNo: 'MAN-ALI-P-1-CANCEL',
+      providerCode: 'alipay',
+      providerOrderNo: '',
+      subject: 'test',
+      amountMinor: 1,
+      currency: 'CNY',
+      status: 'PENDING',
+    } satisfies PaymentOrderRecord;
+
+    expect(isManualPaymentOrderCancellable(order)).toBe(true);
+    expect(isManualPaymentOrderCancellable({ ...order, status: 'CREATED' })).toBe(true);
+    expect(isManualPaymentOrderCancellable({ ...order, status: 'PAID' })).toBe(false);
+    expect(isManualPaymentOrderCancellable({ ...order, status: 'CANCELLED' })).toBe(false);
   });
 });

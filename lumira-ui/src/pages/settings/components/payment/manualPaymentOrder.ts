@@ -121,3 +121,7 @@ export const isWechatNativeOrder = (order?: PaymentOrderRecord) => (
   order?.providerCode === 'wechat_pay'
   && (resolveManualOrderScene(order) || 'NATIVE') === 'NATIVE'
 );
+
+export const isManualPaymentOrderCancellable = (order?: PaymentOrderRecord) => (
+  order?.status === 'CREATED' || order?.status === 'PENDING'
+);

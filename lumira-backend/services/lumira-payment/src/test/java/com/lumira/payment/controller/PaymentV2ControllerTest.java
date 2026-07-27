@@ -12,6 +12,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
+import com.lumira.common.vo.PageResponse;
 import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentTransactionService;
 import com.lumira.payment.service.PaymentWebhookService;
@@ -156,6 +157,51 @@ class PaymentV2ControllerTest {
         assertThat(response.getData()).isSameAs(order);
         verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
         verify(paymentTransactionService).createOrder(currentUser, request);
+    }
+
+    @Test
+    void manualOrders_shouldRequireViewPermissionAndDelegate() {
+        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:view");
+        PageResponse<PaymentOrderDTO> page = new PageResponse<>();
+        when(paymentTransactionService.listManualOrdersForUser(currentUser, 1, 50)).thenReturn(page);
+
+        var response = controller.manualOrders(1, 50);
+
+        assertThat(response.getData()).isSameAs(page);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:view");
+        verify(paymentTransactionService).listManualOrdersForUser(currentUser, 1, 50);
+    }
+
+    @Test
+    void cancelOrder_shouldRequireCreatePermissionAndDelegate() {
+        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
+        PaymentOrderDTO cancelled = new PaymentOrderDTO(
+                "MAN-WX-P-1-CANCEL",
+                "wechat_pay",
+                "po-1",
+                "manual",
+                1L,
+                "CNY",
+                "CANCELLED",
+                null,
+                null,
+                null,
+                null,
+                Map.of(),
+                "ORDER_CANCELLED",
+                "Payment order was cancelled before payment",
+                null,
+                null,
+                null
+        );
+        when(paymentTransactionService.cancelManualPendingOrderForUser(currentUser, "MAN-WX-P-1-CANCEL"))
+                .thenReturn(cancelled);
+
+        var response = controller.cancelOrder("MAN-WX-P-1-CANCEL");
+
+        assertThat(response.getData()).isSameAs(cancelled);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).cancelManualPendingOrderForUser(currentUser, "MAN-WX-P-1-CANCEL");
     }
 
     @Test

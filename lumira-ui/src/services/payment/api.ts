@@ -20,10 +20,22 @@ export const createPaymentOrder = (data: PaymentCreateOrderRequest) =>
     data,
   });
 
+export const listManualPaymentOrders = (params: { pageNo: number; pageSize: number }) =>
+  request<PageResponse<PaymentOrderRecord>>('/v1/payment/manual/orders', {
+    method: 'GET',
+    params: { ...params, _t: Date.now() },
+    autoRedirectOnUnauthorized: false,
+  });
+
 export const getPaymentOrder = (orderNo: string) =>
   request<PaymentOrderRecord>(`/v1/payment/orders/${encodeURIComponent(orderNo)}`, {
     method: 'GET',
     params: { _t: Date.now() },
+  });
+
+export const cancelPaymentOrder = (orderNo: string) =>
+  request<PaymentOrderRecord>(`/v1/payment/orders/${encodeURIComponent(orderNo)}/cancel`, {
+    method: 'POST',
   });
 
 export const listSandboxPaymentOrders = (params: { pageNo: number; pageSize: number }) =>
