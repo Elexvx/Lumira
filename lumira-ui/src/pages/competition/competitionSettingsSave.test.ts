@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   getCompetitionCreateMissingFields,
+  isConfigModuleDraftSaveCurrent,
   isBasicSettingsPageReadyToSave,
   isConfigModuleReadyToSave,
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
   mergeStageMaterialSaveItems,
+  shouldHydrateConfigModuleDraft,
 } from './competitionSettingsSave';
 
 describe('competition settings page-level save guards', () => {
@@ -215,5 +217,43 @@ describe('competition settings page-level save guards', () => {
         metadata: { fieldType: 'MULTI_SELECT', options: '人工智能\n机器人' },
       },
     ])).toBe(true);
+  });
+
+  it('preserves an incomplete local field when authoritative items are re-rendered', () => {
+    expect(shouldHydrateConfigModuleDraft({
+      hydratedContextKey: 'competition-1:fields',
+      nextContextKey: 'competition-1:fields',
+      draftRevision: 1,
+      syncedRevision: 0,
+    })).toBe(false);
+  });
+
+  it('hydrates authoritative items initially and after changing data context', () => {
+    expect(shouldHydrateConfigModuleDraft({
+      hydratedContextKey: undefined,
+      nextContextKey: 'competition-1:fields',
+      draftRevision: 0,
+      syncedRevision: 0,
+    })).toBe(true);
+    expect(shouldHydrateConfigModuleDraft({
+      hydratedContextKey: 'competition-1:fields',
+      nextContextKey: 'competition-2:fields',
+      draftRevision: 2,
+      syncedRevision: 1,
+    })).toBe(true);
+  });
+
+  it('hydrates the saved server response after the local revision becomes clean', () => {
+    expect(shouldHydrateConfigModuleDraft({
+      hydratedContextKey: 'competition-1:fields',
+      nextContextKey: 'competition-1:fields',
+      draftRevision: 2,
+      syncedRevision: 2,
+    })).toBe(true);
+  });
+
+  it('only marks the saved revision clean when no newer field edit exists', () => {
+    expect(isConfigModuleDraftSaveCurrent(3, 3)).toBe(true);
+    expect(isConfigModuleDraftSaveCurrent(3, 4)).toBe(false);
   });
 });

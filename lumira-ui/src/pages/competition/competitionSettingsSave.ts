@@ -31,6 +31,13 @@ export type CompetitionSettingsConfigItemDraft = {
   } | null;
 };
 
+export type ConfigModuleDraftHydrationState = {
+  hydratedContextKey?: string;
+  nextContextKey: string;
+  draftRevision: number;
+  syncedRevision: number;
+};
+
 type StageMaterialSaveItem = {
   itemKey?: string | null;
 };
@@ -164,6 +171,17 @@ export const isPaymentSettingsPageReadyToSave = (values: Partial<CompetitionSett
 
 export const isTimelineSettingsPageReadyToSave = (values: Partial<CompetitionSettingsFormValues>) =>
   getTimelineSettingsMissingFields(values).length === 0;
+
+export const shouldHydrateConfigModuleDraft = ({
+  hydratedContextKey,
+  nextContextKey,
+  draftRevision,
+  syncedRevision,
+}: ConfigModuleDraftHydrationState) =>
+  hydratedContextKey !== nextContextKey || draftRevision === syncedRevision;
+
+export const isConfigModuleDraftSaveCurrent = (saveRevision: number, currentRevision: number) =>
+  saveRevision === currentRevision;
 
 const hasText = (value?: string | null) => Boolean(trimOptional(value));
 

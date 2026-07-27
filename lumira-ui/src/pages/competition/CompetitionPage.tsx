@@ -69,10 +69,12 @@ import PaymentResultPage from '@/pages/competition/PaymentResultPage';
 import {
   getCompetitionCreateMissingFields,
   isBasicSettingsPageReadyToSave,
+  isConfigModuleDraftSaveCurrent,
   isConfigModuleReadyToSave,
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
   mergeStageMaterialSaveItems,
+  shouldHydrateConfigModuleDraft,
 } from '@/pages/competition/competitionSettingsSave';
 import {
   buildRegistrationCompetitionFallback,
@@ -5502,6 +5504,8 @@ type ConfigModulePanelProps = {
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
 
+const EMPTY_PAYMENT_PROVIDER_OPTIONS: PaymentProviderOption[] = [];
+
 const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModulePanelProps>(({
   competitionUuid,
   module,
@@ -5511,7 +5515,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   fieldGroupLabel,
   includeMemberFields = false,
   fileStageCode,
-  paymentProviderOptions = [],
+  paymentProviderOptions = EMPTY_PAYMENT_PROVIDER_OPTIONS,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<{
@@ -5524,6 +5528,10 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     fieldTitle?: string;
     value: string;
   }>();
+  const draftRevisionRef = useRef(0);
+  const syncedRevisionRef = useRef(0);
+  const hydratedContextKeyRef = useRef<string | undefined>(undefined);
+  const draftContextKey = `${competitionUuid}:${module.key}:${fileStageCode || ''}`;
   const resolvedPaymentProviderOptions = useMemo(() => {
     const configuredCodes = new Set(paymentProviderOptions.map((option) => option.value));
     const unavailableOptions = items
@@ -5583,10 +5591,21 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   }, [fileStageCode, items, module.key, paymentProviderOptions]);
 
   useEffect(() => {
+    if (!shouldHydrateConfigModuleDraft({
+      hydratedContextKey: hydratedContextKeyRef.current,
+      nextContextKey: draftContextKey,
+      draftRevision: draftRevisionRef.current,
+      syncedRevision: syncedRevisionRef.current,
+    })) {
+      return;
+    }
     form.setFieldsValue(getInitialValues());
-  }, [form, getInitialValues]);
+    hydratedContextKeyRef.current = draftContextKey;
+    syncedRevisionRef.current = draftRevisionRef.current;
+  }, [draftContextKey, form, getInitialValues]);
 
   const save = useCallback(async () => {
+    const saveRevision = draftRevisionRef.current;
     const values = form.getFieldsValue(true);
     if (!isConfigModuleReadyToSave(module.key, values.items || [])) {
       return false;
@@ -5628,6 +5647,9 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
             );
           })()
         : await saveCompetitionSettingsModule(competitionUuid, module.key, configItems, API_OPTS.SILENT);
+      if (isConfigModuleDraftSaveCurrent(saveRevision, draftRevisionRef.current)) {
+        syncedRevisionRef.current = saveRevision;
+      }
       onSaved(saved);
       return true;
     } catch (error) {
@@ -5636,6 +5658,10 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     }
   }, [competitionUuid, fileStageCode, form, items, module.key, onSaved]);
   const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
+  const markDraftChangedAndScheduleSave = useCallback(() => {
+    draftRevisionRef.current += 1;
+    scheduleSave();
+  }, [scheduleSave]);
 
   const reorderField = useCallback((
     scopedFields: Array<{ key: number; name: number }>,
@@ -5653,8 +5679,8 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       return;
     }
     form.setFieldValue('items', nextItems);
-    scheduleSave();
-  }, [form, scheduleSave]);
+    markDraftChangedAndScheduleSave();
+  }, [form, markDraftChangedAndScheduleSave]);
 
   const confirmOptionsEditor = useCallback(() => {
     if (!optionsEditor) {
@@ -5672,8 +5698,8 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
     }
     form.setFieldValue(['items', optionsEditor.fieldName, 'metadata', 'options'], normalizedOptions);
     setOptionsEditor(undefined);
-    scheduleSave();
-  }, [form, optionsEditor, scheduleSave]);
+    markDraftChangedAndScheduleSave();
+  }, [form, markDraftChangedAndScheduleSave, optionsEditor]);
 
   useImperativeHandle(ref, () => ({
     flushPendingSave,
@@ -5709,7 +5735,12 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
           style={{ marginBottom: 16 }}
         />
       ) : null}
-      <Form form={form} layout="vertical" initialValues={getInitialValues()} onValuesChange={scheduleSave}>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={getInitialValues()}
+        onValuesChange={markDraftChangedAndScheduleSave}
+      >
         {module.key === 'fields' && fieldScope === 'TEAM_FIELD' ? (
           <Card className="competition-config-item competition-config-item--team-limits" size="small" title="团队人数设置">
             <div className="competition-config-grid">
@@ -5783,7 +5814,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                           add,
                           remove,
                           scopeOption.value,
-                          scheduleSave,
+                          markDraftChangedAndScheduleSave,
                           reorderField,
                           (fieldName, fieldTitle, options) => setOptionsEditor({
                             fieldName,
@@ -5800,7 +5831,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                               add,
                               remove,
                               'MEMBER_FIELD',
-                              scheduleSave,
+                              markDraftChangedAndScheduleSave,
                               reorderField,
                               (fieldName, fieldTitle, options) => setOptionsEditor({
                                 fieldName,
@@ -5916,7 +5947,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                       danger
                       onClick={() => {
                         remove(field.name);
-                        scheduleSave();
+                        markDraftChangedAndScheduleSave();
                       }}
                     >
                       {formatMessage({ id: 'page.competition.settings.item.remove', defaultMessage: 'Remove' })}
@@ -5961,7 +5992,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     };
                   }
                   add(nextItem);
-                  scheduleSave();
+                  markDraftChangedAndScheduleSave();
                 }}
               >
                 {formatMessage({ id: 'page.competition.settings.item.add', defaultMessage: 'Add item' })}
