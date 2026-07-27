@@ -90,6 +90,24 @@ describe('handleApiError', () => {
     expect(mocks.messageWarning).toHaveBeenCalledWith('当前账号没有访问权限');
   });
 
+  it('suppresses stale 403 feedback after a role switch rotates the authenticated token', () => {
+    mocks.shouldSuppressUnauthorizedSideEffects.mockReturnValue(true);
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-after-role-switch',
+      currentAuthSessionEpoch: 2,
+      currentTokenGeneration: 2,
+    });
+
+    handleApiError(forbiddenError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-before-role-switch',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+  });
+
   it('suppresses 403 feedback during an active login flow', () => {
     mocks.buildUnauthorizedRuntimeState.mockReturnValue({
       ...runtimeAt('/dashboard/home'),

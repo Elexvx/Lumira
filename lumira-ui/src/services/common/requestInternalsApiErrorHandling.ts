@@ -11,13 +11,23 @@ export interface ApiErrorHandlingContext {
   refreshTemporarilyUnavailable?: boolean;
 }
 
-const shouldSuppressLoginPageForbiddenFeedback = (error: ApiRequestError) => {
+const shouldSuppressForbiddenFeedback = (
+  error: ApiRequestError,
+  authSnapshot: AuthRequestSnapshot,
+) => {
   if (error.code !== ErrorCode.FORBIDDEN) {
     return false;
   }
 
   const runtime = buildUnauthorizedRuntimeState();
-  return runtime.pathname === '/user/login' || runtime.loginInProgress;
+  if (runtime.pathname === '/user/login' || runtime.loginInProgress) {
+    return true;
+  }
+
+  return (
+    authSnapshot.hasAuthToken &&
+    shouldSuppressUnauthorizedSideEffects(authSnapshot, runtime)
+  );
 };
 
 const triggerForcedSessionLogout = () => {
@@ -32,7 +42,7 @@ export const handleApiError = (
   authSnapshot: AuthRequestSnapshot,
   context: ApiErrorHandlingContext = {},
 ) => {
-  if (shouldSuppressLoginPageForbiddenFeedback(error)) {
+  if (shouldSuppressForbiddenFeedback(error, authSnapshot)) {
     return;
   }
 
