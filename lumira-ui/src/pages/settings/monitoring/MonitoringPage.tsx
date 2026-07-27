@@ -1091,7 +1091,6 @@ const PlatformUpdateContent = () => {
           <ManagementTable<PlatformUpdateTask>
             rowKey="id"
             size="small"
-            pagination={false}
             search={false}
             isMobile={isMobile}
             onRefresh={() => {
