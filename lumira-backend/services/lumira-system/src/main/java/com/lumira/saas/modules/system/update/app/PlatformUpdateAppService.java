@@ -299,6 +299,7 @@ public class PlatformUpdateAppService {
     public PlatformUpdateVO.PreflightVO preflight(CurrentUser currentUser) {
         requirePermission(currentUser, PERMISSION_INSTALL);
         PlatformUpdateVO.StatusVO status = checkLatestInternal();
+        requireUpdateAvailable(status);
         requireUpdater(status);
         PlatformUpdateVO.LatestVersionVO latest = requireInstallableLatest(status);
         try {
@@ -318,6 +319,7 @@ public class PlatformUpdateAppService {
     public PlatformUpdateVO.TaskVO install(CurrentUser currentUser, PlatformUpdateVO.InstallRequest request) {
         requirePermission(currentUser, PERMISSION_INSTALL);
         PlatformUpdateVO.StatusVO status = checkLatestInternal();
+        requireUpdateAvailable(status);
         requireUpdater(status);
         PlatformUpdateVO.LatestVersionVO latest = requireInstallableLatest(status);
         if (request != null && StringUtils.hasText(request.getTargetCommit())
@@ -1162,6 +1164,17 @@ public class PlatformUpdateAppService {
                 && capabilities.getProtocolVersion() < latest.getMinUpdaterProtocol()) {
             throw new IllegalStateException("lumira-updater protocol is too old for this release. Upgrade the host agent first.");
         }
+    }
+
+    private void requireUpdateAvailable(PlatformUpdateVO.StatusVO status) {
+        if (Boolean.TRUE.equals(status.getUpdateAvailable())
+                && STATUS_UPDATE_AVAILABLE.equals(status.getStatus())) {
+            return;
+        }
+        if (STATUS_UP_TO_DATE.equals(status.getStatus())) {
+            throw new IllegalStateException("The current deployment is already on the latest release.");
+        }
+        throw new IllegalStateException("No verified newer platform release is available.");
     }
 
     private PlatformUpdateVO.LatestVersionVO requireInstallableLatest(PlatformUpdateVO.StatusVO status) {

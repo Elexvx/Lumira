@@ -34,6 +34,33 @@ import static org.mockito.Mockito.when;
 class PlatformUpdateAppServiceTest {
 
     @Test
+    void requireUpdateAvailableShouldRejectRedeployingTheCurrentRelease() throws Exception {
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                mock(PlatformUpdateTaskMapper.class)
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod(
+                "requireUpdateAvailable",
+                PlatformUpdateVO.StatusVO.class
+        );
+        method.setAccessible(true);
+        PlatformUpdateVO.StatusVO status = new PlatformUpdateVO.StatusVO();
+        status.setStatus("UP_TO_DATE");
+        status.setUpdateAvailable(false);
+
+        InvocationTargetException exception = assertThrows(
+                InvocationTargetException.class,
+                () -> method.invoke(service, status)
+        );
+
+        assertThat(exception.getCause())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("The current deployment is already on the latest release.");
+    }
+
+    @Test
     void fromManifestShouldRejectUnpinnedImageReferences() throws Exception {
         PlatformUpdateAppService service = new PlatformUpdateAppService(
                 mock(Environment.class),

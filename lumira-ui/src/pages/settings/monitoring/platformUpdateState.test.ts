@@ -3,15 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { canSubmitPlatformUpdate } from './platformUpdateState';
 
 describe('canSubmitPlatformUpdate', () => {
-  it('keeps update available when an installable release exists, even if the agent probe is handled later by the backend', () => {
-    expect(canSubmitPlatformUpdate('ghcr.io/elexvx/lumira/lumira-server@sha256:release', null)).toBe(true);
+  it('allows an installable release only when a newer version is available', () => {
+    expect(canSubmitPlatformUpdate('ghcr.io/elexvx/lumira/lumira-server@sha256:release', null, true)).toBe(true);
+  });
+
+  it('blocks redeploying the current release when the platform is already up to date', () => {
+    expect(canSubmitPlatformUpdate('ghcr.io/elexvx/lumira/lumira-server@sha256:release', null, false)).toBe(false);
   });
 
   it.each(['PENDING', 'RUNNING'])('blocks duplicate submissions while a task is %s', (status) => {
-    expect(canSubmitPlatformUpdate('ghcr.io/elexvx/lumira/lumira-server@sha256:release', status)).toBe(false);
+    expect(canSubmitPlatformUpdate('ghcr.io/elexvx/lumira/lumira-server@sha256:release', status, true)).toBe(false);
   });
 
   it('requires an installable server image', () => {
-    expect(canSubmitPlatformUpdate('   ', null)).toBe(false);
+    expect(canSubmitPlatformUpdate('   ', null, true)).toBe(false);
   });
 });

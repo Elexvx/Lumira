@@ -333,6 +333,10 @@ const usePlatformUpdateMonitor = () => {
   };
 
   const handleInstall = async () => {
+    if (statusKey !== 'UPDATE_AVAILABLE') {
+      message.info(t('当前已经是最新版本，无需更新', 'You are already on the latest version. No update is needed.'));
+      return;
+    }
     if (updateStatus?.updaterAvailable !== true) {
       Modal.info({
         title: t('安装平台更新代理', 'Install platform updater'),
@@ -906,8 +910,17 @@ const PlatformUpdateContent = () => {
   const activeTask = updateStatus?.activeTask;
   const isTaskRunning = activeTask?.status === 'PENDING' || activeTask?.status === 'RUNNING';
   const updaterAvailable = updateStatus?.updaterAvailable === true;
-  const canInstall = canSubmitPlatformUpdate(updateStatus?.latest?.serverImage, activeTask?.status);
+  const canInstall = canSubmitPlatformUpdate(
+    updateStatus?.latest?.serverImage,
+    activeTask?.status,
+    statusKey === 'UPDATE_AVAILABLE',
+  );
   const canRollback = updaterAvailable && !isTaskRunning;
+  const installTooltip = statusKey === 'UP_TO_DATE'
+    ? t('当前已经是最新版本，无需更新', 'You are already on the latest version. No update is needed.')
+    : canInstall
+      ? t('更新到最新发布版本', 'Update to the latest release')
+      : t('更新源暂未提供可安装镜像', 'The update source does not provide an installable image yet');
 
   return (
     <Space
@@ -945,7 +958,7 @@ const PlatformUpdateContent = () => {
                   {t('检查', 'Check')}
                 </Button>
               </Tooltip>
-              <Tooltip title={canInstall ? t('更新或重新部署最新发布版本', 'Update or redeploy the latest release') : t('更新源暂未提供可安装镜像', 'The update source does not provide an installable image yet')}>
+              <Tooltip title={installTooltip}>
                 <Button type="primary" icon={<CloudDownloadOutlined />} disabled={!canInstall} loading={isTaskRunning} onClick={handleInstall}>
                   {t('更新', 'Update')}
                 </Button>
