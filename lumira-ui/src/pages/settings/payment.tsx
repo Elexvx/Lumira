@@ -30,7 +30,7 @@ const SystemPaymentPage = () => {
   const actionPermission = useActionPermission();
   const canUpdateSettings = actionPermission.can('payment:config:update');
   const canTestSettings = actionPermission.can('payment:config:test');
-  const canCreateSandboxOrder = actionPermission.can('payment:order:create');
+  const canCreatePaymentOrder = actionPermission.can('payment:order:create');
   const { tablePack, drawerPack } = usePaymentManagement({
     canUpdateSettings,
     canTestSettings,
@@ -78,7 +78,7 @@ const SystemPaymentPage = () => {
               children: (
                 <SandboxPaymentOrderTab
                   paymentSettings={tablePack.paymentSettingsData}
-                  canCreateOrders={canCreateSandboxOrder}
+                  canCreateOrders={canCreatePaymentOrder}
                 />
               ),
             },

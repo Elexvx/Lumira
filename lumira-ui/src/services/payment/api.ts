@@ -14,6 +14,12 @@ export const createSandboxPaymentOrder = (data: PaymentCreateOrderRequest) =>
     data,
   });
 
+export const createPaymentOrder = (data: PaymentCreateOrderRequest) =>
+  request<PaymentOrderRecord>('/v1/payment/orders', {
+    method: 'POST',
+    data,
+  });
+
 export const getPaymentOrder = (orderNo: string) =>
   request<PaymentOrderRecord>(`/v1/payment/orders/${encodeURIComponent(orderNo)}`, {
     method: 'GET',
