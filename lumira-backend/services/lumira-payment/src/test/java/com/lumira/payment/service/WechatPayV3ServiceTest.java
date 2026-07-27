@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
+import com.lumira.common.exception.BizException;
 import org.junit.jupiter.api.Test;
 
 import javax.crypto.Cipher;
@@ -56,6 +57,59 @@ class WechatPayV3ServiceTest {
                 %s
                 """.formatted(body)).getBytes(StandardCharsets.UTF_8));
         assertThat(verifier.verify(Base64.getDecoder().decode(encodedSignature))).isTrue();
+    }
+
+    @Test
+    void providerSignErrorShouldExposeSafeActionableMessage() {
+        BizException exception = service.providerRequestFailure(
+                401,
+                """
+                        {
+                          "code": "SIGN_ERROR",
+                          "message": "sign not match"
+                        }
+                        """
+        );
+
+        assertThat(exception.getMessage())
+                .contains("status 401")
+                .contains("SIGN_ERROR")
+                .contains("sign not match");
+        assertThat(exception.getUserMessage())
+                .isEqualTo("微信支付签名校验未通过，请检查商户证书序列号与商户私钥是否匹配");
+    }
+
+    @Test
+    void providerParameterErrorShouldRetainWechatValidationDetail() {
+        BizException exception = service.providerRequestFailure(
+                400,
+                """
+                        {
+                          "code": "PARAM_ERROR",
+                          "message": "notify_url is invalid"
+                        }
+                        """
+        );
+
+        assertThat(exception.getUserMessage())
+                .isEqualTo("微信支付请求参数错误（PARAM_ERROR）：notify_url is invalid");
+    }
+
+    @Test
+    void unknownProviderErrorShouldExposeOnlyProviderCode() {
+        BizException exception = service.providerRequestFailure(
+                403,
+                """
+                        {
+                          "code": "RULE_LIMIT",
+                          "message": "merchant-specific internal policy detail"
+                        }
+                        """
+        );
+
+        assertThat(exception.getMessage()).contains("merchant-specific internal policy detail");
+        assertThat(exception.getUserMessage())
+                .isEqualTo("微信支付下单失败（RULE_LIMIT），请检查微信商户配置后重试");
     }
 
     @Test

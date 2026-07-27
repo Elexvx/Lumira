@@ -153,15 +153,50 @@ describe('handleApiError', () => {
     expect(mocks.performLogout).not.toHaveBeenCalled();
   });
 
-  it('honors requests that explicitly disable unauthorized redirects', () => {
+  it('still forces logout for an expired authenticated request that disabled ordinary redirects', async () => {
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
     handleApiError(sessionExpiredError(), { autoRedirectOnUnauthorized: false }, {
       ...baseAuthSnapshot,
       accessToken: 'token-a',
       hasAuthToken: true,
     });
 
+    expect(mocks.messageInfo).toHaveBeenCalledWith('session expired');
+    await vi.waitFor(() => {
+      expect(mocks.performLogout).toHaveBeenCalledWith({ reason: 'forced_expired' });
+    });
+  });
+
+  it('preserves explicit unauthorized opt-out for requests without an authenticated session', () => {
+    handleApiError(sessionExpiredError(), { allowUnauthorizedWithoutRedirect: true }, baseAuthSnapshot);
+
     expect(mocks.messageInfo).not.toHaveBeenCalled();
     expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
+  it('forces logout for a silent expired request when an authenticated session still exists', async () => {
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(sessionExpiredError(), {
+      allowUnauthorizedWithoutRedirect: true,
+      silent: true,
+    }, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(mocks.performLogout).toHaveBeenCalledWith({ reason: 'forced_expired' });
+    });
   });
 
   it('does not destroy the platform session when a business service still returns 401 after refresh', () => {

@@ -1421,7 +1421,16 @@ body,
 }
 
 .saas-layout-footer__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--saas-spacing-2xs);
   color: inherit;
+}
+
+.saas-layout-footer__police-beian-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
 }
 
 .saas-layout-footer__link:hover {

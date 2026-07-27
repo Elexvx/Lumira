@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
+import { notifyCurrentUserSync } from '@/auth/currentUserSync';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
@@ -524,6 +525,9 @@ export const useUserManagement = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
+        if (drawer.editingId === initialState?.currentUser?.userId) {
+          notifyCurrentUserSync();
+        }
         message.success(t('用户已更新', 'User updated'));
       } else {
         await request<UserDetail>('/v1/system/users', {
@@ -544,7 +548,7 @@ export const useUserManagement = () => {
     } finally {
       setSaving(false);
     }
-  }, [drawer, editorForm, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
+  }, [drawer, editorForm, initialState?.currentUser?.userId, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
 
   const handleStatusToggle = useCallback(
     async (record: UserRecord) => {

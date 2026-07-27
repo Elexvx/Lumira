@@ -15,6 +15,7 @@ export type TokenRefreshOutcome = 'refreshed' | 'session_expired' | 'temporarily
 
 const AUTH_LOGOUT_PATH = '/v1/auth/logout';
 const AUTH_REFRESH_TOKEN_PATH = '/v1/auth/refresh-token';
+export const SESSION_EXPIRED_LOGIN_REASON = 'session_expired';
 
 let refreshTokenPromise: Promise<TokenRefreshOutcome> | null = null;
 
@@ -37,8 +38,11 @@ export const buildLogoutRedirectTarget = (
   }
 
   const redirect = `${location.pathname}${location.search}${location.hash}`;
-  return `${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`;
+  return `${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}&reason=${SESSION_EXPIRED_LOGIN_REASON}`;
 };
+
+export const isSessionExpiredLoginSearch = (search: string) =>
+  new URLSearchParams(search).get('reason') === SESSION_EXPIRED_LOGIN_REASON;
 
 export const performLogout = async (options: { reason?: LogoutReason; hardReload?: boolean } = {}) => {
   const reason = options.reason || 'user_initiated';

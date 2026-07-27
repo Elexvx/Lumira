@@ -25,7 +25,7 @@ describe('buildLogoutRedirectTarget', () => {
       pathname: '/settings/payment',
       search: '?tab=providers',
       hash: '#alipay',
-    })).toBe('/user/login?redirect=%2Fsettings%2Fpayment%3Ftab%3Dproviders%23alipay');
+    })).toBe('/user/login?redirect=%2Fsettings%2Fpayment%3Ftab%3Dproviders%23alipay&reason=session_expired');
   });
 
   it('does not create nested redirects from the login page or a manual logout', async () => {
@@ -41,5 +41,12 @@ describe('buildLogoutRedirectTarget', () => {
       search: '',
       hash: '',
     })).toBe('/user/login');
+  });
+
+  it('identifies the durable session-expired notice on the login route', async () => {
+    const { isSessionExpiredLoginSearch } = await import('./sessionLifecycle');
+
+    expect(isSessionExpiredLoginSearch('?redirect=%2Fdashboard%2Fhome&reason=session_expired')).toBe(true);
+    expect(isSessionExpiredLoginSearch('?redirect=%2Fdashboard%2Fhome')).toBe(false);
   });
 });

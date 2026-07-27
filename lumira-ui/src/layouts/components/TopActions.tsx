@@ -13,6 +13,7 @@ import { tokenManager } from '@/auth/token';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeLocale } from '@/i18n/locale';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { useCurrentUserRealtimeSync } from '@/hooks/useCurrentUserRealtimeSync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { request } from '@/services/common/request';
@@ -182,6 +183,7 @@ export const TopActions = () => {
   const { isMobile } = useResponsive();
   const { themePreference, resolvedColorMode, setThemePreference } = useThemePreference();
   const currentUser = initialState?.currentUser;
+  useCurrentUserRealtimeSync({ currentUser, setInitialState });
   const brandingSettings = (initialState?.brandingSettings || {}) as {
     githubLinkEnabled?: boolean;
     githubLinkUrl?: string;

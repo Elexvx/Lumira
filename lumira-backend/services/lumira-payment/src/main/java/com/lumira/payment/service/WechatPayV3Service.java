@@ -244,22 +244,31 @@ public class WechatPayV3Service {
             );
             String responseBody = response.body() == null ? "" : response.body();
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new BizException(
-                        ErrorCode.BIZ_ERROR,
-                        "WeChat Pay API request failed with status " + response.statusCode() + ": " + extractProviderError(responseBody)
-                );
+                throw providerRequestFailure(response.statusCode(), responseBody);
             }
             if (!allowEmptyResponse && !StringUtils.hasText(responseBody)) {
-                throw new BizException(ErrorCode.BIZ_ERROR, "WeChat Pay API returned an empty response");
+                throw new BizException(
+                        ErrorCode.BIZ_ERROR,
+                        "WeChat Pay API returned an empty response",
+                        "微信支付未返回下单结果，请稍后重试"
+                );
             }
             return responseBody;
         } catch (BizException exception) {
             throw exception;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new BizException(ErrorCode.BIZ_ERROR, "WeChat Pay API request was interrupted");
+            throw new BizException(
+                    ErrorCode.BIZ_ERROR,
+                    "WeChat Pay API request was interrupted",
+                    "微信支付请求已中断，请重试"
+            );
         } catch (Exception exception) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Unable to call WeChat Pay API");
+            throw new BizException(
+                    ErrorCode.BIZ_ERROR,
+                    "Unable to call WeChat Pay API: " + exception.getClass().getSimpleName(),
+                    "暂时无法连接微信支付接口，请稍后重试"
+            );
         }
     }
 
@@ -423,19 +432,61 @@ public class WechatPayV3Service {
         }
     }
 
-    private String extractProviderError(String responseBody) {
+    BizException providerRequestFailure(int statusCode, String responseBody) {
+        ProviderError providerError = extractProviderError(responseBody);
+        String providerCode = StringUtils.hasText(providerError.code())
+                ? providerError.code().trim().toUpperCase(Locale.ROOT)
+                : "HTTP_" + statusCode;
+        String providerMessage = StringUtils.hasText(providerError.message())
+                ? providerError.message().trim()
+                : "unknown provider error";
+        return new BizException(
+                ErrorCode.BIZ_ERROR,
+                "WeChat Pay API request failed with status " + statusCode
+                        + ": " + providerCode + " " + providerMessage,
+                providerUserMessage(providerCode, providerMessage)
+        );
+    }
+
+    private ProviderError extractProviderError(String responseBody) {
         if (!StringUtils.hasText(responseBody)) {
-            return "empty response";
+            return new ProviderError("", "empty response");
         }
         try {
             JsonNode response = objectMapper.readTree(responseBody);
             String code = response.path("code").asText("");
             String message = response.path("message").asText("");
-            String combined = (code + " " + message).trim();
-            return StringUtils.hasText(combined) ? combined : "unknown provider error";
+            return new ProviderError(code, StringUtils.hasText(message) ? message : "unknown provider error");
         } catch (Exception ignored) {
-            return "unparseable provider error";
+            return new ProviderError("", "unparseable provider error");
         }
+    }
+
+    private String providerUserMessage(String providerCode, String providerMessage) {
+        return switch (providerCode) {
+            case "SIGN_ERROR" ->
+                    "微信支付签名校验未通过，请检查商户证书序列号与商户私钥是否匹配";
+            case "APPID_MCHID_NOT_MATCH" ->
+                    "微信支付 AppID 与商户号不匹配，请检查该 AppID 是否已绑定当前商户号";
+            case "MCH_NOT_EXISTS" ->
+                    "微信支付商户号不存在或不可用，请检查商户号配置";
+            case "NO_AUTH" ->
+                    "当前商户号未开通微信支付对应产品，请先在微信支付商户平台开通";
+            case "PARAM_ERROR" ->
+                    "微信支付请求参数错误（PARAM_ERROR）：" + providerMessage;
+            case "OUT_TRADE_NO_USED" ->
+                    "微信支付订单号已被使用，请重新创建订单";
+            case "ORDERPAID" ->
+                    "该微信支付订单已支付，请刷新订单状态";
+            case "ORDER_CLOSED" ->
+                    "该微信支付订单已关闭，请重新创建订单";
+            case "FREQUENCY_LIMITED" ->
+                    "微信支付请求过于频繁，请稍后重试";
+            case "SYSTEM_ERROR", "BANK_ERROR" ->
+                    "微信支付系统暂时繁忙，请稍后重试";
+            default ->
+                    "微信支付下单失败（" + providerCode + "），请检查微信商户配置后重试";
+        };
     }
 
     private void requireMerchantSettings(PaymentProviderSettingsDTO settings) {
@@ -568,6 +619,9 @@ public class WechatPayV3Service {
     }
 
     public record WechatPaymentResult(String scene, String paymentUrl, String responseBody) {
+    }
+
+    private record ProviderError(String code, String message) {
     }
 
     public record WechatNotification(

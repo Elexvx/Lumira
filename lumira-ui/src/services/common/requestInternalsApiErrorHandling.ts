@@ -69,8 +69,8 @@ export const handleApiError = (
   }
 
   if (
-    options.allowUnauthorizedWithoutRedirect === true ||
-    options.autoRedirectOnUnauthorized === false ||
+    (!authSnapshot.hasAuthToken &&
+      (options.allowUnauthorizedWithoutRedirect === true || options.autoRedirectOnUnauthorized === false)) ||
     context.authenticatedRefreshSucceeded === true ||
     context.refreshTemporarilyUnavailable === true ||
     shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())

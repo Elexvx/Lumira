@@ -1,4 +1,4 @@
-import { formatMessage } from '@umijs/max';
+import { formatMessage, useLocation } from '@umijs/max';
 import { Alert, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
 import { useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
@@ -10,6 +10,7 @@ import { LoginFormFields, WechatLoginPanel, type LoginFormValues, type LoginMode
 import { resolvePresentedLoginMode, resolvePresentedLoginModes } from '@/pages/user/login/utils/loginModePresentation';
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { request } from '@/services/common/request';
+import { isSessionExpiredLoginSearch } from '@/auth/sessionLifecycle';
 import './Login.css';
 
 const INITIAL_PASSWORD = '123456';
@@ -34,6 +35,7 @@ type LoginPageMainSectionProps = {
   brandingWebsiteName: string;
   brandingFooterItems: string[];
   loginSubTitle: string;
+  sessionExpired: boolean;
   submitButtonText: string;
   activeLoginMode: LoginMode;
   availableLoginModes: LoginMode[];
@@ -72,6 +74,7 @@ const LoginPageMainSection = ({
   brandingWebsiteName,
   brandingFooterItems,
   loginSubTitle: _loginSubTitle,
+  sessionExpired,
   submitButtonText,
   activeLoginMode,
   availableLoginModes,
@@ -130,6 +133,15 @@ const LoginPageMainSection = ({
           onFinish={handleSubmit}
           onFinishFailed={handleFinishFailed}
         >
+          {sessionExpired ? (
+            <Alert
+              className="saas-login-page__session-expired"
+              data-testid="session-expired-alert"
+              message={formatMessage({ id: 'common.sessionExpired', defaultMessage: '登录状态已失效，请重新登录' })}
+              showIcon
+              type="warning"
+            />
+          ) : null}
           <LoginFormFields
             activeLoginMode={activeLoginMode}
             availableLoginModes={availableLoginModes}
@@ -393,6 +405,7 @@ const PasswordResetModal = ({
 
 const Login = () => {
   const loginFlow = useLoginFlow();
+  const location = useLocation();
   const responsive = useResponsive();
   const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
@@ -453,6 +466,7 @@ const Login = () => {
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}
         loginSubTitle={loginSubTitle}
+        sessionExpired={isSessionExpiredLoginSearch(location.search)}
         submitButtonText={submitButtonText}
       />
       <PasswordResetModal open={passwordResetOpen} onClose={() => setPasswordResetOpen(false)} />

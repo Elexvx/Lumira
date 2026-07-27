@@ -39,6 +39,7 @@ import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import type { ThemePreference } from '@/theme/settings';
 import { resolveThemeRuntimeSnapshot } from '@/theme/runtime';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import policeBeianIcon from '@/assets/police-beian.png';
 import GlobalSensitiveWordGuard from '@/components/GlobalSensitiveWordGuard';
 import './layouts/components/GlobalFloatActions.css';
 import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
@@ -947,9 +948,15 @@ const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialSt
 const ICP_QUERY_URL = 'https://beian.miit.gov.cn/';
 const POLICE_BEIAN_QUERY_URL = 'https://beian.mps.gov.cn/#/query/webSearch';
 
-const renderBeianLink = (text: string, href: string) => (
+const resolvePoliceBeianQueryUrl = (text: string) => {
+  const recordCode = text.match(/\d{13,}/)?.[0];
+  return recordCode ? `${POLICE_BEIAN_QUERY_URL}?code=${encodeURIComponent(recordCode)}` : POLICE_BEIAN_QUERY_URL;
+};
+
+const renderBeianLink = (text: string, href: string, icon?: string) => (
   <a className="saas-layout-footer__link" href={href} target="_blank" rel="noreferrer">
-    {text}
+    {icon ? <img className="saas-layout-footer__police-beian-icon" src={icon} alt="" aria-hidden="true" /> : null}
+    <span>{text}</span>
   </a>
 );
 
@@ -966,7 +973,9 @@ const renderLayoutFooter = (brandingSettings: BrandingSettings) => {
         <div className="saas-layout-footer__line saas-layout-footer__beian-line">
           {brandingSettings.footerIcp ? renderBeianLink(brandingSettings.footerIcp, ICP_QUERY_URL) : null}
           {brandingSettings.footerIcp && brandingSettings.footerPoliceBeian ? <span className="saas-layout-footer__separator" aria-hidden="true" /> : null}
-          {brandingSettings.footerPoliceBeian ? renderBeianLink(brandingSettings.footerPoliceBeian, POLICE_BEIAN_QUERY_URL) : null}
+          {brandingSettings.footerPoliceBeian
+            ? renderBeianLink(brandingSettings.footerPoliceBeian, resolvePoliceBeianQueryUrl(brandingSettings.footerPoliceBeian), policeBeianIcon)
+            : null}
         </div>
       ) : null}
       {copyrightText ? <div className="saas-layout-footer__line">{copyrightText}</div> : null}

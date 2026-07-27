@@ -161,6 +161,10 @@
   font-size: 14px;
 }
 
+.saas-login-page__session-expired {
+  margin-bottom: 20px;
+}
+
 .saas-login-page__form .ant-form-item {
   margin-bottom: 0;
 }
