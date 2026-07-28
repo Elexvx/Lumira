@@ -1698,15 +1698,32 @@ const MaterialFileUploadInput = ({
         return;
       }
 
-      const blob = await requestFile(
-        kind === 'EXTRACTED_TEXT'
-          ? `/v1/files/${value}/text-preview`
-          : `/v1/files/${value}/preview`,
-        {
-        method: 'GET',
-        silent: true,
-        },
-      );
+      let blob: Blob;
+      try {
+        blob = await requestFile(
+          kind === 'EXTRACTED_TEXT'
+            ? `/v1/files/${value}/text-preview`
+            : kind === 'OFFICE_HTML'
+              ? `/v1/files/${value}/html-preview`
+              : `/v1/files/${value}/preview`,
+          {
+            method: 'GET',
+            silent: true,
+          },
+        );
+      } catch (error) {
+        if (kind !== 'OFFICE_HTML') {
+          throw error;
+        }
+        blob = await requestFile(`/v1/files/${value}/text-preview`, {
+          method: 'GET',
+          silent: true,
+        });
+        setPreviewKind('EXTRACTED_TEXT');
+        setPreviewText(await blob.text());
+        message.warning('版式预览暂不可用，已切换为文本预览');
+        return;
+      }
       if (kind === 'EXTRACTED_TEXT') {
         setPreviewText(await blob.text());
         return;
@@ -1858,6 +1875,15 @@ const MaterialFileUploadInput = ({
               <iframe
                 title={previewRecord.originalFileName}
                 src={`${previewUrl}#view=FitH`}
+                className="competition-material-preview__frame"
+              />
+            ) : null}
+            {!previewError && previewRecord && previewUrl && previewKind === 'OFFICE_HTML' ? (
+              <iframe
+                title={`${previewRecord.originalFileName} 版式预览`}
+                src={previewUrl}
+                sandbox=""
+                referrerPolicy="no-referrer"
                 className="competition-material-preview__frame"
               />
             ) : null}

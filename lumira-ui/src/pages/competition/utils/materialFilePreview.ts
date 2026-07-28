@@ -1,15 +1,10 @@
 import type { FileObjectRecord } from '@/types/api';
 
-export type MaterialFilePreviewKind = 'IMAGE' | 'PDF' | 'EXTRACTED_TEXT' | 'UNSUPPORTED';
+export type MaterialFilePreviewKind = 'IMAGE' | 'PDF' | 'OFFICE_HTML' | 'EXTRACTED_TEXT' | 'UNSUPPORTED';
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']);
+const OFFICE_PREVIEW_EXTENSIONS = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
 const TEXT_PREVIEW_EXTENSIONS = new Set([
-  'doc',
-  'docx',
-  'xls',
-  'xlsx',
-  'ppt',
-  'pptx',
   'md',
   'markdown',
   'txt',
@@ -40,12 +35,17 @@ export const resolveMaterialFilePreviewKind = (
     return 'IMAGE';
   }
   if (
-    TEXT_PREVIEW_EXTENSIONS.has(extension)
-    || record.previewMode === 'TEXT'
-    || mimeType.startsWith('text/')
+    OFFICE_PREVIEW_EXTENSIONS.has(extension)
     || mimeType.includes('word')
     || mimeType.includes('excel')
     || mimeType.includes('powerpoint')
+  ) {
+    return 'OFFICE_HTML';
+  }
+  if (
+    TEXT_PREVIEW_EXTENSIONS.has(extension)
+    || record.previewMode === 'TEXT'
+    || mimeType.startsWith('text/')
   ) {
     return 'EXTRACTED_TEXT';
   }

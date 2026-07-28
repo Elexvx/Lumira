@@ -60,6 +60,7 @@ class FileV2ControllerTest {
                         "detail:/{id}",
                         "download:/{id}/download",
                         "preview:/{id}/preview",
+                        "htmlPreview:/{id}/html-preview",
                         "textPreview:/{id}/text-preview"
                 );
         assertThat(postEndpoints)

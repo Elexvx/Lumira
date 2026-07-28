@@ -14,12 +14,16 @@ const record = (
 });
 
 describe('material file preview strategy', () => {
-  it.each(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt'])(
-    'uses extracted text preview for %s',
+  it.each(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'])(
+    'uses the local office renderer for %s',
     (extension) => {
-      expect(resolveMaterialFilePreviewKind(record(extension))).toBe('EXTRACTED_TEXT');
+      expect(resolveMaterialFilePreviewKind(record(extension))).toBe('OFFICE_HTML');
     },
   );
+
+  it.each(['md', 'txt'])('uses extracted text preview for %s', (extension) => {
+    expect(resolveMaterialFilePreviewKind(record(extension))).toBe('EXTRACTED_TEXT');
+  });
 
   it('keeps native PDF and image previews', () => {
     expect(resolveMaterialFilePreviewKind(record('pdf', 'PDF'))).toBe('PDF');
@@ -28,7 +32,7 @@ describe('material file preview strategy', () => {
 
   it('falls back to the MIME type when extension metadata is incomplete', () => {
     expect(resolveMaterialFilePreviewKind(record('', 'UNSUPPORTED', 'application/msword')))
-      .toBe('EXTRACTED_TEXT');
+      .toBe('OFFICE_HTML');
   });
 
   it('does not attempt to preview archives', () => {

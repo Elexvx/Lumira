@@ -19,6 +19,7 @@ import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.file.app.FileManagementAppService;
 import com.lumira.file.dto.FileStorageSpaceRequest;
+import com.lumira.file.preview.DocumentHtmlPreview;
 import com.lumira.file.preview.DocumentTextPreview;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -271,6 +272,30 @@ public class FileController {
                 .header("X-Content-Type-Options", "nosniff")
                 .contentType(MediaType.parseMediaType("text/plain;charset=UTF-8"))
                 .body(previewText);
+    }
+
+    @GetMapping("/{id}/html-preview")
+    public ResponseEntity<String> htmlPreview(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "scope", required = false) String scope
+    ) {
+        boolean sharedScope = isSharedScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        CurrentUser currentUser = currentUser();
+        require(resolveReadPermission(scope));
+        FileObjectDTO file = fileManagementAppService.getFile(currentUser, id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(currentUser, id, sharedScope, downloadCenterScope);
+        String previewHtml = DocumentHtmlPreview.render(path, file.fileExtension(), file.mimeType());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename(file.originalFileName() + ".html", StandardCharsets.UTF_8)
+                        .build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy",
+                        "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; sandbox")
+                .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
+                .body(previewHtml);
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
