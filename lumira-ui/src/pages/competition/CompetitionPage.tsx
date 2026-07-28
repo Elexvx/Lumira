@@ -81,6 +81,12 @@ import {
   hasRegistrationCompetitionPricing,
   mergeRegistrationCompetitionOptions,
 } from '@/pages/competition/utils/registrationCompetition';
+import {
+  buildRegistrationDocumentAcceptanceStorageKey,
+  buildRegistrationDocumentCountdowns,
+  getRegistrationDocumentAcceptanceKey,
+  resolveAcceptedRegistrationDocumentKeys,
+} from '@/pages/competition/utils/registrationDocumentAcceptance';
 import { buildRegistrationDraftStorageKey } from '@/pages/competition/utils/registrationDraftStorageKey';
 import {
   getMissingRequiredRegistrationMaterials,
@@ -301,6 +307,11 @@ type CompetitionRegistrationDraftStorage = {
   paymentStatus?: string;
   savedAt?: number;
   values?: Partial<RegistrationFormValues>;
+};
+
+type CompetitionRegistrationDocumentAcceptanceStorage = {
+  acceptedDocumentKeys?: string[];
+  savedAt?: number;
 };
 
 type CompetitionRegistrationListRecord = CompetitionRegistrationRecord & {
@@ -899,6 +910,17 @@ const clearCompetitionCreateDraft = () => clearUserDraft(COMPETITION_CREATE_DRAF
 const readCompetitionRegistrationDraft = (draftKey: string) => readUserDraft<CompetitionRegistrationDraftStorage>(draftKey);
 const writeCompetitionRegistrationDraft = (draftKey: string, draft: CompetitionRegistrationDraftStorage) => writeUserDraft(draftKey, draft);
 const clearCompetitionRegistrationDraft = (draftKey: string) => clearUserDraft(draftKey);
+const readCompetitionRegistrationDocumentAcceptance = (competitionUuid: string) =>
+  readUserDraft<CompetitionRegistrationDocumentAcceptanceStorage>(
+    buildRegistrationDocumentAcceptanceStorageKey(competitionUuid),
+  );
+const writeCompetitionRegistrationDocumentAcceptance = (
+  competitionUuid: string,
+  acceptedDocumentKeys: string[],
+) => writeUserDraft(
+  buildRegistrationDocumentAcceptanceStorageKey(competitionUuid),
+  { acceptedDocumentKeys, savedAt: Date.now() },
+);
 
 const hasCompetitionRegistrationDraftContent = (values: Partial<RegistrationFormValues>) => {
   const members = values.newTeam?.initialMembers || [];
@@ -2460,6 +2482,7 @@ const CompetitionRegistrationPage = () => {
   const [registrationDocumentsLoading, setRegistrationDocumentsLoading] = useState(false);
   const [documentReadingCountdowns, setDocumentReadingCountdowns] = useState<Record<string, number>>({});
   const [acceptedDocumentKeys, setAcceptedDocumentKeys] = useState<string[]>([]);
+  const [registrationDocumentsCompetitionUuid, setRegistrationDocumentsCompetitionUuid] = useState<string>();
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
   const [stageFormLoading, setStageFormLoading] = useState(false);
   const [registrationId, setRegistrationId] = useState<number>();
@@ -2765,17 +2788,23 @@ const CompetitionRegistrationPage = () => {
         ? (current.includes(documentKey) ? current : [...current, documentKey])
         : current.filter((key) => key !== documentKey);
       persistRegistrationDraft(collectRegistrationValues(), step, nextKeys);
+      if (registrationDocumentsCompetitionUuid) {
+        void writeCompetitionRegistrationDocumentAcceptance(
+          registrationDocumentsCompetitionUuid,
+          nextKeys,
+        );
+      }
       return nextKeys;
     });
-  }, [collectRegistrationValues, persistRegistrationDraft, step]);
+  }, [collectRegistrationValues, persistRegistrationDraft, registrationDocumentsCompetitionUuid, step]);
   const resetRegistrationDocumentProgress = useCallback(
-    (documents: CompetitionConfigItem[]) => {
-      setDocumentReadingCountdowns(
-        Object.fromEntries(
-          documents.map((item, index) => [getRegistrationDocumentKey(item, index), getConfigItemReadingSeconds(item)]),
-        ),
-      );
-      setAcceptedDocumentKeys([]);
+    (documents: CompetitionConfigItem[], nextAcceptedDocumentKeys: string[] = []) => {
+      setDocumentReadingCountdowns(buildRegistrationDocumentCountdowns(
+        documents,
+        nextAcceptedDocumentKeys,
+        getConfigItemReadingSeconds,
+      ));
+      setAcceptedDocumentKeys(nextAcceptedDocumentKeys);
     },
     [],
   );
@@ -2951,6 +2980,7 @@ const CompetitionRegistrationPage = () => {
         ? draftCompetitionState?.competitionUuid
         : undefined);
     setRegistrationDocuments([]);
+    setRegistrationDocumentsCompetitionUuid(undefined);
     setRegistrationFields([]);
     setTeamMemberLimits({ minMembers: DEFAULT_TEAM_MIN_MEMBERS, maxMembers: DEFAULT_TEAM_MAX_MEMBERS });
     setStageMaterialConfigs([]);
@@ -2986,12 +3016,32 @@ const CompetitionRegistrationPage = () => {
         const nextDocuments = (settings.documents || [])
           .filter((item) => item.enabled !== false)
           .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
-        setRegistrationDocuments(nextDocuments);
-        resetRegistrationDocumentProgress(nextDocuments);
+        const rememberedAcceptance = await readCompetitionRegistrationDocumentAcceptance(competitionUuid)
+          .catch(() => undefined);
+        if (!mounted) {
+          return;
+        }
         const currentDraft = latestRegistrationDraftRef.current;
-        if (currentDraft && toPositiveId(currentDraft.values?.competitionId) === activeCompetitionId) {
-          const nextDocumentKeys = nextDocuments.map((item, index) => getRegistrationDocumentKey(item, index));
-          setAcceptedDocumentKeys((currentDraft.acceptedDocumentKeys || []).filter((key) => nextDocumentKeys.includes(key)));
+        const draftAcceptedDocumentKeys = currentDraft
+          && toPositiveId(currentDraft.values?.competitionId) === activeCompetitionId
+          ? currentDraft.acceptedDocumentKeys || []
+          : [];
+        const nextAcceptedDocumentKeys = resolveAcceptedRegistrationDocumentKeys(
+          nextDocuments,
+          rememberedAcceptance?.acceptedDocumentKeys,
+          draftAcceptedDocumentKeys,
+        );
+        setRegistrationDocuments(nextDocuments);
+        setRegistrationDocumentsCompetitionUuid(competitionUuid);
+        resetRegistrationDocumentProgress(nextDocuments, nextAcceptedDocumentKeys);
+        if (
+          nextAcceptedDocumentKeys.length
+          && nextAcceptedDocumentKeys.some((key) => !rememberedAcceptance?.acceptedDocumentKeys?.includes(key))
+        ) {
+          void writeCompetitionRegistrationDocumentAcceptance(
+            competitionUuid,
+            nextAcceptedDocumentKeys,
+          );
         }
         setRegistrationFields(
           (settings.fields || [])
@@ -3528,19 +3578,6 @@ const CompetitionRegistrationPage = () => {
     memberForm.resetFields();
   };
 
-  const removeMember = useCallback((index: number) => {
-    const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
-    currentMembers.splice(index, 1);
-    form.setFieldValue(['newTeam', 'initialMembers'], currentMembers);
-    persistRegistrationDraft({
-      ...collectRegistrationValues(),
-      newTeam: {
-        ...(form.getFieldValue('newTeam') || {}),
-        initialMembers: currentMembers,
-      },
-    });
-  }, [collectRegistrationValues, form, persistRegistrationDraft]);
-
   useEffect(() => {
     if (step !== 5 || !registrationId || isRegistrationPaymentSuccessful(paymentStatus)) {
       return;
@@ -3733,14 +3770,37 @@ const CompetitionRegistrationPage = () => {
   }, [form]);
 
   const removeMemberInline = useCallback((index: number) => {
-    removeMember(index);
-    setMemberEditorKey((current) => {
-      if (current === undefined || current === 'new') {
-        return current;
-      }
-      return current > index ? current - 1 : current;
+    const members = (form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[];
+    const memberName = normalizeDisplayText(members[index]?.memberName) || `成员 ${index + 1}`;
+    modal.confirm({
+      title: '确认移除该成员？',
+      content: `移除“${memberName}”后，该成员已填写的信息将从当前报名草稿中删除。`,
+      okText: '确认移除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
+        if (index < 0 || index >= currentMembers.length) {
+          return;
+        }
+        currentMembers.splice(index, 1);
+        form.setFieldValue(['newTeam', 'initialMembers'], currentMembers);
+        persistRegistrationDraft({
+          ...collectRegistrationValues(),
+          newTeam: {
+            ...(form.getFieldValue('newTeam') || {}),
+            initialMembers: currentMembers,
+          },
+        });
+        setMemberEditorKey((current) => {
+          if (current === undefined || current === 'new') {
+            return current;
+          }
+          return current > index ? current - 1 : current;
+        });
+      },
     });
-  }, [removeMember]);
+  }, [collectRegistrationValues, form, persistRegistrationDraft]);
 
   useEffect(() => {
     if (typeof memberEditorKey === 'number' && memberEditorKey >= registrationMembers.length) {
@@ -5003,7 +5063,7 @@ const getConfigItemReadingSeconds = (item: CompetitionConfigItem) =>
   normalizeReadingSeconds(parseConfigItemMetadata(item.contentJson).readingSeconds);
 
 const getRegistrationDocumentKey = (item: CompetitionConfigItem, index: number) =>
-  String(item.id || item.itemKey || `${item.itemType}-${index}`);
+  getRegistrationDocumentAcceptanceKey(item, index);
 
 const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetitionConfigItem[] =>
   items.map((item) => {
