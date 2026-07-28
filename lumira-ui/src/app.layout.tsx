@@ -29,6 +29,7 @@ import type { BrandingSettings, CurrentUser, FloatingWindowSettings, MenuNode, S
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
+import { filterRetiredMainMenuNodes } from '@/navigation/mainMenuFilter';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, realPageRouteMetaMap, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -1031,18 +1032,6 @@ const collectMenuNodePaths = (items: MenuNode[] | undefined, paths = new Set<str
   return paths;
 };
 
-const removeLegacyCompetitionRootMenus = (items: MenuNode[] | undefined): MenuNode[] =>
-  (items || []).flatMap((item) => {
-    const children = removeLegacyCompetitionRootMenus(item.children);
-    if (item.menuCode === LEGACY_COMPETITION_ROOT_MENU_CODE) {
-      return children;
-    }
-    return {
-      ...item,
-      children: children.length ? children : undefined,
-    };
-  });
-
 const resolveSelectedMenuPath = (pathname: string, menuTree: MenuNode[] | undefined) => {
   const normalizedPathname = resolveCanonicalRoutePath(pathname);
   const visiblePaths = Array.from(collectMenuNodePaths(menuTree));
@@ -1452,7 +1441,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const hasBrandLogo = Boolean(brandingSettings.websiteLogoUrl);
   const currentPathname = history.location.pathname;
   const siderMenuMode = resolveSiderMenuMode(currentPathname, initialState);
-  const mainMenuTree = removeLegacyCompetitionRootMenus(initialState?.menuTree);
+  const mainMenuTree = filterRetiredMainMenuNodes(initialState?.menuTree, LEGACY_COMPETITION_ROOT_MENU_CODE);
   const access = buildAccess({ currentUser: initialState?.currentUser, availablePlugins: initialState?.availablePlugins });
   const selectedMenuPath =
     siderMenuMode === 'settings'
