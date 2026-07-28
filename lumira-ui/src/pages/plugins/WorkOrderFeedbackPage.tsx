@@ -1,4 +1,4 @@
-import { BoldOutlined, CustomerServiceOutlined, ItalicOutlined, OrderedListOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { BoldOutlined, ItalicOutlined, OrderedListOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { Button, Empty, Form, Input, Segmented, Select, Space, Tag, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -495,7 +495,7 @@ const WorkOrderFeedbackPage = () => {
   );
 
   return (
-    <ManagementPage title={<Space><CustomerServiceOutlined />工单反馈</Space>}>
+    <ManagementPage title="工单反馈">
       {content}
     </ManagementPage>
   );
