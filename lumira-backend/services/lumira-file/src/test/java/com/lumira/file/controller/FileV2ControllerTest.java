@@ -59,7 +59,8 @@ class FileV2ControllerTest {
                         "storageSpace:/storage-spaces/{storageKey}",
                         "detail:/{id}",
                         "download:/{id}/download",
-                        "preview:/{id}/preview"
+                        "preview:/{id}/preview",
+                        "textPreview:/{id}/text-preview"
                 );
         assertThat(postEndpoints)
                 .contains(

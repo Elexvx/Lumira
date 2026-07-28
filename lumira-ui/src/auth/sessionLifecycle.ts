@@ -44,9 +44,9 @@ export const buildLogoutRedirectTarget = (
 export const isSessionExpiredLoginSearch = (search: string) =>
   new URLSearchParams(search).get('reason') === SESSION_EXPIRED_LOGIN_REASON;
 
-export const performLogout = async (options: { reason?: LogoutReason; hardReload?: boolean } = {}) => {
+export const performLogout = async (options: { reason?: LogoutReason; hardReload?: boolean; loginTarget?: string } = {}) => {
   const reason = options.reason || 'user_initiated';
-  const loginTarget = buildLogoutRedirectTarget(reason);
+  const loginTarget = options.loginTarget || buildLogoutRedirectTarget(reason);
   const redirectToLogin = () => {
     if (options.hardReload) {
       window.location.replace(loginTarget);

@@ -292,6 +292,9 @@ export interface BrandingSettings {
   footerIcp?: string;
   footerPoliceBeian?: string;
   footerCopyright?: string;
+  maintenanceModeEnabled?: boolean;
+  maintenanceTitle?: string;
+  maintenanceMessage?: string;
 }
 
 export interface HealthResponse {

@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
@@ -54,6 +55,9 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_FOOTER_ICP_KEY = "branding.footer-icp";
     private static final String BRANDING_FOOTER_POLICE_BEIAN_KEY = "branding.footer-police-beian";
     private static final String BRANDING_FOOTER_COPYRIGHT_KEY = "branding.footer-copyright";
+    private static final String BRANDING_MAINTENANCE_MODE_ENABLED_KEY = "branding.maintenance-mode-enabled";
+    private static final String BRANDING_MAINTENANCE_TITLE_KEY = "branding.maintenance-title";
+    private static final String BRANDING_MAINTENANCE_MESSAGE_KEY = "branding.maintenance-message";
     private static final String GROUP_BRANDING = "BRANDING";
 
     private static final String AGREEMENT_USER_MARKDOWN_KEY = "agreement.user-agreement-markdown";
@@ -236,6 +240,9 @@ public class SystemPlatformSettingsAppService {
                 buildCopyrightText(companyName, copyrightStartYear)
         );
         upsertConfigValue(BRANDING_FOOTER_COPYRIGHT_KEY, footerCopyright, operatorId);
+        upsertConfigValue(BRANDING_MAINTENANCE_MODE_ENABLED_KEY, String.valueOf(Boolean.TRUE.equals(request.getMaintenanceModeEnabled())), operatorId);
+        upsertConfigValue(BRANDING_MAINTENANCE_TITLE_KEY, sanitizeBrandingText(request.getMaintenanceTitle(), "系统维护中"), operatorId);
+        upsertConfigValue(BRANDING_MAINTENANCE_MESSAGE_KEY, sanitizeBrandingText(request.getMaintenanceMessage(), "服务正在升级优化，请稍后再试。"), operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -246,8 +253,9 @@ public class SystemPlatformSettingsAppService {
                 "SUCCESS",
                 "Update branding settings"
         );
-        markRuntimeAppearanceChanged("branding-update");
-        markPublicBootstrapChanged("branding-update");
+        String settingsEventKey = settingsEventKey("branding-update");
+        markRuntimeAppearanceChanged(settingsEventKey);
+        markPublicBootstrapChanged(settingsEventKey);
         return loadBrandingSettings();
     }
 
@@ -267,8 +275,9 @@ public class SystemPlatformSettingsAppService {
                 "SUCCESS",
                 "Update agreement settings"
         );
-        markRuntimeAppearanceChanged("agreement-update");
-        markPublicBootstrapChanged("agreement-update");
+        String settingsEventKey = settingsEventKey("agreement-update");
+        markRuntimeAppearanceChanged(settingsEventKey);
+        markPublicBootstrapChanged(settingsEventKey);
         return loadAgreementSettings();
     }
 
@@ -480,6 +489,9 @@ public class SystemPlatformSettingsAppService {
                 valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY),
                 buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())
         ));
+        settings.setMaintenanceModeEnabled(Boolean.parseBoolean(settingValue(valueByKey, BRANDING_MAINTENANCE_MODE_ENABLED_KEY)));
+        settings.setMaintenanceTitle(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_TITLE_KEY), "系统维护中"));
+        settings.setMaintenanceMessage(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_MESSAGE_KEY), "服务正在升级优化，请稍后再试。"));
         return settings;
     }
 
@@ -599,6 +611,10 @@ public class SystemPlatformSettingsAppService {
         if (readModelVersionService != null) {
             readModelVersionService.bump(CONTEXT_PLATFORM, SCOPE_PUBLIC_BOOTSTRAP, eventKey);
         }
+    }
+
+    private String settingsEventKey(String action) {
+        return action + ":" + UUID.randomUUID();
     }
 
     private Map<String, String> loadConfigValuesByKeysFromDatabase(

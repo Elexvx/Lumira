@@ -23,6 +23,7 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { AgreementMarkdownEditor } from './personalization/components/AgreementMarkdownEditor';
 import { BrandingTab } from './personalization/components/BrandingTab';
 import { FloatingWindowTab } from './personalization/components/FloatingWindowTab';
+import { MaintenanceTab } from './personalization/components/MaintenanceTab';
 import { WatermarkTab } from './personalization/components/WatermarkTab';
 import { buildBrandingAssetSettings, isBrandingAssetTarget } from './personalization/brandingAssetSettings';
 import { DEFAULT_AGREEMENT_SETTINGS } from '@/agreement/settings';
@@ -34,10 +35,10 @@ import { normalizeLocale } from '@/i18n/locale';
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
-type PersonalizationTabKey = 'branding' | 'watermark' | 'floating' | 'agreement';
+type PersonalizationTabKey = 'branding' | 'maintenance' | 'watermark' | 'floating' | 'agreement';
 
 const normalizeTabKey = (value?: string | null): PersonalizationTabKey =>
-  value === 'watermark' || value === 'floating' || value === 'agreement' ? value : 'branding';
+  value === 'maintenance' || value === 'watermark' || value === 'floating' || value === 'agreement' ? value : 'branding';
 
 type UploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -166,10 +167,12 @@ const PersonalizationSettingsPage = () => {
   const [watermarkForm] = Form.useForm<WatermarkSettings>();
   const [floatingForm] = Form.useForm<FloatingWindowSettings>();
   const [agreementForm] = Form.useForm<AgreementSettings>();
+  const [maintenanceForm] = Form.useForm<BrandingSettings>();
   const [agreementSaving, setAgreementSaving] = useState(false);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [watermarkSaving, setWatermarkSaving] = useState(false);
   const [floatingSaving, setFloatingSaving] = useState(false);
+  const [maintenanceSaving, setMaintenanceSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<PersonalizationTabKey>(() => normalizeTabKey(new URLSearchParams(location.search).get('tab')));
   const updateTabInUrl = useCallback(
     (nextTab: PersonalizationTabKey) => {
@@ -197,7 +200,11 @@ const PersonalizationSettingsPage = () => {
   });
   const brandingFormProps = useStandardFormProps({
     form: brandingForm,
-    onValuesChange: (_, allValues) => setPreviewState(normalizeBrandingSettings(allValues)),
+    onValuesChange: (_, allValues) => setPreviewState((current) => normalizeBrandingSettings({ ...current, ...allValues })),
+  });
+  const maintenanceFormProps = useStandardFormProps({
+    form: maintenanceForm,
+    onValuesChange: (_, allValues) => setPreviewState((current) => normalizeBrandingSettings({ ...current, ...allValues })),
   });
   const watermarkFormProps = useStandardFormProps({
     form: watermarkForm,
@@ -236,16 +243,18 @@ const PersonalizationSettingsPage = () => {
         data: normalizeBrandingSettings(brandingValues),
         ...API_OPTS.NO_REDIRECT,
       });
-      brandingForm.setFieldsValue(updatedBranding);
+      const normalizedBranding = normalizeBrandingSettings(updatedBranding);
+      brandingForm.setFieldsValue(normalizedBranding);
+      maintenanceForm.setFieldsValue(normalizedBranding);
       setInitialState((prev: AppInitialState | undefined) =>
-        prev ? { ...prev, brandingSettings: updatedBranding, brandingRevision: (prev.brandingRevision ?? 0) + 1 } : prev,
+        prev ? { ...prev, brandingSettings: normalizedBranding, brandingRevision: (prev.brandingRevision ?? 0) + 1 } : prev,
       );
-      setPreviewState(updatedBranding);
-      persistBrandingSettings(updatedBranding);
-      applyBrandingRuntime(updatedBranding);
-      return updatedBranding;
+      setPreviewState(normalizedBranding);
+      persistBrandingSettings(normalizedBranding);
+      applyBrandingRuntime(normalizedBranding);
+      return normalizedBranding;
     },
-    [brandingForm, setInitialState],
+    [brandingForm, maintenanceForm, setInitialState],
   );
 
   useEffect(() => {
@@ -293,7 +302,7 @@ const PersonalizationSettingsPage = () => {
       }
 
       setUploadingTarget(target);
-      const previousBranding = brandingForm.getFieldsValue(true);
+      const previousBranding = normalizeBrandingSettings({ ...previewState, ...brandingForm.getFieldsValue(true) });
       const previousWatermark = watermarkForm.getFieldsValue(true);
       const previousFloating = floatingForm.getFieldsValue(true);
       const localPreviewUrl = URL.createObjectURL(file);
@@ -355,6 +364,7 @@ const PersonalizationSettingsPage = () => {
       setPreviewState,
       setWatermarkPreview,
       watermarkForm,
+      previewState,
     ],
   );
 
@@ -366,7 +376,7 @@ const PersonalizationSettingsPage = () => {
         okText: t('确认清除', 'Clear'),
         okButtonProps: { danger: true },
         onOk: async () => {
-          const previousBranding = normalizeBrandingSettings(brandingForm.getFieldsValue(true));
+          const previousBranding = normalizeBrandingSettings({ ...previewState, ...brandingForm.getFieldsValue(true) });
           const nextBranding = normalizeBrandingSettings({ ...previousBranding, [field]: '' });
           brandingForm.setFieldValue(field, '');
           setPreviewState((prev) => ({ ...prev, [field]: '' }));
@@ -381,7 +391,7 @@ const PersonalizationSettingsPage = () => {
         },
       });
     },
-    [brandingForm, commitBrandingSettings],
+    [brandingForm, commitBrandingSettings, previewState],
   );
   const handleClearWatermarkImage = useCallback(() => {
     confirmAction({
@@ -412,7 +422,7 @@ const PersonalizationSettingsPage = () => {
     setBrandingSaving(true);
     try {
       await brandingForm.validateFields();
-      const brandingValues = brandingForm.getFieldsValue(true);
+      const brandingValues = { ...previewState, ...brandingForm.getFieldsValue(true) };
       await commitBrandingSettings(normalizeBrandingSettings(brandingValues));
       message.success(t('品牌设置已保存并即时生效', 'Branding settings saved and applied immediately'));
     } catch (error) {
@@ -420,7 +430,25 @@ const PersonalizationSettingsPage = () => {
     } finally {
       setBrandingSaving(false);
     }
-  }, [brandingForm, canUpdate, commitBrandingSettings]);
+  }, [brandingForm, canUpdate, commitBrandingSettings, previewState]);
+  const handleSaveMaintenance = useCallback(async () => {
+    if (!canUpdate) return;
+    setMaintenanceSaving(true);
+    try {
+      const maintenanceValues = await maintenanceForm.validateFields();
+      const brandingValues = normalizeBrandingSettings({
+        ...previewState,
+        ...brandingForm.getFieldsValue(true),
+        ...maintenanceValues,
+      });
+      await commitBrandingSettings(brandingValues);
+      message.success(t('维护模式设置已保存并即时生效', 'Maintenance settings saved and applied immediately'));
+    } catch (error) {
+      showErrorMessage(error, t('维护模式设置保存失败，请稍后重试', 'Failed to save maintenance settings. Please try again later.'));
+    } finally {
+      setMaintenanceSaving(false);
+    }
+  }, [brandingForm, canUpdate, commitBrandingSettings, maintenanceForm, previewState]);
   const handleSaveWatermark = useCallback(async () => {
     if (!canUpdate) return;
     setWatermarkSaving(true);
@@ -559,6 +587,7 @@ const PersonalizationSettingsPage = () => {
       }
 
       brandingForm.setFieldsValue(normalizedBranding);
+      maintenanceForm.setFieldsValue(normalizedBranding);
       watermarkForm.setFieldsValue(normalizedWatermark);
       floatingForm.setFieldsValue(normalizedFloating);
       agreementForm.setFieldsValue(normalizedAgreement);
@@ -593,6 +622,7 @@ const PersonalizationSettingsPage = () => {
     agreementForm,
     brandingForm,
     floatingForm,
+    maintenanceForm,
     setFloatingPreview,
     setInitialState,
     setPreviewState,
@@ -633,6 +663,19 @@ const PersonalizationSettingsPage = () => {
                     onUpload={(target, file) => handleUpload(target, file)}
                     onClearField={handleClearBrandingField}
                     onSave={() => void handleSaveBranding()}
+                  />
+                ),
+              },
+              {
+                key: 'maintenance',
+                label: t('维护模式', 'Maintenance'),
+                children: (
+                  <MaintenanceTab
+                    formProps={maintenanceFormProps}
+                    preview={previewState}
+                    saving={maintenanceSaving}
+                    canUpdate={canUpdate}
+                    onSave={() => void handleSaveMaintenance()}
                   />
                 ),
               },

@@ -1,4 +1,4 @@
-import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DeleteOutlined, DownloadOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Spin, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
 import type { DatePickerProps, UploadFile } from 'antd';
@@ -87,6 +87,10 @@ import {
   restoreRegistrationMaterialValues,
 } from '@/pages/competition/utils/registrationMaterials';
 import {
+  resolveMaterialFilePreviewKind,
+  type MaterialFilePreviewKind,
+} from '@/pages/competition/utils/materialFilePreview';
+import {
   buildRegistrationProjectExtraValues,
   getMissingRequiredIntellectualPropertyFields,
   hasRegistrationIntellectualPropertyContent,
@@ -114,6 +118,11 @@ import {
   resolveRegistrationFieldValidationRule,
   validateRegistrationFieldValue,
 } from '@/pages/competition/utils/registrationFieldValidation';
+import {
+  IMAGE_CROP_ASPECT_RATIO_OPTIONS,
+  normalizeImageCropAspectRatio,
+  resolveImageCropAspect,
+} from '@/pages/competition/utils/imageCropAspectRatio';
 import {
   REGISTRATION_WIZARD_FLOW_VERSION,
   isMissingPreliminaryMaterialsError,
@@ -1634,6 +1643,9 @@ const MaterialFileUploadInput = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewRecord, setPreviewRecord] = useState<FileObjectRecord>();
+  const [previewKind, setPreviewKind] = useState<MaterialFilePreviewKind>('UNSUPPORTED');
+  const [previewText, setPreviewText] = useState('');
+  const [previewError, setPreviewError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const previewUrlRef = useRef('');
   const maxSizeMb = Number(field.maxSizeMb) || 20;
@@ -1657,6 +1669,9 @@ const MaterialFileUploadInput = ({
     setPreviewOpen(false);
     setPreviewLoading(false);
     setPreviewRecord(undefined);
+    setPreviewKind('UNSUPPORTED');
+    setPreviewText('');
+    setPreviewError('');
     clearPreviewUrl();
   }, [clearPreviewUrl]);
 
@@ -1667,6 +1682,8 @@ const MaterialFileUploadInput = ({
 
     setPreviewOpen(true);
     setPreviewLoading(true);
+    setPreviewText('');
+    setPreviewError('');
     clearPreviewUrl();
     try {
       const record = fileRecord || await request<FileObjectRecord>(`/v1/files/${value}`, {
@@ -1675,21 +1692,30 @@ const MaterialFileUploadInput = ({
       });
       setFileRecord(record);
       setPreviewRecord(record);
-      if (!['PDF', 'IMAGE', 'TEXT'].includes(record.previewMode)) {
-        message.warning('当前文件格式暂不支持在线预览');
-        setPreviewOpen(false);
+      const kind = resolveMaterialFilePreviewKind(record);
+      setPreviewKind(kind);
+      if (kind === 'UNSUPPORTED') {
         return;
       }
 
-      const blob = await requestFile(`/v1/files/${value}/preview`, {
+      const blob = await requestFile(
+        kind === 'EXTRACTED_TEXT'
+          ? `/v1/files/${value}/text-preview`
+          : `/v1/files/${value}/preview`,
+        {
         method: 'GET',
         silent: true,
-      });
+        },
+      );
+      if (kind === 'EXTRACTED_TEXT') {
+        setPreviewText(await blob.text());
+        return;
+      }
       const objectUrl = window.URL.createObjectURL(blob);
       previewUrlRef.current = objectUrl;
       setPreviewUrl(objectUrl);
     } catch (error) {
-      setPreviewOpen(false);
+      setPreviewError(extractErrorMessage(error, '文件预览加载失败，请下载原文件查看'));
       showErrorMessage(error, '文件预览加载失败');
     } finally {
       setPreviewLoading(false);
@@ -1787,12 +1813,40 @@ const MaterialFileUploadInput = ({
         width={960}
         centered
         destroyOnHidden
-        footer={<Button onClick={closePreview}>关闭</Button>}
+        footer={(
+          <Space>
+            {value ? (
+              <Button
+                icon={<DownloadOutlined />}
+                href={`/api/v1/files/${value}/download`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                下载原文件
+              </Button>
+            ) : null}
+            <Button onClick={closePreview}>关闭</Button>
+          </Space>
+        )}
         onCancel={closePreview}
       >
         <Spin spinning={previewLoading} tip="文件预览加载中">
           <div className="competition-material-preview">
-            {previewUrl && previewRecord?.previewMode === 'IMAGE' ? (
+            {previewError ? (
+              <Result
+                status="error"
+                title="文件预览失败"
+                subTitle={previewError}
+              />
+            ) : null}
+            {!previewError && previewKind === 'UNSUPPORTED' && previewRecord ? (
+              <Result
+                status="info"
+                title="当前格式暂不支持在线预览"
+                subTitle="可以下载原文件，使用本地应用打开查看。"
+              />
+            ) : null}
+            {!previewError && previewRecord && previewUrl && previewKind === 'IMAGE' ? (
               <Image
                 src={previewUrl}
                 alt={previewRecord.originalFileName}
@@ -1800,12 +1854,22 @@ const MaterialFileUploadInput = ({
                 className="competition-material-preview__image"
               />
             ) : null}
-            {previewUrl && (previewRecord?.previewMode === 'PDF' || previewRecord?.previewMode === 'TEXT') ? (
+            {!previewError && previewRecord && previewUrl && previewKind === 'PDF' ? (
               <iframe
                 title={previewRecord.originalFileName}
-                src={previewRecord.previewMode === 'PDF' ? `${previewUrl}#view=FitH` : previewUrl}
+                src={`${previewUrl}#view=FitH`}
                 className="competition-material-preview__frame"
               />
+            ) : null}
+            {!previewError && previewKind === 'EXTRACTED_TEXT' && previewText ? (
+              <div className="competition-material-preview__document">
+                <Alert
+                  type="info"
+                  showIcon
+                  message="当前为文档文本预览，复杂排版、图片和批注请下载原文件查看。"
+                />
+                <pre className="competition-material-preview__text">{previewText}</pre>
+              </div>
             ) : null}
           </div>
         </Spin>
@@ -1860,6 +1924,7 @@ type RegistrationCollectedField = {
   options?: string;
   validationRule?: string;
   groupLabel?: string;
+  cropAspectRatio?: string;
 };
 
 type RegistrationCollectedFieldSplit = {
@@ -1871,43 +1936,68 @@ type RegistrationCollectedFieldSplit = {
 type RegistrationImageFieldInputProps = {
   value?: string;
   onChange?: (value?: string) => void;
+  cropAspectRatio?: string;
 };
 
-const RegistrationImageFieldInput = ({ value, onChange }: RegistrationImageFieldInputProps) => {
+const validateRegistrationImageFile = (file: File) => {
+  if (!file.type.startsWith('image/')) {
+    message.error('请上传图片文件');
+    return false;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    message.error('请上传小于 20MB 的图片');
+    return false;
+  }
+  return true;
+};
+
+const RegistrationImageFieldInput = ({
+  value,
+  onChange,
+  cropAspectRatio,
+}: RegistrationImageFieldInputProps) => {
   const [uploading, setUploading] = useState(false);
   return (
     <Space direction="vertical" size={8}>
       {value ? <Image width={96} height={96} src={normalizeUploadUrl(value)} alt="已上传图片" /> : null}
       <Space>
-        <Upload
-          accept="image/*"
-          showUploadList={false}
-          disabled={uploading}
-          beforeUpload={async (file) => {
-            if (!file.type.startsWith('image/')) {
-              message.error('请上传图片文件');
-              return Upload.LIST_IGNORE;
-            }
-            if (file.size > 20 * 1024 * 1024) {
-              message.error('请上传小于 20MB 的图片');
-              return Upload.LIST_IGNORE;
-            }
-            const data = new FormData();
-            data.append('file', file);
-            setUploading(true);
-            try {
-              const uploadedUrl = await request<string>('/v1/system/uploads/image', { method: 'POST', headers: {}, data });
-              onChange?.(uploadedUrl);
-            } catch (error) {
-              showErrorMessage(error, '图片上传失败');
-            } finally {
-              setUploading(false);
-            }
-            return Upload.LIST_IGNORE;
-          }}
+        <ImgCrop
+          aspect={resolveImageCropAspect(cropAspectRatio)}
+          cropShape="rect"
+          showGrid
+          zoomSlider
+          rotationSlider
+          modalTitle={`裁切图片（${normalizeImageCropAspectRatio('IMAGE', cropAspectRatio)}）`}
+          modalOk="确认上传"
+          modalCancel="取消"
+          modalWidth={520}
+          beforeCrop={validateRegistrationImageFile}
         >
-          <Button icon={<UploadOutlined />} loading={uploading}>{value ? '更换图片' : '上传图片'}</Button>
-        </Upload>
+          <Upload
+            accept="image/*"
+            showUploadList={false}
+            disabled={uploading}
+            beforeUpload={async (file) => {
+              if (!validateRegistrationImageFile(file)) {
+                return Upload.LIST_IGNORE;
+              }
+              const data = new FormData();
+              data.append('file', file);
+              setUploading(true);
+              try {
+                const uploadedUrl = await request<string>('/v1/system/uploads/image', { method: 'POST', headers: {}, data });
+                onChange?.(uploadedUrl);
+              } catch (error) {
+                showErrorMessage(error, '图片上传失败');
+              } finally {
+                setUploading(false);
+              }
+              return Upload.LIST_IGNORE;
+            }}
+          >
+            <Button icon={<UploadOutlined />} loading={uploading}>{value ? '更换图片' : '上传图片'}</Button>
+          </Upload>
+        </ImgCrop>
         {value ? <Button type="link" onClick={() => onChange?.(undefined)}>移除</Button> : null}
       </Space>
     </Space>
@@ -1931,6 +2021,7 @@ const toRegistrationCollectedField = (item: CompetitionConfigItem): Registration
     options: metadata.options,
     validationRule: metadata.validationRule,
     groupLabel: metadata.groupLabel,
+    cropAspectRatio: normalizeImageCropAspectRatio(metadata.fieldType, metadata.cropAspectRatio),
   };
 };
 
@@ -2057,7 +2148,7 @@ const renderRegistrationCollectedFieldInput = (field: RegistrationCollectedField
     case 'TEXTAREA':
       return <Input.TextArea rows={2} placeholder={placeholder} />;
     case 'IMAGE':
-      return <RegistrationImageFieldInput />;
+      return <RegistrationImageFieldInput cropAspectRatio={field.cropAspectRatio} />;
     case 'DATE': {
       const yearOnly = isRegistrationYearField(field.itemKey);
       return (
@@ -3920,6 +4011,14 @@ const CompetitionRegistrationPage = () => {
               onChange={(event) => updateMemberEditorField(field, event.target.value)}
             />
           );
+        case 'IMAGE':
+          return (
+            <RegistrationImageFieldInput
+              value={typeof fieldValue === 'string' ? fieldValue : undefined}
+              cropAspectRatio={field.cropAspectRatio}
+              onChange={(value) => updateMemberEditorField(field, value)}
+            />
+          );
         case 'DATE': {
           const yearOnly = isRegistrationYearField(field.itemKey);
           return (
@@ -4095,17 +4194,30 @@ const CompetitionRegistrationPage = () => {
               src={normalizeUploadUrl(newProjectImageUrl) || undefined}
               icon={<EyeOutlined />}
             />
-            <Upload
-              accept="image/*"
-              showUploadList={false}
-              disabled={projectAvatarUploading}
-              beforeUpload={async (file) => {
-                await uploadRegistrationProjectAvatar(file);
-                return Upload.LIST_IGNORE;
-              }}
+            <ImgCrop
+              aspect={resolveImageCropAspect(projectImageField.cropAspectRatio)}
+              cropShape="rect"
+              showGrid
+              zoomSlider
+              rotationSlider
+              modalTitle={`裁切项目图片（${normalizeImageCropAspectRatio('IMAGE', projectImageField.cropAspectRatio)}）`}
+              modalOk="确认上传"
+              modalCancel="取消"
+              modalWidth={520}
+              beforeCrop={validateRegistrationImageFile}
             >
-              <Button icon={<UploadOutlined />} loading={projectAvatarUploading}>上传</Button>
-            </Upload>
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                disabled={projectAvatarUploading}
+                beforeUpload={async (file) => {
+                  await uploadRegistrationProjectAvatar(file);
+                  return Upload.LIST_IGNORE;
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={projectAvatarUploading}>上传</Button>
+              </Upload>
+            </ImgCrop>
             {newProjectImageUrl ? (
               <Button
                 type="link"
@@ -4170,26 +4282,16 @@ const CompetitionRegistrationPage = () => {
             <Space>
               <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
               <ImgCrop
-                aspect={1}
+                aspect={resolveImageCropAspect(teamAvatarField.cropAspectRatio)}
                 cropShape="rect"
                 showGrid
                 zoomSlider
                 rotationSlider
-                modalTitle="裁剪团队头像"
+                modalTitle={`裁切团队头像（${normalizeImageCropAspectRatio('IMAGE', teamAvatarField.cropAspectRatio)}）`}
                 modalOk="确认上传"
                 modalCancel="取消"
                 modalWidth={520}
-                beforeCrop={(file) => {
-                  if (!file.type.startsWith('image/')) {
-                    message.error('请上传图片文件');
-                    return false;
-                  }
-                  if (file.size > 20 * 1024 * 1024) {
-                    message.error('请上传小于 20MB 的图片');
-                    return false;
-                  }
-                  return true;
-                }}
+                beforeCrop={validateRegistrationImageFile}
               >
                 <Upload
                   accept="image/*"
@@ -4690,6 +4792,7 @@ type ConfigItemMetadata = {
   standardField?: boolean;
   validationRule?: string;
   options?: string;
+  cropAspectRatio?: string;
   weight?: number;
   fileFormat?: string;
   maxSizeMb?: number;
@@ -4896,6 +4999,7 @@ const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetit
         readingSeconds: item.itemType === 'AGREEMENT' || item.itemType === 'CONSENT'
           ? normalizeReadingSeconds(metadata.readingSeconds)
           : undefined,
+        cropAspectRatio: normalizeImageCropAspectRatio(metadata.fieldType, metadata.cropAspectRatio),
       },
     };
   });
@@ -4946,6 +5050,10 @@ const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfi
           validationRule: resolveRegistrationFieldValidationRule(
             documentMetadata?.fieldType,
             documentMetadata?.validationRule,
+          ),
+          cropAspectRatio: normalizeImageCropAspectRatio(
+            documentMetadata?.fieldType,
+            documentMetadata?.cropAspectRatio,
           ),
         }
       : documentMetadata;
@@ -5235,6 +5343,20 @@ const renderConfigItemFields = (
           <Form.Item name={[fieldName, 'metadata', 'fieldType']} label="字段类型" rules={[{ required: true, message: '请选择字段类型' }]}>
             <Select options={fieldTypeOptions} />
           </Form.Item>
+          <Form.Item noStyle shouldUpdate={(previous, current) => (
+            previous?.items?.[fieldName]?.metadata?.fieldType !== current?.items?.[fieldName]?.metadata?.fieldType
+          )}>
+            {({ getFieldValue }) => getFieldValue(['items', fieldName, 'metadata', 'fieldType']) === 'IMAGE' ? (
+              <Form.Item
+                name={[fieldName, 'metadata', 'cropAspectRatio']}
+                label="裁切比例"
+                initialValue="1:1"
+                rules={[{ required: true, message: '请选择裁切比例' }]}
+              >
+                <Select options={[...IMAGE_CROP_ASPECT_RATIO_OPTIONS]} />
+              </Form.Item>
+            ) : null}
+          </Form.Item>
           <Form.Item name={[fieldName, 'itemKey']} label="字段标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
             <Input placeholder="例如 mobile、school、projectName" maxLength={64} />
           </Form.Item>
@@ -5368,7 +5490,7 @@ const renderFieldSettingsTable = (
           <span>字段标识</span>
           <span>类型</span>
           <span>占位提示</span>
-          <span>下拉选项</span>
+          <span>类型配置</span>
           <span>必填</span>
           <span>排序</span>
           <span>启用</span>
@@ -5391,29 +5513,47 @@ const renderFieldSettingsTable = (
             <Form.Item noStyle shouldUpdate={(previous, current) => (
               previous?.items?.[field.name]?.metadata?.fieldType !== current?.items?.[field.name]?.metadata?.fieldType
             )}>
-              {({ getFieldValue }) => ['SELECT', 'MULTI_SELECT'].includes(
-                getFieldValue(['items', field.name, 'metadata', 'fieldType']),
-              ) ? (
-                <>
-                  <Form.Item name={[field.name, 'metadata', 'options']} hidden>
-                    <Input />
-                  </Form.Item>
-                  <Button
-                    icon={<SettingOutlined />}
-                    onClick={() => openOptionsEditor(
-                      field.name,
-                      getFieldValue(['items', field.name, 'title']),
-                      getFieldValue(['items', field.name, 'metadata', 'options']),
-                    )}
-                  >
-                    {String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
-                      .split('\n').filter((option) => option.trim()).length > 0
-                      ? `已设置 ${String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
-                          .split('\n').filter((option) => option.trim()).length} 项`
-                      : '设置选项'}
-                  </Button>
-                </>
-              ) : <Typography.Text type="secondary">—</Typography.Text>}
+              {({ getFieldValue }) => {
+                const fieldType = getFieldValue(['items', field.name, 'metadata', 'fieldType']);
+                if (['SELECT', 'MULTI_SELECT'].includes(fieldType)) {
+                  return (
+                    <>
+                      <Form.Item name={[field.name, 'metadata', 'options']} hidden>
+                        <Input />
+                      </Form.Item>
+                      <Button
+                        icon={<SettingOutlined />}
+                        onClick={() => openOptionsEditor(
+                          field.name,
+                          getFieldValue(['items', field.name, 'title']),
+                          getFieldValue(['items', field.name, 'metadata', 'options']),
+                        )}
+                      >
+                        {String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
+                          .split('\n').filter((option) => option.trim()).length > 0
+                          ? `已设置 ${String(getFieldValue(['items', field.name, 'metadata', 'options']) || '')
+                              .split('\n').filter((option) => option.trim()).length} 项`
+                          : '设置选项'}
+                      </Button>
+                    </>
+                  );
+                }
+                if (fieldType === 'IMAGE') {
+                  return (
+                    <Form.Item
+                      name={[field.name, 'metadata', 'cropAspectRatio']}
+                      initialValue="1:1"
+                      rules={[{ required: true, message: '请选择裁切比例' }]}
+                    >
+                      <Select
+                        aria-label="裁切比例"
+                        options={[...IMAGE_CROP_ASPECT_RATIO_OPTIONS]}
+                      />
+                    </Form.Item>
+                  );
+                }
+                return <Typography.Text type="secondary">—</Typography.Text>;
+              }}
             </Form.Item>
             <Form.Item name={[field.name, 'requiredFlag']} valuePropName="checked">
               <Switch />

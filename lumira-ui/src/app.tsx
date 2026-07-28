@@ -10,6 +10,7 @@ import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { getWatermarkSettingsSnapshot, subscribeWatermarkSettings } from '@/watermark/settingsStorage';
 import { applyWatermarkOpacity } from '@/watermark/color';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { MaintenanceModeGate } from '@/maintenance/MaintenanceModeGate';
 import './global.css';
 
 export type { AppInitialState } from '@/app.types';
@@ -114,9 +115,11 @@ export const rootContainer = (container: ReactNode) => (
   <QueryClientProvider client={queryClient}>
     <FrontendVersionGuard />
     <ThemePreferenceProvider>
-      <AppWatermarkLayer>
-        {container}
-      </AppWatermarkLayer>
+      <MaintenanceModeGate>
+        <AppWatermarkLayer>
+          {container}
+        </AppWatermarkLayer>
+      </MaintenanceModeGate>
     </ThemePreferenceProvider>
   </QueryClientProvider>
 );

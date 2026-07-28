@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
-import { getCurrentRoleDefaultHomePath } from '@/auth/defaultHomePath';
+import { resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
 import { performLogout } from '@/auth/sessionLifecycle';
 import { persistCurrentUser } from '@/auth/sessionState';
 import { tokenManager } from '@/auth/token';
@@ -296,6 +296,17 @@ export const TopActions = () => {
         expiresIn: response.expiresIn,
       });
       const updatedUser = persistCurrentUser(response.currentUser);
+      const roleLandingPath = resolveAuthorizedLoginRedirectTarget(
+        '',
+        updatedUser,
+        initialState?.menuTree,
+        DEFAULT_HOME_PATH,
+      );
+
+      // Leave the previous role's business page before publishing the new
+      // permissions. Otherwise that page can immediately refetch with the
+      // switched token and surface a misleading 403 while it is unmounting.
+      history.replace(roleLandingPath);
       setInitialState((prev) =>
         prev
           ? {
@@ -314,7 +325,6 @@ export const TopActions = () => {
           },
         ),
       );
-      history.replace(getCurrentRoleDefaultHomePath(updatedUser, DEFAULT_HOME_PATH));
     } catch (error) {
       showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     } finally {

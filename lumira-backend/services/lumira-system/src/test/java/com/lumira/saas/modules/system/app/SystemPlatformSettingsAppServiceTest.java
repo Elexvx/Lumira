@@ -19,6 +19,7 @@ import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatform
 import com.lumira.saas.modules.system.settings.repository.SystemPlatformSettingsRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -47,6 +48,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 class SystemPlatformSettingsAppServiceTest {
 
     @Test
@@ -410,8 +412,7 @@ class SystemPlatformSettingsAppServiceTest {
                     assertThat(exception.getMessage()).contains("Trusted operator identity is required");
                 });
         assertThat(queryOperations.updateCount()).isZero();
-        verify(readModelVersionService, times(0)).bump("platform", "runtime-appearance", "branding-update");
-        verify(readModelVersionService, times(0)).bump("platform", "public-bootstrap", "branding-update");
+        verify(readModelVersionService, never()).bump(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -605,8 +606,13 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(updated.getFooterCopyright()).isEqualTo("Custom copyright text");
         assertThat(updated.getGithubLinkEnabled()).isFalse();
         assertThat(updated.getGithubLinkUrl()).isEqualTo("https://github.com/example/lumira");
-        verify(readModelVersionService).bump("platform", "runtime-appearance", "branding-update");
-        verify(readModelVersionService).bump("platform", "public-bootstrap", "branding-update");
+        ArgumentCaptor<String> eventKeyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(readModelVersionService).bump(eq("platform"), eq("runtime-appearance"), eventKeyCaptor.capture());
+        verify(readModelVersionService).bump(eq("platform"), eq("public-bootstrap"), eventKeyCaptor.capture());
+        assertThat(eventKeyCaptor.getAllValues())
+                .hasSize(2)
+                .allMatch(eventKey -> eventKey.startsWith("branding-update:"))
+                .allMatch(eventKey -> eventKey.equals(eventKeyCaptor.getAllValues().get(0)));
     }
 
     @Test
@@ -630,8 +636,7 @@ class SystemPlatformSettingsAppServiceTest {
                     assertThat(exception.getMessage()).contains("Platform config changed, please retry");
                 });
         assertThat(queryOperations.updateCount()).isEqualTo(1);
-        verify(readModelVersionService, times(0)).bump("platform", "runtime-appearance", "branding-update");
-        verify(readModelVersionService, times(0)).bump("platform", "public-bootstrap", "branding-update");
+        verify(readModelVersionService, never()).bump(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -724,7 +729,10 @@ class SystemPlatformSettingsAppServiceTest {
                     Map.entry("branding.help-link-enabled", "true"), Map.entry("branding.help-link-url", ""),
                     Map.entry("branding.company-name", ""), Map.entry("branding.copyright-start-year", ""),
                     Map.entry("branding.footer-icp", ""), Map.entry("branding.footer-police-beian", ""),
-                    Map.entry("branding.footer-copyright", ""));
+                    Map.entry("branding.footer-copyright", ""),
+                    Map.entry("branding.maintenance-mode-enabled", "false"),
+                    Map.entry("branding.maintenance-title", "系统维护中"),
+                    Map.entry("branding.maintenance-message", "服务正在升级优化，请稍后再试。"));
             case "AGREEMENT" -> Map.of("agreement.user-agreement-markdown", "", "agreement.privacy-agreement-markdown", "");
             case "SMTP" -> Map.ofEntries(
                     Map.entry("smtp.enabled", "true"), Map.entry("smtp.host", ""), Map.entry("smtp.port", "25"),

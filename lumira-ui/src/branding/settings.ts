@@ -3,6 +3,7 @@ import { repairMojibakeText } from '@/utils/textEncoding';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
 let currentBrandingSettings: BrandingSettings | null = null;
+const brandingSettingsListeners = new Set<() => void>();
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   websiteName: '宏翔商道',
@@ -18,6 +19,9 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   footerIcp: '',
   footerPoliceBeian: '',
   footerCopyright: '',
+  maintenanceModeEnabled: false,
+  maintenanceTitle: '系统维护中',
+  maintenanceMessage: '服务正在升级优化，请稍后再试。',
 };
 
 export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> | null): BrandingSettings => {
@@ -36,6 +40,12 @@ export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> |
     footerIcp: normalizeText(settings?.footerIcp, ''),
     footerPoliceBeian: normalizeText(settings?.footerPoliceBeian, ''),
     footerCopyright: normalizeText(settings?.footerCopyright, ''),
+    maintenanceModeEnabled: normalizeBoolean(settings?.maintenanceModeEnabled, false),
+    maintenanceTitle: normalizeText(settings?.maintenanceTitle, DEFAULT_BRANDING_SETTINGS.maintenanceTitle || '系统维护中'),
+    maintenanceMessage: normalizeText(
+      settings?.maintenanceMessage,
+      DEFAULT_BRANDING_SETTINGS.maintenanceMessage || '服务正在升级优化，请稍后再试。',
+    ),
   };
 };
 
@@ -53,10 +63,22 @@ export const getStoredBrandingSettings = (): BrandingSettings | null => currentB
 
 export const persistBrandingSettings = (settings: BrandingSettings) => {
   currentBrandingSettings = normalizeBrandingSettings(settings);
+  brandingSettingsListeners.forEach((listener) => listener());
 };
 
 export const clearBrandingSettings = () => {
   currentBrandingSettings = null;
+  brandingSettingsListeners.forEach((listener) => listener());
+};
+
+export const getBrandingSettingsSnapshot = (): BrandingSettings =>
+  currentBrandingSettings || DEFAULT_BRANDING_SETTINGS;
+
+export const subscribeBrandingSettings = (listener: () => void) => {
+  brandingSettingsListeners.add(listener);
+  return () => {
+    brandingSettingsListeners.delete(listener);
+  };
 };
 
 export const applyFavicon = (faviconUrl?: string) => {

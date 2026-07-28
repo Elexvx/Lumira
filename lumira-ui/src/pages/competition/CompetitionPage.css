@@ -1159,6 +1159,27 @@
   border: 0;
 }
 
+.competition-material-preview__document {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-height: 560px;
+  padding: 24px;
+  overflow: auto;
+  background: var(--ant-color-bg-container);
+}
+
+.competition-material-preview__text {
+  margin: 0;
+  color: var(--ant-color-text);
+  font: inherit;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .competition-settings-layout {
     flex-direction: column;
@@ -1182,7 +1203,8 @@
   }
 
   .competition-material-preview__image,
-  .competition-material-preview__frame {
+  .competition-material-preview__frame,
+  .competition-material-preview__document {
     max-height: 420px;
     height: 420px;
   }

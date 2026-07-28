@@ -15,6 +15,9 @@ public class BrandingSettingsRequest {
     private String footerIcp;
     private String footerPoliceBeian;
     private String footerCopyright;
+    private Boolean maintenanceModeEnabled;
+    private String maintenanceTitle;
+    private String maintenanceMessage;
 
     public String getWebsiteName() {
         return websiteName;
@@ -118,5 +121,29 @@ public class BrandingSettingsRequest {
 
     public void setFooterCopyright(String footerCopyright) {
         this.footerCopyright = footerCopyright;
+    }
+
+    public Boolean getMaintenanceModeEnabled() {
+        return maintenanceModeEnabled;
+    }
+
+    public void setMaintenanceModeEnabled(Boolean maintenanceModeEnabled) {
+        this.maintenanceModeEnabled = maintenanceModeEnabled;
+    }
+
+    public String getMaintenanceTitle() {
+        return maintenanceTitle;
+    }
+
+    public void setMaintenanceTitle(String maintenanceTitle) {
+        this.maintenanceTitle = maintenanceTitle;
+    }
+
+    public String getMaintenanceMessage() {
+        return maintenanceMessage;
+    }
+
+    public void setMaintenanceMessage(String maintenanceMessage) {
+        this.maintenanceMessage = maintenanceMessage;
     }
 }

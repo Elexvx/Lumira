@@ -19,6 +19,7 @@ import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.file.app.FileManagementAppService;
 import com.lumira.file.dto.FileStorageSpaceRequest;
+import com.lumira.file.preview.DocumentTextPreview;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
 import java.util.Set;
@@ -248,6 +249,28 @@ public class FileController {
                 .header("X-Content-Type-Options", "nosniff")
                 .contentType(mediaType)
                 .body(new FileSystemResource(path));
+    }
+
+    @GetMapping("/{id}/text-preview")
+    public ResponseEntity<String> textPreview(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "scope", required = false) String scope
+    ) {
+        boolean sharedScope = isSharedScope(scope);
+        boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+        CurrentUser currentUser = currentUser();
+        require(resolveReadPermission(scope));
+        FileObjectDTO file = fileManagementAppService.getFile(currentUser, id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(currentUser, id, sharedScope, downloadCenterScope);
+        String previewText = DocumentTextPreview.read(path, file.fileExtension(), file.mimeType());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename(file.originalFileName() + ".txt", StandardCharsets.UTF_8)
+                        .build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaType.parseMediaType("text/plain;charset=UTF-8"))
+                .body(previewText);
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

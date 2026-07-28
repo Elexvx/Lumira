@@ -142,6 +142,20 @@ describe('performLogout', () => {
     expect(mocks.historyReplace).toHaveBeenCalledWith('/user/login');
   });
 
+  it('supports an explicit login target for maintenance-mode operator access', async () => {
+    const { performLogout } = await import('@/auth/sessionLifecycle');
+    mocks.request.mockResolvedValue(true as never);
+
+    await performLogout({
+      loginTarget: '/user/login?redirect=%2Fsettings%2Fpersonalization%3Ftab%3Dmaintenance',
+    });
+
+    expect(mocks.clearTokenState).toHaveBeenCalledTimes(1);
+    expect(mocks.historyReplace).toHaveBeenCalledWith(
+      '/user/login?redirect=%2Fsettings%2Fpersonalization%3Ftab%3Dmaintenance',
+    );
+  });
+
   it('falls back logout request to legacy endpoint when v2 is unavailable', async () => {
     const { performLogout } = await import('@/auth/sessionLifecycle');
     mocks.request
