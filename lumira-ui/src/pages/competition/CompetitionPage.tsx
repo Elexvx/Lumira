@@ -1645,6 +1645,7 @@ const MaterialFileUploadInput = ({
   const [previewRecord, setPreviewRecord] = useState<FileObjectRecord>();
   const [previewKind, setPreviewKind] = useState<MaterialFilePreviewKind>('UNSUPPORTED');
   const [previewText, setPreviewText] = useState('');
+  const [previewHtml, setPreviewHtml] = useState('');
   const [previewError, setPreviewError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const previewUrlRef = useRef('');
@@ -1671,6 +1672,7 @@ const MaterialFileUploadInput = ({
     setPreviewRecord(undefined);
     setPreviewKind('UNSUPPORTED');
     setPreviewText('');
+    setPreviewHtml('');
     setPreviewError('');
     clearPreviewUrl();
   }, [clearPreviewUrl]);
@@ -1683,6 +1685,7 @@ const MaterialFileUploadInput = ({
     setPreviewOpen(true);
     setPreviewLoading(true);
     setPreviewText('');
+    setPreviewHtml('');
     setPreviewError('');
     clearPreviewUrl();
     try {
@@ -1726,6 +1729,10 @@ const MaterialFileUploadInput = ({
       }
       if (kind === 'EXTRACTED_TEXT') {
         setPreviewText(await blob.text());
+        return;
+      }
+      if (kind === 'OFFICE_HTML') {
+        setPreviewHtml(await blob.text());
         return;
       }
       const objectUrl = window.URL.createObjectURL(blob);
@@ -1878,11 +1885,11 @@ const MaterialFileUploadInput = ({
                 className="competition-material-preview__frame"
               />
             ) : null}
-            {!previewError && previewRecord && previewUrl && previewKind === 'OFFICE_HTML' ? (
+            {!previewError && previewRecord && previewHtml && previewKind === 'OFFICE_HTML' ? (
               <iframe
                 title={`${previewRecord.originalFileName} 版式预览`}
-                src={previewUrl}
-                sandbox="allow-same-origin"
+                srcDoc={previewHtml}
+                sandbox=""
                 referrerPolicy="no-referrer"
                 className="competition-material-preview__frame"
               />
