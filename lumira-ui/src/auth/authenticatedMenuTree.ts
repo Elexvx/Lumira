@@ -29,7 +29,7 @@ const REGISTRATION_MENU_ROOT: MenuNode = {
 const EXPERT_REVIEW_MENU_ROOT: MenuNode = {
   id: -1068,
   menuCode: 'expert.review.root',
-  name: '\u4e13\u5bb6\u4e0e\u8bc4\u5ba1',
+  name: 'nav.expertReview.root',
   path: '/expert-review',
   component: 'redirect:/expert-review/reviews',
   icon: 'SolutionOutlined',
@@ -44,7 +44,7 @@ const EXPERT_REVIEW_APPLICATION_MENUS: BootstrapMenuNode[] = [
     id: -1078,
     parentId: -1068,
     menuCode: 'expert.review.tasks',
-    name: '\u8bc4\u5ba1\u5217\u8868',
+    name: 'nav.expertReview.reviews',
     path: '/expert-review/reviews',
     component: '@/pages/workflow/WorkflowTasksPage',
     icon: 'AuditOutlined',

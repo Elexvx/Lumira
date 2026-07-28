@@ -13,8 +13,12 @@ import com.lumira.saas.modules.system.monitor.app.SystemMonitorAppService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springdoc.webmvc.api.OpenApiWebMvcResource;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -29,6 +33,31 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SystemMonitorControllerTest {
+
+    @Test
+    void apiDocsShouldReturnGeneratedOpenApiJsonForAuthorizedUser() throws Exception {
+        SystemMonitorAppService systemMonitorAppService = mock(SystemMonitorAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        OpenApiWebMvcResource openApiResource = mock(OpenApiWebMvcResource.class);
+        CurrentUser currentUser = currentUser("system:monitor:docs:view");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/system/monitor/api-docs");
+        byte[] document = "{\"openapi\":\"3.0.1\"}".getBytes(StandardCharsets.UTF_8);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(openApiResource.openapiJson(request, "/api-docs", Locale.ENGLISH)).thenReturn(document);
+        SystemMonitorController controller = new SystemMonitorController(
+                systemMonitorAppService,
+                securityContextFacade,
+                new PermissionGuard(),
+                objectProvider(openApiResource)
+        );
+
+        var response = controller.apiDocs(request, Locale.ENGLISH);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertThat(response.getBody()).isEqualTo(document);
+        verify(openApiResource).openapiJson(request, "/api-docs", Locale.ENGLISH);
+    }
 
     @Test
     void serviceMonitorShouldRejectWhenLiveSnapshotRevokesServiceViewPermissionBeforeDelegating() {

@@ -42,6 +42,16 @@ class LumiraServerApplicationYamlTest {
                 "lumira.ai.login-challenge-expire-minutes");
     }
 
+    @Test
+    void runtimeProfilesGenerateApiDocsWithoutExposingSwaggerUi() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("springdoc.api-docs.enabled"))
+                .isEqualTo("${SPRINGDOC_API_DOCS_ENABLED:true}");
+        assertThat(properties.getProperty("springdoc.swagger-ui.enabled"))
+                .isEqualTo("${SPRINGDOC_SWAGGER_UI_ENABLED:false}");
+    }
+
     private Properties loadApplicationProperties() {
         YamlPropertiesFactoryBean factory = new YamlPropertiesFactoryBean();
         factory.setResources(new ClassPathResource("application.yml"));

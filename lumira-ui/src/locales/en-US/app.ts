@@ -8,6 +8,7 @@ export default {
   'global.float.refresh': 'Refresh page',
   'global.float.backTop': 'Back to top',
   'app.layout.backToMainRoute': 'Back to main route',
+  'app.brand.backHome': 'Back to home',
   'app.layout.uploadQrHint': 'Please upload a QR code in personalization settings',
   'app.bootstrap.starting': 'Starting system',
   'app.bootstrap.checkingBackend': 'Checking backend service',

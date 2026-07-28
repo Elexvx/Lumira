@@ -31,6 +31,7 @@ export default {
   'nav.certificates.records': '证书记录',
   'nav.certificates.verify': '证书查验',
   'nav.expertReview.root': '专家与评审',
+  'nav.expertReview.reviews': '评审与晋级',
   'nav.experts.root': '专家库',
   'nav.experts.management': '专家管理',
   'nav.experts.query': '专家查询',

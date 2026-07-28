@@ -31,6 +31,7 @@ export default {
   'nav.certificates.records': 'Certificate Records',
   'nav.certificates.verify': 'Certificate Verification',
   'nav.expertReview.root': 'Experts & Review',
+  'nav.expertReview.reviews': 'Review & Advancement',
   'nav.experts.root': 'Expert Library',
   'nav.experts.management': 'Expert Management',
   'nav.experts.query': 'Expert Search',

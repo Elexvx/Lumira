@@ -161,7 +161,7 @@ export const systemRoutes: BackendRouteRecord[] = [
 ];
 
 const userCenterRouteMeta: BackendRouteMeta[] = [
-  { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined', access: 'canVisitAnyUserCenter' },
+  { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined' },
   { path: '/user-center/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
   { path: '/user-center/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
   { path: '/user-center/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
@@ -183,7 +183,6 @@ const userCenterRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.user.center',
     icon: 'TeamOutlined',
-    access: 'canVisitAnyUserCenter',
     routes: [
       { path: '/user-center/users', component: '@/pages/system/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
       { path: '/user-center/departments', component: '@/pages/system/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
@@ -382,7 +381,7 @@ const certificateRoutes: BackendRouteRecord[] = [
 
 const expertRouteMeta: BackendRouteMeta[] = [
   { path: '/expert-review', name: 'nav.expertReview.root', icon: 'SolutionOutlined', access: 'canVisitExpertReview' },
-  { path: '/expert-review/reviews', name: '\u8bc4\u5ba1\u5217\u8868', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+  { path: '/expert-review/reviews', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
   { path: '/experts', name: 'nav.experts.root', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/management', name: 'nav.experts.management', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/query', name: 'nav.experts.query', icon: 'SearchOutlined', access: 'canVisitExperts' },
@@ -397,7 +396,7 @@ const expertRoutes: BackendRouteRecord[] = [
     access: 'canVisitExpertReview',
     routes: [
       { path: '/expert-review', redirect: '/expert-review/reviews', hideInMenu: true },
-      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: '\u8bc4\u5ba1\u4e0e\u664b\u7ea7', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
     ],
   },
   {

@@ -8,6 +8,7 @@ export default {
   'global.float.refresh': '刷新页面',
   'global.float.backTop': '回到顶部',
   'app.layout.backToMainRoute': '返回主路由',
+  'app.brand.backHome': '返回首页',
   'app.layout.uploadQrHint': '请在个性化设置上传二维码',
   'app.bootstrap.starting': '正在启动系统',
   'app.bootstrap.checkingBackend': '正在检查后端服务',

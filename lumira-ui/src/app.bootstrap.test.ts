@@ -332,7 +332,7 @@ describe('getAppInitialState', () => {
 
     const expertReviewRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'expert.review.root');
     expect(expertReviewRoot).toMatchObject({
-      name: '专家与评审',
+      name: 'nav.expertReview.root',
       path: '/expert-review',
       component: 'redirect:/expert-review/reviews',
     });
@@ -366,7 +366,7 @@ describe('getAppInitialState', () => {
     });
     expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual(['expert.review.tasks']);
     expect(expertReviewRoot?.children?.[0]).toMatchObject({
-      name: '评审列表',
+      name: 'nav.expertReview.reviews',
       path: '/expert-review/reviews',
       component: '@/pages/workflow/WorkflowTasksPage',
     });

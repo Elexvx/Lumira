@@ -2,8 +2,10 @@ import { ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Input, InputNumber, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getLocale } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { normalizeLocale } from '@/i18n/locale';
 import {
   applyCompetitionStagePromotionRule,
   listCompetitions,
@@ -19,11 +21,8 @@ import type {
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 
-const decisionOptions = [
-  { label: '待评审', value: 'PENDING' },
-  { label: '晋级', value: 'ADVANCED' },
-  { label: '未晋级', value: 'ELIMINATED' },
-];
+const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
+const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const CompetitionReviewPage = () => {
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
@@ -34,6 +33,11 @@ const CompetitionReviewPage = () => {
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<number>();
   const [applyingRule, setApplyingRule] = useState(false);
+  const decisionOptions = [
+    { label: t('待评审', 'Pending review'), value: 'PENDING' },
+    { label: t('晋级', 'Advanced'), value: 'ADVANCED' },
+    { label: t('未晋级', 'Eliminated'), value: 'ELIMINATED' },
+  ];
 
   useEffect(() => {
     void listCompetitions({ pageNo: 1, pageSize: 100 })
@@ -41,7 +45,7 @@ const CompetitionReviewPage = () => {
         setCompetitions(result.records || []);
         setCompetitionId(result.records?.[0]?.id);
       })
-      .catch((error) => showErrorMessage(error, '赛事列表加载失败'));
+      .catch((error) => showErrorMessage(error, t('赛事列表加载失败', 'Failed to load competitions')));
   }, []);
 
   useEffect(() => {
@@ -56,7 +60,7 @@ const CompetitionReviewPage = () => {
         setStages(reviewStages);
         setStageId(reviewStages[0]?.id);
       })
-      .catch((error) => showErrorMessage(error, '评审阶段加载失败'));
+      .catch((error) => showErrorMessage(error, t('评审阶段加载失败', 'Failed to load review stages')));
   }, [competitionId]);
 
   const loadCandidates = useCallback(async () => {
@@ -68,7 +72,7 @@ const CompetitionReviewPage = () => {
     try {
       setRecords(await listCompetitionStageReviewCandidates(stageId));
     } catch (error) {
-      showErrorMessage(error, '评审名单加载失败');
+      showErrorMessage(error, t('评审名单加载失败', 'Failed to load review candidates'));
     } finally {
       setLoading(false);
     }
@@ -92,24 +96,26 @@ const CompetitionReviewPage = () => {
         comment: record.reviewComment || undefined,
       });
       updateRecord(record.registrationId, saved);
-      message.success(record.decision === 'ADVANCED' ? '晋级结果已发布，决赛材料权限已开放' : '评审结果已保存');
+      message.success(record.decision === 'ADVANCED'
+        ? t('晋级结果已发布，决赛材料权限已开放', 'Advancement published; final-stage material access is now available')
+        : t('评审结果已保存', 'Review result saved'));
     } catch (error) {
-      showErrorMessage(error, '评审结果保存失败');
+      showErrorMessage(error, t('评审结果保存失败', 'Failed to save the review result'));
     } finally {
       setSavingId(undefined);
     }
   }, [stageId, updateRecord]);
 
   const columns = useMemo<ColumnsType<CompetitionStageReviewCandidateRecord>>(() => [
-    { title: '报名编号', dataIndex: 'registrationNo', width: 210, fixed: 'left' },
-    { title: '团队', dataIndex: 'teamName', width: 180 },
-    { title: '项目', dataIndex: 'projectTitle', width: 220 },
+    { title: t('报名编号', 'Registration No.'), dataIndex: 'registrationNo', width: 210, fixed: 'left' },
+    { title: t('团队', 'Team'), dataIndex: 'teamName', width: 180 },
+    { title: t('项目', 'Project'), dataIndex: 'projectTitle', width: 220 },
     {
-      title: '材料', dataIndex: 'submittedAt', width: 150,
-      render: (value) => value ? <Tag color="success">已提交</Tag> : <Tag>未提交</Tag>,
+      title: t('材料', 'Materials'), dataIndex: 'submittedAt', width: 150,
+      render: (value) => value ? <Tag color="success">{t('已提交', 'Submitted')}</Tag> : <Tag>{t('未提交', 'Not submitted')}</Tag>,
     },
     {
-      title: '评分', dataIndex: 'score', width: 130,
+      title: t('评分', 'Score'), dataIndex: 'score', width: 130,
       render: (_, record) => (
         <InputNumber
           min={0}
@@ -121,7 +127,7 @@ const CompetitionReviewPage = () => {
       ),
     },
     {
-      title: '评审结论', dataIndex: 'decision', width: 150,
+      title: t('评审结论', 'Decision'), dataIndex: 'decision', width: 150,
       render: (_, record) => (
         <Select
           style={{ width: 120 }}
@@ -132,18 +138,18 @@ const CompetitionReviewPage = () => {
       ),
     },
     {
-      title: '评审意见', dataIndex: 'reviewComment', width: 240,
+      title: t('评审意见', 'Comments'), dataIndex: 'reviewComment', width: 240,
       render: (_, record) => (
         <Input
           value={record.reviewComment || ''}
           maxLength={1000}
-          placeholder="选填"
+          placeholder={t('选填', 'Optional')}
           onChange={(event) => updateRecord(record.registrationId, { reviewComment: event.target.value })}
         />
       ),
     },
     {
-      title: '操作', key: 'actions', width: 120, fixed: 'right',
+      title: t('操作', 'Actions'), key: 'actions', width: 120, fixed: 'right',
       render: (_, record) => (
         <Button
           type="primary"
@@ -151,38 +157,44 @@ const CompetitionReviewPage = () => {
           loading={savingId === record.registrationId}
           onClick={() => void saveRecord(record)}
         >
-          保存
+          {t('保存', 'Save')}
         </Button>
       ),
     },
-  ], [saveRecord, savingId, updateRecord]);
+  ], [decisionOptions, saveRecord, savingId, updateRecord]);
 
   const applyPromotionRule = async () => {
     if (!stageId) return;
     setApplyingRule(true);
     try {
       setRecords(await applyCompetitionStagePromotionRule(stageId));
-      message.success('已按赛事配置生成晋级名单；晋级边界同分项已保留待人工确认');
+      message.success(t(
+        '已按赛事配置生成晋级名单；晋级边界同分项已保留待人工确认',
+        'The advancement list was generated from the competition rules; ties at the cutoff remain for manual confirmation',
+      ));
     } catch (error) {
-      showErrorMessage(error, '晋级名单生成失败');
+      showErrorMessage(error, t('晋级名单生成失败', 'Failed to generate the advancement list'));
     } finally {
       setApplyingRule(false);
     }
   };
 
   return (
-    <ManagementPage title="评审与晋级">
+    <ManagementPage title={t('评审与晋级', 'Review & Advancement')}>
       <ManagementPageBody>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Alert
             showIcon
             type="info"
-            message="评审结果与决赛材料权限联动"
-            description="只有结论保存为“晋级”的团队，才能在决赛材料开放时间内修改材料；变更结论会立即同步权限。"
+            message={t('评审结果与决赛材料权限联动', 'Review results control final-stage material access')}
+            description={t(
+              '只有结论保存为“晋级”的团队，才能在决赛材料开放时间内修改材料；变更结论会立即同步权限。',
+              'Only teams saved as “Advanced” can edit materials during the final-stage submission window. Permission changes take effect immediately.',
+            )}
           />
           <Card>
             <Space wrap>
-              <Typography.Text>赛事</Typography.Text>
+              <Typography.Text>{t('赛事', 'Competition')}</Typography.Text>
               <Select
                 showSearch
                 optionFilterProp="label"
@@ -191,15 +203,15 @@ const CompetitionReviewPage = () => {
                 options={competitions.map((item) => ({ label: item.title, value: item.id }))}
                 onChange={setCompetitionId}
               />
-              <Typography.Text>评审阶段</Typography.Text>
+              <Typography.Text>{t('评审阶段', 'Review stage')}</Typography.Text>
               <Select
                 style={{ width: 220 }}
                 value={stageId}
                 options={stages.map((item) => ({ label: item.stageName, value: item.id }))}
                 onChange={setStageId}
               />
-              <Button icon={<ReloadOutlined />} onClick={() => void loadCandidates()}>刷新</Button>
-              <Button type="primary" loading={applyingRule} onClick={() => void applyPromotionRule()}>按规则生成晋级名单</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => void loadCandidates()}>{t('刷新', 'Refresh')}</Button>
+              <Button type="primary" loading={applyingRule} onClick={() => void applyPromotionRule()}>{t('按规则生成晋级名单', 'Generate advancement list')}</Button>
             </Space>
           </Card>
           <Table
@@ -208,7 +220,7 @@ const CompetitionReviewPage = () => {
             columns={columns}
             dataSource={records}
             scroll={{ x: 1400 }}
-            pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
+            pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => t(`共 ${total} 条`, `${total} items`) }}
           />
         </Space>
       </ManagementPageBody>

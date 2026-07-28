@@ -65,6 +65,13 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(securityProperties.getPermitPaths().toArray(new String[0]))
                         .permitAll()
+                        .requestMatchers(
+                                "/api-docs",
+                                "/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**"
+                        )
+                        .denyAll()
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(handler -> handler
