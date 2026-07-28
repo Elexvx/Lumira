@@ -1882,7 +1882,7 @@ const MaterialFileUploadInput = ({
               <iframe
                 title={`${previewRecord.originalFileName} 版式预览`}
                 src={previewUrl}
-                sandbox=""
+                sandbox="allow-same-origin"
                 referrerPolicy="no-referrer"
                 className="competition-material-preview__frame"
               />
