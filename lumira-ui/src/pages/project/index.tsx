@@ -1680,7 +1680,7 @@ const CreateProjectPage = () => {
 
   if (!actionPermission.can('aiadc:project:create')) {
     return (
-      <ManagementPage title="新增项目" extra={<Button onClick={() => history.push('/projects/management')}>返回</Button>}>
+      <ManagementPage title="新增项目" extra={<Button onClick={() => history.push('/data-management')}>返回</Button>}>
         <ManagementPageBody>
           <Alert type="error" showIcon message="暂无新增项目权限" />
         </ManagementPageBody>
@@ -1692,7 +1692,7 @@ const CreateProjectPage = () => {
   const resultTeamActionText = resultValues.teamMode === 'EXISTING' ? '已关联团队' : '已创建团队';
 
   return (
-    <ManagementPage title="新增项目" extra={<Button onClick={() => history.push('/projects/management')}>返回项目管理</Button>}>
+    <ManagementPage title="新增项目" extra={<Button onClick={() => history.push('/data-management')}>返回数据管理</Button>}>
       <ManagementPageBody className="project-create-page">
         <Card className="project-create-shell">
           <Steps current={currentStep} items={projectCreateSteps} responsive />
@@ -1806,8 +1806,8 @@ const CreateProjectPage = () => {
                   <Button key="continue" icon={<PlusOutlined />} onClick={handleContinueCreate}>
                     继续新增
                   </Button>,
-                  <Button key="done" type="primary" icon={<CheckCircleOutlined />} onClick={() => history.push('/projects/management')}>
-                    返回项目管理
+                  <Button key="done" type="primary" icon={<CheckCircleOutlined />} onClick={() => history.push('/data-management')}>
+                    返回数据管理
                   </Button>,
                 ]}
               />
@@ -1853,7 +1853,7 @@ const ProjectPage = () => {
 
   useEffect(() => {
     if (location.pathname === '/projects') {
-      history.replace('/projects/management');
+      history.replace('/dashboard/home');
     }
   }, [location.pathname]);
 

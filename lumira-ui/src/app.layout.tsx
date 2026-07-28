@@ -56,29 +56,24 @@ const USER_CENTER_GROUP_PATH = '/user-center';
 const PERSONAL_CENTER_GROUP_PATH = '/user-center/personal-center';
 const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/personal-center/files'];
 const DATA_MANAGEMENT_GROUP_PATH = '/data-management';
-const DATA_QUERY_CENTER_GROUP_PATH = '/data-management/query-center';
 const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
   '/competitions/management',
   '/activities/management',
-  '/projects/management',
-  '/team/management',
   '/payments/management',
   '/data-management/download-center',
 ];
-const DATA_QUERY_CHILD_PATHS = ['/team/search', '/projects/search', '/activities/search', '/payments/status'];
 const DATA_SOURCE_GROUP_PATHS = ['/activities', '/competitions', '/projects', '/team', '/payments'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
   [/^\/competitions\/create$/, '/competitions/management'],
   [/^\/competitions\/[^/]+\/settings$/, '/competitions/management'],
-  [/^\/projects\/create$/, '/projects/management'],
-  [/^\/team\/create$/, '/team/management'],
+  [/^\/projects\/create$/, '/data-management'],
+  [/^\/team\/create$/, '/data-management'],
 ];
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
   [USER_CENTER_GROUP_PATH]: 'main:user-center',
   [PERSONAL_CENTER_GROUP_PATH]: 'main:personal-center',
   [DATA_MANAGEMENT_GROUP_PATH]: 'main:data-management',
-  [DATA_QUERY_CENTER_GROUP_PATH]: 'main:data-query-center',
 };
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const MOUSE_MOVE_THROTTLE_MS = 1000;
@@ -1203,25 +1198,7 @@ const buildDataManagementMenuGroupForLayout = (
   const directChildren = DATA_MANAGEMENT_DIRECT_CHILD_PATHS
     .map((path) => buildStableRouteMenuItemForLayout(path, fallbackByPath, accessMap))
     .filter(Boolean) as RuntimeMenuDataItem[];
-  const queryChildren = DATA_QUERY_CHILD_PATHS
-    .map((path) => buildStableRouteMenuItemForLayout(path, fallbackByPath, accessMap))
-    .filter(Boolean) as RuntimeMenuDataItem[];
-  const queryMeta = routeMetaMap.get(DATA_QUERY_CENTER_GROUP_PATH);
-  const queryMenu = queryMeta && queryChildren.length
-    ? {
-        key: MAIN_MENU_KEY_BY_PATH[DATA_QUERY_CENTER_GROUP_PATH],
-        path: DATA_QUERY_CENTER_GROUP_PATH,
-        name: resolveNavigationMenuName(
-          queryMeta.name,
-          formatMessage({ id: queryMeta.name, defaultMessage: queryMeta.name }),
-        ),
-        locale: false as const,
-        icon: resolveNavigationIcon(queryMeta.icon),
-        hideInMenu: false,
-        children: queryChildren,
-      }
-    : null;
-  const children = [...directChildren, ...(queryMenu ? [queryMenu] : [])];
+  const children = directChildren;
 
   if (!groupMeta || !children.length) {
     return null;
@@ -1362,7 +1339,6 @@ const buildMainMenuDataForLayout = (
   const hasDataManagementSource =
     hasMenuPathOrChild(sourcePaths, DATA_MANAGEMENT_GROUP_PATH)
     || DATA_MANAGEMENT_DIRECT_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
-    || DATA_QUERY_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
     || DATA_SOURCE_GROUP_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path));
   const dashboardMenu = allowMissingStableMenus || hasDashboardSource
     ? buildDashboardMenuGroupForLayout(fallbackByPath, accessMap)
@@ -1378,9 +1354,7 @@ const buildMainMenuDataForLayout = (
     ...(dataManagementMenu
       ? [
           DATA_MANAGEMENT_GROUP_PATH,
-          DATA_QUERY_CENTER_GROUP_PATH,
           ...DATA_MANAGEMENT_DIRECT_CHILD_PATHS,
-          ...DATA_QUERY_CHILD_PATHS,
           ...DATA_SOURCE_GROUP_PATHS,
         ]
       : []),

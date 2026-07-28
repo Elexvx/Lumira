@@ -150,7 +150,6 @@ describe('access', () => {
     expect(result.canVisitActivityRegister).toBe(true);
     expect(result.canVisitActivities).toBe(false);
     expect(result.canVisitDataManagement).toBe(false);
-    expect(result.canVisitQueryCenter).toBe(false);
   });
 
   it('keeps the default common user surface to dashboard, registration, and personal center', () => {
@@ -179,7 +178,6 @@ describe('access', () => {
     expect(result.canVisitSystemMyFiles).toBe(true);
     expect(result.canVisitDataManagement).toBe(false);
     expect(result.canVisitDownloadCenter).toBe(false);
-    expect(result.canVisitQueryCenter).toBe(false);
     expect(result.canVisitAnyUserCenter).toBe(false);
     expect(result.canVisitUserCenter).toBe(false);
     expect(result.canVisitExperts).toBe(false);
@@ -188,12 +186,11 @@ describe('access', () => {
     expect(result.canVisitPluginRuntime).toBe(false);
   });
 
-  it('does not expose query center when a common user only has download center access', () => {
+  it('keeps download center access independent after query center removal', () => {
     const result = access({ currentUser: commonUserWithPermissions(['download:center:view']) });
 
     expect(result.canVisitDataManagement).toBe(true);
     expect(result.canVisitDownloadCenter).toBe(true);
-    expect(result.canVisitQueryCenter).toBe(false);
   });
 
   it('updates visible settings pages when role permissions are adjusted', () => {

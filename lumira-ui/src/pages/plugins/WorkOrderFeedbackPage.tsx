@@ -257,7 +257,7 @@ const WorkOrderFeedbackPage = () => {
   const [detailHtml, setDetailHtml] = useState('');
   const [saving, setSaving] = useState(false);
   const [statusSaving, setStatusSaving] = useState(false);
-  const [scope, setScope] = useState<'mine' | 'admin'>('mine');
+  const [scope, setScope] = useState<'mine' | 'admin'>('admin');
   const [detailRecord, setDetailRecord] = useState<WorkOrderFeedbackRecord | null>(null);
   const [statusDrawerOpen, setStatusDrawerOpen] = useState(false);
 

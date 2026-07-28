@@ -98,6 +98,17 @@ class SaasSqlBootstrapCompletenessTest {
         assertThat(new LinkedHashSet<>(menuCodeById.values()))
                 .as("seeded menu codes must be unique so ON DUPLICATE KEY cannot overwrite unrelated pages")
                 .hasSize(menuCodeById.size());
+        assertThat(normalizedSql)
+                .as("management and query-center pages must not remain standalone menu pages")
+                .contains("(-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/dashboard/home', 'SearchOutlined', 7, NULL, 'DISABLED', 0, 0, 1)")
+                .contains("(-1092, -1100, 'project.management', '项目管理', 'MENU', '/projects/management', 'redirect:/dashboard/home', 'ProjectOutlined', 3, 'aiadc:project:view', 'DISABLED', 0, 0, 1)")
+                .contains("(-1040, -1100, 'team.management', '团队管理', 'MENU', '/team/management', 'redirect:/dashboard/home', 'TeamOutlined', 4, 'team:view', 'DISABLED', 0, 0, 1)")
+                .contains("(-1096, -1101, 'project.search', '项目查询', 'MENU', '/projects/search', 'redirect:/dashboard/home', 'SearchOutlined', 2, 'aiadc:project:view', 'DISABLED', 0, 0, 1)")
+                .contains("(-1050, -1101, 'team.search', '团队查询', 'MENU', '/team/search', 'redirect:/dashboard/home', 'SearchOutlined', 1, 'team:view', 'DISABLED', 0, 0, 1)")
+                .contains("(-1053, -1101, 'activity.search', '活动查询', 'MENU', '/activities/search', 'redirect:/activities/management', 'SearchOutlined', 3, 'aiadc:activity:view', 'DISABLED', 0, 0, 1)")
+                .contains("(-1111, -1101, 'payment.status', 'Payment status query', 'MENU', '/payments/status', 'redirect:/payments/management', 'SearchOutlined', 4, 'payment:order:view', 'DISABLED', 0, 0, 1)")
+                .contains("(-1093, -1100, 'project.management.create'")
+                .contains("(-958, -1100, 'team.create'");
 
         assertThat(normalizedSql)
                 .contains("VALUES (1001, 'admin'")

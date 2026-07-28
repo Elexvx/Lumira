@@ -129,7 +129,7 @@ public class WorkOrderFeedbackService {
         } else {
             userId = requireViewPermission(currentUser);
         }
-        String userUuid = trustedUserUuid(currentUser);
+        String userUuid = currentUser.getUserUuid();
         pluginStateService.ensureEnabled(currentUser);
         WorkOrderFeedbackRepository.Owner owner = adminScope
                 ? WorkOrderFeedbackRepository.Owner.all()
@@ -151,7 +151,7 @@ public class WorkOrderFeedbackService {
         } else {
             userId = requireViewPermission(currentUser);
         }
-        String userUuid = trustedUserUuid(currentUser);
+        String userUuid = currentUser.getUserUuid();
         pluginStateService.ensureEnabled(currentUser);
         WorkOrderFeedbackVO.WorkOrderRecord record = repository.findById(id, adminScope
                 ? WorkOrderFeedbackRepository.Owner.all()
@@ -165,8 +165,8 @@ public class WorkOrderFeedbackService {
 
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file) {
         Long userId = requireCreatePermission(currentUser);
-        String username = trustedUsername(currentUser);
-        String userUuid = trustedUserUuid(currentUser);
+        String username = currentUser.getUsername();
+        String userUuid = currentUser.getUserUuid();
         pluginStateService.ensureEnabled(currentUser);
         try {
             return fileInternalApi.uploadImageForUser(
@@ -189,8 +189,8 @@ public class WorkOrderFeedbackService {
     @Transactional
     public WorkOrderFeedbackVO.WorkOrderRecord create(CurrentUser currentUser, WorkOrderFeedbackDTO.CreateRequest request) {
         Long userId = requireCreatePermission(currentUser);
-        String userUuid = trustedUserUuid(currentUser);
-        String submitterName = trustedUsername(currentUser);
+        String userUuid = currentUser.getUserUuid();
+        String submitterName = currentUser.getUsername();
         pluginStateService.ensureEnabled(currentUser);
         String title = normalizeRequiredText(request == null ? null : request.getTitle(), 160, "\u8bf7\u586b\u5199\u5de5\u5355\u6807\u9898");
         String detailHtml = normalizeRequiredText(request == null ? null : request.getDetailHtml(), MAX_DETAIL_HTML_LENGTH, "\u8bf7\u586b\u5199\u95ee\u9898\u8be6\u60c5");
@@ -213,7 +213,7 @@ public class WorkOrderFeedbackService {
         String adminReply = normalizeNullableText(request == null ? null : request.getAdminReply(), 4000);
         int updated = repository.updateStatus(id, currentRecord.getStatus(), currentRecord.getSubmitterId(),
                 currentRecord.getSubmitterUuid(), status, isTerminalStatus(status), adminReply,
-                userId, trustedUserUuid(currentUser));
+                userId, currentUser.getUserUuid());
         if (updated == 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Work order changed, please retry");
         }
@@ -441,16 +441,6 @@ public class WorkOrderFeedbackService {
             throw new BizException(ErrorCode.BAD_REQUEST, "\u56de\u590d\u957f\u5ea6\u4e0d\u80fd\u8d85\u8fc7 " + maxLength + " \u4e2a\u5b57\u7b26");
         }
         return normalized;
-    }
-
-    private String trustedUsername(CurrentUser currentUser) {
-        currentUserId(currentUser);
-        return currentUser.getUsername();
-    }
-
-    private String trustedUserUuid(CurrentUser currentUser) {
-        currentUserId(currentUser);
-        return currentUser.getUserUuid();
     }
 
     private void formatDateFields(WorkOrderFeedbackVO.WorkOrderRecord record) {

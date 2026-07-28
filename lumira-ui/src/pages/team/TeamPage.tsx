@@ -752,7 +752,7 @@ const CreateTeamPage = () => {
 
   if (!actionPermission.can('team:create')) {
     return (
-      <TeamShell title="创建团队" actions={<Button onClick={() => history.push('/team/management')}>返回</Button>}>
+      <TeamShell title="创建团队" actions={<Button onClick={() => history.push('/data-management')}>返回</Button>}>
         <Result status="403" title="403" />
       </TeamShell>
     );
@@ -1044,7 +1044,7 @@ const TeamDetailPage = () => {
       title={team.teamName}
       actions={
         <>
-          <Button onClick={() => history.push('/team/management')}>团队管理</Button>
+          <Button onClick={() => history.push('/data-management')}>数据管理</Button>
         </>
       }
     >
@@ -1065,12 +1065,12 @@ const TeamDetailPage = () => {
                       <Button type="primary" onClick={() => setEditing(true)}>编辑</Button>
                     ) : null}
                     {team.myRole === 'OWNER' && actionPermission.can('team:delete') ? (
-                      <Popconfirm title="确认解散团队？" onConfirm={async () => { await deleteTeam(teamId); message.success('团队已删除'); history.push('/team/management'); }}>
+                      <Popconfirm title="确认解散团队？" onConfirm={async () => { await deleteTeam(teamId); message.success('团队已删除'); history.push('/data-management'); }}>
                         <Button danger icon={<DeleteOutlined />}>解散</Button>
                       </Popconfirm>
                     ) : null}
                     {team.myRole !== 'OWNER' ? (
-                      <Popconfirm title="确认退出团队？" onConfirm={async () => { await leaveTeam(teamId); message.success('已退出团队'); history.push('/team/management'); }}>
+                      <Popconfirm title="确认退出团队？" onConfirm={async () => { await leaveTeam(teamId); message.success('已退出团队'); history.push('/data-management'); }}>
                         <Button danger>退出</Button>
                       </Popconfirm>
                     ) : null}
@@ -1379,13 +1379,13 @@ const JoinPage = () => {
   };
 
   return (
-    <TeamShell title="加入团队" actions={<Button onClick={() => history.push('/team/management')}>团队管理</Button>}>
+    <TeamShell title="加入团队" actions={<Button onClick={() => history.push('/data-management')}>数据管理</Button>}>
       <Card>
         {result ? (
           <Result
             status="success"
             title={result === 'JOINED' ? '已加入团队' : '申请已提交'}
-            extra={<Button type="primary" onClick={() => history.push('/team/management')}>查看团队</Button>}
+            extra={<Button type="primary" onClick={() => history.push('/data-management')}>查看数据管理</Button>}
           />
         ) : (
           <Space direction="vertical" size="large" className="team-join-panel">

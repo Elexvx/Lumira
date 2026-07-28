@@ -72,7 +72,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitPaymentOrders = isLogin && hasPermission(permissions, 'payment:order:view');
   const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
-  const canVisitQueryCenter = [canVisitActivities, canVisitProjects, canVisitTeam, canVisitPaymentOrders].some(Boolean);
   const canVisitDataManagement =
     [canVisitCompetitions, canVisitActivities, canVisitProjects, canVisitTeam, canVisitPaymentOrders, canVisitDownloadCenter].some(Boolean);
   const canVisitSystemSettings =
@@ -136,7 +135,6 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitActivitiesRoot: canVisitActivities,
     canVisitActivities,
     canVisitCompetitions,
-    canVisitQueryCenter,
     canVisitCompetitionRegister,
     canVisitActivityRegister,
     canVisitPaymentOrders,

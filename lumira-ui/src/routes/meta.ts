@@ -22,15 +22,18 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/dashboard': '/dashboard/home',
   '/dashboard/': '/dashboard/home',
   '/dashboard/home/': '/dashboard/home',
-  '/team': '/team/management',
-  '/team/': '/team/management',
-  '/team/management/': '/team/management',
-  '/team/search/': '/team/search',
+  '/team': '/dashboard/home',
+  '/team/': '/dashboard/home',
+  '/team/management': '/dashboard/home',
+  '/team/management/': '/dashboard/home',
+  '/team/search': '/dashboard/home',
+  '/team/search/': '/dashboard/home',
   '/activities': '/activities/register',
   '/activities/': '/activities/register',
   '/activities/management/': '/activities/management',
   '/activities/register/': '/activities/register',
-  '/activities/search/': '/activities/search',
+  '/activities/search': '/activities/management',
+  '/activities/search/': '/activities/management',
   '/registration': '/competitions/register',
   '/registration/': '/competitions/register',
   '/competitions': '/competitions/register',
@@ -44,14 +47,19 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/expert-review': '/expert-review/reviews',
   '/expert-review/': '/expert-review/reviews',
   '/expert-review/reviews/': '/expert-review/reviews',
-  '/projects': '/projects/management',
-  '/projects/': '/projects/management',
-  '/projects/management/': '/projects/management',
-  '/projects/search/': '/projects/search',
+  '/projects': '/dashboard/home',
+  '/projects/': '/dashboard/home',
+  '/projects/management': '/dashboard/home',
+  '/projects/management/': '/dashboard/home',
+  '/projects/search': '/dashboard/home',
+  '/projects/search/': '/dashboard/home',
   '/payments': '/payments/management',
   '/payments/': '/payments/management',
   '/payments/management/': '/payments/management',
-  '/payments/status/': '/payments/status',
+  '/payments/status': '/payments/management',
+  '/payments/status/': '/payments/management',
+  '/data-management/query-center': '/dashboard/home',
+  '/data-management/query-center/': '/dashboard/home',
   '/certificates': '/certificates/templates',
   '/certificates/': '/certificates/templates',
   '/certificates/templates/': '/certificates/templates',
@@ -230,8 +238,6 @@ const dashboardRoutes: BackendRouteRecord[] = [
 
 const teamRouteMeta: BackendRouteMeta[] = [
   { path: '/team', name: 'nav.team.root', icon: 'TeamOutlined', access: 'canVisitTeam' },
-  { path: '/team/management', name: 'nav.team.management', icon: 'TeamOutlined', access: 'canVisitTeam' },
-  { path: '/team/search', name: 'nav.team.search', icon: 'SearchOutlined', access: 'canVisitTeam' },
   { path: '/team/create', name: 'nav.team.create', icon: 'PlusOutlined', access: 'canVisitTeam', hideInMenu: true },
   { path: '/team/:teamId', name: 'nav.team.detail', icon: 'TeamOutlined', access: 'canVisitTeam', hideInMenu: true },
   { path: '/team/:teamId/members', name: 'nav.team.members', icon: 'UsergroupAddOutlined', access: 'canVisitTeam', hideInMenu: true },
@@ -247,9 +253,9 @@ const teamRoutes: BackendRouteRecord[] = [
     icon: 'TeamOutlined',
     access: 'canVisitTeam',
     routes: [
-      { path: '/team', redirect: '/team/management', hideInMenu: true },
-      { path: '/team/management', component: '@/pages/team', name: 'nav.team.management', icon: 'TeamOutlined', access: 'canVisitTeam' },
-      { path: '/team/search', component: '@/pages/team', name: 'nav.team.search', icon: 'SearchOutlined', access: 'canVisitTeam' },
+      { path: '/team', redirect: '/dashboard/home', hideInMenu: true },
+      { path: '/team/management', redirect: '/dashboard/home', hideInMenu: true },
+      { path: '/team/search', redirect: '/dashboard/home', hideInMenu: true },
       { path: '/team/create', component: '@/pages/team', name: 'nav.team.create', icon: 'PlusOutlined', access: 'canVisitTeam', hideInMenu: true },
       { path: '/team/join', component: '@/pages/team', name: 'nav.team.join', icon: 'LinkOutlined', access: 'canVisitTeam', hideInMenu: true },
       { path: '/team/:teamId', component: '@/pages/team', name: 'nav.team.detail', icon: 'TeamOutlined', access: 'canVisitTeam', hideInMenu: true },
@@ -263,7 +269,6 @@ const activityRouteMeta: BackendRouteMeta[] = [
   { path: '/activities', name: 'nav.activities.root', icon: 'CalendarOutlined', access: 'canVisitActivityRegister' },
   { path: '/activities/management', name: 'nav.activities.activities', icon: 'CalendarOutlined', access: 'canVisitActivities' },
   { path: '/activities/register', name: 'nav.activities.activityRegister', icon: 'FormOutlined', access: 'canVisitActivityRegister' },
-  { path: '/activities/search', name: 'nav.activities.activitySearch', icon: 'SearchOutlined', access: 'canVisitActivities' },
 ];
 
 const activityRoutes: BackendRouteRecord[] = [
@@ -277,7 +282,7 @@ const activityRoutes: BackendRouteRecord[] = [
       { path: '/activities', redirect: '/activities/register', hideInMenu: true },
       { path: '/activities/management', component: '@/pages/activity', name: 'nav.activities.activities', icon: 'CalendarOutlined', access: 'canVisitActivities' },
       { path: '/activities/register', component: '@/pages/competition', name: 'nav.activities.activityRegister', icon: 'FormOutlined', access: 'canVisitActivityRegister' },
-      { path: '/activities/search', component: '@/pages/activity', name: 'nav.activities.activitySearch', icon: 'SearchOutlined', access: 'canVisitActivities' },
+      { path: '/activities/search', redirect: '/activities/management', hideInMenu: true },
     ],
   },
 ];
@@ -295,15 +300,12 @@ const competitionRouteMeta: BackendRouteMeta[] = [
 
 const projectRouteMeta: BackendRouteMeta[] = [
   { path: '/projects', name: 'nav.projects.root', icon: 'ProjectOutlined', access: 'canVisitProjects', hideInMenu: true },
-  { path: '/projects/management', name: 'nav.projects.management', icon: 'ProjectOutlined', access: 'canVisitProjects' },
-  { path: '/projects/search', name: 'nav.projects.search', icon: 'SearchOutlined', access: 'canVisitProjects' },
   { path: '/projects/create', name: 'nav.projects.create', icon: 'ProjectOutlined', access: 'canVisitProjects', hideInMenu: true },
 ];
 
 const paymentRouteMeta: BackendRouteMeta[] = [
   { path: '/payments', name: 'nav.payments.root', icon: 'CreditCardOutlined', access: 'canVisitPaymentOrders', hideInMenu: true },
   { path: '/payments/management', name: 'nav.payments.management', icon: 'CreditCardOutlined', access: 'canVisitPaymentOrders' },
-  { path: '/payments/status', name: 'nav.payments.status', icon: 'SearchOutlined', access: 'canVisitPaymentOrders' },
 ];
 
 const certificateRouteMeta: BackendRouteMeta[] = [
@@ -342,9 +344,9 @@ const projectRoutes: BackendRouteRecord[] = [
     icon: 'ProjectOutlined',
     access: 'canVisitProjects',
     routes: [
-      { path: '/projects', redirect: '/projects/management', hideInMenu: true },
-      { path: '/projects/management', component: '@/pages/project', name: 'nav.projects.management', icon: 'ProjectOutlined', access: 'canVisitProjects' },
-      { path: '/projects/search', component: '@/pages/project', name: 'nav.projects.search', icon: 'SearchOutlined', access: 'canVisitProjects' },
+      { path: '/projects', redirect: '/dashboard/home', hideInMenu: true },
+      { path: '/projects/management', redirect: '/dashboard/home', hideInMenu: true },
+      { path: '/projects/search', redirect: '/dashboard/home', hideInMenu: true },
       { path: '/projects/create', component: '@/pages/project', name: 'nav.projects.create', icon: 'ProjectOutlined', access: 'canVisitProjects', hideInMenu: true },
     ],
   },
@@ -360,7 +362,7 @@ const paymentRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/payments', redirect: '/payments/management', hideInMenu: true },
       { path: '/payments/management', component: '@/pages/payment', name: 'nav.payments.management', icon: 'CreditCardOutlined', access: 'canVisitPaymentOrders' },
-      { path: '/payments/status', component: '@/pages/payment', name: 'nav.payments.status', icon: 'SearchOutlined', access: 'canVisitPaymentOrders' },
+      { path: '/payments/status', redirect: '/payments/management', hideInMenu: true },
     ],
   },
 ];
@@ -445,7 +447,6 @@ const dataManagementRouteMeta: BackendRouteMeta[] = [
   ...teamRouteMeta.map((item) => item.path === '/team' ? { ...item, hideInMenu: true } : item),
   ...paymentRouteMeta,
   { path: '/data-management/download-center', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
-  { path: '/data-management/query-center', name: 'nav.data.queryCenter', icon: 'SearchOutlined', access: 'canVisitQueryCenter' },
 ];
 
 const dataSourceRoutes = [
@@ -461,7 +462,7 @@ const dataManagementRoutes: BackendRouteRecord[] = [
   ...dataSourceRoutes,
   { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   { path: '/data-management/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
-  { path: '/data-management/query-center', redirect: '/team/search', name: 'nav.data.queryCenter', icon: 'SearchOutlined', access: 'canVisitQueryCenter', hideInMenu: true },
+  { path: '/data-management/query-center', redirect: '/dashboard/home', hideInMenu: true },
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [

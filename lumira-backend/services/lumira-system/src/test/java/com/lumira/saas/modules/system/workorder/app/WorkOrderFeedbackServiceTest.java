@@ -53,7 +53,7 @@ class WorkOrderFeedbackServiceTest {
 
         assertThat(source).contains("created_by, created_by_uuid, created_at, updated_by, updated_by_uuid");
         assertThat(source).contains("updated_by_uuid = ?");
-        assertThat(appSource).contains("trustedUserUuid(currentUser)");
+        assertThat(appSource).contains("currentUser.getUserUuid()");
         assertThat(source).contains("and status = ?");
         assertThat(source).contains("and submitter_id = ?");
         assertThat(source).contains("and submitter_uuid = ?");
@@ -430,6 +430,27 @@ class WorkOrderFeedbackServiceTest {
     }
 
     @Test
+    void listAdminShouldReturnAllUsersWithoutOwnerPredicate() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        WorkOrderFeedbackService service = service(jdbcTemplate);
+        when(jdbcTemplate.query(
+                org.mockito.ArgumentMatchers.argThat((String sql) -> !sql.contains("submitter_id = ?")),
+                org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
+                eq(10L),
+                eq(0L)
+        )).thenReturn(List.of());
+
+        service.list(user(Set.of("plugin:work-order-feedback:manage")), null, null, null, "admin", 1, 10);
+
+        verify(jdbcTemplate).query(
+                org.mockito.ArgumentMatchers.argThat((String sql) -> !sql.contains("submitter_id = ?")),
+                org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
+                eq(10L),
+                eq(0L)
+        );
+    }
+
+    @Test
     void detailShouldRejectAdminScopeWithoutManagePermission() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         WorkOrderFeedbackPluginStateService pluginStateService = mock(WorkOrderFeedbackPluginStateService.class);
@@ -471,6 +492,23 @@ class WorkOrderFeedbackServiceTest {
                 eq(100L),
                 eq(1001L),
                 eq("user-uuid-1001")
+        );
+    }
+
+    @Test
+    void detailAdminShouldLookUpAnySubmitterWithoutOwnerPredicate() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        WorkOrderFeedbackService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.detail(
+                user(Set.of("plugin:work-order-feedback:manage")), 100L, "admin"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_FOUND));
+
+        verify(jdbcTemplate).queryForObject(
+                org.mockito.ArgumentMatchers.argThat((String sql) -> !sql.contains("submitter_id = ?")),
+                org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
+                eq(100L)
         );
     }
 

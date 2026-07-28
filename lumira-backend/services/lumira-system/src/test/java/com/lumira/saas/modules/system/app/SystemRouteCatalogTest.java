@@ -59,6 +59,7 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/iam/Overview")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("redirect:/team/search")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("redirect:/dashboard/home")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("redirect:/team/search")).isFalse();
     }
 }
