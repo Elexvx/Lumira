@@ -1217,7 +1217,7 @@ public class SystemManagementAppService {
     }
 
     private List<SystemVO.MenuVO> loadPermissionMenusByVersion(CurrentUser currentUser, long menuTreeVersion) {
-        List<SystemVO.MenuVO> menus = loadMenusByVersion(currentUser, menuTreeVersion);
+        List<SystemVO.MenuVO> menus = new ArrayList<>(loadMenusByVersion(currentUser, menuTreeVersion));
         List<Map<String, Object>> pluginMenus = jdbcTemplate.queryForList(
                 """
                         select relation.menu_code as menuCode,

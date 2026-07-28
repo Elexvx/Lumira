@@ -302,6 +302,28 @@ class SystemManagementAppServiceWriteHotPathTest {
     }
 
     @Test
+    void listPermissionTreeShouldAppendRootPluginMenusToCachedMenuSnapshot() {
+        TestEnvironment env = new TestEnvironment();
+        env.jdbcTemplate.pluginMenuRows = List.of(Map.of(
+                "menuCode", "plugin.work-order-feedback",
+                "menuName", "工单反馈",
+                "path", "/work-order-feedback",
+                "icon", "CustomerServiceOutlined",
+                "permissionKey", "plugin:work-order-feedback:view",
+                "sortNo", 17,
+                "pluginCode", "work-order-feedback"
+        ));
+
+        List<SystemVO.PermissionTreeVO> tree = assertDoesNotThrow(
+                () -> env.service.listPermissionTree(buildCurrentUser())
+        );
+
+        assertTrue(tree.stream().anyMatch(
+                node -> "plugin:work-order-feedback:view".equals(node.getPermissionKey())
+        ));
+    }
+
+    @Test
     void listPermissionsShouldRequireRoleViewBeforePermissionCatalogRead() {
         TestEnvironment env = new TestEnvironment();
 
@@ -723,6 +745,7 @@ class SystemManagementAppServiceWriteHotPathTest {
         private int readModelVersionBumps;
         private int menuTreeQueries;
         private int pluginMenuQueries;
+        private List<Map<String, Object>> pluginMenuRows = List.of();
         private int permissionCatalogQueries;
         private int rowMapperQueryForObjectCalls;
         private Long dictTypeId;
@@ -858,7 +881,7 @@ class SystemManagementAppServiceWriteHotPathTest {
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             if (sql.toLowerCase().contains("from sys_plugin_menu_rel")) {
                 pluginMenuQueries += 1;
-                return List.of();
+                return pluginMenuRows;
             }
             return List.of();
         }

@@ -59,6 +59,23 @@ test('online migration seeds the file service business dictionaries', () => {
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
+test('built-in plugin routes match between fresh bootstrap and online migration', () => {
+  const migration = read('deploy/migrations/V202607280001__relocate_builtin_plugin_routes.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+
+  for (const marker of [
+    'plugin.sensitive-words',
+    '/settings/sensitive-words',
+    'plugin.work-order-feedback',
+    '/work-order-feedback',
+    'settings.root',
+  ]) {
+    assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(baseline, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
 test('profile and team-member field definitions remain isolated in fresh and existing databases', () => {
   const migration = read('deploy/migrations/V202607190005__profile_field_definition_persistence.sql');
   const baseline = read('lumira-backend/sql/saas.sql');
