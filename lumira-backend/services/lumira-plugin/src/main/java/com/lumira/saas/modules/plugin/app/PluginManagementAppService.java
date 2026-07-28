@@ -63,12 +63,12 @@ public class PluginManagementAppService {
     private static final Map<String, BuiltinPluginRuntime> BUILTIN_PLUGIN_RUNTIMES = Map.of(
             BUILTIN_SENSITIVE_WORDS_PLUGIN,
             new BuiltinPluginRuntime(
-                    List.of("/plugins/sensitive-words"),
+                    List.of("/settings/sensitive-words"),
                     List.of("routes", "menus", "permissions", "importers", "interceptors")
             ),
             BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN,
             new BuiltinPluginRuntime(
-                    List.of("/plugins/work-order-feedback"),
+                    List.of("/work-order-feedback"),
                     List.of("routes", "menus", "permissions", "rich-text-upload")
             )
     );

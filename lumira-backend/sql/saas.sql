@@ -4093,8 +4093,8 @@ INSERT INTO `sys_plugin_menu_rel` (
     `permission_key`, `parent_menu_code`, `sort_no`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'sensitive-words', '1.0.0', 'plugin.sensitive-words', 'Sensitive Words Management', '/plugins/sensitive-words', 'SafetyOutlined',
-    'plugin:sensitive-words:view', 'settings.plugins', 10, 0, 0, 0
+    'sensitive-words', '1.0.0', 'plugin.sensitive-words', '敏感词管理', '/settings/sensitive-words', 'SafetyOutlined',
+    'plugin:sensitive-words:view', 'settings.root', 6, 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
     `menu_name` = VALUES(`menu_name`),
@@ -4180,8 +4180,8 @@ INSERT INTO `sys_plugin_menu_rel` (
     `permission_key`, `parent_menu_code`, `sort_no`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'work-order-feedback', '1.0.0', 'plugin.work-order-feedback', '工单反馈', '/plugins/work-order-feedback', 'CustomerServiceOutlined',
-    'plugin:work-order-feedback:view', 'settings.plugins', 20, 0, 0, 0
+    'work-order-feedback', '1.0.0', 'plugin.work-order-feedback', '工单反馈', '/work-order-feedback', 'CustomerServiceOutlined',
+    'plugin:work-order-feedback:view', NULL, 17, 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
     `menu_name` = VALUES(`menu_name`),

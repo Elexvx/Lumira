@@ -87,9 +87,6 @@ public final class SystemPermissionTreeAssembler {
         if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
             return null;
         }
-        if (isAdminOnlySettingsPath(menu.getPath())) {
-            return null;
-        }
         List<SystemVO.PermissionTreeVO> children = new ArrayList<>();
         if (!CollectionUtils.isEmpty(menu.getChildren())) {
             for (SystemVO.MenuVO child : menu.getChildren()) {
@@ -98,6 +95,9 @@ public final class SystemPermissionTreeAssembler {
                     children.add(childNode);
                 }
             }
+        }
+        if (isAdminOnlySettingsPath(menu) && children.isEmpty()) {
+            return null;
         }
 
         String nodeType = resolvePermissionTreeNodeType(menu);
@@ -144,8 +144,12 @@ public final class SystemPermissionTreeAssembler {
         return StringUtils.hasText(component) && component.startsWith("redirect:");
     }
 
-    private boolean isAdminOnlySettingsPath(String path) {
+    private boolean isAdminOnlySettingsPath(SystemVO.MenuVO menu) {
+        String path = menu == null ? null : menu.getPath();
         if (!StringUtils.hasText(path)) {
+            return false;
+        }
+        if (StringUtils.hasText(menu.getPermissionKey()) && menu.getPermissionKey().startsWith("plugin:")) {
             return false;
         }
         String normalizedPath = path.trim();

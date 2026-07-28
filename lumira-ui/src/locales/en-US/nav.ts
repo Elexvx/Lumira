@@ -90,6 +90,8 @@ export default {
   'nav.system.dicts': 'Dictionaries',
   'nav.system.profileFields': 'Profile Fields',
   'nav.system.personalization': 'Personalization',
+  'nav.plugins.sensitiveWords': 'Sensitive Words',
+  'nav.plugins.workOrderFeedback': 'Work Order Feedback',
   'nav.system.security': 'Security',
   'nav.system.verification': 'Verification',
   'nav.system.payment': 'Payment Settings',

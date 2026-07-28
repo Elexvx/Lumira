@@ -93,6 +93,7 @@ export const systemRouteMeta: BackendRouteMeta[] = [
   { path: '/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
   { path: '/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },
   { path: '/settings/personalization', name: 'nav.system.personalization', icon: 'SkinOutlined', access: 'canVisitSystemPersonalization' },
+  { path: '/settings/sensitive-words', name: 'nav.plugins.sensitiveWords', icon: 'SafetyOutlined', access: 'canVisitSensitiveWordsPlugin' },
   { path: '/settings/security', name: 'nav.system.security', icon: 'SafetyOutlined', access: 'canVisitSystemSecurity' },
   { path: '/settings/verification', name: 'nav.system.verification', icon: 'SafetyOutlined', access: 'canVisitSystemVerification' },
   { path: '/settings/payment', name: 'nav.system.payment', icon: 'CreditCardOutlined', access: 'canVisitSystemPayment' },
@@ -120,6 +121,7 @@ export const systemRoutes: BackendRouteRecord[] = [
   { path: '/system/dicts', redirect: '/settings/dicts' },
   { path: '/system/profile-fields', redirect: '/settings/profile-fields' },
   { path: '/system/personalization', redirect: '/settings/personalization' },
+  { path: '/system/sensitive-words', redirect: '/settings/sensitive-words' },
   { path: '/system/security', redirect: '/settings/security' },
   { path: '/system/verification', redirect: '/settings/verification' },
   { path: '/system/payment', redirect: '/settings/payment' },
@@ -142,6 +144,7 @@ export const systemRoutes: BackendRouteRecord[] = [
       { path: '/settings/dicts', component: '@/pages/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
       { path: '/settings/profile-fields', component: '@/pages/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },
       { path: '/settings/personalization', component: '@/pages/settings/personalization', name: 'nav.system.personalization', icon: 'SkinOutlined', access: 'canVisitSystemPersonalization' },
+      { path: '/settings/sensitive-words', component: '@/pages/plugins/SensitiveWordsPage', name: 'nav.plugins.sensitiveWords', icon: 'SafetyOutlined', access: 'canVisitSensitiveWordsPlugin' },
       { path: '/settings/security', component: '@/pages/settings/security', name: 'nav.system.security', icon: 'SafetyOutlined', access: 'canVisitSystemSecurity' },
       { path: '/settings/verification', component: '@/pages/settings/verification', name: 'nav.system.verification', icon: 'SafetyOutlined', access: 'canVisitSystemVerification' },
       { path: '/settings/payment', component: '@/pages/settings/payment', name: 'nav.system.payment', icon: 'CreditCardOutlined', access: 'canVisitSystemPayment' },
@@ -462,8 +465,9 @@ const dataManagementRoutes: BackendRouteRecord[] = [
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [
-  { path: '/plugins/sensitive-words', name: 'nav.system.plugins', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
-  { path: '/plugins/work-order-feedback', name: 'nav.system.plugins', access: 'canVisitWorkOrderFeedbackPlugin', hideInMenu: true },
+  { path: '/plugins/sensitive-words', name: 'nav.plugins.sensitiveWords', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
+  { path: '/plugins/work-order-feedback', name: 'nav.plugins.workOrderFeedback', access: 'canVisitWorkOrderFeedbackPlugin', hideInMenu: true },
+  { path: '/work-order-feedback', name: 'nav.plugins.workOrderFeedback', icon: 'CustomerServiceOutlined', access: 'canVisitWorkOrderFeedbackPlugin' },
   { path: '/plugins/:pluginCode', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
   { path: '/blank/workflow', name: 'common.failure', hideInMenu: true },
   { path: '/public/certificate/verify', name: 'nav.certificates.verify', hideInMenu: true },
@@ -476,8 +480,9 @@ const publicRouteMeta: BackendRouteMeta[] = [
 ];
 
 const publicRoutes: BackendRouteRecord[] = [
-  { path: '/plugins/sensitive-words', component: '@/pages/plugins/SensitiveWordsPage', name: 'nav.system.plugins', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
-  { path: '/plugins/work-order-feedback', component: '@/pages/plugins/WorkOrderFeedbackPage', name: 'nav.system.plugins', access: 'canVisitWorkOrderFeedbackPlugin', hideInMenu: true },
+  { path: '/plugins/sensitive-words', redirect: '/settings/sensitive-words', name: 'nav.plugins.sensitiveWords', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
+  { path: '/plugins/work-order-feedback', redirect: '/work-order-feedback', name: 'nav.plugins.workOrderFeedback', access: 'canVisitWorkOrderFeedbackPlugin', hideInMenu: true },
+  { path: '/work-order-feedback', component: '@/pages/plugins/WorkOrderFeedbackPage', name: 'nav.plugins.workOrderFeedback', icon: 'CustomerServiceOutlined', access: 'canVisitWorkOrderFeedbackPlugin' },
   { path: '/plugins/:pluginCode', component: '@/pages/plugins/RuntimeContainer', name: 'nav.system.plugins', access: 'canVisitPluginRuntime', hideInMenu: true },
   { path: '/blank/workflow', redirect: '/404', name: 'common.failure', hideInMenu: true },
   { path: '/public/certificate/verify', component: '@/pages/certificates/PublicVerifyPage', layout: false, name: 'nav.certificates.verify', hideInMenu: true },

@@ -1112,7 +1112,7 @@ public class SystemManagementAppService {
         }
 
         List<SystemVO.PermissionTreeVO> permissionTree = permissionTreeAssembler.build(
-                loadMenusByVersion(currentUser, menuTreeVersion),
+                loadPermissionMenusByVersion(currentUser, menuTreeVersion),
                 listPermissionsByVersion(permissionCatalogVersion)
         );
         List<SystemVO.PermissionTreeVO> snapshot = copyPermissionTrees(permissionTree);
@@ -1214,6 +1214,95 @@ public class SystemManagementAppService {
         List<SystemVO.MenuVO> snapshot = copyMenus(menus);
         menuTreeCache.put(menuTreeVersion, snapshot);
         return copyMenus(snapshot);
+    }
+
+    private List<SystemVO.MenuVO> loadPermissionMenusByVersion(CurrentUser currentUser, long menuTreeVersion) {
+        List<SystemVO.MenuVO> menus = loadMenusByVersion(currentUser, menuTreeVersion);
+        List<Map<String, Object>> pluginMenus = jdbcTemplate.queryForList(
+                """
+                        select relation.menu_code as menuCode,
+                               relation.menu_name as menuName,
+                               relation.route_path as path,
+                               relation.icon,
+                               relation.permission_key as permissionKey,
+                               relation.parent_menu_code as parentMenuCode,
+                               relation.sort_no as sortNo,
+                               relation.plugin_code as pluginCode
+                        from sys_plugin_menu_rel relation
+                        join sys_plugin_version version
+                          on version.plugin_code = relation.plugin_code
+                         and version.version = relation.plugin_version
+                         and version.is_active = 1
+                         and version.deleted = 0
+                        join sys_plugin_definition definition
+                          on definition.plugin_code = relation.plugin_code
+                         and definition.status = 'ENABLED'
+                         and definition.deleted = 0
+                        where relation.deleted = 0
+                        order by relation.sort_no asc, relation.id asc
+                        """
+        );
+        if (pluginMenus.isEmpty()) {
+            return menus;
+        }
+
+        Map<String, SystemVO.MenuVO> byMenuCode = new LinkedHashMap<>();
+        indexMenusByCode(menus, byMenuCode);
+        for (Map<String, Object> pluginMenu : pluginMenus) {
+            String menuCode = stringValue(pluginMenu.get("menuCode"));
+            if (!StringUtils.hasText(menuCode) || byMenuCode.containsKey(menuCode)) {
+                continue;
+            }
+            SystemVO.MenuVO node = new SystemVO.MenuVO();
+            node.setMenuCode(menuCode);
+            node.setMenuName(stringValue(pluginMenu.get("menuName")));
+            node.setMenuType("MENU");
+            node.setPath(stringValue(pluginMenu.get("path")));
+            node.setComponent("plugin:" + stringValue(pluginMenu.get("pluginCode")));
+            node.setIcon(stringValue(pluginMenu.get("icon")));
+            node.setPermissionKey(stringValue(pluginMenu.get("permissionKey")));
+            node.setSortNo(intValue(pluginMenu.get("sortNo")));
+            node.setStatus("ENABLED");
+            node.setChildren(new ArrayList<>());
+
+            String parentMenuCode = stringValue(pluginMenu.get("parentMenuCode"));
+            SystemVO.MenuVO parent = StringUtils.hasText(parentMenuCode) ? byMenuCode.get(parentMenuCode) : null;
+            if (parent == null) {
+                menus.add(node);
+            } else {
+                List<SystemVO.MenuVO> children = parent.getChildren();
+                if (children == null) {
+                    children = new ArrayList<>();
+                    parent.setChildren(children);
+                }
+                children.add(node);
+            }
+            byMenuCode.put(menuCode, node);
+        }
+        return menus;
+    }
+
+    private void indexMenusByCode(List<SystemVO.MenuVO> menus, Map<String, SystemVO.MenuVO> byMenuCode) {
+        if (CollectionUtils.isEmpty(menus)) {
+            return;
+        }
+        for (SystemVO.MenuVO menu : menus) {
+            if (menu == null) {
+                continue;
+            }
+            if (StringUtils.hasText(menu.getMenuCode())) {
+                byMenuCode.put(menu.getMenuCode(), menu);
+            }
+            indexMenusByCode(menu.getChildren(), byMenuCode);
+        }
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Integer intValue(Object value) {
+        return value instanceof Number number ? number.intValue() : 0;
     }
 
     private long currentMenuTreeVersion() {

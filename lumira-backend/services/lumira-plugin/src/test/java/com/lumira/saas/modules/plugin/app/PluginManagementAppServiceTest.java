@@ -873,7 +873,7 @@ class PluginManagementAppServiceTest {
         assertThat(plugins).hasSize(1);
         PluginVO.PluginAvailabilityVO plugin = plugins.get(0);
         assertThat(plugin.getPluginCode()).isEqualTo("work-order-feedback");
-        assertThat(plugin.getRoutes()).containsExactly("/plugins/work-order-feedback");
+        assertThat(plugin.getRoutes()).containsExactly("/work-order-feedback");
         assertThat(plugin.getRuntimeContributions()).contains("routes", "menus", "permissions", "rich-text-upload");
         assertThat(plugin.getMenus()).hasSize(1);
         verify(pluginPersistenceService, never()).findVersion(eq("work-order-feedback"), any());

@@ -84,6 +84,33 @@ class SystemPermissionTreeAssemblerTest {
     }
 
     @Test
+    void shouldExposePluginSettingsPagesAndActionsInRolePermissionTree() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+        SystemVO.MenuVO settingsRoot = menu("系统设置", "/settings", null);
+        settingsRoot.setMenuType("CATALOG");
+        settingsRoot.setChildren(List.of(
+                menu("敏感词管理", "/settings/sensitive-words", "plugin:sensitive-words:view")
+        ));
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(settingsRoot),
+                List.of(
+                        permission("plugin:sensitive-words:view", "查看敏感词"),
+                        permission("plugin:sensitive-words:manage", "管理敏感词"),
+                        permission("plugin:sensitive-words:import", "导入敏感词")
+                )
+        );
+
+        assertTrue(tree.stream()
+                .flatMap(node -> node.getChildren().stream())
+                .anyMatch(node -> "/settings/sensitive-words".equals(node.getRoutePath())
+                        && node.getActionPermissions().stream()
+                        .map(SystemVO.PermissionActionVO::getPermissionKey)
+                        .collect(Collectors.toSet())
+                        .containsAll(Set.of("plugin:sensitive-words:manage", "plugin:sensitive-words:import"))));
+    }
+
+    @Test
     void shouldExposePublicFilePublishAsPersonalFileAction() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
 

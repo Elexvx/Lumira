@@ -90,6 +90,8 @@ export default {
   'nav.system.dicts': '字典管理',
   'nav.system.profileFields': '字段管理',
   'nav.system.personalization': '个性化设置',
+  'nav.plugins.sensitiveWords': '敏感词管理',
+  'nav.plugins.workOrderFeedback': '工单反馈',
   'nav.system.security': '安全设置',
   'nav.system.verification': '验证管理',
   'nav.system.payment': '支付设置',

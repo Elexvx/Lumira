@@ -124,7 +124,10 @@ export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, _avai
       return;
     }
 
-    if (isVisibleSettingsPath(normalizedPath) && SETTINGS_FALLBACK_PATH_SET.has(normalizedPath)) {
+    if (
+      isVisibleSettingsPath(normalizedPath)
+      && (SETTINGS_FALLBACK_PATH_SET.has(normalizedPath) || node.permissionKey?.startsWith('plugin:'))
+    ) {
       candidateNodes.push(node);
       seenPaths.add(normalizedPath);
     }
@@ -148,11 +151,15 @@ export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, _avai
       .map((item) => [item.path, item]),
   );
 
-  return cloneSettingsFallbackItems().map((fallbackItem) => ({
+  const fallbackItems = cloneSettingsFallbackItems().map((fallbackItem) => ({
     ...fallbackItem,
     ...backendItemsByPath.get(fallbackItem.path),
     name: fallbackItem.name,
     icon: fallbackItem.icon,
     access: fallbackItem.access,
   }));
+  const dynamicPluginItems = [...backendItemsByPath.values()]
+    .filter((item) => !SETTINGS_FALLBACK_PATH_SET.has(item.path));
+
+  return sortNavigationItems([...fallbackItems, ...dynamicPluginItems]);
 };

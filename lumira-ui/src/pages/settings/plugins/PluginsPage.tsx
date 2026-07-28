@@ -28,10 +28,10 @@ const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const resolvePluginManagementPath = (pluginCode: string) => {
   if (pluginCode === 'sensitive-words') {
-    return '/plugins/sensitive-words';
+    return '/settings/sensitive-words';
   }
   if (pluginCode === 'work-order-feedback') {
-    return '/plugins/work-order-feedback';
+    return '/work-order-feedback';
   }
   return null;
 };
@@ -1338,7 +1338,7 @@ const PluginsPage = () => {
                 onOpenLogs={(plugin) => void handleOpenLogs(plugin)}
                 onOpenManagement={(plugin) => {
                   const managementPath = resolvePluginManagementPath(plugin.pluginCode);
-                  if (managementPath && plugin.pluginCode !== 'sensitive-words') {
+                  if (managementPath) {
                     history.push(managementPath);
                     return;
                   }
