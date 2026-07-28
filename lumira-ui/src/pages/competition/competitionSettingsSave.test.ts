@@ -108,6 +108,7 @@ describe('competition settings page-level save guards', () => {
       schedules: [{
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
+        materialRange: ['2026-09-15 00:00', '2026-10-18 00:00'],
         timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
       }],
     })).toBe(false);
@@ -119,13 +120,27 @@ describe('competition settings page-level save guards', () => {
       schedules: [{
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
+        materialRange: ['2026-09-15 00:00', '2026-10-18 00:00'],
         timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
         reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
       }],
     })).toBe(true);
   });
 
-  it('rejects a competition that starts before registration closes', () => {
+  it('does not use registration time to restrict material or competition time', () => {
+    expect(isTimelineSettingsPageReadyToSave({
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
+      schedules: [{
+        timeMode: 'CONFIRMED',
+        title: 'Preliminary',
+        materialRange: ['2026-09-20 00:00', '2026-10-10 00:00'],
+        timeRange: ['2026-09-29 23:59', '2026-10-18 00:00'],
+        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
+      }],
+    })).toBe(true);
+  });
+
+  it('requires a separate material submission range', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
       schedules: [{
@@ -151,6 +166,7 @@ describe('competition settings page-level save guards', () => {
       schedules: [{
         timeMode: 'CONFIRMED' as const,
         title: 'Preliminary',
+        materialRange: ['2026-09-15 00:00', '2026-10-18 00:00'] as [string, string],
         timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'] as [string, string],
         reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'] as [string, string],
       }],
@@ -161,6 +177,10 @@ describe('competition settings page-level save guards', () => {
       ...completeValues,
       schedules: [{ ...completeValues.schedules[0], reviewRange: undefined }],
     })).toContain('评审时间');
+    expect(getCompetitionCreateMissingFields({
+      ...completeValues,
+      schedules: [{ ...completeValues.schedules[0], materialRange: undefined }],
+    })).toContain('提交材料时间');
   });
 
   it('keeps field-module autosave quiet while a new row title is still blank', () => {

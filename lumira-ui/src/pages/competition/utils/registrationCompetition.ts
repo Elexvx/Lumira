@@ -1,4 +1,5 @@
 import type { CompetitionFeeMode, CompetitionRecord } from '@/services/competition/types';
+import dayjs, { type ConfigType } from 'dayjs';
 
 export type RegistrationCompetitionDraftMeta = {
   competitionTitle?: string;
@@ -11,6 +12,27 @@ export type RegistrationCompetitionDraftMeta = {
 export const hasRegistrationCompetitionPricing = (
   competition?: Pick<CompetitionRecord, 'feeMode' | 'entryFeeMinor'>,
 ) => Boolean(competition?.feeMode && competition.entryFeeMinor !== null && competition.entryFeeMinor !== undefined);
+
+export const isRegistrationCompetitionOpen = (
+  competition: Pick<CompetitionRecord, 'registrationStart' | 'registrationEnd'>,
+  now: ConfigType = dayjs(),
+) => {
+  if (!competition.registrationStart || !competition.registrationEnd) {
+    return false;
+  }
+  const current = dayjs(now);
+  const start = dayjs(competition.registrationStart);
+  const end = dayjs(competition.registrationEnd);
+  if (!current.isValid() || !start.isValid() || !end.isValid()) {
+    return false;
+  }
+  return !current.isBefore(start) && !current.isAfter(end);
+};
+
+export const filterOpenRegistrationCompetitions = (
+  competitions: CompetitionRecord[],
+  now: ConfigType = dayjs(),
+) => competitions.filter((competition) => isRegistrationCompetitionOpen(competition, now));
 
 export const buildRegistrationCompetitionFallback = (
   competitionId?: number,

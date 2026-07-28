@@ -1,6 +1,5 @@
 import type { Dayjs } from 'dayjs';
 import type { CompetitionLocale, CompetitionUpsertPayload } from '@/services/competition/types';
-import { isScheduleAtOrAfterRegistrationEnd } from './utils/competitionTimeline';
 
 export type CompetitionSettingsOrganizerFormItem = {
   role?: string;
@@ -12,6 +11,7 @@ export type CompetitionSettingsTimeMode = 'CONFIRMED' | 'TBD';
 export type CompetitionSettingsScheduleFormItem = {
   timeMode?: CompetitionSettingsTimeMode;
   title?: string;
+  materialRange?: [Dayjs, Dayjs] | [string, string];
   timeRange?: [Dayjs, Dayjs] | [string, string];
   reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
@@ -145,14 +145,11 @@ export const getTimelineSettingsMissingFields = (
   ))) {
     appendMissingField(missingFields, '竞赛安排');
   }
+  if (confirmedSchedules.some((schedule) => !hasCompleteTimeRange(schedule.materialRange))) {
+    appendMissingField(missingFields, '提交材料时间');
+  }
   if (confirmedSchedules.some((schedule) => !hasCompleteTimeRange(schedule.reviewRange))) {
     appendMissingField(missingFields, '评审时间');
-  }
-  if (confirmedSchedules.some((schedule) => (
-    hasCompleteTimeRange(schedule.timeRange)
-      && !isScheduleAtOrAfterRegistrationEnd(schedule.timeRange, values.registrationRange)
-  ))) {
-    appendMissingField(missingFields, '竞赛开始时间不得早于报名结束时间');
   }
   return missingFields;
 };

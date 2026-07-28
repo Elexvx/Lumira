@@ -78,6 +78,7 @@ import {
 } from '@/pages/competition/competitionSettingsSave';
 import {
   buildRegistrationCompetitionFallback,
+  filterOpenRegistrationCompetitions,
   hasRegistrationCompetitionPricing,
   mergeRegistrationCompetitionOptions,
 } from '@/pages/competition/utils/registrationCompetition';
@@ -112,7 +113,6 @@ import {
   retainAvailablePaymentProvider,
 } from '@/pages/competition/utils/registrationCheckout';
 import { normalizeCompetitionDraftBasicDefaults } from '@/pages/competition/utils/competitionDraftDefaults';
-import { isScheduleAtOrAfterRegistrationEnd } from '@/pages/competition/utils/competitionTimeline';
 import { loadOptionalPreliminaryStageForm } from '@/pages/competition/utils/loadOptionalStageForm';
 import {
   formatRegistrationYearValue,
@@ -189,6 +189,7 @@ type CompetitionOrganizerFormItem = {
 type CompetitionScheduleFormItem = {
   timeMode?: CompetitionTimeMode;
   title?: string;
+  materialRange?: [Dayjs, Dayjs] | [string, string];
   timeRange?: [Dayjs, Dayjs] | [string, string];
   reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
@@ -259,6 +260,8 @@ const emptyRegistrationTeamMember = (): RegistrationTeamMemberDraft => ({
 type CompetitionJsonSchedule = {
   timeMode?: CompetitionTimeMode;
   title?: string;
+  materialSubmitStart?: string;
+  materialSubmitEnd?: string;
   start?: string;
   end?: string;
   reviewStart?: string;
@@ -584,11 +587,14 @@ const sanitizeSchedules = (schedules?: CompetitionScheduleFormItem[]): Competiti
       if (timeMode !== 'CONFIRMED') {
         return { timeMode: 'TBD' as const };
       }
+      const [materialSubmitStart, materialSubmitEnd] = item.materialRange || [];
       const [start, end] = item.timeRange || [];
       const [reviewStart, reviewEnd] = item.reviewRange || [];
       return {
         timeMode,
         title: trimOptional(item.title),
+        materialSubmitStart: formatRangeValue(materialSubmitStart),
+        materialSubmitEnd: formatRangeValue(materialSubmitEnd),
         start: formatRangeValue(start),
         end: formatRangeValue(end),
         reviewStart: formatRangeValue(reviewStart),
@@ -658,6 +664,7 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
   const schedules = parseJsonArray<CompetitionJsonSchedule>(record.scheduleJson).map((item) => ({
     timeMode: normalizeTimeMode(item.timeMode),
     title: item.title,
+    materialRange: item.timeMode === 'CONFIRMED' ? parseRange(item.materialSubmitStart, item.materialSubmitEnd) : undefined,
     timeRange: item.timeMode === 'CONFIRMED' ? parseRange(item.start, item.end) : undefined,
     reviewRange: item.timeMode === 'CONFIRMED' ? parseRange(item.reviewStart, item.reviewEnd) : undefined,
   }));
@@ -848,18 +855,6 @@ const getCompleteTimeRange = (
   return start && end ? [start, end] : undefined;
 };
 
-const isBeforeRegistrationEndDate = (
-  current: Dayjs,
-  registrationRange: CompetitionFormValues['registrationRange'],
-) => {
-  const registrationBounds = getCompleteTimeRange(registrationRange);
-  if (!current || !registrationBounds) {
-    return false;
-  }
-  const [, registrationEnd] = registrationBounds;
-  return current.isBefore(registrationEnd, 'day');
-};
-
 const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormValues>): Partial<CompetitionFormValues> => {
   if (!values) {
     return {};
@@ -870,6 +865,7 @@ const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormVal
     schedules: values.schedules?.map((schedule) => ({
       ...schedule,
       timeMode: normalizeTimeMode(schedule.timeMode),
+      materialRange: restoreDraftRangeValue(schedule.materialRange),
       timeRange: restoreDraftRangeValue(schedule.timeRange),
       reviewRange: restoreDraftRangeValue(schedule.reviewRange),
     })),
@@ -969,6 +965,7 @@ const hasCompetitionCreateDraftContent = (values: Partial<CompetitionFormValues>
       || schedules.some((schedule) => (
         normalizeTimeMode(schedule.timeMode) === 'CONFIRMED'
         || trimOptional(schedule.title)
+        || getCompleteTimeRange(schedule.materialRange)
         || getCompleteTimeRange(schedule.timeRange)
         || getCompleteTimeRange(schedule.reviewRange)
       ))
@@ -1014,7 +1011,6 @@ const CompetitionBasicFields = ({
   onDraftChange?: () => void;
 }) => {
   const schedules = Form.useWatch('schedules', form) || [];
-  const registrationRange = Form.useWatch('registrationRange', form);
 
   return (
     <>
@@ -1115,27 +1111,38 @@ const CompetitionBasicFields = ({
                           <Input maxLength={128} placeholder="例如：初赛" />
                         </Form.Item>
                         <Form.Item
+                          name={[field.name, 'materialRange']}
+                          label="提交材料时间"
+                          rules={[
+                            { required: true, message: '请选择提交材料时间' },
+                            {
+                              validator: (_, value: CompetitionScheduleFormItem['materialRange']) => (
+                                getCompleteTimeRange(value)
+                                  ? Promise.resolve()
+                                  : Promise.reject(new Error('请选择提交材料开始和结束时间'))
+                              ),
+                            },
+                          ]}
+                          className="competition-schedule-row__material-time"
+                        >
+                          <CompetitionDateTimeRangePicker />
+                        </Form.Item>
+                        <Form.Item
                           name={[field.name, 'timeRange']}
                           label="比赛时间"
                           rules={[
                             { required: true, message: '请选择比赛时间' },
                             {
-                              validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
-                                if (!getCompleteTimeRange(value)) {
-                                  return Promise.reject(new Error('请选择开始和结束时间'));
-                                }
-                                if (!getCompleteTimeRange(registrationRange)) {
-                                  return Promise.reject(new Error('请先选择报名时间'));
-                                }
-                                return isScheduleAtOrAfterRegistrationEnd(value, registrationRange)
+                              validator: (_, value: CompetitionScheduleFormItem['timeRange']) => (
+                                getCompleteTimeRange(value)
                                   ? Promise.resolve()
-                                  : Promise.reject(new Error('竞赛开始时间不得早于报名结束时间'));
-                              },
+                                  : Promise.reject(new Error('请选择比赛开始和结束时间'))
+                              ),
                             },
                           ]}
                           className="competition-schedule-row__time"
                         >
-                          <CompetitionDateTimeRangePicker disabledDate={(current) => isBeforeRegistrationEndDate(current, registrationRange)} />
+                          <CompetitionDateTimeRangePicker />
                         </Form.Item>
                         <Form.Item
                           name={[field.name, 'reviewRange']}
@@ -2516,6 +2523,13 @@ const CompetitionRegistrationPage = () => {
   const registrationMaterialValues = Form.useWatch('materials', { form, preserve: true }) as Record<string, unknown> | undefined;
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], { form, preserve: true }) || []) as RegistrationTeamMemberDraft[];
   const registrationCompetitionOptions = useMemo(
+    () => mergeRegistrationCompetitionOptions(
+      filterOpenRegistrationCompetitions(competitions),
+      registrationCompetitionFallback,
+    ),
+    [competitions, registrationCompetitionFallback],
+  );
+  const registrationCompetitionCatalog = useMemo(
     () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
     [competitions, registrationCompetitionFallback],
   );
@@ -3827,8 +3841,8 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   const competitionTitleMap = useMemo(
-    () => new Map(registrationCompetitionOptions.map((item) => [item.id, item.title || item.code])),
-    [registrationCompetitionOptions],
+    () => new Map(registrationCompetitionCatalog.map((item) => [item.id, item.title || item.code])),
+    [registrationCompetitionCatalog],
   );
   const canViewAllRegistrations = useMemo(() => {
     const matchedScopes = (initialState?.currentUser?.dataScopes || []).filter(
@@ -6519,11 +6533,41 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
   const schedules = Form.useWatch('schedules', form) || [];
-  const registrationRange = Form.useWatch('registrationRange', form);
 
   useEffect(() => {
+    let active = true;
+    const baseValues = { ...defaultCompetitionFormValues, ...recordToFormValues(competition) };
     form.resetFields();
-    form.setFieldsValue({ ...defaultCompetitionFormValues, ...recordToFormValues(competition) });
+    form.setFieldsValue(baseValues);
+    void listCompetitionStages(competition.id)
+      .then((stages) => {
+        if (!active || form.isFieldsTouched()) {
+          return;
+        }
+        const stagesByCode = new Map(stages.map((stage) => [stage.stageCode, stage]));
+        const mergedSchedules = baseValues.schedules?.map((schedule, index) => {
+          const stageCode = index === 0 ? 'PRELIMINARY' : index === 1 ? 'FINAL' : undefined;
+          const stage = stageCode ? stagesByCode.get(stageCode) : undefined;
+          if (!stage) {
+            return schedule;
+          }
+          return {
+            ...schedule,
+            materialRange: schedule.materialRange
+              || parseRange(stage.materialSubmitStart, stage.materialSubmitEnd),
+            reviewRange: schedule.reviewRange || parseRange(stage.reviewStart, stage.reviewEnd),
+          };
+        });
+        form.setFieldValue('schedules', mergedSchedules);
+      })
+      .catch((error) => {
+        if (active) {
+          showErrorMessage(error, '阶段时间加载失败');
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [competition, form]);
 
   const save = useCallback(async () => {
@@ -6559,13 +6603,16 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
         </Typography.Title>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        统一管理报名时间和各阶段竞赛安排。
+        报名时间仅控制用户报名时赛事下拉是否可选；提交材料、比赛和评审按各自时间独立开放。
       </Typography.Paragraph>
       <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
             报名时间
           </Typography.Title>
+          <Typography.Paragraph type="secondary">
+            仅用于控制赛事报名下拉的可见时间，不限制材料提交或比赛阶段。
+          </Typography.Paragraph>
           <Form.Item
             name="registrationRange"
             label="报名时间"
@@ -6617,6 +6664,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                     <div className="competition-schedule-table">
                       <div className="competition-schedule-table__head">
                         <span>阶段名称</span>
+                        <span>提交材料时间</span>
                         <span>比赛时间</span>
                         <span>评审时间</span>
                         <span>操作</span>
@@ -6627,25 +6675,34 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                             <Input maxLength={128} placeholder="例如：初赛" />
                           </Form.Item>
                           <Form.Item
+                            name={[field.name, 'materialRange']}
+                            rules={[
+                              { required: true, message: '请选择提交材料时间' },
+                              {
+                                validator: (_, value: CompetitionScheduleFormItem['materialRange']) => (
+                                  getCompleteTimeRange(value)
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('请选择提交材料开始和结束时间'))
+                                ),
+                              },
+                            ]}
+                          >
+                            <CompetitionDateTimeRangePicker />
+                          </Form.Item>
+                          <Form.Item
                             name={[field.name, 'timeRange']}
                             rules={[
                               { required: true, message: '请选择比赛时间' },
                               {
-                                validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
-                                  if (!getCompleteTimeRange(value)) {
-                                    return Promise.reject(new Error('请选择开始和结束时间'));
-                                  }
-                                  if (!getCompleteTimeRange(registrationRange)) {
-                                    return Promise.reject(new Error('请先选择报名时间'));
-                                  }
-                                  return isScheduleAtOrAfterRegistrationEnd(value, registrationRange)
+                                validator: (_, value: CompetitionScheduleFormItem['timeRange']) => (
+                                  getCompleteTimeRange(value)
                                     ? Promise.resolve()
-                                    : Promise.reject(new Error('竞赛开始时间不得早于报名结束时间'));
-                                },
+                                    : Promise.reject(new Error('请选择比赛开始和结束时间'))
+                                ),
                               },
                             ]}
                           >
-                            <CompetitionDateTimeRangePicker disabledDate={(current) => isBeforeRegistrationEndDate(current, registrationRange)} />
+                            <CompetitionDateTimeRangePicker />
                           </Form.Item>
                           <Form.Item
                             name={[field.name, 'reviewRange']}
