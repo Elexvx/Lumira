@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -291,10 +292,12 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
         assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
         assertEquals(1, env.jdbcTemplate.menuTreeQueries);
+        assertEquals(1, env.jdbcTemplate.pluginMenuQueries);
         assertEquals(1, env.jdbcTemplate.permissionCatalogQueries);
 
         assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
         assertEquals(1, env.jdbcTemplate.menuTreeQueries);
+        assertEquals(2, env.jdbcTemplate.pluginMenuQueries);
         assertEquals(2, env.jdbcTemplate.permissionCatalogQueries);
     }
 
@@ -719,6 +722,7 @@ class SystemManagementAppServiceWriteHotPathTest {
         private long menuTreeVersion = 1L;
         private int readModelVersionBumps;
         private int menuTreeQueries;
+        private int pluginMenuQueries;
         private int permissionCatalogQueries;
         private int rowMapperQueryForObjectCalls;
         private Long dictTypeId;
@@ -848,6 +852,15 @@ class SystemManagementAppServiceWriteHotPathTest {
                 return (T) dictItem;
             }
             throw new EmptyResultDataAccessException(1);
+        }
+
+        @Override
+        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            if (sql.toLowerCase().contains("from sys_plugin_menu_rel")) {
+                pluginMenuQueries += 1;
+                return List.of();
+            }
+            return List.of();
         }
 
         @Override
