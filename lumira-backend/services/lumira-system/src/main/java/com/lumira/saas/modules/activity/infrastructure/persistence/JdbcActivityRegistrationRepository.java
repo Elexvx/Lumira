@@ -33,9 +33,9 @@ public class JdbcActivityRegistrationRepository implements ActivityRegistrationR
     }
 
     @Override
-    public List<ActivityRegistrationVO> listVisible(Long userId, boolean viewAll) {
-        String ownership = viewAll ? "" : " and r.owner_user_id = ?";
-        Object[] args = viewAll ? new Object[0] : new Object[]{userId};
+    public List<ActivityRegistrationVO> listVisible(Long userId, String userUuid, boolean viewAll) {
+        String ownership = viewAll ? "" : " and r.owner_user_id = ? and r.owner_user_uuid = ?";
+        Object[] args = viewAll ? new Object[0] : new Object[]{userId, userUuid};
         return database.query(selectSql() + " where r.deleted = 0" + ownership + " order by r.submitted_at desc, r.id desc",
                 new BeanPropertyRowMapper<>(ActivityRegistrationVO.class), args);
     }

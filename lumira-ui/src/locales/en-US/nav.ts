@@ -11,6 +11,8 @@ export default {
   'nav.registration.root': 'Registration',
   'nav.competitions.root': 'Competitions',
   'nav.competitions.management': 'Competition Management',
+  'nav.competitions.registrations': 'Registration Dossiers',
+  'nav.competitions.reviewResults': 'Review Results & Appeals',
   'nav.competitions.register': 'Competition Registration',
   'nav.competitions.paymentResult': 'Payment Result',
   'nav.competitions.activityRegister': 'Activity Registration',

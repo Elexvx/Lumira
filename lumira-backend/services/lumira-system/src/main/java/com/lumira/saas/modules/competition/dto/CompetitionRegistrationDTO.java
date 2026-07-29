@@ -303,4 +303,24 @@ public final class CompetitionRegistrationDTO {
         public String getReturnUrl() { return returnUrl; }
         public void setReturnUrl(String returnUrl) { this.returnUrl = returnUrl; }
     }
+
+    public static class RegistrationExportRequest {
+        @NotNull
+        private Long competitionId;
+        @Size(max = 32)
+        private String status;
+        @Size(max = 128)
+        private String keyword;
+        @Size(max = 500)
+        private java.util.List<@NotNull Long> registrationIds;
+
+        public Long getCompetitionId() { return competitionId; }
+        public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getKeyword() { return keyword; }
+        public void setKeyword(String keyword) { this.keyword = keyword; }
+        public java.util.List<Long> getRegistrationIds() { return registrationIds; }
+        public void setRegistrationIds(java.util.List<Long> registrationIds) { this.registrationIds = registrationIds; }
+    }
 }

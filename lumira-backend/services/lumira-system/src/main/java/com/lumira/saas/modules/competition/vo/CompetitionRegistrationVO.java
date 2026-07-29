@@ -25,6 +25,8 @@ public final class CompetitionRegistrationVO {
         private String participantNo;
         private String teamName;
         private String projectTitle;
+        private Integer materialSubmissionCount;
+        private Integer materialFileCount;
         private String registrationSnapshotJson;
         private String teamSnapshotJson;
         private String projectSnapshotJson;
@@ -67,6 +69,10 @@ public final class CompetitionRegistrationVO {
         public void setTeamName(String teamName) { this.teamName = teamName; }
         public String getProjectTitle() { return projectTitle; }
         public void setProjectTitle(String projectTitle) { this.projectTitle = projectTitle; }
+        public Integer getMaterialSubmissionCount() { return materialSubmissionCount; }
+        public void setMaterialSubmissionCount(Integer materialSubmissionCount) { this.materialSubmissionCount = materialSubmissionCount; }
+        public Integer getMaterialFileCount() { return materialFileCount; }
+        public void setMaterialFileCount(Integer materialFileCount) { this.materialFileCount = materialFileCount; }
         public String getRegistrationSnapshotJson() { return registrationSnapshotJson; }
         public void setRegistrationSnapshotJson(String registrationSnapshotJson) { this.registrationSnapshotJson = registrationSnapshotJson; }
         public String getTeamSnapshotJson() { return teamSnapshotJson; }

@@ -654,6 +654,33 @@ public class FileManagementAppService {
                 sharedScope,
                 downloadCenterScope
         );
+        return readFileContent(file);
+    }
+
+    public FileContentDTO readAuthorizedBusinessFileContent(
+            CurrentUser currentUser,
+            Long fileId,
+            String referenceType,
+            Long referenceId
+    ) {
+        resolveTrustedCurrentUser(currentUser);
+        if (!"competition.registration.material".equals(referenceType)
+                || referenceId == null
+                || referenceId <= 0
+                || fileId == null
+                || fileId <= 0) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Valid business file reference is required");
+        }
+        FileObjectEntity entity = fileObjectRepository.findById(fileId);
+        if (entity == null
+                || Integer.valueOf(1).equals(entity.getDeleted())
+                || !"ENABLED".equalsIgnoreCase(entity.getStatus())) {
+            throw new BizException(ErrorCode.NOT_FOUND, "File not found");
+        }
+        return readFileContent(mapFileObject(entity));
+    }
+
+    private FileContentDTO readFileContent(FileObjectDTO file) {
         Path target = resolveFilePath(file);
         if (target == null || !Files.exists(target) || !Files.isRegularFile(target)) {
             storageMetrics.recordMissing("read", file.storageType(), Duration.ZERO);

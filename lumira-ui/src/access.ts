@@ -36,6 +36,18 @@ const COMPETITION_REGISTER_PERMISSIONS = [
   'payment:order:view',
 ];
 const ACTIVITY_REGISTER_PERMISSIONS = ['aiadc:activity:create', 'aiadc:activity:view'];
+const REVIEW_WORKBENCH_PERMISSIONS = [
+  'review:workbench:view',
+  'review:plan:manage',
+  'review:batch:create',
+  'review:assignment:manage',
+  'review:task:view',
+  'review:score:submit',
+  'review:result:aggregate',
+  'review:result:finalize',
+  'review:result:publish',
+  'review:audit:view',
+];
 const USER_CENTER_MANAGEMENT_PERMISSIONS = ['user:center:view', 'system:user:view', 'system:department:view', 'system:online-user:view', 'system:role:view'];
 
 export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: PluginAvailability[] }) {
@@ -69,11 +81,42 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitProjects = isLogin && hasPermission(permissions, 'aiadc:project:view');
   const canVisitActivities = isLogin && hasPermission(permissions, 'aiadc:activity:view');
   const canVisitCompetitions = isLogin && hasPermission(permissions, 'aiadc:competition:view');
+  const canVisitCompetitionRegistrations =
+    canVisitCompetitions && hasAnyPermission(permissions, [
+      'aiadc:registration:view',
+      'registration:dataset:view',
+      'registration:dataset:export',
+    ]);
+  const canExportCompetitionRegistrations =
+    isLogin && hasPermission(permissions, 'registration:dataset:export');
+  const canViewSensitiveCompetitionRegistrations =
+    isLogin && hasAnyPermission(permissions, [
+      'registration:dataset:view-sensitive',
+      'registration:dataset:export-sensitive',
+    ]);
+  const canExportSensitiveCompetitionRegistrations =
+    isLogin && hasPermission(permissions, 'registration:dataset:export-sensitive');
+  const canDownloadRegistrationMaterials =
+    isLogin && hasPermission(permissions, 'registration:material:download');
   const canVisitPaymentOrders = isLogin && hasPermission(permissions, 'payment:order:view');
+  const canVisitReviewWorkbench =
+    isLogin && hasAnyPermission(permissions, REVIEW_WORKBENCH_PERMISSIONS);
+  const canVisitCompetitionReviewResults =
+    isLogin && hasPermission(permissions, 'review:appeal:submit');
+  const canManageReviewAppeals =
+    isLogin && hasPermission(permissions, 'review:appeal:manage');
   const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
   const canVisitDataManagement =
-    [canVisitCompetitions, canVisitActivities, canVisitProjects, canVisitTeam, canVisitPaymentOrders, canVisitDownloadCenter].some(Boolean);
+    [
+      canVisitCompetitions,
+      canVisitCompetitionRegistrations,
+      canVisitActivities,
+      canVisitProjects,
+      canVisitTeam,
+      canVisitPaymentOrders,
+      canVisitDownloadCenter,
+    ].some(Boolean);
   const canVisitSystemSettings =
     isLogin &&
     (isSettingsAdmin ||
@@ -135,6 +178,11 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitActivitiesRoot: canVisitActivities,
     canVisitActivities,
     canVisitCompetitions,
+    canVisitCompetitionRegistrations,
+    canExportCompetitionRegistrations,
+    canViewSensitiveCompetitionRegistrations,
+    canExportSensitiveCompetitionRegistrations,
+    canDownloadRegistrationMaterials,
     canVisitCompetitionRegister,
     canVisitActivityRegister,
     canVisitPaymentOrders,
@@ -151,7 +199,13 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitCertificateRecords: isLogin && hasPermission(permissions, 'aiadc:certificate:view'),
     canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),
     canVisitExpertReview:
-      isLogin && hasAnyPermission(permissions, ['expert:view', 'workflow:approve']),
+      isLogin && (
+        hasPermission(permissions, 'expert:view')
+        || hasAnyPermission(permissions, REVIEW_WORKBENCH_PERMISSIONS)
+      ),
+    canVisitReviewWorkbench,
+    canVisitCompetitionReviewResults,
+    canManageReviewAppeals,
     canVisitWorkflow: isLogin && hasAnyPermission(permissions, ['workflow:view', 'workflow:config', 'workflow:approve']),
     canVisitWorkflowConfig: isLogin && hasPermission(permissions, 'workflow:config'),
     canVisitWorkflowTasks: isLogin && hasPermission(permissions, 'workflow:approve'),

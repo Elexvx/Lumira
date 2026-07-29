@@ -1,0 +1,11 @@
+.competition-registration-data-page__notice {
+  margin-bottom: 16px;
+}
+
+.competition-registration-data-page__detail {
+  width: 100%;
+}
+
+.competition-registration-data-page__submission + .competition-registration-data-page__submission {
+  margin-top: 12px;
+}

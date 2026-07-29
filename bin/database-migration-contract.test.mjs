@@ -114,6 +114,51 @@ test('competition registration snapshots stay in one registration row', () => {
   assert.doesNotMatch(migration, /\b(aiadc_project|team_member|sys_user)\b/i);
 });
 
+test('registration dataset and async export migration matches fresh bootstrap', () => {
+  const migration = read('deploy/migrations/V202607290001__competition_registration_datasets.sql');
+  const permissionMigration = read('deploy/migrations/V202607290002__competition_review_domain.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+  for (const marker of [
+    'competition_registration_dataset',
+    'competition_registration_dataset_row',
+    'idx_sys_export_task_module_queue',
+  ]) {
+    assert.match(migration, new RegExp(marker));
+    assert.match(baseline, new RegExp(marker));
+  }
+  for (const marker of [
+    'registration:dataset:view',
+    'registration:dataset:export',
+    'registration:material:download',
+  ]) {
+    assert.match(permissionMigration, new RegExp(marker));
+    assert.match(baseline, new RegExp(marker));
+  }
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
+test('versioned review domain migration matches fresh bootstrap', () => {
+  const migration = read('deploy/migrations/V202607290002__competition_review_domain.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+  for (const marker of [
+    'competition_review_plan',
+    'competition_review_batch',
+    'competition_review_candidate',
+    'competition_review_assignment',
+    'competition_review_sheet',
+    'competition_review_aggregate',
+    'competition_review_publication',
+    'competition_review_appeal',
+    'review:appeal:submit',
+    'review:appeal:manage',
+  ]) {
+    assert.match(migration, new RegExp(marker));
+    assert.match(baseline, new RegExp(marker));
+  }
+  assert.match(migration, /uk_competition_review_appeal_result/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
 test('seed user UIDs stay random and exact in fresh and existing databases', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const repairMigration = read('deploy/migrations/V202607260001__repair_seed_user_numeric_uids.sql');

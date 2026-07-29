@@ -340,14 +340,14 @@ describe('getAppInitialState', () => {
     expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'expert.application'))).toBe(false);
   });
 
-  it('places workflow review tasks under the expert review group', async () => {
+  it('places the independent review workbench under the expert review group', async () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
         userUuid: 'user-reviewer',
         username: 'reviewer',
         nickname: 'Reviewer',
-        permissions: ['workflow:approve'],
+        permissions: ['review:workbench:view', 'review:task:view'],
         sessionId: 'session-reviewer',
         sessionVersion: 1,
         permissionsVersion: 'permissions-reviewer',
@@ -368,7 +368,7 @@ describe('getAppInitialState', () => {
     expect(expertReviewRoot?.children?.[0]).toMatchObject({
       name: 'nav.expertReview.reviews',
       path: '/expert-review/reviews',
-      component: '@/pages/workflow/WorkflowTasksPage',
+      component: '@/pages/competition/CompetitionReviewPage',
     });
   });
 

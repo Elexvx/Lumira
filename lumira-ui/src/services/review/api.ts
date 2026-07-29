@@ -1,0 +1,172 @@
+import { request } from '@/services/common/request';
+import type {
+  ReviewAdminAssignment,
+  ReviewAggregate,
+  ReviewAppeal,
+  ReviewAssignmentResult,
+  ReviewAssignmentTask,
+  ReviewBatch,
+  ReviewBatchCreatePayload,
+  ReviewCandidate,
+  ReviewDecision,
+  ReviewPlan,
+  ReviewPlanCreatePayload,
+  ReviewPublication,
+  ReviewPublishedResult,
+  ReviewSheet,
+  ReviewSheetPayload,
+} from './types';
+
+const REVIEW_API = '/v2/reviews';
+
+export const listReviewPlans = (params: { competitionId?: number; stageId?: number } = {}) =>
+  request<ReviewPlan[]>(`${REVIEW_API}/plans`, { method: 'GET', params });
+
+export const createReviewPlan = (data: ReviewPlanCreatePayload) =>
+  request<ReviewPlan>(`${REVIEW_API}/plans`, { method: 'POST', data });
+
+export const getReviewPlan = (planId: number) =>
+  request<ReviewPlan>(`${REVIEW_API}/plans/${planId}`, { method: 'GET' });
+
+export const activateReviewPlan = (planId: number) =>
+  request<ReviewPlan>(`${REVIEW_API}/plans/${planId}/activate`, { method: 'POST' });
+
+export const listReviewBatches = (params: { planId?: number; competitionId?: number } = {}) =>
+  request<ReviewBatch[]>(`${REVIEW_API}/batches`, { method: 'GET', params });
+
+export const createReviewBatch = (data: ReviewBatchCreatePayload) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches`, { method: 'POST', data });
+
+export const getReviewBatch = (batchId: number) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches/${batchId}`, { method: 'GET' });
+
+export const freezeReviewBatch = (batchId: number, registrationIds?: number[]) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches/${batchId}/freeze`, {
+    method: 'POST',
+    data: registrationIds?.length ? { registrationIds } : {},
+  });
+
+export const listReviewCandidates = (batchId: number) =>
+  request<ReviewCandidate[]>(`${REVIEW_API}/batches/${batchId}/candidates`, { method: 'GET' });
+
+export const listReviewAssignments = (batchId: number) =>
+  request<ReviewAdminAssignment[]>(`${REVIEW_API}/batches/${batchId}/assignments`, { method: 'GET' });
+
+export const assignReviewExperts = (
+  batchId: number,
+  data: {
+    assignments: Array<{ candidateId: number; expertId: number; reviewerWeight?: number }>;
+    dueAt?: string;
+  },
+) =>
+  request<ReviewAssignmentResult>(`${REVIEW_API}/batches/${batchId}/assignments`, {
+    method: 'POST',
+    data,
+  });
+
+export const autoAssignReviewExperts = (
+  batchId: number,
+  data: { expertIds?: number[]; dueAt?: string; reviewerWeight?: number } = {},
+) =>
+  request<ReviewAssignmentResult>(`${REVIEW_API}/batches/${batchId}/auto-assign`, {
+    method: 'POST',
+    data,
+  });
+
+export const startReviewBatch = (batchId: number) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches/${batchId}/start`, { method: 'POST' });
+
+export const listMyReviewAssignments = () =>
+  request<ReviewAssignmentTask[]>(`${REVIEW_API}/assignments/mine`, { method: 'GET' });
+
+export const acceptReviewAssignment = (assignmentId: number) =>
+  request<ReviewAssignmentTask>(`${REVIEW_API}/assignments/${assignmentId}/accept`, { method: 'POST' });
+
+export const declineReviewAssignment = (assignmentId: number, reason: string) =>
+  request<ReviewAssignmentTask>(`${REVIEW_API}/assignments/${assignmentId}/decline`, {
+    method: 'POST',
+    data: { reason },
+  });
+
+export const revokeReviewAssignment = (
+  batchId: number,
+  assignmentId: number,
+  reason: string,
+) =>
+  request<ReviewAdminAssignment>(
+    `${REVIEW_API}/batches/${batchId}/assignments/${assignmentId}/revoke`,
+    { method: 'POST', data: { reason } },
+  );
+
+export const saveReviewSheetDraft = (assignmentId: number, data: ReviewSheetPayload) =>
+  request<ReviewSheet>(`${REVIEW_API}/assignments/${assignmentId}/sheet`, {
+    method: 'PUT',
+    data,
+  });
+
+export const submitReviewSheet = (assignmentId: number, data: ReviewSheetPayload) =>
+  request<ReviewSheet>(`${REVIEW_API}/assignments/${assignmentId}/submit`, {
+    method: 'POST',
+    data,
+  });
+
+export const aggregateReviewBatch = (batchId: number) =>
+  request<ReviewAggregate[]>(`${REVIEW_API}/batches/${batchId}/aggregate`, { method: 'POST' });
+
+export const listReviewAggregates = (batchId: number) =>
+  request<ReviewAggregate[]>(`${REVIEW_API}/batches/${batchId}/aggregates`, { method: 'GET' });
+
+export const decideReviewCandidate = (
+  batchId: number,
+  candidateId: number,
+  decision: ReviewDecision,
+  reason?: string,
+) =>
+  request<ReviewAggregate>(`${REVIEW_API}/batches/${batchId}/candidates/${candidateId}/decision`, {
+    method: 'PUT',
+    data: { decision, reason },
+  });
+
+export const finalizeReviewBatch = (batchId: number) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches/${batchId}/finalize`, { method: 'POST' });
+
+export const publishReviewBatch = (batchId: number) =>
+  request<ReviewPublication>(`${REVIEW_API}/batches/${batchId}/publish`, { method: 'POST' });
+
+export const reopenReviewBatchForCorrection = (batchId: number, reason: string) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches/${batchId}/correction`, {
+    method: 'POST',
+    data: { reason },
+  });
+
+export const getLatestReviewPublication = (batchId: number) =>
+  request<ReviewPublication>(`${REVIEW_API}/batches/${batchId}/publication`, { method: 'GET' });
+
+export const listMyPublishedReviewResults = () =>
+  request<ReviewPublishedResult[]>(`${REVIEW_API}/results/mine`, { method: 'GET' });
+
+export const listMyReviewAppeals = () =>
+  request<ReviewAppeal[]>(`${REVIEW_API}/appeals/mine`, { method: 'GET' });
+
+export const submitReviewAppeal = (
+  publicationId: number,
+  registrationId: number,
+  reason: string,
+) =>
+  request<ReviewAppeal>(
+    `${REVIEW_API}/publications/${publicationId}/registrations/${registrationId}/appeals`,
+    { method: 'POST', data: { reason } },
+  );
+
+export const listReviewAppeals = (params: { batchId?: number; status?: string } = {}) =>
+  request<ReviewAppeal[]>(`${REVIEW_API}/appeals`, { method: 'GET', params });
+
+export const resolveReviewAppeal = (
+  appealId: number,
+  decision: 'ACCEPTED' | 'REJECTED',
+  resolution: string,
+) =>
+  request<ReviewAppeal>(`${REVIEW_API}/appeals/${appealId}/resolution`, {
+    method: 'PUT',
+    data: { decision, resolution },
+  });

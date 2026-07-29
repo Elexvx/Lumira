@@ -5,6 +5,9 @@ import type {
   CompetitionQueryParams,
   CompetitionRecord,
   CompetitionRegistrationRecord,
+  CompetitionRegistrationExportRequest,
+  CompetitionRegistrationExportStartRecord,
+  CompetitionRegistrationExportTaskRecord,
   CompetitionConfigItem,
   CompetitionConfigSet,
   CompetitionSettingsRecord,
@@ -170,7 +173,14 @@ export const reconfirmRegistration = (id: number, data: RegistrationConfirmPaylo
     data,
   });
 
-export const listRegistrations = (params: { pageNo?: number; pageSize?: number } = {}) =>
+export const listRegistrations = (params: {
+  pageNo?: number;
+  pageSize?: number;
+  competitionId?: number;
+  status?: string;
+  keyword?: string;
+  includeSnapshots?: boolean;
+} = {}) =>
   request<PageResponse<CompetitionRegistrationRecord>>('/v2/aiadc/registrations', {
     method: 'GET',
     params,
@@ -260,4 +270,24 @@ export const listRegistrationPaymentOptions = (registrationId: number, clientTyp
 export const getRegistrationPaymentStatus = (registrationId: number) =>
   request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-status`, {
     method: 'GET',
+  });
+
+export const startCompetitionRegistrationExport = (
+  data: CompetitionRegistrationExportRequest,
+) => request<CompetitionRegistrationExportStartRecord>('/v2/aiadc/registration-exports', {
+  method: 'POST',
+  data,
+});
+
+export const startCompetitionRegistrationMaterialPackage = (
+  data: CompetitionRegistrationExportRequest,
+) => request<CompetitionRegistrationExportStartRecord>('/v2/aiadc/registration-exports/materials-package', {
+  method: 'POST',
+  data,
+});
+
+export const getCompetitionRegistrationExportTask = (taskId: number) =>
+  request<CompetitionRegistrationExportTaskRecord>(`/v2/aiadc/registration-exports/${taskId}`, {
+    method: 'GET',
+    silent: true,
   });

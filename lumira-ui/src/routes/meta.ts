@@ -290,6 +290,8 @@ const activityRoutes: BackendRouteRecord[] = [
 const competitionRouteMeta: BackendRouteMeta[] = [
   { path: '/competitions', name: 'nav.competitions.root', icon: 'TrophyOutlined', access: 'isLogin' },
   { path: '/competitions/management', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+  { path: '/competitions/registrations', name: 'nav.competitions.registrations', icon: 'TeamOutlined', access: 'canVisitCompetitionRegistrations' },
+  { path: '/competitions/review-results', name: 'nav.competitions.reviewResults', icon: 'FileSearchOutlined', access: 'canVisitCompetitionReviewResults' },
   { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
   { path: '/competitions/register/payment-result', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
   { path: '/competitions/activity-register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
@@ -326,6 +328,8 @@ const competitionRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/competitions', redirect: '/competitions/register', hideInMenu: true },
       { path: '/competitions/management', component: '@/pages/competition', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+      { path: '/competitions/registrations', component: '@/pages/competition/CompetitionRegistrationDataPage', name: 'nav.competitions.registrations', icon: 'TeamOutlined', access: 'canVisitCompetitionRegistrations' },
+      { path: '/competitions/review-results', component: '@/pages/competition/CompetitionReviewResultsPage', name: 'nav.competitions.reviewResults', icon: 'FileSearchOutlined', access: 'canVisitCompetitionReviewResults' },
       { path: '/competitions/register/payment-result', component: '@/pages/competition', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
       { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
       { path: '/competitions/activity-register', redirect: '/activities/register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
@@ -386,7 +390,7 @@ const certificateRoutes: BackendRouteRecord[] = [
 
 const expertRouteMeta: BackendRouteMeta[] = [
   { path: '/expert-review', name: 'nav.expertReview.root', icon: 'SolutionOutlined', access: 'canVisitExpertReview' },
-  { path: '/expert-review/reviews', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+  { path: '/expert-review/reviews', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewWorkbench' },
   { path: '/experts', name: 'nav.experts.root', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/management', name: 'nav.experts.management', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/experts/query', name: 'nav.experts.query', icon: 'SearchOutlined', access: 'canVisitExperts' },
@@ -401,7 +405,7 @@ const expertRoutes: BackendRouteRecord[] = [
     access: 'canVisitExpertReview',
     routes: [
       { path: '/expert-review', redirect: '/expert-review/reviews', hideInMenu: true },
-      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+      { path: '/expert-review/reviews', component: '@/pages/competition/CompetitionReviewPage', name: 'nav.expertReview.reviews', icon: 'AuditOutlined', access: 'canVisitReviewWorkbench' },
     ],
   },
   {

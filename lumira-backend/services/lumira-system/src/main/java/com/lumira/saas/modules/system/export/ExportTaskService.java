@@ -104,7 +104,25 @@ public class ExportTaskService {
     }
 
     public ExportTaskEntity createTask(CurrentUser currentUser, String moduleKey, Object request, List<String> selectedFields, long totalCount) {
-        Long userId = requireUserExportPermission(currentUser);
+        return createTask(
+                currentUser,
+                moduleKey,
+                request,
+                selectedFields,
+                totalCount,
+                PERMISSION_USER_EXPORT
+        );
+    }
+
+    public ExportTaskEntity createTask(
+            CurrentUser currentUser,
+            String moduleKey,
+            Object request,
+            List<String> selectedFields,
+            long totalCount,
+            String requiredPermission
+    ) {
+        Long userId = requireExportPermission(currentUser, requiredPermission, false);
         String normalizedModuleKey = requireSafeToken(moduleKey, "Export module key", MAX_MODULE_KEY_LENGTH, false);
         requireRequest(request, "Export request");
         List<String> normalizedSelectedFields = requireSelectedFields(selectedFields);
@@ -260,7 +278,27 @@ public class ExportTaskService {
             String tags,
             String remark
     ) {
-        Long userId = requireUserExportPermission(currentUser, true);
+        return uploadExportFileFromTrustedSnapshot(
+                currentUser,
+                content,
+                fileName,
+                category,
+                tags,
+                remark,
+                PERMISSION_USER_EXPORT
+        );
+    }
+
+    public FileObjectDTO uploadExportFileFromTrustedSnapshot(
+            CurrentUser currentUser,
+            byte[] content,
+            String fileName,
+            String category,
+            String tags,
+            String remark,
+            String requiredPermission
+    ) {
+        Long userId = requireExportPermission(currentUser, requiredPermission, true);
         if (content == null || content.length == 0) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Export file content is required");
         }
@@ -283,7 +321,11 @@ public class ExportTaskService {
     }
 
     public ExportVO.ExportTaskVO getTask(CurrentUser currentUser, Long taskId) {
-        Long userId = requireUserExportPermission(currentUser);
+        return getTask(currentUser, taskId, PERMISSION_USER_EXPORT);
+    }
+
+    public ExportVO.ExportTaskVO getTask(CurrentUser currentUser, Long taskId, String requiredPermission) {
+        Long userId = requireExportPermission(currentUser, requiredPermission, false);
         requirePositiveId(taskId, "Export task id");
         ExportTaskEntity entity = exportTaskMapper.selectOne(new LambdaQueryWrapper<ExportTaskEntity>()
                 .eq(ExportTaskEntity::getId, taskId)
@@ -327,10 +369,24 @@ public class ExportTaskService {
     }
 
     private Long requireUserExportPermission(CurrentUser currentUser, boolean bypassSessionAuthentication) {
+        return requireExportPermission(currentUser, PERMISSION_USER_EXPORT, bypassSessionAuthentication);
+    }
+
+    private Long requireExportPermission(
+            CurrentUser currentUser,
+            String requiredPermission,
+            boolean bypassSessionAuthentication
+    ) {
+        String normalizedPermission = requireSafeToken(
+                requiredPermission,
+                "Export permission",
+                MAX_SELECTED_FIELD_LENGTH,
+                false
+        );
         Long userId = currentUserId(currentUser, bypassSessionAuthentication);
         Set<String> permissions = trustedPermissions(currentUser, bypassSessionAuthentication);
-        if (!permissions.contains("*") && !permissions.contains(PERMISSION_USER_EXPORT)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + PERMISSION_USER_EXPORT);
+        if (!permissions.contains("*") && !permissions.contains(normalizedPermission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + normalizedPermission);
         }
         return userId;
     }

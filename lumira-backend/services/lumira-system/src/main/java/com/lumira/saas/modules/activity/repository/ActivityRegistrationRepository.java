@@ -6,5 +6,5 @@ import java.util.List;
 
 public interface ActivityRegistrationRepository {
     ActivityRegistrationVO create(Long userId, String userUuid, String username, ActivityRegistrationDTO.CreateRequest request);
-    List<ActivityRegistrationVO> listVisible(Long userId, boolean viewAll);
+    List<ActivityRegistrationVO> listVisible(Long userId, String userUuid, boolean viewAll);
 }

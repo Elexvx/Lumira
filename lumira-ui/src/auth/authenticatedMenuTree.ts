@@ -46,10 +46,10 @@ const EXPERT_REVIEW_APPLICATION_MENUS: BootstrapMenuNode[] = [
     menuCode: 'expert.review.tasks',
     name: 'nav.expertReview.reviews',
     path: '/expert-review/reviews',
-    component: '@/pages/workflow/WorkflowTasksPage',
+    component: '@/pages/competition/CompetitionReviewPage',
     icon: 'AuditOutlined',
     sortNo: 1,
-    access: 'canVisitWorkflowTasks',
+    access: 'canVisitReviewWorkbench',
   },
   {
     id: -1077,
@@ -86,6 +86,17 @@ const REGISTRATION_APPLICATION_MENUS: BootstrapMenuNode[] = [
     icon: 'CalendarOutlined',
     sortNo: 2,
     access: 'canVisitActivityRegister',
+  },
+  {
+    id: -1074,
+    parentId: -1069,
+    menuCode: 'competition.review-results',
+    name: 'nav.competitions.reviewResults',
+    path: '/competitions/review-results',
+    component: '@/pages/competition/CompetitionReviewResultsPage',
+    icon: 'FileSearchOutlined',
+    sortNo: 3,
+    access: 'canVisitCompetitionReviewResults',
   },
 ];
 

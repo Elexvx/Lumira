@@ -11,6 +11,8 @@ export default {
   'nav.registration.root': '报名',
   'nav.competitions.root': '赛事',
   'nav.competitions.management': '赛事管理',
+  'nav.competitions.registrations': '报名团队资料',
+  'nav.competitions.reviewResults': '评审结果与申诉',
   'nav.competitions.register': '赛事报名',
   'nav.competitions.paymentResult': '支付结果',
   'nav.competitions.activityRegister': '活动报名',

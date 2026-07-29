@@ -151,6 +151,30 @@ public class FileInternalClientConfiguration {
         }
 
         @Override
+        public FileContentDTO readFileContentForAuthorizedBusinessReference(
+                Long fileId,
+                Long userId,
+                String userUuid,
+                String username,
+                String referenceType,
+                Long referenceId,
+                Long simulatedRoleId
+        ) {
+            return restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/internal/files/business-reference-content")
+                            .queryParam("fileId", fileId)
+                            .queryParam("userId", userId)
+                            .queryParam("userUuid", userUuid)
+                            .queryParam("username", username)
+                            .queryParam("referenceType", referenceType)
+                            .queryParam("referenceId", referenceId)
+                            .queryParamIfPresent("simulatedRoleId", java.util.Optional.ofNullable(simulatedRoleId))
+                            .build())
+                    .retrieve()
+                    .body(FileContentDTO.class);
+        }
+
+        @Override
         public FileObjectDTO getFileForUser(
                 Long fileId,
                 Long userId,

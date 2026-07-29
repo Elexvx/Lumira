@@ -95,6 +95,28 @@ public class InternalFileController {
         return fileInternalApiService.readFileContentForUser(fileId, userId, userUuid, username, sharedScope, simulatedRoleId);
     }
 
+    @GetMapping("/business-reference-content")
+    public FileContentDTO readFileContentForAuthorizedBusinessReference(
+            @RequestParam("fileId") Long fileId,
+            @RequestParam("userId") Long userId,
+            @RequestParam("userUuid") String userUuid,
+            @RequestParam("username") String username,
+            @RequestParam("referenceType") String referenceType,
+            @RequestParam("referenceId") Long referenceId,
+            @RequestParam(name = "simulatedRoleId", required = false) Long simulatedRoleId
+    ) {
+        requireInternalServicePrincipal();
+        return fileInternalApiService.readFileContentForAuthorizedBusinessReference(
+                fileId,
+                userId,
+                userUuid,
+                username,
+                referenceType,
+                referenceId,
+                simulatedRoleId
+        );
+    }
+
     @GetMapping("/artifacts")
     public FileProcessingArtifactDTO readProcessingArtifactForUser(
             @RequestParam("fileId") Long fileId,

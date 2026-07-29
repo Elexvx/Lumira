@@ -1097,7 +1097,8 @@ CREATE TABLE `sys_export_task` (
   KEY `idx_sys_export_task_creator_uuid` (`created_by_uuid`,`created_at`),
   KEY `idx_sys_export_task_creator` (`created_by`,`created_at`),
   KEY `idx_sys_export_task_status` (`status`,`created_at`),
-  KEY `idx_sys_export_task_claim_token` (`claim_token`)
+  KEY `idx_sys_export_task_claim_token` (`claim_token`),
+  KEY `idx_sys_export_task_module_queue` (`module_key`,`deleted`,`status`,`claim_expires_at`,`created_at`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `sys_localization_entry` (
@@ -1835,6 +1836,25 @@ CREATE TABLE `aiadc_competition` (
   KEY `idx_aiadc_competition_featured` (`featured`,`deleted`,`sort`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `competition_registration_dataset` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_id` bigint NOT NULL,
+  `dataset_code` varchar(96) NOT NULL,
+  `dataset_name` varchar(255) NOT NULL,
+  `schema_json` longtext,
+  `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_registration_dataset_competition` (`competition_id`,`deleted`),
+  UNIQUE KEY `uk_competition_registration_dataset_code` (`dataset_code`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `competition_registration` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `registration_no` varchar(64) NOT NULL,
@@ -1872,6 +1892,25 @@ CREATE TABLE `competition_registration` (
   KEY `idx_competition_registration_competition` (`competition_id`,`status`,`deleted`),
   KEY `idx_competition_registration_export` (`competition_id`,`deleted`,`id`),
   KEY `idx_competition_registration_payment` (`payment_order_no`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_registration_dataset_row` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `dataset_id` bigint NOT NULL,
+  `registration_id` bigint NOT NULL,
+  `owner_user_id` bigint NOT NULL,
+  `owner_user_uuid` char(36) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_registration_dataset_row` (`registration_id`,`deleted`),
+  KEY `idx_competition_registration_dataset_rows` (`dataset_id`,`deleted`,`registration_id`),
+  KEY `idx_competition_registration_dataset_owner` (`dataset_id`,`owner_user_id`,`owner_user_uuid`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `competition_payment_order_task` (
@@ -2142,6 +2181,283 @@ CREATE TABLE `competition_stage_review_result` (
   UNIQUE KEY `uk_competition_stage_review_result` (`stage_id`,`registration_id`,`deleted`),
   KEY `idx_competition_stage_review_result_rank` (`competition_id`,`stage_id`,`decision`,`score`,`deleted`),
   KEY `idx_competition_stage_review_result_registration` (`registration_id`,`published_at`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_plan` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_id` bigint NOT NULL,
+  `stage_id` bigint NOT NULL,
+  `plan_name` varchar(255) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `blind_mode` varchar(32) NOT NULL DEFAULT 'NONE',
+  `required_reviewer_count` int NOT NULL DEFAULT '1',
+  `minimum_submitted_count` int NOT NULL DEFAULT '1',
+  `aggregate_method` varchar(32) NOT NULL DEFAULT 'AVERAGE',
+  `score_scale` decimal(10,2) NOT NULL DEFAULT '100.00',
+  `trim_highest_count` int NOT NULL DEFAULT '0',
+  `trim_lowest_count` int NOT NULL DEFAULT '0',
+  `criteria_version_id` bigint DEFAULT NULL,
+  `version` int NOT NULL DEFAULT '1',
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_plan_stage` (`competition_id`,`stage_id`,`deleted`),
+  KEY `idx_competition_review_plan_status` (`status`,`deleted`,`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_criteria_version` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `plan_id` bigint NOT NULL,
+  `version_no` int NOT NULL,
+  `version_name` varchar(255) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `total_weight` decimal(10,4) NOT NULL DEFAULT '1.0000',
+  `content_hash` char(64) DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_criteria_version` (`plan_id`,`version_no`,`deleted`),
+  KEY `idx_competition_review_criteria_status` (`plan_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_criterion` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `criteria_version_id` bigint NOT NULL,
+  `criterion_code` varchar(64) NOT NULL,
+  `criterion_name` varchar(255) NOT NULL,
+  `description` varchar(2000) DEFAULT NULL,
+  `weight` decimal(10,4) NOT NULL,
+  `maximum_score` decimal(10,2) NOT NULL,
+  `required` tinyint NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_criterion_code` (`criteria_version_id`,`criterion_code`,`deleted`),
+  KEY `idx_competition_review_criterion_sort` (`criteria_version_id`,`deleted`,`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_batch` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `plan_id` bigint NOT NULL,
+  `competition_id` bigint NOT NULL,
+  `stage_id` bigint NOT NULL,
+  `criteria_version_id` bigint NOT NULL,
+  `batch_no` varchar(64) NOT NULL,
+  `batch_name` varchar(255) NOT NULL,
+  `batch_type` varchar(32) NOT NULL DEFAULT 'STANDARD',
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `assignment_strategy` varchar(32) NOT NULL DEFAULT 'MANUAL',
+  `minimum_reviewer_count` int NOT NULL DEFAULT '1',
+  `candidate_count` int NOT NULL DEFAULT '0',
+  `freeze_token` char(36) DEFAULT NULL,
+  `frozen_at` datetime DEFAULT NULL,
+  `review_deadline` datetime DEFAULT NULL,
+  `finalized_at` datetime DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `version` int NOT NULL DEFAULT '1',
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_batch_no` (`batch_no`,`deleted`),
+  KEY `idx_competition_review_batch_plan` (`plan_id`,`status`,`deleted`,`created_at`),
+  KEY `idx_competition_review_batch_stage` (`competition_id`,`stage_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_candidate` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `registration_id` bigint NOT NULL,
+  `blind_code` varchar(64) DEFAULT NULL,
+  `snapshot_json` longtext NOT NULL,
+  `review_snapshot_json` longtext NOT NULL,
+  `snapshot_hash` char(64) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'FROZEN',
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_candidate` (`batch_id`,`registration_id`,`deleted`),
+  UNIQUE KEY `uk_competition_review_blind_code` (`batch_id`,`blind_code`,`deleted`),
+  KEY `idx_competition_review_candidate_status` (`batch_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_assignment` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `candidate_id` bigint NOT NULL,
+  `expert_id` bigint NOT NULL,
+  `expert_user_id` bigint DEFAULT NULL,
+  `expert_user_uuid` char(36) DEFAULT NULL,
+  `reviewer_weight` decimal(10,4) NOT NULL DEFAULT '1.0000',
+  `status` varchar(32) NOT NULL DEFAULT 'ASSIGNED',
+  `due_at` datetime DEFAULT NULL,
+  `accepted_at` datetime DEFAULT NULL,
+  `declined_at` datetime DEFAULT NULL,
+  `decline_reason` varchar(1000) DEFAULT NULL,
+  `expired_at` datetime DEFAULT NULL,
+  `revoked_at` datetime DEFAULT NULL,
+  `revoke_reason` varchar(1000) DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `reassigned_from_id` bigint DEFAULT NULL,
+  `conflict_reason` varchar(1000) DEFAULT NULL,
+  `version` int NOT NULL DEFAULT '1',
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_assignment` (`candidate_id`,`expert_id`,`deleted`),
+  KEY `idx_competition_review_assignment_expert` (`expert_user_id`,`expert_user_uuid`,`status`,`deleted`,`due_at`),
+  KEY `idx_competition_review_assignment_batch` (`batch_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_sheet` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `assignment_id` bigint NOT NULL,
+  `batch_id` bigint NOT NULL,
+  `candidate_id` bigint NOT NULL,
+  `expert_id` bigint NOT NULL,
+  `version_no` int NOT NULL DEFAULT '1',
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `total_score` decimal(12,4) DEFAULT NULL,
+  `review_comment` varchar(4000) DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `corrected_from_id` bigint DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_sheet_version` (`assignment_id`,`version_no`,`deleted`),
+  KEY `idx_competition_review_sheet_candidate` (`batch_id`,`candidate_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_score_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `sheet_id` bigint NOT NULL,
+  `criterion_id` bigint NOT NULL,
+  `score` decimal(12,4) NOT NULL,
+  `comment` varchar(2000) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_score_item` (`sheet_id`,`criterion_id`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_aggregate` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `candidate_id` bigint NOT NULL,
+  `aggregate_score` decimal(12,4) DEFAULT NULL,
+  `minimum_score` decimal(12,4) DEFAULT NULL,
+  `maximum_score` decimal(12,4) DEFAULT NULL,
+  `score_stddev` decimal(12,4) DEFAULT NULL,
+  `submitted_reviewer_count` int NOT NULL DEFAULT '0',
+  `valid_reviewer_count` int NOT NULL DEFAULT '0',
+  `rank_no` int DEFAULT NULL,
+  `decision` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `decision_reason` varchar(2000) DEFAULT NULL,
+  `decided_by` bigint DEFAULT NULL,
+  `decided_by_uuid` char(36) DEFAULT NULL,
+  `decided_at` datetime DEFAULT NULL,
+  `anomaly_flags_json` longtext,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `calculated_at` datetime DEFAULT NULL,
+  `finalized_at` datetime DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_aggregate` (`batch_id`,`candidate_id`,`deleted`),
+  KEY `idx_competition_review_aggregate_rank` (`batch_id`,`status`,`deleted`,`rank_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_publication` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `publication_version` int NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `payload_json` longtext NOT NULL,
+  `payload_hash` char(64) NOT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `revoked_at` datetime DEFAULT NULL,
+  `revoke_reason` varchar(1000) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_publication` (`batch_id`,`publication_version`,`deleted`),
+  KEY `idx_competition_review_publication_status` (`batch_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_appeal` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `publication_id` bigint NOT NULL,
+  `candidate_id` bigint NOT NULL,
+  `registration_id` bigint NOT NULL,
+  `appeal_no` varchar(64) NOT NULL,
+  `appeal_reason` varchar(4000) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'SUBMITTED',
+  `resolution` varchar(4000) DEFAULT NULL,
+  `resolved_by` bigint DEFAULT NULL,
+  `resolved_by_uuid` char(36) DEFAULT NULL,
+  `resolved_at` datetime DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_appeal_no` (`appeal_no`,`deleted`),
+  UNIQUE KEY `uk_competition_review_appeal_result` (`publication_id`,`candidate_id`,`deleted`),
+  KEY `idx_competition_review_appeal_registration` (`registration_id`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `competition_config_item_template` (
@@ -3058,6 +3374,23 @@ VALUES
     ('aiadc:material:submit', '提交报名材料', 'aiadc', 'CORE', NULL, 0, 0, 0),
     ('aiadc:stage:view', '查看赛事阶段', 'aiadc', 'CORE', NULL, 0, 0, 0),
     ('aiadc:stage:manage', '管理赛事阶段', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('registration:dataset:view', '查看赛事报名数据集', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('registration:dataset:view-sensitive', '查看赛事报名敏感数据', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('registration:dataset:export', '导出赛事报名数据集', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('registration:dataset:export-sensitive', '导出赛事报名敏感数据', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('registration:material:download', '下载赛事报名材料', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('review:workbench:view', '访问评审工作台', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:plan:manage', '管理评审方案', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:batch:create', '创建评审批次', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:assignment:manage', '管理评审任务分配', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:task:view', '查看评审任务', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:score:submit', '提交评审评分', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:result:aggregate', '汇总评审结果', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:result:finalize', '终审确认评审结果', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:result:publish', '发布评审结果', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:appeal:submit', '提交评审结果申诉', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:appeal:manage', '处理评审结果申诉', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:audit:view', '查看评审审计记录', 'review', 'CORE', NULL, 0, 0, 0),
     ('aiadc:certificate-template:view', '查看证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
     ('aiadc:certificate-template:create', '新建证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
     ('aiadc:certificate-template:update', '编辑证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
@@ -3233,8 +3566,10 @@ VALUES
     (-1069, 0, 'registration.root', '报名', 'CATALOG', '/registration', 'redirect:/competitions/register', 'FormOutlined', 4, NULL, 'ENABLED', 0, 0, 0),
     (-1070, 0, 'competition.root', '赛事', 'CATALOG', '/competitions', 'redirect:/competitions/register', 'TrophyOutlined', 5, NULL, 'ENABLED', 0, 0, 0),
     (-1071, -1100, 'competition.management', '赛事管理', 'MENU', '/competitions/management', '@/pages/competition', 'TrophyOutlined', 1, 'aiadc:competition:view', 'ENABLED', 0, 0, 0),
+    (-1112, -1100, 'competition.registrations', '报名团队资料', 'MENU', '/competitions/registrations', '@/pages/competition/CompetitionRegistrationDataPage', 'TeamOutlined', 2, 'aiadc:registration:view', 'ENABLED', 0, 0, 0),
     (-1075, -1069, 'competition.registration', '赛事报名', 'MENU', '/competitions/register', '@/pages/competition', 'FormOutlined', 1, NULL, 'ENABLED', 0, 0, 0),
     (-1076, -1069, 'activity.registration', '活动报名', 'MENU', '/activities/register', '@/pages/competition', 'CalendarOutlined', 2, NULL, 'ENABLED', 0, 0, 0),
+    (-1074, -1069, 'competition.review-results', '评审结果与申诉', 'MENU', '/competitions/review-results', '@/pages/competition/CompetitionReviewResultsPage', 'FileSearchOutlined', 3, 'review:appeal:submit', 'ENABLED', 0, 0, 0),
     (-1077, -1070, 'expert.application', '专家申请', 'MENU', '/competitions/expert-apply', '@/pages/competition', 'SolutionOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
     (-1091, 0, 'project.root', '项目', 'CATALOG', '/projects', 'redirect:/dashboard/home', 'ProjectOutlined', 92, NULL, 'DISABLED', 0, 0, 1),
     (-1092, -1100, 'project.management', '项目管理', 'MENU', '/projects/management', 'redirect:/dashboard/home', 'ProjectOutlined', 3, 'aiadc:project:view', 'DISABLED', 0, 0, 1),
@@ -3265,6 +3600,8 @@ VALUES
     (-1062, -1061, 'expert.management.create', '创建专家', 'BUTTON', NULL, NULL, NULL, 1, 'expert:create', 'ENABLED', 0, 0, 0),
     (-1063, -1061, 'expert.management.update', '编辑专家', 'BUTTON', NULL, NULL, NULL, 2, 'expert:update', 'ENABLED', 0, 0, 0),
     (-1064, -1061, 'expert.management.delete', '删除专家', 'BUTTON', NULL, NULL, NULL, 3, 'expert:delete', 'ENABLED', 0, 0, 0),
+    (-1068, 0, 'expert.review.root', '专家与评审', 'CATALOG', '/expert-review', 'redirect:/expert-review/reviews', 'SolutionOutlined', 8, NULL, 'ENABLED', 0, 0, 0),
+    (-1078, -1068, 'expert.review.tasks', '评审工作台', 'MENU', '/expert-review/reviews', '@/pages/competition/CompetitionReviewPage', 'AuditOutlined', 1, 'review:workbench:view', 'ENABLED', 0, 0, 0),
     (-957, 0, 'team.root', '团队', 'CATALOG', '/team', 'redirect:/dashboard/home', 'TeamOutlined', 93, 'team:view', 'DISABLED', 0, 0, 1),
     (-1040, -1100, 'team.management', '团队管理', 'MENU', '/team/management', 'redirect:/dashboard/home', 'TeamOutlined', 4, 'team:view', 'DISABLED', 0, 0, 1),
     (-1050, -1101, 'team.search', '团队查询', 'MENU', '/team/search', 'redirect:/dashboard/home', 'SearchOutlined', 1, 'team:view', 'DISABLED', 0, 0, 1),
@@ -3401,7 +3738,8 @@ WHERE p.`deleted` = 0
       'aiadc:activity:create',
       'aiadc:material:view',
       'aiadc:material:submit',
-      'aiadc:stage:view'
+      'aiadc:stage:view',
+      'review:appeal:submit'
   )
 ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
@@ -3413,7 +3751,10 @@ FROM `sys_permission` p
 WHERE p.`deleted` = 0
   AND p.`permission_key` IN (
       'dashboard:view',
-      'expert:view'
+      'expert:view',
+      'review:workbench:view',
+      'review:task:view',
+      'review:score:submit'
   )
 ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),

@@ -20,6 +20,7 @@ run() {
 load_env_file() {
   local file="$1"
   while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
     [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
     [[ "${line}" != *=* ]] && continue
     local key="${line%%=*}"

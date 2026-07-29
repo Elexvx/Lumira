@@ -26,4 +26,22 @@ describe('route meta', () => {
     expect(realPageRouteMetaMap.has('/activities/search')).toBe(false);
     expect(realPageRouteMetaMap.has('/payments/status')).toBe(false);
   });
+
+  it('registers the competition registration dossier as a real management page', () => {
+    expect(resolveCanonicalRoutePath('/competitions/registrations')).toBe('/competitions/registrations');
+    expect(realPageRouteMetaMap.get('/competitions/registrations')?.access)
+      .toBe('canVisitCompetitionRegistrations');
+  });
+
+  it('registers participant review results separately from the expert workbench', () => {
+    expect(resolveCanonicalRoutePath('/competitions/review-results'))
+      .toBe('/competitions/review-results');
+    expect(realPageRouteMetaMap.get('/competitions/review-results')?.access)
+      .toBe('canVisitCompetitionReviewResults');
+  });
+
+  it('registers the review workbench independently from workflow approvals', () => {
+    expect(realPageRouteMetaMap.get('/expert-review/reviews')?.access)
+      .toBe('canVisitReviewWorkbench');
+  });
 });

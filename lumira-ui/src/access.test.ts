@@ -193,6 +193,91 @@ describe('access', () => {
     expect(result.canVisitDownloadCenter).toBe(true);
   });
 
+  it('exposes registration dossiers only to competition managers with registration read permission', () => {
+    const competitionOnly = access({ currentUser: userWithPermissions(['aiadc:competition:view']) });
+    const registrationOnly = access({ currentUser: userWithPermissions(['aiadc:registration:view']) });
+    const manager = access({
+      currentUser: userWithPermissions(['aiadc:competition:view', 'aiadc:registration:view']),
+    });
+
+    expect(competitionOnly.canVisitCompetitionRegistrations).toBe(false);
+    expect(registrationOnly.canVisitCompetitionRegistrations).toBe(false);
+    expect(manager.canVisitCompetitionRegistrations).toBe(true);
+    expect(manager.canVisitDataManagement).toBe(true);
+  });
+
+  it('separates dossier viewing, dataset export, and material download permissions', () => {
+    const exporter = access({
+      currentUser: userWithPermissions([
+        'aiadc:competition:view',
+        'registration:dataset:export',
+      ]),
+    });
+    const materialReader = access({
+      currentUser: userWithPermissions(['registration:material:download']),
+    });
+
+    expect(exporter.canVisitCompetitionRegistrations).toBe(true);
+    expect(exporter.canExportCompetitionRegistrations).toBe(true);
+    expect(exporter.canExportSensitiveCompetitionRegistrations).toBe(false);
+    expect(exporter.canDownloadRegistrationMaterials).toBe(false);
+    expect(materialReader.canExportCompetitionRegistrations).toBe(false);
+    expect(materialReader.canDownloadRegistrationMaterials).toBe(true);
+  });
+
+  it('keeps sensitive dossier viewing and export behind dedicated permissions', () => {
+    const viewer = access({
+      currentUser: userWithPermissions(['registration:dataset:view-sensitive']),
+    });
+    const exporter = access({
+      currentUser: userWithPermissions(['registration:dataset:export-sensitive']),
+    });
+
+    expect(viewer.canViewSensitiveCompetitionRegistrations).toBe(true);
+    expect(viewer.canExportSensitiveCompetitionRegistrations).toBe(false);
+    expect(exporter.canViewSensitiveCompetitionRegistrations).toBe(true);
+    expect(exporter.canExportSensitiveCompetitionRegistrations).toBe(true);
+  });
+
+  it('exposes the review workbench through review permissions without workflow approval', () => {
+    const expert = access({
+      currentUser: userWithPermissions([
+        'review:workbench:view',
+        'review:task:view',
+        'review:score:submit',
+      ]),
+    });
+    const reviewManager = access({
+      currentUser: userWithPermissions([
+        'review:plan:manage',
+        'review:batch:create',
+      ]),
+    });
+    const workflowApprover = access({
+      currentUser: userWithPermissions(['workflow:approve']),
+    });
+
+    expect(expert.canVisitExpertReview).toBe(true);
+    expect(expert.canVisitReviewWorkbench).toBe(true);
+    expect(expert.canVisitWorkflowTasks).toBe(false);
+    expect(reviewManager.canVisitReviewWorkbench).toBe(true);
+    expect(workflowApprover.canVisitReviewWorkbench).toBe(false);
+  });
+
+  it('keeps participant appeal access separate from the expert review workbench', () => {
+    const participant = access({
+      currentUser: userWithPermissions(['review:appeal:submit']),
+    });
+    const appealManager = access({
+      currentUser: userWithPermissions(['review:appeal:manage']),
+    });
+
+    expect(participant.canVisitCompetitionReviewResults).toBe(true);
+    expect(participant.canVisitReviewWorkbench).toBe(false);
+    expect(appealManager.canManageReviewAppeals).toBe(true);
+    expect(appealManager.canVisitCompetitionReviewResults).toBe(false);
+  });
+
   it('updates visible settings pages when role permissions are adjusted', () => {
     const beforeAdjustment = access({ currentUser: userWithPermissions(['system:menu:view']) });
     const afterAdjustment = access({

@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.competition.controller;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
@@ -29,7 +31,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,12 +55,14 @@ public class CompetitionRegistrationV2Controller {
     private static final String STAGE_MANAGE = "aiadc:stage:manage";
     private static final String PAYMENT_ORDER_VIEW = "payment:order:view";
     private static final String STATUS_ENABLED = "ENABLED";
+    private static final String MATERIAL_DOWNLOAD = "registration:material:download";
 
     private final CompetitionRegistrationAppService registrationAppService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
+    private final FileInternalApi fileInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
 
@@ -62,7 +71,7 @@ public class CompetitionRegistrationV2Controller {
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
-        this(registrationAppService, securityContextFacade, permissionGuard, null, null, null, false);
+        this(registrationAppService, securityContextFacade, permissionGuard, null, null, null, null, false);
     }
 
     public CompetitionRegistrationV2Controller(
@@ -71,7 +80,7 @@ public class CompetitionRegistrationV2Controller {
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(registrationAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null, false);
+        this(registrationAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null, null, false);
     }
 
     public CompetitionRegistrationV2Controller(
@@ -81,7 +90,27 @@ public class CompetitionRegistrationV2Controller {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(registrationAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, sessionAuthenticationService, false);
+        this(registrationAppService, securityContextFacade, permissionGuard, permissionSnapshotService, null, null, sessionAuthenticationService, false);
+    }
+
+    public CompetitionRegistrationV2Controller(
+            CompetitionRegistrationAppService registrationAppService,
+            SecurityContextFacade securityContextFacade,
+            PermissionGuard permissionGuard,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(
+                registrationAppService,
+                securityContextFacade,
+                permissionGuard,
+                permissionSnapshotService,
+                systemInternalApi,
+                null,
+                sessionAuthenticationService,
+                true
+        );
     }
 
     @Autowired
@@ -91,9 +120,19 @@ public class CompetitionRegistrationV2Controller {
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
+            FileInternalApi fileInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(registrationAppService, securityContextFacade, permissionGuard, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(
+                registrationAppService,
+                securityContextFacade,
+                permissionGuard,
+                permissionSnapshotService,
+                systemInternalApi,
+                fileInternalApi,
+                sessionAuthenticationService,
+                true
+        );
     }
 
     private CompetitionRegistrationV2Controller(
@@ -102,6 +141,7 @@ public class CompetitionRegistrationV2Controller {
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
+            FileInternalApi fileInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
@@ -110,6 +150,7 @@ public class CompetitionRegistrationV2Controller {
         this.permissionGuard = permissionGuard;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
+        this.fileInternalApi = fileInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
@@ -117,13 +158,32 @@ public class CompetitionRegistrationV2Controller {
     @GetMapping("/registrations")
     public ApiResponse<PageResponse<CompetitionRegistrationVO.Registration>> registrations(
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
-            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
+            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize,
+            @RequestParam(name = "competitionId", required = false) Long competitionId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "includeSnapshots", defaultValue = "false") boolean includeSnapshots
     ) {
         CurrentUser currentUser = requireRegistrationReadAccess();
         return ApiResponse.success(
-                registrationAppService.listRegistrations(currentUser, pageNo, pageSize),
+                registrationAppService.listRegistrations(
+                        currentUser,
+                        pageNo,
+                        pageSize,
+                        competitionId,
+                        status,
+                        keyword,
+                        includeSnapshots
+                ),
                 TraceContext.getRequestId()
         );
+    }
+
+    public ApiResponse<PageResponse<CompetitionRegistrationVO.Registration>> registrations(
+            long pageNo,
+            long pageSize
+    ) {
+        return registrations(pageNo, pageSize, null, null, null, false);
     }
 
     @GetMapping("/payments")
@@ -213,6 +273,51 @@ public class CompetitionRegistrationV2Controller {
     public ApiResponse<List<CompetitionRegistrationVO.MaterialSubmission>> materials(@PathVariable("id") Long id) {
         CurrentUser currentUser = requireRegistrationReadAccess();
         return ApiResponse.success(registrationAppService.listMaterials(currentUser, id), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/registrations/{registrationId}/materials/files/{fileId}/download")
+    public ResponseEntity<byte[]> downloadMaterialFile(
+            @PathVariable("registrationId") Long registrationId,
+            @PathVariable("fileId") Long fileId
+    ) {
+        CurrentUser currentUser = require(MATERIAL_DOWNLOAD);
+        registrationAppService.requireMaterialFileAccess(currentUser, registrationId, fileId);
+        if (fileInternalApi == null) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "File service is unavailable");
+        }
+        FileContentDTO file = fileInternalApi.readFileContentForAuthorizedBusinessReference(
+                fileId,
+                currentUser.getUserId(),
+                currentUser.getUserUuid(),
+                currentUser.getUsername(),
+                "competition.registration.material",
+                registrationId,
+                currentUser.getSimulatedRoleId()
+        );
+        if (file == null || file.content() == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Registration material file not found");
+        }
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (StringUtils.hasText(file.mimeType())) {
+            try {
+                mediaType = MediaType.parseMediaType(file.mimeType());
+            } catch (RuntimeException ignored) {
+                mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            }
+        }
+        String filename = StringUtils.hasText(file.originalFileName())
+                ? file.originalFileName()
+                : "material-" + fileId;
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString()
+                )
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentLength(file.content().length)
+                .contentType(mediaType)
+                .body(file.content());
     }
 
     @PostMapping("/registrations/{id}/payment-order")

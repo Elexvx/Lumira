@@ -196,6 +196,8 @@ export interface CompetitionRegistrationRecord {
   participantNo?: string | null;
   teamName?: string | null;
   projectTitle?: string | null;
+  materialSubmissionCount?: number | null;
+  materialFileCount?: number | null;
   registrationSnapshotJson?: string | null;
   teamSnapshotJson?: string | null;
   projectSnapshotJson?: string | null;
@@ -310,4 +312,32 @@ export interface CompetitionMaterialSubmissionRecord {
   submittedAt?: string | null;
   lockedAt?: string | null;
   values: CompetitionMaterialValueRecord[];
+}
+
+export interface CompetitionRegistrationExportRequest {
+  competitionId: number;
+  status?: string;
+  keyword?: string;
+  registrationIds?: number[];
+}
+
+export interface CompetitionRegistrationExportStartRecord {
+  mode: 'ASYNC';
+  taskId: number;
+  fileName: string;
+  totalCount: number;
+}
+
+export interface CompetitionRegistrationExportTaskRecord {
+  id: number;
+  moduleKey: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED';
+  totalCount: number;
+  fileId?: number | null;
+  fileName?: string | null;
+  downloadUrl?: string | null;
+  errorMessage?: string | null;
+  createdAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
 }

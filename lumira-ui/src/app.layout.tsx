@@ -59,6 +59,7 @@ const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/u
 const DATA_MANAGEMENT_GROUP_PATH = '/data-management';
 const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
   '/competitions/management',
+  '/competitions/registrations',
   '/activities/management',
   '/payments/management',
   '/data-management/download-center',

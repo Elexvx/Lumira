@@ -17,6 +17,9 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities/search")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/registrations")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/review-results")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/expert-review/reviews")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/create")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/projects")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/projects/management")).isTrue();
@@ -51,6 +54,9 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/ai/knowledge/KnowledgePage")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/activity")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/competition")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/competition/CompetitionRegistrationDataPage")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/competition/CompetitionReviewResultsPage")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/competition/CompetitionReviewPage")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/expert")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/project")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/payment")).isTrue();

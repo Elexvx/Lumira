@@ -622,6 +622,37 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void listRegistrationsSupportsCompetitionStatusAndKeywordFilters() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+        CurrentUser manager = new CurrentUser();
+        manager.setUserId(1002L);
+        manager.setUserUuid("user-uuid-1002");
+        manager.setUsername("manager");
+        manager.setSessionId("session-manager");
+        manager.setSessionVersion(1);
+        manager.setPermissionsVersion("permissions-1");
+        manager.setAuthenticated(true);
+        manager.setPermissions(Set.of("aiadc:registration:view"));
+        manager.setDataScopes(List.of(new DataPermissionRule("competition:registration", DataScopeType.ALL, List.of(), List.of())));
+
+        service.listRegistrations(manager, 1, 20, 11L, "confirmed", "Alpha", true);
+
+        assertThat(sql.lastRegistrationCountSql)
+                .contains("competition_id = ?", "status = ?", "team_snapshot_json", "project_snapshot_json");
+        assertThat(sql.lastRegistrationQuerySql)
+                .contains(
+                        "materialSubmissionCount",
+                        "materialFileCount",
+                        "registration_snapshot_json as registrationSnapshotJson",
+                        "member_snapshot_json as memberSnapshotJson"
+                );
+        assertThat(sql.lastRegistrationQueryArgs)
+                .containsExactly(11L, "CONFIRMED", "%Alpha%", "%Alpha%", "%Alpha%", "%Alpha%", 0L, 20L);
+    }
+
+    @Test
     void listRegistrationsShouldRejectBlankUsernameEvenWithAllDataScopeBeforeDatabaseAccess() {
         MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
         CompetitionRegistrationAppService service = service(sql, mock(TeamInternalApi.class));
@@ -679,6 +710,94 @@ class CompetitionRegistrationAppServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         verifyNoInteractions(sql);
+    }
+
+    @Test
+    void datasetViewerCanReadRegistrationButReceivesRedactedSensitiveSnapshots() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        sql.registration.put("registrationSnapshotJson", "{\"contactName\":\"Alice\"}");
+        sql.registration.put("teamSnapshotJson", "{\"teamName\":\"Alpha\"}");
+        sql.registration.put("projectSnapshotJson", "{\"title\":\"Safe project title\"}");
+        sql.registration.put("memberSnapshotJson", "[{\"studentNo\":\"20260001\"}]");
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+        CurrentUser viewer = registrationDatasetViewer(Set.of("registration:dataset:view"));
+
+        CompetitionRegistrationVO.Registration registration = service.getRegistration(viewer, 1L);
+
+        assertThat(registration.getRegistrationSnapshotJson()).isEqualTo("{}");
+        assertThat(registration.getTeamSnapshotJson()).isEqualTo("{}");
+        assertThat(registration.getMemberSnapshotJson()).isEqualTo("[]");
+        assertThat(registration.getProjectSnapshotJson()).isEqualTo("{\"title\":\"Safe project title\"}");
+    }
+
+    @Test
+    void sensitiveDatasetViewerCanReadFullRegistrationSnapshots() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        sql.registration.put("registrationSnapshotJson", "{\"contactName\":\"Alice\"}");
+        sql.registration.put("teamSnapshotJson", "{\"teamName\":\"Alpha\"}");
+        sql.registration.put("memberSnapshotJson", "[{\"studentNo\":\"20260001\"}]");
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+        CurrentUser viewer = registrationDatasetViewer(Set.of(
+                "registration:dataset:view",
+                "registration:dataset:view-sensitive"
+        ));
+
+        CompetitionRegistrationVO.Registration registration = service.getRegistration(viewer, 1L);
+
+        assertThat(registration.getRegistrationSnapshotJson()).contains("Alice");
+        assertThat(registration.getTeamSnapshotJson()).contains("Alpha");
+        assertThat(registration.getMemberSnapshotJson()).contains("20260001");
+    }
+
+    @Test
+    void registrationOwnerCanReadOwnSensitiveSnapshotsWithoutManagerPermission() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        sql.registration.put("registrationSnapshotJson", "{\"contactName\":\"Alice\"}");
+        sql.registration.put("teamSnapshotJson", "{\"teamName\":\"Alpha\"}");
+        sql.registration.put("memberSnapshotJson", "[{\"studentNo\":\"20260001\"}]");
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+
+        CompetitionRegistrationVO.Registration registration = service.getRegistration(student(), 1L);
+
+        assertThat(registration.getRegistrationSnapshotJson()).contains("Alice");
+        assertThat(registration.getTeamSnapshotJson()).contains("Alpha");
+        assertThat(registration.getMemberSnapshotJson()).contains("20260001");
+    }
+
+    @Test
+    void datasetViewerReceivesRedactedMaterialTextAndJsonValues() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        sql.materialSubmissions = List.of(Map.of(
+                "id", 91L,
+                "registrationId", 1L,
+                "competitionId", 11L,
+                "stageId", 71L,
+                "formVersion", 1,
+                "submitterUserId", 1001L,
+                "status", "SUBMITTED",
+                "submittedAt", LocalDateTime.now()
+        ));
+        sql.materialValues = List.of(Map.of(
+                "id", 101L,
+                "submissionId", 91L,
+                "fieldKey", "student_profile",
+                "fieldType", "json",
+                "textValue", "Alice",
+                "jsonValue", "{\"mobile\":\"13800138000\"}"
+        ));
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+
+        List<CompetitionRegistrationVO.MaterialSubmission> materials =
+                service.listMaterials(registrationDatasetViewer(Set.of("registration:dataset:view")), 1L);
+
+        assertThat(materials).hasSize(1);
+        CompetitionRegistrationVO.MaterialValue value = materials.getFirst().getValues().getFirst();
+        assertThat(value.getTextValue()).isEqualTo("[敏感内容已隐藏]");
+        assertThat(value.getJsonValue()).isEqualTo("{}");
     }
 
     @Test
@@ -1624,6 +1743,27 @@ class CompetitionRegistrationAppServiceTest {
         return currentUser;
     }
 
+    private CurrentUser registrationDatasetViewer(Set<String> permissions) {
+        CurrentUser currentUser = new CurrentUser();
+        currentUser.setUserId(1002L);
+        currentUser.setUserUuid("user-uuid-1002");
+        currentUser.setUsername("registration-viewer");
+        currentUser.setSessionId("session-registration-viewer");
+        currentUser.setSessionVersion(1);
+        currentUser.setPermissionsVersion("permissions-1");
+        currentUser.setAuthenticated(true);
+        currentUser.setPermissions(permissions);
+        currentUser.setDataScopes(List.of(
+                new DataPermissionRule(
+                        "competition:registration",
+                        DataScopeType.ALL,
+                        List.of(),
+                        List.of()
+                )
+        ));
+        return currentUser;
+    }
+
     private TeamInternalApi teamApiWithMembers(Long userId, int memberCount) {
         return new TeamInternalApi() {
             @Override
@@ -1870,7 +2010,7 @@ class CompetitionRegistrationAppServiceTest {
                     || normalized.contains("delete from aiadc_project")) {
                 wroteProjectTables = true;
             }
-            if (normalized.contains("insert into competition_registration")) {
+            if (normalized.contains("insert into competition_registration (")) {
                 lastRegistrationInsertSql = sql;
                 lastRegistrationInsertArgs = args;
                 registration = newRegistration(lastInsertedId, String.valueOf(args[6]), null, ((Number) args[10]).longValue());
@@ -2204,6 +2344,11 @@ class CompetitionRegistrationAppServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             String normalized = sql.toLowerCase();
+            if (normalized.contains("from competition_registration where deleted = 0")) {
+                lastRegistrationQuerySql = sql;
+                lastRegistrationQueryArgs = Arrays.asList(args);
+                return registration == null ? List.of() : List.of(map(rowMapper, registration));
+            }
             if (normalized.contains("from registration_material_submission")) {
                 return materialSubmissions.stream().map((row) -> map(rowMapper, row)).toList();
             }
@@ -2213,11 +2358,6 @@ class CompetitionRegistrationAppServiceTest {
             if (normalized.contains("from competition_registration cr")) {
                 lastPaymentRecordQuerySql = sql;
                 return paymentRecordRows.stream().map((row) -> map(rowMapper, row)).toList();
-            }
-            if (normalized.contains("from competition_registration where deleted = 0")) {
-                lastRegistrationQuerySql = sql;
-                lastRegistrationQueryArgs = Arrays.asList(args);
-                return registration == null ? List.of() : List.of(map(rowMapper, registration));
             }
             return super.query(sql, rowMapper, args);
         }

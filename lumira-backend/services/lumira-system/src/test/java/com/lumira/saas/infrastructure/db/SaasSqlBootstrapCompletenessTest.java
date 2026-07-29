@@ -136,7 +136,8 @@ class SaasSqlBootstrapCompletenessTest {
                         "aiadc:activity:create",
                         "aiadc:material:view",
                         "aiadc:material:submit",
-                        "aiadc:stage:view"
+                        "aiadc:stage:view",
+                        "review:appeal:submit"
                 )
                 .doesNotContain(
                         "aiadc:competition:view",

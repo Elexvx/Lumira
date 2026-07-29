@@ -131,6 +131,27 @@ public class FileInternalApiService implements FileInternalApi {
     }
 
     @Override
+    public FileContentDTO readFileContentForAuthorizedBusinessReference(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            String referenceType,
+            Long referenceId,
+            Long simulatedRoleId
+    ) {
+        requirePositiveId(fileId, "fileId");
+        requirePositiveId(referenceId, "referenceId");
+        String normalizedReferenceType = requireSafeToken(referenceType, "referenceType", 128);
+        return fileManagementAppService.readAuthorizedBusinessFileContent(
+                asInternalUser(userId, userUuid, username, simulatedRoleId),
+                fileId,
+                normalizedReferenceType,
+                referenceId
+        );
+    }
+
+    @Override
     public FileProcessingArtifactDTO readProcessingArtifactForUser(
             Long fileId,
             Long userId,

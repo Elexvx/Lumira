@@ -175,12 +175,14 @@ class CompetitionManagementAppServiceTest {
 
         service.createCompetitionDraft(admin(), request);
 
-        assertThat(jdbcTemplate.updateArguments).hasSize(2);
+        assertThat(jdbcTemplate.updateArguments).hasSize(3);
         assertThat(jdbcTemplate.updateArguments.get(0)[6]).isEqualTo("");
         assertThat(jdbcTemplate.updateArguments.get(0)[9]).isNull();
         assertThat(jdbcTemplate.updateArguments.get(0)[13]).isEqualTo("");
         assertThat(jdbcTemplate.updateArguments.get(0)[15]).isEqualTo("");
         assertThat(jdbcTemplate.updateArguments.get(0)[16]).isNull();
+        assertThat(jdbcTemplate.updates.get(1)).contains("insert into competition_registration_dataset");
+        assertThat(jdbcTemplate.updateArguments.get(1)[0]).isEqualTo(11L);
     }
 
     @Test
@@ -518,6 +520,7 @@ class CompetitionManagementAppServiceTest {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionManagementAppService service = service(jdbcTemplate);
         jdbcTemplate.updateResults.add(1);
+        jdbcTemplate.updateResults.add(1);
         jdbcTemplate.updateResults.add(0);
         jdbcTemplate.enqueue(List.of(competition("draft")), List.of());
 
@@ -527,9 +530,10 @@ class CompetitionManagementAppServiceTest {
                     assertThat(exception.getMessage()).contains("Competition config set changed, please retry");
                 });
 
-        assertThat(jdbcTemplate.updates).hasSize(2);
+        assertThat(jdbcTemplate.updates).hasSize(3);
         assertThat(jdbcTemplate.updates.get(0)).contains("insert into aiadc_competition");
-        assertThat(jdbcTemplate.updates.get(1)).contains("insert into competition_config_set");
+        assertThat(jdbcTemplate.updates.get(1)).contains("insert into competition_registration_dataset");
+        assertThat(jdbcTemplate.updates.get(2)).contains("insert into competition_config_set");
         assertThat(jdbcTemplate.lastInsertIdQueries).isEqualTo(1);
     }
 

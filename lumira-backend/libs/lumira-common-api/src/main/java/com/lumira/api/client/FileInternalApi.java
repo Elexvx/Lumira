@@ -125,6 +125,20 @@ public interface FileInternalApi {
         throw new UnsupportedOperationException("readFileContentForUser is not implemented");
     }
 
+    default FileContentDTO readFileContentForAuthorizedBusinessReference(
+            Long fileId,
+            Long userId,
+            String userUuid,
+            String username,
+            String referenceType,
+            Long referenceId,
+            Long simulatedRoleId
+    ) {
+        throw new UnsupportedOperationException(
+                "readFileContentForAuthorizedBusinessReference is not implemented"
+        );
+    }
+
     default FileObjectDTO getFileForUser(
             Long fileId,
             Long userId,

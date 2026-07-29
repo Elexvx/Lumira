@@ -21,6 +21,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.competition.dto.CompetitionRegistrationDTO;
+import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationDatasetRepository;
+import com.lumira.saas.modules.competition.repository.RegistrationDatasetRepository;
 import com.lumira.saas.modules.competition.vo.CompetitionRegistrationVO;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.team.api.TeamInternalApi;
@@ -58,6 +60,11 @@ public class CompetitionRegistrationAppService {
     private static final String REGISTRATION_PAY_PERMISSION = "aiadc:registration:pay";
     private static final String MATERIAL_VIEW_PERMISSION = "aiadc:material:view";
     private static final String MATERIAL_SUBMIT_PERMISSION = "aiadc:material:submit";
+    private static final String MATERIAL_DOWNLOAD_PERMISSION = "registration:material:download";
+    private static final String DATASET_VIEW_PERMISSION = "registration:dataset:view";
+    private static final String DATASET_VIEW_SENSITIVE_PERMISSION = "registration:dataset:view-sensitive";
+    private static final String DATASET_EXPORT_PERMISSION = "registration:dataset:export";
+    private static final String DATASET_EXPORT_SENSITIVE_PERMISSION = "registration:dataset:export-sensitive";
     private static final String STAGE_VIEW_PERMISSION = "aiadc:stage:view";
     private static final String STAGE_MANAGE_PERMISSION = "aiadc:stage:manage";
     private static final String PAYMENT_ORDER_VIEW_PERMISSION = "payment:order:view";
@@ -96,6 +103,7 @@ public class CompetitionRegistrationAppService {
     private final ObjectProvider<SystemInternalApi> systemInternalApiProvider;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private RegistrationDatasetRepository registrationDatasetRepository;
     private final boolean enforceTrustedUserResolution;
 
     @Autowired
@@ -108,7 +116,22 @@ public class CompetitionRegistrationAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, permissionSnapshotService, sessionAuthenticationService, true);
+        this(
+                jdbcTemplate,
+                objectMapper,
+                teamInternalApiProvider,
+                paymentInternalApiProvider,
+                systemInternalApiProvider,
+                permissionSnapshotService,
+                sessionAuthenticationService,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                true
+        );
+    }
+
+    @Autowired
+    void setRegistrationDatasetRepository(RegistrationDatasetRepository registrationDatasetRepository) {
+        this.registrationDatasetRepository = registrationDatasetRepository;
     }
 
     private CompetitionRegistrationAppService(
@@ -121,6 +144,30 @@ public class CompetitionRegistrationAppService {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
+        this(
+                jdbcTemplate,
+                objectMapper,
+                teamInternalApiProvider,
+                paymentInternalApiProvider,
+                systemInternalApiProvider,
+                permissionSnapshotService,
+                sessionAuthenticationService,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                enforceTrustedUserResolution
+        );
+    }
+
+    private CompetitionRegistrationAppService(
+            MyBatisQueryOperations jdbcTemplate,
+            ObjectMapper objectMapper,
+            ObjectProvider<TeamInternalApi> teamInternalApiProvider,
+            ObjectProvider<PaymentInternalApi> paymentInternalApiProvider,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            PermissionSnapshotService permissionSnapshotService,
+            SessionAuthenticationService sessionAuthenticationService,
+            RegistrationDatasetRepository registrationDatasetRepository,
+            boolean enforceTrustedUserResolution
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.teamInternalApiProvider = teamInternalApiProvider;
@@ -128,6 +175,7 @@ public class CompetitionRegistrationAppService {
         this.systemInternalApiProvider = systemInternalApiProvider;
         this.permissionSnapshotService = permissionSnapshotService;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.registrationDatasetRepository = registrationDatasetRepository;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
@@ -139,7 +187,17 @@ public class CompetitionRegistrationAppService {
             ObjectProvider<SystemInternalApi> systemInternalApiProvider,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, permissionSnapshotService, null, false);
+        this(
+                jdbcTemplate,
+                objectMapper,
+                teamInternalApiProvider,
+                paymentInternalApiProvider,
+                systemInternalApiProvider,
+                permissionSnapshotService,
+                null,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                false
+        );
     }
 
     public CompetitionRegistrationAppService(
@@ -149,26 +207,99 @@ public class CompetitionRegistrationAppService {
             ObjectProvider<PaymentInternalApi> paymentInternalApiProvider,
             ObjectProvider<SystemInternalApi> systemInternalApiProvider
     ) {
-        this(jdbcTemplate, objectMapper, teamInternalApiProvider, paymentInternalApiProvider, systemInternalApiProvider, null, null, false);
+        this(
+                jdbcTemplate,
+                objectMapper,
+                teamInternalApiProvider,
+                paymentInternalApiProvider,
+                systemInternalApiProvider,
+                null,
+                null,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                false
+        );
     }
 
     public PageResponse<CompetitionRegistrationVO.Registration> listRegistrations(CurrentUser currentUser, long pageNo, long pageSize) {
+        return listRegistrations(currentUser, pageNo, pageSize, null, null, null, false);
+    }
+
+    public PageResponse<CompetitionRegistrationVO.Registration> listRegistrations(
+            CurrentUser currentUser,
+            long pageNo,
+            long pageSize,
+            Long competitionId,
+            String status,
+            String keyword
+    ) {
+        return listRegistrations(currentUser, pageNo, pageSize, competitionId, status, keyword, false);
+    }
+
+    public PageResponse<CompetitionRegistrationVO.Registration> listRegistrations(
+            CurrentUser currentUser,
+            long pageNo,
+            long pageSize,
+            Long competitionId,
+            String status,
+            String keyword,
+            boolean includeSnapshots
+    ) {
         requireRegistrationReadPermission(currentUser);
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
-        String where = " from competition_registration where deleted = 0";
+        StringBuilder where = new StringBuilder(" from competition_registration where deleted = 0");
         if (!canViewAllRegistrations(currentUser)) {
-            where += " and owner_user_id = ? and owner_user_uuid = ?";
+            where.append(" and owner_user_id = ? and owner_user_uuid = ?");
             params.add(requireUserId(currentUser));
             params.add(requireUserUuid(currentUser));
+        }
+        if (competitionId != null) {
+            requirePositiveId(competitionId, "Competition id must be positive");
+            where.append("""
+                     and exists (
+                         select 1
+                           from competition_registration_dataset dataset
+                           join competition_registration_dataset_row dataset_row
+                             on dataset_row.dataset_id = dataset.id and dataset_row.deleted = 0
+                          where dataset.competition_id = ?
+                            and dataset.status = 'ENABLED'
+                            and dataset.deleted = 0
+                            and dataset_row.registration_id = competition_registration.id
+                     )
+                    """);
+            params.add(competitionId);
+        }
+        String normalizedStatus = trimToNull(status);
+        if (normalizedStatus != null) {
+            normalizedStatus = normalizedStatus.toUpperCase(Locale.ROOT);
+            if (!REGISTRATION_STATUSES.contains(normalizedStatus)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Invalid registration status");
+            }
+            where.append(" and status = ?");
+            params.add(normalizedStatus);
+        }
+        String normalizedKeyword = trimToNull(keyword);
+        if (normalizedKeyword != null) {
+            where.append("""
+                     and (
+                         registration_no like ?
+                         or participant_no like ?
+                         or json_unquote(json_extract(team_snapshot_json, '$.teamName')) like ?
+                         or json_unquote(json_extract(project_snapshot_json, '$.title')) like ?
+                     )
+                    """);
+            String likeKeyword = "%" + normalizedKeyword + "%";
+            for (int index = 0; index < 4; index += 1) {
+                params.add(likeKeyword);
+            }
         }
         Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
         List<Object> selectParams = new ArrayList<>(params);
         selectParams.add((safePageNo - 1) * safePageSize);
         selectParams.add(safePageSize);
         List<CompetitionRegistrationVO.Registration> records = jdbcTemplate.query(
-                registrationListSelect() + where + " order by created_at desc, id desc limit ?, ?",
+                registrationListSelect(includeSnapshots) + where + " order by created_at desc, id desc limit ?, ?",
                 new BeanPropertyRowMapper<>(CompetitionRegistrationVO.Registration.class),
                 selectParams.toArray()
         );
@@ -277,12 +408,18 @@ public class CompetitionRegistrationAppService {
         if (registration == null || !canAccessRegistration(currentUser, registration)) {
             throw biz(ErrorCode.NOT_FOUND, "Registration not found");
         }
+        if (!isRegistrationOwner(currentUser, registration) && !canViewSensitiveRegistrationData(currentUser)) {
+            redactRegistrationSnapshots(registration);
+        }
         return registration;
     }
 
     public List<CompetitionRegistrationVO.MaterialSubmission> listMaterials(CurrentUser currentUser, Long registrationId) {
         requirePositiveId(registrationId, "Registration id is required");
         CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
+        boolean redactSensitiveValues =
+                !isRegistrationOwner(currentUser, registration)
+                && !canViewSensitiveRegistrationData(currentUser);
         List<CompetitionRegistrationVO.MaterialSubmission> submissions = jdbcTemplate.query(
                 """
                         select id, registration_id as registrationId, competition_id as competitionId,
@@ -309,8 +446,57 @@ public class CompetitionRegistrationAppService {
                     new BeanPropertyRowMapper<>(CompetitionRegistrationVO.MaterialValue.class),
                                         submission.getId()
             ));
+            if (redactSensitiveValues && submission.getValues() != null) {
+                for (CompetitionRegistrationVO.MaterialValue value : submission.getValues()) {
+                    if (StringUtils.hasText(value.getTextValue())) {
+                        value.setTextValue("[敏感内容已隐藏]");
+                    }
+                    if (StringUtils.hasText(value.getJsonValue())) {
+                        value.setJsonValue("{}");
+                    }
+                }
+            }
         }
         return submissions;
+    }
+
+    public void requireMaterialFileAccess(CurrentUser currentUser, Long registrationId, Long fileId) {
+        requireAnyPermission(
+                currentUser,
+                MATERIAL_DOWNLOAD_PERMISSION,
+                MATERIAL_DOWNLOAD_PERMISSION
+        );
+        requirePositiveId(registrationId, "Registration id is required");
+        requirePositiveId(fileId, "Material file id is required");
+        CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
+        Long count = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                          from registration_material_submission submission
+                          join registration_material_value material_value
+                            on material_value.submission_id = submission.id
+                           and material_value.file_id = ?
+                           and material_value.deleted = 0
+                          join competition_registration_dataset_row dataset_row
+                            on dataset_row.registration_id = submission.registration_id
+                           and dataset_row.deleted = 0
+                          join competition_registration_dataset dataset
+                            on dataset.id = dataset_row.dataset_id
+                           and dataset.competition_id = submission.competition_id
+                           and dataset.status = 'ENABLED'
+                           and dataset.deleted = 0
+                         where submission.registration_id = ?
+                           and submission.competition_id = ?
+                           and submission.deleted = 0
+                        """,
+                Long.class,
+                fileId,
+                registrationId,
+                registration.getCompetitionId()
+        );
+        if (count == null || count != 1L) {
+            throw biz(ErrorCode.NOT_FOUND, "Registration material file not found");
+        }
     }
 
     @Transactional
@@ -404,6 +590,9 @@ public class CompetitionRegistrationAppService {
         requireRegistrationWrite(inserted, "Registration changed, please retry");
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         persistCollectionSchemaSnapshot(id, fieldDefinitions);
+        requireRegistrationDatasetLink(
+                registrationDatasetRepository.linkRegistration(competition.id(), id, userId, userUuid)
+        );
         return getRegistration(currentUser, id);
     }
 
@@ -458,6 +647,12 @@ public class CompetitionRegistrationAppService {
         );
         requireRegistrationWrite(updated, "Registration changed, please retry");
         persistCollectionSchemaSnapshot(id, fieldDefinitions);
+        requireRegistrationDatasetLink(registrationDatasetRepository.linkRegistration(
+                competition.id(),
+                id,
+                requirePositiveUserId(existing.getOwnerUserId(), "Registration owner is missing"),
+                requireRegistrationOwnerUserUuid(existing)
+        ));
         return getRegistration(currentUser, id);
     }
 
@@ -512,6 +707,7 @@ public class CompetitionRegistrationAppService {
                 requireRegistrationOwnerUserUuid(existing)
         );
         requireRegistrationWrite(deleted, "Registration changed, please retry");
+        registrationDatasetRepository.unlinkRegistration(id, operatorId, operatorUuid);
         return true;
     }
 
@@ -2155,6 +2351,12 @@ public class CompetitionRegistrationAppService {
         );
     }
 
+    private void requireRegistrationDatasetLink(int linked) {
+        if (linked <= 0) {
+            throw biz(ErrorCode.BIZ_ERROR, "Registration dataset is unavailable");
+        }
+    }
+
     private void validateMaterialSubmitRequest(CompetitionRegistrationDTO.MaterialSubmitRequest request) {
         for (CompetitionRegistrationDTO.MaterialValueRequest value : request.getValues() == null ? List.<CompetitionRegistrationDTO.MaterialValueRequest>of() : request.getValues()) {
             requireLength(value.getFieldKey(), MAX_NAME_LENGTH, "Material field key is too large");
@@ -2341,6 +2543,9 @@ public class CompetitionRegistrationAppService {
                 REGISTRATION_PAY_PERMISSION,
                 MATERIAL_VIEW_PERMISSION,
                 MATERIAL_SUBMIT_PERMISSION,
+                MATERIAL_DOWNLOAD_PERMISSION,
+                DATASET_VIEW_PERMISSION,
+                DATASET_EXPORT_PERMISSION,
                 PAYMENT_ORDER_VIEW_PERMISSION,
                 STAGE_MANAGE_PERMISSION
         );
@@ -2385,6 +2590,26 @@ public class CompetitionRegistrationAppService {
 
     private boolean canViewAllRegistrations(CurrentUser currentUser) {
         return resolveRegistrationDataPermission(currentUser).scopeType() == DataScopeType.ALL;
+    }
+
+    private boolean isRegistrationOwner(
+            CurrentUser currentUser,
+            CompetitionRegistrationVO.Registration registration
+    ) {
+        return registration != null
+                && requireUserId(currentUser).equals(registration.getOwnerUserId())
+                && requireUserUuid(currentUser).equals(registration.getOwnerUserUuid());
+    }
+
+    private boolean canViewSensitiveRegistrationData(CurrentUser currentUser) {
+        return hasPermission(currentUser, DATASET_VIEW_SENSITIVE_PERMISSION)
+                || hasPermission(currentUser, DATASET_EXPORT_SENSITIVE_PERMISSION);
+    }
+
+    private void redactRegistrationSnapshots(CompetitionRegistrationVO.Registration registration) {
+        registration.setRegistrationSnapshotJson("{}");
+        registration.setTeamSnapshotJson("{}");
+        registration.setMemberSnapshotJson("[]");
     }
 
     private DataPermissionDecision resolveRegistrationDataPermission(CurrentUser currentUser) {
@@ -2799,7 +3024,16 @@ public class CompetitionRegistrationAppService {
                 """;
     }
 
-    private String registrationListSelect() {
+    private String registrationListSelect(boolean includeSnapshots) {
+        String snapshotColumns = includeSnapshots
+                ? """
+                       registration_snapshot_json as registrationSnapshotJson,
+                       team_snapshot_json as teamSnapshotJson,
+                       project_snapshot_json as projectSnapshotJson,
+                       member_snapshot_json as memberSnapshotJson,
+                       collection_schema_snapshot_json as collectionSchemaSnapshotJson,
+                  """
+                : "";
         return """
                 select id, registration_no as registrationNo, competition_id as competitionId,
                        team_id as teamId, project_id as projectId, owner_user_id as ownerUserId,
@@ -2807,10 +3041,21 @@ public class CompetitionRegistrationAppService {
                        fee_mode as feeMode, entry_fee_minor as entryFeeMinor, member_count as memberCount,
                        payable_amount_minor as payableAmountMinor, currency, payment_order_no as paymentOrderNo,
                        participant_no as participantNo,
+                """ + snapshotColumns + """
                        case when json_valid(team_snapshot_json)
                            then json_unquote(json_extract(team_snapshot_json, '$.teamName')) end as teamName,
                        case when json_valid(project_snapshot_json)
                            then json_unquote(json_extract(project_snapshot_json, '$.title')) end as projectTitle,
+                       (select count(1)
+                          from registration_material_submission rms
+                         where rms.registration_id = competition_registration.id and rms.deleted = 0)
+                           as materialSubmissionCount,
+                       (select count(1)
+                          from registration_material_submission rms
+                          join registration_material_value rmv
+                            on rmv.submission_id = rms.id and rmv.deleted = 0 and rmv.file_id is not null
+                         where rms.registration_id = competition_registration.id and rms.deleted = 0)
+                           as materialFileCount,
                        created_at as createdAt, updated_at as updatedAt
                 """;
     }

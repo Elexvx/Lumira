@@ -13,6 +13,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.competition.dto.CompetitionDTO;
+import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationDatasetRepository;
+import com.lumira.saas.modules.competition.repository.RegistrationDatasetRepository;
 import com.lumira.saas.modules.competition.vo.CompetitionVO;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
@@ -90,6 +92,7 @@ public class CompetitionManagementAppService {
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
+    private RegistrationDatasetRepository registrationDatasetRepository;
     private final boolean enforceTrustedUserResolution;
 
     @Autowired
@@ -99,7 +102,20 @@ public class CompetitionManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, null, sessionAuthenticationService, true);
+        this(
+                jdbcTemplate,
+                dictRuntimeService,
+                permissionSnapshotService,
+                null,
+                sessionAuthenticationService,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                true
+        );
+    }
+
+    @Autowired
+    void setRegistrationDatasetRepository(RegistrationDatasetRepository registrationDatasetRepository) {
+        this.registrationDatasetRepository = registrationDatasetRepository;
     }
 
     public CompetitionManagementAppService(
@@ -109,7 +125,15 @@ public class CompetitionManagementAppService {
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, systemInternalApi, sessionAuthenticationService, true);
+        this(
+                jdbcTemplate,
+                dictRuntimeService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                true
+        );
     }
 
     private CompetitionManagementAppService(
@@ -118,6 +142,7 @@ public class CompetitionManagementAppService {
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
+            RegistrationDatasetRepository registrationDatasetRepository,
             boolean enforceTrustedUserResolution
     ) {
         this.jdbcTemplate = jdbcTemplate;
@@ -125,6 +150,7 @@ public class CompetitionManagementAppService {
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
         this.sessionAuthenticationService = sessionAuthenticationService;
+        this.registrationDatasetRepository = registrationDatasetRepository;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
@@ -133,11 +159,27 @@ public class CompetitionManagementAppService {
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService
     ) {
-        this(jdbcTemplate, dictRuntimeService, permissionSnapshotService, null, null, false);
+        this(
+                jdbcTemplate,
+                dictRuntimeService,
+                permissionSnapshotService,
+                null,
+                null,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                false
+        );
     }
 
     public CompetitionManagementAppService(MyBatisQueryOperations jdbcTemplate, DictRuntimeService dictRuntimeService) {
-        this(jdbcTemplate, dictRuntimeService, null, null, null, false);
+        this(
+                jdbcTemplate,
+                dictRuntimeService,
+                null,
+                null,
+                null,
+                new JdbcRegistrationDatasetRepository(jdbcTemplate),
+                false
+        );
     }
 
     public PageResponse<CompetitionVO.Competition> listCompetitions(
@@ -289,6 +331,10 @@ public class CompetitionManagementAppService {
         requireCompetitionWrite(inserted, "Competition changed, please retry");
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        requireCompetitionWrite(
+                registrationDatasetRepository.createDataset(competition.getId(), competition.getTitle(), userId, userUuid),
+                "Registration dataset could not be created"
+        );
         CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, currentUser);
         if ("published".equals(competition.getStatus())) {
             validateCompetitionReadyForPublish(competition, configSet);
@@ -355,6 +401,10 @@ public class CompetitionManagementAppService {
         requireCompetitionWrite(inserted, "Competition changed, please retry");
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        requireCompetitionWrite(
+                registrationDatasetRepository.createDataset(competition.getId(), competition.getTitle(), userId, userUuid),
+                "Registration dataset could not be created"
+        );
         ensureCurrentConfigSet(competition, currentUser);
         recordConfigAudit(currentUser, competition.getUuid(), "CREATE_DRAFT", "BASIC", "Created competition draft " + competition.getCompetitionNo());
         return competition;
