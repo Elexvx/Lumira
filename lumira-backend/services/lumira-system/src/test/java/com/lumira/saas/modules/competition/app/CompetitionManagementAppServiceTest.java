@@ -16,6 +16,7 @@ import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -733,6 +734,72 @@ class CompetitionManagementAppServiceTest {
 
         assertThat(saved.getRegistrationStart()).isEqualTo("2026-07-01 09:00");
         assertThat(jdbcTemplate.queryResults).isEmpty();
+    }
+
+    @Test
+    void updateCompetitionSynchronizesExplicitMaterialAndReviewWindowsToStages() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        CompetitionVO.Competition updated = competition("draft");
+        jdbcTemplate.enqueue(List.of(existing), List.of(updated));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setScheduleJson("""
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"初赛",
+                  "materialStart":"2026-07-01 09:00",
+                  "materialEnd":"2026-07-10 18:00",
+                  "start":"2026-07-11 09:00",
+                  "end":"2026-07-12 18:00",
+                  "reviewStart":"2026-07-13 09:00",
+                  "reviewEnd":"2026-07-15 18:00"
+                }]
+                """);
+
+        service.updateCompetition(admin(), 11L, request);
+
+        assertThat(jdbcTemplate.updates)
+                .anyMatch(sql -> sql.contains("material_submit_start = ?")
+                        && sql.contains("review_start = ?")
+                        && sql.contains("stage_code = ?"));
+        assertThat(jdbcTemplate.updateArguments)
+                .anySatisfy(arguments -> assertThat(arguments).contains(
+                        "初赛",
+                        LocalDateTime.of(2026, 7, 1, 9, 0),
+                        LocalDateTime.of(2026, 7, 10, 18, 0),
+                        LocalDateTime.of(2026, 7, 13, 9, 0),
+                        LocalDateTime.of(2026, 7, 15, 18, 0),
+                        "PRELIMINARY"
+                ));
+    }
+
+    @Test
+    void updateCompetitionRejectsOverlappingTimelineWindowsBeforeWriting() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("draft")));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setScheduleJson("""
+                [{
+                  "timeMode":"CONFIRMED",
+                  "materialStart":"2026-07-01 09:00",
+                  "materialEnd":"2026-07-12 18:00",
+                  "start":"2026-07-11 09:00",
+                  "end":"2026-07-13 18:00",
+                  "reviewStart":"2026-07-13 09:00",
+                  "reviewEnd":"2026-07-15 18:00"
+                }]
+                """);
+
+        assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+        assertThat(jdbcTemplate.updates).isEmpty();
     }
 
     @Test

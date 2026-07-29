@@ -2896,7 +2896,7 @@ public class CompetitionRegistrationAppService {
         LocalDateTime now = LocalDateTime.now();
         if (stage.getMaterialSubmitStart() == null || stage.getMaterialSubmitEnd() == null
                 || now.isBefore(stage.getMaterialSubmitStart()) || now.isAfter(stage.getMaterialSubmitEnd())) {
-            throw biz(ErrorCode.BIZ_ERROR, "当前不在材料修改时间内");
+            throw biz(ErrorCode.BIZ_ERROR, "当前不在材料提交时间内");
         }
         if ("FINAL".equals(stage.getStageCode())) {
             Long advanced = jdbcTemplate.queryForObject(
@@ -2921,12 +2921,12 @@ public class CompetitionRegistrationAppService {
         LocalDateTime now = LocalDateTime.now();
         if (stage.getMaterialSubmitStart() == null || stage.getMaterialSubmitEnd() == null) {
             stage.setMaterialEditable(false);
-            stage.setMaterialAccessReason("材料修改时间未配置");
+            stage.setMaterialAccessReason("材料提交时间未配置");
             return;
         }
         if (now.isBefore(stage.getMaterialSubmitStart())) {
             stage.setMaterialEditable(false);
-            stage.setMaterialAccessReason("材料修改尚未开始");
+            stage.setMaterialAccessReason("材料提交尚未开始");
             return;
         }
         if (now.isAfter(stage.getMaterialSubmitEnd())) {

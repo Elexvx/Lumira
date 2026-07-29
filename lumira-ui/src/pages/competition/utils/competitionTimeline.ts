@@ -19,14 +19,24 @@ const getCompleteRange = (range?: CompetitionTimelineRange) => {
   return start && end ? [start, end] as const : undefined;
 };
 
+export const isChronologicalTimeRange = (range?: CompetitionTimelineRange) => {
+  const bounds = getCompleteRange(range);
+  return Boolean(bounds && bounds[1].isAfter(bounds[0]));
+};
+
+export const isTimeRangeAtOrAfterPreviousEnd = (
+  range?: CompetitionTimelineRange,
+  previousRange?: CompetitionTimelineRange,
+) => {
+  const bounds = getCompleteRange(range);
+  const previousBounds = getCompleteRange(previousRange);
+  if (!bounds || !previousBounds) {
+    return false;
+  }
+  return !bounds[0].isBefore(previousBounds[1]);
+};
+
 export const isScheduleAtOrAfterRegistrationEnd = (
   scheduleRange?: CompetitionTimelineRange,
   registrationRange?: CompetitionTimelineRange,
-) => {
-  const scheduleBounds = getCompleteRange(scheduleRange);
-  const registrationBounds = getCompleteRange(registrationRange);
-  if (!scheduleBounds || !registrationBounds) {
-    return false;
-  }
-  return !scheduleBounds[0].isBefore(registrationBounds[1]);
-};
+) => isTimeRangeAtOrAfterPreviousEnd(scheduleRange, registrationRange);

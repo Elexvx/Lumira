@@ -27,6 +27,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -78,6 +79,10 @@ public class CompetitionManagementAppService {
     private static final String COMPETITION_LEVEL_DICT = "aiadc_competition_level";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter COMPETITION_NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final List<DateTimeFormatter> TIMELINE_TIME_FORMATTERS = List.of(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    );
     private static final int MAX_CODE_LENGTH = 64;
     private static final int MAX_TITLE_LENGTH = 128;
     private static final int MAX_SHORT_TEXT_LENGTH = 64;
@@ -282,6 +287,7 @@ public class CompetitionManagementAppService {
         String uuid = UUID.randomUUID().toString();
         String competitionNo = generateCompetitionNo();
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, competitionNo);
+        parseStageScheduleWindows(normalized.getScheduleJson());
         int inserted = jdbcTemplate.update(
                 """
                         insert into aiadc_competition (
@@ -352,6 +358,7 @@ public class CompetitionManagementAppService {
         String uuid = UUID.randomUUID().toString();
         String competitionNo = generateCompetitionNo();
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, competitionNo);
+        parseStageScheduleWindows(normalized.getScheduleJson());
         int inserted = jdbcTemplate.update(
                 """
                         insert into aiadc_competition (
@@ -420,6 +427,7 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, existing);
+        parseStageScheduleWindows(normalized.getScheduleJson());
         int updated = jdbcTemplate.update(
                 """
                         update aiadc_competition
@@ -470,6 +478,7 @@ public class CompetitionManagementAppService {
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
+        synchronizeStageWindowsFromSchedule(id, normalized.getScheduleJson(), requireUserId(currentUser), requireUserUuid(currentUser));
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         if (shouldValidatePublishTransition(existing.getStatus(), competition.getStatus())) {
             validateCompetitionReadyForPublish(competition, ensureCurrentConfigSet(competition, currentUser));
@@ -491,6 +500,7 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, "Only draft competition can be updated as draft");
         }
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, existing.getCompetitionNo());
+        parseStageScheduleWindows(normalized.getScheduleJson());
         int updated = jdbcTemplate.update(
                 """
                         update aiadc_competition
@@ -539,6 +549,7 @@ public class CompetitionManagementAppService {
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
+        synchronizeStageWindowsFromSchedule(id, normalized.getScheduleJson(), requireUserId(currentUser), requireUserUuid(currentUser));
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         recordConfigAudit(currentUser, competition.getUuid(), "UPDATE_DRAFT", "BASIC", "Updated competition draft");
         return competition;
@@ -703,6 +714,132 @@ public class CompetitionManagementAppService {
                 .toList();
         synchronizeStageForm(competition.getId(), "PRELIMINARY", "初赛", preliminary, 10, userId, userUuid);
         synchronizeStageForm(competition.getId(), "FINAL", "决赛", finals, 20, userId, userUuid);
+        synchronizeStageWindowsFromSchedule(competition.getId(), competition.getScheduleJson(), userId, userUuid);
+    }
+
+    private record StageScheduleWindow(
+            String stageName,
+            LocalDateTime materialStart,
+            LocalDateTime materialEnd,
+            LocalDateTime competitionStart,
+            LocalDateTime competitionEnd,
+            LocalDateTime reviewStart,
+            LocalDateTime reviewEnd
+    ) {
+    }
+
+    private void synchronizeStageWindowsFromSchedule(
+            Long competitionId,
+            String scheduleJson,
+            Long userId,
+            String userUuid
+    ) {
+        Map<String, StageScheduleWindow> windows = parseStageScheduleWindows(scheduleJson);
+        windows.forEach((stageCode, window) -> jdbcTemplate.update(
+                """
+                        update competition_stage
+                        set stage_name = coalesce(?, stage_name),
+                            material_submit_start = ?, material_submit_end = ?,
+                            review_start = ?, review_end = ?,
+                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where competition_id = ? and stage_code = ? and deleted = 0
+                        """,
+                window.stageName(),
+                window.materialStart(),
+                window.materialEnd(),
+                window.reviewStart(),
+                window.reviewEnd(),
+                userId,
+                userUuid,
+                LocalDateTime.now(),
+                competitionId,
+                stageCode
+        ));
+    }
+
+    private Map<String, StageScheduleWindow> parseStageScheduleWindows(String scheduleJson) {
+        if (!StringUtils.hasText(scheduleJson)) {
+            return Map.of();
+        }
+        try {
+            JsonNode schedules = OBJECT_MAPPER.readTree(scheduleJson);
+            if (!schedules.isArray()) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Competition schedule JSON must be an array");
+            }
+            Map<String, StageScheduleWindow> windows = new LinkedHashMap<>();
+            int confirmedIndex = 0;
+            for (JsonNode schedule : schedules) {
+                if (!"CONFIRMED".equalsIgnoreCase(schedule.path("timeMode").asText())) {
+                    continue;
+                }
+                String stageCode = trimToNull(schedule.path("stageCode").asText(null));
+                if (stageCode == null) {
+                    stageCode = confirmedIndex == 0
+                            ? "PRELIMINARY"
+                            : confirmedIndex == 1 ? "FINAL" : "STAGE_" + (confirmedIndex + 1);
+                }
+                confirmedIndex += 1;
+
+                LocalDateTime materialStart = parseTimelineTime(schedule.path("materialStart").asText(null));
+                LocalDateTime materialEnd = parseTimelineTime(schedule.path("materialEnd").asText(null));
+                LocalDateTime competitionStart = parseTimelineTime(schedule.path("start").asText(null));
+                LocalDateTime competitionEnd = parseTimelineTime(schedule.path("end").asText(null));
+                LocalDateTime reviewStart = parseTimelineTime(schedule.path("reviewStart").asText(null));
+                LocalDateTime reviewEnd = parseTimelineTime(schedule.path("reviewEnd").asText(null));
+
+                boolean hasExplicitMaterialWindow = materialStart != null || materialEnd != null;
+                if (!hasExplicitMaterialWindow) {
+                    continue;
+                }
+                requireTimelineRange(materialStart, materialEnd, "Material submission end must be after its start");
+                requireTimelineRange(competitionStart, competitionEnd, "Competition end must be after its start");
+                requireTimelineRange(reviewStart, reviewEnd, "Review end must be after its start");
+                if (competitionStart.isBefore(materialEnd)) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "Competition cannot start before material submission closes");
+                }
+                if (reviewStart.isBefore(competitionEnd)) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "Review cannot start before competition ends");
+                }
+                windows.put(stageCode, new StageScheduleWindow(
+                        trimToNull(schedule.path("title").asText(null)),
+                        materialStart,
+                        materialEnd,
+                        competitionStart,
+                        competitionEnd,
+                        reviewStart,
+                        reviewEnd
+                ));
+            }
+            return windows;
+        } catch (BizException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "赛事时间格式无效");
+        }
+    }
+
+    private LocalDateTime parseTimelineTime(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.trim().replace('T', ' ');
+        for (DateTimeFormatter formatter : TIMELINE_TIME_FORMATTERS) {
+            try {
+                return LocalDateTime.parse(normalized, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try the next supported persisted format.
+            }
+        }
+        throw biz(ErrorCode.VALIDATION_ERROR, "赛事时间格式无效");
+    }
+
+    private void requireTimelineRange(LocalDateTime start, LocalDateTime end, String message) {
+        if (start == null || end == null) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Timeline start and end time are both required");
+        }
+        if (!end.isAfter(start)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, message);
+        }
     }
 
     private void synchronizeStageForm(
