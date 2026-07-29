@@ -385,50 +385,56 @@ const CompetitionRegistrationDataPage = () => {
   const teamValues = parseJson<JsonRecord>(detail?.teamSnapshotJson, {});
   const projectValues = parseJson<JsonRecord>(detail?.projectSnapshotJson, {});
   const memberValues = parseJson<JsonRecord[]>(detail?.memberSnapshotJson, []);
+  const tableToolbarActions = access.canExportCompetitionRegistrations ? [
+    <Button
+      key="export-selected"
+      icon={<TeamOutlined />}
+      disabled={!selectedRows.length}
+      loading={exporting}
+      onClick={() => void exportRows(selectedRows)}
+    >
+      导出所选团队
+    </Button>,
+    <Button
+      key="export-filtered"
+      type="primary"
+      icon={<FileZipOutlined />}
+      loading={exporting}
+      onClick={() => void exportRows()}
+    >
+      导出筛选结果
+    </Button>,
+    ...(access.canDownloadRegistrationMaterials ? [
+      <Button
+        key="download-selected-materials"
+        icon={<FileZipOutlined />}
+        disabled={!selectedRows.length}
+        loading={packaging}
+        onClick={() => void packageMaterials(selectedRows)}
+      >
+        下载所选材料包
+      </Button>,
+      <Button
+        key="download-filtered-materials"
+        type="primary"
+        icon={<FileZipOutlined />}
+        loading={packaging}
+        onClick={() => void packageMaterials()}
+      >
+        下载筛选材料包
+      </Button>,
+    ] : []),
+  ] : [];
 
   return (
     <ManagementPage
       title="报名团队资料"
-      extra={access.canExportCompetitionRegistrations ? (
-        <Space wrap>
-          <Button
-            icon={<TeamOutlined />}
-            disabled={!selectedRows.length}
-            loading={exporting}
-            onClick={() => void exportRows(selectedRows)}
-          >
-            导出所选团队
-          </Button>
-          <Button
-            type="primary"
-            icon={<FileZipOutlined />}
-            loading={exporting}
-            onClick={() => void exportRows()}
-          >
-            导出筛选结果
-          </Button>
-          {access.canDownloadRegistrationMaterials ? (
-            <>
-              <Button
-                icon={<FileZipOutlined />}
-                disabled={!selectedRows.length}
-                loading={packaging}
-                onClick={() => void packageMaterials(selectedRows)}
-              >
-                下载所选材料包
-              </Button>
-              <Button
-                type="primary"
-                icon={<FileZipOutlined />}
-                loading={packaging}
-                onClick={() => void packageMaterials()}
-              >
-                下载筛选材料包
-              </Button>
-            </>
-          ) : null}
-        </Space>
-      ) : null}
+      breadcrumb={{
+        items: [
+          { key: 'data-management', title: '数据管理', path: '/data-management' },
+          { key: 'competition-registrations', title: '报名团队资料' },
+        ],
+      }}
     >
       <ManagementPageBody>
         <Alert
@@ -448,6 +454,7 @@ const CompetitionRegistrationDataPage = () => {
           columns={columns}
           isMobile={responsive.isMobile}
           scroll={{ x: 1420 }}
+          toolBarRender={() => tableToolbarActions}
           request={async (params) => {
             const query: RegistrationQuery = {
               competitionId: typeof params.competitionId === 'number'
