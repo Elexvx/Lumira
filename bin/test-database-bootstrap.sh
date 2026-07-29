@@ -48,6 +48,31 @@ if [ "$result" != "1
   exit 1
 fi
 
+# The MySQL image first starts a temporary server with networking disabled to
+# execute /docker-entrypoint-initdb.d, then shuts it down and starts the final
+# server on port 3306. The schema contract above can become visible while the
+# temporary server is still running, so wait for the final server explicitly
+# before applying online migrations.
+attempt=0
+while [ "$attempt" -lt 90 ]; do
+  if docker logs "$container_name" 2>&1 | grep -q 'port: 3306' &&
+    docker exec "$container_name" mysqladmin -uroot -p"$password" ping --silent >/dev/null 2>&1; then
+    break
+  fi
+  if [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || true)" != 'true' ]; then
+    docker logs --tail 120 "$container_name"
+    exit 1
+  fi
+  attempt=$((attempt + 1))
+  sleep 2
+done
+
+if [ "$attempt" -ge 90 ]; then
+  docker logs --tail 120 "$container_name"
+  echo 'Final MySQL server did not become ready.' >&2
+  exit 1
+fi
+
 for migration in "$repo_root"/deploy/migrations/V*.sql; do
   echo "Applying $(basename "$migration") to fresh database bootstrap..."
   docker exec -i "$container_name" mysql -uroot -p"$password" saas < "$migration"
