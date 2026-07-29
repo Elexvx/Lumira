@@ -9,6 +9,7 @@ import com.lumira.saas.modules.competition.app.CompetitionRegistrationExportTask
 import com.lumira.saas.modules.competition.controller.CompetitionRegistrationExportController;
 import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationDatasetRepository;
 import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationExportTaskRepository;
+import com.lumira.saas.modules.competition.infrastructure.RegistrationReviewInternalApiAdapter;
 import com.lumira.saas.modules.review.app.ReviewAppService;
 import com.lumira.saas.modules.review.controller.ReviewV2Controller;
 import com.lumira.saas.modules.review.infrastructure.JdbcReviewRepository;
@@ -26,6 +27,7 @@ class SystemBusinessControlPlaneAssemblyConfigurationTest {
         assertThat(Arrays.asList(imported.value())).contains(
                 JdbcRegistrationDatasetRepository.class,
                 JdbcRegistrationExportTaskRepository.class,
+                RegistrationReviewInternalApiAdapter.class,
                 CompetitionRegistrationExportAppService.class,
                 CompetitionRegistrationExportTaskWorkerService.class,
                 CompetitionRegistrationExportController.class,

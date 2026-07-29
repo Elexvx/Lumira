@@ -26,6 +26,7 @@ import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateRecordR
 import com.lumira.saas.modules.competition.infrastructure.JdbcCertificateTemplateRepository;
 import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationDatasetRepository;
 import com.lumira.saas.modules.competition.infrastructure.JdbcRegistrationExportTaskRepository;
+import com.lumira.saas.modules.competition.infrastructure.RegistrationReviewInternalApiAdapter;
 import com.lumira.saas.modules.config.controller.HealthController;
 import com.lumira.saas.modules.config.controller.VersionController;
 import com.lumira.saas.modules.config.runtime.DatabaseVersionStartupRecorder;
@@ -75,6 +76,7 @@ import org.springframework.context.annotation.Import;
         JdbcCertificateTemplateRepository.class,
         JdbcRegistrationDatasetRepository.class,
         JdbcRegistrationExportTaskRepository.class,
+        RegistrationReviewInternalApiAdapter.class,
         InternalRegistrationExportJobController.class,
         InternalReviewJobController.class,
         DatabaseVersionStartupRecorder.class,
