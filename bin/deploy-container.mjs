@@ -738,6 +738,22 @@ function mergedEnv() {
   };
 }
 
+function wslForwardedEnvironment(variableNames) {
+  const existing = String(process.env.WSLENV || '')
+    .split(':')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const forwardedNames = new Set(
+    existing.map((entry) => entry.split('/')[0].toUpperCase())
+  );
+  for (const variableName of variableNames) {
+    if (!forwardedNames.has(variableName.toUpperCase())) {
+      existing.push(`${variableName}/u`);
+    }
+  }
+  return existing.join(':');
+}
+
 function resolvePublicBaseUrl(env = mergedEnv()) {
   if (process.env.DEPLOY_CHECK_BASE_URL) {
     return process.env.DEPLOY_CHECK_BASE_URL;
@@ -905,6 +921,9 @@ async function runDatabaseMigrations() {
       DB_URL: env.DB_URL || '',
       DB_USERNAME: env.DB_USERNAME || 'root',
       DB_PASSWORD: env.DB_PASSWORD || '',
+      // docker.cmd delegates to WSL on Windows. WSLENV forwards these values
+      // without exposing database credentials in the process argument list.
+      WSLENV: wslForwardedEnvironment(['DB_URL', 'DB_USERNAME', 'DB_PASSWORD']),
     },
   });
   log('Database migrations completed before application startup.');

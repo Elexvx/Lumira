@@ -52,6 +52,19 @@ test('deploy-container generates every scoped internal token used by production 
   }
 });
 
+test('Windows WSL Docker deployments forward migration credentials without putting them in argv', () => {
+  assert.match(
+    deployScript,
+    /WSLENV:\s*wslForwardedEnvironment\(\['DB_URL', 'DB_USERNAME', 'DB_PASSWORD'\]\)/,
+    'database credentials must cross the docker.cmd-to-WSL boundary through WSLENV'
+  );
+  assert.doesNotMatch(
+    deployScript,
+    /'-e',\s*`DB_(?:URL|USERNAME|PASSWORD)=/,
+    'database credentials must not be embedded in docker process arguments'
+  );
+});
+
 test('production compose does not inject unused system or team tokens into job executor', () => {
   const jobExecutorBlock = composeProd.match(/lumira-job-executor:[\s\S]*?(?=\n  [a-z0-9-]+:|\nvolumes:|\nnetworks:|\n$)/i);
   assert.ok(jobExecutorBlock, 'job executor compose block must exist');
