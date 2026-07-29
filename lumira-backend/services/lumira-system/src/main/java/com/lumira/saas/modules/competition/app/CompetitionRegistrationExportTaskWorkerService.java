@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.competition.repository.RegistrationExportTaskRepository;
@@ -19,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
-@ConditionalOnLumiraAsyncEnabled
 @ConditionalOnLumiraControlPlaneEnabled
 public class CompetitionRegistrationExportTaskWorkerService {
     public static final int MAX_CLAIM_LIMIT = 100;

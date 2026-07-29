@@ -100,6 +100,16 @@ public class AdaptiveRelayScheduler implements SmartLifecycle {
         RelayRunResult result = new RelayRunResult();
         result.add(relay("platform", properties.isPlatformEnabled(), backendJobClient::relayOutbox));
         result.add(relay("system-export", properties.isPlatformEnabled(), backendJobClient::processExportTasks));
+        result.add(relay(
+                "competition-registration-export",
+                properties.isPlatformEnabled(),
+                backendJobClient::processRegistrationExportTasks
+        ));
+        result.add(relay(
+                "competition-review-expiration",
+                properties.isPlatformEnabled(),
+                backendJobClient::expireReviewAssignments
+        ));
         result.add(relay("message", properties.isMessageEnabled(), backendJobClient::relayMessageOutbox));
         result.add(relay("file", properties.isFileEnabled(), backendJobClient::relayFileOutbox));
         result.add(relay("payment", properties.isPaymentEnabled(), backendJobClient::relayPaymentOutbox));

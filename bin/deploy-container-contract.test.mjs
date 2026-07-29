@@ -399,12 +399,14 @@ test('api proxy template keeps split-owner routes explicit while defaulting comp
   assert.match(apiNginx, /location \^~ \/ws\/message[\s\S]*proxy_pass http:\/\/\$message_upstream\$request_uri;/, 'message websocket traffic must route to the message owner');
 });
 
-test('api proxy routes user export jobs to the active control plane slot', () => {
-  assert.match(
-    apiNginx,
-    /location \^~ \/internal\/jobs\/user-export[\s\S]*proxy_pass http:\/\/\$system_upstream\$request_uri/,
-    'user export jobs must reach the active control plane instead of the async runtime'
-  );
+test('api proxy routes control-plane jobs to the active control plane slot', () => {
+  for (const route of ['user-export', 'registration-export', 'reviews']) {
+    assert.match(
+      apiNginx,
+      new RegExp(`location \\^~ \\/internal\\/jobs\\/${route}[\\s\\S]*proxy_pass http:\\/\\/\\$system_upstream\\$request_uri`),
+      `${route} jobs must reach the active control plane instead of the async runtime`
+    );
+  }
 });
 
 test('online migrator joins the configurable database network used by production', () => {

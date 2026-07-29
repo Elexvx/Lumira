@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class AdaptiveRelaySchedulerTest {
 
@@ -40,6 +41,26 @@ class AdaptiveRelaySchedulerTest {
         assertThatCode(executor::runScheduledTask).doesNotThrowAnyException();
         assertThat(executor.scheduleCount()).isEqualTo(2);
         assertThat(executor.lastDelayMs()).isEqualTo(1234L);
+    }
+
+    @Test
+    void runOnceShouldProcessRegistrationExportsAndExpireReviewAssignments() {
+        BackendJobClient backendJobClient = mock(BackendJobClient.class);
+        JobExecutorProperties.AdaptiveRelay properties = new JobExecutorProperties.AdaptiveRelay();
+        properties.setEnabled(true);
+        properties.setPlatformEnabled(true);
+        properties.setMessageEnabled(false);
+        properties.setFileEnabled(false);
+        properties.setPaymentEnabled(false);
+        properties.setPluginEnabled(false);
+        RecordingScheduledExecutor executor = new RecordingScheduledExecutor();
+        AdaptiveRelayScheduler scheduler = new AdaptiveRelayScheduler(backendJobClient, properties, executor);
+
+        scheduler.start();
+        executor.runScheduledTask();
+
+        verify(backendJobClient).processRegistrationExportTasks();
+        verify(backendJobClient).expireReviewAssignments();
     }
 
     private static final class RecordingScheduledExecutor extends AbstractExecutorService implements ScheduledExecutorService {

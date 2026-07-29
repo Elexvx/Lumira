@@ -103,6 +103,14 @@ public class BackendJobClient {
         return postForInt(systemRestClient, "/internal/jobs/user-export/run?limit=20");
     }
 
+    public int processRegistrationExportTasks() {
+        return postForInt(systemRestClient, "/internal/jobs/registration-export/run?limit=20");
+    }
+
+    public int expireReviewAssignments() {
+        return postForInt(systemRestClient, "/internal/jobs/reviews/assignments/expire");
+    }
+
     private void post(String path) {
         post(restClient, path);
     }
