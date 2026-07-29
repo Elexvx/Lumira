@@ -1443,6 +1443,8 @@ public class JdbcReviewRepository implements ReviewRepository {
                 """
                         select candidate.id as candidateId,
                                candidate.registration_id as registrationId,
+                               cast(json_unquote(json_extract(candidate.snapshot_json, '$.ownerUserId')) as unsigned) as ownerUserId,
+                               json_unquote(json_extract(candidate.snapshot_json, '$.ownerUserUuid')) as ownerUserUuid,
                                candidate.blind_code as blindCode,
                                aggregate.aggregate_score as aggregateScore,
                                aggregate.rank_no as rankNo,
@@ -1460,6 +1462,8 @@ public class JdbcReviewRepository implements ReviewRepository {
                 (row, rowNum) -> new PublicationRow(
                         row.getLong("candidateId"),
                         row.getLong("registrationId"),
+                        row.getLong("ownerUserId"),
+                        row.getString("ownerUserUuid"),
                         row.getString("blindCode"),
                         row.getBigDecimal("aggregateScore"),
                         row.getObject("rankNo", Integer.class),

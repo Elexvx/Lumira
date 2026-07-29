@@ -66,6 +66,16 @@
         </dependency>
         <dependency>
             <groupId>com.lumira</groupId>
+            <artifactId>lumira-registration-api</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>lumira-review-api</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
             <artifactId>plugin-api</artifactId>
             <version>0.1.0</version>
         </dependency>

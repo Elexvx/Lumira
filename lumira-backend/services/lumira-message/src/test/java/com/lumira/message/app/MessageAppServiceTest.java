@@ -126,6 +126,66 @@ class MessageAppServiceTest {
     }
 
     @Test
+    void createSystemEventMessage_shouldPersistIdentityBoundInboxDelivery() {
+        when(systemInternalApi.findTargetUserUuidById(2001L)).thenReturn("target-uuid");
+        doAnswer(invocation -> {
+            MessageNoticeEntity entity = invocation.getArgument(0);
+            entity.setId(9001L);
+            return 1;
+        }).when(messageNoticeMapper).insert(any(MessageNoticeEntity.class));
+        MessageVO.NoticeVO stored = notice(9001L, "赛事评审结果已发布：晋级");
+        stored.setTargetScope("USER");
+        stored.setTargetUserId(2001L);
+        stored.setTargetUserUuid("target-uuid");
+        when(messageNoticeMapper.findNoticeById(9001L, 7L, "operator-uuid")).thenReturn(stored);
+        when(messageDeliveryLogMapper.insert(any(MessageDeliveryLogEntity.class))).thenReturn(1);
+
+        MessageVO.NoticeVO created = messageAppService.createSystemEventMessage(
+                new SystemEventMessageCommand(
+                        7L,
+                        "operator-uuid",
+                        2001L,
+                        "target-uuid",
+                        "赛事评审结果已发布：晋级",
+                        "您的参赛团队评审结果已发布。"
+                )
+        );
+
+        assertThat(created.getId()).isEqualTo(9001L);
+        ArgumentCaptor<MessageNoticeEntity> noticeCaptor = ArgumentCaptor.forClass(MessageNoticeEntity.class);
+        verify(messageNoticeMapper).insert(noticeCaptor.capture());
+        assertThat(noticeCaptor.getValue().getSourceType()).isEqualTo("SYSTEM_EVENT");
+        assertThat(noticeCaptor.getValue().getTargetUserId()).isEqualTo(2001L);
+        assertThat(noticeCaptor.getValue().getTargetUserUuid()).isEqualTo("target-uuid");
+        ArgumentCaptor<MessageDeliveryLogEntity> deliveryCaptor =
+                ArgumentCaptor.forClass(MessageDeliveryLogEntity.class);
+        verify(messageDeliveryLogMapper).insert(deliveryCaptor.capture());
+        assertThat(deliveryCaptor.getValue().getTargetUserUuid()).isEqualTo("target-uuid");
+        assertThat(deliveryCaptor.getValue().getSendStatus()).isEqualTo("SUCCESS");
+        verify(messagePushService).publishCreated(stored);
+        verify(systemInternalApi).bumpReadModelVersion("message", "unread", "message.unread");
+    }
+
+    @Test
+    void createSystemEventMessage_shouldRejectStaleTargetIdentity() {
+        when(systemInternalApi.findTargetUserUuidById(2001L)).thenReturn("current-uuid");
+
+        assertThatThrownBy(() -> messageAppService.createSystemEventMessage(
+                new SystemEventMessageCommand(
+                        7L,
+                        "operator-uuid",
+                        2001L,
+                        "stale-uuid",
+                        "评审结果",
+                        "结果已发布"
+                )
+        )).isInstanceOf(BizException.class)
+                .hasMessageContaining("identity mismatch");
+
+        verify(messageNoticeMapper, never()).insert(any(MessageNoticeEntity.class));
+    }
+
+    @Test
     void listMessages_shouldReturnEmptyPageForAnonymousUser() {
         MessageVO.NoticePageResponse response = messageAppService.listMessages(null, 1, 20);
 

@@ -25,6 +25,22 @@ import static org.mockito.Mockito.when;
 class CompetitionRegistrationV2ControllerTest {
 
     @Test
+    void legacyStageReviewEndpointsAreRetiredByDefault() {
+        CompetitionRegistrationAppService appService = mock(CompetitionRegistrationAppService.class);
+        CompetitionRegistrationV2Controller controller = new CompetitionRegistrationV2Controller(
+                appService,
+                mock(SecurityContextFacade.class),
+                mock(PermissionGuard.class)
+        );
+
+        BizException exception = assertThrows(BizException.class, () -> controller.reviewCandidates(20L));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BIZ_ERROR);
+        assertThat(exception.getMessage()).contains("review workbench");
+        verifyNoInteractions(appService);
+    }
+
+    @Test
     void registrationsShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
         CompetitionRegistrationAppService appService = mock(CompetitionRegistrationAppService.class);
         SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);

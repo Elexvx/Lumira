@@ -18,6 +18,8 @@
         <module>libs/lumira-common-security</module>
         <module>libs/lumira-common-api</module>
         <module>libs/lumira-team-api</module>
+        <module>libs/lumira-registration-api</module>
+        <module>libs/lumira-review-api</module>
         <module>libs/lumira-plugin-api</module>
         <module>services/lumira-auth</module>
         <module>services/lumira-file</module>

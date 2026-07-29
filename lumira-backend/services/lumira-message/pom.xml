@@ -14,6 +14,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>lumira-review-api</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>

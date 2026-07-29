@@ -6,9 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
@@ -16,9 +18,12 @@ import org.mockito.ArgumentCaptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.registration.api.RegistrationReviewInternalApi;
+import com.lumira.saas.infrastructure.event.PlatformEventPublisher;
 import com.lumira.saas.modules.review.dto.ReviewDTO;
 import com.lumira.saas.modules.review.repository.ReviewRepository;
 import com.lumira.saas.modules.review.vo.ReviewVO;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -34,13 +39,15 @@ class ReviewAppServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(ReviewRepository.class);
-        service = new ReviewAppService(repository, new ObjectMapper());
+        service = new ReviewAppService(repository, new ObjectMapper().findAndRegisterModules());
     }
 
     @Test
     void createsDraftPlanWithAnImmutableCriteriaVersionBoundary() {
         ReviewDTO.PlanCreateRequest request = planRequest();
-        when(repository.stageBelongsToCompetition(10L, 20L)).thenReturn(true);
+        RegistrationReviewInternalApi registrationApi = mock(RegistrationReviewInternalApi.class);
+        service.setRegistrationReviewInternalApi(registrationApi);
+        when(registrationApi.stageBelongsToCompetition(10L, 20L)).thenReturn(true);
         when(repository.findPlanByStage(10L, 20L)).thenReturn(Optional.empty());
         when(repository.insertPlan(
                 any(), anyString(), anyInt(), anyInt(), anyString(), any(), anyInt(), anyInt(), anyLong(), anyString()
@@ -57,6 +64,8 @@ class ReviewAppServiceTest {
         ReviewVO.Plan created = service.createPlan(user(ReviewAppService.PLAN_MANAGE), request);
 
         assertThat(created.getId()).isEqualTo(30L);
+        verify(registrationApi).stageBelongsToCompetition(10L, 20L);
+        verify(repository, never()).stageBelongsToCompetition(anyLong(), anyLong());
         verify(repository).insertCriteriaVersion(
                 eq(30L),
                 eq(1),
@@ -721,6 +730,78 @@ class ReviewAppServiceTest {
         assertThat(result.getId()).isEqualTo(500L);
         verify(repository, never()).insertPublication(
                 anyLong(), anyInt(), anyString(), anyString(), anyLong(), anyString(), any()
+        );
+    }
+
+    @Test
+    void publishesOneIdentityBoundEventPerTeamResult() {
+        ReviewVO.Batch batch = reviewBatch(60L, "FINALIZED", 5);
+        batch.setStageId(20L);
+        ReviewRepository.PublicationRow row = new ReviewRepository.PublicationRow(
+                70L,
+                100L,
+                11L,
+                "owner-uuid",
+                "BLIND-001",
+                new BigDecimal("91.2500"),
+                1,
+                "ADVANCED"
+        );
+        ReviewVO.Publication publication = new ReviewVO.Publication();
+        publication.setId(500L);
+        publication.setBatchId(60L);
+        publication.setPublicationVersion(1);
+        publication.setStatus("PUBLISHED");
+        PlatformEventPublisher eventPublisher = mock(PlatformEventPublisher.class);
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        service.setPlatformEventPublisher(eventPublisher);
+        service.setMeterRegistry(meterRegistry);
+
+        when(repository.findBatch(60L)).thenReturn(Optional.of(batch));
+        when(repository.loadPublicationRows(60L)).thenReturn(List.of(row));
+        when(repository.findLatestPublicationVersion(60L)).thenReturn(0);
+        when(repository.insertPublication(
+                eq(60L), eq(1), anyString(), anyString(), eq(7L), eq("user-uuid"), any()
+        )).thenReturn(500L);
+        when(repository.projectLegacyResult(
+                eq(batch), eq(row), eq(7L), eq("user-uuid"), any()
+        )).thenReturn(1);
+        when(repository.markBatchPublished(
+                eq(60L), eq(5), eq(7L), eq("user-uuid"), any()
+        )).thenReturn(1);
+        when(repository.findLatestPublication(60L)).thenReturn(Optional.of(publication));
+
+        ReviewVO.Publication result = service.publishBatch(
+                user(ReviewAppService.RESULT_PUBLISH),
+                60L
+        );
+
+        assertThat(result.getId()).isEqualTo(500L);
+        assertThat(meterRegistry.counter("competition.review.publication").count()).isEqualTo(1);
+        assertThat(meterRegistry.counter("competition.review.result.published").count()).isEqualTo(1);
+        verify(eventPublisher, times(2)).publishAfterCommit(
+                eq("SYSTEM"),
+                anyString(),
+                eq(7L),
+                anyString(),
+                anyLong(),
+                any()
+        );
+        verify(eventPublisher).publishAfterCommit(
+                eq("SYSTEM"),
+                eq(ReviewAppService.RESULT_PUBLISHED_EVENT),
+                eq(7L),
+                eq("competition.review-result.v1"),
+                eq(100L),
+                argThat(attributes ->
+                        attributes != null
+                                && Long.valueOf(500L).equals(attributes.get("publicationId"))
+                                && Integer.valueOf(1).equals(attributes.get("publicationVersion"))
+                                && Long.valueOf(11L).equals(attributes.get("recipientUserId"))
+                                && "owner-uuid".equals(attributes.get("recipientUserUuid"))
+                                && "ADVANCED".equals(attributes.get("decision"))
+                                && Integer.valueOf(1).equals(attributes.get("rankNo"))
+                )
         );
     }
 

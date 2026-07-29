@@ -61,6 +61,7 @@ public class MessageAppService {
     private static final String STATUS_RETRACTED = "RETRACTED";
     private static final String STATUS_ENABLED = "ENABLED";
     private static final String SOURCE_MANUAL = "MANUAL";
+    private static final String SOURCE_SYSTEM_EVENT = "SYSTEM_EVENT";
     private static final String CHANNEL_INBOX = "INBOX";
     private static final String CHANNEL_EMAIL = "EMAIL";
     private static final String CHANNEL_WECHAT_OFFICIAL = "WECHAT_OFFICIAL";
@@ -367,6 +368,55 @@ public class MessageAppService {
         return notice;
     }
 
+    /**
+     * Creates a user inbox message from an authenticated internal integration
+     * event. Callers must pair this operation with a durable consumption
+     * receipt so the notice and receipt commit atomically.
+     */
+    @Transactional
+    public MessageVO.NoticeVO createSystemEventMessage(SystemEventMessageCommand command) {
+        if (command == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "system event message command is required");
+        }
+        Long operatorUserId = requirePositiveSystemEventId(command.operatorUserId(), "operatorUserId");
+        String operatorUserUuid = requireSystemEventUuid(command.operatorUserUuid(), "operatorUserUuid");
+        Long targetUserId = requirePositiveSystemEventId(command.targetUserId(), "targetUserId");
+        String targetUserUuid = requireSystemEventUuid(command.targetUserUuid(), "targetUserUuid");
+        String title = requireSystemEventText(command.title(), "title", 128);
+        String content = requireSystemEventText(command.content(), "content", 8_000);
+        String trustedTargetUuid = requireTargetUserUuid(targetUserId);
+        if (!targetUserUuid.equals(trustedTargetUuid)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "system event target user identity mismatch");
+        }
+
+        MessageVO.NoticeVO notice = insertSystemEventNotice(
+                operatorUserId,
+                operatorUserUuid,
+                targetUserId,
+                targetUserUuid,
+                title,
+                content
+        );
+        insertDeliveryLog(
+                notice.getId(),
+                CHANNEL_INBOX,
+                TARGET_SCOPE_USER,
+                targetUserId,
+                targetUserUuid,
+                null,
+                null,
+                title,
+                content,
+                DELIVERY_SUCCESS,
+                null,
+                operatorUserId,
+                operatorUserUuid
+        );
+        messagePushService.publishCreated(notice);
+        bumpUnreadReadModelVersion();
+        return notice;
+    }
+
     private void requirePlatformBroadcastPermission(CurrentUser currentUser, String targetScope) {
         if (!TARGET_SCOPE_PLATFORM.equals(targetScope)) {
             return;
@@ -601,11 +651,60 @@ public class MessageAppService {
             String title,
             String content
     ) {
+        return insertNotice(
+                operatorId,
+                operatorUserUuid,
+                targetScope,
+                targetUserId,
+                targetRoleId,
+                title,
+                content,
+                SOURCE_MANUAL,
+                null
+        );
+    }
+
+    private MessageVO.NoticeVO insertSystemEventNotice(
+            Long operatorId,
+            String operatorUserUuid,
+            Long targetUserId,
+            String targetUserUuid,
+            String title,
+            String content
+    ) {
+        return insertNotice(
+                operatorId,
+                operatorUserUuid,
+                TARGET_SCOPE_USER,
+                targetUserId,
+                null,
+                title,
+                content,
+                SOURCE_SYSTEM_EVENT,
+                targetUserUuid
+        );
+    }
+
+    private MessageVO.NoticeVO insertNotice(
+            Long operatorId,
+            String operatorUserUuid,
+            String targetScope,
+            Long targetUserId,
+            Long targetRoleId,
+            String title,
+            String content,
+            String sourceType,
+            String expectedTargetUserUuid
+    ) {
         if (!StringUtils.hasText(title) || !StringUtils.hasText(content)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "标题和内容不能为空");
         }
 
         String targetUserUuid = TARGET_SCOPE_USER.equals(targetScope) ? requireTargetUserUuid(targetUserId) : null;
+        if (StringUtils.hasText(expectedTargetUserUuid)
+                && !expectedTargetUserUuid.trim().equals(targetUserUuid)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "message target user identity mismatch");
+        }
 
         MessageNoticeEntity entity = new MessageNoticeEntity();
         LocalDateTime now = LocalDateTime.now();
@@ -616,7 +715,7 @@ public class MessageAppService {
         entity.setTargetRoleId(targetRoleId);
         entity.setTitle(title);
         entity.setContent(content);
-        entity.setSourceType(SOURCE_MANUAL);
+        entity.setSourceType(StringUtils.hasText(sourceType) ? sourceType.trim() : SOURCE_MANUAL);
         entity.setPublishStatus(STATUS_PUBLISHED);
         entity.setPublishedAt(now);
         entity.setCreatedBy(operatorId);
@@ -634,6 +733,27 @@ public class MessageAppService {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入后读取失败");
         }
         return notice;
+    }
+
+    private Long requirePositiveSystemEventId(Long value, String fieldName) {
+        if (value == null || value <= 0) {
+            throw new BizException(ErrorCode.BAD_REQUEST, fieldName + " must be positive");
+        }
+        return value;
+    }
+
+    private String requireSystemEventUuid(String value, String fieldName) {
+        if (!StringUtils.hasText(value) || value.trim().length() > 64) {
+            throw new BizException(ErrorCode.BAD_REQUEST, fieldName + " is invalid");
+        }
+        return value.trim();
+    }
+
+    private String requireSystemEventText(String value, String fieldName, int maxLength) {
+        if (!StringUtils.hasText(value) || value.trim().length() > maxLength) {
+            throw new BizException(ErrorCode.BAD_REQUEST, fieldName + " is invalid");
+        }
+        return value.trim();
     }
 
     private String requireTargetUserUuid(Long targetUserId) {

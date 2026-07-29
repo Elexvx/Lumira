@@ -21,6 +21,7 @@ import com.lumira.saas.modules.competition.vo.CompetitionRegistrationVO;
 import jakarta.validation.Valid;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -65,6 +66,8 @@ public class CompetitionRegistrationV2Controller {
     private final FileInternalApi fileInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
+    @Value("${saas.workflow.legacy-stage-review-enabled:false}")
+    private boolean legacyStageReviewEnabled;
 
     public CompetitionRegistrationV2Controller(
             CompetitionRegistrationAppService registrationAppService,
@@ -380,6 +383,7 @@ public class CompetitionRegistrationV2Controller {
 
     @GetMapping("/stages/{stageId}/review-candidates")
     public ApiResponse<List<CompetitionRegistrationVO.StageReviewCandidate>> reviewCandidates(@PathVariable("stageId") Long stageId) {
+        requireLegacyStageReviewEnabled();
         CurrentUser currentUser = require(STAGE_MANAGE);
         return ApiResponse.success(registrationAppService.listStageReviewCandidates(currentUser, stageId), TraceContext.getRequestId());
     }
@@ -391,6 +395,7 @@ public class CompetitionRegistrationV2Controller {
             @PathVariable("registrationId") Long registrationId,
             @Valid @RequestBody CompetitionRegistrationDTO.StageReviewDecisionRequest request
     ) {
+        requireLegacyStageReviewEnabled();
         CurrentUser currentUser = require(STAGE_MANAGE);
         return ApiResponse.success(
                 registrationAppService.saveStageReviewDecision(currentUser, stageId, registrationId, request),
@@ -401,6 +406,7 @@ public class CompetitionRegistrationV2Controller {
     @PostMapping("/stages/{stageId}/apply-promotion-rule")
     @RepeatSubmit
     public ApiResponse<List<CompetitionRegistrationVO.StageReviewCandidate>> applyPromotionRule(@PathVariable("stageId") Long stageId) {
+        requireLegacyStageReviewEnabled();
         CurrentUser currentUser = require(STAGE_MANAGE);
         return ApiResponse.success(registrationAppService.applyStagePromotionRule(currentUser, stageId), TraceContext.getRequestId());
     }
@@ -426,6 +432,15 @@ public class CompetitionRegistrationV2Controller {
         currentUser = requireTrustedUser(currentUser);
         permissionGuard.requirePermission(currentUser, permissionKey);
         return currentUser;
+    }
+
+    private void requireLegacyStageReviewEnabled() {
+        if (!legacyStageReviewEnabled) {
+            throw new BizException(
+                    ErrorCode.BIZ_ERROR,
+                    "Legacy stage review API is disabled; use the review workbench"
+            );
+        }
     }
 
     private CurrentUser requireRegistrationReadAccess() {

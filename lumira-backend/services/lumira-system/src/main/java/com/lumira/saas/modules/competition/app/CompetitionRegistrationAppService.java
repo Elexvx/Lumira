@@ -28,6 +28,8 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.team.api.TeamInternalApi;
 import com.lumira.team.api.TeamMemberDTO;
 import com.lumira.team.api.TeamSummaryDTO;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -105,6 +107,8 @@ public class CompetitionRegistrationAppService {
     private final SessionAuthenticationService sessionAuthenticationService;
     private RegistrationDatasetRepository registrationDatasetRepository;
     private final boolean enforceTrustedUserResolution;
+    private Counter registrationConfirmedCounter;
+    private Counter materialSubmittedCounter;
 
     @Autowired
     public CompetitionRegistrationAppService(
@@ -132,6 +136,14 @@ public class CompetitionRegistrationAppService {
     @Autowired
     void setRegistrationDatasetRepository(RegistrationDatasetRepository registrationDatasetRepository) {
         this.registrationDatasetRepository = registrationDatasetRepository;
+    }
+
+    @Autowired
+    void setMeterRegistry(MeterRegistry meterRegistry) {
+        registrationConfirmedCounter = Counter.builder("competition.registration.confirmed")
+                .register(meterRegistry);
+        materialSubmittedCounter = Counter.builder("competition.registration.material.submitted")
+                .register(meterRegistry);
     }
 
     private CompetitionRegistrationAppService(
@@ -540,6 +552,7 @@ public class CompetitionRegistrationAppService {
             confirmPaidRegistration(confirmed.getId(), null);
             confirmed = getRegistration(currentUser, confirmed.getId());
         }
+        increment(registrationConfirmedCounter);
         return confirmed;
     }
 
@@ -1157,7 +1170,14 @@ public class CompetitionRegistrationAppService {
                     trimToNull(value.getJsonValue())
             );
         }
+        increment(materialSubmittedCounter);
         return getRegistration(currentUser, registrationId);
+    }
+
+    private void increment(Counter counter) {
+        if (counter != null) {
+            counter.increment();
+        }
     }
 
     @Transactional

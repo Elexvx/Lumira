@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.web.TraceContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,6 +121,39 @@ public class PlatformEventOutboxService {
     private volatile long cachedSnapshotUntilMillis;
 
     @Autowired
+    public PlatformEventOutboxService(ObjectMapper objectMapper,
+                                      PlatformEventOutboxMapper platformEventOutboxMapper,
+                                      MyBatisQueryOperations queryOperations,
+                                      MeterRegistry meterRegistry) {
+        this.objectMapper = objectMapper;
+        this.platformEventOutboxMapper = platformEventOutboxMapper;
+        this.queryOperations = queryOperations;
+        Gauge.builder(
+                        "platform.event.outbox.pending",
+                        this,
+                        service -> service.snapshot().pendingBacklog()
+                )
+                .register(meterRegistry);
+        Gauge.builder(
+                        "platform.event.outbox.failed",
+                        this,
+                        service -> service.snapshot().failedBacklog()
+                )
+                .register(meterRegistry);
+        Gauge.builder(
+                        "platform.event.outbox.dead.letter",
+                        this,
+                        service -> service.snapshot().deadLetterCount()
+                )
+                .register(meterRegistry);
+        Gauge.builder(
+                        "platform.event.outbox.dispatchable",
+                        this,
+                        service -> service.snapshot().dispatchableBacklog()
+                )
+                .register(meterRegistry);
+    }
+
     public PlatformEventOutboxService(ObjectMapper objectMapper,
                                       PlatformEventOutboxMapper platformEventOutboxMapper,
                                       MyBatisQueryOperations queryOperations) {

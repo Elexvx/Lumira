@@ -431,6 +431,8 @@ public interface ReviewRepository {
     record PublicationRow(
             Long candidateId,
             Long registrationId,
+            Long ownerUserId,
+            String ownerUserUuid,
             String blindCode,
             BigDecimal aggregateScore,
             Integer rankNo,

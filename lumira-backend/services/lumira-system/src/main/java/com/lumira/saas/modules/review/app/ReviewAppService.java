@@ -6,10 +6,15 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.event.PlatformEventPublisher;
+import com.lumira.registration.api.RegistrationCandidateSnapshotDTO;
+import com.lumira.registration.api.RegistrationReviewInternalApi;
+import com.lumira.review.api.ReviewIntegrationEvents;
 import com.lumira.saas.modules.review.dto.ReviewDTO;
 import com.lumira.saas.modules.review.domain.ReviewBatchStatus;
 import com.lumira.saas.modules.review.repository.ReviewRepository;
 import com.lumira.saas.modules.review.vo.ReviewVO;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +51,7 @@ public class ReviewAppService {
     public static final String RESULT_PUBLISH = "review:result:publish";
     public static final String APPEAL_SUBMIT = "review:appeal:submit";
     public static final String APPEAL_MANAGE = "review:appeal:manage";
+    public static final String RESULT_PUBLISHED_EVENT = ReviewIntegrationEvents.RESULT_PUBLISHED;
     private static final Set<String> BLIND_MODES = Set.of("NONE", "SINGLE_BLIND", "DOUBLE_BLIND");
     private static final Set<String> AGGREGATE_METHODS =
             Set.of("AVERAGE", "MEDIAN", "WEIGHTED_AVERAGE", "TRIMMED_MEAN");
@@ -59,6 +65,10 @@ public class ReviewAppService {
     private final ReviewRepository reviewRepository;
     private final ObjectMapper objectMapper;
     private PlatformEventPublisher platformEventPublisher;
+    private RegistrationReviewInternalApi registrationReviewInternalApi;
+    private Counter publicationCounter;
+    private Counter publishedResultCounter;
+    private Counter appealSubmittedCounter;
 
     public ReviewAppService(ReviewRepository reviewRepository, ObjectMapper objectMapper) {
         this.reviewRepository = reviewRepository;
@@ -68,6 +78,23 @@ public class ReviewAppService {
     @Autowired
     public void setPlatformEventPublisher(PlatformEventPublisher platformEventPublisher) {
         this.platformEventPublisher = platformEventPublisher;
+    }
+
+    @Autowired
+    public void setRegistrationReviewInternalApi(
+            RegistrationReviewInternalApi registrationReviewInternalApi
+    ) {
+        this.registrationReviewInternalApi = registrationReviewInternalApi;
+    }
+
+    @Autowired
+    public void setMeterRegistry(MeterRegistry meterRegistry) {
+        publicationCounter = Counter.builder("competition.review.publication")
+                .register(meterRegistry);
+        publishedResultCounter = Counter.builder("competition.review.result.published")
+                .register(meterRegistry);
+        appealSubmittedCounter = Counter.builder("competition.review.appeal.submitted")
+                .register(meterRegistry);
     }
 
     @Transactional
@@ -80,7 +107,7 @@ public class ReviewAppService {
         if (!StringUtils.hasText(request.getPlanName())) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Review plan name is required");
         }
-        if (!reviewRepository.stageBelongsToCompetition(request.getCompetitionId(), request.getStageId())) {
+        if (!stageBelongsToCompetition(request.getCompetitionId(), request.getStageId())) {
             throw biz(ErrorCode.NOT_FOUND, "Competition stage not found");
         }
         if (reviewRepository.findPlanByStage(request.getCompetitionId(), request.getStageId()).isPresent()) {
@@ -358,6 +385,7 @@ public class ReviewAppService {
         ReviewVO.Appeal appeal = reviewRepository.findAppeal(appealId)
                 .orElseThrow(() -> biz(ErrorCode.BIZ_ERROR, "Review appeal could not be reloaded"));
         publishAppealEvent(operator, appeal, "COMPETITION_REVIEW_APPEAL_SUBMITTED");
+        increment(appealSubmittedCounter);
         return appeal;
     }
 
@@ -427,7 +455,7 @@ public class ReviewAppService {
                 request == null ? null : request.getRegistrationIds()
         );
         List<ReviewRepository.CandidateSnapshot> snapshots =
-                reviewRepository.loadCandidateSnapshots(batch.getCompetitionId(), requestedRegistrationIds);
+                loadCandidateSnapshots(batch.getCompetitionId(), requestedRegistrationIds);
         if (snapshots.isEmpty()) {
             throw biz(ErrorCode.BIZ_ERROR, "No eligible paid or confirmed registrations were found");
         }
@@ -1189,6 +1217,18 @@ public class ReviewAppService {
                 "Review batch changed, please retry"
         );
         publishReviewResultEvent(operator, batch, publicationId, publicationVersion, rows.size());
+        for (ReviewRepository.PublicationRow row : rows) {
+            publishTeamReviewResultEvent(
+                    operator,
+                    batch,
+                    publicationId,
+                    publicationVersion,
+                    publishedAt,
+                    row
+            );
+        }
+        increment(publicationCounter);
+        increment(publishedResultCounter, rows.size());
         return reviewRepository.findLatestPublication(batchId)
                 .orElseThrow(() -> biz(ErrorCode.BIZ_ERROR, "Review publication could not be reloaded"));
     }
@@ -1362,10 +1402,50 @@ public class ReviewAppService {
         attributes.put("resultCount", resultCount);
         platformEventPublisher.publishAfterCommit(
                 "SYSTEM",
-                "COMPETITION_REVIEW_RESULTS_PUBLISHED",
+                ReviewIntegrationEvents.RESULTS_PUBLISHED,
                 operator.userId(),
                 "competition.review-publication",
                 publicationId,
+                attributes
+        );
+    }
+
+    private void publishTeamReviewResultEvent(
+            Operator operator,
+            ReviewVO.Batch batch,
+            Long publicationId,
+            int publicationVersion,
+            LocalDateTime publishedAt,
+            ReviewRepository.PublicationRow row
+    ) {
+        if (platformEventPublisher == null) {
+            return;
+        }
+        if (row.ownerUserId() == null
+                || row.ownerUserId() <= 0
+                || !StringUtils.hasText(row.ownerUserUuid())) {
+            throw biz(ErrorCode.BIZ_ERROR, "Review result recipient identity is missing");
+        }
+        Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("userUuid", operator.userUuid());
+        attributes.put("publicationId", publicationId);
+        attributes.put("publicationVersion", publicationVersion);
+        attributes.put("publishedAt", publishedAt);
+        attributes.put("batchId", batch.getId());
+        attributes.put("competitionId", batch.getCompetitionId());
+        attributes.put("stageId", batch.getStageId());
+        attributes.put("registrationId", row.registrationId());
+        attributes.put("recipientUserId", row.ownerUserId());
+        attributes.put("recipientUserUuid", row.ownerUserUuid());
+        attributes.put("decision", row.decision());
+        attributes.put("aggregateScore", row.aggregateScore());
+        attributes.put("rankNo", row.rankNo());
+        platformEventPublisher.publishAfterCommit(
+                "SYSTEM",
+                RESULT_PUBLISHED_EVENT,
+                operator.userId(),
+                "competition.review-result.v" + publicationVersion,
+                row.registrationId(),
                 attributes
         );
     }
@@ -1392,6 +1472,56 @@ public class ReviewAppService {
                 "competition.review-appeal",
                 appeal.getId(),
                 attributes
+        );
+    }
+
+    private void increment(Counter counter) {
+        increment(counter, 1);
+    }
+
+    private void increment(Counter counter, int amount) {
+        if (counter != null && amount > 0) {
+            counter.increment(amount);
+        }
+    }
+
+    private boolean stageBelongsToCompetition(Long competitionId, Long stageId) {
+        if (registrationReviewInternalApi != null) {
+            return registrationReviewInternalApi.stageBelongsToCompetition(competitionId, stageId);
+        }
+        return reviewRepository.stageBelongsToCompetition(competitionId, stageId);
+    }
+
+    private List<ReviewRepository.CandidateSnapshot> loadCandidateSnapshots(
+            Long competitionId,
+            List<Long> registrationIds
+    ) {
+        if (registrationReviewInternalApi == null) {
+            return reviewRepository.loadCandidateSnapshots(competitionId, registrationIds);
+        }
+        return registrationReviewInternalApi
+                .loadEligibleCandidateSnapshots(competitionId, registrationIds)
+                .stream()
+                .map(this::candidateSnapshot)
+                .toList();
+    }
+
+    private ReviewRepository.CandidateSnapshot candidateSnapshot(RegistrationCandidateSnapshotDTO source) {
+        return new ReviewRepository.CandidateSnapshot(
+                source.registrationId(),
+                source.registrationNo(),
+                source.competitionId(),
+                source.teamId(),
+                source.projectId(),
+                source.ownerUserId(),
+                source.ownerUserUuid(),
+                source.status(),
+                source.registrationSnapshotJson(),
+                source.teamSnapshotJson(),
+                source.projectSnapshotJson(),
+                source.memberSnapshotJson(),
+                source.collectionSchemaSnapshotJson(),
+                source.materialSnapshotJson()
         );
     }
 
