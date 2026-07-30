@@ -57,6 +57,19 @@ test('preflight selects the inactive slot and enforces overlap resources', () =>
   assert.equal(blocked.blockers.length, 2);
 });
 
+test('preflight preserves database migration fields after manifest normalization', () => {
+  const normalized = normalizeReleaseManifest(manifestV2());
+  const report = buildPreflightReport({
+    manifest: normalized,
+    state: createInitialDeploymentState(),
+    freeMemoryBytes: 2 ** 30,
+    freeDiskBytes: 4 * 2 ** 30,
+  });
+  assert.equal(report.ready, true);
+  assert.equal(report.migrationMode, 'expand-only');
+  assert.equal(report.databaseTargetVersion, '202607140001');
+});
+
 test('upstream rendering points every monolith route at the active slot', () => {
   const rendered = renderActiveUpstreams('green');
   assert.equal((rendered.match(/lumira-server-green:8080/g) || []).length, 10);

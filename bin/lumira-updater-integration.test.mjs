@@ -53,6 +53,8 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   const preflight = await call('/v1/update/preflight', { method: 'POST', body: JSON.stringify({ manifest }) });
   assert.equal(preflight.body.ready, true);
   assert.equal(preflight.body.targetSlot, 'green');
+  assert.equal(preflight.body.migrationMode, 'expand-only');
+  assert.equal(preflight.body.databaseTargetVersion, '202607140001');
 
   const domesticManifest = {
     ...manifest,

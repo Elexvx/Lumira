@@ -43,7 +43,11 @@ export function normalizeReleaseManifest(rawManifest) {
   const raw = rawManifest && typeof rawManifest === 'object' ? rawManifest : {};
   const images = raw.images && typeof raw.images === 'object' ? raw.images : {};
   const update = raw.update && typeof raw.update === 'object' ? raw.update : {};
-  const database = update.database && typeof update.database === 'object' ? update.database : {};
+  const database = update.database && typeof update.database === 'object'
+    ? update.database
+    : raw.database && typeof raw.database === 'object'
+      ? raw.database
+      : {};
   const commit = String(raw.commit || raw.commitId || '').trim();
   if (!commitPattern.test(commit)) {
     throw new Error('release manifest commit is invalid');
