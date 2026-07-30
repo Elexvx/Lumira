@@ -7,6 +7,7 @@ export default {
   'global.float.qrCode': 'QR code',
   'global.float.refresh': 'Refresh page',
   'global.float.backTop': 'Back to top',
+  'global.float.more': 'Quick actions',
   'app.layout.backToMainRoute': 'Back to main route',
   'app.brand.backHome': 'Back to home',
   'app.layout.uploadQrHint': 'Please upload a QR code in personalization settings',

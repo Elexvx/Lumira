@@ -245,6 +245,49 @@ public class CertificateV2Controller {
         return ApiResponse.success(certificateAppService.generateBatch(currentUser, request), TraceContext.getRequestId());
     }
 
+    @PostMapping("/api/v2/aiadc/certificate-awards/grant")
+    public ApiResponse<List<CertificateVO.AwardGrant>> grantPublishedAwards(
+            @Valid @RequestBody CertificateDTO.AwardGrantRequest request
+    ) {
+        CurrentUser currentUser = require(BATCH_CREATE);
+        return ApiResponse.success(
+                certificateAppService.grantPublishedAwards(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/api/v2/aiadc/certificate-award-sources")
+    public ApiResponse<List<CertificateVO.AwardSource>> awardSources() {
+        CurrentUser currentUser = require(BATCH_CREATE);
+        return ApiResponse.success(
+                certificateAppService.listPublishedAwardSources(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/api/v2/aiadc/certificate-awards")
+    public ApiResponse<List<CertificateVO.AwardGrant>> awardGrants(
+            @RequestParam("reviewBatchId") Long reviewBatchId
+    ) {
+        CurrentUser currentUser = require(BATCH_CREATE);
+        return ApiResponse.success(
+                certificateAppService.listAwardGrants(currentUser, reviewBatchId),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/api/v2/aiadc/certificate-batches/from-awards")
+    @RepeatSubmit
+    public ApiResponse<CertificateVO.GenerateResult> generateAwardCertificates(
+            @Valid @RequestBody CertificateDTO.AwardCertificateGenerateRequest request
+    ) {
+        CurrentUser currentUser = require(BATCH_CREATE);
+        return ApiResponse.success(
+                certificateAppService.generateAwardCertificates(currentUser, request),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/api/v2/aiadc/certificate-batches")
     public ApiResponse<PageResponse<CertificateVO.Batch>> batches(
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
@@ -270,6 +313,26 @@ public class CertificateV2Controller {
     ) {
         CurrentUser currentUser = require(CERTIFICATE_VIEW);
         return ApiResponse.success(certificateAppService.listRecords(currentUser, certificateNo, recipientName, status, pageNo, pageSize), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/api/v2/aiadc/certificates/mine")
+    public ApiResponse<List<CertificateVO.Record>> myCertificates() {
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
+        return ApiResponse.success(
+                certificateAppService.listMyCertificates(currentUser),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/api/v2/aiadc/certificates/mine/{id}/download")
+    public ResponseEntity<FileSystemResource> downloadMyCertificate(@PathVariable("id") Long id) {
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
+        CertificateVO.Record record = certificateAppService.getMyCertificateForDownload(currentUser, id);
+        Path path = resolveCertificateFilePath(record.getCertificateFileUrl());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + record.getCertificateNo() + ".png\"")
+                .contentType(MediaType.IMAGE_PNG)
+                .body(new FileSystemResource(path));
     }
 
     @GetMapping("/api/v2/aiadc/certificates/{id}")

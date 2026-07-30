@@ -203,10 +203,53 @@ class ReviewAppServiceTest {
                         "CONFIRMED",
                         "{\"answers\":{\"school\":\"Lumira University\"}}",
                         "{\"teamName\":\"Alpha\"}",
-                        "{\"title\":\"Project A\"}",
+                        """
+                        {
+                          "title": "Project A",
+                          "description": "A legitimate project summary",
+                          "extraValues": {
+                            "intellectualProperties": [
+                              {
+                                "intellectualPropertyName": "Lumira Platform",
+                                "rightsHolder": "Student A",
+                                "contactEmail": "student-a@example.com"
+                              }
+                            ],
+                            "ownerUserUuid": "user-uuid"
+                          }
+                        }
+                        """,
                         "[{\"name\":\"Student A\"}]",
-                        "[]",
-                        "[{\"fieldKey\":\"work\",\"fileId\":9001}]"
+                        """
+                        [
+                          {
+                            "scope": "PROJECT_FIELD",
+                            "itemKey": "rightsHolder",
+                            "title": "权利人",
+                            "fieldType": "TEXT"
+                          },
+                          {
+                            "scope": "PROJECT_FIELD",
+                            "itemKey": "projectTrack",
+                            "title": "项目赛道",
+                            "fieldType": "SELECT"
+                          }
+                        ]
+                        """,
+                        """
+                        [
+                          {
+                            "fieldKey": "work",
+                            "fileId": 9001,
+                            "originalFileName": "Student A-project.pdf",
+                            "jsonValue": {
+                              "memberName": "Student A",
+                              "mobile": "13800138000",
+                              "summary": "Public project evidence"
+                            }
+                          }
+                        ]
+                        """
                 )
         ));
         when(repository.insertCandidate(
@@ -239,11 +282,19 @@ class ReviewAppServiceTest {
                 .contains("\"fileId\":9001")
                 .contains("\"members\"");
         assertThat(reviewSnapshotCaptor.getValue())
+                .contains("\"schemaVersion\":2")
                 .contains("\"blindCode\":\"C00001\"")
                 .contains("\"fileId\":9001")
+                .contains("\"title\":\"Project A\"")
+                .contains("\"summary\":\"Public project evidence\"")
                 .doesNotContain("registrationNo")
                 .doesNotContain("ownerUserUuid")
-                .doesNotContain("\"members\"");
+                .doesNotContain("\"members\"")
+                .doesNotContain("rightsHolder")
+                .doesNotContain("Student A")
+                .doesNotContain("student-a@example.com")
+                .doesNotContain("13800138000")
+                .doesNotContain("originalFileName");
         assertThat(hashCaptor.getValue()).matches("[0-9a-f]{64}");
     }
 

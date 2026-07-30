@@ -349,6 +349,7 @@ class CompetitionManagementAppServiceTest {
         assertThat(jdbcTemplate.updates.get(0))
                 .contains("from competition_config_item_template")
                 .contains("template_code = 'DEFAULT'")
+                .doesNotContain("enabled = 1")
                 .doesNotContain("团队名称", "项目名称", "知识产权");
     }
 

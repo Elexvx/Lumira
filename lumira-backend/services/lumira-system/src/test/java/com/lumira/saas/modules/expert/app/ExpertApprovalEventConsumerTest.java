@@ -167,13 +167,14 @@ class ExpertApprovalEventConsumerTest {
                 new PermissionSnapshotService.PermissionSnapshot("perm-v42", Set.of("system:user:create"))
         );
         stubExpert(jdbcTemplate, 9001L, "user-uuid-9001", "expert_alice");
-        when(activationService.createActivationToken(9001L, 1001L, 42L, "user-uuid-42")).thenReturn("token");
+        when(jdbcTemplate.query(anyString(), org.mockito.ArgumentMatchers.<RowMapper<Long>>any(), eq("EXPERT")))
+                .thenReturn(List.of(3001L));
         ExpertApprovalEventConsumer consumer = consumer(jdbcTemplate, permissionSnapshotService, userManagementAppService, activationService);
 
         consumer.consume(event(42L));
 
         verify(userManagementAppService, never()).createUserFromTrustedSnapshot(any(), any());
-        verify(activationService).sendActivationEmail("alice@example.test", "expert_alice", "token");
+        verifyNoInteractions(activationService);
     }
 
     @Test
@@ -438,13 +439,13 @@ class ExpertApprovalEventConsumerTest {
         event.setUserUuid("user-uuid-" + userId);
         event.setSourceType(PlatformEventTypes.SOURCE_SYSTEM);
         event.setEventType(WorkflowAppService.EVENT_EXPERT_APPROVED);
-        event.setEventKey(WorkflowAppService.EVENT_EXPERT_APPROVED + ":expert:1001");
+        event.setEventKey(WorkflowAppService.EVENT_EXPERT_APPROVED + ":aiadc_expert:1001");
         String payload = simulatedRoleId == null
                 ? """
-                {"aggregateId":1001,"workflowInstanceId":7001,"businessUuid":"EXP001","userUuid":"user-uuid-42"}
+                {"aggregateId":1001,"userUuid":"user-uuid-42","attributes":{"workflowInstanceId":7001,"businessUuid":"EXP001","userUuid":"user-uuid-42"}}
                 """
                 : """
-                {"aggregateId":1001,"workflowInstanceId":7001,"businessUuid":"EXP001","userUuid":"user-uuid-42","simulatedRoleId":%d}
+                {"aggregateId":1001,"userUuid":"user-uuid-42","attributes":{"workflowInstanceId":7001,"businessUuid":"EXP001","userUuid":"user-uuid-42","simulatedRoleId":%d}}
                 """.formatted(simulatedRoleId);
         event.setPayloadJson(payload);
         return event;
@@ -471,6 +472,8 @@ class ExpertApprovalEventConsumerTest {
                     values.put("userId", userId);
                     values.put("userUuid", userUuid);
                     values.put("username", username);
+                    values.put("createdBy", null);
+                    values.put("createdByUuid", null);
                     SqlRow row = new SqlRow(values);
                     return List.of(mapper.mapRow(row, 0));
                 });

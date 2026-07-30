@@ -8,7 +8,8 @@ import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { formatMessage, getLocale, history, useLocation, useModel, useParams } from '@umijs/max';
+import { getLocale, history, useLocation, useModel, useParams } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -1036,7 +1037,7 @@ const CompetitionBasicFields = ({
       <Form.List name="organizers">
         {(fields, { add, remove }) => (
           <Form.Item label="组织者" required>
-            <Space direction="vertical" size={12} className="competition-dynamic-list">
+            <Space orientation="vertical" size={12} className="competition-dynamic-list">
               {fields.map((field, index) => (
                 <div key={field.key} className="competition-dynamic-list__row">
                   <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输入组织者类型' }]} className="competition-dynamic-list__role">
@@ -1112,7 +1113,7 @@ const CompetitionBasicFields = ({
                   />
                 </Form.Item>
                 {schedules[0]?.timeMode === 'CONFIRMED' ? (
-                  <Space direction="vertical" size={8} className="competition-dynamic-list">
+                  <Space orientation="vertical" size={8} className="competition-dynamic-list">
                     {fields.map((field, index) => (
                       <div key={field.key} className="competition-schedule-row">
                         <Form.Item
@@ -1442,7 +1443,7 @@ const CreateCompetitionPage = () => {
     return (
       <ManagementPage title="新增赛事" extra={<Button onClick={() => history.push('/competitions/management')}>返回</Button>}>
         <ManagementPageBody>
-          <Alert type="error" showIcon message="暂无新增赛事权限" />
+          <Alert type="error" showIcon title="暂无新增赛事权限" />
         </ManagementPageBody>
       </ManagementPage>
     );
@@ -1563,7 +1564,7 @@ const CreateCompetitionPage = () => {
             <div className="competition-create-step">
               {currentStep === 0 ? (
                 <div className="competition-create-terms">
-                  <Alert type="info" showIcon message="请先阅读赛事发布条款，确认后继续填写基本信息。" />
+                  <Alert type="info" showIcon title="请先阅读赛事发布条款，确认后继续填写基本信息。" />
                   <div className="competition-create-terms__content">
                     <XMarkdown content={competitionTermsMarkdown} openLinksInNewTab escapeRawHtml />
                   </div>
@@ -1977,7 +1978,7 @@ const MaterialFileUploadInput = ({
                 <Alert
                   type="info"
                   showIcon
-                  message="当前为文档文本预览，复杂排版、图片和批注请下载原文件查看。"
+                  title="当前为文档文本预览，复杂排版、图片和批注请下载原文件查看。"
                 />
                 <pre className="competition-material-preview__text">{previewText}</pre>
               </div>
@@ -2069,7 +2070,7 @@ const RegistrationImageFieldInput = ({
 }: RegistrationImageFieldInputProps) => {
   const [uploading, setUploading] = useState(false);
   return (
-    <Space direction="vertical" size={8}>
+    <Space orientation="vertical" size={8}>
       {value ? <Image width={96} height={96} src={normalizeUploadUrl(value)} alt="已上传图片" /> : null}
       <Space>
         <ImgCrop
@@ -3557,9 +3558,10 @@ const CompetitionRegistrationPage = () => {
         form.setFieldValue('projectId', registration.projectId);
         registrationActionRef.current?.reload();
         if (registration.payableAmountMinor === 0 || isRegistrationPaymentSuccessful(registration.status)) {
-          await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
           latestRegistrationDraftRef.current = undefined;
-          history.push(`/competitions/register/payment-result?registrationId=${registration.id}`);
+          setRegistrationDraftSavedAt(undefined);
+          history.replace(`/competitions/register/payment-result?registrationId=${registration.id}`);
+          void clearCompetitionRegistrationDraft(registrationDraftStorageKey).catch(() => undefined);
           return;
         }
         setWizardStep(5, true, { registrationId: registration.id, paymentStatus: registration.status });
@@ -3678,10 +3680,10 @@ const CompetitionRegistrationPage = () => {
       setPaymentStatus(latestRegistration.status);
       if (isRegistrationPaymentSuccessful(latestRegistration.status)) {
         setPaymentModalOpen(false);
-        await clearCompetitionRegistrationDraft(registrationDraftStorageKey);
         latestRegistrationDraftRef.current = undefined;
         setRegistrationDraftSavedAt(undefined);
-        history.push(`/competitions/register/payment-result?registrationId=${registrationId}`);
+        history.replace(`/competitions/register/payment-result?registrationId=${registrationId}`);
+        void clearCompetitionRegistrationDraft(registrationDraftStorageKey).catch(() => undefined);
       }
     } catch (error) {
       if (!silent) showErrorMessage(error, '支付结果查询失败');
@@ -3923,7 +3925,7 @@ const CompetitionRegistrationPage = () => {
           placeholder: 'Registration No. / Participant No.',
         },
         render: (_, record) => (
-          <Space className="competition-registration-record-cell" direction="vertical" size={0}>
+          <Space className="competition-registration-record-cell" orientation="vertical" size={0}>
             <Typography.Text className="competition-registration-record-cell__no" strong ellipsis={{ tooltip: record.registrationNo }}>
               {record.registrationNo || `\u62a5\u540d ${record.id}`}
             </Typography.Text>
@@ -4493,7 +4495,7 @@ const CompetitionRegistrationPage = () => {
         <div style={{ display: 'none' }}>
         <Form.List name={["newTeam", "initialMembers"]}>
           {(memberFields, { add, remove }) => (
-            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+            <Space orientation="vertical" style={{ width: '100%' }} size={12}>
               {memberFields.map((memberField, index) => (
                 <Card
                   key={memberField.key}
@@ -4579,9 +4581,9 @@ const CompetitionRegistrationPage = () => {
                   {selectedCompetitionId ? (
                     <div className="competition-registration-documents">
                       {registrationDocumentsLoading ? (
-                        <Alert type="info" showIcon message="正在加载报名文书..." />
+                        <Alert type="info" showIcon title="正在加载报名文书..." />
                       ) : registrationDocumentStates.length ? (
-                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                           {registrationDocumentStates.map(({ item: documentItem, documentKey, readingSeconds, countdown, accepted }, index) => (
                             <Card
                               key={documentKey}
@@ -4599,7 +4601,7 @@ const CompetitionRegistrationPage = () => {
                                 </Space>
                               }
                             >
-                              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                              <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                                 <div className="competition-registration-documents__content">
                                   <XMarkdown content={sanitizeMarkdownInput(documentItem.contentText || '')} openLinksInNewTab escapeRawHtml />
                                 </div>
@@ -4617,14 +4619,14 @@ const CompetitionRegistrationPage = () => {
                             <Alert
                               type="warning"
                               showIcon
-                              message={`请先完成剩余 ${pendingRegistrationDocumentCount} 份协议确认后再继续。`}
+                              title={`请先完成剩余 ${pendingRegistrationDocumentCount} 份协议确认后再继续。`}
                             />
                           ) : (
-                            <Alert type="success" showIcon message="阅读文书条款已确认，可进入下一步。" />
+                            <Alert type="success" showIcon title="阅读文书条款已确认，可进入下一步。" />
                           )}
                         </Space>
                       ) : (
-                        <Alert type="info" showIcon message="当前赛事未配置报名前展示文书，可直接进入下一步。" />
+                        <Alert type="info" showIcon title="当前赛事未配置报名前展示文书，可直接进入下一步。" />
                       )}
                     </div>
                   ) : null}
@@ -4667,7 +4669,7 @@ const CompetitionRegistrationPage = () => {
                         }] : undefined}
                       >
                         {(entryFields, { add, remove }, { errors }) => (
-                          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                             {entryFields.map((entryField, index) => (
                               <Card
                                 key={entryField.key}
@@ -4705,19 +4707,19 @@ const CompetitionRegistrationPage = () => {
                       </Form.List>
                     </>
                   ) : (
-                    <Alert type="info" showIcon message="当前赛事未配置项目佐证字段，可直接进入信息确认。" />
+                    <Alert type="info" showIcon title="当前赛事未配置项目佐证字段，可直接进入信息确认。" />
                   )}
                 </>
               ) : null}
               {step === registrationWizardStep.preliminaryMaterials ? (
                 stageFormLoading ? (
-                  <Alert type="info" showIcon message="正在加载初赛材料表单..." />
+                  <Alert type="info" showIcon title="正在加载初赛材料表单..." />
                 ) : fields.length ? (
-                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                  <Space orientation="vertical" size={16} style={{ width: '100%' }}>
                     <Alert
                       type="info"
                       showIcon
-                      message={fields.some((field) => field.required)
+                      title={fields.some((field) => field.required)
                         ? `请完成初赛材料，其中 ${fields.filter((field) => field.required).length} 项为必填。`
                         : '本步骤材料均为选填，可按需提交。'}
                     />
@@ -4742,17 +4744,17 @@ const CompetitionRegistrationPage = () => {
                     ))}
                   </Space>
                 ) : (
-                  <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入信息确认。" />
+                  <Alert type="info" showIcon title="当前赛事未配置初赛材料表单，可继续进入信息确认。" />
                 )
               ) : null}
               {step === registrationWizardStep.review ? (
                 <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                  <Alert type="info" showIcon message="请核对以下全部报名信息。确认后将生成报名订单；生成支付订单后内容将不能修改。" />
+                  <Alert type="info" showIcon title="请核对以下全部报名信息。确认后将生成报名订单；生成支付订单后内容将不能修改。" />
                   {missingRequiredMaterialFields.length ? (
                     <Alert
                       type="warning"
                       showIcon
-                      message={`还有 ${missingRequiredMaterialFields.length} 项必填材料未上传`}
+                      title={`还有 ${missingRequiredMaterialFields.length} 项必填材料未上传`}
                       description={missingRequiredMaterialFields.map((field) => field.label || field.key).join('、')}
                       action={<Button size="small" onClick={() => setWizardStep(registrationWizardStep.preliminaryMaterials)}>去上传材料</Button>}
                     />
@@ -4761,7 +4763,7 @@ const CompetitionRegistrationPage = () => {
                     <Alert
                       type="warning"
                       showIcon
-                      message={`还有 ${missingRequiredEvidenceFields.length} 项项目佐证信息未填写`}
+                      title={`还有 ${missingRequiredEvidenceFields.length} 项项目佐证信息未填写`}
                       description={missingRequiredEvidenceFields.map((field) => field.title).join('、')}
                       action={<Button size="small" onClick={() => setWizardStep(registrationWizardStep.projectEvidence)}>去完善</Button>}
                     />
@@ -6019,7 +6021,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
         <Alert
           showIcon
           type="warning"
-          message="暂无可绑定的支付渠道"
+          title="暂无可绑定的支付渠道"
           description="请先在系统支付设置中完成渠道配置并启用，已启用的渠道会自动出现在这里。"
           style={{ marginBottom: 16 }}
         />
@@ -6698,7 +6700,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                     <Alert
                       type="info"
                       showIcon
-                      message="材料开放与截止仅以“提交材料时间”为准"
+                      title="材料开放与截止仅以“提交材料时间”为准"
                       description="时间按“提交材料 → 比赛 → 评审”的顺序衔接，前一阶段结束后才能开始下一阶段。"
                     />
                     <div className="competition-schedule-table">
@@ -7386,7 +7388,7 @@ const CompetitionSettingsPage = () => {
             </main>
           </div>
         ) : (
-          <Alert type="error" showIcon message={formatMessage({ id: 'page.competition.settings.notFound', defaultMessage: '未找到赛事配置' })} />
+          <Alert type="error" showIcon title={formatMessage({ id: 'page.competition.settings.notFound', defaultMessage: '未找到赛事配置' })} />
         )}
       </ManagementPageBody>
     </ManagementPage>

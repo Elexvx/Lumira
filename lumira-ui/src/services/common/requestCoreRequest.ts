@@ -66,6 +66,13 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
         throw apiError;
       }
 
+      // A successful no-content response intentionally has no API envelope.
+      // Treat it as a completed request instead of turning DELETE/RESET actions
+      // into a misleading fallback error.
+      if (httpStatus === 204 || httpStatus === 205) {
+        return undefined as T;
+      }
+
       if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, undefined, refreshedAfterUnauthorized, authSnapshot)) {
         refreshedAfterUnauthorized = true;
         const refreshOutcome = await refreshAuthSession();

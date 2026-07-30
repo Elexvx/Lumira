@@ -1,4 +1,4 @@
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { history } from '@umijs/max';
 import { Button, Space } from 'antd';
 import { getConfiguredDefaultHomePath } from '@/auth/defaultHomePath';

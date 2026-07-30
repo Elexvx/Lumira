@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import dayjs from 'dayjs';
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import type { FileObjectRecord, FilePreviewMode } from '@/types/api';
 import { normalizeUploadUrl, resolveAbsoluteUploadUrl } from '@/utils/uploadUrl';
 import { Space, Tag } from 'antd';

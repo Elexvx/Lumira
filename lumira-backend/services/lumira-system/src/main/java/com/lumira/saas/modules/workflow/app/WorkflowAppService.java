@@ -521,7 +521,10 @@ public class WorkflowAppService {
         );
         requireSingleWorkflowUpdate(moved, "Workflow instance changed, please retry");
         if ("END".equals(node.getNodeType())) {
-            approveInstance(instance, currentUser);
+            // The optimistic move above changed current_node_key. Reload the
+            // instance so the terminal transition binds the new node instead
+            // of the stale node from before the move.
+            approveInstance(loadInstance(instanceId), currentUser);
             return;
         }
         if ("CONDITION".equals(node.getNodeType()) || "START".equals(node.getNodeType())) {

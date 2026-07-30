@@ -2,6 +2,7 @@ package com.lumira.saas.modules.competition.app;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.client.FileInternalApi;
@@ -26,6 +27,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -68,7 +71,9 @@ public class CertificateAppService {
     private static final String SOURCE_TYPES_KEY = "certificate.rule.source-types";
     private static final String RECIPIENT_TYPES_KEY = "certificate.rule.recipient-types";
     private static final String RECORD_STATUSES_KEY = "certificate.rule.record-statuses";
-    private static final Set<String> RECORD_STATUSES = Set.of("ISSUED", "REVOKED");
+    private static final Set<String> RECORD_STATUSES = Set.of("GENERATING", "ISSUED", "FAILED", "REVOKED");
+    private static final Set<String> REQUIRED_PUBLISH_FIELDS = Set.of(
+            "recipientName", "awardName", "competitionTitle", "issueDate", "verificationUrl");
     private static final String DEFAULT_SCENE_TYPE_KEY = "certificate.rule.default-scene-type";
     private static final String DEFAULT_SOURCE_TYPE_KEY = "certificate.rule.default-source-type";
     private static final String DEFAULT_RECIPIENT_TYPE_KEY = "certificate.rule.default-recipient-type";
@@ -315,6 +320,7 @@ public class CertificateAppService {
         if (!"DRAFT".equals(draft.getStatus())) {
             throw biz(ErrorCode.BAD_REQUEST, "Only draft template version can be published");
         }
+        validatePublishableTemplate(draft);
         int versionUpdated = templateRepository.publishVersion(draft, userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(versionUpdated, "Certificate template version changed, please retry");
         CertificateVO.Template template = getTemplate(currentUser, templateId);
@@ -324,6 +330,50 @@ public class CertificateAppService {
         int draftInserted = templateRepository.insertDraftVersion(templateId, nextVersion, draft, userId, userUuid);
         requireCertificateWrite(draftInserted, "Certificate template version changed, please retry");
         return draft;
+    }
+
+    void validatePublishableTemplate(CertificateVO.TemplateVersion draft) {
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(defaultText(draft == null ? null : draft.getCanvasJson(), "{}"));
+        } catch (JsonProcessingException exception) {
+            throw biz(ErrorCode.BAD_REQUEST, "Certificate template canvas is invalid");
+        }
+        JsonNode elements = root.path("elements");
+        if (!elements.isArray() || elements.isEmpty()) {
+            throw biz(ErrorCode.BAD_REQUEST, "Certificate template canvas cannot be empty");
+        }
+        Set<String> fieldKeys = new java.util.HashSet<>();
+        boolean hasTitle = false;
+        boolean hasVerificationQrCode = false;
+        for (JsonNode element : elements) {
+            String type = element.path("type").asText("");
+            String fieldKey = element.path("fieldKey").asText("");
+            if (StringUtils.hasText(fieldKey)) {
+                fieldKeys.add(fieldKey);
+            }
+            if ("qrcode".equalsIgnoreCase(type) && "verificationUrl".equals(fieldKey)) {
+                hasVerificationQrCode = true;
+            }
+            if ("text".equalsIgnoreCase(type)
+                    && !StringUtils.hasText(fieldKey)
+                    && (StringUtils.hasText(element.path("text").asText(""))
+                    || StringUtils.hasText(element.path("placeholder").asText("")))) {
+                hasTitle = true;
+            }
+        }
+        Set<String> missing = new java.util.TreeSet<>(REQUIRED_PUBLISH_FIELDS);
+        missing.removeAll(fieldKeys);
+        if (!hasVerificationQrCode) {
+            missing.add("verificationUrl(qrcode)");
+        }
+        if (!hasTitle) {
+            missing.add("certificateTitle");
+        }
+        if (!missing.isEmpty()) {
+            throw biz(ErrorCode.BAD_REQUEST,
+                    "Certificate template is incomplete, missing required elements: " + String.join(", ", missing));
+        }
     }
 
     public CertificateVO.GenerateResult previewBatch(CurrentUser currentUser, CertificateDTO.BatchGenerateRequest request) {
@@ -346,6 +396,153 @@ public class CertificateAppService {
 
     @Transactional
     public CertificateVO.GenerateResult generateBatch(CurrentUser currentUser, CertificateDTO.BatchGenerateRequest request) {
+        return generateBatch(currentUser, request, List.of());
+    }
+
+    @Transactional
+    public List<CertificateVO.AwardGrant> grantPublishedAwards(
+            CurrentUser currentUser,
+            CertificateDTO.AwardGrantRequest request
+    ) {
+        Long userId = requirePermission(currentUser, BATCH_CREATE);
+        String userUuid = trustedUserUuid(currentUser);
+        requireRequest(request, "Award grant request is required");
+        requirePositiveId(request.getReviewBatchId(), "Review batch id is required");
+        List<AwardRule> rules = normalizeAwardRules(request);
+        LocalDateTime grantedAt = LocalDateTime.now();
+        recordRepository.revokeUnissuedAwardGrants(
+                request.getReviewBatchId(), userId, userUuid, grantedAt);
+        for (AwardRule rule : rules) {
+            recordRepository.grantPublishedAwards(
+                    request.getReviewBatchId(), rule.awardName(), rule.minRank(), rule.maxRank(),
+                    userId, userUuid, grantedAt);
+        }
+        List<CertificateVO.AwardGrant> grants = recordRepository.findAwardGrants(request.getReviewBatchId());
+        if (grants.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "No eligible published review results were found for this award");
+        }
+        return grants;
+    }
+
+    public List<CertificateVO.AwardSource> listPublishedAwardSources(CurrentUser currentUser) {
+        requirePermission(currentUser, BATCH_CREATE);
+        return recordRepository.findPublishedAwardSources();
+    }
+
+    public List<CertificateVO.AwardGrant> listAwardGrants(CurrentUser currentUser, Long reviewBatchId) {
+        requirePermission(currentUser, BATCH_CREATE);
+        requirePositiveId(reviewBatchId, "Review batch id is required");
+        return recordRepository.findAwardGrants(reviewBatchId);
+    }
+
+    @Transactional
+    public CertificateVO.GenerateResult generateAwardCertificates(
+            CurrentUser currentUser,
+            CertificateDTO.AwardCertificateGenerateRequest awardRequest
+    ) {
+        requirePermission(currentUser, BATCH_CREATE);
+        requireRequest(awardRequest, "Award certificate request is required");
+        requirePositiveId(awardRequest.getTemplateId(), "Certificate template id is required");
+        requirePositiveId(awardRequest.getTemplateVersionId(), "Certificate template version id is required");
+        List<Long> requestedIds = awardRequest.getGrantIds() == null
+                ? List.of()
+                : awardRequest.getGrantIds().stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (requestedIds.isEmpty() || requestedIds.size() != awardRequest.getGrantIds().size()) {
+            throw biz(ErrorCode.BAD_REQUEST, "Award grant ids must be non-empty and unique");
+        }
+        List<CertificateVO.AwardGrant> loaded = recordRepository.findAwardGrantsByIds(requestedIds);
+        Map<Long, CertificateVO.AwardGrant> byId = loaded.stream()
+                .collect(java.util.stream.Collectors.toMap(CertificateVO.AwardGrant::getId, grant -> grant));
+        List<CertificateVO.AwardGrant> grants = requestedIds.stream().map(byId::get).toList();
+        if (grants.stream().anyMatch(java.util.Objects::isNull)) {
+            List<CertificateVO.AwardGrant> current = recordRepository.findAwardGrantsByAnyIds(requestedIds);
+            Map<Long, CertificateVO.AwardGrant> currentById = current.stream()
+                    .collect(java.util.stream.Collectors.toMap(CertificateVO.AwardGrant::getId, grant -> grant));
+            long missingCount = requestedIds.stream().filter(id -> !currentById.containsKey(id)).count();
+            long issuedCount = current.stream()
+                    .filter(grant -> "ISSUED".equals(grant.getStatus()) || grant.getCertificateRecordId() != null)
+                    .count();
+            if (missingCount > 0) {
+                throw biz(ErrorCode.BIZ_ERROR,
+                        missingCount + " selected award grant(s) no longer exist; refresh and retry");
+            }
+            if (issuedCount > 0) {
+                throw biz(ErrorCode.BIZ_ERROR,
+                        issuedCount + " selected award certificate(s) have already been issued; refresh to view the latest status");
+            }
+            throw biz(ErrorCode.BIZ_ERROR, "Selected award grant status changed; refresh and retry");
+        }
+        Long reviewBatchId = grants.getFirst().getReviewBatchId();
+        if (grants.stream().anyMatch(grant -> !java.util.Objects.equals(reviewBatchId, grant.getReviewBatchId()))) {
+            throw biz(ErrorCode.BAD_REQUEST, "Award grants must belong to the same review batch");
+        }
+        CertificateVO.AwardGrant first = grants.getFirst();
+        CertificateDTO.BatchGenerateRequest request = new CertificateDTO.BatchGenerateRequest();
+        request.setBatchName(defaultText(awardRequest.getBatchName(), first.getCompetitionTitle() + " - " + first.getAwardName()));
+        request.setTemplateId(awardRequest.getTemplateId());
+        request.setTemplateVersionId(awardRequest.getTemplateVersionId());
+        request.setCompetitionId(first.getCompetitionId());
+        request.setStageId(first.getStageId());
+        request.setSourceType("AWARD_RESULT");
+        request.setRecords(grants.stream().map(grant -> {
+            CertificateDTO.CertificateDataRequest row = new CertificateDTO.CertificateDataRequest();
+            row.setRecipientName(grant.getRecipientName());
+            row.setRecipientType("USER");
+            row.setCompetitionTitle(grant.getCompetitionTitle());
+            row.setProjectName(grant.getProjectName());
+            row.setTeamName(grant.getTeamName());
+            row.setAwardName(grant.getAwardName());
+            row.setIssueDate(LocalDate.now());
+            row.setData(Map.of(
+                    "awardGrantId", grant.getId(),
+                    "reviewBatchId", grant.getReviewBatchId(),
+                    "publicationId", grant.getPublicationId(),
+                    "rankNo", grant.getRankNo()
+            ));
+            return row;
+        }).toList());
+        return generateBatch(currentUser, request, grants);
+    }
+
+    private List<AwardRule> normalizeAwardRules(CertificateDTO.AwardGrantRequest request) {
+        List<CertificateDTO.AwardRuleRequest> requestedRules = request.getRules();
+        List<AwardRule> rules;
+        if (requestedRules == null || requestedRules.isEmpty()) {
+            String awardName = requiredText(request.getAwardName(), "Award name is required").trim();
+            requireLength(awardName, MAX_NAME_LENGTH, "Award name is too large");
+            int maxRank = request.getMaxRank() == null ? 0 : request.getMaxRank();
+            rules = List.of(new AwardRule(awardName, 1, maxRank));
+        } else {
+            if (requestedRules.size() > 20 || requestedRules.stream().anyMatch(java.util.Objects::isNull)) {
+                throw biz(ErrorCode.BAD_REQUEST, "Award rules are invalid");
+            }
+            rules = requestedRules.stream().map(rule -> new AwardRule(
+                    requiredText(rule.getAwardName(), "Award name is required").trim(),
+                    rule.getMinRank() == null ? 0 : rule.getMinRank(),
+                    rule.getMaxRank() == null ? 0 : rule.getMaxRank()
+            )).sorted(java.util.Comparator.comparingInt(AwardRule::minRank)).toList();
+        }
+        int previousMaxRank = 0;
+        for (AwardRule rule : rules) {
+            requireLength(rule.awardName(), MAX_NAME_LENGTH, "Award name is too large");
+            if (rule.minRank() <= 0 || rule.maxRank() > 10000 || rule.minRank() > rule.maxRank()) {
+                throw biz(ErrorCode.BAD_REQUEST, "Award rank range is invalid");
+            }
+            if (rule.minRank() <= previousMaxRank) {
+                throw biz(ErrorCode.BAD_REQUEST, "Award rank ranges cannot overlap");
+            }
+            previousMaxRank = rule.maxRank();
+        }
+        return rules;
+    }
+
+    private record AwardRule(String awardName, int minRank, int maxRank) {}
+
+    private CertificateVO.GenerateResult generateBatch(
+            CurrentUser currentUser,
+            CertificateDTO.BatchGenerateRequest request,
+            List<CertificateVO.AwardGrant> awardGrants
+    ) {
         Long userId = requirePermission(currentUser, BATCH_CREATE);
         String userUuid = trustedUserUuid(currentUser);
         requireRequest(request, "Batch request is required");
@@ -361,29 +558,49 @@ public class CertificateAppService {
         List<CertificateDTO.CertificateDataRequest> rows = request.getRecords() == null ? List.of() : request.getRecords();
         Long batchId = recordRepository.insertBatch(new CertificateRecordRepository.BatchCreate(
                 batchNo, defaultText(request.getBatchName(), batchNo), request.getTemplateId(), request.getTemplateVersionId(),
-                request.getCompetitionId(), request.getStageId(), sourceType, rows.size(), userId, userUuid));
+                request.getCompetitionId(), request.getStageId(), sourceType,
+                awardGrants.isEmpty() ? null : awardGrants.getFirst().getReviewBatchId(),
+                rows.size(), userId, userUuid));
         if (batchId == null) throw biz(ErrorCode.BIZ_ERROR, "Certificate batch changed, please retry");
         List<CertificateVO.Record> created = new ArrayList<>();
         int success = 0;
         int failed = 0;
         String errorMessage = null;
-        for (CertificateDTO.CertificateDataRequest row : rows) {
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex += 1) {
+            CertificateDTO.CertificateDataRequest row = rows.get(rowIndex);
+            CertificateVO.AwardGrant awardGrant = awardGrants.isEmpty() ? null : awardGrants.get(rowIndex);
             try {
-                Long recordId = createCertificateRecord(userId, userUuid, batchId, request, version, row, batchNo);
-                created.add(findRecord(recordId));
+                created.add(createCertificateRecord(
+                        userId, userUuid, batchId, request, version, row, awardGrant, batchNo));
                 success += 1;
             } catch (RuntimeException exception) {
                 failed += 1;
                 errorMessage = exception.getMessage();
             }
         }
+        String batchStatus = failed == 0 ? "COMPLETED" : success == 0 ? "FAILED" : "PARTIAL_FAILED";
         int batchUpdated = recordRepository.completeBatch(batchId, success, failed,
-                failed == 0 ? "COMPLETED" : "FAILED", errorMessage, userId, userUuid, LocalDateTime.now());
+                batchStatus, errorMessage, userId, userUuid, LocalDateTime.now());
         requireCertificateWrite(batchUpdated, "Certificate batch changed, please retry");
         CertificateVO.GenerateResult result = new CertificateVO.GenerateResult();
         result.setBatch(getBatch(currentUser, batchId));
         result.setRecords(created);
         return result;
+    }
+
+    public List<CertificateVO.Record> listMyCertificates(CurrentUser currentUser) {
+        Long userId = requireUserId(currentUser);
+        return recordRepository.findMyCertificates(userId, trustedUserUuid(currentUser));
+    }
+
+    public CertificateVO.Record getMyCertificateForDownload(CurrentUser currentUser, Long id) {
+        requirePositiveId(id, "Certificate id is required");
+        Long userId = requireUserId(currentUser);
+        CertificateVO.Record record = recordRepository.findMyCertificate(id, userId, trustedUserUuid(currentUser));
+        if (record == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Certificate not found");
+        }
+        return record;
     }
 
     public PageResponse<CertificateVO.Batch> listBatches(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -507,13 +724,14 @@ public class CertificateAppService {
         return publicResult(result, record);
     }
 
-    private Long createCertificateRecord(
+    private CertificateVO.Record createCertificateRecord(
             Long userId,
             String userUuid,
             Long batchId,
             CertificateDTO.BatchGenerateRequest request,
             CertificateVO.TemplateVersion version,
             CertificateDTO.CertificateDataRequest row,
+            CertificateVO.AwardGrant awardGrant,
             String batchNo
     ) {
         String certificateNo = generateCertificateNo();
@@ -538,25 +756,92 @@ public class CertificateAppService {
         String dataJson = toJson(data);
         Long recordId = recordRepository.insertRecord(new CertificateRecordRepository.RecordCreate(
                 certificateNo, verificationCode, publicToken, batchId, request.getTemplateId(), request.getTemplateVersionId(),
-                request.getCompetitionId(), request.getStageId(), requiredText(row.getRecipientName(), "Recipient name is required"),
+                request.getCompetitionId(), request.getStageId(),
+                awardGrant == null ? null : awardGrant.getRegistrationId(),
+                awardGrant == null ? null : awardGrant.getProjectId(),
+                awardGrant == null ? null : awardGrant.getTeamId(),
+                awardGrant == null ? null : awardGrant.getUserId(),
+                requiredText(row.getRecipientName(), "Recipient name is required"),
                 normalizeEnum(defaultText(row.getRecipientType(), defaults.defaultRecipientType()),
                         defaults.recipientTypes(), "Invalid recipient type"),
                 trimToNull(row.getCompetitionTitle()), trimToNull(row.getProjectName()), trimToNull(row.getTeamName()),
                 trimToNull(row.getAwardName()), issueDate, row.getExpireDate(), dataJson, userId, userUuid));
         if (recordId == null) throw biz(ErrorCode.BIZ_ERROR, "Certificate record changed, please retry");
-        String fileUrl = render(certificateNo, batchId, version, data);
-        int updated = recordRepository.updateGeneratedFile(recordId, certificateNo, batchId, fileUrl,
-                userId, userUuid, LocalDateTime.now());
-        if (updated <= 0) {
-            throw biz(ErrorCode.BIZ_ERROR, "Certificate record changed, please retry");
+        String fileUrl = null;
+        try {
+            fileUrl = render(certificateNo, batchId, version, data);
+            int updated = recordRepository.updateGeneratedFile(recordId, certificateNo, batchId, fileUrl,
+                    userId, userUuid, LocalDateTime.now());
+            if (updated <= 0) {
+                throw biz(ErrorCode.BIZ_ERROR, "Certificate record changed, please retry");
+            }
+            if (awardGrant != null) {
+                int linked = recordRepository.linkAwardGrant(
+                        awardGrant.getId(), recordId, userId, userUuid, LocalDateTime.now());
+                if (linked <= 0) {
+                    throw biz(ErrorCode.BIZ_ERROR, "Award grant changed or already has a certificate");
+                }
+            }
+        } catch (RuntimeException exception) {
+            deleteRenderedFile(fileUrl);
+            recordRepository.markGenerationFailed(
+                    recordId, certificateNo, batchId, userId, userUuid, LocalDateTime.now());
+            throw exception;
         }
-        return recordId;
+        CertificateVO.Record record = new CertificateVO.Record();
+        record.setId(recordId);
+        record.setCertificateNo(certificateNo);
+        record.setVerificationCode(verificationCode);
+        record.setPublicToken(publicToken);
+        record.setBatchId(batchId);
+        record.setTemplateId(request.getTemplateId());
+        record.setTemplateVersionId(request.getTemplateVersionId());
+        record.setCompetitionId(request.getCompetitionId());
+        if (awardGrant != null) {
+            record.setRegistrationId(awardGrant.getRegistrationId());
+            record.setProjectId(awardGrant.getProjectId());
+            record.setTeamId(awardGrant.getTeamId());
+            record.setUserId(awardGrant.getUserId());
+        }
+        record.setRecipientName(row.getRecipientName());
+        record.setRecipientType(normalizeEnum(defaultText(row.getRecipientType(), defaults.defaultRecipientType()),
+                defaults.recipientTypes(), "Invalid recipient type"));
+        record.setCompetitionTitle(trimToNull(row.getCompetitionTitle()));
+        record.setProjectName(trimToNull(row.getProjectName()));
+        record.setTeamName(trimToNull(row.getTeamName()));
+        record.setAwardName(trimToNull(row.getAwardName()));
+        record.setIssueDate(issueDate);
+        record.setExpireDate(row.getExpireDate());
+        record.setDataJson(dataJson);
+        record.setCertificateFileUrl(fileUrl);
+        record.setStatus("ISSUED");
+        return record;
     }
 
     private String render(String certificateNo, Long batchId, CertificateVO.TemplateVersion version, Map<String, Object> data) {
         Path output = Path.of("storage", "certificates", String.valueOf(batchId), certificateNo + ".png");
-        renderService.renderPng(version.getCanvasJson(), version.getBackgroundUrl(), data, output);
+        try {
+            renderService.renderPng(version.getCanvasJson(), version.getBackgroundUrl(), data, output);
+        } catch (RuntimeException exception) {
+            try {
+                Files.deleteIfExists(output);
+            } catch (IOException ignored) {
+                // The original rendering failure remains the actionable cause.
+            }
+            throw exception;
+        }
         return "/" + output.toString().replace('\\', '/');
+    }
+
+    private void deleteRenderedFile(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl) || !fileUrl.startsWith("/storage/")) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(Path.of(fileUrl.substring(1)));
+        } catch (IOException ignored) {
+            // Database state remains FAILED; orphan cleanup can retry separately.
+        }
     }
 
     private CertificateVO.Template findTemplate(Long id) {
@@ -593,6 +878,9 @@ public class CertificateAppService {
     private String resolvePublicResult(CertificateVO.Record record) {
         if ("REVOKED".equals(record.getStatus())) {
             return "REVOKED";
+        }
+        if (!"ISSUED".equals(record.getStatus())) {
+            return "NOT_FOUND";
         }
         if (record.getExpireDate() != null && record.getExpireDate().isBefore(LocalDate.now())) {
             return "EXPIRED";

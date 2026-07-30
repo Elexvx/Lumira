@@ -1,4 +1,5 @@
-import { formatMessage, useLocation } from '@umijs/max';
+import { useLocation } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { Alert, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
@@ -274,9 +275,10 @@ const PasswordResetModal = ({
   return (
     <Modal
       open={open}
+      forceRender
       title={formatMessage({ id: 'page.login.passwordReset.title', defaultMessage: '重置密码' })}
       onCancel={handleCancel}
-      destroyOnClose
+      destroyOnHidden
       footer={[
         step > 0 ? (
           <Button key="back" onClick={() => setStep((current) => Math.max(0, current - 1) as PasswordResetStep)} disabled={submitting}>

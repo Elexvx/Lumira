@@ -159,6 +159,38 @@ test('versioned review domain migration matches fresh bootstrap', () => {
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 });
 
+test('intellectual-property opt-in migration bootstraps missing configuration templates', () => {
+  const migration = read('deploy/migrations/V202607300002__make_intellectual_property_collection_opt_in.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const createPosition = migration.indexOf('CREATE TABLE IF NOT EXISTS `competition_config_item_template`');
+  const seedPosition = migration.indexOf('INSERT INTO `competition_config_item_template`');
+  const updatePosition = migration.indexOf('UPDATE `competition_config_item_template`');
+
+  assert.ok(createPosition >= 0, 'online migration must create the template table for legacy databases');
+  assert.ok(seedPosition > createPosition, 'template rows must be seeded after the table exists');
+  assert.ok(updatePosition > seedPosition, 'opt-in update must run after default rows are available');
+  for (const marker of [
+    'uk_competition_config_item_template_key',
+    'intellectualPropertyType',
+    'distributionRegions',
+  ]) {
+    assert.match(migration, new RegExp(marker));
+    assert.match(baseline, new RegExp(marker));
+  }
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
+test('certificate template migration preserves runtime canvas placeholders', () => {
+  const migration = read('deploy/migrations/V202607300003__harden_certificate_generation_and_template_defaults.sql');
+  const migrationConfig = read('deploy/migrations/V202607300003__harden_certificate_generation_and_template_defaults.sql.conf');
+
+  assert.match(migration, /\$\{recipientName\}/);
+  assert.match(migration, /\$\{awardName\}/);
+  assert.match(migration, /\$\{competitionTitle\}/);
+  assert.match(migration, /\$\{issueDate\}/);
+  assert.match(migrationConfig, /^placeholderReplacement=false\s*$/);
+});
+
 test('seed user UIDs stay random and exact in fresh and existing databases', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const repairMigration = read('deploy/migrations/V202607260001__repair_seed_user_numeric_uids.sql');

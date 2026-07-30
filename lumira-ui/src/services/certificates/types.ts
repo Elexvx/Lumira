@@ -7,7 +7,7 @@ export type PageResponse<T> = {
 };
 
 export type CertificateTemplateStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-export type CertificateRecordStatus = 'GENERATED' | 'ISSUED' | 'REVOKED' | 'EXPIRED';
+export type CertificateRecordStatus = 'GENERATING' | 'GENERATED' | 'ISSUED' | 'FAILED' | 'REVOKED' | 'EXPIRED';
 
 export type CertificateTemplateRecord = {
   id: number;
@@ -83,8 +83,65 @@ export type CertificateGeneratePayload = {
   templateVersionId: number;
   competitionId?: number;
   stageId?: number;
-  sourceType: 'MANUAL' | 'IMPORT';
+  sourceType: 'MANUAL' | 'IMPORT' | 'AWARD_RESULT';
   records: CertificateDataPayload[];
+};
+
+export type CertificateAwardGrant = {
+  id: number;
+  publicationId: number;
+  publicationVersion: number;
+  reviewBatchId: number;
+  competitionId: number;
+  stageId: number;
+  candidateId: number;
+  registrationId: number;
+  projectId: number;
+  teamId: number;
+  userId: number;
+  recipientName: string;
+  competitionTitle: string;
+  projectName?: string;
+  teamName?: string;
+  awardName: string;
+  rankNo?: number;
+  decision: string;
+  status: 'GRANTED' | 'ISSUED' | 'REVOKED';
+  certificateRecordId?: number;
+  grantedAt?: string;
+};
+
+export type CertificateAwardSource = {
+  reviewBatchId: number;
+  batchNo: string;
+  batchName: string;
+  competitionId: number;
+  competitionTitle: string;
+  stageId: number;
+  stageName: string;
+  candidateCount: number;
+  publicationVersion: number;
+  publishedAt?: string;
+  grantCount: number;
+  issuedCount: number;
+};
+
+export type CertificateAwardRule = {
+  awardName: string;
+  minRank: number;
+  maxRank: number;
+};
+
+export type AwardGrantPayload = {
+  reviewBatchId: number;
+  rules: CertificateAwardRule[];
+};
+
+export type AwardCertificateGeneratePayload = {
+  batchName?: string;
+  templateId: number;
+  templateVersionId: number;
+  grantIds: number[];
 };
 
 export type CertificateBatchRecord = {
@@ -93,6 +150,7 @@ export type CertificateBatchRecord = {
   batchName?: string;
   templateId: number;
   templateVersionId: number;
+  sourceRefId?: number;
   totalCount: number;
   successCount: number;
   failedCount: number;
@@ -110,6 +168,10 @@ export type CertificateRecord = {
   templateId: number;
   templateVersionId: number;
   templateName?: string;
+  registrationId?: number;
+  projectId?: number;
+  teamId?: number;
+  userId?: number;
   recipientName: string;
   recipientType: string;
   competitionTitle?: string;

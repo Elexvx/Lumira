@@ -17,9 +17,10 @@ public class JdbcCertificateRecordRepository implements CertificateRecordReposit
 
     @Override public Long insertBatch(BatchCreate c) { int n = database.update("""
             insert into certificate_batch (batch_no, batch_name, template_id, template_version_id, competition_id, stage_id,
-                source_type, total_count, success_count, failed_count, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-            values (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 'GENERATING', ?, ?, ?, ?, 0)
-            """, c.batchNo(), c.batchName(), c.templateId(), c.templateVersionId(), c.competitionId(), c.stageId(), c.sourceType(), c.totalCount(), c.userId(), c.userUuid(), c.userId(), c.userUuid()); return n > 0 ? lastId() : null; }
+                source_type, source_ref_id, total_count, success_count, failed_count, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 'GENERATING', ?, ?, ?, ?, 0)
+            """, c.batchNo(), c.batchName(), c.templateId(), c.templateVersionId(), c.competitionId(), c.stageId(),
+            c.sourceType(), c.sourceRefId(), c.totalCount(), c.userId(), c.userUuid(), c.userId(), c.userUuid()); return n > 0 ? lastId() : null; }
     @Override public int completeBatch(Long id, int success, int failed, String status, String error, Long userId, String uuid, LocalDateTime at) { return database.update("update certificate_batch set success_count = ?, failed_count = ?, status = ?, error_message = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and created_by = ? and created_by_uuid = ? and deleted = 0", success, failed, status, error, userId, uuid, at, id, userId, uuid); }
 
     @Override public BatchPage findBatches(Long ownerId, String ownerUuid, long offset, long limit) { List<Object> p = new ArrayList<>(); String owner = owner("certificate_batch", ownerId, ownerUuid, p); Long total = database.queryForObject("select count(1) from certificate_batch where deleted = 0" + owner, Long.class, p.toArray()); p.add(offset); p.add(limit); List<CertificateVO.Batch> rows = database.query(batchSelect() + " from certificate_batch where deleted = 0" + owner + " order by created_at desc, id desc limit ?, ?", new BeanPropertyRowMapper<>(CertificateVO.Batch.class), p.toArray()); return new BatchPage(rows, total == null ? 0 : total); }
@@ -36,17 +37,288 @@ public class JdbcCertificateRecordRepository implements CertificateRecordReposit
 
     @Override public Long insertRecord(RecordCreate c) { int n = database.update("""
             insert into certificate_record (certificate_no, verification_code, public_token, batch_id, template_id, template_version_id,
-                competition_id, stage_id, recipient_name, recipient_type, competition_title, project_name, team_name, award_name,
+                competition_id, stage_id, registration_id, project_id, team_id, user_id,
+                recipient_name, recipient_type, competition_title, project_name, team_name, award_name,
                 issue_date, expire_date, data_json, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ISSUED', ?, ?, ?, ?, 0)
-            """, c.certificateNo(), c.verificationCode(), c.publicToken(), c.batchId(), c.templateId(), c.templateVersionId(), c.competitionId(), c.stageId(), c.recipientName(), c.recipientType(), c.competitionTitle(), c.projectName(), c.teamName(), c.awardName(), c.issueDate(), c.expireDate(), c.dataJson(), c.userId(), c.userUuid(), c.userId(), c.userUuid()); return n > 0 ? lastId() : null; }
-    @Override public int updateGeneratedFile(Long id, String no, Long batchId, String url, Long userId, String uuid, LocalDateTime at) { return database.update("update certificate_record set certificate_file_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and certificate_no = ? and batch_id = ? and status = 'ISSUED' and created_by = ? and created_by_uuid = ? and deleted = 0", url, userId, uuid, at, id, no, batchId, userId, uuid); }
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'GENERATING', ?, ?, ?, ?, 0)
+            """, c.certificateNo(), c.verificationCode(), c.publicToken(), c.batchId(), c.templateId(), c.templateVersionId(),
+            c.competitionId(), c.stageId(), c.registrationId(), c.projectId(), c.teamId(), c.recipientUserId(),
+            c.recipientName(), c.recipientType(), c.competitionTitle(), c.projectName(), c.teamName(), c.awardName(),
+            c.issueDate(), c.expireDate(), c.dataJson(), c.actorUserId(), c.actorUserUuid(),
+            c.actorUserId(), c.actorUserUuid()); return n > 0 ? lastId() : null; }
+    @Override public int updateGeneratedFile(Long id, String no, Long batchId, String url, Long userId, String uuid, LocalDateTime at) { return database.update("update certificate_record set certificate_file_url = ?, status = 'ISSUED', updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and certificate_no = ? and batch_id = ? and status = 'GENERATING' and created_by = ? and created_by_uuid = ? and deleted = 0", url, userId, uuid, at, id, no, batchId, userId, uuid); }
+    @Override public int markGenerationFailed(Long id, String no, Long batchId, Long userId, String uuid, LocalDateTime at) { return database.update("update certificate_record set status = 'FAILED', certificate_file_url = null, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and certificate_no = ? and batch_id = ? and status in ('GENERATING', 'ISSUED') and created_by = ? and created_by_uuid = ? and deleted = 0", userId, uuid, at, id, no, batchId, userId, uuid); }
     @Override public void insertVerifyLog(Long id, String no, String type, String result, String ip, String agent) { database.update("insert into certificate_verify_log (certificate_id, certificate_no, query_type, query_result, client_ip, user_agent) values (?, ?, ?, ?, ?, ?)", id, no, type, result, ip, agent); }
     @Override public long countCertificateNumbers(String pattern) { Long value = database.queryForObject("select count(1) from certificate_record where certificate_no like ?", Long.class, pattern); return value == null ? 0 : value; }
+
+    @Override
+    public List<CertificateVO.AwardSource> findPublishedAwardSources() {
+        return database.query("""
+                select batch.id as reviewBatchId,
+                       batch.batch_no as batchNo,
+                       batch.batch_name as batchName,
+                       batch.competition_id as competitionId,
+                       competition.title as competitionTitle,
+                       batch.stage_id as stageId,
+                       stage.stage_name as stageName,
+                       batch.candidate_count as candidateCount,
+                       publication.publication_version as publicationVersion,
+                       batch.published_at as publishedAt,
+                       (
+                           select count(1)
+                             from competition_award_grant grant_record
+                            where grant_record.review_batch_id = batch.id
+                              and grant_record.status in ('GRANTED', 'ISSUED')
+                              and grant_record.deleted = 0
+                       ) as grantCount,
+                       (
+                           select count(1)
+                             from competition_award_grant grant_record
+                            where grant_record.review_batch_id = batch.id
+                              and grant_record.status = 'ISSUED'
+                              and grant_record.deleted = 0
+                       ) as issuedCount
+                  from competition_review_batch batch
+                  join competition_review_publication publication
+                    on publication.batch_id = batch.id
+                   and publication.status = 'PUBLISHED'
+                   and publication.deleted = 0
+                   and publication.publication_version = (
+                       select max(latest.publication_version)
+                         from competition_review_publication latest
+                        where latest.batch_id = batch.id
+                          and latest.status = 'PUBLISHED'
+                          and latest.deleted = 0
+                   )
+                  join aiadc_competition competition
+                    on competition.id = batch.competition_id
+                   and competition.deleted = 0
+                  join competition_stage stage
+                    on stage.id = batch.stage_id
+                   and stage.competition_id = batch.competition_id
+                   and stage.deleted = 0
+                 where batch.status = 'PUBLISHED'
+                   and batch.deleted = 0
+                 order by batch.published_at desc, batch.id desc
+                """, new BeanPropertyRowMapper<>(CertificateVO.AwardSource.class));
+    }
+
+    @Override
+    public int revokeUnissuedAwardGrants(
+            Long reviewBatchId,
+            Long userId,
+            String userUuid,
+            LocalDateTime updatedAt
+    ) {
+        return database.update("""
+                update competition_award_grant
+                   set status = 'REVOKED',
+                       updated_by = ?,
+                       updated_by_uuid = ?,
+                       updated_at = ?
+                 where review_batch_id = ?
+                   and status = 'GRANTED'
+                   and certificate_record_id is null
+                   and deleted = 0
+                """, userId, userUuid, updatedAt, reviewBatchId);
+    }
+
+    @Override
+    public int grantPublishedAwards(Long reviewBatchId, String awardName, int minRank, int maxRank,
+                                    Long userId, String userUuid, LocalDateTime grantedAt) {
+        return database.update("""
+                insert into competition_award_grant (
+                    publication_id, publication_version, review_batch_id, competition_id, stage_id,
+                    candidate_id, registration_id, project_id, team_id, user_id, user_uuid,
+                    recipient_name, competition_title, project_name, team_name, award_name,
+                    rank_no, decision, status, granted_at,
+                    created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                )
+                select publication.id, publication.publication_version, batch.id,
+                       batch.competition_id, batch.stage_id, candidate.id, registration.id,
+                       registration.project_id, registration.team_id,
+                       registration.owner_user_id, registration.owner_user_uuid,
+                       coalesce(
+                           nullif(json_unquote(json_extract(registration.team_snapshot_json, '$.teamName')), ''),
+                           nullif(team.team_name, ''),
+                           nullif(user.real_name, ''),
+                           nullif(user.nickname, ''),
+                           user.username
+                       ),
+                       competition.title,
+                       coalesce(
+                           nullif(json_unquote(json_extract(registration.project_snapshot_json, '$.title')), ''),
+                           project.title
+                       ),
+                       coalesce(
+                           nullif(json_unquote(json_extract(registration.team_snapshot_json, '$.teamName')), ''),
+                           team.team_name
+                       ),
+                       ?,
+                       aggregate.rank_no, aggregate.decision, 'GRANTED', ?,
+                       ?, ?, ?, ?, 0
+                  from competition_review_batch batch
+                  join competition_review_publication publication
+                    on publication.batch_id = batch.id
+                   and publication.status = 'PUBLISHED' and publication.deleted = 0
+                   and publication.publication_version = (
+                       select max(latest.publication_version)
+                         from competition_review_publication latest
+                        where latest.batch_id = batch.id
+                          and latest.status = 'PUBLISHED' and latest.deleted = 0
+                   )
+                  join competition_review_candidate candidate
+                    on candidate.batch_id = batch.id and candidate.deleted = 0
+                  join competition_review_aggregate aggregate
+                    on aggregate.batch_id = batch.id
+                   and aggregate.candidate_id = candidate.id
+                   and aggregate.status = 'FINALIZED' and aggregate.deleted = 0
+                  join competition_registration registration
+                    on registration.id = candidate.registration_id and registration.deleted = 0
+                  join aiadc_competition competition
+                    on competition.id = batch.competition_id and competition.deleted = 0
+                  left join aiadc_project project
+                    on project.id = registration.project_id and project.deleted = 0
+                  left join team
+                    on team.id = registration.team_id and team.deleted = 0
+                  join sys_user user
+                    on user.id = registration.owner_user_id
+                   and user.uuid = registration.owner_user_uuid
+                   and user.status = 'ENABLED' and user.deleted = 0
+                 where batch.id = ? and batch.status = 'PUBLISHED' and batch.deleted = 0
+                   and aggregate.decision in ('PASS', 'ADVANCED')
+                   and aggregate.rank_no between ? and ?
+                on duplicate key update
+                    award_name = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        values(award_name),
+                        competition_award_grant.award_name
+                    ),
+                    rank_no = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        values(rank_no),
+                        competition_award_grant.rank_no
+                    ),
+                    decision = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        values(decision),
+                        competition_award_grant.decision
+                    ),
+                    updated_by = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        values(updated_by),
+                        competition_award_grant.updated_by
+                    ),
+                    updated_by_uuid = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        values(updated_by_uuid),
+                        competition_award_grant.updated_by_uuid
+                    ),
+                    updated_at = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        values(granted_at),
+                        competition_award_grant.updated_at
+                    ),
+                    status = if(
+                        competition_award_grant.certificate_record_id is null
+                            and competition_award_grant.status in ('GRANTED', 'REVOKED'),
+                        'GRANTED',
+                        competition_award_grant.status
+                    )
+                """,
+                awardName, grantedAt, userId, userUuid, userId, userUuid,
+                reviewBatchId, minRank, maxRank);
+    }
+
+    @Override
+    public List<CertificateVO.AwardGrant> findAwardGrants(Long reviewBatchId) {
+        return database.query(
+                awardGrantSelect() + " from competition_award_grant where review_batch_id = ? and deleted = 0 order by rank_no asc, id asc",
+                new BeanPropertyRowMapper<>(CertificateVO.AwardGrant.class),
+                reviewBatchId
+        );
+    }
+
+    @Override
+    public List<CertificateVO.AwardGrant> findAwardGrantsByIds(List<Long> grantIds) {
+        if (grantIds == null || grantIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(grantIds.size(), "?"));
+        return database.query(
+                awardGrantSelect() + " from competition_award_grant where id in (" + placeholders + ")"
+                        + " and status = 'GRANTED' and certificate_record_id is null and deleted = 0 order by id asc",
+                new BeanPropertyRowMapper<>(CertificateVO.AwardGrant.class),
+                grantIds.toArray()
+        );
+    }
+
+    @Override
+    public List<CertificateVO.AwardGrant> findAwardGrantsByAnyIds(List<Long> grantIds) {
+        if (grantIds == null || grantIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(grantIds.size(), "?"));
+        return database.query(
+                awardGrantSelect() + " from competition_award_grant where id in (" + placeholders + ")"
+                        + " and deleted = 0 order by id asc",
+                new BeanPropertyRowMapper<>(CertificateVO.AwardGrant.class),
+                grantIds.toArray()
+        );
+    }
+
+    @Override
+    public int linkAwardGrant(Long grantId, Long certificateRecordId,
+                              Long userId, String userUuid, LocalDateTime updatedAt) {
+        return database.update("""
+                update competition_award_grant
+                   set certificate_record_id = ?, status = 'ISSUED',
+                       updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                 where id = ? and status = 'GRANTED' and certificate_record_id is null and deleted = 0
+                """, certificateRecordId, userId, userUuid, updatedAt, grantId);
+    }
+
+    @Override
+    public List<CertificateVO.Record> findMyCertificates(Long userId, String userUuid) {
+        List<Object> parameters = List.of(userId, userUuid, userId, userUuid);
+        return database.query(
+                recordSelect() + ownedAwardCertificateWhere() + " order by r.issue_date desc, r.id desc",
+                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
+                parameters.toArray()
+        );
+    }
+
+    @Override
+    public CertificateVO.Record findMyCertificate(Long recordId, Long userId, String userUuid) {
+        List<Object> parameters = List.of(recordId, userId, userUuid, userId, userUuid);
+        return first(database.query(
+                recordSelect() + ownedAwardCertificateWhere(" and r.id = ?") + " limit 1",
+                new BeanPropertyRowMapper<>(CertificateVO.Record.class),
+                parameters.toArray()
+        ));
+    }
 
     private Long lastId() { return database.queryForObject("select last_insert_id()", Long.class); }
     private static String owner(String alias, Long id, String uuid, List<Object> p) { if (id == null) return ""; p.add(id); p.add(uuid); return " and " + alias + ".created_by = ? and " + alias + ".created_by_uuid = ?"; }
     private static <T> T first(List<T> rows) { return rows.isEmpty() ? null : rows.getFirst(); }
-    private static String batchSelect() { return "select id, batch_no as batchNo, batch_name as batchName, template_id as templateId, template_version_id as templateVersionId, competition_id as competitionId, stage_id as stageId, source_type as sourceType, total_count as totalCount, success_count as successCount, failed_count as failedCount, status, error_message as errorMessage, created_at as createdAt, updated_at as updatedAt"; }
-    private static String recordSelect() { return "select r.id, r.certificate_no as certificateNo, r.verification_code as verificationCode, r.public_token as publicToken, r.batch_id as batchId, r.template_id as templateId, r.template_version_id as templateVersionId, t.template_name as templateName, r.competition_id as competitionId, r.recipient_name as recipientName, r.recipient_type as recipientType, r.competition_title as competitionTitle, r.project_name as projectName, r.team_name as teamName, r.award_name as awardName, r.issue_date as issueDate, r.expire_date as expireDate, r.data_json as dataJson, r.certificate_file_url as certificateFileUrl, r.status, r.revoked_reason as revokedReason, r.revoked_at as revokedAt, r.created_at as createdAt, r.updated_at as updatedAt"; }
+    private static String batchSelect() { return "select id, batch_no as batchNo, batch_name as batchName, template_id as templateId, template_version_id as templateVersionId, competition_id as competitionId, stage_id as stageId, source_type as sourceType, source_ref_id as sourceRefId, total_count as totalCount, success_count as successCount, failed_count as failedCount, status, error_message as errorMessage, created_at as createdAt, updated_at as updatedAt"; }
+    private static String recordSelect() { return "select r.id, r.certificate_no as certificateNo, r.verification_code as verificationCode, r.public_token as publicToken, r.batch_id as batchId, r.template_id as templateId, r.template_version_id as templateVersionId, t.template_name as templateName, r.competition_id as competitionId, r.registration_id as registrationId, r.project_id as projectId, r.team_id as teamId, r.user_id as userId, r.recipient_name as recipientName, r.recipient_type as recipientType, r.competition_title as competitionTitle, r.project_name as projectName, r.team_name as teamName, r.award_name as awardName, r.issue_date as issueDate, r.expire_date as expireDate, r.data_json as dataJson, r.certificate_file_url as certificateFileUrl, r.status, r.revoked_reason as revokedReason, r.revoked_at as revokedAt, r.created_at as createdAt, r.updated_at as updatedAt"; }
+    private static String awardGrantSelect() { return "select id, publication_id as publicationId, publication_version as publicationVersion, review_batch_id as reviewBatchId, competition_id as competitionId, stage_id as stageId, candidate_id as candidateId, registration_id as registrationId, project_id as projectId, team_id as teamId, user_id as userId, user_uuid as userUuid, recipient_name as recipientName, competition_title as competitionTitle, project_name as projectName, team_name as teamName, award_name as awardName, rank_no as rankNo, decision, status, certificate_record_id as certificateRecordId, granted_at as grantedAt"; }
+    private static String ownedAwardCertificateWhere() { return ownedAwardCertificateWhere(""); }
+    private static String ownedAwardCertificateWhere(String prefix) {
+        return " from certificate_record r"
+                + " left join certificate_template t on r.template_id = t.id"
+                + " join competition_registration registration on registration.id = r.registration_id and registration.deleted = 0"
+                + " where r.deleted = 0 and r.status in ('ISSUED', 'REVOKED')" + prefix
+                + " and ((registration.owner_user_id = ? and registration.owner_user_uuid = ?)"
+                + " or exists (select 1 from team_member member where member.team_id = r.team_id"
+                + " and member.user_id = ? and member.user_uuid = ?"
+                + " and member.status = 'ACTIVE' and member.deleted = 0))";
+    }
 }

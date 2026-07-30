@@ -256,14 +256,14 @@ const DashboardHomePage = () => {
 
   return (
     <PageContainer title={t('工作台', 'Dashboard')} ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
-      <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
         <ProCard variant="outlined" className="saas-dashboard-home__hero">
-          <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
               <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={normalizeUploadUrl(currentUser?.avatarUrl) || undefined}>
                 {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
               </Avatar>
-              <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
+              <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
                 <Typography.Title level={3} style={{ margin: 0 }}>
                   {greeting}，{displayName}
                 </Typography.Title>

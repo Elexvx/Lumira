@@ -31,6 +31,7 @@ export default {
   'nav.certificates.designer': 'Certificate Designer',
   'nav.certificates.generate': 'Certificate Generation',
   'nav.certificates.records': 'Certificate Records',
+  'nav.certificates.mine': 'My Certificates',
   'nav.certificates.verify': 'Certificate Verification',
   'nav.expertReview.root': 'Experts & Review',
   'nav.expertReview.reviews': 'Review & Advancement',

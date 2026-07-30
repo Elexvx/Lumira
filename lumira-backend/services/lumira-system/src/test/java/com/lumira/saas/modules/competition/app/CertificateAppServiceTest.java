@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -531,6 +532,49 @@ class CertificateAppServiceTest {
     }
 
     @Test
+    void publishValidationShouldRejectBlankOrIncompleteCanvas() {
+        CertificateAppService service = service(mock(MyBatisQueryOperations.class));
+        CertificateVO.TemplateVersion draft = new CertificateVO.TemplateVersion();
+        draft.setCanvasJson("{\"page\":{},\"elements\":[]}");
+
+        assertThatThrownBy(() -> service.validatePublishableTemplate(draft))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST);
+                    assertThat(exception.getMessage()).contains("cannot be empty");
+                });
+
+        draft.setCanvasJson("""
+                {"elements":[
+                  {"type":"text","text":"获奖证书"},
+                  {"type":"text","fieldKey":"recipientName"},
+                  {"type":"text","fieldKey":"awardName"}
+                ]}
+                """);
+        assertThatThrownBy(() -> service.validatePublishableTemplate(draft))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getMessage())
+                                .contains("competitionTitle", "issueDate", "verificationUrl"));
+    }
+
+    @Test
+    void publishValidationShouldAcceptCompleteAwardCertificateCanvas() {
+        CertificateAppService service = service(mock(MyBatisQueryOperations.class));
+        CertificateVO.TemplateVersion draft = new CertificateVO.TemplateVersion();
+        draft.setCanvasJson("""
+                {"elements":[
+                  {"type":"text","text":"获奖证书"},
+                  {"type":"text","fieldKey":"recipientName"},
+                  {"type":"text","fieldKey":"awardName"},
+                  {"type":"text","fieldKey":"competitionTitle"},
+                  {"type":"text","fieldKey":"issueDate"},
+                  {"type":"qrcode","fieldKey":"verificationUrl"}
+                ]}
+                """);
+
+        assertThatCode(() -> service.validatePublishableTemplate(draft)).doesNotThrowAnyException();
+    }
+
+    @Test
     void uploadBackgroundShouldRejectInvalidFileBeforeLookupOrUpload() {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
@@ -600,9 +644,89 @@ class CertificateAppServiceTest {
                 "where id = ? and certificate_no = ? and batch_id = ? and status = ? and deleted = 0",
                 "update certificate_record set certificate_file_url = ?, updated_by = ?, updated_by_uuid = ?",
                 "where id = ? and certificate_no = ? and batch_id = ? and status = ?",
-                "where id = ? and certificate_no = ? and batch_id = ? and status = 'ISSUED'",
+                "set certificate_file_url = ?, status = 'ISSUED', updated_by = ?, updated_by_uuid = ?",
+                "where id = ? and certificate_no = ? and batch_id = ? and status = 'GENERATING'",
+                "set status = 'FAILED', certificate_file_url = null",
+                "status in ('GENERATING', 'ISSUED')",
                 "and created_by = ? and created_by_uuid = ? and deleted = 0",
                 "Certificate record changed, please retry"
+        );
+    }
+
+    @Test
+    void awardGrantUpsertShouldQualifyTargetStatusInJoinedInsertSelect() throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateRecordRepository.java"));
+
+        assertThat(source)
+                .contains("competition_award_grant.status in ('GRANTED', 'REVOKED')")
+                .contains("competition_award_grant.certificate_record_id is null")
+                .contains("competition_award_grant.award_name")
+                .contains("competition_award_grant.rank_no")
+                .contains("competition_award_grant.decision")
+                .contains("competition_award_grant.updated_by")
+                .contains("aggregate.rank_no between ? and ?")
+                .contains("json_extract(registration.team_snapshot_json, '$.teamName')")
+                .contains("json_extract(registration.project_snapshot_json, '$.title')")
+                .contains("left join aiadc_project project")
+                .contains("left join team")
+                .contains("status = if(")
+                .doesNotContain("award_name = if(status = 'GRANTED'");
+    }
+
+    @Test
+    void grantPublishedAwardsShouldRejectOverlappingRulesBeforeDatabaseAccess() {
+        MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
+        CertificateAppService service = service(jdbcTemplate);
+        CertificateDTO.AwardGrantRequest request = new CertificateDTO.AwardGrantRequest();
+        request.setReviewBatchId(100L);
+        request.setRules(List.of(
+                awardRule("一等奖", 1, 3),
+                awardRule("二等奖", 3, 5)
+        ));
+
+        assertThatThrownBy(() -> service.grantPublishedAwards(
+                user(Set.of("aiadc:certificate-batch:create")), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST);
+                    assertThat(exception.getMessage()).contains("cannot overlap");
+                });
+
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    @Test
+    void certificateAwardSourcesShouldExposePublishedBatchNamesWithoutReviewPermissions() throws Exception {
+        String repositorySource = Files.readString(Path.of(
+                "src/main/java/com/lumira/saas/modules/competition/infrastructure/JdbcCertificateRecordRepository.java"));
+        String serviceSource = Files.readString(Path.of(
+                "src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
+
+        assertThat(repositorySource).contains(
+                "findPublishedAwardSources",
+                "competition.title as competitionTitle",
+                "stage.stage_name as stageName",
+                "publication.publication_version as publicationVersion",
+                "batch.status = 'PUBLISHED'",
+                "grant_record.status = 'ISSUED'"
+        );
+        assertThat(serviceSource).contains(
+                "listPublishedAwardSources",
+                "requirePermission(currentUser, BATCH_CREATE)",
+                "recordRepository.findPublishedAwardSources()"
+        );
+    }
+
+    @Test
+    void awardCertificateConcurrencyFeedbackShouldDistinguishIssuedAndMissingGrants() throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/com/lumira/saas/modules/competition/app/CertificateAppService.java"));
+
+        assertThat(source).contains(
+                "findAwardGrantsByAnyIds",
+                "selected award grant(s) no longer exist",
+                "selected award certificate(s) have already been issued",
+                "Selected award grant status changed"
         );
     }
 
@@ -773,7 +897,7 @@ class CertificateAppServiceTest {
                 setting("certificate.rule.scene-types", "COMPETITION_AWARD,PARTICIPATION,CUSTOM"),
                 setting("certificate.rule.source-types", "MANUAL,IMPORT,REGISTRATION,AWARD_RESULT"),
                 setting("certificate.rule.recipient-types", "USER,TEAM,PROJECT,CUSTOM"),
-                setting("certificate.rule.record-statuses", "ISSUED,REVOKED"),
+                setting("certificate.rule.record-statuses", "GENERATING,ISSUED,FAILED,REVOKED"),
                 setting("certificate.rule.default-scene-type", "COMPETITION_AWARD"),
                 setting("certificate.rule.default-source-type", "MANUAL"),
                 setting("certificate.rule.default-recipient-type", "CUSTOM"),
@@ -806,6 +930,14 @@ class CertificateAppServiceTest {
         row.setRecipientName(recipientName);
         row.setAwardName("Gold");
         return row;
+    }
+
+    private CertificateDTO.AwardRuleRequest awardRule(String awardName, int minRank, int maxRank) {
+        CertificateDTO.AwardRuleRequest rule = new CertificateDTO.AwardRuleRequest();
+        rule.setAwardName(awardName);
+        rule.setMinRank(minRank);
+        rule.setMaxRank(maxRank);
+        return rule;
     }
 
     private CurrentUser user(Set<String> permissions) {

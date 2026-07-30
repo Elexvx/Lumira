@@ -107,18 +107,13 @@ const TopActionsPasswordDrawer = ({
     return parts.join('，');
   })();
 
-  useEffect(() => {
-    if (!open) {
-      form.resetFields();
-    }
-  }, [form, open]);
   const handleDrawerClose = useConfirmableDrawerClose(onClose);
 
   return (
     <Drawer
       title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: 'Change password' })}
       open={open}
-      width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
+      size={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       destroyOnHidden
       onClose={handleDrawerClose}
       footer={
@@ -130,7 +125,13 @@ const TopActionsPasswordDrawer = ({
         </Space>
       }
     >
-      <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{ currentPassword: '', newPassword: '', confirmPassword: '' }}>
+      <Form
+        form={form}
+        layout="vertical"
+        preserve={false}
+        onFinish={onFinish}
+        initialValues={{ currentPassword: '', newPassword: '', confirmPassword: '' }}
+      >
         <Form.Item
           name="currentPassword"
           label={intl.formatMessage({ id: 'nav.user.password.current', defaultMessage: 'Current password' })}

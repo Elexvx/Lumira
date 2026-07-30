@@ -1,4 +1,3 @@
-import { formatMessage } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import type { RuntimeMenuDataItem } from '@/app.types';
 import { resolveBuiltinMessage } from '@/i18n/messages';
@@ -22,13 +21,7 @@ const mapSourceItemToRuntimeMenuItem = (
 
   return {
     path: item.path,
-    name: resolveBuiltinMessage(
-      item.name,
-      formatMessage({
-        id: item.name,
-        defaultMessage: item.name,
-      }),
-    ),
+    name: resolveBuiltinMessage(item.name, item.name),
     locale: false as const,
     icon: resolveNavigationIcon(item.icon),
     hideInMenu: false,

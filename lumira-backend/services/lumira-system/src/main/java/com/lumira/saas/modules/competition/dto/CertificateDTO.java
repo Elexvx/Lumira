@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -143,6 +145,70 @@ public final class CertificateDTO {
         public void setExpireDate(LocalDate expireDate) { this.expireDate = expireDate; }
         public Map<String, Object> getData() { return data; }
         public void setData(Map<String, Object> data) { this.data = data; }
+    }
+
+    public static class AwardGrantRequest {
+        @NotNull
+        private Long reviewBatchId;
+        @Size(max = 128)
+        private String awardName;
+        @Min(1)
+        @Max(10000)
+        private Integer maxRank;
+        @Valid
+        @Size(max = 20)
+        private List<@NotNull AwardRuleRequest> rules;
+
+        public Long getReviewBatchId() { return reviewBatchId; }
+        public void setReviewBatchId(Long reviewBatchId) { this.reviewBatchId = reviewBatchId; }
+        public String getAwardName() { return awardName; }
+        public void setAwardName(String awardName) { this.awardName = awardName; }
+        public Integer getMaxRank() { return maxRank; }
+        public void setMaxRank(Integer maxRank) { this.maxRank = maxRank; }
+        public List<AwardRuleRequest> getRules() { return rules; }
+        public void setRules(List<AwardRuleRequest> rules) { this.rules = rules; }
+    }
+
+    public static class AwardRuleRequest {
+        @NotBlank
+        @Size(max = 128)
+        private String awardName;
+        @NotNull
+        @Min(1)
+        @Max(10000)
+        private Integer minRank;
+        @NotNull
+        @Min(1)
+        @Max(10000)
+        private Integer maxRank;
+
+        public String getAwardName() { return awardName; }
+        public void setAwardName(String awardName) { this.awardName = awardName; }
+        public Integer getMinRank() { return minRank; }
+        public void setMinRank(Integer minRank) { this.minRank = minRank; }
+        public Integer getMaxRank() { return maxRank; }
+        public void setMaxRank(Integer maxRank) { this.maxRank = maxRank; }
+    }
+
+    public static class AwardCertificateGenerateRequest {
+        @Size(max = 128)
+        private String batchName;
+        @NotNull
+        private Long templateId;
+        @NotNull
+        private Long templateVersionId;
+        @NotEmpty
+        @Size(max = 200)
+        private List<@NotNull Long> grantIds;
+
+        public String getBatchName() { return batchName; }
+        public void setBatchName(String batchName) { this.batchName = batchName; }
+        public Long getTemplateId() { return templateId; }
+        public void setTemplateId(Long templateId) { this.templateId = templateId; }
+        public Long getTemplateVersionId() { return templateVersionId; }
+        public void setTemplateVersionId(Long templateVersionId) { this.templateVersionId = templateVersionId; }
+        public List<Long> getGrantIds() { return grantIds; }
+        public void setGrantIds(List<Long> grantIds) { this.grantIds = grantIds; }
     }
 
     public static class RevokeRequest {

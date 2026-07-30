@@ -1,5 +1,6 @@
 import type { AppInitialState } from '@/app';
-import { formatMessage, history } from '@umijs/max';
+import { history } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { FormInstance } from 'antd';
 import type { FormProps } from 'antd';

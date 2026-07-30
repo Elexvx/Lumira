@@ -60,8 +60,8 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/payments/status/': '/payments/management',
   '/data-management/query-center': '/dashboard/home',
   '/data-management/query-center/': '/dashboard/home',
-  '/certificates': '/certificates/templates',
-  '/certificates/': '/certificates/templates',
+  '/certificates': '/certificates/mine',
+  '/certificates/': '/certificates/mine',
   '/certificates/templates/': '/certificates/templates',
   '/certificates/generate/': '/certificates/generate',
   '/certificates/records/': '/certificates/records',
@@ -295,7 +295,7 @@ const competitionRouteMeta: BackendRouteMeta[] = [
   { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
   { path: '/competitions/register/payment-result', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
   { path: '/competitions/activity-register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
-  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts', hideInMenu: true },
+  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin', hideInMenu: true },
   { path: '/competitions/create', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
   { path: '/competitions/:competitionUuid/settings', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
 ];
@@ -312,6 +312,7 @@ const paymentRouteMeta: BackendRouteMeta[] = [
 
 const certificateRouteMeta: BackendRouteMeta[] = [
   { path: '/certificates', name: 'nav.certificates.root', icon: 'FileProtectOutlined', access: 'canVisitCertificates' },
+  { path: '/certificates/mine', name: 'nav.certificates.mine', icon: 'SafetyCertificateOutlined', access: 'canVisitMyCertificates' },
   { path: '/certificates/templates', name: 'nav.certificates.templates', icon: 'FileProtectOutlined', access: 'canVisitCertificateTemplates' },
   { path: '/certificates/templates/:id/designer', name: 'nav.certificates.designer', icon: 'FileProtectOutlined', access: 'canVisitCertificateTemplates', hideInMenu: true },
   { path: '/certificates/generate', name: 'nav.certificates.generate', icon: 'FileDoneOutlined', access: 'canVisitCertificateGenerate' },
@@ -333,7 +334,7 @@ const competitionRoutes: BackendRouteRecord[] = [
       { path: '/competitions/register/payment-result', component: '@/pages/competition', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
       { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
       { path: '/competitions/activity-register', redirect: '/activities/register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
-      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts', hideInMenu: true },
+      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin', hideInMenu: true },
       { path: '/competitions/create', component: '@/pages/competition', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
       { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
     ],
@@ -379,7 +380,8 @@ const certificateRoutes: BackendRouteRecord[] = [
     icon: 'FileProtectOutlined',
     access: 'canVisitCertificates',
     routes: [
-      { path: '/certificates', redirect: '/certificates/templates', hideInMenu: true },
+      { path: '/certificates', redirect: '/certificates/mine', hideInMenu: true },
+      { path: '/certificates/mine', component: '@/pages/certificates/MyCertificatesPage', name: 'nav.certificates.mine', icon: 'SafetyCertificateOutlined', access: 'canVisitMyCertificates' },
       { path: '/certificates/templates', component: '@/pages/certificates/TemplatesPage', name: 'nav.certificates.templates', icon: 'FileProtectOutlined', access: 'canVisitCertificateTemplates' },
       { path: '/certificates/templates/:id/designer', component: '@/pages/certificates/DesignerPage', name: 'nav.certificates.designer', icon: 'FileProtectOutlined', access: 'canVisitCertificateTemplates', hideInMenu: true },
       { path: '/certificates/generate', component: '@/pages/certificates/GeneratePage', name: 'nav.certificates.generate', icon: 'FileDoneOutlined', access: 'canVisitCertificateGenerate' },

@@ -47,38 +47,17 @@ ON DUPLICATE KEY UPDATE
   `enabled` = VALUES(`enabled`),
   `updated_at` = CURRENT_TIMESTAMP;
 
-DELETE FROM `competition_config_item`
-WHERE `item_type` = 'MEMBER_FIELD'
-  AND `item_key` IN ('employeeNo','departmentName','role','remark');
-
-INSERT INTO `competition_config_item`
-(`competition_uuid`,`config_set_id`,`item_type`,`item_key`,`title`,`content_json`,`content_text`,`sort_order`,`required_flag`,`enabled`,`created_by`,`created_by_uuid`,`updated_by`,`updated_by_uuid`,`deleted`)
-SELECT ccs.`competition_uuid`, ccs.`id`, template.`item_type`, template.`item_key`, template.`title`, template.`content_json`, template.`content_text`,
-       template.`sort_order`, template.`required_flag`, template.`enabled`, 0, NULL, 0, NULL, 0
-FROM `competition_config_set` ccs
-JOIN `competition_config_item_template` template
-  ON template.`template_code` = 'DEFAULT' AND template.`enabled` = 1 AND template.`deleted` = 0
-WHERE ccs.`deleted` = 0
-  AND ccs.`status` IN ('DRAFT','PUBLISHED')
-  AND NOT EXISTS (
-    SELECT 1
-    FROM `competition_config_item` item
-    WHERE item.`config_set_id` = ccs.`id`
-      AND item.`item_type` = template.`item_type`
-      AND item.`item_key` = template.`item_key`
-      AND item.`deleted` = 0
-  );
-
-UPDATE `competition_config_item` item
-JOIN `competition_config_item_template` template
-  ON template.`template_code` = 'DEFAULT'
- AND template.`item_type` = item.`item_type`
- AND template.`item_key` = item.`item_key`
- AND template.`deleted` = 0
-SET item.`content_json` = JSON_MERGE_PATCH(
-      CASE WHEN JSON_VALID(template.`content_json`) THEN template.`content_json` ELSE '{}' END,
-      CASE WHEN JSON_VALID(item.`content_json`) THEN item.`content_json` ELSE '{}' END
-    ),
-    item.`updated_at` = CURRENT_TIMESTAMP
-WHERE item.`deleted` = 0
-  AND JSON_EXTRACT(template.`content_json`, '$.standardField') = TRUE;
+UPDATE `competition_config_item_template`
+SET `enabled` = 0
+WHERE `template_code` = 'DEFAULT'
+  AND `item_type` = 'PROJECT_FIELD'
+  AND `item_key` IN (
+    'intellectualPropertyType',
+    'intellectualPropertyName',
+    'registrationNumber',
+    'rightsHolder',
+    'legalStatus',
+    'grantDate',
+    'distributionRegions'
+  )
+  AND `deleted` = 0;

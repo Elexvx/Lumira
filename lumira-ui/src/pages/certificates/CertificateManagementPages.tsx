@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { history } from '@umijs/max';
-import { Alert, Button, Card, Col, Descriptions, Form, Input, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
@@ -25,7 +25,11 @@ import {
   archiveCertificateTemplate,
   createCertificateTemplate,
   duplicateCertificateTemplate,
+  generateCertificatesFromAwards,
   generateCertificates,
+  grantPublishedAwards,
+  listAwardGrants,
+  listCertificateAwardSources,
   listCertificateTemplateVersions,
   listCertificateTemplates,
   listCertificates,
@@ -35,6 +39,10 @@ import {
   updateCertificateTemplate,
 } from '@/services/certificates/api';
 import type {
+  CertificateBatchRecord,
+  CertificateAwardGrant,
+  CertificateAwardRule,
+  CertificateAwardSource,
   CertificateDataPayload,
   CertificateGeneratePayload,
   CertificateRecord,
@@ -43,6 +51,12 @@ import type {
 } from '@/services/certificates/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import {
+  haveAwardGrantsChanged,
+  selectableAwardGrantIds,
+  summarizeAwardGrants,
+  validateCertificateAwardRules,
+} from './certificateAwardRules';
 import './certificate.css';
 
 const templateStatusColor: Record<string, string> = {
@@ -52,8 +66,10 @@ const templateStatusColor: Record<string, string> = {
 };
 
 const certificateStatusColor: Record<string, string> = {
+  GENERATING: 'processing',
   GENERATED: 'processing',
   ISSUED: 'green',
+  FAILED: 'red',
   REVOKED: 'red',
   EXPIRED: 'orange',
 };
@@ -65,10 +81,24 @@ const templateStatusText: Record<string, string> = {
 };
 
 const certificateStatusText: Record<string, string> = {
+  GENERATING: '生成中',
   GENERATED: '已生成',
   ISSUED: '已签发',
+  FAILED: '生成失败',
   REVOKED: '已撤销',
   EXPIRED: '已过期',
+};
+
+const awardGrantStatusText: Record<string, string> = {
+  GRANTED: '待制证',
+  ISSUED: '已制证',
+  REVOKED: '已取消',
+};
+
+const awardGrantStatusColor: Record<string, string> = {
+  GRANTED: 'processing',
+  ISSUED: 'success',
+  REVOKED: 'default',
 };
 
 const sceneTypeText: Record<string, string> = {
@@ -105,8 +135,8 @@ const csvToRows = (text: string): CertificateDataPayload[] => {
     .filter((item) => item.recipientName);
 };
 
-const TemplateForm = ({ form }: { form: ReturnType<typeof Form.useForm>[0] }) => (
-  <Form form={form} layout="vertical">
+const TemplateForm = ({ form: templateEditorForm }: { form: ReturnType<typeof Form.useForm>[0] }) => (
+  <Form form={templateEditorForm} layout="vertical">
     <Form.Item name="templateName" label="模板名称" rules={[{ required: true, message: '请输入模板名称' }]}>
       <Input maxLength={128} placeholder="例如：2026 年度一等奖证书" />
     </Form.Item>
@@ -358,30 +388,94 @@ export const GenerateManagementPage = () => {
   const responsive = useResponsive();
   const [templates, setTemplates] = useState<CertificateTemplateRecord[]>([]);
   const [versions, setVersions] = useState<CertificateTemplateVersionRecord[]>([]);
+  const [awardSources, setAwardSources] = useState<CertificateAwardSource[]>([]);
   const [result, setResult] = useState<CertificateRecord[]>([]);
+  const [batchResult, setBatchResult] = useState<CertificateBatchRecord>();
+  const [awardGrants, setAwardGrants] = useState<CertificateAwardGrant[]>([]);
+  const [selectedGrantIds, setSelectedGrantIds] = useState<number[]>([]);
+  const [awardSourcesLoading, setAwardSourcesLoading] = useState(true);
+  const [awardGrantsLoading, setAwardGrantsLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [form] = Form.useForm();
+  const [templateForm] = Form.useForm();
+  const [manualForm] = Form.useForm();
+  const [awardForm] = Form.useForm();
+  const selectedCompetitionId = Form.useWatch('competitionId', awardForm);
+  const selectedStageId = Form.useWatch('stageId', awardForm);
+  const selectedReviewBatchId = Form.useWatch('reviewBatchId', awardForm);
 
   useEffect(() => {
     void listCertificateTemplates({ status: 'PUBLISHED', pageSize: 100 }).then((res) => setTemplates(res.records || []));
+    void listCertificateAwardSources()
+      .then((sources) => setAwardSources(sources || []))
+      .finally(() => setAwardSourcesLoading(false));
   }, []);
 
+  const competitionOptions = useMemo(
+    () => Array.from(new Map(awardSources.map((source) => [
+      source.competitionId,
+      { label: source.competitionTitle, value: source.competitionId },
+    ])).values()),
+    [awardSources],
+  );
+  const stageOptions = useMemo(
+    () => Array.from(new Map(
+      awardSources
+        .filter((source) => source.competitionId === selectedCompetitionId)
+        .map((source) => [
+          source.stageId,
+          { label: source.stageName, value: source.stageId },
+        ]),
+    ).values()),
+    [awardSources, selectedCompetitionId],
+  );
+  const batchOptions = useMemo(
+    () => awardSources
+      .filter((source) => source.competitionId === selectedCompetitionId && source.stageId === selectedStageId)
+      .map((source) => ({
+        label: `${source.batchName}（${source.batchNo}，${source.candidateCount} 个候选）`,
+        value: source.reviewBatchId,
+      })),
+    [awardSources, selectedCompetitionId, selectedStageId],
+  );
+  const awardGrantSummary = useMemo(() => summarizeAwardGrants(awardGrants), [awardGrants]);
+
+  const setLoadedAwardGrants = (grants: CertificateAwardGrant[]) => {
+    setAwardGrants(grants);
+    setSelectedGrantIds(selectableAwardGrantIds(grants));
+  };
+
+  const loadAwardGrants = async (reviewBatchId: number) => {
+    setAwardGrantsLoading(true);
+    try {
+      setLoadedAwardGrants(await listAwardGrants(reviewBatchId));
+    } finally {
+      setAwardGrantsLoading(false);
+    }
+  };
+
+  const refreshAwardSources = async () => {
+    setAwardSources(await listCertificateAwardSources());
+  };
+
   const loadVersions = async (templateId: number) => {
-    form.setFieldValue('templateVersionId', undefined);
+    templateForm.setFieldValue('templateVersionId', undefined);
     const list = await listCertificateTemplateVersions(templateId);
     const published = list.filter((item) => item.status === 'PUBLISHED');
     setVersions(published);
     if (published.length === 1) {
-      form.setFieldValue('templateVersionId', published[0].id);
+      templateForm.setFieldValue('templateVersionId', published[0].id);
     }
   };
 
   const buildSinglePayload = async (): Promise<CertificateGeneratePayload> => {
-    const values = await form.validateFields();
+    const [templateValues, values] = await Promise.all([
+      templateForm.validateFields(),
+      manualForm.validateFields(),
+    ]);
     return {
-      batchName: values.batchName,
-      templateId: values.templateId,
-      templateVersionId: values.templateVersionId,
+      batchName: templateValues.batchName,
+      templateId: templateValues.templateId,
+      templateVersionId: templateValues.templateVersionId,
       sourceType: 'MANUAL',
       records: [
         {
@@ -402,7 +496,69 @@ export const GenerateManagementPage = () => {
     try {
       const response = await generateCertificates(await buildSinglePayload());
       setResult(response.records || []);
-      message.success('证书已生成');
+      setBatchResult(response.batch);
+      if (response.batch.failedCount > 0) {
+        message.error(response.batch.errorMessage || '证书生成失败，请查看批次结果');
+      } else {
+        message.success('证书已生成');
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const confirmAwardGrants = async () => {
+    const values = await awardForm.validateFields();
+    const rules = values.awardRules as CertificateAwardRule[];
+    const existingIds = new Set(awardGrants.map((grant) => grant.id));
+    setGenerating(true);
+    try {
+      const grants = await grantPublishedAwards({
+        reviewBatchId: values.reviewBatchId,
+        rules: rules.map((rule) => ({ ...rule, awardName: rule.awardName.trim() })),
+      });
+      const grantsChanged = haveAwardGrantsChanged(awardGrants, grants);
+      setLoadedAwardGrants(grants);
+      await refreshAwardSources();
+      const addedCount = grants.filter((grant) => !existingIds.has(grant.id)).length;
+      const summary = summarizeAwardGrants(grants);
+      if (addedCount > 0) {
+        message.success(`已新增 ${addedCount} 条授奖记录；待制证 ${summary.pending} 条`);
+      } else if (grantsChanged) {
+        message.success(`授奖规则已更新；待制证 ${summary.pending} 条，已制证 ${summary.issued} 条，已取消 ${summary.revoked} 条`);
+      } else {
+        message.info(`授奖规则已存在，未重复建档；待制证 ${summary.pending} 条，已制证 ${summary.issued} 条`);
+      }
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const generateAwardBatch = async () => {
+    const values = await templateForm.validateFields(['templateId', 'templateVersionId', 'batchName']);
+    if (!selectedGrantIds.length) {
+      message.warning('请选择尚未制证的授奖记录');
+      return;
+    }
+    setGenerating(true);
+    try {
+      const response = await generateCertificatesFromAwards({
+        batchName: values.batchName,
+        templateId: values.templateId,
+        templateVersionId: values.templateVersionId,
+        grantIds: selectedGrantIds,
+      });
+      setResult(response.records || []);
+      setBatchResult(response.batch);
+      if (response.batch.failedCount > 0) {
+        message.warning(`成功 ${response.batch.successCount} 张，失败 ${response.batch.failedCount} 张`);
+      } else {
+        message.success(`已从授奖记录生成 ${response.records.length} 张证书`);
+      }
+      const reviewBatchId = awardForm.getFieldValue('reviewBatchId');
+      if (reviewBatchId) {
+        await Promise.all([loadAwardGrants(reviewBatchId), refreshAwardSources()]);
+      }
     } finally {
       setGenerating(false);
     }
@@ -411,7 +567,7 @@ export const GenerateManagementPage = () => {
   const csvUpload: UploadProps = {
     showUploadList: false,
     beforeUpload: async (file) => {
-      const values = await form.validateFields(['templateId', 'templateVersionId']);
+      const values = await templateForm.validateFields(['templateId', 'templateVersionId']);
       const rows = csvToRows(await file.text());
       if (!rows.length) {
         message.warning('CSV 中未识别到可生成的证书数据');
@@ -427,7 +583,14 @@ export const GenerateManagementPage = () => {
           records: rows,
         });
         setResult(response.records || []);
-        message.success(`已导入生成 ${response.records.length} 张证书`);
+        setBatchResult(response.batch);
+        if (response.batch.failedCount > 0) {
+          message.warning(
+            `成功 ${response.batch.successCount} 张，失败 ${response.batch.failedCount} 张：${response.batch.errorMessage || '请查看批次结果'}`,
+          );
+        } else {
+          message.success(`已导入生成 ${response.records.length} 张证书`);
+        }
       } finally {
         setGenerating(false);
       }
@@ -462,7 +625,7 @@ export const GenerateManagementPage = () => {
                 description="第一阶段支持手动录入单张证书和 CSV 批量导入。生成时会绑定具体模板版本，后续模板修改不会影响已生成证书。"
               />
               <Card title="模板与批次" className="certificate-section-card">
-                <Form form={form} layout="vertical">
+                <Form form={templateForm} layout="vertical">
                   <Row gutter={16}>
                     <Col xs={24} md={8}>
                       <Form.Item name="templateId" label="证书模板" rules={[{ required: true, message: '请选择证书模板' }]}>
@@ -487,6 +650,201 @@ export const GenerateManagementPage = () => {
                   </Row>
                 </Form>
               </Card>
+              <Card title="评审结果授奖与制证" className="certificate-section-card">
+                <Alert
+                  type="info"
+                  showIcon
+                  message="先确认授奖，再从授奖记录生成证书；每条发布结果只能生成一张有效证书。"
+                  style={{ marginBottom: 16 }}
+                />
+                <Form
+                  form={awardForm}
+                  layout="vertical"
+                  initialValues={{
+                    awardRules: [
+                      { awardName: '一等奖', minRank: 1, maxRank: 1 },
+                      { awardName: '二等奖', minRank: 2, maxRank: 3 },
+                      { awardName: '三等奖', minRank: 4, maxRank: 10 },
+                    ],
+                  }}
+                >
+                  <Row gutter={16}>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          loading={awardSourcesLoading}
+                          placeholder="选择已有发布结果的赛事"
+                          options={competitionOptions}
+                          onChange={() => {
+                            awardForm.setFieldsValue({ stageId: undefined, reviewBatchId: undefined });
+                            setLoadedAwardGrants([]);
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="stageId" label="阶段" rules={[{ required: true, message: '请选择阶段' }]}>
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          disabled={!selectedCompetitionId}
+                          placeholder="选择赛事阶段"
+                          options={stageOptions}
+                          onChange={() => {
+                            awardForm.setFieldValue('reviewBatchId', undefined);
+                            setLoadedAwardGrants([]);
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={8}>
+                      <Form.Item name="reviewBatchId" label="已发布评审批次" rules={[{ required: true, message: '请选择已发布评审批次' }]}>
+                        <Select
+                          showSearch
+                          optionFilterProp="label"
+                          disabled={!selectedStageId}
+                          loading={awardSourcesLoading}
+                          placeholder="选择评审批次"
+                          options={batchOptions}
+                          onChange={(reviewBatchId: number) => {
+                            const source = awardSources.find((item) => item.reviewBatchId === reviewBatchId);
+                            if (source && !templateForm.getFieldValue('batchName')) {
+                              templateForm.setFieldValue('batchName', `${source.competitionTitle} - 获奖证书`);
+                            }
+                            void loadAwardGrants(reviewBatchId);
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  {!awardSourcesLoading && !awardSources.length && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message="暂无可授奖的发布结果"
+                      description="请先在评审管理中完成结果发布，再返回此处授奖。"
+                      style={{ marginBottom: 16 }}
+                    />
+                  )}
+                  <Typography.Title level={5}>奖项名次规则</Typography.Title>
+                  <Form.List
+                    name="awardRules"
+                    rules={[{
+                      validator: async (_, rules: CertificateAwardRule[]) => {
+                        const error = validateCertificateAwardRules(rules);
+                        if (error) {
+                          throw new Error(error);
+                        }
+                      },
+                    }]}
+                  >
+                    {(fields, { add, remove }, { errors }) => (
+                      <>
+                        {fields.map((field) => (
+                          <Row gutter={12} align="middle" key={field.key}>
+                            <Col xs={24} md={9}>
+                              <Form.Item
+                                {...field}
+                                name={[field.name, 'awardName']}
+                                label="奖项名称"
+                                rules={[{ required: true, message: '请输入奖项名称' }]}
+                              >
+                                <Input maxLength={128} placeholder="例如：一等奖" />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={10} md={6}>
+                              <Form.Item
+                                {...field}
+                                name={[field.name, 'minRank']}
+                                label="起始名次"
+                                rules={[{ required: true, message: '请输入起始名次' }]}
+                              >
+                                <InputNumber min={1} max={10000} precision={0} style={{ width: '100%' }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={10} md={6}>
+                              <Form.Item
+                                {...field}
+                                name={[field.name, 'maxRank']}
+                                label="结束名次"
+                                rules={[{ required: true, message: '请输入结束名次' }]}
+                              >
+                                <InputNumber min={1} max={10000} precision={0} style={{ width: '100%' }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={4} md={3}>
+                              <Button
+                                aria-label="删除奖项规则"
+                                danger
+                                icon={<DeleteOutlined />}
+                                disabled={fields.length === 1}
+                                onClick={() => remove(field.name)}
+                              />
+                            </Col>
+                          </Row>
+                        ))}
+                        <Form.ErrorList errors={errors} />
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={() => add({ awardName: '', minRank: 1, maxRank: 1 })}
+                          style={{ marginBottom: 16 }}
+                        >
+                          添加奖项规则
+                        </Button>
+                      </>
+                    )}
+                  </Form.List>
+                  <Space wrap style={{ marginBottom: 16 }}>
+                    <Button onClick={() => void confirmAwardGrants()} loading={generating}>应用规则并加载授奖记录</Button>
+                    <Button type="primary" onClick={() => void generateAwardBatch()} loading={generating}>
+                      为所选授奖记录生成证书
+                    </Button>
+                  </Space>
+                </Form>
+                {selectedReviewBatchId && (
+                  <Alert
+                    type={awardGrantSummary.total === 0 ? 'info' : awardGrantSummary.pending > 0 ? 'warning' : 'success'}
+                    showIcon
+                    message={`授奖记录 ${awardGrantSummary.total} 条：待制证 ${awardGrantSummary.pending} 条，已制证 ${awardGrantSummary.issued} 条，已取消 ${awardGrantSummary.revoked} 条`}
+                    description="重复应用相同规则不会重复建档；已制证记录不会被后续规则覆盖。"
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
+                <Table<CertificateAwardGrant>
+                  rowKey="id"
+                  size="small"
+                  dataSource={awardGrants}
+                  loading={awardGrantsLoading}
+                  pagination={false}
+                  scroll={{ x: 620 }}
+                  rowSelection={{
+                    selectedRowKeys: selectedGrantIds,
+                    onChange: (keys) => setSelectedGrantIds(keys.map(Number)),
+                    getCheckboxProps: (grant) => ({
+                      disabled: grant.status !== 'GRANTED' || Boolean(grant.certificateRecordId),
+                    }),
+                  }}
+                  columns={[
+                    { title: '名次', dataIndex: 'rankNo', width: 72 },
+                    { title: '获奖人', dataIndex: 'recipientName', width: 140 },
+                    { title: '项目', dataIndex: 'projectName', ellipsis: true },
+                    { title: '奖项', dataIndex: 'awardName', width: 140 },
+                    {
+                      title: '状态',
+                      dataIndex: 'status',
+                      width: 100,
+                      render: (value) => (
+                        <Tag color={awardGrantStatusColor[value]}>
+                          {awardGrantStatusText[value] || value}
+                        </Tag>
+                      ),
+                    },
+                  ]}
+                />
+              </Card>
               <Card
                 title="证书数据"
                 extra={
@@ -498,7 +856,7 @@ export const GenerateManagementPage = () => {
                 }
                 className="certificate-section-card"
               >
-                <Form form={form} layout="vertical">
+                <Form form={manualForm} layout="vertical">
                   <Row gutter={16}>
                     <Col xs={24} md={8}>
                       <Form.Item name="recipientName" label="获奖人/团队" rules={[{ required: true, message: '请输入获奖人或团队名称' }]}>
@@ -535,11 +893,20 @@ export const GenerateManagementPage = () => {
                     <Button type="primary" icon={<SendOutlined />} loading={generating} onClick={() => void submit()}>
                       生成单张证书
                     </Button>
-                    <Button onClick={() => form.resetFields()}>清空数据</Button>
+                    <Button onClick={() => manualForm.resetFields()}>清空数据</Button>
                   </Space>
                 </Form>
               </Card>
               <Card title="生成结果" className="certificate-section-card">
+                {batchResult?.failedCount ? (
+                  <Alert
+                    showIcon
+                    type={batchResult.successCount ? 'warning' : 'error'}
+                    message={`批次 ${batchResult.batchNo}：成功 ${batchResult.successCount}，失败 ${batchResult.failedCount}`}
+                    description={batchResult.errorMessage || '证书生成未全部完成'}
+                    style={{ marginBottom: 16 }}
+                  />
+                ) : null}
                 <Table<CertificateRecord>
                   rowKey="id"
                   size="middle"

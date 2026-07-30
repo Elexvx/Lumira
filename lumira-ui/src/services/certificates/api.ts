@@ -2,6 +2,10 @@ import { request } from '@/services/common/request';
 import type {
   CertificateGeneratePayload,
   CertificateGenerateResult,
+  CertificateAwardGrant,
+  CertificateAwardSource,
+  AwardGrantPayload,
+  AwardCertificateGeneratePayload,
   CertificatePublicVerifyResult,
   CertificateRecord,
   CertificateTemplateRecord,
@@ -53,8 +57,26 @@ export const uploadCertificateBackground = (versionId: number, file: File) => {
 export const generateCertificates = (data: CertificateGeneratePayload) =>
   request<CertificateGenerateResult>(`${API}/certificate-batches`, { method: 'POST', data });
 
+export const listCertificateAwardSources = () =>
+  request<CertificateAwardSource[]>(`${API}/certificate-award-sources`, { method: 'GET' });
+
+export const grantPublishedAwards = (data: AwardGrantPayload) =>
+  request<CertificateAwardGrant[]>(`${API}/certificate-awards/grant`, { method: 'POST', data });
+
+export const listAwardGrants = (reviewBatchId: number) =>
+  request<CertificateAwardGrant[]>(`${API}/certificate-awards`, {
+    method: 'GET',
+    params: { reviewBatchId },
+  });
+
+export const generateCertificatesFromAwards = (data: AwardCertificateGeneratePayload) =>
+  request<CertificateGenerateResult>(`${API}/certificate-batches/from-awards`, { method: 'POST', data });
+
 export const listCertificates = (params: Record<string, unknown> = {}) =>
   request<PageResponse<CertificateRecord>>(`${API}/certificates`, { method: 'GET', params });
+
+export const listMyCertificates = () =>
+  request<CertificateRecord[]>(`${API}/certificates/mine`, { method: 'GET' });
 
 export const getCertificate = (id: number) =>
   request<CertificateRecord>(`${API}/certificates/${id}`, { method: 'GET' });

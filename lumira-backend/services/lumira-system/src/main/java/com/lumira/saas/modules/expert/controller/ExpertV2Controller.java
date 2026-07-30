@@ -37,7 +37,6 @@ import static com.lumira.common.security.AuthenticationTrustSupport.isTrustedCur
 @RequestMapping("/api/v2/experts")
 public class ExpertV2Controller {
     private static final String VIEW = "expert:view";
-    private static final String CREATE = "expert:create";
     private static final String UPDATE = "expert:update";
     private static final String DELETE = "expert:delete";
     private static final String STATUS_ENABLED = "ENABLED";
@@ -131,7 +130,7 @@ public class ExpertV2Controller {
     @PostMapping
     @RepeatSubmit
     public ApiResponse<ExpertVO.Expert> createExpert(@Valid @RequestBody ExpertDTO.ExpertUpsertRequest request) {
-        CurrentUser currentUser = require(CREATE);
+        CurrentUser currentUser = requireTrustedUser(securityContextFacade.getCurrentUser());
         return ApiResponse.success(expertManagementAppService.createExpert(currentUser, request), TraceContext.getRequestId());
     }
 
