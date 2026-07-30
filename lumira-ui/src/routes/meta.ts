@@ -547,3 +547,9 @@ export const realPageRouteMetaMap = collectRealPageRouteMeta(backendRoutes);
 export const realPageRouteMetaList = Array.from(realPageRouteMetaMap.values());
 export const realPageRoutePaths = new Set(realPageRouteMetaMap.keys());
 export const backendRouteMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
+export const isCanonicalRealPageRoutePath = (path?: string | null) =>
+  Boolean(
+    path
+    && resolveCanonicalRoutePath(path) === path
+    && realPageRouteMetaMap.has(path),
+  );

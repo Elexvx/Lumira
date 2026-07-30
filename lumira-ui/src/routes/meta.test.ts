@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { realPageRouteMetaMap, resolveCanonicalRoutePath } from './meta';
+import { isCanonicalRealPageRoutePath, realPageRouteMetaMap, resolveCanonicalRoutePath } from './meta';
 
 describe('route meta', () => {
   it('keeps personal file center under the personal center route group', () => {
@@ -19,6 +19,10 @@ describe('route meta', () => {
     expect(resolveCanonicalRoutePath('/activities/search')).toBe('/activities/management');
     expect(resolveCanonicalRoutePath('/payments/status')).toBe('/payments/management');
     expect(resolveCanonicalRoutePath('/data-management/query-center')).toBe('/dashboard/home');
+    expect(realPageRouteMetaMap.has('/data-management/query-center')).toBe(false);
+    expect(isCanonicalRealPageRoutePath('/team')).toBe(false);
+    expect(isCanonicalRealPageRoutePath('/data-management/query-center')).toBe(false);
+    expect(isCanonicalRealPageRoutePath('/dashboard/home')).toBe(true);
     expect(realPageRouteMetaMap.has('/projects/management')).toBe(false);
     expect(realPageRouteMetaMap.has('/team/management')).toBe(false);
     expect(realPageRouteMetaMap.has('/projects/search')).toBe(false);

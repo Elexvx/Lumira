@@ -31,7 +31,7 @@ import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPat
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
 import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from '@/navigation/mainMenuFilter';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
-import { backendRouteMeta, realPageRouteMetaMap, resolveCanonicalRoutePath } from '@/routes/meta';
+import { backendRouteMeta, isCanonicalRealPageRoutePath, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -46,7 +46,6 @@ import './layouts/components/GlobalFloatActions.css';
 import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
-const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const resolveIsMobileViewport = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
 const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/data-management', '/certificates', '/experts', '/user-center'];
@@ -1225,8 +1224,10 @@ const translateVisibleLocalMenuDataForLayout = (
         return null;
       }
 
-      const routeMeta = normalizedPath ? routeMetaMap.get(normalizedPath) : undefined;
-      const hasRealPageRoute = normalizedPath ? realPagePathSet.has(normalizedPath) : false;
+      const routeMeta = item.path
+        ? routeMetaMap.get(item.path) || (normalizedPath ? routeMetaMap.get(normalizedPath) : undefined)
+        : undefined;
+      const hasRealPageRoute = isCanonicalRealPageRoutePath(item.path);
       const children = item.children?.length ? translateVisibleLocalMenuDataForLayout(initialState, item.children) : [];
       if ((!routeMeta || !hasRealPageRoute) && !children.length) {
         return null;
@@ -1266,7 +1267,7 @@ const composeMenuItemForLayout = (
   const localMeta = localByPath.get(normalizedPath);
   const mergedMeta = routeMetaMap.get(backendPath) || routeMetaMap.get(normalizedPath);
   const hasLocalRoute = Boolean(
-    (backendNode.path && realPagePathSet.has(normalizedPath))
+    isCanonicalRealPageRoutePath(backendNode.path)
       || isPluginRuntimePath(backendNode.path),
   );
   const children = (backendNode.children || [])
