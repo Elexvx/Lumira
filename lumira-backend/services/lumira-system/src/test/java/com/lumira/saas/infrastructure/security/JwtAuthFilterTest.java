@@ -398,7 +398,7 @@ class JwtAuthFilterTest {
         private final boolean requiresPasswordChange;
 
         private StubInitialPasswordChangeGuard(boolean requiresPasswordChange) {
-            super(null, null);
+            super(null);
             this.requiresPasswordChange = requiresPasswordChange;
         }
 

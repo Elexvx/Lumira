@@ -10,7 +10,7 @@ if [ -n "${DATABASE_TARGET_VERSION:-}" ]; then
   set -- -target="$DATABASE_TARGET_VERSION" "$@"
 fi
 
-exec flyway \
+flyway \
   -url="$DB_URL" \
   -user="$DB_USERNAME" \
   -password="$DB_PASSWORD" \
@@ -21,3 +21,5 @@ exec flyway \
   -connectRetries=20 \
   -validateMigrationNaming=true \
   "$@"
+
+exec java -jar /opt/lumira/lumira-bootstrap-admin.jar

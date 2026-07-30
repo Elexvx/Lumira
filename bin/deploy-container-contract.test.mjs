@@ -65,6 +65,31 @@ test('Windows WSL Docker deployments forward migration credentials without putti
   );
 });
 
+test('admin bootstrap credential is mounted into the one-shot migrator and never injected into the business runtime', () => {
+  assert.match(
+    envExample,
+    /^LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE=/m,
+    'the deployment template must accept a secret-file path instead of a plaintext password'
+  );
+  assert.doesNotMatch(envExample, /^LUMIRA_INITIAL_ADMIN_PASSWORD=/m);
+  assert.doesNotMatch(composeProd, /LUMIRA_INITIAL_ADMIN_PASSWORD:/);
+  assert.match(
+    deployScript,
+    /lumira_bootstrap_admin_password/,
+    'deploy-container must mount the admin bootstrap secret into the migrator'
+  );
+  assert.match(
+    updater,
+    /lumira_bootstrap_admin_password/,
+    'online updates must mount the same secret into the migrator'
+  );
+  assert.doesNotMatch(
+    deployScript,
+    /'-e',\s*`LUMIRA_BOOTSTRAP_ADMIN_PASSWORD=/,
+    'the plaintext bootstrap password must never appear in docker argv'
+  );
+});
+
 test('production compose does not inject unused system or team tokens into job executor', () => {
   const jobExecutorBlock = composeProd.match(/lumira-job-executor:[\s\S]*?(?=\n  [a-z0-9-]+:|\nvolumes:|\nnetworks:|\n$)/i);
   assert.ok(jobExecutorBlock, 'job executor compose block must exist');

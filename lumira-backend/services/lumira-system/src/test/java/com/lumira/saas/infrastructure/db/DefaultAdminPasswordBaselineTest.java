@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefaultAdminPasswordBaselineTest {
@@ -17,7 +18,7 @@ class DefaultAdminPasswordBaselineTest {
     private static final Pattern BCRYPT_HASH_PATTERN = Pattern.compile("\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}");
 
     @Test
-    void consolidatedSaasSqlSeedsDefaultAdminPassword() throws IOException {
+    void consolidatedSaasSqlSeedsAdminWithoutUsableFixedPassword() throws IOException {
         String referenceSql = Files.readString(resolvePath(
                 "../../sql/saas.sql",
                 "sql/saas.sql"), StandardCharsets.UTF_8);
@@ -25,10 +26,10 @@ class DefaultAdminPasswordBaselineTest {
         assertTrue(referenceSql.contains("INSERT INTO `sys_user`"));
         assertTrue(referenceSql.contains("VALUES (1001, 'admin'"));
         assertTrue(referenceSql.contains("INSERT INTO `iam_user_identity`"));
-        assertTrue(referenceSql.contains("INSERT INTO `iam_user_credential`"));
-        assertTrue(referenceSql.contains("'PASSWORD'"));
-        assertTrue(referenceSql.contains("'BCRYPT'"));
-        assertTrue(hasHashMatchingInitialPassword(referenceSql));
+        assertTrue(referenceSql.contains("`password_change_required` tinyint NOT NULL DEFAULT '0'"));
+        assertFalse(hasHashMatchingInitialPassword(referenceSql));
+        assertFalse(referenceSql.contains("`password_hash` = VALUES(`password_hash`)"));
+        assertFalse(referenceSql.contains("`credential_secret` = VALUES(`credential_secret`)"));
     }
 
     private static boolean hasHashMatchingInitialPassword(String referenceSql) {

@@ -37,7 +37,6 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AiConfigAccessPolicy;
 import com.lumira.common.security.AuthenticationTrustSupport;
-import com.lumira.common.security.InitialAdminPassword;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
@@ -90,7 +89,6 @@ public class InternalSystemController {
 
     private static final Logger log = LoggerFactory.getLogger(InternalSystemController.class);
 
-    private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final Long SERVICE_PRINCIPAL_ID = 0L;
@@ -223,7 +221,7 @@ public class InternalSystemController {
         requireTrustedSnapshotUser(user);
         boolean passwordMatched = StringUtils.hasText(user.getPasswordHash())
                 && passwordEncoder.matches(trustedPassword, user.getPasswordHash());
-        boolean requiresPasswordChange = passwordMatched && requiresInitialAdminPasswordChange(normalizedAccount, user);
+        boolean requiresPasswordChange = passwordMatched && requiresPasswordChange(user);
         return new PasswordLoginVerificationDTO(
                 toProfileSnapshot(user),
                 passwordMatched,
@@ -276,7 +274,7 @@ public class InternalSystemController {
     ) {
         requireInternalServicePrincipal();
         SysUserEntity user = requireTrustedInternalUserEntity(id, userUuid);
-        return requiresInitialAdminPasswordChange(user.getUsername(), user);
+        return requiresPasswordChange(user);
     }
 
     @GetMapping("/users/{id}")
@@ -1317,6 +1315,11 @@ public class InternalSystemController {
         if (updated != 1) {
             throw new BizException(ErrorCode.BIZ_ERROR, "密码重置失败，请重试");
         }
+        iamUserService.upsertPasswordCredential(
+                verification.userId(),
+                verification.userUuid(),
+                encodedPassword
+        );
         authSessionStore.revokeUserSessions(verification.userId(), verification.userUuid(), true);
         return Boolean.TRUE;
     }
@@ -1587,13 +1590,11 @@ public class InternalSystemController {
         return "ENABLED".equalsIgnoreCase(user.getStatus().trim());
     }
 
-    private boolean requiresInitialAdminPasswordChange(String account, SysUserEntity user) {
+    private boolean requiresPasswordChange(SysUserEntity user) {
         if (user == null) {
             return false;
         }
-        return DEFAULT_ADMIN_USER_ID.equals(user.getId())
-                && StringUtils.hasText(user.getPasswordHash())
-                && passwordEncoder.matches(InitialAdminPassword.DEFAULT_PASSWORD, user.getPasswordHash());
+        return iamUserService.requiresPasswordChange(user.getId(), user.getUuid());
     }
 
     private List<CurrentUserRoleOptionDTO> loadRoleOptions(Long userId, String userUuid) {

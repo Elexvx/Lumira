@@ -60,6 +60,7 @@ const allowedImagePrefixes = String(
 )
   .split(',').map((item) => item.trim().toLowerCase()).filter(Boolean);
 const activeCommandControllers = new Map();
+const bootstrapAdminSecretContainerPath = '/run/secrets/lumira_bootstrap_admin_password';
 
 for (const directory of [tasksDir, preflightDir, upstreamDir]) mkdirSync(directory, { recursive: true });
 
@@ -550,9 +551,23 @@ async function migrate(task, manifest) {
   if (manifest.database.mode === 'none' || !manifest.images.migrator) return;
   const env = parseEnvFile(envPath);
   const network = env.DB_MIGRATION_NETWORK || env.DB_BACKUP_NETWORK || 'deploy_default';
+  const configuredSecretPath = String(env.LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE || '').trim();
+  const secretArgs = [];
+  if (configuredSecretPath) {
+    const absoluteSecretPath = path.resolve(deployDir, configuredSecretPath);
+    if (!existsSync(absoluteSecretPath)) {
+      appendLog(task, `Administrator bootstrap secret is not mounted because the configured file is absent: ${absoluteSecretPath}`);
+    } else {
+      secretArgs.push(
+        '--volume', `${absoluteSecretPath}:${bootstrapAdminSecretContainerPath}:ro`,
+        '-e', `LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE=${bootstrapAdminSecretContainerPath}`,
+      );
+    }
+  }
   await runCommand(task, 'docker', [
     'run', '--rm', '--network', network,
     '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
+    ...secretArgs,
     '-e', `DATABASE_TARGET_VERSION=${manifest.database.targetVersion}`,
     manifest.images.migrator,
   ], { env: { DB_URL: env.DB_URL || '', DB_USERNAME: env.DB_USERNAME || 'root', DB_PASSWORD: env.DB_PASSWORD || '' } });

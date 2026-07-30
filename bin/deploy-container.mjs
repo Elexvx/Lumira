@@ -25,6 +25,7 @@ const edgeTlsDir = path.join(repoRoot, 'deploy', 'data', 'tls');
 const edgeTlsFiles = ['fullchain.pem', 'privkey.pem'];
 const generatedApiProxyDir = path.join(repoRoot, 'deploy', '.generated', 'api-proxy');
 const activeUpstreamsPath = path.join(generatedApiProxyDir, 'active-upstreams.conf');
+const bootstrapAdminSecretContainerPath = '/run/secrets/lumira_bootstrap_admin_password';
 
 const rawArgs = process.argv.slice(2);
 const args = new Set(rawArgs);
@@ -738,6 +739,33 @@ function mergedEnv() {
   };
 }
 
+function dockerBindSource(filePath) {
+  const absolutePath = path.resolve(repoRoot, filePath);
+  if (process.platform !== 'win32') return absolutePath;
+  const invocation = resolveDockerDirectInvocation([]);
+  if (invocation.command !== 'wsl.exe') return absolutePath;
+  const match = absolutePath.match(/^([a-zA-Z]):[\\/](.*)$/);
+  return match ? `/mnt/${match[1].toLowerCase()}/${match[2].replaceAll('\\', '/')}` : absolutePath;
+}
+
+function migrationAdminSecretArgs(env) {
+  const configuredPath = String(
+    process.env.LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE
+      || env.LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE
+      || ''
+  ).trim();
+  if (!configuredPath) return [];
+  const absolutePath = path.resolve(path.dirname(envPath), configuredPath);
+  if (!existsSync(absolutePath)) {
+    log(`Administrator bootstrap secret is not mounted because the configured file is absent: ${absolutePath}`);
+    return [];
+  }
+  return [
+    '--volume', `${dockerBindSource(absolutePath)}:${bootstrapAdminSecretContainerPath}:ro`,
+    '-e', `LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE=${bootstrapAdminSecretContainerPath}`,
+  ];
+}
+
 function wslForwardedEnvironment(variableNames) {
   const existing = String(process.env.WSLENV || '')
     .split(':')
@@ -914,6 +942,7 @@ async function runDatabaseMigrations() {
   run('docker', [
     'run', '--rm', '--network', migrationNetwork,
     '-e', 'DB_URL', '-e', 'DB_USERNAME', '-e', 'DB_PASSWORD',
+    ...migrationAdminSecretArgs(env),
     migratorImage,
   ], {
     env: {

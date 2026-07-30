@@ -566,6 +566,7 @@ CREATE TABLE `iam_user_credential` (
   `version` int NOT NULL DEFAULT '1',
   `expire_at` datetime DEFAULT NULL,
   `last_changed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `password_change_required` tinyint NOT NULL DEFAULT '0',
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1834,6 +1835,20 @@ CREATE TABLE `aiadc_competition` (
   KEY `idx_aiadc_competition_status` (`status`,`deleted`,`sort`),
   KEY `idx_aiadc_competition_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_aiadc_competition_featured` (`featured`,`deleted`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `platform_bootstrap_credential` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `principal_key` varchar(64) NOT NULL,
+  `user_id` bigint NOT NULL,
+  `user_uuid` char(36) NOT NULL,
+  `initialization_source` varchar(32) NOT NULL,
+  `password_change_required` tinyint NOT NULL DEFAULT '0',
+  `initialized_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_platform_bootstrap_principal` (`principal_key`),
+  KEY `idx_platform_bootstrap_user` (`user_id`,`user_uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `competition_registration_dataset` (
@@ -3348,8 +3363,8 @@ ALTER TABLE `file_object` ADD INDEX `idx_file_object_deleted_created_id` (`delet
 ALTER TABLE `file_storage_space` ADD INDEX `idx_file_storage_space_deleted_default_id` (`deleted`, `default_flag`, `id`);
 CREATE INDEX `idx_sensitive_word_enabled` ON `sys_sensitive_word` (`enabled`, `deleted`, `normalized_word`);
 
--- Bootstrap protected administrator.
--- The BCrypt hashes below are for the initial password `123456`.
+-- Bootstrap protected administrator metadata. Its credential is initialized
+-- once by the deployment migrator from a mounted secret file.
 INSERT INTO `sys_permission` (
     `permission_key`, `permission_name`, `permission_group`, `source_type`, `plugin_code`,
     `created_by`, `updated_by`, `deleted`
@@ -4085,16 +4100,14 @@ VALUES (
         LPAD(CAST(MOD(CONV(HEX(RANDOM_BYTES(4)), 16, 10), 1000000000) AS CHAR), 9, '0'),
         LPAD(CAST(MOD(CONV(HEX(RANDOM_BYTES(4)), 16, 10), 100000000) AS CHAR), 8, '0')
     ),
-    'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0
+    'admin', 'Administrator', 'Administrator', '', 'DISABLED', 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
     `uuid` = IF(`uuid` REGEXP '^[1-9][0-9]{17}$', `uuid`, VALUES(`uuid`)),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
-    `password_hash` = VALUES(`password_hash`),
-    `status` = VALUES(`status`),
     `updated_by` = VALUES(`updated_by`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `sys_user_role` (`user_id`, `user_uuid`, `role_id`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`)
 VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 1001, 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0)
@@ -4237,33 +4250,22 @@ ON DUPLICATE KEY UPDATE
     `config_key` = VALUES(`config_key`);
 
 INSERT INTO `iam_user` (`id`, `user_no`, `display_name`, `status`, `user_type`, `source`, `deleted`)
-VALUES (1001, 'admin', 'Administrator', 'ENABLED', 'SYSTEM', 'BOOTSTRAP_SQL', 0)
+VALUES (1001, 'admin', 'Administrator', 'DISABLED', 'SYSTEM', 'BOOTSTRAP_SQL', 0)
 ON DUPLICATE KEY UPDATE
     `display_name` = VALUES(`display_name`),
-    `status` = VALUES(`status`),
     `user_type` = VALUES(`user_type`),
     `source` = VALUES(`source`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `iam_user_identity` (`user_id`, `user_uuid`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
-VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'USERNAME', 'admin', 'admin', 1, 1, 'ENABLED', 0)
+VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'USERNAME', 'admin', 'admin', 1, 1, 'DISABLED', 0)
 ON DUPLICATE KEY UPDATE
     `user_id` = VALUES(`user_id`),
     `user_uuid` = VALUES(`user_uuid`),
     `identifier` = VALUES(`identifier`),
     `verified` = VALUES(`verified`),
     `primary_identity` = VALUES(`primary_identity`),
-    `status` = VALUES(`status`),
-    `deleted` = 0;
-
-INSERT INTO `iam_user_credential` (`user_id`, `user_uuid`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
-VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
-ON DUPLICATE KEY UPDATE
-    `user_uuid` = VALUES(`user_uuid`),
-    `credential_secret` = VALUES(`credential_secret`),
-    `algorithm` = VALUES(`algorithm`),
-    `status` = VALUES(`status`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `iam_user_profile` (`user_id`, `user_uuid`, `nickname`, `real_name`, `locale`, `deleted`)
 VALUES (1001, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1001), 'Administrator', 'Administrator', 'zh-CN', 0)
@@ -4275,13 +4277,12 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `iam_subject` (`subject_type`, `ref_id`, `subject_code`, `display_name`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES ('USER', 1001, 'admin', 'Administrator', 'ENABLED', 0, 0, 0)
+VALUES ('USER', 1001, 'admin', 'Administrator', 'DISABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `subject_code` = VALUES(`subject_code`),
     `display_name` = VALUES(`display_name`),
-    `status` = VALUES(`status`),
     `updated_by` = VALUES(`updated_by`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `iam_subject_role` (`subject_id`, `role_id`, `created_by`, `updated_by`, `deleted`)
 SELECT `id`, 1001, 0, 0, 0
@@ -4299,16 +4300,14 @@ VALUES (
         LPAD(CAST(MOD(CONV(HEX(RANDOM_BYTES(4)), 16, 10), 1000000000) AS CHAR), 9, '0'),
         LPAD(CAST(MOD(CONV(HEX(RANDOM_BYTES(4)), 16, 10), 100000000) AS CHAR), 8, '0')
     ),
-    'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0
+    'user', 'Common User', 'Common User', '', 'DISABLED', 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
     `uuid` = IF(`uuid` REGEXP '^[1-9][0-9]{17}$', `uuid`, VALUES(`uuid`)),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
-    `password_hash` = VALUES(`password_hash`),
-    `status` = VALUES(`status`),
     `updated_by` = VALUES(`updated_by`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `sys_user_role` (`user_id`, `user_uuid`, `role_id`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`)
 VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 1002, 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0)
@@ -4319,33 +4318,22 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `iam_user` (`id`, `user_no`, `display_name`, `status`, `user_type`, `source`, `deleted`)
-VALUES (1002, 'user', 'Common User', 'ENABLED', 'REGISTERED', 'BOOTSTRAP_SQL', 0)
+VALUES (1002, 'user', 'Common User', 'DISABLED', 'REGISTERED', 'BOOTSTRAP_SQL', 0)
 ON DUPLICATE KEY UPDATE
     `display_name` = VALUES(`display_name`),
-    `status` = VALUES(`status`),
     `user_type` = VALUES(`user_type`),
     `source` = VALUES(`source`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `iam_user_identity` (`user_id`, `user_uuid`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
-VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'USERNAME', 'user', 'user', 1, 1, 'ENABLED', 0)
+VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'USERNAME', 'user', 'user', 1, 1, 'DISABLED', 0)
 ON DUPLICATE KEY UPDATE
     `user_id` = VALUES(`user_id`),
     `user_uuid` = VALUES(`user_uuid`),
     `identifier` = VALUES(`identifier`),
     `verified` = VALUES(`verified`),
     `primary_identity` = VALUES(`primary_identity`),
-    `status` = VALUES(`status`),
-    `deleted` = 0;
-
-INSERT INTO `iam_user_credential` (`user_id`, `user_uuid`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
-VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
-ON DUPLICATE KEY UPDATE
-    `user_uuid` = VALUES(`user_uuid`),
-    `credential_secret` = VALUES(`credential_secret`),
-    `algorithm` = VALUES(`algorithm`),
-    `status` = VALUES(`status`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `iam_user_profile` (`user_id`, `user_uuid`, `nickname`, `real_name`, `locale`, `deleted`)
 VALUES (1002, (SELECT `uuid` FROM `sys_user` WHERE `id` = 1002), 'Common User', 'Common User', 'zh-CN', 0)
@@ -4357,13 +4345,12 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `iam_subject` (`subject_type`, `ref_id`, `subject_code`, `display_name`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES ('USER', 1002, 'user', 'Common User', 'ENABLED', 0, 0, 0)
+VALUES ('USER', 1002, 'user', 'Common User', 'DISABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `subject_code` = VALUES(`subject_code`),
     `display_name` = VALUES(`display_name`),
-    `status` = VALUES(`status`),
     `updated_by` = VALUES(`updated_by`),
-    `deleted` = 0;
+    `deleted` = `deleted`;
 
 INSERT INTO `iam_subject_role` (`subject_id`, `role_id`, `created_by`, `updated_by`, `deleted`)
 SELECT `id`, 1002, 0, 0, 0

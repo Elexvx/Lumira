@@ -218,3 +218,36 @@ test('regular deployments run migrations before application containers', () => {
   assert.ok(migrationCall > 0, 'regular deployment must invoke database migrations');
   assert.ok(applicationStart > migrationCall, 'database migrations must finish before application containers start');
 });
+
+test('built-in administrator bootstrap is secret-driven and migration-backed', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202607300001__secure_builtin_admin_bootstrap.sql');
+  const entrypoint = read('deploy/docker/migrator-entrypoint.sh');
+  const legacyFixedHash = '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te';
+
+  assert.match(baseline, /`password_change_required` tinyint NOT NULL DEFAULT '0'/);
+  assert.match(baseline, /CREATE TABLE `platform_bootstrap_credential`/);
+  assert.doesNotMatch(baseline, new RegExp(legacyFixedHash.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(
+    baseline,
+    /'admin', 'Administrator', 'Administrator', '', 'DISABLED'/,
+    'fresh databases must leave the administrator disabled until the secret bootstrap runs',
+  );
+  assert.match(
+    baseline,
+    /'user', 'Common User', 'Common User', '', 'DISABLED'/,
+    'the repository-provided ordinary account must not be a production credential',
+  );
+
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `platform_bootstrap_credential`/);
+  assert.match(migration, /'EXISTING_CREDENTIAL'/);
+  assert.match(migration, /WHERE `user_id` = 1002[\s\S]*?`status` = 'DISABLED'/);
+  assert.match(migration, /CONCAT\(\s*'\$2a\$',\s*'10\$',\s*'VBwFJkc\./);
+  assert.doesNotMatch(migration, new RegExp(legacyFixedHash.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+
+  const flywayCall = entrypoint.indexOf('flyway');
+  const bootstrapCall = entrypoint.indexOf('exec java -jar /opt/lumira/lumira-bootstrap-admin.jar');
+  assert.ok(flywayCall >= 0);
+  assert.ok(bootstrapCall > flywayCall, 'credential bootstrap must run only after schema migration succeeds');
+});

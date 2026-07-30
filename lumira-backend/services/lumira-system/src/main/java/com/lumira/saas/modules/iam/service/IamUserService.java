@@ -502,25 +502,34 @@ public class IamUserService {
     @Transactional
     public void upsertPasswordCredential(Long userId, String userUuid, String passwordHash) {
         requireMatchingUserUuid(userId, userUuid);
-        upsertPasswordCredential(userId, userUuid.trim(), passwordHash, "ENABLED", 0);
+        upsertPasswordCredential(userId, userUuid.trim(), passwordHash, "ENABLED", 0, true);
     }
 
     private void upsertPasswordCredentialFromSysUser(Long userId, String userUuid, String passwordHash, String status, int deleted) {
-        upsertPasswordCredential(userId, userUuid, passwordHash, status, deleted);
+        upsertPasswordCredential(userId, userUuid, passwordHash, status, deleted, false);
     }
 
-    private void upsertPasswordCredential(Long userId, String userUuid, String passwordHash, String status, int deleted) {
+    private void upsertPasswordCredential(
+            Long userId,
+            String userUuid,
+            String passwordHash,
+            String status,
+            int deleted,
+            boolean resolvePasswordChange
+    ) {
         if (userId == null || !StringUtils.hasText(userUuid) || !StringUtils.hasText(passwordHash)) {
             return;
         }
         int credentialUpserted = jdbcTemplate.update(
                 """
                         insert into iam_user_credential (
-                            user_id, user_uuid, credential_type, credential_secret, algorithm, version, last_changed_at, status, deleted
-                        ) values (?, ?, 'PASSWORD', ?, 'BCRYPT', 1, current_timestamp, ?, ?)
+                            user_id, user_uuid, credential_type, credential_secret, algorithm, version,
+                            last_changed_at, password_change_required, status, deleted
+                        ) values (?, ?, 'PASSWORD', ?, 'BCRYPT', 1, current_timestamp, 0, ?, ?)
                         on duplicate key update credential_secret = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(credential_secret) else credential_secret end,
                                                 algorithm = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(algorithm) else algorithm end,
                                                 last_changed_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else last_changed_at end,
+                                                password_change_required = case when user_id = values(user_id) and user_uuid = values(user_uuid) and ? = 1 then 0 else password_change_required end,
                                                 status = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(status) else status end,
                                                 deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(deleted) else deleted end,
                                                 updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end
@@ -529,9 +538,32 @@ public class IamUserService {
                 userUuid,
                 passwordHash,
                 status,
-                deleted
+                deleted,
+                resolvePasswordChange ? 1 : 0
         );
         requireIamUserWrite(credentialUpserted);
+    }
+
+    public boolean requiresPasswordChange(Long userId, String userUuid) {
+        if (userId == null || !StringUtils.hasText(userUuid)) {
+            return false;
+        }
+        requireMatchingUserUuid(userId, userUuid);
+        Integer required = jdbcTemplate.queryForObject(
+                """
+                        select coalesce(max(password_change_required), 0)
+                        from iam_user_credential
+                        where user_id = ?
+                          and user_uuid = ?
+                          and credential_type = 'PASSWORD'
+                          and status = 'ENABLED'
+                          and deleted = 0
+                        """,
+                Integer.class,
+                userId,
+                userUuid.trim()
+        );
+        return required != null && required == 1;
     }
 
     public Optional<IamUserAccount.CredentialView> findActiveCredential(Long userId, String userUuid, String credentialType) {

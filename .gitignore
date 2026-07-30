@@ -23,6 +23,8 @@ deploy/.env.*
 deploy/build-identity.env
 deploy/.generated/
 deploy/.backup/
+deploy/secrets/*
+!deploy/secrets/README.md
 runtime-logs/
 runtime-logs/*.sql
 artifacts/db-backups/

@@ -34,6 +34,27 @@ class IamUserServiceSyncTest {
 
         assertIdentitySynced(jdbcTemplate, "alice", "ENABLED", 0);
         assertCredentialSynced(jdbcTemplate, "ENABLED", 0);
+        SqlCall credential = jdbcTemplate.updates.stream()
+                .filter(update -> update.sql.contains("insert into iam_user_credential"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0, credential.args[5]);
+        assertTrue(credential.sql.contains("and ? = 1 then 0 else password_change_required"));
+    }
+
+    @Test
+    void explicitPasswordUpdateClearsPasswordChangeRequirement() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        IamUserService service = new IamUserService(new MyBatisQueryOperations(jdbcTemplate));
+
+        service.upsertPasswordCredential(1001L, "uuid-1001", "{bcrypt}rotated");
+
+        SqlCall credential = jdbcTemplate.updates.stream()
+                .filter(update -> update.sql.contains("insert into iam_user_credential"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1, credential.args[5]);
+        assertTrue(credential.sql.contains("password_change_required"));
     }
 
     @Test
@@ -338,7 +359,8 @@ class IamUserServiceSyncTest {
 
     @Test
     void iamUpsertsShouldNotRewriteTrustedUserIdentityOnDuplicateKeys() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/iam/service/IamUserService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/iam/service/IamUserService.java"))
+                .replace("\r\n", "\n");
 
         assertTrue(source.contains("and identity_type = ?\n                              and identifier_normalized = ?\n                              and ((deleted = 1) or (user_id = ? and user_uuid = ?))"));
         assertTrue(source.contains("where id = ?\n                              and identity_type = ?\n                              and identifier_normalized = ?\n                              and user_id = ?\n                              and user_uuid = ?\n                              and deleted = ?"));

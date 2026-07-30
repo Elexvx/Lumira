@@ -616,7 +616,7 @@ class InternalSystemControllerTest {
     }
 
     @Test
-    void requiresInitialPasswordChangeReturnsTrueForAdminOnDefaultPassword() {
+    void requiresPasswordChangeReturnsExplicitCredentialState() {
         SysUserEntity user = new SysUserEntity();
         user.setId(1001L);
         user.setUuid("user-uuid");
@@ -624,11 +624,12 @@ class InternalSystemControllerTest {
         user.setPasswordHash("encoded-password");
         user.setStatus("ENABLED");
         when(userDomainService.findById(1001L)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("123456", "encoded-password")).thenReturn(true);
+        when(iamUserService.requiresPasswordChange(1001L, "user-uuid")).thenReturn(true);
 
         var required = controller.requiresInitialPasswordChange(1001L, "user-uuid");
 
         assertThat(required).isTrue();
+        verify(passwordEncoder, never()).matches("123456", "encoded-password");
     }
 
     @Test
@@ -1183,6 +1184,7 @@ class InternalSystemControllerTest {
 
         assertThat(controller.completePasswordReset(request)).isTrue();
 
+        verify(iamUserService).upsertPasswordCredential(42L, "user-uuid-42", "encoded-password");
         verify(authSessionStore).revokeUserSessions(42L, "user-uuid-42", true);
     }
 
