@@ -1,5 +1,9 @@
 export default {
   'page.plugins.title': '插件管理',
+  'page.plugins.builtin.sensitiveWords.name': '敏感词插件',
+  'page.plugins.builtin.sensitiveWords.description': '提供敏感词词库维护、请求内容拦截和批量导入能力。',
+  'page.plugins.builtin.workOrderFeedback.name': '工单反馈插件',
+  'page.plugins.builtin.workOrderFeedback.description': '支持用户提交富文本反馈，并由管理员跟进处理。',
   'page.plugins.searchPlaceholder': '输入插件编码或名称',
   'page.plugins.refresh': '刷新',
   'page.plugins.upload': '上传插件',

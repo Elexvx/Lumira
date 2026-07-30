@@ -22,6 +22,7 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { getLocale, history } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import SensitiveWordsPage from '@/pages/plugins/SensitiveWordsPage';
+import { localizeBuiltinPluginDefinition } from './pluginPresentation';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -1207,9 +1208,14 @@ const PluginsPage = () => {
   const { token } = theme.useToken();
   const [managedPluginCode, setManagedPluginCode] = useState<string | null>(null);
   const { pluginPageDataPack } = usePluginsPageData();
+  const localizedDefinitions = pluginPageDataPack.definitions.map((plugin) =>
+    localizeBuiltinPluginDefinition(
+      plugin,
+      (id, fallback) => formatMessage({ id, defaultMessage: fallback }),
+    ));
   const pluginActions = usePluginManagementActions({
     loading: pluginPageDataPack.loading,
-    definitions: pluginPageDataPack.definitions,
+    definitions: localizedDefinitions,
     availablePlugins: pluginPageDataPack.availablePlugins,
     versionMap: pluginPageDataPack.versionMap,
     searchKeyword: pluginPageDataPack.searchKeyword,
@@ -1271,7 +1277,7 @@ const PluginsPage = () => {
   const managedPluginDefinition = managedPluginCode
     ? filteredDefinitions.find((plugin) => plugin.pluginCode === managedPluginCode)
     : undefined;
-  const managedPluginTitle = managedPlugin?.pluginName || managedPluginDefinition?.pluginName || managedPluginCode;
+  const managedPluginTitle = managedPluginDefinition?.pluginName || managedPlugin?.pluginName || managedPluginCode;
   const managedPluginContent = managedPluginCode === 'sensitive-words'
     ? <SensitiveWordsPage embedded />
     : null;

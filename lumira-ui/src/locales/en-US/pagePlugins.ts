@@ -1,5 +1,9 @@
 export default {
   'page.plugins.title': 'Plugins',
+  'page.plugins.builtin.sensitiveWords.name': 'Sensitive Words Plugin',
+  'page.plugins.builtin.sensitiveWords.description': 'Provides sensitive word dictionary maintenance, request content blocking, and import capabilities.',
+  'page.plugins.builtin.workOrderFeedback.name': 'Work Order Feedback',
+  'page.plugins.builtin.workOrderFeedback.description': 'Allows users to submit rich-text feedback and administrators to follow up.',
   'page.plugins.searchPlaceholder': 'Enter plugin code or name',
   'page.plugins.refresh': 'Refresh',
   'page.plugins.upload': 'Upload plugin',
