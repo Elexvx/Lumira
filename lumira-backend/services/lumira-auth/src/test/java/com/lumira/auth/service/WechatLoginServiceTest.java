@@ -3,6 +3,10 @@ package com.lumira.auth.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.WechatLoginSettingsDTO;
+import com.lumira.common.runtime.ReadModelVersionCache;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -113,5 +117,208 @@ class WechatLoginServiceTest {
 
         assertThatThrownBy(service::createAuthorizeUrl)
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void exchangeCodeShouldFollowWebsiteLoginFlowAndLoadProfile() throws Exception {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> tokenResponse = mock(HttpResponse.class);
+        HttpResponse<String> profileResponse = mock(HttpResponse.class);
+
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete(anyString())).thenReturn("1");
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(availableSettings());
+        when(tokenResponse.statusCode()).thenReturn(200);
+        when(tokenResponse.body()).thenReturn(
+                """
+                        {
+                          "access_token": "oauth-access-token",
+                          "openid": "openid-1",
+                          "unionid": "unionid-1",
+                          "scope": "snsapi_login"
+                        }
+                        """
+        );
+        when(profileResponse.statusCode()).thenReturn(200);
+        when(profileResponse.body()).thenReturn(
+                """
+                        {
+                          "openid": "openid-1",
+                          "unionid": "unionid-1",
+                          "nickname": "Wechat User",
+                          "headimgurl": "https://example.com/avatar.png"
+                        }
+                        """
+        );
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(tokenResponse, profileResponse);
+
+        WechatLoginService service = new WechatLoginService(
+                systemInternalApi,
+                redisTemplate,
+                new ObjectMapper(),
+                new ReadModelVersionCache(2_000L),
+                httpClient
+        );
+
+        WechatLoginService.WechatOAuthUser user = service.exchangeCode("code-1", "state-1");
+
+        assertThat(user.openid()).isEqualTo("openid-1");
+        assertThat(user.unionid()).isEqualTo("unionid-1");
+        assertThat(user.scope()).isEqualTo("snsapi_login");
+        assertThat(user.nickname()).isEqualTo("Wechat User");
+        assertThat(user.avatarUrl()).isEqualTo("https://example.com/avatar.png");
+        verify(httpClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void exchangeCodeShouldContinueWhenOptionalWechatProfileIsUnavailable() throws Exception {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> tokenResponse = mock(HttpResponse.class);
+        HttpResponse<String> profileResponse = mock(HttpResponse.class);
+
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete(anyString())).thenReturn("1");
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(availableSettings());
+        when(tokenResponse.statusCode()).thenReturn(200);
+        when(tokenResponse.body()).thenReturn(
+                """
+                        {
+                          "access_token": "oauth-access-token",
+                          "openid": "openid-1",
+                          "unionid": "unionid-1",
+                          "scope": "snsapi_login"
+                        }
+                        """
+        );
+        when(profileResponse.statusCode()).thenReturn(200);
+        when(profileResponse.body()).thenReturn(
+                """
+                        {
+                          "errcode": 48001,
+                          "errmsg": "api unauthorized"
+                        }
+                        """
+        );
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(tokenResponse, profileResponse);
+
+        WechatLoginService service = new WechatLoginService(
+                systemInternalApi,
+                redisTemplate,
+                new ObjectMapper(),
+                new ReadModelVersionCache(2_000L),
+                httpClient
+        );
+
+        WechatLoginService.WechatOAuthUser user = service.exchangeCode("code-1", "state-1");
+
+        assertThat(user.openid()).isEqualTo("openid-1");
+        assertThat(user.unionid()).isEqualTo("unionid-1");
+        assertThat(user.scope()).isEqualTo("snsapi_login");
+        assertThat(user.nickname()).isNull();
+        assertThat(user.avatarUrl()).isNull();
+        verify(httpClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void exchangeCodeShouldRejectUnexpectedOAuthScope() throws Exception {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> tokenResponse = mock(HttpResponse.class);
+
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete(anyString())).thenReturn("1");
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(availableSettings());
+        when(tokenResponse.statusCode()).thenReturn(200);
+        when(tokenResponse.body()).thenReturn(
+                """
+                        {
+                          "access_token": "oauth-access-token",
+                          "openid": "openid-1",
+                          "scope": "snsapi_userinfo"
+                        }
+                        """
+        );
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(tokenResponse);
+
+        WechatLoginService service = new WechatLoginService(
+                systemInternalApi,
+                redisTemplate,
+                new ObjectMapper(),
+                new ReadModelVersionCache(2_000L),
+                httpClient
+        );
+
+        assertThatThrownBy(() -> service.exchangeCode("code-1", "state-1"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("snsapi_login");
+        verify(httpClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void exchangeCodeShouldStillRejectWechatTokenExchangeFailure() throws Exception {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> tokenResponse = mock(HttpResponse.class);
+
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete(anyString())).thenReturn("1");
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(availableSettings());
+        when(tokenResponse.statusCode()).thenReturn(200);
+        when(tokenResponse.body()).thenReturn(
+                """
+                        {
+                          "errcode": 40029,
+                          "errmsg": "invalid code"
+                        }
+                        """
+        );
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(tokenResponse);
+
+        WechatLoginService service = new WechatLoginService(
+                systemInternalApi,
+                redisTemplate,
+                new ObjectMapper(),
+                new ReadModelVersionCache(2_000L),
+                httpClient
+        );
+
+        assertThatThrownBy(() -> service.exchangeCode("code-1", "state-1"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("invalid code");
+        verify(httpClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    private WechatLoginSettingsDTO availableSettings() {
+        return new WechatLoginSettingsDTO(
+                true,
+                "appid-1",
+                "secret-1",
+                "https://example.com/callback",
+                15,
+                true,
+                true
+        );
     }
 }

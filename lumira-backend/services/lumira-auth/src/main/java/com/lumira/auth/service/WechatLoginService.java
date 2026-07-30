@@ -63,13 +63,21 @@ public class WechatLoginService {
             ObjectMapper objectMapper,
             ReadModelVersionCache readModelVersionCache
     ) {
+        this(systemInternalApi, redisTemplate, objectMapper, readModelVersionCache, defaultHttpClient());
+    }
+
+    WechatLoginService(
+            SystemInternalApi systemInternalApi,
+            StringRedisTemplate redisTemplate,
+            ObjectMapper objectMapper,
+            ReadModelVersionCache readModelVersionCache,
+            HttpClient httpClient
+    ) {
         this.systemInternalApi = systemInternalApi;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.readModelVersionCache = readModelVersionCache;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
     }
 
     public WechatAuthorizeUrlDTO createAuthorizeUrl() {
@@ -120,39 +128,63 @@ public class WechatLoginService {
         if (!StringUtils.hasText(response.access_token())) {
             throw new BizException(ErrorCode.LOGIN_FAILED, "微信授权失败，未返回 access_token", "微信授权失败，请重新扫码登录");
         }
-        WechatUserInfoResponse userInfo = requestWechatUserInfo(response);
-        String unionid = StringUtils.hasText(userInfo.unionid()) ? userInfo.unionid() : response.unionid();
+        if (!hasScope(response.scope(), SCOPE)) {
+            throw new BizException(
+                    ErrorCode.LOGIN_FAILED,
+                    "微信授权失败，授权范围不包含 " + SCOPE,
+                    "微信授权失败，请重新扫码登录"
+            );
+        }
+        WechatUserInfoResponse userInfo = requestWechatUserInfoIfAvailable(response);
+        String unionid = userInfo != null && StringUtils.hasText(userInfo.unionid())
+                ? userInfo.unionid()
+                : response.unionid();
         return new WechatOAuthUser(
                 response.openid(),
                 unionid,
                 response.scope(),
-                userInfo.nickname(),
-                userInfo.headimgurl(),
-                userInfo.country(),
-                userInfo.province(),
-                userInfo.city(),
-                userInfo.sex()
+                userInfo == null ? null : userInfo.nickname(),
+                userInfo == null ? null : userInfo.headimgurl(),
+                userInfo == null ? null : userInfo.country(),
+                userInfo == null ? null : userInfo.province(),
+                userInfo == null ? null : userInfo.city(),
+                userInfo == null ? null : userInfo.sex()
         );
     }
 
-    private WechatUserInfoResponse requestWechatUserInfo(WechatAccessTokenResponse tokenResponse) {
+    private WechatUserInfoResponse requestWechatUserInfoIfAvailable(WechatAccessTokenResponse tokenResponse) {
         URI uri = UriComponentsBuilder.fromUriString(USER_INFO_URL)
                 .queryParam("access_token", tokenResponse.access_token())
                 .queryParam("openid", tokenResponse.openid())
                 .queryParam("lang", "zh_CN")
                 .build()
                 .toUri();
-        WechatUserInfoResponse response = requestWechat(uri, WechatUserInfoResponse.class);
-        if (response.errcode() != null && response.errcode() != 0) {
-            throw new BizException(ErrorCode.LOGIN_FAILED, "微信用户资料获取失败: " + response.errmsg(), "微信授权失败，请重新扫码登录");
+        try {
+            WechatUserInfoResponse response = requestWechat(uri, WechatUserInfoResponse.class);
+            if (response.errcode() != null && response.errcode() != 0) {
+                log.warn(
+                        "Wechat profile enrichment rejected by provider; continuing with OAuth identity, errcode={}, errmsg={}",
+                        response.errcode(),
+                        response.errmsg()
+                );
+                return null;
+            }
+            if (!StringUtils.hasText(response.openid())) {
+                log.warn("Wechat profile enrichment returned no openid; continuing with OAuth identity");
+                return null;
+            }
+            if (!tokenResponse.openid().equals(response.openid())) {
+                log.warn("Wechat profile enrichment returned a mismatched openid; continuing with OAuth identity");
+                return null;
+            }
+            return response;
+        } catch (BizException exception) {
+            log.warn(
+                    "Wechat profile enrichment failed; continuing with OAuth identity: {}",
+                    exception.getMessage()
+            );
+            return null;
         }
-        if (!StringUtils.hasText(response.openid())) {
-            throw new BizException(ErrorCode.LOGIN_FAILED, "微信用户资料获取失败，未返回 openid", "微信授权失败，请重新扫码登录");
-        }
-        if (!tokenResponse.openid().equals(response.openid())) {
-            throw new BizException(ErrorCode.LOGIN_FAILED, "微信用户资料 openid 不匹配", "微信授权失败，请重新扫码登录");
-        }
-        return response;
     }
 
     private <T> T requestWechat(URI uri, Class<T> responseType) {
@@ -176,6 +208,24 @@ public class WechatLoginService {
 
     private String encode(String value) {
         return URLEncoder.encode(value.trim(), StandardCharsets.UTF_8);
+    }
+
+    private static boolean hasScope(String grantedScopes, String requiredScope) {
+        if (!StringUtils.hasText(grantedScopes)) {
+            return false;
+        }
+        for (String grantedScope : grantedScopes.split("[,\\s]+")) {
+            if (requiredScope.equals(grantedScope.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static HttpClient defaultHttpClient() {
+        return HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
     }
 
     private WechatLoginSettingsDTO requireAvailableSettings() {
