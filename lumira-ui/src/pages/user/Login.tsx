@@ -1,6 +1,6 @@
 import { formatMessage, useLocation } from '@umijs/max';
 import { Alert, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -11,6 +11,7 @@ import { resolvePresentedLoginMode, resolvePresentedLoginModes } from '@/pages/u
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { request } from '@/services/common/request';
 import { isSessionExpiredLoginSearch } from '@/auth/sessionLifecycle';
+import { showSessionExpiredNotice } from '@/pages/user/login/utils/sessionExpiredNotice';
 import './Login.css';
 
 const INITIAL_PASSWORD = '123456';
@@ -35,7 +36,6 @@ type LoginPageMainSectionProps = {
   brandingWebsiteName: string;
   brandingFooterItems: string[];
   loginSubTitle: string;
-  sessionExpired: boolean;
   submitButtonText: string;
   activeLoginMode: LoginMode;
   availableLoginModes: LoginMode[];
@@ -74,7 +74,6 @@ const LoginPageMainSection = ({
   brandingWebsiteName,
   brandingFooterItems,
   loginSubTitle: _loginSubTitle,
-  sessionExpired,
   submitButtonText,
   activeLoginMode,
   availableLoginModes,
@@ -133,15 +132,6 @@ const LoginPageMainSection = ({
           onFinish={handleSubmit}
           onFinishFailed={handleFinishFailed}
         >
-          {sessionExpired ? (
-            <Alert
-              className="saas-login-page__session-expired"
-              data-testid="session-expired-alert"
-              message={formatMessage({ id: 'common.sessionExpired', defaultMessage: '登录状态已失效，请重新登录' })}
-              showIcon
-              type="warning"
-            />
-          ) : null}
           <LoginFormFields
             activeLoginMode={activeLoginMode}
             availableLoginModes={availableLoginModes}
@@ -408,6 +398,7 @@ const Login = () => {
   const location = useLocation();
   const responsive = useResponsive();
   const [passwordResetOpen, setPasswordResetOpen] = useState(false);
+  const sessionExpired = isSessionExpiredLoginSearch(location.search);
   const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const presentedLoginModes = resolvePresentedLoginModes(responsive.isMobile, loginFlow.availableLoginModes);
   const presentedLoginMode = resolvePresentedLoginMode(responsive.isMobile, loginFlow.activeLoginMode, loginFlow.availableLoginModes);
@@ -428,6 +419,16 @@ const Login = () => {
       : presentedLoginMode === 'wechat'
         ? formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })
       : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' });
+
+  useEffect(() => {
+    if (!sessionExpired) {
+      return;
+    }
+    showSessionExpiredNotice(
+      message,
+      formatMessage({ id: 'common.sessionExpired', defaultMessage: '登录状态已失效，请重新登录' }),
+    );
+  }, [sessionExpired]);
 
   return (
     <>
@@ -466,7 +467,6 @@ const Login = () => {
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}
         loginSubTitle={loginSubTitle}
-        sessionExpired={isSessionExpiredLoginSearch(location.search)}
         submitButtonText={submitButtonText}
       />
       <PasswordResetModal open={passwordResetOpen} onClose={() => setPasswordResetOpen(false)} />
