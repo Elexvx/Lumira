@@ -27,7 +27,7 @@ import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { normalizeLocale } from '@/i18n/locale';
-import { canSubmitPlatformUpdate } from './platformUpdateState';
+import { canSubmitPlatformUpdate, resolvePlatformUpdateConfirmationDetails } from './platformUpdateState';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -368,11 +368,38 @@ const usePlatformUpdateMonitor = () => {
       showErrorMessage(error, t('更新预检失败', 'Update preflight failed'));
       return;
     }
+    const confirmationDetails = resolvePlatformUpdateConfirmationDetails(updateStatus, preflight);
     Modal.confirm({
-      title: preflight.ready ? t('确认蓝绿不停机更新？', 'Confirm blue-green update?') : t('预检未通过', 'Preflight blocked'),
+      title: preflight.ready
+        ? t(`确认升级到版本 ${confirmationDetails.targetVersion}？`, `Confirm update to version ${confirmationDetails.targetVersion}?`)
+        : t('预检未通过', 'Preflight blocked'),
       content: (
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Descriptions size="small" column={1}>
+          {preflight.ready ? (
+            <Alert
+              type="info"
+              showIcon
+              message={t('请核对版本号和升级内容，确认无误后再开始升级。', 'Review the version and release notes before starting the update.')}
+            />
+          ) : null}
+          <Descriptions size="small" column={1} bordered>
+            <Descriptions.Item label={t('当前版本', 'Current version')}>
+              {confirmationDetails.currentVersion}
+              {confirmationDetails.currentCommit !== '-' ? ` (${shortCommit(confirmationDetails.currentCommit)})` : ''}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('目标版本', 'Target version')}>
+              {confirmationDetails.targetVersion}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('目标提交', 'Target commit')}>
+              <Typography.Text code copyable={confirmationDetails.targetCommit !== '-' ? { text: confirmationDetails.targetCommit } : false}>
+                {shortCommit(confirmationDetails.targetCommit)}
+              </Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('升级内容', 'Release notes')}>
+              <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
+                {confirmationDetails.releaseNotes || t('本次发布未提供升级说明。', 'No release notes were provided for this update.')}
+              </Typography.Paragraph>
+            </Descriptions.Item>
             <Descriptions.Item label={t('流量切换', 'Traffic switch')}>{preflight.activeSlot || '-'} → {preflight.targetSlot || '-'}</Descriptions.Item>
             <Descriptions.Item label={t('数据库迁移', 'Database migration')}>{preflight.migrationMode || '-'}</Descriptions.Item>
           </Descriptions>
@@ -381,7 +408,7 @@ const usePlatformUpdateMonitor = () => {
           {preflight.ready ? <Typography.Text type="secondary">{t('新槽位验证通过后热切流并排空旧连接；回滚不会逆向恢复数据库。', 'Traffic hot-switches only after the new slot passes verification. Rollback never reverses database migrations.')}</Typography.Text> : null}
         </Space>
       ),
-      okText: t('开始更新', 'Start update'),
+      okText: t('确认并开始升级', 'Confirm and start update'),
       cancelText: t('取消', 'Cancel'),
       okButtonProps: { disabled: !preflight.ready },
       onOk: async () => {

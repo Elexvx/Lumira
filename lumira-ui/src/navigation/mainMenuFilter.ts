@@ -11,14 +11,16 @@ const RETIRED_MAIN_MENU_PATHS = new Set([
 ]);
 const normalizeMenuPath = (path: string) => path.trim().replace(/\/+$/, '') || '/';
 
+export const isRetiredMainMenuPath = (path?: string | null) =>
+  Boolean(path && RETIRED_MAIN_MENU_PATHS.has(normalizeMenuPath(path)));
+
 export const filterRetiredMainMenuNodes = (
   items: MenuNode[] | undefined,
   legacyRootMenuCode?: string,
 ): MenuNode[] =>
   (items || []).flatMap((item) => {
-    const normalizedPath = item.path ? normalizeMenuPath(item.path) : undefined;
     const children = filterRetiredMainMenuNodes(item.children, legacyRootMenuCode);
-    if (normalizedPath && RETIRED_MAIN_MENU_PATHS.has(normalizedPath)) {
+    if (isRetiredMainMenuPath(item.path)) {
       return [];
     }
     if (legacyRootMenuCode && item.menuCode === legacyRootMenuCode) {

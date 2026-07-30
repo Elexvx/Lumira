@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { filterRetiredMainMenuNodes } from './navigation/mainMenuFilter';
+import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from './navigation/mainMenuFilter';
 import type { MenuNode } from '@/types/api';
 
 describe('filterRetiredMainMenuNodes', () => {
+  it('recognizes retired paths before canonical redirects can replace active menu labels', () => {
+    expect(isRetiredMainMenuPath('/data-management/query-center')).toBe(true);
+    expect(isRetiredMainMenuPath('/data-management/query-center/')).toBe(true);
+    expect(isRetiredMainMenuPath('/dashboard/home')).toBe(false);
+  });
+
   it('removes retired management and query-center navigation from persisted menu trees', () => {
     const menuTree = [
       {

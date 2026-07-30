@@ -29,7 +29,7 @@ import type { BrandingSettings, CurrentUser, FloatingWindowSettings, MenuNode, S
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
-import { filterRetiredMainMenuNodes } from '@/navigation/mainMenuFilter';
+import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from '@/navigation/mainMenuFilter';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, realPageRouteMetaMap, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -1217,6 +1217,9 @@ const translateVisibleLocalMenuDataForLayout = (
   return items
     .map((item) => {
       const localItem = item as RuntimeMenuDataItem & { redirect?: string };
+      if (isRetiredMainMenuPath(item.path)) {
+        return null;
+      }
       const normalizedPath = item.path ? resolveCanonicalRoutePath(item.path) : item.path;
       if (localItem.redirect) {
         return null;

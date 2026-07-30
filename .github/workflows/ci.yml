@@ -369,7 +369,7 @@ jobs:
           LUMIRA_RELEASE_MIGRATION_MODE: expand-only
           LUMIRA_RELEASE_DATABASE_VERSION: ${{ steps.database_migrations.outputs.version }}
           LUMIRA_RELEASE_MIGRATION_REQUIRED: 'true'
-          LUMIRA_RELEASE_NOTES: Lumira main build ${{ steps.images.outputs.short_sha }}
+          LUMIRA_RELEASE_NOTES: ${{ github.event.head_commit.message }}
         run: node bin/generate-release-manifest.mjs
       - name: Publish continuous release manifest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
