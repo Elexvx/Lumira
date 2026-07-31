@@ -35,13 +35,11 @@ const dictStatusLabelMap: Record<string, string> = {
 const renderStatusLabel = (status?: string | null) => dictStatusLabelMap[status || ''] || status || '-';
 
 const buildDictItemColumns = ({
-  isDesktop,
   isMobile,
   buildRowActions,
   onOpenEdit,
   onDelete,
 }: {
-  isDesktop: boolean;
   isMobile: boolean;
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenEdit: (record: DictItemRecord) => void;
@@ -74,7 +72,7 @@ const buildDictItemColumns = ({
   {
     title: t('操作', 'Actions'),
     valueType: 'option',
-    fixed: isDesktop ? 'right' : undefined,
+    fixed: false,
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
@@ -99,14 +97,12 @@ const buildDictItemColumns = ({
 ];
 
 const buildDictTypeColumns = ({
-  isDesktop,
   isMobile,
   buildRowActions,
   onOpenDetail,
   onOpenEdit,
   onDelete,
 }: {
-  isDesktop: boolean;
   isMobile: boolean;
   buildRowActions: (items: PermissionAwareTableAction[]) => TableActionItem[];
   onOpenDetail: (record: DictTypeRecord) => void;
@@ -149,7 +145,7 @@ const buildDictTypeColumns = ({
   {
     title: t('操作', 'Actions'),
     valueType: 'option',
-    fixed: isDesktop ? 'right' : undefined,
+    fixed: false,
     width: 'var(--saas-spacing-180)',
     render: (_, record) => (
       <TableActionBar
@@ -292,13 +288,12 @@ const useDictManagement = () => {
   const dictItemColumns = useMemo(
     () =>
       buildDictItemColumns({
-        isDesktop: responsive.isDesktop,
         isMobile: responsive.isMobile,
         buildRowActions: actionPermission.buildTableActions,
         onOpenEdit: openEditItem,
         onDelete: deleteItem,
       }),
-    [actionPermission.buildTableActions, deleteItem, openEditItem, responsive.isDesktop, responsive.isMobile],
+    [actionPermission.buildTableActions, deleteItem, openEditItem, responsive.isMobile],
   );
   const openDetail = useCallback(
     async (record: DictTypeRecord) => {
@@ -401,14 +396,13 @@ const useDictManagement = () => {
   const typeColumns = useMemo(
     () =>
       buildDictTypeColumns({
-        isDesktop: responsive.isDesktop,
         isMobile: responsive.isMobile,
         buildRowActions: actionPermission.buildTableActions,
         onOpenDetail: (record) => void openDetail(record),
         onOpenEdit: (record) => void openEditType(record),
         onDelete: deleteType,
       }),
-    [actionPermission.buildTableActions, deleteType, openDetail, openEditType, responsive.isDesktop, responsive.isMobile],
+    [actionPermission.buildTableActions, deleteType, openDetail, openEditType, responsive.isMobile],
   );
   const saving = useMemo(() => typeSaving || itemSaving, [itemSaving, typeSaving]);
 

@@ -2,7 +2,7 @@ import { ProTable, type ProColumns, type ProTableProps } from '@ant-design/pro-c
 import { Button, type TablePaginationConfig, type TableProps } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
-import { isResponsiveColumnVisible } from './managementTableLayout';
+import { isResponsiveColumnVisible, resolveEstimatedTableScrollX } from './managementTableLayout';
 
 type ManagementTableOptions = Exclude<ProTableProps<object, Record<string, unknown>>['options'], false | undefined>;
 
@@ -16,7 +16,6 @@ type MobilePagination = TablePaginationConfig | false | undefined;
 type TablePagination = Exclude<MobilePagination, false | undefined>;
 
 const TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD = 1100;
-const TABLE_HORIZONTAL_SCROLL_BUFFER = 1;
 const DEFAULT_DATA_COLUMN_WIDTH = 160;
 
 const parseColumnWidth = (width: ProColumns['width']) => {
@@ -54,9 +53,9 @@ const estimateTableWidth = <RecordType extends object>(columns: ProColumns<Recor
 const buildTableScroll = <RecordType extends object>(columns: ProColumns<RecordType>[], isMobile: boolean) => {
   const hasFixedColumn = columns.some((column) => Boolean(column.fixed));
   const estimatedWidth = estimateTableWidth(columns);
-  const scrollX = Math.max(estimatedWidth + TABLE_HORIZONTAL_SCROLL_BUFFER, TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD);
+  const scrollX = resolveEstimatedTableScrollX(estimatedWidth, hasFixedColumn, isMobile);
 
-  return hasFixedColumn || estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD || isMobile ? { x: scrollX } : undefined;
+  return scrollX === undefined ? undefined : { x: scrollX };
 };
 
 const buildAutoWidthScroll = <RecordType extends object>(
@@ -67,7 +66,7 @@ const buildAutoWidthScroll = <RecordType extends object>(
   const resolvedScroll = scroll ?? fallbackScroll;
   const fallbackX = fallbackScroll?.x;
   if (!resolvedScroll) {
-    return fallbackScroll ?? { x: TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD };
+    return undefined;
   }
 
   if (autoContentWidth && resolvedScroll.x === 'max-content') {
