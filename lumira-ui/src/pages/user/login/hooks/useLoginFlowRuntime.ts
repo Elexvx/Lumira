@@ -32,6 +32,7 @@ import type { MenuNode, PasskeyOptions, PluginAvailability } from '@/types/api';
 import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { isLoginPasswordPayloadError, resolveLoginErrorFeedback, shouldFallbackToLegacyPasswordLogin } from '@/pages/user/login/utils/loginErrorFeedback';
+import { consumeWechatOAuthCallback } from '@/pages/user/login/utils/wechatOAuthCallback';
 
 export type LoginInputKind = 'account' | 'mobile' | 'email' | 'verificationCode';
 
@@ -1571,14 +1572,18 @@ export const useLoginFlowRuntime = ({
       return;
     }
 
-    const searchParams = new URLSearchParams(locationSearch || '');
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    if (!code || !state || !bootstrapFlow.loginCapabilities.wechatLoginAvailable) {
+    const callback = consumeWechatOAuthCallback({
+      locationSearch,
+      locationPathname,
+      loginAvailable: Boolean(bootstrapFlow.loginCapabilities.wechatLoginAvailable),
+      replaceLocation: history.replace,
+    });
+    if (!callback) {
       return;
     }
 
     wechatCallbackHandledRef.current = true;
+    const { code, state } = callback;
     flowState.setSubmitting(true);
     beginLoginFlow();
     void request<LoginResponse>('/v1/auth/wechat/login', {
@@ -1599,7 +1604,6 @@ export const useLoginFlowRuntime = ({
                 defaultMessage: 'Please enter the verification code to complete second-factor verification',
               }),
           );
-          history.replace(locationPathname);
           return;
         }
         await completeSuccessfulLogin(loginResponse, Boolean(flowState.loginForm.getFieldValue('remember')));
@@ -1609,7 +1613,6 @@ export const useLoginFlowRuntime = ({
           error,
           formatMessage({ id: 'page.login.error.loginFailed', defaultMessage: 'Login failed, please try again later' }),
         );
-        history.replace(locationPathname);
       })
       .finally(() => {
         endLoginFlow();
