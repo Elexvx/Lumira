@@ -38,6 +38,10 @@ public class WechatLoginService {
     private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
     private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
     private static final String SCOPE = "snsapi_login";
+    private static final int WECHAT_INVALID_APP_ID = 40013;
+    private static final int WECHAT_INVALID_OAUTH_CODE = 40029;
+    private static final int WECHAT_INVALID_APP_SECRET = 40125;
+    private static final int WECHAT_OAUTH_CODE_USED = 40163;
     private static final String AUTHORIZE_URL = "https://open.weixin.qq.com/connect/qrconnect";
     private static final String ACCESS_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token";
     private static final String USER_INFO_URL = "https://api.weixin.qq.com/sns/userinfo";
@@ -120,19 +124,30 @@ public class WechatLoginService {
                 .toUri();
         WechatAccessTokenResponse response = requestWechat(uri, WechatAccessTokenResponse.class);
         if (response.errcode() != null && response.errcode() != 0) {
-            throw new BizException(ErrorCode.LOGIN_FAILED, "微信授权失败: " + response.errmsg(), "微信授权失败，请重新扫码登录");
+            throw tokenExchangeRejected(response.errcode(), response.errmsg());
         }
         if (!StringUtils.hasText(response.openid())) {
-            throw new BizException(ErrorCode.LOGIN_FAILED, "微信授权失败，未返回 openid", "微信授权失败，请重新扫码登录");
+            log.warn("Wechat OAuth token response rejected locally; reason=missing_openid");
+            throw new BizException(
+                    ErrorCode.LOGIN_FAILED,
+                    "微信授权失败，未返回 openid",
+                    "微信授权响应不完整（缺少 openid），请联系管理员"
+            );
         }
         if (!StringUtils.hasText(response.access_token())) {
-            throw new BizException(ErrorCode.LOGIN_FAILED, "微信授权失败，未返回 access_token", "微信授权失败，请重新扫码登录");
+            log.warn("Wechat OAuth token response rejected locally; reason=missing_access_token");
+            throw new BizException(
+                    ErrorCode.LOGIN_FAILED,
+                    "微信授权失败，未返回 access_token",
+                    "微信授权响应不完整（缺少 access_token），请联系管理员"
+            );
         }
         if (!hasScope(response.scope(), SCOPE)) {
+            log.warn("Wechat OAuth token response rejected locally; reason=unexpected_scope");
             throw new BizException(
                     ErrorCode.LOGIN_FAILED,
                     "微信授权失败，授权范围不包含 " + SCOPE,
-                    "微信授权失败，请重新扫码登录"
+                    "微信授权范围不正确，请联系管理员检查微信开放平台网站应用权限"
             );
         }
         WechatUserInfoResponse userInfo = requestWechatUserInfoIfAvailable(response);
@@ -150,6 +165,42 @@ public class WechatLoginService {
                 userInfo == null ? null : userInfo.city(),
                 userInfo == null ? null : userInfo.sex()
         );
+    }
+
+    private BizException tokenExchangeRejected(int errcode, String errmsg) {
+        String normalizedErrmsg = normalizeProviderErrorMessage(errmsg);
+        log.warn(
+                "Wechat OAuth token exchange rejected by provider; errcode={}, errmsg={}",
+                errcode,
+                normalizedErrmsg
+        );
+        return new BizException(
+                ErrorCode.LOGIN_FAILED,
+                "微信授权失败，微信错误码 " + errcode + ": " + normalizedErrmsg,
+                tokenExchangeUserMessage(errcode)
+        );
+    }
+
+    private String tokenExchangeUserMessage(int errcode) {
+        return switch (errcode) {
+            case WECHAT_INVALID_APP_ID ->
+                    "微信 AppID 配置无效（错误码 40013），请联系管理员检查微信开放平台网站应用配置";
+            case WECHAT_INVALID_APP_SECRET ->
+                    "微信 AppSecret 配置无效（错误码 40125），请联系管理员重新配置";
+            case WECHAT_INVALID_OAUTH_CODE ->
+                    "微信授权码无效或已过期（错误码 40029），请刷新二维码后重新扫码";
+            case WECHAT_OAUTH_CODE_USED ->
+                    "微信授权码已使用（错误码 40163），请刷新二维码后重新扫码";
+            default -> "微信授权失败（微信错误码 " + errcode + "），请联系管理员";
+        };
+    }
+
+    private String normalizeProviderErrorMessage(String errmsg) {
+        if (!StringUtils.hasText(errmsg)) {
+            return "unknown provider error";
+        }
+        String normalized = errmsg.replaceAll("[\\r\\n\\t]+", " ").trim();
+        return normalized.length() <= 256 ? normalized : normalized.substring(0, 256);
     }
 
     private WechatUserInfoResponse requestWechatUserInfoIfAvailable(WechatAccessTokenResponse tokenResponse) {
