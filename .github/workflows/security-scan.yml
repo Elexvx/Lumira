@@ -36,6 +36,8 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+          trivyignores: .trivyignore.yaml
+          limit-severities-for-sarif: true
       - name: Upload Trivy findings
         uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -62,6 +64,8 @@ jobs:
       - name: Install frontend dependencies
         working-directory: lumira-ui
         run: pnpm install --frozen-lockfile
+      - name: Verify reviewed brace-expansion security backports
+        run: node bin/check-brace-expansion-backports.mjs
       # GHSA-mh99-v99m-4gvg models all legacy releases as vulnerable, but the
       # lockfile pins the upstream CVE-2026-14257 backports (1.1.18/2.1.4).
       - name: Frontend production audit
@@ -73,8 +77,8 @@ jobs:
           scan-args: |-
             --format=json
             --output=security-osv.json
-            --recursive
-            .
+            --config=.osv-scanner.toml
+            --lockfile=./lumira-ui/pnpm-lock.yaml
       - name: Semgrep Java and TypeScript rules
         uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
         with:

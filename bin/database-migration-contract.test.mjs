@@ -251,6 +251,24 @@ test('regular deployments run migrations before application containers', () => {
   assert.ok(applicationStart > migrationCall, 'database migrations must finish before application containers start');
 });
 
+test('certificate closure migration tolerates indexes already present in the fresh bootstrap', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202607300004__add_competition_award_certificate_closure.sql');
+
+  for (const indexName of [
+    'idx_certificate_record_registration',
+    'idx_certificate_record_user',
+    'idx_certificate_record_team',
+  ]) {
+    assert.ok(bootstrap.includes('KEY `' + indexName + '`'));
+    assert.match(migration, new RegExp(`index_name = '${indexName}'`));
+  }
+  assert.match(migration, /information_schema\.statistics/);
+  assert.match(migration, /PREPARE certificate_registration_index_statement/);
+  assert.match(migration, /PREPARE certificate_user_index_statement/);
+  assert.match(migration, /PREPARE certificate_team_index_statement/);
+});
+
 test('built-in administrator bootstrap is secret-driven and migration-backed', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607300001__secure_builtin_admin_bootstrap.sql');
