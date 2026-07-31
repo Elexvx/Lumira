@@ -24,6 +24,7 @@ const {
     currentTokenGeneration: 1,
     loginInProgress: false,
     bootstrapInProgress: false,
+    roleSwitchInProgress: false,
   },
 }));
 
@@ -82,6 +83,7 @@ describe('executeRequest empty success responses', () => {
       currentTokenGeneration: 1,
       loginInProgress: false,
       bootstrapInProgress: false,
+      roleSwitchInProgress: false,
     });
   });
 

@@ -19,6 +19,7 @@ const runtimeState = (overrides: Partial<UnauthorizedRuntimeState> = {}): Unauth
   currentTokenGeneration: 7,
   loginInProgress: false,
   bootstrapInProgress: false,
+  roleSwitchInProgress: false,
   ...overrides,
 });
 
@@ -68,6 +69,20 @@ describe('shouldRefreshAndRetryUnauthorized', () => {
         false,
         authSnapshot(),
         runtimeState(),
+      ),
+    ).toBe(false);
+  });
+
+  it('does not refresh an old request while a role switch is in progress', () => {
+    expect(
+      shouldRefreshAndRetryUnauthorized(
+        '/v1/business/old-role-resource',
+        {},
+        401,
+        ErrorCode.SESSION_EXPIRED,
+        false,
+        authSnapshot(),
+        runtimeState({ roleSwitchInProgress: true }),
       ),
     ).toBe(false);
   });

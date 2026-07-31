@@ -42,6 +42,9 @@ vi.mock('@/auth/clientRuntimeState', () => ({
 vi.mock('@/auth/loginFlowState', () => ({
   beginBootstrapFlow: vi.fn(),
   endBootstrapFlow: vi.fn(),
+  getAuthSessionEpoch: () => 1,
+  isBootstrapInProgress: () => false,
+  isLoginInProgress: () => false,
 }));
 
 vi.mock('@/auth/sessionState', () => ({
@@ -54,6 +57,9 @@ import {
   withRoleSwitchRefreshBarrier,
 } from './sessionLifecycle';
 import { AUTH_SESSION_MUTATION_LOCK_NAME } from './authSessionMutationLock';
+import { isRoleSwitchInProgress } from './roleSwitchFlowState';
+import { shouldSuppressUnauthorizedSideEffects } from './unauthorizedDecision';
+import { buildUnauthorizedRuntimeState } from './unauthorized';
 
 const refreshResponse = {
   accessToken: 'refresh-response-token',
@@ -230,6 +236,88 @@ describe('tryRefreshTokenOutcome generation guard', () => {
       AUTH_SESSION_MUTATION_LOCK_NAME,
       AUTH_SESSION_MUTATION_LOCK_NAME,
     ]);
+  });
+
+  it('suppresses old-request unauthorized side effects for the full pending role switch', async () => {
+    let finishRoleSwitch!: () => void;
+    const roleSwitch = withRoleSwitchRefreshBarrier(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRoleSwitch = resolve;
+        }),
+    );
+    await vi.waitFor(() => expect(finishRoleSwitch).toBeTypeOf('function'));
+
+    expect(isRoleSwitchInProgress()).toBe(true);
+    expect(shouldSuppressUnauthorizedSideEffects(
+      {
+        skipAuth: false,
+        accessToken: 'token-before-refresh',
+        hasAuthToken: true,
+        authSessionEpoch: 1,
+        tokenGeneration: 1,
+      },
+      buildUnauthorizedRuntimeState('/dashboard/home'),
+    )).toBe(true);
+
+    finishRoleSwitch();
+    await roleSwitch;
+    expect(isRoleSwitchInProgress()).toBe(false);
+  });
+
+  it('clears role-switch suppression after a failed barrier action', async () => {
+    let rejectRoleSwitch!: (error: Error) => void;
+    const roleSwitch = withRoleSwitchRefreshBarrier(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectRoleSwitch = reject;
+        }),
+    );
+    await vi.waitFor(() => expect(rejectRoleSwitch).toBeTypeOf('function'));
+    expect(isRoleSwitchInProgress()).toBe(true);
+
+    rejectRoleSwitch(new Error('role switch rejected'));
+    await expect(roleSwitch).rejects.toThrow('role switch rejected');
+    expect(isRoleSwitchInProgress()).toBe(false);
+    expect(shouldSuppressUnauthorizedSideEffects(
+      {
+        skipAuth: false,
+        accessToken: 'token-before-refresh',
+        hasAuthToken: true,
+        authSessionEpoch: 1,
+        tokenGeneration: 1,
+      },
+      buildUnauthorizedRuntimeState('/dashboard/home'),
+    )).toBe(false);
+  });
+
+  it('keeps suppression active across queued role-switch barriers', async () => {
+    let finishFirst!: () => void;
+    let finishSecond!: () => void;
+    const first = withRoleSwitchRefreshBarrier(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFirst = resolve;
+        }),
+    );
+    await vi.waitFor(() => expect(finishFirst).toBeTypeOf('function'));
+
+    const second = withRoleSwitchRefreshBarrier(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSecond = resolve;
+        }),
+    );
+    expect(isRoleSwitchInProgress()).toBe(true);
+
+    finishFirst();
+    await first;
+    await vi.waitFor(() => expect(finishSecond).toBeTypeOf('function'));
+    expect(isRoleSwitchInProgress()).toBe(true);
+
+    finishSecond();
+    await second;
+    expect(isRoleSwitchInProgress()).toBe(false);
   });
 
   it('waits for active refreshes and blocks new ones while the role switch runs', async () => {

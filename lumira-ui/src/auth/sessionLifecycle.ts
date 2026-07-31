@@ -10,6 +10,7 @@ import type { RefreshTokenResponse } from '@/types/api';
 import { ErrorCode } from '@/enums/errorCode';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { withAuthSessionMutationLock } from '@/auth/authSessionMutationLock';
+import { beginRoleSwitchFlow } from '@/auth/roleSwitchFlowState';
 
 export type LogoutReason = 'user_initiated' | 'forced_expired';
 export type TokenRefreshOutcome = 'refreshed' | 'superseded' | 'session_expired' | 'temporarily_unavailable';
@@ -213,12 +214,12 @@ export const tryRefreshTokenOutcome = async (): Promise<TokenRefreshOutcome> => 
   }
 };
 
-export const withRoleSwitchRefreshBarrier = async <T>(
+const runWithRoleSwitchRefreshBarrier = async <T>(
   action: () => Promise<T>,
 ): Promise<T> => {
   if (roleSwitchRefreshBarrier) {
     await roleSwitchRefreshBarrier;
-    return withRoleSwitchRefreshBarrier(action);
+    return runWithRoleSwitchRefreshBarrier(action);
   }
 
   let resolveBarrier!: (outcome: RefreshBarrierOutcome) => void;
@@ -243,6 +244,17 @@ export const withRoleSwitchRefreshBarrier = async <T>(
     if (roleSwitchRefreshBarrier === barrier) {
       roleSwitchRefreshBarrier = null;
     }
+  }
+};
+
+export const withRoleSwitchRefreshBarrier = async <T>(
+  action: () => Promise<T>,
+): Promise<T> => {
+  const finishRoleSwitchFlow = beginRoleSwitchFlow();
+  try {
+    return await runWithRoleSwitchRefreshBarrier(action);
+  } finally {
+    finishRoleSwitchFlow();
   }
 };
 

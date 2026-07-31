@@ -13,6 +13,7 @@ export interface UnauthorizedRuntimeState {
   currentTokenGeneration: number;
   loginInProgress: boolean;
   bootstrapInProgress: boolean;
+  roleSwitchInProgress: boolean;
 }
 
 export const shouldSuppressUnauthorizedSideEffects = (
@@ -23,7 +24,12 @@ export const shouldSuppressUnauthorizedSideEffects = (
     return true;
   }
 
-  if (runtime.loginInProgress || runtime.bootstrapInProgress || runtime.pathname === '/user/login') {
+  if (
+    runtime.loginInProgress ||
+    runtime.bootstrapInProgress ||
+    runtime.roleSwitchInProgress ||
+    runtime.pathname === '/user/login'
+  ) {
     return true;
   }
 
