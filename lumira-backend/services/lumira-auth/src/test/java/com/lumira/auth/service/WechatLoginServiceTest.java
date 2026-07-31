@@ -3,6 +3,7 @@ package com.lumira.auth.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.WechatLoginSettingsDTO;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ReadModelVersionCache;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -305,8 +306,51 @@ class WechatLoginServiceTest {
         );
 
         assertThatThrownBy(() -> service.exchangeCode("code-1", "state-1"))
-                .isInstanceOf(com.lumira.common.exception.BizException.class)
-                .hasMessageContaining("invalid code");
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getMessage()).contains("40029", "invalid code");
+                    assertThat(exception.getUserMessage()).contains("授权码无效或已过期", "40029");
+                });
+        verify(httpClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void exchangeCodeShouldExplainInvalidWechatAppSecret() throws Exception {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        HttpClient httpClient = mock(HttpClient.class);
+        HttpResponse<String> tokenResponse = mock(HttpResponse.class);
+
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete(anyString())).thenReturn("1");
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L);
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(availableSettings());
+        when(tokenResponse.statusCode()).thenReturn(200);
+        when(tokenResponse.body()).thenReturn(
+                """
+                        {
+                          "errcode": 40125,
+                          "errmsg": "invalid appsecret"
+                        }
+                        """
+        );
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(tokenResponse);
+
+        WechatLoginService service = new WechatLoginService(
+                systemInternalApi,
+                redisTemplate,
+                new ObjectMapper(),
+                new ReadModelVersionCache(2_000L),
+                httpClient
+        );
+
+        assertThatThrownBy(() -> service.exchangeCode("code-1", "state-1"))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getMessage()).contains("40125", "invalid appsecret");
+                    assertThat(exception.getUserMessage()).contains("AppSecret", "40125");
+                });
         verify(httpClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 
