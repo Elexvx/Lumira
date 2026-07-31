@@ -269,6 +269,22 @@ test('certificate closure migration tolerates indexes already present in the fre
   assert.match(migration, /PREPARE certificate_team_index_statement/);
 });
 
+test('platform event outbox audit identity repair matches the fresh bootstrap', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202607310001__repair_platform_event_outbox_audit_identity.sql');
+
+  assert.match(bootstrap, /CREATE TABLE `platform_event_outbox`[\s\S]*?`created_by_uuid` char\(36\) DEFAULT NULL/);
+  assert.match(bootstrap, /CREATE TABLE `platform_event_outbox`[\s\S]*?`updated_by_uuid` char\(36\) DEFAULT NULL/);
+  assert.match(bootstrap, /KEY `idx_platform_event_outbox_creator_uuid` \(`created_by`,`created_by_uuid`,`created_at`\)/);
+  assert.match(migration, /information_schema\.columns/);
+  assert.match(migration, /information_schema\.statistics/);
+  assert.match(migration, /ADD COLUMN `created_by_uuid` char\(36\) DEFAULT NULL AFTER `created_by`/);
+  assert.match(migration, /ADD COLUMN `updated_by_uuid` char\(36\) DEFAULT NULL AFTER `updated_by`/);
+  assert.match(migration, /ADD INDEX `idx_platform_event_outbox_creator_uuid` \(`created_by`,`created_by_uuid`,`created_at`\)/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
 test('built-in administrator bootstrap is secret-driven and migration-backed', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607300001__secure_builtin_admin_bootstrap.sql');
