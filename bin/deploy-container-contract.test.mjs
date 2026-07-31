@@ -25,6 +25,21 @@ test('frontend and edge nginx enforce browser security headers', () => {
     assert.match(config, /Referrer-Policy\s+"strict-origin-when-cross-origin"/, `${name} nginx must set a referrer policy`);
     assert.match(config, /Permissions-Policy/, `${name} nginx must restrict browser capabilities`);
     assert.match(config, /add_header_inherit merge/, `${name} nginx must retain headers in locations with cache headers`);
+    assert.match(
+      config,
+      /script-src 'self' https:\/\/res\.wx\.qq\.com;/,
+      `${name} nginx must allow only the official WeChat login script origin`,
+    );
+    assert.match(
+      config,
+      /frame-src 'self' https:\/\/open\.weixin\.qq\.com;/,
+      `${name} nginx must allow the official WeChat QR login iframe`,
+    );
+    assert.doesNotMatch(
+      config,
+      /(?:script-src|frame-src)[^;]*https:\/\/\*/,
+      `${name} nginx must not use wildcard HTTPS origins for executable or framed content`,
+    );
   }
 });
 
