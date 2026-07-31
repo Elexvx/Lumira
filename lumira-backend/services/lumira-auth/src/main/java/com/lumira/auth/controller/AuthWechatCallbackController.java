@@ -1,6 +1,7 @@
 package com.lumira.auth.controller;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +26,11 @@ public class AuthWechatCallbackController {
         if (StringUtils.hasText(code) && StringUtils.hasText(state)) {
             target += "?code=" + encode(code.trim()) + "&state=" + encode(state.trim());
         }
-        response.sendRedirect(target);
+        // Keep the redirect relative. sendRedirect(...) expands it with the
+        // container request scheme, which is HTTP behind the TLS proxy and
+        // causes an unnecessary HTTPS -> HTTP -> HTTPS downgrade.
+        response.setStatus(HttpServletResponse.SC_FOUND);
+        response.setHeader(HttpHeaders.LOCATION, target);
     }
 
     private String encode(String value) {
