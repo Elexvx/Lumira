@@ -25,7 +25,8 @@ jobs:
             lumira-backend/pom.xml
             lumira-backend/**/pom.xml
       - name: Run lumira-backend tests
-        run: mvn -Dmaven.repo.local="$HOME/.m2/repository" -f lumira-backend/pom.xml clean test
+        working-directory: lumira-backend
+        run: ./mvnw -Dmaven.repo.local="$HOME/.m2/repository" clean test
 
   lumira-ui:
     name: Frontend Lint Typecheck Tests
