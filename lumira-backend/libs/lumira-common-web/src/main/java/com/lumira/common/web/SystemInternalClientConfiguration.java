@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
@@ -40,6 +41,10 @@ public class SystemInternalClientConfiguration {
         RestClient.Builder builder = restClientBuilderProvider.getIfAvailable(RestClient::builder).clone()
                 .baseUrl(TrustedServiceBaseUrlValidator.requireHttpBaseUrl(systemServiceBaseUrl, "saas.system.service-base-url"))
                 .defaultHeader(HttpHeaders.ACCEPT, "application/json")
+                .defaultStatusHandler(
+                        HttpStatusCode::isError,
+                        (request, response) -> TrustedInternalApiErrorDecoder.handle(response)
+                )
                 .requestInterceptor((request, body, execution) -> {
                     request.getHeaders().remove(INTERNAL_TOKEN_HEADER);
                     request.getHeaders().remove(HttpHeaders.AUTHORIZATION);

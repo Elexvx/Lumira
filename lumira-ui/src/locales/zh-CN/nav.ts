@@ -31,6 +31,7 @@ export default {
   'nav.certificates.designer': '证书设计器',
   'nav.certificates.generate': '证书生成',
   'nav.certificates.records': '证书记录',
+  'nav.certificates.mine': '我的证书',
   'nav.certificates.verify': '证书查验',
   'nav.expertReview.root': '专家与评审',
   'nav.expertReview.reviews': '评审与晋级',

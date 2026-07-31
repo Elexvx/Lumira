@@ -30,7 +30,7 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import {
@@ -162,6 +162,44 @@ const parseSnapshot = (value?: string | null): Record<string, unknown> => {
   } catch {
     return {};
   }
+};
+
+type SnapshotDetail = { key: string; label: string; children: ReactNode };
+
+const snapshotDetailItems = (
+  value: unknown,
+  path = '',
+  items: SnapshotDetail[] = [],
+): SnapshotDetail[] => {
+  if (value === null || value === undefined || value === '') {
+    return items;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => snapshotDetailItems(item, `${path}[${index + 1}]`, items));
+    return items;
+  }
+  if (typeof value === 'object') {
+    Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
+      snapshotDetailItems(child, path ? `${path}.${key}` : key, items);
+    });
+    return items;
+  }
+  const text = typeof value === 'boolean' ? (value ? '是' : '否') : String(value);
+  items.push({
+    key: path || `value-${items.length}`,
+    label: path || '值',
+    children: text,
+  });
+  return items;
+};
+
+const ReviewSnapshotDetails = ({ snapshotJson }: { snapshotJson?: string | null }) => {
+  const items = snapshotDetailItems(parseSnapshot(snapshotJson));
+  return items.length ? (
+    <div style={{ maxHeight: 420, overflow: 'auto' }}>
+      <Descriptions bordered size="small" column={1} items={items} />
+    </div>
+  ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无候选资料" />;
 };
 
 const snapshotLabel = (candidate: ReviewCandidate) => {
@@ -1234,9 +1272,7 @@ const ReviewAdminWorkbench = () => {
         <Typography.Paragraph type="secondary">
           哈希：{snapshotCandidate?.snapshotHash}
         </Typography.Paragraph>
-        <pre style={{ maxHeight: 560, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-          {JSON.stringify(parseSnapshot(snapshotCandidate?.snapshotJson), null, 2)}
-        </pre>
+        <ReviewSnapshotDetails snapshotJson={snapshotCandidate?.snapshotJson} />
       </Modal>
 
       <Modal
@@ -1469,9 +1505,7 @@ const ExpertTaskWorkbench = () => {
         ]}
       >
         <Card size="small" title="候选资料快照" style={{ marginBottom: 16 }}>
-          <pre style={{ maxHeight: 260, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
-            {JSON.stringify(parseSnapshot(activeTask?.candidateSnapshotJson), null, 2)}
-          </pre>
+          <ReviewSnapshotDetails snapshotJson={activeTask?.candidateSnapshotJson} />
         </Card>
         <Form form={scoreForm} layout="vertical">
           {(activeTask?.criteria || []).map((criterion) => (

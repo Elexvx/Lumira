@@ -1401,7 +1401,7 @@ public class CompetitionManagementAppService {
                         select ?, ?, item_type, item_key, title, content_json, content_text,
                                sort_order, required_flag, enabled, ?, ?, ?, ?, 0
                         from competition_config_item_template
-                        where template_code = 'DEFAULT' and enabled = 1 and deleted = 0
+                        where template_code = 'DEFAULT' and deleted = 0
                         order by sort_order asc, id asc
                         """,
                 competitionUuid,

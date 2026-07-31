@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -66,7 +67,11 @@ class SecuritySettingsServiceTest {
 
         assertEquals(1200L, service.getIdleTimeoutSeconds());
         verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
-        verify(readModelVersionService).bump("platform", "public-bootstrap", "security-update");
+        verify(readModelVersionService).bump(
+                eq("platform"),
+                eq("public-bootstrap"),
+                argThat(eventKey -> eventKey.startsWith("security-update:"))
+        );
     }
 
     @Test

@@ -3,11 +3,14 @@ import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 import { resolveApiErrorFeedback } from '@/services/common/errorFeedback';
 import { ErrorCode } from '@/enums/errorCode';
+import { tokenManager } from '@/auth/token';
+import { withAuthSessionMutationLock } from '@/auth/authSessionMutationLock';
 import type { RequestOptions } from './requestInternalsTypes';
 import { ApiRequestError } from './requestInternalsTypes';
 
 export interface ApiErrorHandlingContext {
   authenticatedRefreshSucceeded?: boolean;
+  refreshSuperseded?: boolean;
   refreshTemporarilyUnavailable?: boolean;
 }
 
@@ -30,10 +33,44 @@ const shouldSuppressForbiddenFeedback = (
   );
 };
 
-const triggerForcedSessionLogout = () => {
-  void import('@/auth/sessionLifecycle')
-    .then(({ performLogout }) => performLogout({ reason: 'forced_expired' }))
-    .catch(() => undefined);
+const runAfterAuthSnapshotRevalidation = (
+  authSnapshot: AuthRequestSnapshot,
+  action: () => Promise<void> | void,
+) => {
+  const revalidateAndRun = async () => {
+    if (authSnapshot.hasAuthToken) {
+      // A role switch or refresh in another tab can commit while this stale
+      // request is returning 401. The shared mutation lock lets that writer
+      // persist its new token before we decide whether logout is still valid.
+      tokenManager.syncFromStorage(authSnapshot.accessToken);
+      if (
+        shouldSuppressUnauthorizedSideEffects(
+          authSnapshot,
+          buildUnauthorizedRuntimeState(),
+        )
+      ) {
+        return;
+      }
+    }
+
+    await action();
+  };
+
+  const pending = authSnapshot.hasAuthToken
+    ? withAuthSessionMutationLock(revalidateAndRun)
+    : revalidateAndRun();
+  void pending.catch(() => undefined);
+};
+
+const triggerForcedSessionLogout = (
+  authSnapshot: AuthRequestSnapshot,
+  onConfirmed: () => void,
+) => {
+  runAfterAuthSnapshotRevalidation(authSnapshot, async () => {
+    onConfirmed();
+    const { performLogout } = await import('@/auth/sessionLifecycle');
+    await performLogout({ reason: 'forced_expired' });
+  });
 };
 
 export const handleApiError = (
@@ -63,6 +100,17 @@ export const handleApiError = (
 
   if (!feedback.redirectToLogin) {
     if (!options.silent) {
+      if (error.code === ErrorCode.FORBIDDEN && authSnapshot.hasAuthToken) {
+        runAfterAuthSnapshotRevalidation(authSnapshot, notify);
+      } else {
+        notify();
+      }
+    }
+    return;
+  }
+
+  if (options.preserveAuthSessionOnUnauthorized === true) {
+    if (!options.silent) {
       notify();
     }
     return;
@@ -72,6 +120,7 @@ export const handleApiError = (
     (!authSnapshot.hasAuthToken &&
       (options.allowUnauthorizedWithoutRedirect === true || options.autoRedirectOnUnauthorized === false)) ||
     context.authenticatedRefreshSucceeded === true ||
+    context.refreshSuperseded === true ||
     context.refreshTemporarilyUnavailable === true ||
     shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())
   ) {
@@ -81,8 +130,9 @@ export const handleApiError = (
     return;
   }
 
-  if (!options.silent) {
-    notify();
-  }
-  triggerForcedSessionLogout();
+  triggerForcedSessionLogout(authSnapshot, () => {
+    if (!options.silent) {
+      notify();
+    }
+  });
 };

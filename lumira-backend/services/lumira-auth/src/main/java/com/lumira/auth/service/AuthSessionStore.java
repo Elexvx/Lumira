@@ -6,6 +6,7 @@ import com.lumira.auth.model.AuthSession;
 import com.lumira.common.constant.CacheKeyConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.web.redis.SessionPayloadCas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -45,12 +46,31 @@ public class AuthSessionStore {
     }
 
     public void save(AuthSession session, Duration ttl, boolean publishChange) {
-        AuthSessionTrustValidator.requireTrustedSession(session);
-        Duration effectiveTtl = ttl == null || ttl.isZero() || ttl.isNegative() ? Duration.ofSeconds(1) : ttl;
+        Long originalRevision = session == null ? null : session.getMutationRevision();
+        boolean payloadCommitted = false;
         try {
+            AuthSessionTrustValidator.requireTrustedSession(session);
+            Duration effectiveTtl = ttl == null || ttl.isZero() || ttl.isNegative() ? Duration.ofSeconds(1) : ttl;
+            long expectedRevision = SessionPayloadCas.expectedRevision(originalRevision);
+            long nextRevision = SessionPayloadCas.nextRevision(originalRevision);
+            session.setMutationRevision(nextRevision);
             String payload = objectMapper.writeValueAsString(session);
             AuthSessionTrustValidator.requireTrustedPayload(payload);
-            redisTemplate.opsForValue().set(CacheKeyConstants.sessionKey(session.getSessionId()), payload, effectiveTtl);
+            SessionPayloadCas.Result saveResult = SessionPayloadCas.compareAndSet(
+                    redisTemplate,
+                    CacheKeyConstants.sessionKey(session.getSessionId()),
+                    expectedRevision,
+                    nextRevision,
+                    payload,
+                    effectiveTtl
+            );
+            if (saveResult != SessionPayloadCas.Result.SAVED) {
+                if (saveResult == SessionPayloadCas.Result.INVALID_CURRENT_PAYLOAD) {
+                    log.warn("Refusing to replace invalid session payload. sessionId={}", session.getSessionId());
+                }
+                throw new BizException(ErrorCode.SESSION_EXPIRED, "Session changed concurrently");
+            }
+            payloadCommitted = true;
             redisTemplate.opsForValue().set(CacheKeyConstants.sessionOwnerKey(session.getSessionId()), sessionOwnerValue(session), effectiveTtl);
             redisTemplate.opsForValue().set(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()), "1", effectiveTtl);
             redisTemplate.opsForZSet().add(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId(), score(session));
@@ -58,6 +78,10 @@ public class AuthSessionStore {
             saves.incrementAndGet();
         } catch (JsonProcessingException ex) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "会话序列化失败: " + ex.getMessage());
+        } finally {
+            if (!payloadCommitted && session != null) {
+                session.setMutationRevision(originalRevision);
+            }
         }
     }
 
@@ -81,7 +105,7 @@ public class AuthSessionStore {
         }
         try {
             hits.incrementAndGet();
-            AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+            AuthSession session = deserializeSession(payload);
             AuthSessionTrustValidator.requireTrustedSession(session);
             return Optional.of(session);
         } catch (Exception ex) {
@@ -96,6 +120,12 @@ public class AuthSessionStore {
         }
     }
 
+    private AuthSession deserializeSession(String payload) throws JsonProcessingException {
+        AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+        session.setMutationRevision(SessionPayloadCas.normalizeLoadedRevision(session.getMutationRevision()));
+        return session;
+    }
+
     public void remove(AuthSession session, boolean publishChange) {
         try {
             AuthSessionTrustValidator.requireTrustedSession(session);
@@ -103,6 +133,34 @@ public class AuthSessionStore {
             return;
         }
         redisTemplate.delete(CacheKeyConstants.sessionKey(session.getSessionId()));
+        removeSessionIndexes(session);
+    }
+
+    public boolean removeIfUnchanged(AuthSession session, boolean publishChange) {
+        try {
+            AuthSessionTrustValidator.requireTrustedSession(session);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        if (session.getMutationRevision() == null) {
+            return false;
+        }
+        SessionPayloadCas.DeleteResult deleteResult = SessionPayloadCas.compareAndDelete(
+                redisTemplate,
+                CacheKeyConstants.sessionKey(session.getSessionId()),
+                session.getMutationRevision()
+        );
+        if (deleteResult != SessionPayloadCas.DeleteResult.DELETED) {
+            if (deleteResult == SessionPayloadCas.DeleteResult.INVALID_CURRENT_PAYLOAD) {
+                log.warn("Refusing conditional cleanup of invalid session payload. sessionId={}", session.getSessionId());
+            }
+            return false;
+        }
+        removeSessionIndexes(session);
+        return true;
+    }
+
+    private void removeSessionIndexes(AuthSession session) {
         redisTemplate.delete(CacheKeyConstants.sessionOwnerKey(session.getSessionId()));
         redisTemplate.delete(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()));
         redisTemplate.delete(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));

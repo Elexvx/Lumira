@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   buildUnauthorizedRuntimeState: vi.fn(),
   shouldSuppressUnauthorizedSideEffects: vi.fn(),
   performLogout: vi.fn(),
+  syncFromStorage: vi.fn(),
+  withAuthSessionMutationLock: vi.fn(),
 }));
 
 vi.mock('@/theme/antdFeedbackBridge', () => ({
@@ -33,6 +35,16 @@ vi.mock('@/auth/sessionLifecycle', () => ({
   performLogout: mocks.performLogout,
 }));
 
+vi.mock('@/auth/token', () => ({
+  tokenManager: {
+    syncFromStorage: mocks.syncFromStorage,
+  },
+}));
+
+vi.mock('@/auth/authSessionMutationLock', () => ({
+  withAuthSessionMutationLock: mocks.withAuthSessionMutationLock,
+}));
+
 const baseAuthSnapshot: AuthRequestSnapshot = {
   skipAuth: false,
   accessToken: '',
@@ -48,6 +60,7 @@ const runtimeAt = (pathname: string): UnauthorizedRuntimeState => ({
   currentTokenGeneration: 1,
   loginInProgress: false,
   bootstrapInProgress: false,
+  roleSwitchInProgress: false,
 });
 
 const forbiddenError = () =>
@@ -75,6 +88,9 @@ describe('handleApiError', () => {
     mocks.buildUnauthorizedRuntimeState.mockReset();
     mocks.shouldSuppressUnauthorizedSideEffects.mockReset();
     mocks.performLogout.mockReset();
+    mocks.syncFromStorage.mockReset();
+    mocks.withAuthSessionMutationLock.mockReset();
+    mocks.withAuthSessionMutationLock.mockImplementation(async (action: () => Promise<unknown>) => action());
     mocks.shouldSuppressUnauthorizedSideEffects.mockReturnValue(false);
   });
 
@@ -105,6 +121,86 @@ describe('handleApiError', () => {
       hasAuthToken: true,
     });
 
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+  });
+
+  it('waits for the auth mutation lock and drops stale cross-tab 403 feedback after token rotation', async () => {
+    let runLockedFeedback!: () => void;
+    mocks.withAuthSessionMutationLock.mockImplementationOnce(
+      (action: () => Promise<unknown>) =>
+        new Promise((resolve, reject) => {
+          runLockedFeedback = () => {
+            void action().then(resolve, reject);
+          };
+        }),
+    );
+    mocks.shouldSuppressUnauthorizedSideEffects
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-after-role-switch',
+      currentAuthSessionEpoch: 2,
+      currentTokenGeneration: 2,
+    });
+
+    handleApiError(forbiddenError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-before-role-switch',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(runLockedFeedback).toBeTypeOf('function'));
+    runLockedFeedback();
+    await vi.waitFor(() => {
+      expect(mocks.syncFromStorage).toHaveBeenCalledWith('token-before-role-switch');
+    });
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+  });
+
+  it('shows authenticated 403 feedback after the auth mutation lock when the token is unchanged', async () => {
+    let runLockedFeedback!: () => void;
+    mocks.withAuthSessionMutationLock.mockImplementationOnce(
+      (action: () => Promise<unknown>) =>
+        new Promise((resolve, reject) => {
+          runLockedFeedback = () => {
+            void action().then(resolve, reject);
+          };
+        }),
+    );
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(forbiddenError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(runLockedFeedback).toBeTypeOf('function'));
+    runLockedFeedback();
+    await vi.waitFor(() => {
+      expect(mocks.messageWarning).toHaveBeenCalledWith('当前账号没有访问权限');
+    });
+  });
+
+  it('does not schedule authenticated 403 feedback for a silent request', () => {
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(forbiddenError(), { silent: true }, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.withAuthSessionMutationLock).not.toHaveBeenCalled();
     expect(mocks.messageWarning).not.toHaveBeenCalled();
   });
 
@@ -199,6 +295,95 @@ describe('handleApiError', () => {
     });
   });
 
+  it('preserves the active session for an explicit role-transition unauthorized response', () => {
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(sessionExpiredError(), {
+      allowUnauthorizedWithoutRedirect: true,
+      preserveAuthSessionOnUnauthorized: true,
+      silent: true,
+    }, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
+  it('waits for the auth mutation lock and cancels stale cross-tab logout after token rotation', async () => {
+    let runLockedLogout!: () => void;
+    mocks.withAuthSessionMutationLock.mockImplementationOnce(
+      (action: () => Promise<unknown>) =>
+        new Promise((resolve, reject) => {
+          runLockedLogout = () => {
+            void action().then(resolve, reject);
+          };
+        }),
+    );
+    mocks.shouldSuppressUnauthorizedSideEffects
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-after-role-switch',
+      currentAuthSessionEpoch: 2,
+      currentTokenGeneration: 2,
+    });
+
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-before-role-switch',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(runLockedLogout).toBeTypeOf('function'));
+    runLockedLogout();
+    await vi.waitFor(() => {
+      expect(mocks.syncFromStorage).toHaveBeenCalledWith('token-before-role-switch');
+    });
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+  });
+
+  it('forces logout after the auth mutation lock when the authenticated token is unchanged', async () => {
+    let runLockedLogout!: () => void;
+    mocks.withAuthSessionMutationLock.mockImplementationOnce(
+      (action: () => Promise<unknown>) =>
+        new Promise((resolve, reject) => {
+          runLockedLogout = () => {
+            void action().then(resolve, reject);
+          };
+        }),
+    );
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(runLockedLogout).toBeTypeOf('function'));
+    runLockedLogout();
+    await vi.waitFor(() => {
+      expect(mocks.performLogout).toHaveBeenCalledWith({ reason: 'forced_expired' });
+    });
+    expect(mocks.messageInfo).toHaveBeenCalledWith('session expired');
+  });
+
   it('does not destroy the platform session when a business service still returns 401 after refresh', () => {
     handleApiError(sessionExpiredError(), {}, {
       ...baseAuthSnapshot,
@@ -218,6 +403,18 @@ describe('handleApiError', () => {
     }, { refreshTemporarilyUnavailable: true });
 
     expect(mocks.messageWarning).toHaveBeenCalledWith('session expired');
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
+  it('does not destroy the platform session when refresh was superseded by a role transition', () => {
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-during-role-switch',
+      hasAuthToken: true,
+    }, { refreshSuperseded: true });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
     expect(mocks.performLogout).not.toHaveBeenCalled();
   });
 });

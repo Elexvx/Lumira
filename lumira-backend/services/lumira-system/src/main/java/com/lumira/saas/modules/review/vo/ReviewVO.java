@@ -474,6 +474,9 @@ public final class ReviewVO {
         private Long stageId;
         private Long candidateId;
         private Long registrationId;
+        private String competitionTitle;
+        private String stageName;
+        private String registrationNo;
         private BigDecimal aggregateScore;
         private Integer rankNo;
         private String decision;
@@ -495,6 +498,12 @@ public final class ReviewVO {
         public void setCandidateId(Long candidateId) { this.candidateId = candidateId; }
         public Long getRegistrationId() { return registrationId; }
         public void setRegistrationId(Long registrationId) { this.registrationId = registrationId; }
+        public String getCompetitionTitle() { return competitionTitle; }
+        public void setCompetitionTitle(String competitionTitle) { this.competitionTitle = competitionTitle; }
+        public String getStageName() { return stageName; }
+        public void setStageName(String stageName) { this.stageName = stageName; }
+        public String getRegistrationNo() { return registrationNo; }
+        public void setRegistrationNo(String registrationNo) { this.registrationNo = registrationNo; }
         public BigDecimal getAggregateScore() { return aggregateScore; }
         public void setAggregateScore(BigDecimal aggregateScore) { this.aggregateScore = aggregateScore; }
         public Integer getRankNo() { return rankNo; }

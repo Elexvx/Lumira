@@ -1,11 +1,21 @@
 .git
+.agents
 .codex
+.codex-artifacts
+.codex-tmp
 .idea
 .vscode
 .DS_Store
 
+artifacts
+doc
+proposal-render
+storage
+
 **/target
 **/node_modules
+**/coverage
+**/.pnpm-store
 lumira-ui/dist
 lumira-ui/.turbopack
 lumira-ui/src/.umi

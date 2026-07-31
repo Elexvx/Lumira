@@ -1,4 +1,5 @@
 import { ErrorCode } from '@/enums/errorCode';
+import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { captureRequestAuthSnapshot, ensureUniqueWriteRequest, refreshAuthSession } from './requestCoreShared';
 import { handleApiError } from './requestInternalsApiErrorHandling';
 import { buildFallbackError } from './requestInternalsFallbackStatusErrors';
@@ -19,6 +20,7 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
   try {
     let refreshedAfterUnauthorized = false;
     let refreshSucceededAfterUnauthorized = false;
+    let refreshSuperseded = false;
     let refreshTemporarilyUnavailable = false;
 
     while (true) {
@@ -42,7 +44,15 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
           return apiResponse.data as T;
         }
 
-        if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, apiResponse.code, refreshedAfterUnauthorized, authSnapshot)) {
+        if (shouldRefreshAndRetryUnauthorized(
+          url,
+          options,
+          httpStatus,
+          apiResponse.code,
+          refreshedAfterUnauthorized,
+          authSnapshot,
+          buildUnauthorizedRuntimeState(),
+        )) {
           refreshedAfterUnauthorized = true;
           const refreshOutcome = await refreshAuthSession();
           if (refreshOutcome === 'refreshed') {
@@ -50,6 +60,7 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
             authSnapshot = captureRequestAuthSnapshot(options.skipAuth);
             continue;
           }
+          refreshSuperseded = refreshOutcome === 'superseded';
           refreshTemporarilyUnavailable = refreshOutcome === 'temporarily_unavailable';
         }
 
@@ -61,12 +72,28 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
 
         handleApiError(apiError, options, authSnapshot, {
           authenticatedRefreshSucceeded: refreshSucceededAfterUnauthorized,
+          refreshSuperseded,
           refreshTemporarilyUnavailable,
         });
         throw apiError;
       }
 
-      if (shouldRefreshAndRetryUnauthorized(url, options, httpStatus, undefined, refreshedAfterUnauthorized, authSnapshot)) {
+      // A successful no-content response intentionally has no API envelope.
+      // Treat it as a completed request instead of turning DELETE/RESET actions
+      // into a misleading fallback error.
+      if (httpStatus === 204 || httpStatus === 205) {
+        return undefined as T;
+      }
+
+      if (shouldRefreshAndRetryUnauthorized(
+        url,
+        options,
+        httpStatus,
+        undefined,
+        refreshedAfterUnauthorized,
+        authSnapshot,
+        buildUnauthorizedRuntimeState(),
+      )) {
         refreshedAfterUnauthorized = true;
         const refreshOutcome = await refreshAuthSession();
         if (refreshOutcome === 'refreshed') {
@@ -74,12 +101,14 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
           authSnapshot = captureRequestAuthSnapshot(options.skipAuth);
           continue;
         }
+        refreshSuperseded = refreshOutcome === 'superseded';
         refreshTemporarilyUnavailable = refreshOutcome === 'temporarily_unavailable';
       }
 
       const fallbackError = buildFallbackError(httpStatus, requestId, authSnapshot.hasAuthToken);
       handleApiError(fallbackError, options, authSnapshot, {
         authenticatedRefreshSucceeded: refreshSucceededAfterUnauthorized,
+        refreshSuperseded,
         refreshTemporarilyUnavailable,
       });
       throw fallbackError;

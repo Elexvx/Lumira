@@ -679,16 +679,13 @@ public class AuthAppService {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
             AuthSession session = requireActiveSessionById(currentUser.getSessionId());
             SystemUserSnapshotDTO user = requireTrustedActiveSessionProfile(session);
+            SessionMutationFingerprint mutationBaseline = SessionMutationFingerprint.from(session);
             Long requestedRoleId = normalizeSimulatedRoleId(request == null ? null : request.roleId());
             PermissionSnapshotDTO snapshot = requireTrustedPermissionSnapshot(requestedRoleId == null
                     ? systemInternalApi.permissionSnapshot(user.userId(), user.userUuid())
                     : systemInternalApi.simulatedRolePermissionSnapshot(user.userId(), user.userUuid(), requestedRoleId));
             String previousCurrentUserCacheKey = currentUserCacheKey(session);
-            session.setSimulatedRoleId(requestedRoleId);
-            session.setLastActivityAt(Instant.now());
-            session.setRefreshTokenId(UUID.randomUUID().toString());
-            hydrateSessionPermissionSnapshotOnly(session, snapshot);
-            authSessionStore.save(session, true);
+            session = saveSimulatedRoleSwitch(session, mutationBaseline, requestedRoleId, snapshot);
             if (StringUtils.hasText(previousCurrentUserCacheKey)) {
                 currentUserCache.invalidate(previousCurrentUserCacheKey);
             }
@@ -1225,6 +1222,44 @@ public class AuthAppService {
         }
     }
 
+    private AuthSession saveSimulatedRoleSwitch(
+            AuthSession session,
+            SessionMutationFingerprint mutationBaseline,
+            Long requestedRoleId,
+            PermissionSnapshotDTO snapshot
+    ) {
+        String nextRefreshTokenId = UUID.randomUUID().toString();
+        applySimulatedRoleSwitch(session, requestedRoleId, snapshot, nextRefreshTokenId);
+        try {
+            authSessionStore.save(session, true);
+            return session;
+        } catch (BizException exception) {
+            if (exception.getErrorCode() != ErrorCode.SESSION_EXPIRED) {
+                throw exception;
+            }
+            AuthSession latestSession = authSessionStore.findBySessionId(session.getSessionId())
+                    .orElseThrow(() -> exception);
+            if (!mutationBaseline.equals(SessionMutationFingerprint.from(latestSession))) {
+                throw exception;
+            }
+            applySimulatedRoleSwitch(latestSession, requestedRoleId, snapshot, nextRefreshTokenId);
+            authSessionStore.save(latestSession, true);
+            return latestSession;
+        }
+    }
+
+    private void applySimulatedRoleSwitch(
+            AuthSession session,
+            Long requestedRoleId,
+            PermissionSnapshotDTO snapshot,
+            String nextRefreshTokenId
+    ) {
+        session.setSimulatedRoleId(requestedRoleId);
+        session.setLastActivityAt(Instant.now());
+        session.setRefreshTokenId(nextRefreshTokenId);
+        hydrateSessionPermissionSnapshotOnly(session, snapshot);
+    }
+
     private AuthSession requireActiveSessionById(String sessionId) {
         AuthSession session = authSessionStore.findBySessionId(sessionId)
                 .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired"));
@@ -1240,7 +1275,7 @@ public class AuthAppService {
             return;
         }
         invalidateAuthBootstrapCache(session);
-        authSessionStore.remove(session, true);
+        authSessionStore.removeIfUnchanged(session, true);
         throw new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired");
     }
 
@@ -2096,6 +2131,62 @@ public class AuthAppService {
             SystemUserSnapshotDTO user,
             PermissionSnapshotDTO snapshot
     ) {
+    }
+
+    private record SessionMutationFingerprint(
+            String sessionId,
+            Long userId,
+            String userUuid,
+            String username,
+            String loginType,
+            Instant loginTime,
+            Instant expireTime,
+            Integer sessionVersion,
+            Long simulatedRoleId,
+            String clientType,
+            String loginIp,
+            String userAgent,
+            String refreshTokenId,
+            String permissionsVersion,
+            List<String> permissions,
+            List<Long> roleIds,
+            Long primaryDeptId,
+            List<Long> deptIds,
+            List<Long> descendantDeptIds,
+            List<?> dataScopes,
+            Boolean requiresPasswordChange,
+            String defaultHomePath
+    ) {
+        private static SessionMutationFingerprint from(AuthSession session) {
+            return new SessionMutationFingerprint(
+                    session.getSessionId(),
+                    session.getUserId(),
+                    session.getUserUuid(),
+                    session.getUsername(),
+                    session.getLoginType(),
+                    session.getLoginTime(),
+                    session.getExpireTime(),
+                    session.getSessionVersion(),
+                    session.getSimulatedRoleId(),
+                    session.getClientType(),
+                    session.getLoginIp(),
+                    session.getUserAgent(),
+                    session.getRefreshTokenId(),
+                    session.getPermissionsVersion(),
+                    copy(session.getPermissions()),
+                    copy(session.getRoleIds()),
+                    session.getPrimaryDeptId(),
+                    copy(session.getDeptIds()),
+                    copy(session.getDescendantDeptIds()),
+                    copy(session.getDataScopes()),
+                    session.getRequiresPasswordChange(),
+                    session.getDefaultHomePath()
+            );
+        }
+
+        private static <T> List<T> copy(List<T> values) {
+            return values == null ? null : List.copyOf(values);
+        }
     }
 
 }

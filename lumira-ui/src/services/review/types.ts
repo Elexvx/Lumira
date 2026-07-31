@@ -240,6 +240,9 @@ export interface ReviewPublishedResult {
   stageId: number;
   candidateId: number;
   registrationId: number;
+  competitionTitle?: string | null;
+  stageName?: string | null;
+  registrationNo?: string | null;
   aggregateScore?: number | null;
   rankNo?: number | null;
   decision: ReviewDecision;

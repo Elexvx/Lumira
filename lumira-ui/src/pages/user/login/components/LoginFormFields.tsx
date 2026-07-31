@@ -1,6 +1,6 @@
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { CheckOutlined, KeyOutlined, QqOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined, WeiboOutlined } from '@ant-design/icons';
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { Alert, Button, Checkbox, Form, Input, Modal, QRCode, Skeleton, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { LockOutlined } from '@ant-design/icons';

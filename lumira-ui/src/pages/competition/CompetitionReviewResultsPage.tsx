@@ -113,12 +113,16 @@ const CompetitionReviewResultsPage = () => {
                   title: '赛事 / 阶段',
                   render: (_, record) => (
                     <Space direction="vertical" size={0}>
-                      <Typography.Text>赛事 #{record.competitionId}</Typography.Text>
-                      <Typography.Text type="secondary">阶段 #{record.stageId}</Typography.Text>
+                      <Typography.Text>{record.competitionTitle || `赛事 #${record.competitionId}`}</Typography.Text>
+                      <Typography.Text type="secondary">{record.stageName || `阶段 #${record.stageId}`}</Typography.Text>
                     </Space>
                   ),
                 },
-                { title: '报名编号', dataIndex: 'registrationId', render: (value) => `#${value}` },
+                {
+                  title: '报名编号',
+                  dataIndex: 'registrationNo',
+                  render: (value, record) => value || `#${record.registrationId}`,
+                },
                 {
                   title: '结果',
                   dataIndex: 'decision',

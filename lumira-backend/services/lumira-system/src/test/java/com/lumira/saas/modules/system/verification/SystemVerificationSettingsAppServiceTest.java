@@ -3,6 +3,8 @@ package com.lumira.saas.modules.system.verification;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -162,7 +164,11 @@ class SystemVerificationSettingsAppServiceTest {
 
         assertThat(updated.getPasswordLoginEnabled()).isFalse();
         assertThat(queryOperations.updateCount.get()).isGreaterThan(0);
-        verify(readModelVersionService).bump("platform", "public-bootstrap", "verification-settings-update");
+        verify(readModelVersionService).bump(
+                eq("platform"),
+                eq("public-bootstrap"),
+                argThat(eventKey -> eventKey.startsWith("verification-settings-update:"))
+        );
     }
 
     @Test
@@ -195,7 +201,11 @@ class SystemVerificationSettingsAppServiceTest {
                     assertThat(exception.getMessage()).contains("Verification config changed, please retry");
                 });
         assertThat(queryOperations.updateCount.get()).isEqualTo(1);
-        Mockito.verify(readModelVersionService, Mockito.never()).bump("platform", "public-bootstrap", "verification-settings-update");
+        Mockito.verify(readModelVersionService, Mockito.never()).bump(
+                eq("platform"),
+                eq("public-bootstrap"),
+                anyString()
+        );
     }
 
     @Test

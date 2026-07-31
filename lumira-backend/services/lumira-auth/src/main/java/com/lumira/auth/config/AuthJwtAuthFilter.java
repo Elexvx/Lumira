@@ -126,8 +126,33 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
                 || !isTrustedActiveSessionUser(session)) {
             return null;
         }
-        refreshActivity(session);
+        try {
+            refreshActivity(session);
+        } catch (BizException exception) {
+            if (exception.getErrorCode() != ErrorCode.SESSION_EXPIRED) {
+                throw exception;
+            }
+            session = reloadAfterConcurrentActivityWrite(trustedSessionId, claims);
+            if (session == null) {
+                return null;
+            }
+        }
         return buildCurrentUser(session);
+    }
+
+    private AuthSession reloadAfterConcurrentActivityWrite(String sessionId, JwtTokenClaims claims) {
+        AuthSession currentSession;
+        try {
+            currentSession = authSessionStore.findBySessionId(sessionId).orElse(null);
+        } catch (RuntimeException exception) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
+        }
+        if (!isTrustedSession(currentSession, claims)
+                || !isSessionWithinIdleTimeout(currentSession)
+                || !isTrustedActiveSessionUser(currentSession)) {
+            return null;
+        }
+        return currentSession;
     }
 
     private boolean isTrustedAccessClaims(JwtTokenClaims claims) {
@@ -186,7 +211,7 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
         if (!AuthSessionIdlePolicy.isIdleExpired(session, securitySettingsService.getIdleTimeoutSeconds(), Instant.now())) {
             return true;
         }
-        authSessionStore.remove(session, true);
+        authSessionStore.removeIfUnchanged(session, true);
         return false;
     }
 
@@ -220,6 +245,8 @@ public class AuthJwtAuthFilter extends OncePerRequestFilter implements AccessTok
             session.setLastActivityAt(now);
             try {
                 authSessionStore.save(session, false);
+            } catch (BizException exception) {
+                throw exception;
             } catch (RuntimeException exception) {
                 throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Session store is unavailable");
             }

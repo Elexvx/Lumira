@@ -1,6 +1,6 @@
 ﻿import type { RunTimeLayoutConfig } from '@umijs/max';
 import type { ProSettings } from '@ant-design/pro-components';
-import { formatMessage, history, useIntl, useLocation } from '@umijs/max';
+import { history, useIntl, useLocation } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { ArrowLeftOutlined, MoreOutlined, QrcodeOutlined, ReloadOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { Alert, Button, FloatButton, Form, Input, Modal, Popover, Radio, Space, Tooltip, Typography } from 'antd';
@@ -14,11 +14,12 @@ import { isLoggedIn } from '@/auth/sessionLifecycle';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
 import { isTrustedCurrentUser, mergeTrustedCurrentUser } from '@/auth/sessionState';
 import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
+import { handleRoleSwitchBroadcastMessage, handleRoleSwitchStorageEvent } from '@/auth/roleSwitch';
 import { resolveTokenRefreshDelayMs } from '@/auth/sessionRefreshTiming';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
-import { performLogout, tryRefreshTokenOutcome } from '@/auth/sessionLifecycle';
+import { hasUsableTokenAfterRefresh, performLogout, tryRefreshTokenOutcome } from '@/auth/sessionLifecycle';
 import { request } from '@/services/common/request';
 import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
@@ -30,6 +31,7 @@ import { resolveBuiltinMessage } from '@/i18n/messages';
 import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
 import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from '@/navigation/mainMenuFilter';
+import { dedupeRuntimeMenuItems } from '@/navigation/runtimeMenuDedupe';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, isCanonicalRealPageRoutePath, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -164,6 +166,9 @@ const useSessionActivityTimers = ({ securitySettings }: { securitySettings: Secu
       tokenExpireTimerRef.current = window.setTimeout(() => {
         void refreshAccessToken();
       }, TOKEN_REFRESH_RETRY_MS);
+      return false;
+    }
+    if (!hasUsableTokenAfterRefresh(refreshOutcome)) {
       return false;
     }
     scheduleTokenExpirationRef.current();
@@ -407,6 +412,10 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     });
 
     const handleStorage = (event: StorageEvent) => {
+      if (handleRoleSwitchStorageEvent(event)) {
+        return;
+      }
+
       if (event.key === STORAGE_ACTIVITY_KEY && event.newValue) {
         const parsed = Number(event.newValue);
         if (Number.isFinite(parsed) && parsed > 0) {
@@ -416,9 +425,21 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
 
     };
     window.addEventListener('storage', handleStorage);
-    const authChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+    const authChannel = (() => {
+      if (typeof BroadcastChannel === 'undefined') {
+        return null;
+      }
+      try {
+        return new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+      } catch {
+        return null;
+      }
+    })();
     if (authChannel) {
       authChannel.onmessage = (event: MessageEvent<{ type?: string }>) => {
+        if (handleRoleSwitchBroadcastMessage(event.data)) {
+          return;
+        }
         if (event.data?.type === 'updated') {
           if (tokenManager.syncFromStorage()) {
             controller.resetLogoutGuard();
@@ -463,7 +484,11 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
         window.removeEventListener(eventName, handleUserActivity);
       });
       window.removeEventListener('storage', handleStorage);
-      authChannel?.close();
+      try {
+        authChannel?.close();
+      } catch {
+        // Channel teardown is best-effort in restricted browser contexts.
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };
@@ -792,7 +817,7 @@ const WechatContactBindGuard = () => {
   }, [canUseSelectedType, challenge, challengeTarget, contactType, form, requestCode, setInitialState]);
 
   if (!shouldOpen) {
-    return null;
+    return <Form form={form} component={false} />;
   }
 
   return (
@@ -800,7 +825,7 @@ const WechatContactBindGuard = () => {
       open
       title="绑定手机号或邮箱"
       closable={false}
-      maskClosable={false}
+      mask={{ closable: false }}
       keyboard={false}
       okText={codeMatchesValue ? '确认绑定' : '发送验证码'}
       cancelButtonProps={{ style: { display: 'none' } }}
@@ -808,7 +833,7 @@ const WechatContactBindGuard = () => {
       onOk={() => void handleSubmit()}
       destroyOnHidden
     >
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
         <Alert
           showIcon
           type="warning"
@@ -857,7 +882,7 @@ const WechatContactBindGuard = () => {
           {currentVerificationProvider ? (
             <>
               <Form.Item label="当前验证方式">
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                   <Typography.Text>
                     {currentVerificationChallenge?.factorName || currentVerificationProvider.factorName || currentVerificationProvider.factorCode}
                     {currentVerificationChallenge?.maskedContact || currentVerificationProvider.maskedContact
@@ -983,7 +1008,7 @@ const renderBrandHomeLink = ({ logo, brandName }: { logo: ReactNode; brandName: 
   <button
     type="button"
     className="saas-layout-brand"
-    aria-label={formatMessage({ id: 'app.brand.backHome', defaultMessage: '返回首页' })}
+    aria-label={resolveBuiltinMessage('app.brand.backHome', '返回首页')}
     title={brandName}
     onClick={() => history.push(DEFAULT_HOME_PATH)}
   >
@@ -1103,7 +1128,7 @@ const buildDashboardMenuGroupForLayout = (
   const localChild = fallbackByPath.get(DASHBOARD_HOME_PATH);
   const childMenu: RuntimeMenuDataItem = localChild || {
     path: childMeta.path,
-    name: resolveBuiltinMessage(childMeta.name, formatMessage({ id: childMeta.name, defaultMessage: childMeta.name })),
+    name: resolveBuiltinMessage(childMeta.name, childMeta.name),
     locale: false as const,
     icon: resolveNavigationIcon(childMeta.icon),
     hideInMenu: childMeta.hideInMenu,
@@ -1113,7 +1138,7 @@ const buildDashboardMenuGroupForLayout = (
     path: DASHBOARD_GROUP_PATH,
     name: resolveBuiltinMessage(
       groupMeta?.name || childMeta.name,
-      formatMessage({ id: groupMeta?.name || childMeta.name, defaultMessage: groupMeta?.name || childMeta.name }),
+      groupMeta?.name || childMeta.name,
     ),
     locale: false as const,
     icon: resolveNavigationIcon(groupMeta?.icon || childMeta.icon),
@@ -1145,7 +1170,7 @@ const buildStableRouteMenuItemForLayout = (
 
   return {
     path: meta.path,
-    name: resolveNavigationMenuName(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
+    name: resolveNavigationMenuName(meta.name, meta.name),
     locale: false as const,
     icon: resolveNavigationIcon(meta.icon),
     hideInMenu: false,
@@ -1170,7 +1195,7 @@ const buildPersonalCenterMenuGroupForLayout = (
     path: PERSONAL_CENTER_GROUP_PATH,
     name: resolveNavigationMenuName(
       groupMeta.name,
-      formatMessage({ id: groupMeta.name, defaultMessage: groupMeta.name }),
+      groupMeta.name,
     ),
     locale: false as const,
     icon: resolveNavigationIcon(groupMeta.icon),
@@ -1198,7 +1223,7 @@ const buildDataManagementMenuGroupForLayout = (
     path: DATA_MANAGEMENT_GROUP_PATH,
     name: resolveNavigationMenuName(
       groupMeta.name,
-      formatMessage({ id: groupMeta.name, defaultMessage: groupMeta.name }),
+      groupMeta.name,
     ),
     locale: false as const,
     icon: resolveNavigationIcon(groupMeta.icon),
@@ -1382,7 +1407,7 @@ const buildMainMenuDataForLayout = (
         return {
           key: MAIN_MENU_KEY_BY_PATH[path],
           path: meta.path,
-          name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
+          name: resolveBuiltinMessage(meta.name, meta.name),
           locale: false as const,
           icon: resolveNavigationIcon(meta.icon),
           hideInMenu: meta.hideInMenu,
@@ -1492,10 +1517,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
               path: item.path,
               title:
                 typeof breadcrumbTitle === 'string'
-                  ? resolveBuiltinMessage(
-                      breadcrumbTitle,
-                      formatMessage({ id: breadcrumbTitle, defaultMessage: breadcrumbTitle }),
-                    )
+                  ? resolveBuiltinMessage(breadcrumbTitle, breadcrumbTitle)
                   : breadcrumbTitle,
             };
           });
@@ -1563,9 +1585,9 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         .map((node) => composeMenuItemForLayout(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
 
-      return removeRedundantParentPathItemsForLayout(
+      return dedupeRuntimeMenuItems(removeRedundantParentPathItemsForLayout(
         buildMainMenuDataForLayout(initialState, composedMenus, translatedLocalMenus, { allowMissingStableMenus: false }),
-      );
+      )) as RuntimeMenuDataItem[];
     },
     onPageChange: createLayoutOnPageChange({ initialState }),
   };

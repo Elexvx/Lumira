@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -34,8 +36,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -114,6 +119,83 @@ class PermissionSnapshotServiceTest {
     }
 
     @Test
+    void loadGrantedRoleSnapshotShouldReportPermissionSnapshotErrorWhenRoleGrantLookupFails() {
+        RuntimeException lookupFailure = new IllegalStateException("role grant lookup failed");
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new FailingRoleGrantQueryOperations(lookupFailure),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.loadGrantedRoleSnapshot(1001L, "uuid-1001", 3001L)
+        );
+
+        assertEquals(ErrorCode.PERMISSION_SNAPSHOT_ERROR, exception.getErrorCode());
+        assertEquals("P1001", exception.getErrorCode().getCode());
+    }
+
+    @Test
+    void loadGrantedRoleSnapshotShouldMapNestedRolePermissionQueryFailureToSafeSnapshotError() {
+        RuntimeException queryFailure = new CompletionException(
+                new ExecutionException(new SQLException("sensitive JDBC failure details"))
+        );
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new FailingRolePermissionQueryOperations(queryFailure),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.loadGrantedRoleSnapshot(1001L, "uuid-1001", 3001L)
+        );
+
+        assertEquals(ErrorCode.PERMISSION_SNAPSHOT_ERROR, exception.getErrorCode());
+        assertEquals("P1001", exception.getErrorCode().getCode());
+        assertFalse(exception.getMessage().contains("sensitive JDBC failure details"));
+    }
+
+    @Test
+    void loadGrantedRoleSnapshotShouldPreserveNestedBusinessFailure() {
+        BizException expected = new BizException(ErrorCode.UNAUTHORIZED, "Trusted role permission query denied");
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new FailingRolePermissionQueryOperations(
+                        new CompletionException(new ExecutionException(expected))
+                ),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        BizException actual = assertThrows(
+                BizException.class,
+                () -> service.loadGrantedRoleSnapshot(1001L, "uuid-1001", 3001L)
+        );
+
+        assertSame(expected, actual);
+    }
+
+    @Test
+    void loadSnapshotShouldMapPermissionQueryRuntimeFailureToSafeSnapshotError() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("team:view"));
+        jdbcTemplate.rolePermissionQueryFailure = new IllegalStateException("sensitive user permission JDBC failure");
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.loadSnapshot(2001L, "uuid-2001")
+        );
+
+        assertEquals(ErrorCode.PERMISSION_SNAPSHOT_ERROR, exception.getErrorCode());
+        assertFalse(exception.getMessage().contains("sensitive user permission JDBC failure"));
+    }
+
+    @Test
     void loadSnapshotFiltersAdminOnlyPermissionsForOrdinaryUser() {
         PermissionSnapshotService service = newService(
                 List.of("system:menu:view", "system:config:view", "plugin:management:view", "team:view")
@@ -161,7 +243,11 @@ class PermissionSnapshotServiceTest {
         service.invalidatePermissions();
 
         verify(authSessionStore, times(0)).refreshAllSessionPayloads();
-        verify(readModelVersionService).bump("IAM", "permission-snapshot", "iam.permission.invalidate");
+        verify(readModelVersionService).bump(
+                eq("IAM"),
+                eq("permission-snapshot"),
+                argThat(eventKey -> eventKey.startsWith("iam.permission.invalidate:"))
+        );
     }
 
     @Test
@@ -325,10 +411,52 @@ class PermissionSnapshotServiceTest {
         assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.IAM_PERMISSION_SNAPSHOT_DATA_SCOPE_QUERY), 0.0);
     }
 
+    private static final class FailingRoleGrantQueryOperations extends MyBatisQueryOperations {
+        private final RuntimeException lookupFailure;
+
+        private FailingRoleGrantQueryOperations(RuntimeException lookupFailure) {
+            this.lookupFailure = lookupFailure;
+        }
+
+        @Override
+        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            throw lookupFailure;
+        }
+    }
+
+    private static final class FailingRolePermissionQueryOperations extends MyBatisQueryOperations {
+        private final RuntimeException queryFailure;
+
+        private FailingRolePermissionQueryOperations(RuntimeException queryFailure) {
+            this.queryFailure = queryFailure;
+        }
+
+        @Override
+        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            if (Boolean.class.equals(requiredType) && sql.contains("from sys_user_role ur")) {
+                return requiredType.cast(Boolean.TRUE);
+            }
+            return null;
+        }
+
+        @Override
+        public <T> List<T> query(
+                String sql,
+                com.lumira.saas.infrastructure.persistence.mybatis.RowMapper<T> rowMapper,
+                Object... args
+        ) {
+            if (sql.contains("from sys_role_permission rp")) {
+                throw queryFailure;
+            }
+            return List.of();
+        }
+    }
+
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
         private final List<String> permissions;
         private String protectedAdminUsername = "admin";
         private boolean roleGranted = true;
+        private RuntimeException rolePermissionQueryFailure;
         private final AtomicInteger queryCount = new AtomicInteger();
         private final List<Long> usedLegacyScopeIds = java.util.Collections.synchronizedList(new ArrayList<>());
 
@@ -363,6 +491,9 @@ class PermissionSnapshotServiceTest {
                     return List.of(rowMapper.mapRow(row("role_id", 3001L), 0));
                 }
                 if (sql.contains("from sys_role_permission rp") && sql.contains("select distinct rp.permission_key")) {
+                    if (rolePermissionQueryFailure != null) {
+                        throw rolePermissionQueryFailure;
+                    }
                     return mapPermissions(rowMapper);
                 }
                 if (sql.contains("from sys_user_role ur") && sql.contains("select distinct rp.permission_key")) {

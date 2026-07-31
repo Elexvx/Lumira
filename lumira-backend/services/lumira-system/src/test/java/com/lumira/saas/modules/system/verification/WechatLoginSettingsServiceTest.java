@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -161,7 +162,11 @@ class WechatLoginSettingsServiceTest {
             assertThat(entity.getUpdatedBy()).isEqualTo(9L);
             assertThat(entity.getUpdatedByUuid()).isEqualTo("operator-uuid-9");
         });
-        verify(readModelVersionService).bump("platform", "public-bootstrap", "wechat-settings-update");
+        verify(readModelVersionService).bump(
+                eq("platform"),
+                eq("public-bootstrap"),
+                argThat(eventKey -> eventKey.startsWith("wechat-settings-update:"))
+        );
     }
 
     @Test

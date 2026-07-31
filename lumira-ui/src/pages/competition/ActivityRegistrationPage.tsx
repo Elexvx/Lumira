@@ -2,7 +2,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { history, useLocation, useModel } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
@@ -48,7 +48,6 @@ const createActivityRegistrationSearch = (stepIndex: number) => {
 const formatDateTime = (value?: string) => (value ? value.replace('T', ' ').slice(0, 19) : '-');
 
 const ActivityRegistrationPage = () => {
-  const { initialState } = useModel('@@initialState');
   const location = useLocation();
   const actionPermission = useActionPermission();
   const [form] = Form.useForm<ActivityRegistrationValues>();

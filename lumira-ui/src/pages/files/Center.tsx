@@ -1,4 +1,5 @@
-import { getLocale, history, formatMessage, useLocation } from '@umijs/max';
+import { getLocale, history, useLocation } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { Button, Card, Checkbox, Descriptions, Dropdown, Empty, Form, Image, Input, InputNumber, Radio, Select, Space, Spin, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { CopyOutlined, DeleteOutlined, DownloadOutlined, DownOutlined, FileOutlined, InboxOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';

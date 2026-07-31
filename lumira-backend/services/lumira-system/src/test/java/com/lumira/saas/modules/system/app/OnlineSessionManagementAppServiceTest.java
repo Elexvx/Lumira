@@ -885,6 +885,12 @@ class OnlineSessionManagementAppServiceTest {
         }
 
         @Override
+        public boolean removeIfUnchanged(AuthSession session, boolean publishChange) {
+            remove(session, publishChange);
+            return true;
+        }
+
+        @Override
         public void revokeUserSessions(Long userId, String userUuid, boolean publishChange) {
             revokedUserSessions += 1;
         }

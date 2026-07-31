@@ -60,7 +60,7 @@ const EXPERT_REVIEW_APPLICATION_MENUS: BootstrapMenuNode[] = [
     component: '@/pages/competition',
     icon: 'SolutionOutlined',
     sortNo: 2,
-    access: 'canVisitExperts',
+    access: 'isLogin',
   },
 ];
 
@@ -97,6 +97,17 @@ const REGISTRATION_APPLICATION_MENUS: BootstrapMenuNode[] = [
     icon: 'FileSearchOutlined',
     sortNo: 3,
     access: 'canVisitCompetitionReviewResults',
+  },
+  {
+    id: -1079,
+    parentId: -1069,
+    menuCode: 'certificate.mine',
+    name: 'nav.certificates.mine',
+    path: '/certificates/mine',
+    component: '@/pages/certificates/MyCertificatesPage',
+    icon: 'SafetyCertificateOutlined',
+    sortNo: 4,
+    access: 'canVisitMyCertificates',
   },
 ];
 
@@ -321,14 +332,35 @@ const ensureRegistrationApplicationMenus = (menus: MenuNode[], currentUser: Curr
       ];
 };
 
+const dedupeMenuPaths = (menus: MenuNode[], seenPaths = new Set<string>()): MenuNode[] =>
+  menus.flatMap((menu) => {
+    let duplicatePath = false;
+    if (menu.path) {
+      const normalizedPath = menu.path.trim().replace(/\/+$/, '') || '/';
+      if (seenPaths.has(normalizedPath)) {
+        duplicatePath = true;
+      } else {
+        seenPaths.add(normalizedPath);
+      }
+    }
+    const children = dedupeMenuPaths(menu.children || [], seenPaths);
+    if (duplicatePath) {
+      return children;
+    }
+    return [{
+      ...menu,
+      ...(menu.children || children.length ? { children } : {}),
+    }];
+  });
+
 export const normalizeAuthenticatedMenuTree = (
   menuTree: MenuNode[] | undefined,
   currentUser: CurrentUser,
 ): MenuNode[] =>
-  ensureRegistrationApplicationMenus(
+  dedupeMenuPaths(ensureRegistrationApplicationMenus(
     ensureExpertReviewApplicationMenus(
       ensureCompetitionApplicationMenus(filterMenusByAccess(menuTree, currentUser), currentUser),
       currentUser,
     ),
     currentUser,
-  );
+  ));

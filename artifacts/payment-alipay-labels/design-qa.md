@@ -1,7 +1,7 @@
 # Design QA: Alipay key labels
 
 - Source visual truth: the user's annotated payment configuration screenshot in this task.
-- Implementation screenshot: `C:\Users\Administrator\Documents\GitHub\Lumira\payment-alipay-labels-production.png`
+- Implementation screenshot: [`payment-alipay-labels-production.png`](payment-alipay-labels-production.png)
 - Viewport: 1265 × 712, desktop, dark theme.
 - State: Settings → Payment → Add → Alipay configuration drawer, scrolled to key fields.
 - Primary interactions tested: opened Add menu, selected Alipay, opened the drawer, and scrolled the public-key field into view.

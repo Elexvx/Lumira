@@ -44,10 +44,10 @@ test('managed command enforces its overall timeout', { timeout: 5_000 }, async (
 test('managed command resets the no-progress timer when output arrives', { timeout: 5_000 }, async () => {
   const output = await runManagedCommand({
     command: process.execPath,
-    args: ['-e', "let count=0; const timer=setInterval(()=>{ console.log(++count); if(count===3){ clearInterval(timer); } }, 100)"],
+    args: ['-e', "let count=0; console.log(count); const timer=setInterval(()=>{ console.log(++count); if(count===4){ clearInterval(timer); } }, 350)"],
     env: process.env,
-    noProgressTimeoutMs: 500,
+    noProgressTimeoutMs: 1_000,
     killGraceMs: 100,
   });
-  assert.match(output, /3/);
+  assert.match(output, /4/);
 });

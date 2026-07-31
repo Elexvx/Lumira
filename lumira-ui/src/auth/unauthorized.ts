@@ -1,6 +1,7 @@
 import { history } from '@umijs/max';
 import { getAuthSessionEpoch, isBootstrapInProgress, isLoginInProgress } from '@/auth/loginFlowState';
 import { tokenManager } from '@/auth/token';
+import { isRoleSwitchInProgress } from '@/auth/roleSwitchFlowState';
 import type { AuthRequestSnapshot, UnauthorizedRuntimeState } from '@/auth/unauthorizedDecision';
 export type { AuthRequestSnapshot, UnauthorizedRuntimeState } from '@/auth/unauthorizedDecision';
 
@@ -19,4 +20,5 @@ export const buildUnauthorizedRuntimeState = (pathname = history.location.pathna
   currentTokenGeneration: tokenManager.getTokenGeneration(),
   loginInProgress: isLoginInProgress(),
   bootstrapInProgress: isBootstrapInProgress(),
+  roleSwitchInProgress: isRoleSwitchInProgress(),
 });

@@ -186,17 +186,11 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitCompetitionRegister,
     canVisitActivityRegister,
     canVisitPaymentOrders,
-    canVisitCertificates:
-      isLogin &&
-      hasAnyPermission(permissions, [
-        'aiadc:certificate-template:view',
-        'aiadc:certificate-batch:view',
-        'aiadc:certificate-batch:create',
-        'aiadc:certificate:view',
-      ]),
+    canVisitCertificates: isLogin,
     canVisitCertificateTemplates: isLogin && hasPermission(permissions, 'aiadc:certificate-template:view'),
     canVisitCertificateGenerate: isLogin && hasPermission(permissions, 'aiadc:certificate-batch:create'),
     canVisitCertificateRecords: isLogin && hasPermission(permissions, 'aiadc:certificate:view'),
+    canVisitMyCertificates: isLogin,
     canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),
     canVisitExpertReview:
       isLogin && (

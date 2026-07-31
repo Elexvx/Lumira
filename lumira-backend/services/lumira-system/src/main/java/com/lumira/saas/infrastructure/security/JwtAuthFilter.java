@@ -161,6 +161,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             SessionAuthenticationService.AuthenticatedAccess authenticatedAccess = sessionAuthenticationService.authenticateAccessToken(token);
             AuthSession session = authenticatedAccess.session();
             boolean sessionStateUpdated = authenticatedAccess.sessionStateUpdated();
+            boolean activityStateUpdated = false;
             Instant now = Instant.now();
             CurrentUser currentUser = authenticatedAccess.currentUser();
             setAuthentication(currentUser);
@@ -170,11 +171,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             if (sessionAuthenticationService.shouldPersistActivity(session, now)) {
                 session.setLastActivityAt(now);
-                sessionStateUpdated = true;
+                activityStateUpdated = true;
             }
-            if (sessionStateUpdated) {
-                authSessionStore.save(session);
-                if (ownerRuntimeMetrics != null) {
+            if (sessionStateUpdated || activityStateUpdated) {
+                boolean persisted = false;
+                try {
+                    authSessionStore.save(session);
+                    persisted = true;
+                } catch (BizException exception) {
+                    if (sessionStateUpdated
+                            || !activityStateUpdated
+                            || exception.getErrorCode() != ErrorCode.SESSION_EXPIRED) {
+                        throw exception;
+                    }
+                    SessionAuthenticationService.AuthenticatedAccess concurrentAccess =
+                            sessionAuthenticationService.authenticateAccessToken(token);
+                    currentUser = concurrentAccess.currentUser();
+                    setAuthentication(currentUser);
+                    if (initialPasswordChangeGuard.requiresPasswordChange(currentUser)
+                            && !isPasswordChangeAllowedRequest(request)) {
+                        writeForbiddenResponse(request, response);
+                        return;
+                    }
+                }
+                if (persisted && ownerRuntimeMetrics != null) {
                     ownerRuntimeMetrics.recordAuthSessionActivityRefresh();
                 }
             }

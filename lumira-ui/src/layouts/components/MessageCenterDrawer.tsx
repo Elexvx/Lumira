@@ -599,7 +599,7 @@ const MessageCenterContentBody = ({
                       background: 'transparent',
                     }}
                   >
-                    <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: tagWrapGap[0], alignItems: 'flex-start' }}>
                         <Space size={tagWrapGap[0]} wrap>
                           <Typography.Text strong>{notice.title}</Typography.Text>
@@ -762,7 +762,7 @@ export const MessageCenterDrawer = () => {
         destroyOnHidden={false}
       >
         {contentModel.canOpenMessageCenter ? (
-          <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={sectionGap} style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: tagWrapGap[0], flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
                 <Typography.Title level={4} style={{ margin: 0 }}>

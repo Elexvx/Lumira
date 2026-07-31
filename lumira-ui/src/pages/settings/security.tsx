@@ -12,7 +12,7 @@ import type { SecuritySettings } from '@/types/api';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 
 const fieldWidthStyle = { width: '100%' };

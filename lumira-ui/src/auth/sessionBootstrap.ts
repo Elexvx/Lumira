@@ -4,7 +4,12 @@ import { tokenManager } from '@/auth/token';
 import { persistSessionActivity } from '@/auth/activity';
 import { persistCurrentUser, buildFallbackCurrentUser } from '@/auth/sessionState';
 import { loadSecuritySettings } from '@/auth/sessionSecurity';
-import { clearAuthSession, tryRefreshTokenOutcome, withBootstrapFlow } from '@/auth/sessionLifecycle';
+import {
+  clearAuthSession,
+  hasUsableTokenAfterRefresh,
+  tryRefreshTokenOutcome,
+  withBootstrapFlow,
+} from '@/auth/sessionLifecycle';
 import { request } from '@/services/common/request';
 
 export interface SessionBootstrapResult {
@@ -94,7 +99,7 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
   withBootstrapFlow(async () => {
     if (!tokenManager.hasToken()) {
       const refreshOutcome = await tryRefreshTokenOutcome();
-      if (refreshOutcome !== 'refreshed') {
+      if (!hasUsableTokenAfterRefresh(refreshOutcome)) {
         return null;
       }
     }
@@ -119,7 +124,7 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
     const currentUser = await loadCurrentUserOrFallback();
     if (!currentUser) {
       const refreshOutcome = await tryRefreshTokenOutcome();
-      if (refreshOutcome !== 'refreshed') {
+      if (!hasUsableTokenAfterRefresh(refreshOutcome)) {
         if (refreshOutcome === 'session_expired') {
           clearAuthSession();
         }

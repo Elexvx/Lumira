@@ -21,6 +21,7 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   autoRedirectOnUnauthorized?: boolean;
   allowUnauthorizedWithoutRedirect?: boolean;
+  preserveAuthSessionOnUnauthorized?: boolean;
   skipAuth?: boolean;
   silent?: boolean;
   allowDuplicate?: boolean;

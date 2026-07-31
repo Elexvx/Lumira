@@ -921,9 +921,10 @@ async function runDatabaseMigrations() {
   log(`Preparing database migration network with: ${dependencyServices.join(', ')}.`);
   runWithRetry('docker', composeArgs('up', '-d', ...dependencyServices), 1);
 
+  const localMigratorImage = 'lumira/lumira-migrator:local';
   let migratorImage = env.LUMIRA_MIGRATOR_IMAGE || 'ghcr.io/elexvx/lumira/lumira-migrator:main';
   if (rebuild) {
-    migratorImage = 'lumira/lumira-migrator:local';
+    migratorImage = localMigratorImage;
     runWithRetry('docker', [
       'build',
       '-f', 'deploy/docker/migrator.Dockerfile',
@@ -931,6 +932,11 @@ async function runDatabaseMigrations() {
       '.',
     ], 1);
   } else {
+    const localImageStatus = output('docker', ['image', 'inspect', localMigratorImage]);
+    if (localMysql && !pullImages && localImageStatus.status === 0) {
+      migratorImage = localMigratorImage;
+      log(`Using cached local migration image: ${migratorImage}.`);
+    }
     const imageStatus = output('docker', ['image', 'inspect', migratorImage]);
     if (pullImages || imageStatus.status !== 0) {
       runWithRetry('docker', ['pull', migratorImage], 1);
@@ -976,6 +982,11 @@ async function checkDeployment() {
 
   log('Running deployment health checks...');
   await waitForComposeServicesRunning(runtimeServices, 'default deployment services');
+  // A freshly-created Java container reaches Docker's "running" state well
+  // before Spring has finished binding port 8080. Gate the broad route checks
+  // on the public proxy and application health endpoints to avoid false 502s.
+  await waitForHttp(`${baseUrl}/health`, 'API proxy');
+  await waitForHttp(`${baseUrl}/api/health`, 'lumira-server health API');
   run('node', ['bin/check-deployment.mjs'], {
     env: {
       ...process.env,

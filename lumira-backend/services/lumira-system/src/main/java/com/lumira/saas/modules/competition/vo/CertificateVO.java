@@ -104,6 +104,7 @@ public final class CertificateVO {
         private Long competitionId;
         private Long stageId;
         private String sourceType;
+        private Long sourceRefId;
         private Integer totalCount;
         private Integer successCount;
         private Integer failedCount;
@@ -128,6 +129,8 @@ public final class CertificateVO {
         public void setStageId(Long stageId) { this.stageId = stageId; }
         public String getSourceType() { return sourceType; }
         public void setSourceType(String sourceType) { this.sourceType = sourceType; }
+        public Long getSourceRefId() { return sourceRefId; }
+        public void setSourceRefId(Long sourceRefId) { this.sourceRefId = sourceRefId; }
         public Integer getTotalCount() { return totalCount; }
         public void setTotalCount(Integer totalCount) { this.totalCount = totalCount; }
         public Integer getSuccessCount() { return successCount; }
@@ -144,6 +147,116 @@ public final class CertificateVO {
         public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     }
 
+    public static class AwardGrant {
+        private Long id;
+        private Long publicationId;
+        private Integer publicationVersion;
+        private Long reviewBatchId;
+        private Long competitionId;
+        private Long stageId;
+        private Long candidateId;
+        private Long registrationId;
+        private Long projectId;
+        private Long teamId;
+        private Long userId;
+        private String userUuid;
+        private String recipientName;
+        private String competitionTitle;
+        private String projectName;
+        private String teamName;
+        private String awardName;
+        private Integer rankNo;
+        private String decision;
+        private String status;
+        private Long certificateRecordId;
+        private LocalDateTime grantedAt;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getPublicationId() { return publicationId; }
+        public void setPublicationId(Long publicationId) { this.publicationId = publicationId; }
+        public Integer getPublicationVersion() { return publicationVersion; }
+        public void setPublicationVersion(Integer publicationVersion) { this.publicationVersion = publicationVersion; }
+        public Long getReviewBatchId() { return reviewBatchId; }
+        public void setReviewBatchId(Long reviewBatchId) { this.reviewBatchId = reviewBatchId; }
+        public Long getCompetitionId() { return competitionId; }
+        public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
+        public Long getStageId() { return stageId; }
+        public void setStageId(Long stageId) { this.stageId = stageId; }
+        public Long getCandidateId() { return candidateId; }
+        public void setCandidateId(Long candidateId) { this.candidateId = candidateId; }
+        public Long getRegistrationId() { return registrationId; }
+        public void setRegistrationId(Long registrationId) { this.registrationId = registrationId; }
+        public Long getProjectId() { return projectId; }
+        public void setProjectId(Long projectId) { this.projectId = projectId; }
+        public Long getTeamId() { return teamId; }
+        public void setTeamId(Long teamId) { this.teamId = teamId; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public String getUserUuid() { return userUuid; }
+        public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
+        public String getRecipientName() { return recipientName; }
+        public void setRecipientName(String recipientName) { this.recipientName = recipientName; }
+        public String getCompetitionTitle() { return competitionTitle; }
+        public void setCompetitionTitle(String competitionTitle) { this.competitionTitle = competitionTitle; }
+        public String getProjectName() { return projectName; }
+        public void setProjectName(String projectName) { this.projectName = projectName; }
+        public String getTeamName() { return teamName; }
+        public void setTeamName(String teamName) { this.teamName = teamName; }
+        public String getAwardName() { return awardName; }
+        public void setAwardName(String awardName) { this.awardName = awardName; }
+        public Integer getRankNo() { return rankNo; }
+        public void setRankNo(Integer rankNo) { this.rankNo = rankNo; }
+        public String getDecision() { return decision; }
+        public void setDecision(String decision) { this.decision = decision; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public Long getCertificateRecordId() { return certificateRecordId; }
+        public void setCertificateRecordId(Long certificateRecordId) { this.certificateRecordId = certificateRecordId; }
+        public LocalDateTime getGrantedAt() { return grantedAt; }
+        public void setGrantedAt(LocalDateTime grantedAt) { this.grantedAt = grantedAt; }
+    }
+
+    public static class AwardSource {
+        private Long reviewBatchId;
+        private String batchNo;
+        private String batchName;
+        private Long competitionId;
+        private String competitionTitle;
+        private Long stageId;
+        private String stageName;
+        private Integer candidateCount;
+        private Integer publicationVersion;
+        private LocalDateTime publishedAt;
+        private Integer grantCount;
+        private Integer issuedCount;
+
+        public Long getReviewBatchId() { return reviewBatchId; }
+        public void setReviewBatchId(Long reviewBatchId) { this.reviewBatchId = reviewBatchId; }
+        public String getBatchNo() { return batchNo; }
+        public void setBatchNo(String batchNo) { this.batchNo = batchNo; }
+        public String getBatchName() { return batchName; }
+        public void setBatchName(String batchName) { this.batchName = batchName; }
+        public Long getCompetitionId() { return competitionId; }
+        public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
+        public String getCompetitionTitle() { return competitionTitle; }
+        public void setCompetitionTitle(String competitionTitle) { this.competitionTitle = competitionTitle; }
+        public Long getStageId() { return stageId; }
+        public void setStageId(Long stageId) { this.stageId = stageId; }
+        public String getStageName() { return stageName; }
+        public void setStageName(String stageName) { this.stageName = stageName; }
+        public Integer getCandidateCount() { return candidateCount; }
+        public void setCandidateCount(Integer candidateCount) { this.candidateCount = candidateCount; }
+        public Integer getPublicationVersion() { return publicationVersion; }
+        public void setPublicationVersion(Integer publicationVersion) { this.publicationVersion = publicationVersion; }
+        public LocalDateTime getPublishedAt() { return publishedAt; }
+        public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+        public Integer getGrantCount() { return grantCount; }
+        public void setGrantCount(Integer grantCount) { this.grantCount = grantCount; }
+        public Integer getIssuedCount() { return issuedCount; }
+        public void setIssuedCount(Integer issuedCount) { this.issuedCount = issuedCount; }
+    }
+
     public static class Record {
         private Long id;
         private String certificateNo;
@@ -154,6 +267,10 @@ public final class CertificateVO {
         private Long templateVersionId;
         private String templateName;
         private Long competitionId;
+        private Long registrationId;
+        private Long projectId;
+        private Long teamId;
+        private Long userId;
         private String recipientName;
         private String recipientType;
         private String competitionTitle;
@@ -188,6 +305,14 @@ public final class CertificateVO {
         public void setTemplateName(String templateName) { this.templateName = templateName; }
         public Long getCompetitionId() { return competitionId; }
         public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
+        public Long getRegistrationId() { return registrationId; }
+        public void setRegistrationId(Long registrationId) { this.registrationId = registrationId; }
+        public Long getProjectId() { return projectId; }
+        public void setProjectId(Long projectId) { this.projectId = projectId; }
+        public Long getTeamId() { return teamId; }
+        public void setTeamId(Long teamId) { this.teamId = teamId; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
         public String getRecipientName() { return recipientName; }
         public void setRecipientName(String recipientName) { this.recipientName = recipientName; }
         public String getRecipientType() { return recipientType; }

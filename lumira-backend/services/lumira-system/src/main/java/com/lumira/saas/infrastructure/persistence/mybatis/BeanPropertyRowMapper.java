@@ -5,6 +5,10 @@ import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.PropertyAccessorFactory;
 
 import java.lang.reflect.Field;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 public class BeanPropertyRowMapper<T> implements RowMapper<T> {
@@ -54,6 +58,42 @@ public class BeanPropertyRowMapper<T> implements RowMapper<T> {
         }
         if (targetType == Boolean.class || targetType == boolean.class) {
             return toBoolean(value);
+        }
+        if (targetType == LocalDate.class) {
+            if (value instanceof Date date) {
+                return date.toLocalDate();
+            }
+            if (value instanceof Timestamp timestamp) {
+                return timestamp.toLocalDateTime().toLocalDate();
+            }
+            if (value instanceof LocalDateTime localDateTime) {
+                return localDateTime.toLocalDate();
+            }
+        }
+        if (targetType == LocalDateTime.class) {
+            if (value instanceof Timestamp timestamp) {
+                return timestamp.toLocalDateTime();
+            }
+            if (value instanceof Date date) {
+                return date.toLocalDate().atStartOfDay();
+            }
+            if (value instanceof LocalDate localDate) {
+                return localDate.atStartOfDay();
+            }
+        }
+        if (targetType == String.class) {
+            if (value instanceof Date date) {
+                return date.toLocalDate().toString();
+            }
+            if (value instanceof Timestamp timestamp) {
+                return timestamp.toLocalDateTime().toString();
+            }
+            if (value instanceof LocalDate localDate) {
+                return localDate.toString();
+            }
+            if (value instanceof LocalDateTime localDateTime) {
+                return localDateTime.toString();
+            }
         }
         return value;
     }

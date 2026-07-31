@@ -33,7 +33,6 @@ import java.util.concurrent.ThreadLocalRandom;
 @ConditionalOnLumiraControlPlaneEnabled
 public class ExpertManagementAppService {
     private static final String EXPERT_VIEW = "expert:view";
-    private static final String EXPERT_CREATE = "expert:create";
     private static final String EXPERT_UPDATE = "expert:update";
     private static final String EXPERT_DELETE = "expert:delete";
     private static final String STATUS_ENABLED = "ENABLED";
@@ -148,7 +147,10 @@ public class ExpertManagementAppService {
 
     @Transactional
     public ExpertVO.Expert createExpert(CurrentUser currentUser, ExpertDTO.ExpertUpsertRequest request) {
-        Long userId = requirePermission(currentUser, EXPERT_CREATE);
+        // This operation is the self-service expert application entry point.
+        // Approval, update, and deletion remain privileged operations, but an
+        // authenticated applicant must not already need expert:create.
+        Long userId = requireUserId(currentUser);
         String userUuid = requireUserUuid(currentUser);
         requireRequest(request);
         ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, generateExpertCode());

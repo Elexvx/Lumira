@@ -1,5 +1,7 @@
 package com.lumira.saas.infrastructure.security.service;
 
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.saas.infrastructure.security.model.TokenClaims;
@@ -184,6 +186,34 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
+    void shouldUseOnlyRolePermissionsForProtectedAdminWhileSimulatingRole() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(9001L);
+        session.setUserId(1001L);
+        session.setUserUuid("user-uuid-1001");
+        session.setUsername("root-admin");
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        SessionAuthenticationService.AuthenticatedAccess access = service.authenticateAccessToken("access-token");
+
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
+        assertTrue(permissionSnapshotService.roleSnapshotLoaded);
+        assertEquals(Set.of("role:admin", "role:publish"), access.currentUser().getPermissions());
+        assertEquals(9001L, access.currentUser().getSimulatedRoleId());
+    }
+
+    @Test
     void shouldRejectAccessTokenWhenSimulatedRoleGrantIsRevoked() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         permissionSnapshotService.setRoleGranted(false);
@@ -209,7 +239,7 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
-    void shouldRejectAccessTokenWhenUsernameDoesNotMatchTrustedSession() {
+    void shouldRejectStaleUsernameTokenWithoutRemovingTrustedSession() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
         StubJwtTokenService jwtTokenService = new StubJwtTokenService();
@@ -232,10 +262,12 @@ class SessionAuthenticationServiceTest {
                 () -> service.authenticateAccessToken("access-token")
         );
         assertFalse(permissionSnapshotService.userSnapshotLoaded);
+        assertTrue(authSessionStore.sessions.containsKey(session.getSessionId()));
+        assertEquals(0, authSessionStore.removeCount);
     }
 
     @Test
-    void shouldRejectAccessTokenWhenSimulatedRoleIdDoesNotMatchTrustedSession() {
+    void shouldRejectOldRoleTokenWithoutRemovingNewRoleSession() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
         StubJwtTokenService jwtTokenService = new StubJwtTokenService();
@@ -250,14 +282,48 @@ class SessionAuthenticationServiceTest {
         AuthSession session = buildSession(9001L);
         authSessionStore.put(session);
         TokenClaims claims = buildClaims(session);
-        claims.setSimulatedRoleId(9002L);
+        claims.setSimulatedRoleId(null);
+        claims.setPermissionsVersion("v1:data-scope-cache-v4");
         jwtTokenService.setClaims(claims);
 
-        assertThrows(
-                com.lumira.common.exception.BizException.class,
+        BizException exception = assertThrows(
+                BizException.class,
                 () -> service.authenticateAccessToken("access-token")
         );
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
         assertFalse(permissionSnapshotService.roleSnapshotLoaded);
+        assertTrue(authSessionStore.sessions.containsKey(session.getSessionId()));
+        assertEquals(0, authSessionStore.removeCount);
+    }
+
+    @Test
+    void shouldRejectOldSessionVersionWithoutRemovingNewerSession() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setSessionVersion(2);
+        authSessionStore.put(session);
+        TokenClaims claims = buildClaims(session);
+        claims.setSessionVersion(1);
+        jwtTokenService.setClaims(claims);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.authenticateAccessToken("access-token")
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        assertTrue(authSessionStore.sessions.containsKey(session.getSessionId()));
+        assertEquals(0, authSessionStore.removeCount);
     }
 
     @Test
@@ -941,6 +1007,7 @@ class SessionAuthenticationServiceTest {
         private final Map<Long, String> latestUserSessionIds = new HashMap<>();
         private int saveCount;
         private int findCount;
+        private int removeCount;
 
         private StubAuthSessionStore() {
             super(null, null, null);
@@ -973,7 +1040,14 @@ class SessionAuthenticationServiceTest {
 
         @Override
         public void remove(AuthSession session, boolean publishChange) {
+            removeCount += 1;
             sessions.remove(session.getSessionId());
+        }
+
+        @Override
+        public boolean removeIfUnchanged(AuthSession session, boolean publishChange) {
+            remove(session, publishChange);
+            return true;
         }
 
         @Override

@@ -1,4 +1,5 @@
-import { formatMessage, history } from '@umijs/max';
+import { history } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { Button } from 'antd';
 import { getConfiguredDefaultHomePath } from '@/auth/defaultHomePath';
 import ExceptionResult from './ExceptionResult';

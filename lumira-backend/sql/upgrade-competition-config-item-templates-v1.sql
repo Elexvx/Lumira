@@ -31,13 +31,13 @@ VALUES
 ('DEFAULT','PROJECT_FIELD','title','项目名称','{"fieldType":"TEXT","placeholder":"请输入项目名称","validationRule":"NONE","standardField":true}',NULL,210,1,1,0),
 ('DEFAULT','PROJECT_FIELD','imageUrl','项目头像','{"fieldType":"IMAGE","placeholder":"请上传项目头像","validationRule":"NONE","standardField":true}',NULL,220,0,1,0),
 ('DEFAULT','PROJECT_FIELD','description','项目简介','{"fieldType":"TEXTAREA","placeholder":"请输入项目简介","validationRule":"NONE","standardField":true}',NULL,230,0,1,0),
-('DEFAULT','PROJECT_FIELD','intellectualPropertyType','知识产权类型','{"fieldType":"SELECT","placeholder":"请选择知识产权类型","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"发明专利\\n实用新型专利\\n外观设计专利\\n软件著作权\\n作品著作权\\n商标\\n其他"}',NULL,310,1,1,0),
-('DEFAULT','PROJECT_FIELD','intellectualPropertyName','知识产权名称','{"fieldType":"TEXT","placeholder":"请输入知识产权名称","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,320,1,1,0),
-('DEFAULT','PROJECT_FIELD','registrationNumber','申请号/登记号','{"fieldType":"TEXT","placeholder":"请输入申请号或登记号","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,330,0,1,0),
-('DEFAULT','PROJECT_FIELD','rightsHolder','权利人','{"fieldType":"TEXT","placeholder":"请输入权利人","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,340,1,1,0),
-('DEFAULT','PROJECT_FIELD','legalStatus','法律状态','{"fieldType":"SELECT","placeholder":"请选择法律状态","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"申请中\\n已受理\\n已授权\\n已登记\\n已失效\\n其他"}',NULL,350,0,1,0),
-('DEFAULT','PROJECT_FIELD','grantDate','授权/登记日期','{"fieldType":"DATE","placeholder":"请选择授权或登记日期","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,360,0,1,0),
-('DEFAULT','PROJECT_FIELD','distributionRegions','知识产权分布区域','{"fieldType":"MULTI_SELECT","placeholder":"请选择知识产权分布区域","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"中国大陆\\n中国香港\\n中国澳门\\n中国台湾\\n海外"}',NULL,370,1,1,0)
+('DEFAULT','PROJECT_FIELD','intellectualPropertyType','知识产权类型','{"fieldType":"SELECT","placeholder":"请选择知识产权类型","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"发明专利\\n实用新型专利\\n外观设计专利\\n软件著作权\\n作品著作权\\n商标\\n其他"}',NULL,310,1,0,0),
+('DEFAULT','PROJECT_FIELD','intellectualPropertyName','知识产权名称','{"fieldType":"TEXT","placeholder":"请输入知识产权名称","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,320,1,0,0),
+('DEFAULT','PROJECT_FIELD','registrationNumber','申请号/登记号','{"fieldType":"TEXT","placeholder":"请输入申请号或登记号","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,330,0,0,0),
+('DEFAULT','PROJECT_FIELD','rightsHolder','权利人','{"fieldType":"TEXT","placeholder":"请输入权利人","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,340,1,0,0),
+('DEFAULT','PROJECT_FIELD','legalStatus','法律状态','{"fieldType":"SELECT","placeholder":"请选择法律状态","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"申请中\\n已受理\\n已授权\\n已登记\\n已失效\\n其他"}',NULL,350,0,0,0),
+('DEFAULT','PROJECT_FIELD','grantDate','授权/登记日期','{"fieldType":"DATE","placeholder":"请选择授权或登记日期","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,360,0,0,0),
+('DEFAULT','PROJECT_FIELD','distributionRegions','知识产权分布区域','{"fieldType":"MULTI_SELECT","placeholder":"请选择知识产权分布区域","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"中国大陆\\n中国香港\\n中国澳门\\n中国台湾\\n海外"}',NULL,370,1,0,0)
 ON DUPLICATE KEY UPDATE
   `title` = VALUES(`title`),
   `content_json` = VALUES(`content_json`),

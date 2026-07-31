@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.review.app;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -33,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,44 @@ public class ReviewAppService {
             "PASS", "FAIL", "WAITLIST", "ADVANCED", "ELIMINATED", "REVIEW_REQUIRED"
     );
     private static final Set<String> APPEAL_DECISIONS = Set.of("ACCEPTED", "REJECTED");
+    private static final Set<String> BLIND_SENSITIVE_KEYS = Set.of(
+            "registrationno",
+            "owner",
+            "ownername",
+            "owneruserid",
+            "owneruseruuid",
+            "userid",
+            "useruuid",
+            "username",
+            "membername",
+            "teamname",
+            "leadername",
+            "responsibleperson",
+            "rightsholder",
+            "holdername",
+            "recipientname",
+            "contact",
+            "contactname",
+            "contactemail",
+            "contactphone",
+            "email",
+            "mobile",
+            "phone",
+            "telephone",
+            "idcard",
+            "identityno",
+            "employeeno",
+            "studentno",
+            "originalfilename",
+            "filename",
+            "uploadername",
+            "createdby",
+            "updatedby"
+    );
+    private static final Pattern BLIND_EMAIL_PATTERN = Pattern.compile(
+            "(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}"
+    );
+    private static final Pattern BLIND_MOBILE_PATTERN = Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)");
     private static final DateTimeFormatter BATCH_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     private final ReviewRepository reviewRepository;
@@ -1657,18 +1697,82 @@ public class ReviewAppService {
             return immutableCandidateSnapshot(source);
         }
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("schemaVersion", 1);
+        snapshot.put("schemaVersion", 2);
         snapshot.put("blindCode", blindCode);
         snapshot.put("competitionId", source.competitionId());
         snapshot.put("registrationStatus", source.status());
-        snapshot.put("project", parseJson(source.projectSnapshotJson()));
-        snapshot.put("collectionSchema", parseJson(source.collectionSchemaSnapshotJson()));
-        snapshot.put("materials", parseJson(source.materialSnapshotJson()));
+        snapshot.put("project", blindSafeJson(source.projectSnapshotJson()));
+        snapshot.put("collectionSchema", blindSafeJson(source.collectionSchemaSnapshotJson()));
+        snapshot.put("materials", blindSafeJson(source.materialSnapshotJson()));
         try {
             return objectMapper.writeValueAsString(snapshot);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Could not serialize blind review candidate snapshot", exception);
         }
+    }
+
+    private JsonNode blindSafeJson(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return sanitizeBlindNode(objectMapper.readTree(value));
+        } catch (JsonProcessingException exception) {
+            throw biz(ErrorCode.BIZ_ERROR, "Registration snapshot data is invalid");
+        }
+    }
+
+    private JsonNode sanitizeBlindNode(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return node;
+        }
+        if (node.isObject()) {
+            JsonNode configuredKey = node.get("itemKey");
+            if (configuredKey != null && configuredKey.isTextual()
+                    && isBlindSensitiveKey(configuredKey.asText())) {
+                return null;
+            }
+            var sanitized = objectMapper.createObjectNode();
+            node.fields().forEachRemaining(entry -> {
+                if (isBlindSensitiveKey(entry.getKey())) {
+                    return;
+                }
+                JsonNode child = sanitizeBlindNode(entry.getValue());
+                if (child != null) {
+                    sanitized.set(entry.getKey(), child);
+                }
+            });
+            return sanitized;
+        }
+        if (node.isArray()) {
+            var sanitized = objectMapper.createArrayNode();
+            node.forEach(child -> {
+                JsonNode safeChild = sanitizeBlindNode(child);
+                if (safeChild != null) {
+                    sanitized.add(safeChild);
+                }
+            });
+            return sanitized;
+        }
+        if (node.isTextual()) {
+            String text = BLIND_EMAIL_PATTERN.matcher(node.textValue()).replaceAll("[REDACTED]");
+            text = BLIND_MOBILE_PATTERN.matcher(text).replaceAll("[REDACTED]");
+            return objectMapper.getNodeFactory().textNode(text);
+        }
+        return node.deepCopy();
+    }
+
+    private boolean isBlindSensitiveKey(String key) {
+        String normalized = key == null
+                ? ""
+                : key.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+        return BLIND_SENSITIVE_KEYS.contains(normalized)
+                || normalized.endsWith("userid")
+                || normalized.endsWith("useruuid")
+                || normalized.endsWith("email")
+                || normalized.endsWith("mobile")
+                || normalized.endsWith("phone")
+                || normalized.endsWith("filename");
     }
 
     private Object parseJson(String value) {

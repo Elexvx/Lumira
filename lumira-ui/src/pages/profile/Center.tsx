@@ -1,4 +1,4 @@
-﻿import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { getLocale } from '@umijs/max';
 import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Input, List, Modal, Progress, QRCode, Result, Row, Select, Space, Tag, Timeline, Tooltip, Typography, Upload, theme } from 'antd';
 import type { DescriptionsProps, FormProps, UploadProps } from 'antd';

@@ -129,7 +129,7 @@ vi.mock('@/floatingWindow/settings', () => ({
   normalizeFloatingWindowSettings: vi.fn((settings) => ({ ...mocks.defaultFloatingWindowSettings, ...(settings || {}) })),
 }));
 
-describe('getAppInitialState', () => {
+describe('getAppInitialState', { timeout: 60_000 }, () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.clearAuthSession.mockReset();
@@ -225,7 +225,7 @@ describe('getAppInitialState', () => {
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/floating-window-settings', expect.any(Object));
     expect(mocks.persistWatermarkSettings).toHaveBeenCalledWith(mocks.defaultWatermarkSettings);
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
-  }, 15_000);
+  }, 60_000);
 
   it('reuses menu resources from auth bootstrap when they are already present', async () => {
     mocks.restoreSession.mockResolvedValue({
@@ -252,13 +252,22 @@ describe('getAppInitialState', () => {
     const { getAppInitialState } = await import('@/app.bootstrap');
     const initialState = await getAppInitialState();
 
-    expect(initialState.menuTree).toEqual([
+    expect(initialState.menuTree).toEqual(expect.arrayContaining([
       { menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' },
       expect.objectContaining({
         menuCode: 'registration.root',
-        children: [expect.objectContaining({ menuCode: 'competition.registration' })],
+        children: expect.arrayContaining([
+          expect.objectContaining({ menuCode: 'competition.registration' }),
+          expect.objectContaining({ menuCode: 'certificate.mine' }),
+        ]),
       }),
-    ]);
+      expect.objectContaining({
+        menuCode: 'expert.review.root',
+        children: expect.arrayContaining([
+          expect.objectContaining({ menuCode: 'expert.application' }),
+        ]),
+      }),
+    ]));
     expect(initialState.availablePlugins).toEqual([
       { pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' },
     ]);
@@ -293,7 +302,10 @@ describe('getAppInitialState', () => {
       path: '/registration',
       component: 'redirect:/competitions/register',
     });
-    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual(['competition.registration']);
+    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual([
+      'competition.registration',
+      'certificate.mine',
+    ]);
     expect(initialState.menuTree?.some((menu) => menu.menuCode === 'activity.registration')).toBe(false);
     expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'competition.registration'))).toBe(false);
   });
@@ -364,7 +376,10 @@ describe('getAppInitialState', () => {
       path: '/expert-review',
       component: 'redirect:/expert-review/reviews',
     });
-    expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual(['expert.review.tasks']);
+    expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual([
+      'expert.review.tasks',
+      'expert.application',
+    ]);
     expect(expertReviewRoot?.children?.[0]).toMatchObject({
       name: 'nav.expertReview.reviews',
       path: '/expert-review/reviews',

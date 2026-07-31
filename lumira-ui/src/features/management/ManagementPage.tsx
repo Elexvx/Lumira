@@ -1,5 +1,5 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { formatMessage, useLocation } from '@umijs/max';
+import { useLocation } from '@umijs/max';
 import type { BreadcrumbProps } from 'antd';
 import type { ComponentProps } from 'react';
 import { backendRouteMeta } from '@/routes/meta';
@@ -24,13 +24,7 @@ const resolveRouteMetaTitle = (path: string) => {
     return path;
   }
 
-  return resolveBuiltinMessage(
-    meta.name,
-    formatMessage({
-      id: meta.name,
-      defaultMessage: meta.name,
-    }),
-  );
+  return resolveBuiltinMessage(meta.name, meta.name);
 };
 
 const buildRouteMetaTrail = (pathname: string): BreadcrumbItem[] => {
@@ -79,13 +73,7 @@ export const buildBreadcrumbItems = (menuNodes: MenuNode[] | undefined, pathname
     const fallback = node.name || node.path || '';
     return {
       key: node.path || String(node.id),
-      title: resolveBuiltinMessage(
-        messageId,
-        formatMessage({
-          id: messageId,
-          defaultMessage: fallback,
-        }),
-      ),
+      title: resolveBuiltinMessage(messageId, fallback),
       path: index === trail.length - 1 ? undefined : normalizeBreadcrumbPath(node.path, node.id),
     };
   });

@@ -15,6 +15,7 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
+import { resolveActivityCtaTarget } from '@/pages/activity/utils/activityCtaTarget';
 import { createActivity, deleteActivity, listActivities, updateActivity } from '@/services/activity/api';
 import type { ActivityLocale, ActivityRecord, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
 import { request } from '@/services/common/request';
@@ -92,27 +93,16 @@ const getActivitySeed = (record: ActivityRecord) =>
   Array.from(`${record.code || record.id}-${record.title}`).reduce((total, char) => total + char.charCodeAt(0), 0);
 
 const getActivityCoverTheme = (record: ActivityRecord) => activityCoverThemes[getActivitySeed(record) % activityCoverThemes.length];
-const isExternalActivityHref = (href: string) => /^(https?:)?\/\//i.test(href);
-const normalizeActivityCtaHref = (href?: string | null) => {
-  const trimmedHref = href?.trim();
-  if (!trimmedHref) {
-    return undefined;
-  }
-  if (isExternalActivityHref(trimmedHref) || trimmedHref.startsWith('/')) {
-    return trimmedHref;
-  }
-  return `/${trimmedHref}`;
-};
 const openActivityCta = (href?: string | null) => {
-  const normalizedHref = normalizeActivityCtaHref(href);
-  if (!normalizedHref) {
+  const target = resolveActivityCtaTarget(href);
+  if (!target) {
     return;
   }
-  if (isExternalActivityHref(normalizedHref)) {
-    window.open(normalizedHref, '_blank', 'noopener,noreferrer');
+  if (target.kind === 'external') {
+    window.open(target.href, '_blank', 'noopener,noreferrer');
     return;
   }
-  history.push(normalizedHref);
+  history.push(target.href);
 };
 
 const isActivitySearchRoute = (pathname: string) => pathname === '/activities/search';
@@ -639,8 +629,8 @@ const ActivitySearchView = () => {
                 const tags = splitActivityTags(record.tags);
                 const coverUrl = normalizeUploadUrl(record.imageUrl || '');
                 const coverTheme = getActivityCoverTheme(record);
-                const ctaHref = normalizeActivityCtaHref(record.ctaHref);
-                const ctaLabel = record.ctaLabel?.trim() || (ctaHref ? '填写报名资料' : undefined);
+                const ctaTarget = resolveActivityCtaTarget(record.ctaHref);
+                const ctaLabel = record.ctaLabel?.trim() || (ctaTarget ? '填写报名资料' : undefined);
                 return (
                   <div key={record.id}>
                     <article className="activity-search-result">
@@ -686,8 +676,8 @@ const ActivitySearchView = () => {
                               type="primary"
                               size="small"
                               className="activity-search-result__cta"
-                              disabled={!ctaHref}
-                              onClick={() => openActivityCta(ctaHref)}
+                              disabled={!ctaTarget}
+                              onClick={() => openActivityCta(record.ctaHref)}
                             >
                               {ctaLabel}
                             </Button>

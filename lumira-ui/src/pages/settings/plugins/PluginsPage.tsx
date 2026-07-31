@@ -1,4 +1,4 @@
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { ArrowLeftOutlined, BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';

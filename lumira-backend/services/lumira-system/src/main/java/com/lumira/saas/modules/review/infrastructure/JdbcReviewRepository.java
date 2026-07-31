@@ -1704,7 +1704,10 @@ public class JdbcReviewRepository implements ReviewRepository {
                                publication.publication_version as publicationVersion,
                                batch.id as batchId, batch.competition_id as competitionId,
                                batch.stage_id as stageId, candidate.id as candidateId,
+                               competition.title as competitionTitle,
+                               stage.stage_name as stageName,
                                registration.id as registrationId,
+                               registration.registration_no as registrationNo,
                                review_aggregate.aggregate_score as aggregateScore,
                                review_aggregate.rank_no as rankNo, review_aggregate.decision,
                                publication.published_at as publishedAt,
@@ -1715,9 +1718,15 @@ public class JdbcReviewRepository implements ReviewRepository {
                            and batch.status = 'PUBLISHED' and batch.deleted = 0
                           join competition_review_candidate candidate
                             on candidate.batch_id = batch.id and candidate.deleted = 0
-                          join competition_registration registration
-                            on registration.id = candidate.registration_id and registration.deleted = 0
-                          join competition_review_aggregate review_aggregate
+                           join competition_registration registration
+                             on registration.id = candidate.registration_id and registration.deleted = 0
+                           join aiadc_competition competition
+                             on competition.id = batch.competition_id and competition.deleted = 0
+                           join competition_stage stage
+                             on stage.id = batch.stage_id
+                            and stage.competition_id = batch.competition_id
+                            and stage.deleted = 0
+                           join competition_review_aggregate review_aggregate
                             on review_aggregate.batch_id = batch.id
                            and review_aggregate.candidate_id = candidate.id
                            and review_aggregate.status = 'FINALIZED'

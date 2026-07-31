@@ -7,6 +7,7 @@ export default {
   'global.float.qrCode': '二维码',
   'global.float.refresh': '刷新页面',
   'global.float.backTop': '回到顶部',
+  'global.float.more': '快捷操作',
   'app.layout.backToMainRoute': '返回主路由',
   'app.brand.backHome': '返回首页',
   'app.layout.uploadQrHint': '请在个性化设置上传二维码',

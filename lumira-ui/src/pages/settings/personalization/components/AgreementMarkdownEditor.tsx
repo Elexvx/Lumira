@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
 import { useRef, useState } from 'react';
-import { Button, Divider, Input, Tooltip } from 'antd';
+import { Button, Divider, Input, Space, Tooltip } from 'antd';
 import {
   BoldOutlined,
   CheckSquareOutlined,
@@ -173,14 +173,14 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
               }
             />
           </>
-          <Divider type="vertical" />
+          <Divider orientation="vertical" />
           <>
             {AGREEMENT_MARKDOWN_TOOLBAR_LEFT_ACTIONS.map((action) => (
               <Tooltip title={action.title} key={action.key}>
                 <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAgreementMarkdown(markdown, getTextArea, action, onChange)} />
               </Tooltip>
             ))}
-            <Divider type="vertical" />
+            <Divider orientation="vertical" />
             {AGREEMENT_MARKDOWN_TOOLBAR_RIGHT_ACTIONS.map((action) => (
               <Tooltip title={action.title} key={action.key}>
                 <Button size="small" icon={action.icon} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAgreementMarkdown(markdown, getTextArea, action, onChange)} />
@@ -189,14 +189,14 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
           </>
         </div>
         <div className="agreement-markdown-editor__mode">
-          <Button.Group size="small">
-              <Button type={mode === 'edit' ? 'primary' : 'default'} onClick={() => setMode('edit')}>
+          <Space.Compact size="small">
+            <Button type={mode === 'edit' ? 'primary' : 'default'} onClick={() => setMode('edit')}>
               {t('编辑', 'Edit')}
             </Button>
             <Button type={mode === 'preview' ? 'primary' : 'default'} onClick={() => setMode('preview')}>
               {t('预览', 'Preview')}
             </Button>
-          </Button.Group>
+          </Space.Compact>
         </div>
       </div>
       <div className="agreement-markdown-editor__body">

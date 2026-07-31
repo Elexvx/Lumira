@@ -24,6 +24,7 @@ import type {
 } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { sanitizeRichText } from '@/security/richTextSanitizer';
 import './WorkOrderFeedbackPage.css';
 
 type WorkOrderFormValues = {
@@ -75,29 +76,6 @@ const priorityColor: Record<WorkOrderFeedbackPriority, string> = {
 
 const labelOf = <T extends string>(options: Array<{ label: string; value: T }>, value?: T | null) =>
   options.find((item) => item.value === value)?.label || value || '-';
-
-const sanitizeRichText = (html?: string) => {
-  if (typeof document === 'undefined') {
-    return html || '';
-  }
-  const template = document.createElement('template');
-  template.innerHTML = html || '';
-  template.content.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach((node) => node.remove());
-  template.content.querySelectorAll<HTMLElement>('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attribute) => {
-      const name = attribute.name.toLowerCase();
-      const value = attribute.value.trim().toLowerCase();
-      if (name.startsWith('on') || value.startsWith('javascript:')) {
-        node.removeAttribute(attribute.name);
-      }
-    });
-    if (node.tagName.toLowerCase() === 'a') {
-      node.setAttribute('target', '_blank');
-      node.setAttribute('rel', 'noopener noreferrer');
-    }
-  });
-  return template.innerHTML;
-};
 
 const uploadRichTextImage = async (file: File) => {
   if (!file.type.startsWith('image/')) {

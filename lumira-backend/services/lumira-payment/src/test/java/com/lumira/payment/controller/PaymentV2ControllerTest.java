@@ -119,6 +119,19 @@ class PaymentV2ControllerTest {
     }
 
     @Test
+    void providers_shouldRejectProtectedAdminWhileSimulatingRole() {
+        CurrentUser admin = currentUser(1001L, "root-admin", 0L, "payment:config:view");
+        admin.setSimulatedRoleId(9001L);
+        when(securityContextFacade.getCurrentUser()).thenReturn(admin);
+
+        assertThatThrownBy(controller::providers)
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verify(paymentManagementAppService, never()).listProviderSettings(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void updateProvider_shouldDelegateWithOperator() {
         CurrentUser admin = currentUser(1001L, "admin", null, "payment:config:update");
         PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();

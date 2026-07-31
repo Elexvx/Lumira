@@ -1,4 +1,4 @@
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { Form } from 'antd';
 import { type UploadProps } from 'antd';
 import dayjs from 'dayjs';

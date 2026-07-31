@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -348,7 +349,7 @@ class AuthJwtAuthFilterTest {
         filter.doFilterInternal(request, response, chain);
 
         assertThat(chainInvoked).isTrue();
-        verify(authSessionStore).remove(session, true);
+        verify(authSessionStore).removeIfUnchanged(session, true);
         verify(systemInternalApi, never()).findUserById(42L);
     }
 
@@ -384,6 +385,34 @@ class AuthJwtAuthFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(503);
         assertThat(response.getContentAsString()).contains("S0002");
+    }
+
+    @Test
+    void revalidatesAfterConcurrentActivityWriteInsteadOfRejectingTrustedRequest() throws Exception {
+        JwtTokenClaims claims = accessClaims("session-1", 42L, "alice", 3);
+        AuthSession staleSession = session("session-1", 42L, "alice", 3);
+        staleSession.setLastActivityAt(Instant.now().minusSeconds(120));
+        AuthSession currentSession = session("session-1", 42L, "alice", 3);
+        currentSession.setLastActivityAt(Instant.now());
+        when(jwtTokenService.parseToken("token-1")).thenReturn(claims);
+        when(authSessionStore.findBySessionId("session-1"))
+                .thenReturn(Optional.of(staleSession), Optional.of(currentSession));
+        when(systemInternalApi.findUserById(42L)).thenReturn(enabledUser(42L));
+        doThrow(new com.lumira.common.exception.BizException(
+                com.lumira.common.enums.ErrorCode.SESSION_EXPIRED,
+                "Session changed concurrently"
+        )).when(authSessionStore).save(staleSession, false);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/auth/current-user");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean authenticated = new AtomicBoolean(false);
+
+        filter.doFilterInternal(request, response, (servletRequest, servletResponse) ->
+                authenticated.set(SecurityContextHolder.getContext().getAuthentication() != null));
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(authenticated).isTrue();
+        verify(authSessionStore).save(staleSession, false);
     }
 
     private JwtTokenClaims accessClaims(String sessionId, Long userId, String username, Integer sessionVersion) {

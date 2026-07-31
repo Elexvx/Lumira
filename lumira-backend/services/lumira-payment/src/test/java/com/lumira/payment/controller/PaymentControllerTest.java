@@ -232,6 +232,39 @@ class PaymentControllerTest {
     }
 
     @Test
+    void providers_shouldRejectProtectedAdminWhileSimulatingRole() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = trusted(new CurrentUser(
+                1001L,
+                "root-admin",
+                0L,
+                "session-1",
+                1,
+                true,
+                Set.of("payment:config:view")
+        ));
+        currentUser.setSimulatedRoleId(9001L);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+
+        assertThatThrownBy(controller::providers)
+                .isInstanceOfSatisfying(com.lumira.common.exception.BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(com.lumira.common.enums.ErrorCode.FORBIDDEN));
+
+        verify(paymentManagementAppService, never()).listProviderSettings(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void createOrder_shouldRejectBlankUsernameBeforePermissionAndService() {
         PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
         PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);

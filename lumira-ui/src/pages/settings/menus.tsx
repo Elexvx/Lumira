@@ -4,7 +4,7 @@ import { Button, Form, Input, InputNumber, Select, Space, Spin, Tabs, Tag, Typog
 import { message } from '@/theme/antdFeedbackBridge';
 import type { FormProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
-import { formatMessage } from '@umijs/max';
+import { formatMessage } from '@/i18n/formatMessage';
 import { storage } from '@/cache/storage';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';

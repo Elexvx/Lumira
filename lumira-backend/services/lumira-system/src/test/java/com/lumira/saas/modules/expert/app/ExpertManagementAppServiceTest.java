@@ -173,22 +173,35 @@ class ExpertManagementAppServiceTest {
     }
 
     @Test
-    void createExpertShouldRejectWhenLiveSnapshotRevokesCreatePermissionBeforeDatabaseOrWorkflowAccess() {
-        MyBatisQueryOperations sql = mock(MyBatisQueryOperations.class);
+    void createExpertShouldAllowAuthenticatedApplicantWithoutCreatePermission() {
+        ExpertSql sql = new ExpertSql();
         WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        when(workflowAppService.startWorkflow(
+                any(CurrentUser.class),
+                eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION),
+                eq(501L),
+                eq("exp-001"),
+                eq("Ada Expert"),
+                any(Map.class)
+        )).thenReturn(7001L);
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("expert:view")));
         ExpertManagementAppService service = new ExpertManagementAppService(repository(sql), workflowAppService, permissionSnapshotService);
 
-        assertThatThrownBy(() -> service.createExpert(user("expert:create"), expertRequest()))
-                .isInstanceOfSatisfying(BizException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        ExpertVO.Expert expert = service.createExpert(user("expert:create"), expertRequest());
 
-        verify(sql, never()).update(anyString(), any());
-        verify(sql, never()).queryForObject(anyString(), any(Class.class), any());
-        verify(workflowAppService, never()).startWorkflow(any(), anyString(), any(), any(), any(), any());
+        assertThat(expert.getApprovalStatus()).isEqualTo("PENDING");
+        assertThat(expert.getApprovalInstanceId()).isEqualTo(7001L);
+        verify(workflowAppService).startWorkflow(
+                any(CurrentUser.class),
+                eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION),
+                eq(501L),
+                eq("exp-001"),
+                eq("Ada Expert"),
+                any(Map.class)
+        );
     }
 
     @Test

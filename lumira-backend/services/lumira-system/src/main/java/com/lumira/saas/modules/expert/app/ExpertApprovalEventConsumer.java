@@ -81,31 +81,66 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         Long userId = expert.userId();
         String userUuid = expert.userUuid();
         String username = expert.username();
+        boolean accountCreated = false;
         if (userId == null) {
-            username = nextUsername(expert.code(), expertId);
-            SystemDTO.UserUpsertRequest userRequest = new SystemDTO.UserUpsertRequest();
-            userRequest.setUsername(username);
-            userRequest.setPassword(randomPassword());
-            userRequest.setMobile(expert.mobile());
-            userRequest.setEmail(expert.email());
-            userRequest.setRealName(expert.name());
-            userRequest.setNickname(expert.name());
-            userRequest.setStatus("ENABLED");
-            Long expertRoleId = findRoleId("EXPERT");
-            userRequest.setRoleIds(expertRoleId == null ? List.of() : List.of(expertRoleId));
-            SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUserFromTrustedSnapshot(operator, userRequest);
-            userId = createdUser.getId();
-            userUuid = requireCreatedUserUuid(createdUser);
-            int linked = approvalRepository.bindAccount(expertId, businessUuid, workflowInstanceId, userId, userUuid,
-                    operator.getUserId(), operator.getUserUuid(), LocalDateTime.now());
-            if (linked != 1) {
-                throw new IllegalStateException("Expert account binding changed before activation");
+            OperatorRecord applicant = loadExistingApplicant(expert);
+            if (applicant != null) {
+                userId = applicant.userId();
+                userUuid = applicant.userUuid();
+                username = applicant.username();
+                int linked = approvalRepository.bindExistingAccount(
+                        expertId,
+                        businessUuid,
+                        workflowInstanceId,
+                        userId,
+                        userUuid,
+                        operator.getUserId(),
+                        operator.getUserUuid(),
+                        LocalDateTime.now()
+                );
+                if (linked != 1) {
+                    throw new IllegalStateException("Expert applicant binding changed before role assignment");
+                }
+            } else {
+                username = nextUsername(expert.code(), expertId);
+                SystemDTO.UserUpsertRequest userRequest = new SystemDTO.UserUpsertRequest();
+                userRequest.setUsername(username);
+                userRequest.setPassword(randomPassword());
+                userRequest.setMobile(expert.mobile());
+                userRequest.setEmail(expert.email());
+                userRequest.setRealName(expert.name());
+                userRequest.setNickname(expert.name());
+                userRequest.setStatus("ENABLED");
+                Long expertRoleId = findRoleId("EXPERT");
+                userRequest.setRoleIds(expertRoleId == null ? List.of() : List.of(expertRoleId));
+                SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUserFromTrustedSnapshot(operator, userRequest);
+                userId = createdUser.getId();
+                userUuid = requireCreatedUserUuid(createdUser);
+                int linked = approvalRepository.bindAccount(expertId, businessUuid, workflowInstanceId, userId, userUuid,
+                        operator.getUserId(), operator.getUserUuid(), LocalDateTime.now());
+                if (linked != 1) {
+                    throw new IllegalStateException("Expert account binding changed before activation");
+                }
+                accountCreated = true;
             }
         } else {
             requireExistingExpertUser(userId, userUuid, username);
         }
-        String token = accountActivationService.createActivationToken(userId, expertId, operator.getUserId(), operator.getUserUuid());
-        accountActivationService.sendActivationEmail(expert.email(), username, token);
+        Long expertRoleId = findRoleId("EXPERT");
+        if (expertRoleId == null) {
+            throw new IllegalStateException("Expert role is not configured");
+        }
+        approvalRepository.ensureRoleAssignment(
+                userId,
+                userUuid,
+                expertRoleId,
+                operator.getUserId(),
+                operator.getUserUuid()
+        );
+        if (accountCreated) {
+            String token = accountActivationService.createActivationToken(userId, expertId, operator.getUserId(), operator.getUserUuid());
+            accountActivationService.sendActivationEmail(expert.email(), username, token);
+        }
     }
 
     private void requireTrustedExpertApprovedEvent(PlatformEventOutboxEntity event) {
@@ -190,6 +225,22 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         return new OperatorRecord(operator.userId(), operator.userUuid().trim(), operator.username().trim(), operator.status());
     }
 
+    private OperatorRecord loadExistingApplicant(ExpertAccountRecord expert) {
+        if (expert == null || expert.createdBy() == null || expert.createdBy() <= 0
+                || !StringUtils.hasText(expert.createdByUuid())) {
+            return null;
+        }
+        OperatorRecord applicant = approvalRepository.findOperator(expert.createdBy()).orElse(null);
+        if (applicant == null) {
+            return null;
+        }
+        String expectedUuid = expert.createdByUuid().trim();
+        if (!expectedUuid.equals(applicant.userUuid())) {
+            throw new IllegalStateException("Expert applicant uuid mismatch");
+        }
+        return applicant;
+    }
+
     private String workflowOperatorSessionId(PlatformEventOutboxEntity event) {
         return "internal-workflow-event-" + event.getId();
     }
@@ -201,7 +252,7 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         if (event == null || expertId == null || !StringUtils.hasText(event.getEventKey())) {
             throw new IllegalStateException("EXPERT_APPROVED event key is required");
         }
-        String expected = WorkflowAppService.EVENT_EXPERT_APPROVED + ":expert:" + expertId;
+        String expected = WorkflowAppService.EVENT_EXPERT_APPROVED + ":aiadc_expert:" + expertId;
         if (!expected.equals(event.getEventKey().trim())) {
             throw new IllegalStateException("EXPERT_APPROVED event key mismatch");
         }
@@ -301,6 +352,13 @@ public class ExpertApprovalEventConsumer implements PlatformEventConsumer {
         Long workflowInstanceId = coercePositiveLong(value);
         if (workflowInstanceId != null) {
             return workflowInstanceId;
+        }
+        Object attributes = payload.get("attributes");
+        if (attributes instanceof Map<?, ?> map) {
+            workflowInstanceId = coercePositiveLong(map.get("workflowInstanceId"));
+            if (workflowInstanceId != null) {
+                return workflowInstanceId;
+            }
         }
         throw new IllegalStateException("EXPERT_APPROVED event missing workflow instance id");
     }

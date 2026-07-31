@@ -446,6 +446,7 @@ class WorkflowAppServiceTest {
                 "requireSingleWorkflowUpdate(moved, \"Workflow instance changed, please retry\")",
                 "requireSingleWorkflowUpdate(approvedInstance, \"Workflow instance changed, please retry\")",
                 "requireSingleWorkflowUpdate(expertUpdated, \"Workflow business state changed, please retry\")",
+                "approveInstance(loadInstance(instanceId), currentUser)",
                 "if (updated != 1)"
         );
     }

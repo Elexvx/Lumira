@@ -31,6 +31,7 @@ const makeRuntime = (overrides: Partial<UnauthorizedRuntimeState> = {}): Unautho
   currentTokenGeneration: 1,
   loginInProgress: false,
   bootstrapInProgress: false,
+  roleSwitchInProgress: false,
   ...overrides,
 });
 
@@ -82,6 +83,18 @@ const run = () => {
     ),
     false,
     'matched active-session 401 should still surface to the caller',
+  );
+
+  assert.equal(
+    shouldSuppressUnauthorizedSideEffects(
+      makeSnapshot({ authSessionEpoch: nextEpoch, accessToken: 'token-a' }),
+      makeRuntime({
+        currentAuthSessionEpoch: nextEpoch,
+        roleSwitchInProgress: true,
+      }),
+    ),
+    true,
+    'role-switch in-flight requests should suppress stale authorization side effects',
   );
 
   console.log('auth-login-flow smoke passed');

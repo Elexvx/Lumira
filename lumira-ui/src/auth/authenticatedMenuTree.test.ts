@@ -36,10 +36,14 @@ describe('normalizeAuthenticatedMenuTree', () => {
     const registrationRoot = normalized.find((menu) => menu.menuCode === 'registration.root');
 
     expect(registrationRoot).toBeDefined();
-    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual(['competition.registration', 'activity.registration']);
+    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual([
+      'competition.registration',
+      'activity.registration',
+      'certificate.mine',
+    ]);
   });
 
-  it('does not inject registration menus when the current user has no registration access', () => {
+  it('only injects the personal certificate entry when the current user has no registration permissions', () => {
     const currentUser = buildCurrentUser([
       'dashboard:view',
       'profile:view',
@@ -48,7 +52,40 @@ describe('normalizeAuthenticatedMenuTree', () => {
 
     const normalized = normalizeAuthenticatedMenuTree(baseMenuTree, currentUser);
 
-    expect(normalized.some((menu) => menu.menuCode === 'registration.root')).toBe(false);
+    const registrationRoot = normalized.find((menu) => menu.menuCode === 'registration.root');
+    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual(['certificate.mine']);
     expect(normalized.some((menu) => menu.menuCode === 'competition.registration')).toBe(false);
+  });
+
+  it('deduplicates canonical menu paths and preserves unique descendants', () => {
+    const currentUser = buildCurrentUser([
+      'dashboard:view',
+      'profile:view',
+      'system:file:view',
+      'aiadc:certificate-template:view',
+    ]);
+    const normalized = normalizeAuthenticatedMenuTree([
+      {
+        id: 10,
+        menuCode: 'certificate.root.primary',
+        name: '证书',
+        path: '/certificates',
+        children: [{ id: 11, menuCode: 'certificate.templates', name: '模板', path: '/certificates/templates' }],
+      },
+      {
+        id: 12,
+        menuCode: 'certificate.root.duplicate',
+        name: '重复证书',
+        path: '/certificates',
+        children: [{ id: 13, menuCode: 'certificate.mine', name: '我的证书', path: '/certificates/mine' }],
+      },
+    ], currentUser);
+    const flatten = (menus: MenuNode[]): MenuNode[] =>
+      menus.flatMap((menu) => [menu, ...flatten(menu.children || [])]);
+    const all = flatten(normalized);
+
+    expect(all.filter((menu) => menu.path === '/certificates')).toHaveLength(1);
+    expect(all.map((menu) => menu.path)).toContain('/certificates/templates');
+    expect(all.map((menu) => menu.path)).toContain('/certificates/mine');
   });
 });

@@ -73,6 +73,22 @@ describe('login session broadcast listener', () => {
 });
 
 describe('resolveAuthorizedLoginRedirectTarget', () => {
+  it('rejects protocol-relative and backslash authority redirect targets', () => {
+    const protocolRelativeTarget = resolveLoginPageRuntimeRedirectTarget({
+      pathname: '/user/login',
+      search: '?redirect=%2F%2Fevil.example%2Fsteal',
+      isAuthenticated: true,
+    });
+    const backslashAuthorityTarget = resolveLoginPageRuntimeRedirectTarget({
+      pathname: '/user/login',
+      search: '?redirect=%2F%5Cevil.example%2Fsteal',
+      isAuthenticated: true,
+    });
+
+    expect(protocolRelativeTarget).toBe('/dashboard/home');
+    expect(backslashAuthorityTarget).toBe('/dashboard/home');
+  });
+
   it('does not consume the redirect target on the login page before authentication', () => {
     const target = resolveLoginPageRuntimeRedirectTarget({
       pathname: '/user/login',
