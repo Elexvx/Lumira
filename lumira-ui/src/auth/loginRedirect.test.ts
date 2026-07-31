@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createLoginSessionBroadcastListener, resolveAuthorizedLoginRedirectTarget, resolveLoginPageRuntimeRedirectTarget } from '@/auth/loginRedirect';
+import {
+  createLoginSessionBroadcastListener,
+  resolveAuthorizedLoginRedirectTarget,
+  resolveLoginPageRuntimeRedirectTarget,
+  resolvePermissionRecoveryTarget,
+} from '@/auth/loginRedirect';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import type { CurrentUser } from '@/types/api';
 
@@ -221,5 +226,29 @@ describe('resolveAuthorizedLoginRedirectTarget', () => {
     );
 
     expect(target).toBe('/settings/dicts');
+  });
+});
+
+describe('resolvePermissionRecoveryTarget', () => {
+  it('routes an authenticated user away from an inaccessible configured dashboard', () => {
+    const target = resolvePermissionRecoveryTarget(trustedUser({
+      permissions: ['profile:view'],
+      defaultHomePath: '/dashboard/home',
+    }));
+
+    expect(target).toBe('/user-center/personal-center/profile');
+  });
+
+  it('preserves an accessible configured dashboard', () => {
+    const target = resolvePermissionRecoveryTarget(trustedUser({
+      permissions: ['dashboard:view'],
+      defaultHomePath: '/dashboard/home',
+    }));
+
+    expect(target).toBe('/dashboard/home');
+  });
+
+  it('returns to login when no trusted session is available', () => {
+    expect(resolvePermissionRecoveryTarget(null)).toBe('/user/login');
   });
 });

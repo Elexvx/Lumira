@@ -175,6 +175,19 @@ export const resolveAuthorizedLoginRedirectTarget = (
   return canVisitPath(canonicalFallback, currentUser) ? canonicalFallback : '/403';
 };
 
+export const resolvePermissionRecoveryTarget = (
+  currentUser: CurrentUser | null | undefined,
+  menuTree?: MenuNode[],
+  fallback = DEFAULT_HOME_PATH,
+) => {
+  if (!currentUser) {
+    return LOGIN_PATH;
+  }
+
+  const target = resolveAuthorizedLoginRedirectTarget('', currentUser, menuTree, fallback);
+  return target === '/403' ? LOGIN_PATH : target;
+};
+
 export const createLoginSessionBroadcastListener = (
   redirectTarget: string,
   onNavigate: (target: string) => void,
