@@ -222,9 +222,12 @@ const RichTextEditor = ({ value, onChange, disabled, placeholder }: RichTextEdit
   );
 };
 
-const RichTextPreview = ({ html }: { html?: string | null }) => (
-  <div className="work-order-detail-html" dangerouslySetInnerHTML={{ __html: sanitizeRichText(html || '') }} />
-);
+const RichTextPreview = ({ html }: { html?: string | null }) => {
+  const sanitizedHtml = sanitizeRichText(html || '');
+  // The DOMPurify boundary is covered by richTextSanitizer.test.ts, including script and event-handler payloads.
+  // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml
+  return <div className="work-order-detail-html" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />;
+};
 
 const WorkOrderFeedbackPage = () => {
   const { initialState } = useInitialStateModel();

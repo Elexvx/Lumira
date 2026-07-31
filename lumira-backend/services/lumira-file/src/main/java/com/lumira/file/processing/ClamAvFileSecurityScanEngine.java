@@ -35,7 +35,9 @@ public class ClamAvFileSecurityScanEngine implements FileSecurityScanEngine {
         if (!Files.isRegularFile(request.sourcePath())) {
             throw new IllegalStateException("Security scan source file is unavailable: " + request.sourcePath());
         }
-        try (Socket socket = new Socket()) {
+        // ClamAV INSTREAM is a plaintext daemon protocol. Deployments must keep this optional
+        // connection on loopback or an isolated service network; TLS requires an external proxy.
+        try (Socket socket = new Socket()) { // nosemgrep: java.lang.security.audit.crypto.unencrypted-socket.unencrypted-socket
             socket.connect(new InetSocketAddress(properties.getClamavHost(), properties.getClamavPort()), properties.getTimeoutMillis());
             socket.setSoTimeout(properties.getTimeoutMillis());
             DataOutputStream output = new DataOutputStream(socket.getOutputStream());

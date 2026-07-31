@@ -273,7 +273,8 @@ test('built-in administrator bootstrap is secret-driven and migration-backed', (
   const baseline = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607300001__secure_builtin_admin_bootstrap.sql');
   const entrypoint = read('deploy/docker/migrator-entrypoint.sh');
-  const legacyFixedHash = '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te';
+  // This revoked public fixture is asserted absent from both production SQL paths.
+  const legacyFixedHash = '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te'; // nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash
 
   assert.match(baseline, /`password_change_required` tinyint NOT NULL DEFAULT '0'/);
   assert.match(baseline, /CREATE TABLE `platform_bootstrap_credential`/);
