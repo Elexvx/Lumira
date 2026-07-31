@@ -76,7 +76,7 @@ jobs:
         with:
           scan-args: |-
             --format=json
-            --output=security-osv.json
+            --output-file=security-osv.json
             --config=.osv-scanner.toml
             --lockfile=./lumira-ui/pnpm-lock.yaml
       - name: Semgrep Java and TypeScript rules

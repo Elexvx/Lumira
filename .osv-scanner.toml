@@ -1,9 +1,4 @@
 [[IgnoredVulns]]
-id = "GHSA-mh99-v99m-4gvg"
-ignoreUntil = 2027-01-31
-reason = "brace-expansion 1.1.18 and 2.1.4 contain the upstream CVE-2026-14257 backport; CI verifies the installed source."
-
-[[IgnoredVulns]]
 id = "CVE-2026-14257"
 ignoreUntil = 2027-01-31
-reason = "Alias of the reviewed brace-expansion legacy backport advisory."
+reason = "brace-expansion 1.1.18 and 2.1.4 contain the upstream CVE-2026-14257 backport; CI verifies the installed source."
