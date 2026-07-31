@@ -21,6 +21,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+          cache-dependency-path: |
+            lumira-backend/pom.xml
+            lumira-backend/**/pom.xml
       - name: Run lumira-backend tests
         run: mvn -f lumira-backend/pom.xml clean test
 
@@ -32,7 +35,7 @@ jobs:
         working-directory: lumira-ui
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
       - uses: actions/setup-node@v6
@@ -93,10 +96,10 @@ jobs:
           node bin/check-database-migrations.mjs
           bin/test-database-bootstrap.sh
           echo "version=$(node bin/check-database-migrations.mjs --print-version)" >> "$GITHUB_OUTPUT"
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Login to GitHub Container Registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -107,14 +110,14 @@ jobs:
           github.ref == 'refs/heads/main' &&
           env.CN_REGISTRY != '' &&
           env.CN_REGISTRY_NAMESPACE != ''
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.CN_REGISTRY }}
           username: ${{ secrets.CN_REGISTRY_USERNAME }}
           password: ${{ secrets.CN_REGISTRY_PASSWORD }}
       - name: Build lumira-server image
         id: build_server
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/service.Dockerfile
@@ -131,7 +134,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=lumira-server
       - name: Build lumira-ui image
         id: build_ui
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/lumira-ui.Dockerfile
@@ -145,7 +148,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=lumira-ui
       - name: Build lumira-async image
         id: build_async
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/service.Dockerfile
@@ -162,7 +165,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=lumira-async
       - name: Build lumira-job-executor image
         id: build_job_executor
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/service.Dockerfile
@@ -179,7 +182,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=lumira-job-executor
       - name: Build lumira-migrator image
         id: build_migrator
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/migrator.Dockerfile
@@ -404,7 +407,7 @@ jobs:
         run: gh release upload continuous tmp/release/domestic-image-mirror-evidence.json --clobber
       - name: Upload release manifest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lumira-release-manifest
           path: |
@@ -416,7 +419,7 @@ jobs:
           github.ref == 'refs/heads/main' &&
           env.CN_REGISTRY != '' &&
           env.CN_REGISTRY_NAMESPACE != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lumira-domestic-image-mirror
           path: tmp/release/domestic-image-mirror-evidence.json
