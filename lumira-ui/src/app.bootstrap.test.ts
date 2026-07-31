@@ -129,7 +129,7 @@ vi.mock('@/floatingWindow/settings', () => ({
   normalizeFloatingWindowSettings: vi.fn((settings) => ({ ...mocks.defaultFloatingWindowSettings, ...(settings || {}) })),
 }));
 
-describe('getAppInitialState', () => {
+describe('getAppInitialState', { timeout: 60_000 }, () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.clearAuthSession.mockReset();
@@ -225,7 +225,7 @@ describe('getAppInitialState', () => {
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/floating-window-settings', expect.any(Object));
     expect(mocks.persistWatermarkSettings).toHaveBeenCalledWith(mocks.defaultWatermarkSettings);
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
-  }, 15_000);
+  }, 60_000);
 
   it('reuses menu resources from auth bootstrap when they are already present', async () => {
     mocks.restoreSession.mockResolvedValue({

@@ -45,6 +45,19 @@ class PluginRuntimeLoaderTest {
     }
 
     @Test
+    void loadShouldRejectInProcessBackendExecutionByDefault() {
+        PluginRuntimeLoader loader = loader();
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> loader.load(metadata(), Path.of("."))
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PLUGIN_RUNTIME_ERROR);
+        assertThat(exception.getMessage()).contains("in-process backend plugin execution is disabled");
+    }
+
+    @Test
     void registerTasksShouldRejectUntrustedTaskCodeBeforeScheduling() {
         PluginRuntimeLoader loader = loader();
         PluginScheduledTaskProvider provider = context -> List.of(

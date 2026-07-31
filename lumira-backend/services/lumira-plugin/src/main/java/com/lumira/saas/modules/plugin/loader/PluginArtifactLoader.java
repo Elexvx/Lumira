@@ -22,6 +22,7 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +53,8 @@ public class PluginArtifactLoader {
             "lumira-backend/plugin.jar",
             "lumira-ui/manifest.json"
     );
+    private static final Set<String> CHECKSUM_CONTROL_PATHS = Set.of("checksums.json", "signature.sig");
+    private static final Pattern SHA256_HEX = Pattern.compile("^[0-9a-fA-F]{64}$");
 
     private final ObjectMapper objectMapper;
     private final PluginSemver pluginSemver;
@@ -238,31 +241,87 @@ public class PluginArtifactLoader {
         }
     }
 
-    private void verifyChecksums(Path extractedDir, Map<String, String> checksums) throws Exception {
+    void verifyChecksums(Path extractedDir, Map<String, String> checksums) throws Exception {
+        if (checksums == null || checksums.isEmpty()) {
+            throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksums.json must cover every plugin payload file");
+        }
+        Set<String> declaredFiles = new LinkedHashSet<>();
         for (Map.Entry<String, String> entry : checksums.entrySet()) {
-            Path filePath = extractedDir.resolve(entry.getKey()).normalize();
-            if (!filePath.startsWith(extractedDir) || !Files.exists(filePath)) {
-                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum file does not exist: " + entry.getKey());
+            String relativePath = requireSafeChecksumPath(entry.getKey());
+            if (CHECKSUM_CONTROL_PATHS.contains(relativePath)) {
+                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum control file must not be self-declared: " + relativePath);
             }
-            String actual = digest(Files.readAllBytes(filePath));
-            if (!actual.equalsIgnoreCase(entry.getValue())) {
-                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum mismatch: " + entry.getKey());
+            Path filePath = extractedDir.resolve(relativePath).normalize();
+            if (!filePath.startsWith(extractedDir) || !Files.isRegularFile(filePath)) {
+                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum file does not exist: " + relativePath);
             }
+            if (!SHA256_HEX.matcher(entry.getValue() == null ? "" : entry.getValue().trim()).matches()) {
+                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "invalid SHA-256 checksum: " + relativePath);
+            }
+            byte[] expected = HexFormat.of().parseHex(entry.getValue().trim());
+            byte[] actual = digestBytes(Files.readAllBytes(filePath));
+            if (!MessageDigest.isEqual(actual, expected)) {
+                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum mismatch: " + relativePath);
+            }
+            declaredFiles.add(relativePath);
+        }
+
+        Set<String> payloadFiles = new LinkedHashSet<>();
+        try (var paths = Files.walk(extractedDir)) {
+            paths.filter(Files::isRegularFile)
+                    .map(extractedDir::relativize)
+                    .map(path -> path.toString().replace('\\', '/'))
+                    .filter(path -> !CHECKSUM_CONTROL_PATHS.contains(path))
+                    .forEach(payloadFiles::add);
+        }
+        if (!payloadFiles.equals(declaredFiles)) {
+            Set<String> unlistedFiles = new LinkedHashSet<>(payloadFiles);
+            unlistedFiles.removeAll(declaredFiles);
+            Set<String> missingFiles = new LinkedHashSet<>(declaredFiles);
+            missingFiles.removeAll(payloadFiles);
+            throw new BizException(
+                    ErrorCode.PLUGIN_CHECKSUM_INVALID,
+                    "checksum manifest does not exactly cover plugin payload; unlisted="
+                            + unlistedFiles
+                            + ", missing="
+                            + missingFiles
+            );
         }
     }
 
-    private void verifySignature(String checksumsRaw, String signature) throws Exception {
+    private String requireSafeChecksumPath(String path) {
+        if (!StringUtils.hasText(path) || path.contains("\\") || path.startsWith("/") || path.contains("../")) {
+            throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "invalid checksum path: " + path);
+        }
+        Path normalized = Path.of(path).normalize();
+        String normalizedPath = normalized.toString().replace('\\', '/');
+        if (!path.equals(normalizedPath) || normalizedPath.startsWith("../")) {
+            throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "invalid checksum path: " + path);
+        }
+        return normalizedPath;
+    }
+
+    void verifySignature(String checksumsRaw, String signature) throws Exception {
+        if (!StringUtils.hasText(pluginProperties.getSignatureSecret())
+                || !SHA256_HEX.matcher(signature == null ? "" : signature.trim()).matches()) {
+            throw new BizException(ErrorCode.PLUGIN_SIGNATURE_INVALID, "plugin signature verification failed");
+        }
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(pluginProperties.getSignatureSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        String expected = HexFormat.of().formatHex(mac.doFinal(checksumsRaw.getBytes(StandardCharsets.UTF_8)));
-        if (!expected.equalsIgnoreCase(signature)) {
+        byte[] expected = mac.doFinal(checksumsRaw.getBytes(StandardCharsets.UTF_8));
+        byte[] actual = HexFormat.of().parseHex(signature.trim());
+        if (!MessageDigest.isEqual(expected, actual)) {
             throw new BizException(ErrorCode.PLUGIN_SIGNATURE_INVALID, "plugin signature verification failed");
         }
     }
 
     private String digest(byte[] content) throws Exception {
+        return HexFormat.of().formatHex(digestBytes(content));
+    }
+
+    private byte[] digestBytes(byte[] content) throws Exception {
         MessageDigest digest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
-        return HexFormat.of().formatHex(digest.digest(content));
+        return digest.digest(content);
     }
 
     private void unzip(Path zipPath, Path targetDir) throws IOException {

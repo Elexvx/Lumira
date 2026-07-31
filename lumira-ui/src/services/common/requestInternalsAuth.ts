@@ -1,6 +1,10 @@
 import { ErrorCode } from '@/enums/errorCode';
 import type { RequestOptions } from './requestInternalsTypes';
-import type { AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
+import {
+  shouldSuppressUnauthorizedSideEffects,
+  type AuthRequestSnapshot,
+  type UnauthorizedRuntimeState,
+} from '@/auth/unauthorizedDecision';
 
 export const buildAuthorization = (accessToken: string) => {
   return accessToken ? `Bearer ${accessToken}` : '';
@@ -13,8 +17,12 @@ export const shouldRefreshAndRetryUnauthorized = (
   apiCode: string | undefined,
   alreadyRetried: boolean,
   authSnapshot: AuthRequestSnapshot,
+  runtime: UnauthorizedRuntimeState,
 ) => {
   if (alreadyRetried || options.skipAuth || !authSnapshot.hasAuthToken) {
+    return false;
+  }
+  if (shouldSuppressUnauthorizedSideEffects(authSnapshot, runtime)) {
     return false;
   }
   if (options.allowUnauthorizedWithoutRedirect === true) {

@@ -22,7 +22,13 @@ const STABLE_ACCESSIBLE_FALLBACK_PATHS = [
 
 export const resolveLoginRedirectTarget = (search: string, fallback = DEFAULT_HOME_PATH) => {
   const redirect = new URLSearchParams(search).get('redirect')?.trim();
-  if (!redirect || redirect === LOGIN_PATH || !redirect.startsWith('/')) {
+  if (
+    !redirect
+    || redirect === LOGIN_PATH
+    || !redirect.startsWith('/')
+    || redirect.startsWith('//')
+    || redirect.startsWith('/\\')
+  ) {
     return fallback;
   }
 

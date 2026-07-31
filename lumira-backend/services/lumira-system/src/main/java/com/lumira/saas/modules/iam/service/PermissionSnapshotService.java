@@ -10,6 +10,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.redis.CacheTemplate;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.readmodel.ReadModelEventKey;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.google.common.cache.Cache;
@@ -262,7 +263,7 @@ public class PermissionSnapshotService {
             return Boolean.TRUE.equals(granted);
         } catch (RuntimeException exception) {
             log.warn("Failed to validate granted role userId={} roleId={}", userId, roleId, exception);
-            return false;
+            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "Trusted role grant lookup failed");
         }
     }
 
@@ -350,18 +351,9 @@ public class PermissionSnapshotService {
                     () -> CompletableFuture.supplyAsync(() -> loadSnapshotLoader(loader), BLOCKING_IO_EXECUTOR)
             );
             return cloneSnapshot(inFlight.join());
-        } catch (CompletionException exception) {
+        } catch (CompletionException | ExecutionException exception) {
             permissionSnapshotLoadInFlight.invalidate(cacheKey);
-            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-            if (cause instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            log.warn("Failed to load permission snapshot for cacheKey={}", cacheKey, cause);
-            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "权限快照构建失败");
-        } catch (ExecutionException exception) {
-            permissionSnapshotLoadInFlight.invalidate(cacheKey);
-            log.warn("Failed to load permission snapshot single-flight for cacheKey={}", cacheKey, exception);
-            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "权限快照构建失败");
+            throw mapSnapshotLoadFailure("permission", cacheKey, exception, "权限快照构建失败");
         }
     }
 
@@ -372,19 +364,36 @@ public class PermissionSnapshotService {
                     () -> CompletableFuture.supplyAsync(() -> loadSnapshotLoader(loader), BLOCKING_IO_EXECUTOR)
             );
             return cloneSnapshot(inFlight.join());
-        } catch (CompletionException exception) {
+        } catch (CompletionException | ExecutionException exception) {
             rolePermissionSnapshotLoadInFlight.invalidate(cacheKey);
-            Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-            if (cause instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            log.warn("Failed to load role permission snapshot for cacheKey={}", cacheKey, cause);
-            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "角色权限快照构建失败");
-        } catch (ExecutionException exception) {
-            rolePermissionSnapshotLoadInFlight.invalidate(cacheKey);
-            log.warn("Failed to load role permission snapshot single-flight for cacheKey={}", cacheKey, exception);
-            throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "角色权限快照构建失败");
+            throw mapSnapshotLoadFailure("role permission", cacheKey, exception, "角色权限快照构建失败");
         }
+    }
+
+    private BizException mapSnapshotLoadFailure(
+            String snapshotKind,
+            String cacheKey,
+            Throwable failure,
+            String safeMessage
+    ) {
+        Throwable rootCause = unwrapAsyncFailure(failure);
+        if (rootCause instanceof BizException bizException) {
+            return bizException;
+        }
+        log.warn("Failed to load {} snapshot for cacheKey={}", snapshotKind, cacheKey, rootCause);
+        return new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, safeMessage);
+    }
+
+    private Throwable unwrapAsyncFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current instanceof CompletionException || current instanceof ExecutionException) {
+            Throwable cause = current.getCause();
+            if (cause == null || cause == current) {
+                break;
+            }
+            current = cause;
+        }
+        return current;
     }
 
     private PermissionSnapshot loadSnapshotLoader(Supplier<PermissionSnapshot> loader) {
@@ -445,7 +454,11 @@ public class PermissionSnapshotService {
         long started = System.nanoTime();
         try {
             if (readModelVersionService != null) {
-                readModelVersionService.bump(CONTEXT_IAM, SCOPE_PERMISSION_SNAPSHOT, "iam.permission.invalidate");
+                readModelVersionService.bump(
+                        CONTEXT_IAM,
+                        SCOPE_PERMISSION_SNAPSHOT,
+                        ReadModelEventKey.unique("iam.permission.invalidate")
+                );
             }
             cacheTemplate.put(CacheKeyConstants.globalKey(VERSION_SUFFIX), String.valueOf(System.currentTimeMillis()), Duration.ofDays(30));
             invalidateLocalCaches();

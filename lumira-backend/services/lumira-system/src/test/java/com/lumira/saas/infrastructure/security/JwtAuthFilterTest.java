@@ -60,7 +60,7 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    void shouldRemoveSessionWhenTokenAndSessionDoNotMatch() throws Exception {
+    void shouldRejectStaleTokenWithoutRemovingTrustedSession() throws Exception {
         Fixture fixture = buildFixture();
         AuthSession session = buildSession("session-2", 1001L, 2001L, Instant.now().minusSeconds(60), Instant.now().plusSeconds(3600));
         TokenClaims claims = buildClaims(session, "token-2");
@@ -70,9 +70,8 @@ class JwtAuthFilterTest {
 
         executeFilter(fixture, "access-token");
 
-        assertSame(session, fixture.authSessionStore.removedSession);
-        assertTrue(fixture.authSessionStore.removedPublishChange);
-        assertFalse(fixture.authSessionStore.sessions.containsKey(session.getSessionId()));
+        assertEquals(null, fixture.authSessionStore.removedSession);
+        assertTrue(fixture.authSessionStore.sessions.containsKey(session.getSessionId()));
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, fixture.response.getStatus());
     }
 
@@ -103,6 +102,37 @@ class JwtAuthFilterTest {
         assertEquals(1, fixture.authSessionStore.saveCount);
         assertEquals(1.0, fixture.authSessionActivityRefreshes());
         assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+    }
+
+    @Test
+    void shouldRevalidateAfterConcurrentActivityWrite() throws Exception {
+        Fixture fixture = buildFixture();
+        AuthSession staleSession = buildSession(
+                "session-cas",
+                1001L,
+                2001L,
+                Instant.now().minusSeconds(120),
+                Instant.now().plusSeconds(3600)
+        );
+        populatePermissionSnapshot(staleSession);
+        AuthSession concurrentSession = buildSession(
+                "session-cas",
+                1001L,
+                2001L,
+                Instant.now(),
+                Instant.now().plusSeconds(3600)
+        );
+        populatePermissionSnapshot(concurrentSession);
+        TokenClaims claims = buildClaims(staleSession, "token-cas");
+        fixture.jwtTokenService.setTokenClaims(claims);
+        fixture.authSessionStore.put(staleSession);
+        fixture.authSessionStore.failNextSaveWith(concurrentSession);
+
+        executeFilter(fixture, "access-token");
+
+        assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+        assertTrue(fixture.authSessionStore.sessions.containsKey(staleSession.getSessionId()));
+        assertEquals(null, fixture.authSessionStore.removedSession);
     }
 
     @Test
@@ -309,6 +339,16 @@ class JwtAuthFilterTest {
         return claims;
     }
 
+    private void populatePermissionSnapshot(AuthSession session) {
+        session.setPermissionsVersion("test");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        session.setPrimaryDeptId(9L);
+        session.setDeptIds(java.util.List.of(9L));
+        session.setDescendantDeptIds(java.util.List.of(10L));
+        session.setDataScopes(java.util.List.of());
+    }
+
     private record Fixture(
             JwtAuthFilter filter,
             StubAuthSessionStore authSessionStore,
@@ -329,6 +369,7 @@ class JwtAuthFilterTest {
         private AuthSession removedSession;
         private boolean removedPublishChange;
         private int saveCount;
+        private AuthSession concurrentSessionOnNextSave;
 
         private StubAuthSessionStore() {
             super(null, null, null);
@@ -343,6 +384,10 @@ class JwtAuthFilterTest {
             sessions.put(session.getSessionId(), session);
         }
 
+        private void failNextSaveWith(AuthSession concurrentSession) {
+            concurrentSessionOnNextSave = concurrentSession;
+        }
+
         @Override
         public void remove(AuthSession session, boolean publishChange) {
             removedSession = session;
@@ -351,8 +396,20 @@ class JwtAuthFilterTest {
         }
 
         @Override
+        public boolean removeIfUnchanged(AuthSession session, boolean publishChange) {
+            remove(session, publishChange);
+            return true;
+        }
+
+        @Override
         public void save(AuthSession session) {
             saveCount += 1;
+            if (concurrentSessionOnNextSave != null) {
+                AuthSession concurrentSession = concurrentSessionOnNextSave;
+                concurrentSessionOnNextSave = null;
+                sessions.put(concurrentSession.getSessionId(), concurrentSession);
+                throw new BizException(ErrorCode.SESSION_EXPIRED, "Session changed concurrently");
+            }
             sessions.put(session.getSessionId(), session);
         }
     }

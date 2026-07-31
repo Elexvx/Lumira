@@ -273,7 +273,7 @@ public class OnlineSessionManagementAppService {
                 if (isOnlineSession(session, idleTimeoutSeconds)) {
                     collected.add(session);
                 } else {
-                    authSessionStore.remove(session, true);
+                    authSessionStore.removeIfUnchanged(session, true);
                 }
             } else {
                 authSessionStore.removeSessionReferences(sessionId);

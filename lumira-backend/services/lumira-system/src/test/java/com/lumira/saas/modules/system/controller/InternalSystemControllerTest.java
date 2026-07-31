@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.system.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.auth.LoginCodeCompleteRequest;
 import com.lumira.api.auth.PasswordResetCompleteRequest;
 import com.lumira.api.auth.PasswordResetChallengeRequest;
@@ -12,6 +13,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.redis.CacheTemplate;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.CaptchaService;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
@@ -34,6 +36,7 @@ import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;
 import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.api.system.VerificationVerificationDTO;
 import com.lumira.common.security.CurrentUser;
 import org.junit.jupiter.api.AfterEach;
@@ -731,7 +734,6 @@ class InternalSystemControllerTest {
         user.setUsername("alice");
         user.setStatus("ENABLED");
         when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), eq(2001L), eq("user-uuid-2001"), eq(3001L))).thenReturn(Boolean.TRUE);
         when(permissionSnapshotService.loadGrantedRoleSnapshot(2001L, "user-uuid-2001", 3001L)).thenReturn(
                 new PermissionSnapshotService.PermissionSnapshot(
                         "role-v2",
@@ -753,6 +755,55 @@ class InternalSystemControllerTest {
         assertThat(snapshot.defaultHomePath()).isEqualTo("/team");
         verify(permissionSnapshotService).loadGrantedRoleSnapshot(2001L, "user-uuid-2001", 3001L);
         verify(permissionSnapshotService, never()).loadRoleSnapshot(3001L);
+        verify(jdbcTemplate, never()).queryForObject(anyString(), eq(Boolean.class), eq(2001L), eq("user-uuid-2001"), eq(3001L));
+    }
+
+    @Test
+    void simulatedRolePermissionSnapshotMapsGrantLookupFailureFromRealService() {
+        SysUserEntity user = new SysUserEntity();
+        user.setId(2001L);
+        user.setUuid("user-uuid-2001");
+        user.setUsername("alice");
+        user.setStatus("ENABLED");
+        when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
+
+        MyBatisQueryOperations failingJdbcTemplate = mock(MyBatisQueryOperations.class);
+        when(failingJdbcTemplate.queryForObject(
+                anyString(),
+                eq(Boolean.class),
+                eq(2001L),
+                eq("user-uuid-2001"),
+                eq(3001L)
+        )).thenThrow(new IllegalStateException("database unavailable"));
+        PermissionSnapshotService realPermissionSnapshotService = new PermissionSnapshotService(
+                failingJdbcTemplate,
+                mock(CacheTemplate.class),
+                new ObjectMapper().findAndRegisterModules()
+        );
+        InternalSystemController localController = new InternalSystemController(
+                userDomainService,
+                iamUserService,
+                realPermissionSnapshotService,
+                mock(CaptchaService.class),
+                verificationAppService,
+                mock(WechatLoginSettingsService.class),
+                passkeyCredentialAppService,
+                failingJdbcTemplate,
+                passwordEncoder,
+                loginAuditService,
+                operationAuditService,
+                mock(SecuritySettingsService.class),
+                mock(PasswordPolicyService.class),
+                authSessionStore,
+                mock(ReadModelVersionService.class)
+        );
+
+        BizException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                BizException.class,
+                () -> localController.simulatedRolePermissionSnapshot(2001L, "user-uuid-2001", 3001L)
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PERMISSION_SNAPSHOT_ERROR);
     }
 
     @Test

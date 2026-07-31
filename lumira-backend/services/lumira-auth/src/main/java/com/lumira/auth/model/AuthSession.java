@@ -17,6 +17,7 @@ public class AuthSession {
     private Instant lastActivityAt;
     private Instant expireTime;
     private Integer sessionVersion;
+    private Long mutationRevision;
     private Long simulatedRoleId;
     private String clientType;
     private String loginIp;
@@ -102,6 +103,14 @@ public class AuthSession {
 
     public void setSessionVersion(Integer sessionVersion) {
         this.sessionVersion = sessionVersion;
+    }
+
+    public Long getMutationRevision() {
+        return mutationRevision;
+    }
+
+    public void setMutationRevision(Long mutationRevision) {
+        this.mutationRevision = mutationRevision;
     }
 
     public Long getSimulatedRoleId() {

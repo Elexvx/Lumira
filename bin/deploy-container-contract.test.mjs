@@ -17,6 +17,17 @@ const updater = readFileSync(path.join(repoRoot, 'bin', 'lumira-updater.mjs'), '
 const releaseManifestGenerator = readFileSync(path.join(repoRoot, 'bin', 'generate-release-manifest.mjs'), 'utf8');
 const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
 
+test('frontend and edge nginx enforce browser security headers', () => {
+  for (const [name, config] of [['frontend', uiNginx], ['edge', edgeNginx]]) {
+    assert.match(config, /Content-Security-Policy/ , `${name} nginx must emit a CSP`);
+    assert.match(config, /X-Content-Type-Options\s+"nosniff"/, `${name} nginx must prevent MIME sniffing`);
+    assert.match(config, /X-Frame-Options\s+"DENY"/, `${name} nginx must prevent framing`);
+    assert.match(config, /Referrer-Policy\s+"strict-origin-when-cross-origin"/, `${name} nginx must set a referrer policy`);
+    assert.match(config, /Permissions-Policy/, `${name} nginx must restrict browser capabilities`);
+    assert.match(config, /add_header_inherit merge/, `${name} nginx must retain headers in locations with cache headers`);
+  }
+});
+
 test('production disables the Hikari periodic JDBC keepalive explicitly', () => {
   assert.match(
     composeProd,
@@ -263,6 +274,16 @@ test('deploy-container shares deployment verification with the standalone checke
     deployScript,
     /waitForComposeServicesRunning\(runtimeServices, 'default deployment services'\)/,
     'deploy-container must verify the default deployment runtime services reach running state'
+  );
+  assert.match(
+    deployScript,
+    /waitForHttp\(`\$\{baseUrl\}\/api\/health`, 'lumira-server health API'\)/,
+    'deploy-container must wait for the active Spring application before broad route checks'
+  );
+  assert.match(
+    deployScript,
+    /if \(localMysql && !pullImages && localImageStatus\.status === 0\) \{[\s\S]*?migratorImage = localMigratorImage/,
+    'local-mysql deployment must reuse a cached local migrator unless an explicit pull was requested'
   );
   assert.match(
     deployScript,

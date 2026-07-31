@@ -638,7 +638,7 @@ public class InternalSystemController {
     ) {
         requireInternalServicePrincipal();
         SysUserEntity user = requireTrustedInternalUserEntity(userId, userUuid);
-        Long trustedRoleId = requireGrantedRole(user.getId(), user.getUuid(), roleId);
+        Long trustedRoleId = requirePositiveId(roleId, "roleId");
         PermissionSnapshotService.PermissionSnapshot snapshot = requireTrustedPermissionSnapshot(
                 permissionSnapshotService.loadGrantedRoleSnapshot(user.getId(), user.getUuid(), trustedRoleId),
                 "Trusted role permission snapshot is unavailable"
@@ -1629,31 +1629,6 @@ public class InternalSystemController {
                 userId,
                 userUuid
         );
-    }
-
-    private Long requireGrantedRole(Long userId, String userUuid, Long roleId) {
-        Long trustedRoleId = requirePositiveId(roleId, "roleId");
-        Boolean granted = jdbcTemplate.queryForObject(
-                """
-                        select exists(
-                            select 1
-                            from sys_user_role ur
-                            join sys_role r on r.id = ur.role_id and r.deleted = 0
-                            where ur.user_id = ?
-                              and ur.user_uuid = ?
-                              and ur.role_id = ?
-                              and ur.deleted = 0
-                        )
-                        """,
-                Boolean.class,
-                userId,
-                userUuid,
-                trustedRoleId
-        );
-        if (!Boolean.TRUE.equals(granted)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Role is not granted to the trusted user");
-        }
-        return trustedRoleId;
     }
 
     private Long requireTrustedInternalUser(Long userId, String userUuid) {

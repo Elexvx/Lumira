@@ -8,6 +8,7 @@ import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.readmodel.ReadModelEventKey;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
@@ -25,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -196,6 +198,7 @@ public class WechatLoginSettingsService {
         );
     }
 
+    @Transactional
     public SystemVO.WechatLoginSettingsVO updateSettings(CurrentUser operator, SystemDTO.WechatLoginSettingsRequest request) {
         CurrentUser trustedOperator = requireTrustedVerificationManager(operator);
         Long operatorId = trustedOperator.getUserId();
@@ -225,6 +228,7 @@ public class WechatLoginSettingsService {
         }
     }
 
+    @Transactional
     public SystemVO.WechatLoginSettingsVO resetSettings(CurrentUser operator) {
         CurrentUser trustedOperator = requireTrustedVerificationManager(operator);
         Long operatorId = trustedOperator.getUserId();
@@ -280,7 +284,7 @@ public class WechatLoginSettingsService {
             readModelVersionService.bump(
                     READ_MODEL_CONTEXT_PLATFORM,
                     READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
-                    eventKey
+                    ReadModelEventKey.unique(eventKey)
             );
         }
     }

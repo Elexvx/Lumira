@@ -193,7 +193,16 @@ public class WorkOrderFeedbackService {
         String submitterName = currentUser.getUsername();
         pluginStateService.ensureEnabled(currentUser);
         String title = normalizeRequiredText(request == null ? null : request.getTitle(), 160, "\u8bf7\u586b\u5199\u5de5\u5355\u6807\u9898");
-        String detailHtml = normalizeRequiredText(request == null ? null : request.getDetailHtml(), MAX_DETAIL_HTML_LENGTH, "\u8bf7\u586b\u5199\u95ee\u9898\u8be6\u60c5");
+        String detailHtml = WorkOrderHtmlSanitizer.sanitize(
+                normalizeRequiredText(
+                        request == null ? null : request.getDetailHtml(),
+                        MAX_DETAIL_HTML_LENGTH,
+                        "\u8bf7\u586b\u5199\u95ee\u9898\u8be6\u60c5"
+                )
+        );
+        if (!WorkOrderHtmlSanitizer.hasMeaningfulContent(detailHtml)) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "\u8bf7\u586b\u5199\u95ee\u9898\u8be6\u60c5");
+        }
         String priority = normalizePriority(request == null ? null : request.getPriority());
         Long id = repository.insert(title, detailHtml, priority,
                 requiredPolicyLabel(DICT_DEFAULT, "INITIAL_STATUS"), userId, userUuid, submitterName);

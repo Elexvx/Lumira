@@ -15,6 +15,7 @@ public class PluginProperties {
     private String sharedDepsVersion = "1";
     private long maxGatewayBodyBytes = 1024 * 1024;
     private boolean requireHttpPermission = true;
+    private boolean allowInProcessBackendPlugins = false;
 
     public String getPlatformVersion() {
         return platformVersion;
@@ -78,5 +79,13 @@ public class PluginProperties {
 
     public void setRequireHttpPermission(boolean requireHttpPermission) {
         this.requireHttpPermission = requireHttpPermission;
+    }
+
+    public boolean isAllowInProcessBackendPlugins() {
+        return allowInProcessBackendPlugins;
+    }
+
+    public void setAllowInProcessBackendPlugins(boolean allowInProcessBackendPlugins) {
+        this.allowInProcessBackendPlugins = allowInProcessBackendPlugins;
     }
 }

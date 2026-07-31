@@ -20,6 +20,7 @@ vi.mock('@/auth/token', () => ({
     setTokens: mocks.setTokens,
     getAccessToken: vi.fn(() => ''),
     getTokenGeneration: vi.fn(() => 0),
+    syncFromStorage: vi.fn(() => false),
     hasToken: vi.fn(() => true),
     getTokenState: vi.fn(() => null),
     clearTokenState: mocks.clearTokenState,

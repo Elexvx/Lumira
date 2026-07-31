@@ -3,7 +3,6 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Spin, Steps, Switch, Table, Tabs, Tag, Typography, Upload } from 'antd';
 import type { DatePickerProps, UploadFile } from 'antd';
 import type { FormInstance } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -23,7 +22,6 @@ import { normalizeLocale } from '@/i18n/locale';
 import {
   createCompetition,
   createCompetitionDraft,
-  createCompetitionStage,
   confirmRegistration,
   createRegistrationPaymentOrder,
   deleteCompetition,
@@ -40,7 +38,6 @@ import {
   listRegistrationPaymentOptions,
   saveCompetitionSettingsModule,
   reconfirmRegistration,
-  updateCompetitionStage,
   updateCompetition,
   updateCompetitionDraft,
   type RegistrationSnapshotMemberPayload,
@@ -58,7 +55,6 @@ import type {
   CompetitionRegistrationRecord,
   CompetitionSettingsRecord,
   CompetitionStageFormRecord,
-  CompetitionStageRecord,
   CompetitionStatus,
   CompetitionUpsertPayload,
 } from '@/services/competition/types';
@@ -6836,195 +6832,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 
 CompetitionTimelineSettingsPanel.displayName = 'CompetitionTimelineSettingsPanel';
 
-type CompetitionStageWindowsPanelProps = {
-  competitionId: number;
-  stageCode: 'PRELIMINARY' | 'FINAL';
-  onStagesChange: (stages: CompetitionStageRecord[]) => void;
-};
-
-const CompetitionStageWindowsPanel = ({ competitionId, stageCode, onStagesChange }: CompetitionStageWindowsPanelProps) => {
-  const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [savingId, setSavingId] = useState<number>();
-
-  const loadStages = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await listCompetitionStages(competitionId);
-      setStages(result);
-      onStagesChange(result);
-    } catch (error) {
-      showErrorMessage(error, '阶段时间加载失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [competitionId, onStagesChange]);
-
-  useEffect(() => {
-    void loadStages();
-  }, [loadStages]);
-
-  const initializeStage = async () => {
-    setLoading(true);
-    try {
-      const existingCodes = new Set(stages.map((stage) => stage.stageCode));
-      if (!existingCodes.has(stageCode)) {
-        await createCompetitionStage(competitionId, {
-          stageCode,
-          stageName: stageCode === 'PRELIMINARY' ? '初赛' : '决赛',
-          status: 'DRAFT',
-          sort: stageCode === 'PRELIMINARY' ? 10 : 20,
-        });
-      }
-      await loadStages();
-      message.success(`${stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}阶段已初始化`);
-    } catch (error) {
-      showErrorMessage(error, '阶段初始化失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const currentStage = stages.find((stage) => stage.stageCode === stageCode);
-
-  const updateLocalStage = (stageId: number, patch: Partial<CompetitionStageRecord>) => {
-    setStages((current) => current.map((stage) => stage.id === stageId ? { ...stage, ...patch } : stage));
-  };
-
-  const saveStage = async (stage: CompetitionStageRecord) => {
-    setSavingId(stage.id);
-    try {
-      const saved = await updateCompetitionStage(stage.id, {
-        stageCode: stage.stageCode as 'PRELIMINARY' | 'FINAL',
-        stageName: stage.stageName,
-        status: stage.status,
-        sort: stage.sort,
-        materialSubmitStart: stage.materialSubmitStart,
-        materialSubmitEnd: stage.materialSubmitEnd,
-        reviewStart: stage.reviewStart,
-        reviewEnd: stage.reviewEnd,
-        promotionRuleType: stage.stageCode === 'PRELIMINARY' ? (stage.promotionRuleType || 'PERCENTAGE') : undefined,
-        promotionRuleValue: stage.stageCode === 'PRELIMINARY' ? (stage.promotionRuleValue || 30) : undefined,
-        promotionTiePolicy: stage.stageCode === 'PRELIMINARY' ? 'MANUAL_REVIEW' : undefined,
-      });
-      updateLocalStage(stage.id, saved);
-      onStagesChange(stages.map((item) => item.id === saved.id ? saved : item));
-      message.success(`${saved.stageName}时间与权限已保存`);
-    } catch (error) {
-      showErrorMessage(error, '阶段保存失败');
-    } finally {
-      setSavingId(undefined);
-    }
-  };
-
-  const columns: ColumnsType<CompetitionStageRecord> = [
-    { title: '阶段', dataIndex: 'stageName', width: 130 },
-    {
-      title: '提交材料时间', key: 'materialWindow', width: 390,
-      render: (_, stage) => (
-        <DatePicker.RangePicker
-          showTime
-          value={stage.materialSubmitStart && stage.materialSubmitEnd
-            ? [dayjs(stage.materialSubmitStart), dayjs(stage.materialSubmitEnd)]
-            : undefined}
-          onChange={(value) => updateLocalStage(stage.id, {
-            materialSubmitStart: value?.[0]?.format('YYYY-MM-DDTHH:mm:ss') || null,
-            materialSubmitEnd: value?.[1]?.format('YYYY-MM-DDTHH:mm:ss') || null,
-          })}
-        />
-      ),
-    },
-    {
-      title: '评审时间', key: 'reviewWindow', width: 390,
-      render: (_, stage) => (
-        <DatePicker.RangePicker
-          showTime
-          value={stage.reviewStart && stage.reviewEnd ? [dayjs(stage.reviewStart), dayjs(stage.reviewEnd)] : undefined}
-          onChange={(value) => updateLocalStage(stage.id, {
-            reviewStart: value?.[0]?.format('YYYY-MM-DDTHH:mm:ss') || null,
-            reviewEnd: value?.[1]?.format('YYYY-MM-DDTHH:mm:ss') || null,
-          })}
-        />
-      ),
-    },
-    {
-      title: '材料权限', key: 'permission', width: 190,
-      render: (_, stage) => stage.stageCode === 'FINAL'
-        ? <Tag color="blue">仅已公布晋级团队</Tag>
-        : <Tag>已报名团队</Tag>,
-    },
-    {
-      title: '晋级方式', key: 'promotionRule', width: 290,
-      render: (_, stage) => stage.stageCode === 'PRELIMINARY' ? (
-        <Space size={8}>
-          <Select
-            style={{ width: 110 }}
-            value={stage.promotionRuleType || 'PERCENTAGE'}
-            options={[
-              { label: '按比例', value: 'PERCENTAGE' },
-              { label: '按人数', value: 'COUNT' },
-            ]}
-            onChange={(value) => updateLocalStage(stage.id, { promotionRuleType: value })}
-          />
-          <InputNumber
-            min={1}
-            max={stage.promotionRuleType === 'COUNT' ? undefined : 100}
-            precision={stage.promotionRuleType === 'COUNT' ? 0 : 2}
-            value={stage.promotionRuleValue ?? 30}
-            addonAfter={stage.promotionRuleType === 'COUNT' ? '人' : '%'}
-            onChange={(value) => updateLocalStage(stage.id, { promotionRuleValue: value })}
-          />
-        </Space>
-      ) : <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: '开放', dataIndex: 'status', width: 100,
-      render: (_, stage) => (
-        <Switch
-          checked={stage.status === 'ENABLED'}
-          onChange={(checked) => updateLocalStage(stage.id, { status: checked ? 'ENABLED' : 'DRAFT' })}
-        />
-      ),
-    },
-    {
-      title: '操作', key: 'actions', width: 110,
-      render: (_, stage) => (
-        <Button type="primary" loading={savingId === stage.id} onClick={() => void saveStage(stage)}>保存</Button>
-      ),
-    },
-  ];
-
-  return (
-    <section className="competition-config-module">
-      <div className="competition-config-module__header">
-        <div>
-          <Typography.Title className="competition-config-module__title" level={4}>
-            {stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}设置
-          </Typography.Title>
-          <Typography.Paragraph type="secondary">
-            {stageCode === 'PRELIMINARY'
-              ? '设置初赛材料提交、评审时间和晋级规则。'
-              : '设置决赛材料提交和评审时间；参赛范围自动与“评审与晋级”结果联动。'}
-          </Typography.Paragraph>
-        </div>
-        {!currentStage ? (
-          <Button type="primary" onClick={() => void initializeStage()}>
-            初始化{stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}
-          </Button>
-        ) : null}
-      </div>
-      <Table
-        rowKey="id"
-        loading={loading}
-        pagination={false}
-        dataSource={currentStage ? [currentStage] : []}
-        columns={columns}
-        scroll={{ x: 1610 }}
-        locale={{ emptyText: `请先初始化${stageCode === 'PRELIMINARY' ? '初赛' : '决赛'}阶段` }}
-      />
-    </section>
-  );
-};
 
 type CompetitionStageAndMaterialPanelProps = {
   competition: CompetitionRecord;

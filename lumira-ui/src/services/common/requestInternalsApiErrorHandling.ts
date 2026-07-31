@@ -8,6 +8,7 @@ import { ApiRequestError } from './requestInternalsTypes';
 
 export interface ApiErrorHandlingContext {
   authenticatedRefreshSucceeded?: boolean;
+  refreshSuperseded?: boolean;
   refreshTemporarilyUnavailable?: boolean;
 }
 
@@ -68,10 +69,18 @@ export const handleApiError = (
     return;
   }
 
+  if (options.preserveAuthSessionOnUnauthorized === true) {
+    if (!options.silent) {
+      notify();
+    }
+    return;
+  }
+
   if (
     (!authSnapshot.hasAuthToken &&
       (options.allowUnauthorizedWithoutRedirect === true || options.autoRedirectOnUnauthorized === false)) ||
     context.authenticatedRefreshSucceeded === true ||
+    context.refreshSuperseded === true ||
     context.refreshTemporarilyUnavailable === true ||
     shouldSuppressUnauthorizedSideEffects(authSnapshot, buildUnauthorizedRuntimeState())
   ) {

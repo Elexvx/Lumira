@@ -2,14 +2,21 @@ import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, Tag, type MenuPro
 import { message } from '@/theme/antdFeedbackBridge';
 import { getLocale, history, setLocale, useIntl } from '@umijs/max';
 import { useAccess, useLocation } from '@umijs/max';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
 import { resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
-import { performLogout } from '@/auth/sessionLifecycle';
+import { performLogout, withRoleSwitchRefreshBarrier } from '@/auth/sessionLifecycle';
 import { persistCurrentUser } from '@/auth/sessionState';
 import { tokenManager } from '@/auth/token';
+import {
+  buildRoleSwitchOptions,
+  buildSimulatedRoleSwitchRequestOptions,
+  completeRoleSwitchClientTransition,
+  createRoleSwitchRequestGuard,
+  resolveRoleSwitchTarget,
+} from '@/auth/roleSwitch';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeLocale } from '@/i18n/locale';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
@@ -198,14 +205,31 @@ export const TopActions = () => {
   const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
   const availableRoles = useMemo(() => currentUser?.availableRoles || [], [currentUser?.availableRoles]);
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
+  const currentAccountRoleLabel = intl.formatMessage({
+    id: 'nav.user.role.current',
+    defaultMessage: 'Current account permissions',
+  });
+  const currentAccountRoleMeta = intl.formatMessage({
+    id: 'nav.user.role.currentMeta',
+    defaultMessage: 'Default permission view for the current account',
+  });
+  const currentRoleTag = intl.formatMessage({
+    id: 'nav.user.role.currentTag',
+    defaultMessage: 'Current',
+  });
+  const roleSwitchOptions = useMemo(
+    () =>
+      buildRoleSwitchOptions(availableRoles, simulatedRoleId, {
+        currentAccountLabel: currentAccountRoleLabel,
+        currentAccountMeta: currentAccountRoleMeta,
+      }),
+    [availableRoles, currentAccountRoleLabel, currentAccountRoleMeta, simulatedRoleId],
+  );
   const selectedRoleLabel =
     simulatedRoleId == null
-      ? intl.formatMessage({ id: 'nav.user.role.current', defaultMessage: 'Current account permissions' })
+      ? currentAccountRoleLabel
       : availableRoles.find((item) => item.id === simulatedRoleId)?.roleName ||
-        intl.formatMessage({
-          id: 'nav.user.role.current',
-          defaultMessage: 'Current account permissions',
-        });
+        currentAccountRoleLabel;
   const roleSimulationHint =
     simulatedRoleId == null
       ? ''
@@ -228,6 +252,7 @@ export const TopActions = () => {
   const [switchingLocale, setSwitchingLocale] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
+  const roleSwitchGuardRef = useRef(createRoleSwitchRequestGuard());
   const [passwordDrawerOpen, setPasswordDrawerOpen] = useState(false);
   const [passwordForm] = Form.useForm<PasswordFormValues>();
   const securitySettings: SecuritySettings = initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS;
@@ -277,58 +302,58 @@ export const TopActions = () => {
     }
   };
   const handleSwitchRole = async (nextRoleValue: string) => {
-    const nextRoleId = Number(nextRoleValue);
-    if (!Number.isFinite(nextRoleId) || nextRoleId === simulatedRoleId) {
+    const nextRoleId = resolveRoleSwitchTarget(nextRoleValue, roleSwitchOptions);
+    if (nextRoleId === undefined || nextRoleId === simulatedRoleId) {
+      return;
+    }
+    if (!roleSwitchGuardRef.current.tryStart()) {
       return;
     }
 
     setSwitchingRole(true);
     try {
-      const response = await request<SimulatedRoleSwitchResponse>('/v1/auth/simulated-role', {
-        method: 'PUT',
-        data: { roleId: nextRoleId },
-        autoRedirectOnUnauthorized: false,
-        allowUnauthorizedWithoutRedirect: true,
-        silent: true,
-      });
-      tokenManager.setTokens({
-        accessToken: response.accessToken,
-        tokenType: response.tokenType,
-        expiresIn: response.expiresIn,
-      });
-      const updatedUser = persistCurrentUser(response.currentUser);
-      const roleLandingPath = resolveAuthorizedLoginRedirectTarget(
-        '',
-        updatedUser,
-        initialState?.menuTree,
-        DEFAULT_HOME_PATH,
-      );
-
-      // Leave the previous role's business page before publishing the new
-      // permissions. Otherwise that page can immediately refetch with the
-      // switched token and surface a misleading 403 while it is unmounting.
-      history.replace(roleLandingPath);
-      setInitialState((prev) =>
-        prev
-          ? {
-              ...prev,
-              currentUser: updatedUser,
-            }
-          : prev,
-      );
-      message.success(
-        intl.formatMessage(
-          { id: 'nav.user.role.switchSuccessWithName', defaultMessage: 'Switched to {roleName}' },
-          {
-            roleName:
-              availableRoles.find((role) => role.id === nextRoleId)?.roleName ||
-              intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
+      await withRoleSwitchRefreshBarrier(async () => {
+        const response = await request<SimulatedRoleSwitchResponse>('/v1/auth/simulated-role', {
+          ...buildSimulatedRoleSwitchRequestOptions(nextRoleId),
+        });
+        // The successful server response is the non-reversible boundary. Any
+        // local preparation error below still falls through to a hard reload.
+        await completeRoleSwitchClientTransition(
+          () => {
+            tokenManager.setTokens(
+              {
+                accessToken: response.accessToken,
+                tokenType: response.tokenType,
+                expiresIn: response.expiresIn,
+              },
+              { broadcast: false },
+            );
+            const updatedUser = persistCurrentUser(response.currentUser);
+            const roleLandingPath = resolveAuthorizedLoginRedirectTarget(
+              '',
+              updatedUser,
+              undefined,
+              DEFAULT_HOME_PATH,
+            );
+            message.success(
+              intl.formatMessage(
+                { id: 'nav.user.role.switchSuccessWithName', defaultMessage: 'Switched to {roleName}' },
+                {
+                  roleName:
+                    roleSwitchOptions.find((option) => option.roleId === nextRoleId)?.label ||
+                    intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
+                },
+              ),
+            );
+            return roleLandingPath;
           },
-        ),
-      );
+          DEFAULT_HOME_PATH,
+        );
+      });
     } catch (error) {
       showErrorMessage(error, intl.formatMessage({ id: 'common.failure', defaultMessage: 'Operation failed, please try again later' }));
     } finally {
+      roleSwitchGuardRef.current.finish();
       setSwitchingRole(false);
     }
   };
@@ -387,27 +412,31 @@ export const TopActions = () => {
     ],
     [currentLocale, intl],
   );
-  const availableRoleIds = useMemo(
-    () => new Set(availableRoles.map((role) => String(role.id))),
-    [availableRoles],
-  );
   const roleMenuItems = useMemo<NonNullable<MenuProps['items']>>(() => {
-    if (!availableRoles.length) {
+    if (!availableRoles.length && simulatedRoleId == null) {
       return [];
     }
 
     return [
       {
-        key: 'role-switch',
-        icon: <SwapOutlined />,
-        label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
-        children: availableRoles.map((role) => ({
-          key: String(role.id),
-          label: role.roleName,
-        })),
-      },
-    ];
-  }, [availableRoles, intl]);
+          key: 'role-switch',
+          icon: <SwapOutlined />,
+          label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
+          children: roleSwitchOptions.map((option) => ({
+            key: option.key,
+            label: (
+              <div className="saas-role-menu__item">
+                <div className="saas-role-menu__item-title-row">
+                  <span className="saas-role-menu__item-title">{option.label}</span>
+                  {option.selected ? <Tag color="blue">{currentRoleTag}</Tag> : null}
+                </div>
+                {option.meta ? <span className="saas-role-menu__item-meta">{option.meta}</span> : null}
+              </div>
+            ),
+          })),
+        },
+      ];
+  }, [availableRoles.length, currentRoleTag, intl, roleSwitchOptions, simulatedRoleId]);
   const userMenuItems: MenuProps['items'] = useMemo(
     () => [
       {
@@ -475,7 +504,7 @@ export const TopActions = () => {
     }
 
     const nextRoleValue = String(key);
-    if (availableRoleIds.has(nextRoleValue)) {
+    if (resolveRoleSwitchTarget(nextRoleValue, roleSwitchOptions) !== undefined) {
       void handleSwitchRole(nextRoleValue);
     }
   };

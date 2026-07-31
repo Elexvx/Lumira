@@ -14,11 +14,12 @@ import { isLoggedIn } from '@/auth/sessionLifecycle';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
 import { isTrustedCurrentUser, mergeTrustedCurrentUser } from '@/auth/sessionState';
 import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
+import { handleRoleSwitchBroadcastMessage, handleRoleSwitchStorageEvent } from '@/auth/roleSwitch';
 import { resolveTokenRefreshDelayMs } from '@/auth/sessionRefreshTiming';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
-import { performLogout, tryRefreshTokenOutcome } from '@/auth/sessionLifecycle';
+import { hasUsableTokenAfterRefresh, performLogout, tryRefreshTokenOutcome } from '@/auth/sessionLifecycle';
 import { request } from '@/services/common/request';
 import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
@@ -165,6 +166,9 @@ const useSessionActivityTimers = ({ securitySettings }: { securitySettings: Secu
       tokenExpireTimerRef.current = window.setTimeout(() => {
         void refreshAccessToken();
       }, TOKEN_REFRESH_RETRY_MS);
+      return false;
+    }
+    if (!hasUsableTokenAfterRefresh(refreshOutcome)) {
       return false;
     }
     scheduleTokenExpirationRef.current();
@@ -408,6 +412,10 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
     });
 
     const handleStorage = (event: StorageEvent) => {
+      if (handleRoleSwitchStorageEvent(event)) {
+        return;
+      }
+
       if (event.key === STORAGE_ACTIVITY_KEY && event.newValue) {
         const parsed = Number(event.newValue);
         if (Number.isFinite(parsed) && parsed > 0) {
@@ -417,9 +425,21 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
 
     };
     window.addEventListener('storage', handleStorage);
-    const authChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+    const authChannel = (() => {
+      if (typeof BroadcastChannel === 'undefined') {
+        return null;
+      }
+      try {
+        return new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+      } catch {
+        return null;
+      }
+    })();
     if (authChannel) {
       authChannel.onmessage = (event: MessageEvent<{ type?: string }>) => {
+        if (handleRoleSwitchBroadcastMessage(event.data)) {
+          return;
+        }
         if (event.data?.type === 'updated') {
           if (tokenManager.syncFromStorage()) {
             controller.resetLogoutGuard();
@@ -464,7 +484,11 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
         window.removeEventListener(eventName, handleUserActivity);
       });
       window.removeEventListener('storage', handleStorage);
-      authChannel?.close();
+      try {
+        authChannel?.close();
+      } catch {
+        // Channel teardown is best-effort in restricted browser contexts.
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };

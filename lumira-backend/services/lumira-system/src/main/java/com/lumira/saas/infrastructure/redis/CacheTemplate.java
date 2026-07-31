@@ -1,5 +1,6 @@
 package com.lumira.saas.infrastructure.redis;
 
+import com.lumira.common.web.redis.SessionPayloadCas;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
@@ -29,6 +30,27 @@ public class CacheTemplate {
     public boolean putIfAbsent(String key, String value, Duration ttl) {
         Boolean result = redisTemplate.opsForValue().setIfAbsent(key, value, ttl);
         return Boolean.TRUE.equals(result);
+    }
+
+    public SessionPayloadCas.Result compareAndSetSessionPayload(
+            String key,
+            long expectedRevision,
+            long nextRevision,
+            String value,
+            Duration ttl
+    ) {
+        return SessionPayloadCas.compareAndSet(
+                redisTemplate,
+                key,
+                expectedRevision,
+                nextRevision,
+                value,
+                ttl
+        );
+    }
+
+    public SessionPayloadCas.DeleteResult compareAndDeleteSessionPayload(String key, long expectedRevision) {
+        return SessionPayloadCas.compareAndDelete(redisTemplate, key, expectedRevision);
     }
 
     public String get(String key) {

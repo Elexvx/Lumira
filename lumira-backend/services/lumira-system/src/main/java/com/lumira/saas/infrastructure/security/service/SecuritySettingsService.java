@@ -4,6 +4,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.readmodel.ReadModelEventKey;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
@@ -11,6 +12,7 @@ import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -220,6 +222,7 @@ public class SecuritySettingsService {
         );
     }
 
+    @Transactional
     public SecuritySettingsSnapshot updateSettings(SecuritySettingsSnapshot request, CurrentUser operator) {
         CurrentUser trustedOperator = requireTrustedConfigOperator(operator);
         currentUpdateOperator.set(trustedOperator);
@@ -337,7 +340,7 @@ public class SecuritySettingsService {
             readModelVersionService.bump(
                     READ_MODEL_CONTEXT_PLATFORM,
                     READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
-                    "security-update"
+                    ReadModelEventKey.unique("security-update")
             );
         }
         return loadSettings();

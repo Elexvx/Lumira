@@ -253,7 +253,8 @@ public class PaymentController {
 
     private void requireSettingsAdmin(CurrentUser currentUser) {
         if (isAuthenticatedUser(currentUser)
-                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())) {
+                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
+                && currentUser.getSimulatedRoleId() == null) {
             return;
         }
         throw new com.lumira.common.exception.BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, "仅超级管理员可访问设置");

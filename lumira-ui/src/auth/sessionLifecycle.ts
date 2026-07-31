@@ -9,15 +9,27 @@ import { persistSessionMeta } from '@/auth/sessionState';
 import type { RefreshTokenResponse } from '@/types/api';
 import { ErrorCode } from '@/enums/errorCode';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
+import { withAuthSessionMutationLock } from '@/auth/authSessionMutationLock';
 
 export type LogoutReason = 'user_initiated' | 'forced_expired';
-export type TokenRefreshOutcome = 'refreshed' | 'session_expired' | 'temporarily_unavailable';
+export type TokenRefreshOutcome = 'refreshed' | 'superseded' | 'session_expired' | 'temporarily_unavailable';
+
+export const hasUsableTokenAfterRefresh = (outcome: TokenRefreshOutcome) =>
+  outcome === 'refreshed' || (outcome === 'superseded' && tokenManager.hasToken());
 
 const AUTH_LOGOUT_PATH = '/v1/auth/logout';
 const AUTH_REFRESH_TOKEN_PATH = '/v1/auth/refresh-token';
 export const SESSION_EXPIRED_LOGIN_REASON = 'session_expired';
 
-let refreshTokenPromise: Promise<TokenRefreshOutcome> | null = null;
+interface RefreshTokenAttempt {
+  tokenGeneration: number;
+  promise: Promise<TokenRefreshOutcome>;
+}
+
+let refreshTokenAttempt: RefreshTokenAttempt | null = null;
+const activeRefreshTokenPromises = new Set<Promise<TokenRefreshOutcome>>();
+type RefreshBarrierOutcome = 'completed' | 'failed';
+let roleSwitchRefreshBarrier: Promise<RefreshBarrierOutcome> | null = null;
 
 export const isLoggedIn = () => tokenManager.hasToken();
 
@@ -93,6 +105,15 @@ const isConfirmedRefreshSessionExpiry = (error: unknown) =>
   (error.code === ErrorCode.SESSION_EXPIRED || error.code === ErrorCode.UNAUTHORIZED);
 
 const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
+  const startingTokenGeneration = tokenManager.getTokenGeneration();
+  const startingAccessToken = tokenManager.getAccessToken();
+  const wasSuperseded = () => {
+    // A storage event can be queued behind this fetch callback. Pull the
+    // shared token first so another tab's newer auth generation wins before
+    // this tab can persist an older refresh response.
+    tokenManager.syncFromStorage(startingAccessToken);
+    return tokenManager.getTokenGeneration() !== startingTokenGeneration;
+  };
   let v2Error: unknown;
   try {
     const response = await request<RefreshTokenResponse>('/v2/auth/refresh-token', {
@@ -102,6 +123,9 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
       allowUnauthorizedWithoutRedirect: true,
       credentials: 'include',
     });
+    if (wasSuperseded()) {
+      return 'superseded';
+    }
     tokenManager.setTokens({
       accessToken: response.accessToken,
       tokenType: response.tokenType,
@@ -114,6 +138,9 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
     return 'refreshed';
   } catch (error) {
     v2Error = error;
+    if (wasSuperseded()) {
+      return 'superseded';
+    }
     try {
       const response = await request<RefreshTokenResponse>(AUTH_REFRESH_TOKEN_PATH, {
         method: 'POST',
@@ -122,6 +149,9 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
         allowUnauthorizedWithoutRedirect: true,
         credentials: 'include',
       });
+      if (wasSuperseded()) {
+        return 'superseded';
+      }
       tokenManager.setTokens({
         accessToken: response.accessToken,
         tokenType: response.tokenType,
@@ -133,6 +163,9 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
       });
       return 'refreshed';
     } catch (legacyError) {
+      if (wasSuperseded()) {
+        return 'superseded';
+      }
       return isConfirmedRefreshSessionExpiry(v2Error) || isConfirmedRefreshSessionExpiry(legacyError)
         ? 'session_expired'
         : 'temporarily_unavailable';
@@ -141,22 +174,95 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
 };
 
 export const tryRefreshTokenOutcome = async (): Promise<TokenRefreshOutcome> => {
-  if (refreshTokenPromise) {
-    return refreshTokenPromise;
+  const requestedTokenGeneration = tokenManager.getTokenGeneration();
+  const activeBarrier = roleSwitchRefreshBarrier;
+  if (activeBarrier) {
+    const barrierOutcome = await activeBarrier;
+    if (
+      barrierOutcome === 'completed' ||
+      tokenManager.getTokenGeneration() !== requestedTokenGeneration
+    ) {
+      return 'superseded';
+    }
+    return tryRefreshTokenOutcome();
   }
 
-  refreshTokenPromise = refreshTokenOnce();
+  const tokenGeneration = tokenManager.getTokenGeneration();
+  if (refreshTokenAttempt?.tokenGeneration === tokenGeneration) {
+    return refreshTokenAttempt.promise;
+  }
+
+  const startingAccessToken = tokenManager.getAccessToken();
+  const promise = refreshTokenOnce(tokenGeneration, startingAccessToken);
+  const attempt: RefreshTokenAttempt = {
+    tokenGeneration,
+    promise,
+  };
+  refreshTokenAttempt = attempt;
+  activeRefreshTokenPromises.add(promise);
+  void promise.then(
+    () => activeRefreshTokenPromises.delete(promise),
+    () => activeRefreshTokenPromises.delete(promise),
+  );
   try {
-    return await refreshTokenPromise;
+    return await attempt.promise;
   } finally {
-    refreshTokenPromise = null;
+    if (refreshTokenAttempt === attempt) {
+      refreshTokenAttempt = null;
+    }
   }
 };
 
-export const tryRefreshToken = async (): Promise<boolean> => (await tryRefreshTokenOutcome()) === 'refreshed';
+export const withRoleSwitchRefreshBarrier = async <T>(
+  action: () => Promise<T>,
+): Promise<T> => {
+  if (roleSwitchRefreshBarrier) {
+    await roleSwitchRefreshBarrier;
+    return withRoleSwitchRefreshBarrier(action);
+  }
 
-const refreshTokenOnce = async (): Promise<TokenRefreshOutcome> => {
-  return refreshTokenRequest();
+  let resolveBarrier!: (outcome: RefreshBarrierOutcome) => void;
+  const barrier = new Promise<RefreshBarrierOutcome>((resolve) => {
+    resolveBarrier = resolve;
+  });
+  roleSwitchRefreshBarrier = barrier;
+
+  try {
+    await Promise.allSettled(Array.from(activeRefreshTokenPromises));
+    const result = await withAuthSessionMutationLock(async () => {
+      const currentAccessToken = tokenManager.getAccessToken();
+      tokenManager.syncFromStorage(currentAccessToken);
+      return action();
+    });
+    resolveBarrier('completed');
+    return result;
+  } catch (error) {
+    resolveBarrier('failed');
+    throw error;
+  } finally {
+    if (roleSwitchRefreshBarrier === barrier) {
+      roleSwitchRefreshBarrier = null;
+    }
+  }
+};
+
+export const tryRefreshToken = async (): Promise<boolean> =>
+  hasUsableTokenAfterRefresh(await tryRefreshTokenOutcome());
+
+const refreshTokenOnce = async (
+  startingTokenGeneration: number,
+  startingAccessToken: string,
+): Promise<TokenRefreshOutcome> => {
+  return withAuthSessionMutationLock(async () => {
+    // A cross-tab role switch or refresh can complete while this attempt waits
+    // for the origin-wide lock. Reconcile by token identity before sending a
+    // cookie-rotating request; the same token merely expiring is not a change.
+    tokenManager.syncFromStorage(startingAccessToken);
+    if (tokenManager.getTokenGeneration() !== startingTokenGeneration) {
+      return 'superseded';
+    }
+    return refreshTokenRequest();
+  });
 };
 
 export const withBootstrapFlow = async <T>(action: () => Promise<T>) => {

@@ -38,6 +38,8 @@ vi.mock('@/auth/sessionSecurity', () => ({
 
 vi.mock('@/auth/sessionLifecycle', () => ({
   clearAuthSession: mocks.clearAuthSession,
+  hasUsableTokenAfterRefresh: (outcome: string) =>
+    outcome === 'refreshed' || (outcome === 'superseded' && mocks.hasToken()),
   tryRefreshTokenOutcome: mocks.tryRefreshTokenOutcome,
   withBootstrapFlow: mocks.withBootstrapFlow,
 }));
@@ -203,6 +205,36 @@ describe('sessionBootstrap', () => {
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   });
 
+  it('continues bootstrap when a missing-token refresh is superseded by a usable newer token', async () => {
+    const bootstrapUser = {
+      userId: 13,
+      username: 'newer-session',
+      nickname: 'Newer Session User',
+      permissions: [],
+      sessionId: 'session-newer',
+      locale: 'zh-CN',
+    };
+    const securitySettings = { captchaEnabled: false };
+
+    mocks.hasToken.mockReturnValueOnce(false).mockReturnValue(true);
+    mocks.tryRefreshTokenOutcome.mockResolvedValue('superseded');
+    mocks.request.mockResolvedValue({
+      currentUser: bootstrapUser,
+      securitySettings,
+      menuTree: [],
+      availablePlugins: [],
+    });
+
+    const { restoreSession } = await import('@/auth/sessionBootstrap');
+
+    await expect(restoreSession()).resolves.toMatchObject({
+      currentUser: bootstrapUser,
+      securitySettings,
+    });
+    expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));
+    expect(mocks.clearAuthSession).not.toHaveBeenCalled();
+  });
+
   it('falls back to legacy flow when bootstrap endpoint is unavailable', async () => {
     let currentUserResolve: ((value: CurrentUserFixture) => void) | undefined;
     const currentUserPromise = new Promise((resolve) => {
@@ -254,7 +286,9 @@ describe('sessionBootstrap', () => {
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   });
 
-  it('reuses the in-flight security settings call after refresh retry', async () => {
+  it.each(['refreshed', 'superseded'] as const)(
+    'reuses the in-flight security settings call after a %s refresh outcome',
+    async (refreshOutcome) => {
     let currentUserCall = 0;
     const secondCurrentUserResponse = {
       userId: 22,
@@ -283,7 +317,7 @@ describe('sessionBootstrap', () => {
       }
       throw new Error(`Unexpected request: ${url}`);
     });
-    mocks.tryRefreshTokenOutcome.mockResolvedValue('refreshed');
+    mocks.tryRefreshTokenOutcome.mockResolvedValue(refreshOutcome);
     const securitySettings = { captchaEnabled: true };
     mocks.loadSecuritySettings.mockResolvedValue(securitySettings);
 
@@ -300,5 +334,6 @@ describe('sessionBootstrap', () => {
     expect(mocks.request).toHaveBeenCalledTimes(4);
     expect(mocks.persistCurrentUser).toHaveBeenCalledWith(secondCurrentUserResponse);
     expect(mocks.persistSessionMeta).not.toHaveBeenCalled();
-  });
+    },
+  );
 });

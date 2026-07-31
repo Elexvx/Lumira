@@ -3,15 +3,19 @@ package com.lumira.auth.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.auth.model.AuthSession;
 import com.lumira.common.constant.CacheKeyConstants;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -21,7 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -45,6 +51,7 @@ class AuthSessionStoreTest {
         zSetOperations = mock(ZSetOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any(Object[].class))).thenReturn(1L);
         authSessionStore = new AuthSessionStore(redisTemplate, new ObjectMapper().findAndRegisterModules());
     }
 
@@ -55,12 +62,17 @@ class AuthSessionStoreTest {
         assertDoesNotThrow(() -> authSessionStoreObjectMapper().writeValueAsString(session));
         authSessionStore.save(session, false);
 
-        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
-        verify(valueOperations).set(eq("saas:session:s-1"), payloadCaptor.capture(), ttlCaptor.capture());
-        assertTrue(payloadCaptor.getValue().contains("\"sessionId\":\"s-1\""));
-        assertTrue(payloadCaptor.getValue().contains("\"loginTime\""));
-        assertTrue(ttlCaptor.getValue().compareTo(Duration.ZERO) > 0);
+        ArgumentCaptor<List<String>> keysCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Object[]> argumentsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(redisTemplate).execute(any(RedisScript.class), keysCaptor.capture(), argumentsCaptor.capture());
+        assertThat(keysCaptor.getValue()).containsExactly("saas:session:s-1");
+        assertThat(argumentsCaptor.getValue()[0]).isEqualTo("-1");
+        assertThat((String) argumentsCaptor.getValue()[1]).contains("\"sessionId\":\"s-1\"");
+        assertThat((String) argumentsCaptor.getValue()[1]).contains("\"loginTime\"");
+        assertThat((String) argumentsCaptor.getValue()[1]).contains("\"mutationRevision\":1");
+        assertThat(Long.parseLong((String) argumentsCaptor.getValue()[2])).isPositive();
+        assertThat(argumentsCaptor.getValue()[3]).isEqualTo("1");
+        assertThat(session.getMutationRevision()).isEqualTo(1L);
     }
 
     @Test
@@ -69,9 +81,65 @@ class AuthSessionStoreTest {
 
         authSessionStore.save(session, false);
 
-        ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
-        verify(valueOperations).set(eq("saas:session:s-1"), any(String.class), ttlCaptor.capture());
-        assertTrue(ttlCaptor.getValue().compareTo(Duration.ZERO) > 0);
+        ArgumentCaptor<Object[]> argumentsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(redisTemplate).execute(any(RedisScript.class), anyList(), argumentsCaptor.capture());
+        assertThat(Long.parseLong((String) argumentsCaptor.getValue()[2])).isPositive();
+    }
+
+    @Test
+    void staleSessionSaveShouldBeRejected() {
+        AuthSession persisted = buildSession(Instant.now().plusSeconds(3600));
+        when(valueOperations.get(CacheKeyConstants.sessionKey(persisted.getSessionId())))
+                .thenReturn(toPayload(persisted));
+        AuthSession firstWriter = authSessionStore.findBySessionId(persisted.getSessionId()).orElseThrow();
+        AuthSession staleWriter = authSessionStore.findBySessionId(persisted.getSessionId()).orElseThrow();
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any(Object[].class)))
+                .thenReturn(1L, 0L);
+
+        authSessionStore.save(firstWriter, false);
+        clearInvocations(redisTemplate, valueOperations, zSetOperations);
+        BizException exception = assertThrows(BizException.class, () -> authSessionStore.save(staleWriter, false));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.SESSION_EXPIRED);
+        assertThat(staleWriter.getMutationRevision()).isZero();
+        verify(redisTemplate).execute(any(RedisScript.class), anyList(), any(Object[].class));
+        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));
+        verify(zSetOperations, never()).add(anyString(), anyString(), anyDouble());
+    }
+
+    @Test
+    void loadedRevisionShouldIncrementOnSave() {
+        AuthSession persisted = buildSession(Instant.now().plusSeconds(3600));
+        persisted.setMutationRevision(7L);
+        when(valueOperations.get(CacheKeyConstants.sessionKey(persisted.getSessionId())))
+                .thenReturn(toPayload(persisted));
+        AuthSession loaded = authSessionStore.findBySessionId(persisted.getSessionId()).orElseThrow();
+
+        authSessionStore.save(loaded, false);
+
+        ArgumentCaptor<Object[]> argumentsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(redisTemplate).execute(any(RedisScript.class), anyList(), argumentsCaptor.capture());
+        assertThat(argumentsCaptor.getValue()[0]).isEqualTo("7");
+        assertThat(argumentsCaptor.getValue()[3]).isEqualTo("8");
+        assertThat((String) argumentsCaptor.getValue()[1]).contains("\"mutationRevision\":8");
+        assertThat(loaded.getMutationRevision()).isEqualTo(8L);
+    }
+
+    @Test
+    void legacyPayloadShouldUseRevisionZeroOnSave() {
+        AuthSession persisted = buildSession(Instant.now().plusSeconds(3600));
+        when(valueOperations.get(CacheKeyConstants.sessionKey(persisted.getSessionId())))
+                .thenReturn(legacyPayload(persisted));
+        AuthSession loaded = authSessionStore.findBySessionId(persisted.getSessionId()).orElseThrow();
+
+        assertThat(loaded.getMutationRevision()).isZero();
+        authSessionStore.save(loaded, false);
+
+        ArgumentCaptor<Object[]> argumentsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(redisTemplate).execute(any(RedisScript.class), anyList(), argumentsCaptor.capture());
+        assertThat(argumentsCaptor.getValue()[0]).isEqualTo("0");
+        assertThat(argumentsCaptor.getValue()[3]).isEqualTo("1");
+        assertThat((String) argumentsCaptor.getValue()[1]).contains("\"mutationRevision\":1");
     }
 
     @Test
@@ -90,6 +158,40 @@ class AuthSessionStoreTest {
         assertThat(authSessionStore.hits()).isEqualTo(1L);
         assertThat(authSessionStore.hitRatio()).isEqualTo(0.5);
         assertThat(authSessionStore.removes()).isEqualTo(1L);
+    }
+
+    @Test
+    void conditionalRemoveShouldLeaveNewerSessionAndIndexesUntouchedOnRevisionConflict() {
+        AuthSession staleSession = buildSession(Instant.now().plusSeconds(3600));
+        staleSession.setMutationRevision(7L);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any(Object[].class))).thenReturn(0L);
+
+        boolean removed = authSessionStore.removeIfUnchanged(staleSession, true);
+
+        assertThat(removed).isFalse();
+        assertThat(authSessionStore.removes()).isZero();
+        verify(redisTemplate).execute(any(RedisScript.class), anyList(), any(Object[].class));
+        verify(redisTemplate, never()).delete(anyString());
+        verify(zSetOperations, never()).remove(anyString(), anyString());
+    }
+
+    @Test
+    void conditionalRemoveShouldClearIndexesOnlyAfterMatchingRevisionWasDeleted() {
+        AuthSession session = buildSession(Instant.now().plusSeconds(3600));
+        session.setMutationRevision(7L);
+
+        boolean removed = authSessionStore.removeIfUnchanged(session, true);
+
+        assertThat(removed).isTrue();
+        assertThat(authSessionStore.removes()).isEqualTo(1L);
+        verify(redisTemplate).delete(CacheKeyConstants.sessionOwnerKey(session.getSessionId()));
+        verify(redisTemplate).delete(CacheKeyConstants.userSessionKey(
+                session.getUserId(),
+                session.getUserUuid(),
+                session.getSessionId()
+        ));
+        verify(zSetOperations).remove(USER_ONLINE_SESSION_KEY, session.getSessionId());
+        verify(zSetOperations).remove(CacheKeyConstants.onlineSessionKey(), session.getSessionId());
     }
 
     @Test
@@ -175,7 +277,7 @@ class AuthSessionStoreTest {
         missingPermissionsVersion.setPermissionsVersion(null);
         assertThrows(IllegalArgumentException.class, () -> authSessionStore.save(missingPermissionsVersion, false));
 
-        verify(valueOperations, never()).set(anyString(), anyString(), any(Duration.class));
+        verify(redisTemplate, never()).execute(any(RedisScript.class), anyList(), any(Object[].class));
     }
 
     @Test
@@ -227,6 +329,16 @@ class AuthSessionStoreTest {
             return objectMapper.writeValueAsString(session);
         } catch (Exception exception) {
             throw new AssertionError("failed to serialize auth session", exception);
+        }
+    }
+
+    private String legacyPayload(AuthSession session) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode payload = objectMapper.valueToTree(session);
+            payload.remove("mutationRevision");
+            return objectMapper.writeValueAsString(payload);
+        } catch (Exception exception) {
+            throw new AssertionError("failed to serialize legacy auth session", exception);
         }
     }
 

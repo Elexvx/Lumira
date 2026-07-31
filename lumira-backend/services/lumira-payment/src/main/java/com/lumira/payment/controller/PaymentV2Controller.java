@@ -187,7 +187,8 @@ public class PaymentV2Controller {
     private CurrentUser requireSettingsAdmin() {
         CurrentUser currentUser = currentUser();
         if (isAuthenticatedUser(currentUser)
-                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())) {
+                && PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
+                && currentUser.getSimulatedRoleId() == null) {
             return currentUser;
         }
         throw new BizException(ErrorCode.FORBIDDEN, "仅超级管理员可访问设置");

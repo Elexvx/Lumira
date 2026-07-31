@@ -70,6 +70,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -265,7 +267,7 @@ class AuthAppServiceTest {
         );
 
         assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
-        verify(authSessionStore).remove(session, true);
+        verify(authSessionStore).removeIfUnchanged(session, true);
         verify(authSessionStore, never()).save(any(), anyBoolean());
     }
 
@@ -295,6 +297,35 @@ class AuthAppServiceTest {
         assertEquals("refresh-token-2", response.refreshToken());
         assertEquals(originalLastActivityAt, session.getLastActivityAt());
         verify(authSessionStore).save(session, true);
+    }
+
+    @Test
+    void refreshTokenShouldNotIssueTokensWhenSessionMutationLosesRace() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion(session.getPermissionsVersion());
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        org.mockito.Mockito.doThrow(new BizException(
+                ErrorCode.SESSION_EXPIRED,
+                "Session changed concurrently"
+        )).when(authSessionStore).save(session, true);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        verify(jwtTokenService, never()).generateAccessToken(any());
+        verify(jwtTokenService, never()).generateRefreshToken(any(), anyString());
     }
 
     @Test
@@ -1362,7 +1393,7 @@ class AuthAppServiceTest {
         BizException exception = assertThrows(BizException.class, () -> authAppService.currentUserBySessionId("session-1"));
 
         assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
-        verify(authSessionStore).remove(session, true);
+        verify(authSessionStore).removeIfUnchanged(session, true);
         verify(systemInternalApi, never()).findUserProfileById(42L);
     }
 
@@ -1512,6 +1543,87 @@ class AuthAppServiceTest {
         assertEquals(9L, session.getSimulatedRoleId());
         verify(authSessionStore).save(session, true);
         verify(systemInternalApi).simulatedRolePermissionSnapshot(42L, "user-uuid-42", 9L);
+    }
+
+    @Test
+    void switchSimulatedRoleShouldRetryOnceWhenOnlyConcurrentActivityChanged() {
+        AuthSession baselineSession = cachedSession();
+        baselineSession.setMutationRevision(4L);
+        AuthSession activityUpdatedSession = cachedSession();
+        activityUpdatedSession.setMutationRevision(5L);
+        activityUpdatedSession.setLoginTime(baselineSession.getLoginTime());
+        activityUpdatedSession.setExpireTime(baselineSession.getExpireTime());
+        activityUpdatedSession.setLastActivityAt(Instant.now().plusSeconds(1));
+        PermissionSnapshotDTO roleSnapshot = new PermissionSnapshotDTO(
+                "role-v2",
+                List.of("team:view", "team:update"),
+                List.of(9L),
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                "/team"
+        );
+        when(securityContextFacade.getCurrentUser()).thenReturn(trustedJaneCurrentUser(Set.of("dashboard:view"), Set.of(3L), null, Set.of(), Set.of()));
+        when(authSessionStore.findBySessionId("session-1"))
+                .thenReturn(Optional.of(baselineSession), Optional.of(activityUpdatedSession));
+        when(systemInternalApi.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 9L)).thenReturn(roleSnapshot);
+        when(systemInternalApi.userRoleOptions(42L, "user-uuid-42")).thenReturn(
+                List.of(new CurrentUserRoleOptionDTO(9L, "team_operator", "Team Operator", "FUNCTIONAL", 2, "/workflows/tasks"))
+        );
+        doThrow(new BizException(ErrorCode.SESSION_EXPIRED, "Session changed concurrently"))
+                .doNothing()
+                .when(authSessionStore).save(any(AuthSession.class), eq(true));
+        when(jwtTokenService.generateAccessToken(activityUpdatedSession)).thenReturn("access-role");
+        when(jwtTokenService.generateRefreshToken(eq(activityUpdatedSession), anyString())).thenReturn("refresh-role");
+        when(jwtTokenService.getAccessTokenExpireSeconds()).thenReturn(1800L);
+
+        SimulatedRoleSwitchResponseDTO response = authAppService.switchSimulatedRole(new SimulatedRoleSwitchRequest(9L));
+
+        assertEquals("access-role", response.accessToken());
+        assertEquals(9L, activityUpdatedSession.getSimulatedRoleId());
+        assertEquals("role-v2", activityUpdatedSession.getPermissionsVersion());
+        verify(authSessionStore).save(baselineSession, true);
+        verify(authSessionStore).save(activityUpdatedSession, true);
+        verify(authSessionStore, times(2)).findBySessionId("session-1");
+    }
+
+    @Test
+    void switchSimulatedRoleShouldNotRetryOverAnotherSecurityMutation() {
+        AuthSession baselineSession = cachedSession();
+        baselineSession.setMutationRevision(4L);
+        AuthSession refreshRotatedSession = cachedSession();
+        refreshRotatedSession.setMutationRevision(5L);
+        refreshRotatedSession.setLoginTime(baselineSession.getLoginTime());
+        refreshRotatedSession.setExpireTime(baselineSession.getExpireTime());
+        refreshRotatedSession.setRefreshTokenId("refresh-rotated-elsewhere");
+        when(securityContextFacade.getCurrentUser()).thenReturn(trustedJaneCurrentUser(Set.of("dashboard:view"), Set.of(3L), null, Set.of(), Set.of()));
+        when(authSessionStore.findBySessionId("session-1"))
+                .thenReturn(Optional.of(baselineSession), Optional.of(refreshRotatedSession));
+        when(systemInternalApi.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 9L)).thenReturn(
+                new PermissionSnapshotDTO(
+                        "role-v2",
+                        List.of("team:view"),
+                        List.of(9L),
+                        null,
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        "/team"
+                )
+        );
+        doThrow(new BizException(ErrorCode.SESSION_EXPIRED, "Session changed concurrently"))
+                .when(authSessionStore).save(any(AuthSession.class), eq(true));
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.switchSimulatedRole(new SimulatedRoleSwitchRequest(9L))
+        );
+
+        assertEquals(ErrorCode.SESSION_EXPIRED, exception.getErrorCode());
+        verify(authSessionStore, times(1)).save(any(AuthSession.class), eq(true));
+        verify(jwtTokenService, never()).generateAccessToken(any(AuthSession.class));
+        verify(jwtTokenService, never()).generateRefreshToken(any(AuthSession.class), anyString());
     }
 
     @Test

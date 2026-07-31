@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.saas.common.constant.CacheKeyConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.web.redis.SessionPayloadCas;
 import com.lumira.saas.infrastructure.redis.CacheTemplate;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.saas.modules.system.online.OnlineSessionEvent;
@@ -59,14 +60,32 @@ public class AuthSessionStore {
     }
 
     public void save(AuthSession session, Duration ttl, boolean publishChange) {
+        Long originalRevision = session == null ? null : session.getMutationRevision();
+        boolean payloadCommitted = false;
         try {
             AuthSessionTrustValidator.requireTrustedSession(session);
             Duration effectiveTtl = ttl == null || ttl.isZero() || ttl.isNegative()
                     ? Duration.ofSeconds(1)
                     : ttl;
+            long expectedRevision = SessionPayloadCas.expectedRevision(originalRevision);
+            long nextRevision = SessionPayloadCas.nextRevision(originalRevision);
+            session.setMutationRevision(nextRevision);
             String payload = objectMapper.writeValueAsString(session);
             AuthSessionTrustValidator.requireTrustedPayload(payload);
-            cacheTemplate.put(CacheKeyConstants.sessionKey(session.getSessionId()), payload, effectiveTtl);
+            SessionPayloadCas.Result saveResult = cacheTemplate.compareAndSetSessionPayload(
+                    CacheKeyConstants.sessionKey(session.getSessionId()),
+                    expectedRevision,
+                    nextRevision,
+                    payload,
+                    effectiveTtl
+            );
+            if (saveResult != SessionPayloadCas.Result.SAVED) {
+                if (saveResult == SessionPayloadCas.Result.INVALID_CURRENT_PAYLOAD) {
+                    log.warn("Refusing to replace invalid session payload. sessionId={}", session.getSessionId());
+                }
+                throw new BizException(ErrorCode.SESSION_EXPIRED, "Session changed concurrently");
+            }
+            payloadCommitted = true;
             cacheTemplate.put(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()), "1", effectiveTtl);
             cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId(), toScore(session));
             cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionKey(), session.getSessionId(), toScore(session));
@@ -77,6 +96,10 @@ public class AuthSessionStore {
             saves.incrementAndGet();
         } catch (JsonProcessingException ex) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "会话序列化失败");
+        } finally {
+            if (!payloadCommitted && session != null) {
+                session.setMutationRevision(originalRevision);
+            }
         }
     }
 
@@ -106,7 +129,7 @@ public class AuthSessionStore {
 
         try {
             hits.incrementAndGet();
-            AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+            AuthSession session = deserializeSession(payload);
             AuthSessionTrustValidator.requireTrustedSession(session);
             return Optional.of(session);
         } catch (JsonProcessingException | IllegalArgumentException ex) {
@@ -150,7 +173,7 @@ public class AuthSessionStore {
             try {
                 AuthSessionTrustValidator.requireTrustedPayload(payload);
                 hits.incrementAndGet();
-                AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+                AuthSession session = deserializeSession(payload);
                 AuthSessionTrustValidator.requireTrustedSession(session);
                 sessions.put(sessionId, session);
             } catch (JsonProcessingException | IllegalArgumentException ex) {
@@ -167,6 +190,12 @@ public class AuthSessionStore {
         return sessions;
     }
 
+    private AuthSession deserializeSession(String payload) throws JsonProcessingException {
+        AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+        session.setMutationRevision(SessionPayloadCas.normalizeLoadedRevision(session.getMutationRevision()));
+        return session;
+    }
+
     public void remove(AuthSession session) {
         remove(session, false);
     }
@@ -178,6 +207,33 @@ public class AuthSessionStore {
             return;
         }
         cacheTemplate.remove(CacheKeyConstants.sessionKey(session.getSessionId()));
+        removeSessionIndexes(session, publishChange);
+    }
+
+    public boolean removeIfUnchanged(AuthSession session, boolean publishChange) {
+        try {
+            AuthSessionTrustValidator.requireTrustedSession(session);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        if (session.getMutationRevision() == null) {
+            return false;
+        }
+        SessionPayloadCas.DeleteResult deleteResult = cacheTemplate.compareAndDeleteSessionPayload(
+                CacheKeyConstants.sessionKey(session.getSessionId()),
+                session.getMutationRevision()
+        );
+        if (deleteResult != SessionPayloadCas.DeleteResult.DELETED) {
+            if (deleteResult == SessionPayloadCas.DeleteResult.INVALID_CURRENT_PAYLOAD) {
+                log.warn("Refusing conditional cleanup of invalid session payload. sessionId={}", session.getSessionId());
+            }
+            return false;
+        }
+        removeSessionIndexes(session, publishChange);
+        return true;
+    }
+
+    private void removeSessionIndexes(AuthSession session, boolean publishChange) {
         cacheTemplate.remove(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()));
         cacheTemplate.remove(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
         cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId(), session.getUserUuid()), session.getSessionId());
@@ -317,7 +373,7 @@ public class AuthSessionStore {
             }
             try {
                 AuthSessionTrustValidator.requireTrustedPayload(payload);
-                AuthSession session = objectMapper.readValue(payload, AuthSession.class);
+                AuthSession session = deserializeSession(payload);
                 AuthSessionTrustValidator.requireTrustedSession(session);
                 keysToDelete.add(CacheKeyConstants.sessionKey(session.getSessionId()));
                 keysToDelete.add(CacheKeyConstants.userSessionKey(session.getUserId(), session.getUserUuid(), session.getSessionId()));

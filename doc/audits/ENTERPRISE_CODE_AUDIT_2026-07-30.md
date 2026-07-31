@@ -57,22 +57,22 @@
 
 当前状态是：
 
-- 新库：大多数定义可通过 [`lumira-backend/sql/saas.sql`](lumira-backend/sql/saas.sql) 获得。
+- 新库：大多数定义可通过 [`lumira-backend/sql/saas.sql`](../../lumira-backend/sql/saas.sql) 获得。
 - 存量库：部分近期配置和菜单改动没有对应 `deploy/migrations` 在线迁移。
 - 后端启动：未发现启动时向 MySQL 自动插入静态业务定义的 Runner。
 - 运行期：管理员保存设置时会正常写入业务配置；这属于业务写入，但不能代替版本化迁移。
-- [`FieldEncryptionMigrationRunner`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/FieldEncryptionMigrationRunner.java#L27) 只检查明文并在发现问题时拒绝启动，不会自动修改数据库。
+- [`FieldEncryptionMigrationRunner`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/FieldEncryptionMigrationRunner.java#L27) 只检查明文并在发现问题时拒绝启动，不会自动修改数据库。
 
 ### 3.2 已确认的存量库缺口
 
 | 变更 | 全量基线 | 在线迁移 | 现有库行为 |
 | --- | --- | --- | --- |
-| 维护模式 3 个配置项 | 有，[`saas.sql:4125`](lumira-backend/sql/saas.sql#L4125) | 无 | 首次保存时由后端 upsert 创建，[`SystemPlatformSettingsAppService:243`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/app/SystemPlatformSettingsAppService.java#L243) |
-| 报名团队资料菜单 | 有，[`saas.sql:3569`](lumira-backend/sql/saas.sql#L3569) | 无 | 存量库不会自动获得菜单 |
-| 项目、团队、查询中心等菜单停用 | 有，[`saas.sql:3559`](lumira-backend/sql/saas.sql#L3559) | 无 | 存量库主要依赖前端隐藏/重定向 |
-| 报名数据集与异步导出 | 有 | 有，[`V202607290001`](deploy/migrations/V202607290001__competition_registration_datasets.sql) | 合格 |
-| 版本化评审域 | 有 | 有，[`V202607290002`](deploy/migrations/V202607290002__competition_review_domain.sql) | 存在菜单 ID 冲突，见 P0-02 |
-| 内置插件路由迁移 | 有 | 有，[`V202607280001`](deploy/migrations/V202607280001__relocate_builtin_plugin_routes.sql) | 合格 |
+| 维护模式 3 个配置项 | 有，[`saas.sql:4125`](../../lumira-backend/sql/saas.sql#L4125) | 无 | 首次保存时由后端 upsert 创建，[`SystemPlatformSettingsAppService:243`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/app/SystemPlatformSettingsAppService.java#L243) |
+| 报名团队资料菜单 | 有，[`saas.sql:3569`](../../lumira-backend/sql/saas.sql#L3569) | 无 | 存量库不会自动获得菜单 |
+| 项目、团队、查询中心等菜单停用 | 有，[`saas.sql:3559`](../../lumira-backend/sql/saas.sql#L3559) | 无 | 存量库主要依赖前端隐藏/重定向 |
+| 报名数据集与异步导出 | 有 | 有，[`V202607290001`](../../deploy/migrations/V202607290001__competition_registration_datasets.sql) | 合格 |
+| 版本化评审域 | 有 | 有，[`V202607290002`](../../deploy/migrations/V202607290002__competition_review_domain.sql) | 存在菜单 ID 冲突，见 P0-02 |
+| 内置插件路由迁移 | 有 | 有，[`V202607280001`](../../deploy/migrations/V202607280001__relocate_builtin_plugin_routes.sql) | 合格 |
 
 ### 3.3 运行时自动写库结论
 
@@ -91,12 +91,12 @@
 
 **证据**
 
-- 基线明确声明初始口令为公开固定值：[`saas.sql:3352`](lumira-backend/sql/saas.sql#L3352)。
-- `admin` 和普通 `user` 都以相同口令哈希启用：[`saas.sql:4080`](lumira-backend/sql/saas.sql#L4080)、[`saas.sql:4294`](lumira-backend/sql/saas.sql#L4294)。
-- 用户表和凭证表的 `ON DUPLICATE KEY UPDATE` 都会覆盖已有口令：[`saas.sql:4090`](lumira-backend/sql/saas.sql#L4090)、[`saas.sql:4261`](lumira-backend/sql/saas.sql#L4261)、[`saas.sql:4304`](lumira-backend/sql/saas.sql#L4304)、[`saas.sql:4343`](lumira-backend/sql/saas.sql#L4343)。
-- 首次改密保护只覆盖 ID 1001 的默认管理员，不覆盖普通账号：[`InitialPasswordChangeGuard:23`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/InitialPasswordChangeGuard.java#L23)、[`InitialPasswordChangeGuard:55`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/InitialPasswordChangeGuard.java#L55)。
-- 测试主动断言基线中存在该公开口令的哈希：[`DefaultAdminPasswordBaselineTest:19`](lumira-backend/services/lumira-system/src/test/java/com/lumira/saas/infrastructure/db/DefaultAdminPasswordBaselineTest.java#L19)。
-- SQL 敏感信息门禁把全量基线列为允许文件，因此不会阻断这个哈希：[`check-sensitive-sql-dumps.mjs:12`](bin/check-sensitive-sql-dumps.mjs#L12)。
+- 基线明确声明初始口令为公开固定值：[`saas.sql:3352`](../../lumira-backend/sql/saas.sql#L3352)。
+- `admin` 和普通 `user` 都以相同口令哈希启用：[`saas.sql:4080`](../../lumira-backend/sql/saas.sql#L4080)、[`saas.sql:4294`](../../lumira-backend/sql/saas.sql#L4294)。
+- 用户表和凭证表的 `ON DUPLICATE KEY UPDATE` 都会覆盖已有口令：[`saas.sql:4090`](../../lumira-backend/sql/saas.sql#L4090)、[`saas.sql:4261`](../../lumira-backend/sql/saas.sql#L4261)、[`saas.sql:4304`](../../lumira-backend/sql/saas.sql#L4304)、[`saas.sql:4343`](../../lumira-backend/sql/saas.sql#L4343)。
+- 首次改密保护只覆盖 ID 1001 的默认管理员，不覆盖普通账号：[`InitialPasswordChangeGuard:23`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/InitialPasswordChangeGuard.java#L23)、[`InitialPasswordChangeGuard:55`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/InitialPasswordChangeGuard.java#L55)。
+- 测试主动断言基线中存在该公开口令的哈希：[`DefaultAdminPasswordBaselineTest:19`](../../lumira-backend/services/lumira-system/src/test/java/com/lumira/saas/infrastructure/db/DefaultAdminPasswordBaselineTest.java#L19)。
+- SQL 敏感信息门禁把全量基线列为允许文件，因此不会阻断这个哈希：[`check-sensitive-sql-dumps.mjs:12`](../../bin/check-sensitive-sql-dumps.mjs#L12)。
 
 **影响**
 
@@ -123,10 +123,10 @@
 
 **证据**
 
-- `competition.review-results` 使用 ID `-1074`：[`saas.sql:3572`](lumira-backend/sql/saas.sql#L3572)。
-- `competition.management.delete` 同样使用 ID `-1074`：[`saas.sql:3588`](lumira-backend/sql/saas.sql#L3588)。
-- 在线评审迁移再次用 `-1074` 写入评审结果菜单：[`V202607290002:332`](deploy/migrations/V202607290002__competition_review_domain.sql#L332)。
-- 完整性测试先把 ID 写入 `Map`，重复 ID 被静默覆盖，造成假阴性：[`SaasSqlBootstrapCompletenessTest:194`](lumira-backend/services/lumira-system/src/test/java/com/lumira/saas/infrastructure/db/SaasSqlBootstrapCompletenessTest.java#L194)。
+- `competition.review-results` 使用 ID `-1074`：[`saas.sql:3572`](../../lumira-backend/sql/saas.sql#L3572)。
+- `competition.management.delete` 同样使用 ID `-1074`：[`saas.sql:3588`](../../lumira-backend/sql/saas.sql#L3588)。
+- 在线评审迁移再次用 `-1074` 写入评审结果菜单：[`V202607290002:332`](../../deploy/migrations/V202607290002__competition_review_domain.sql#L332)。
+- 完整性测试先把 ID 写入 `Map`，重复 ID 被静默覆盖，造成假阴性：[`SaasSqlBootstrapCompletenessTest:194`](../../lumira-backend/services/lumira-system/src/test/java/com/lumira/saas/infrastructure/db/SaasSqlBootstrapCompletenessTest.java#L194)。
 
 **影响**
 
@@ -162,12 +162,12 @@
 
 **证据**
 
-- 版本服务在 `last_event_key` 相同时不递增：[`ReadModelVersionService:108`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/readmodel/ReadModelVersionService.java#L108)。
-- 测试明确固化这一行为：[`ReadModelVersionServiceTest:19`](lumira-backend/services/lumira-system/src/test/java/com/lumira/saas/infrastructure/readmodel/ReadModelVersionServiceTest.java#L19)。
-- 安全设置固定使用 `security-update`：[`SecuritySettingsService:337`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/SecuritySettingsService.java#L337)。
-- 权限快照固定使用 `iam.permission.invalidate`：[`PermissionSnapshotService:448`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/iam/service/PermissionSnapshotService.java#L448)。
-- 验证、短信、Passkey 和微信设置使用固定事件名：[`SystemVerificationSettingsAppService:323`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L323)、[`WechatLoginSettingsService:221`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/WechatLoginSettingsService.java#L221)。
-- 插件启停/版本切换也传固定事件名：[`PluginManagementAppService:238`](lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/app/PluginManagementAppService.java#L238)、[`PluginManagementAppService:302`](lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/app/PluginManagementAppService.java#L302)。
+- 版本服务在 `last_event_key` 相同时不递增：[`ReadModelVersionService:108`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/readmodel/ReadModelVersionService.java#L108)。
+- 测试明确固化这一行为：[`ReadModelVersionServiceTest:19`](../../lumira-backend/services/lumira-system/src/test/java/com/lumira/saas/infrastructure/readmodel/ReadModelVersionServiceTest.java#L19)。
+- 安全设置固定使用 `security-update`：[`SecuritySettingsService:337`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/SecuritySettingsService.java#L337)。
+- 权限快照固定使用 `iam.permission.invalidate`：[`PermissionSnapshotService:448`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/iam/service/PermissionSnapshotService.java#L448)。
+- 验证、短信、Passkey 和微信设置使用固定事件名：[`SystemVerificationSettingsAppService:323`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L323)、[`WechatLoginSettingsService:221`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/WechatLoginSettingsService.java#L221)。
+- 插件启停/版本切换也传固定事件名：[`PluginManagementAppService:238`](../../lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/app/PluginManagementAppService.java#L238)、[`PluginManagementAppService:302`](../../lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/app/PluginManagementAppService.java#L302)。
 
 **影响**
 
@@ -189,10 +189,10 @@
 
 **证据**
 
-- 安全策略一次执行 16 个独立 upsert，没有 `@Transactional`：[`SecuritySettingsService:223`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/SecuritySettingsService.java#L223)。
-- 验证、短信和 Passkey 更新/重置由 3–8 个独立 upsert 组成，没有事务：[`SystemVerificationSettingsAppService:310`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L310)。
-- 微信登录更新/重置由 5 个独立 upsert 组成，没有事务：[`WechatLoginSettingsService:199`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/WechatLoginSettingsService.java#L199)。
-- 查询配置 ID 时广泛捕获异常并按“不存在”处理：[`SystemVerificationSettingsAppService:503`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L503)。
+- 安全策略一次执行 16 个独立 upsert，没有 `@Transactional`：[`SecuritySettingsService:223`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/service/SecuritySettingsService.java#L223)。
+- 验证、短信和 Passkey 更新/重置由 3–8 个独立 upsert 组成，没有事务：[`SystemVerificationSettingsAppService:310`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L310)。
+- 微信登录更新/重置由 5 个独立 upsert 组成，没有事务：[`WechatLoginSettingsService:199`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/WechatLoginSettingsService.java#L199)。
+- 查询配置 ID 时广泛捕获异常并按“不存在”处理：[`SystemVerificationSettingsAppService:503`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L503)。
 
 **影响**
 
@@ -209,9 +209,9 @@
 
 **证据**
 
-- `pnpm audit`、OSV、Semgrep 均配置 `continue-on-error: true`：[`security-scan.yml:53`](.github/workflows/security-scan.yml#L53)。
-- `pnpm audit` 最终显式 `exit 0`：[`security-scan.yml:56`](.github/workflows/security-scan.yml#L56)。
-- 文件系统镜像扫描被禁用：[`security-scan.yml:29`](.github/workflows/security-scan.yml#L29)。
+- `pnpm audit`、OSV、Semgrep 均配置 `continue-on-error: true`：[`security-scan.yml:53`](../../.github/workflows/security-scan.yml#L53)。
+- `pnpm audit` 最终显式 `exit 0`：[`security-scan.yml:56`](../../.github/workflows/security-scan.yml#L56)。
+- 文件系统镜像扫描被禁用：[`security-scan.yml:29`](../../.github/workflows/security-scan.yml#L29)。
 - 当前提交的安全扫描虽然显示成功，但制品报告为前端生产依赖：3 low、17 moderate、12 high、0 critical。
 - 当前 OSV 报告包括：
   - `jackson-core 2.21.2`：HIGH；
@@ -232,10 +232,10 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 **证据**
 
-- 示例环境提供的占位密钥长度足够，且不在禁止列表中：[`deploy/.env.example:100`](deploy/.env.example#L100)、[`PluginSecurityPropertiesValidator:15`](lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/runtime/PluginSecurityPropertiesValidator.java#L15)。
-- 插件签名实际是共享密钥 HMAC-SHA256，并使用普通字符串忽略大小写比较：[`PluginArtifactLoader:254`](lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/loader/PluginArtifactLoader.java#L254)。
-- 校验只验证 `checksums` 中列出的文件，没有证明关键可执行文件全部被覆盖：[`PluginArtifactLoader:241`](lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/loader/PluginArtifactLoader.java#L241)。
-- 插件 JAR 通过父类加载器加载到应用进程并可注册 HTTP 处理器和定时任务：[`PluginRuntimeLoader:59`](lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/loader/PluginRuntimeLoader.java#L59)。
+- 示例环境提供的占位密钥长度足够，且不在禁止列表中：[`deploy/.env.example:100`](../../deploy/.env.example#L100)、[`PluginSecurityPropertiesValidator:15`](../../lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/runtime/PluginSecurityPropertiesValidator.java#L15)。
+- 插件签名实际是共享密钥 HMAC-SHA256，并使用普通字符串忽略大小写比较：[`PluginArtifactLoader:254`](../../lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/loader/PluginArtifactLoader.java#L254)。
+- 校验只验证 `checksums` 中列出的文件，没有证明关键可执行文件全部被覆盖：[`PluginArtifactLoader:241`](../../lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/loader/PluginArtifactLoader.java#L241)。
+- 插件 JAR 通过父类加载器加载到应用进程并可注册 HTTP 处理器和定时任务：[`PluginRuntimeLoader:59`](../../lumira-backend/services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/loader/PluginRuntimeLoader.java#L59)。
 
 **影响**
 
@@ -270,8 +270,8 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 **证据**
 
-- 生产组件 [`NoopTeamAuditPort`](lumira-backend/services/lumira-team/src/main/java/com/lumira/team/app/NoopTeamAuditPort.java#L6) 的实现为空，并保留 TODO。
-- 该空实现直接进入团队控制面装配：[`TeamControlPlaneAssemblyConfiguration:33`](lumira-backend/services/lumira-team/src/main/java/com/lumira/team/TeamControlPlaneAssemblyConfiguration.java#L33)。
+- 生产组件 [`NoopTeamAuditPort`](../../lumira-backend/services/lumira-team/src/main/java/com/lumira/team/app/NoopTeamAuditPort.java#L6) 的实现为空，并保留 TODO。
+- 该空实现直接进入团队控制面装配：[`TeamControlPlaneAssemblyConfiguration:33`](../../lumira-backend/services/lumira-team/src/main/java/com/lumira/team/TeamControlPlaneAssemblyConfiguration.java#L33)。
 
 **影响**
 
@@ -287,38 +287,38 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 ### P2-01 工单富文本只在前端使用自制清洗器
 
-- 后端仅做非空和长度处理后直接持久化 HTML：[`WorkOrderFeedbackService:189`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/workorder/app/WorkOrderFeedbackService.java#L189)。
-- 前端自制清洗器只删除部分标签和 `on*`/`javascript:` 属性：[`WorkOrderFeedbackPage:79`](lumira-ui/src/pages/plugins/WorkOrderFeedbackPage.tsx#L79)。
-- 最终仍使用 `dangerouslySetInnerHTML`：[`WorkOrderFeedbackPage:248`](lumira-ui/src/pages/plugins/WorkOrderFeedbackPage.tsx#L248)。
+- 后端仅做非空和长度处理后直接持久化 HTML：[`WorkOrderFeedbackService:189`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/workorder/app/WorkOrderFeedbackService.java#L189)。
+- 前端自制清洗器只删除部分标签和 `on*`/`javascript:` 属性：[`WorkOrderFeedbackPage:79`](../../lumira-ui/src/pages/plugins/WorkOrderFeedbackPage.tsx#L79)。
+- 最终仍使用 `dangerouslySetInnerHTML`：[`WorkOrderFeedbackPage:248`](../../lumira-ui/src/pages/plugins/WorkOrderFeedbackPage.tsx#L248)。
 
 整改：服务端采用经过维护的严格 allowlist 清洗；保存原文与安全渲染值分离；增加 SVG、CSS、URL 编码和 DOM clobbering 回归用例。
 
 ### P2-02 登录重定向允许协议相对路径边界
 
-- 重定向只检查以 `/` 开头，因此 `//example.com` 也会通过：[`loginRedirect.ts:23`](lumira-ui/src/auth/loginRedirect.ts#L23)。
-- 登录广播监听器最终调用 `window.location.replace(target)`：[`useLoginFlowRuntime.ts:1565`](lumira-ui/src/pages/user/login/hooks/useLoginFlowRuntime.ts#L1565)。
-- 现有 10 个重定向测试没有覆盖 `//`、反斜杠和编码变体：[`loginRedirect.test.ts`](lumira-ui/src/auth/loginRedirect.test.ts)。
+- 重定向只检查以 `/` 开头，因此 `//example.com` 也会通过：[`loginRedirect.ts:23`](../../lumira-ui/src/auth/loginRedirect.ts#L23)。
+- 登录广播监听器最终调用 `window.location.replace(target)`：[`useLoginFlowRuntime.ts:1565`](../../lumira-ui/src/pages/user/login/hooks/useLoginFlowRuntime.ts#L1565)。
+- 现有 10 个重定向测试没有覆盖 `//`、反斜杠和编码变体：[`loginRedirect.test.ts`](../../lumira-ui/src/auth/loginRedirect.test.ts)。
 
 整改：仅接受单斜杠同源绝对路径；通过 `new URL(target, location.origin)` 验证 origin；拒绝反斜杠、控制字符和二次编码。
 
 ### P2-03 AI 端点存在 DNS 重绑定时间差
 
-- 保存/创建客户端前会 DNS 解析并拒绝本地地址：[`AiChatModelFactory:542`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/ai/app/AiChatModelFactory.java#L542)。
+- 保存/创建客户端前会 DNS 解析并拒绝本地地址：[`AiChatModelFactory:542`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/ai/app/AiChatModelFactory.java#L542)。
 - 实际 HTTP 连接时会再次解析，存在验证与使用之间的 DNS 重绑定窗口。
-- Ollama 默认地址是 `localhost`，但同一校验拒绝 loopback：[`AiChatModelFactory:557`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/ai/app/AiChatModelFactory.java#L557)、[`AiChatModelFactory:580`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/ai/app/AiChatModelFactory.java#L580)。
+- Ollama 默认地址是 `localhost`，但同一校验拒绝 loopback：[`AiChatModelFactory:557`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/ai/app/AiChatModelFactory.java#L557)、[`AiChatModelFactory:580`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/ai/app/AiChatModelFactory.java#L580)。
 
 整改：连接时固定已验证 IP，校验证书主机名；每次重定向重新校验；本地 Ollama 使用单独、明确授权的策略。
 
 ### P2-04 缺少统一浏览器安全响应头
 
 - Nginx 主要设置缓存头，没有统一 CSP、HSTS、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy`。
-- Spring Security 仅显式配置 frame options：[`SecurityConfig:82`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/SecurityConfig.java#L82)。
+- Spring Security 仅显式配置 frame options：[`SecurityConfig:82`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/infrastructure/security/SecurityConfig.java#L82)。
 
 整改：在边缘层统一配置安全头；CSP 先 report-only 再强制；HSTS 仅在确认全站 HTTPS 后启用并逐步扩大。
 
 ### P2-05 内部文件读取边界依赖调用方先鉴权
 
-- 文件服务的业务引用读取只校验引用类型、正数 ID 和文件存在，没有校验 `fileId` 与 `referenceId` 的绑定，也没有自行校验业务权限：[`FileManagementAppService:660`](lumira-backend/services/lumira-file/src/main/java/com/lumira/file/app/FileManagementAppService.java#L660)。
+- 文件服务的业务引用读取只校验引用类型、正数 ID 和文件存在，没有校验 `fileId` 与 `referenceId` 的绑定，也没有自行校验业务权限：[`FileManagementAppService:660`](../../lumira-backend/services/lumira-file/src/main/java/com/lumira/file/app/FileManagementAppService.java#L660)。
 - 当前赛事调用方先执行材料访问检查，这是正向控制，但内部 API 自身仍是 confused-deputy 边界。
 
 整改：由文件服务验证不可伪造的授权票据，或查询受信业务引用映射；增加“正确用户 + 错误 referenceId/fileId”拒绝用例。
@@ -327,7 +327,7 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 静态统计发现生产代码中有 186 个捕获 `Exception/Throwable` 的位置，其中 45 个直接命名为 `ignored`。并非每个捕获都错误，但当前没有静态规则区分允许场景。
 
-高风险实例：配置 ID 查询把任意数据库异常当作不存在：[`SystemVerificationSettingsAppService:503`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L503)。
+高风险实例：配置 ID 查询把任意数据库异常当作不存在：[`SystemVerificationSettingsAppService:503`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java#L503)。
 
 整改：建立允许清单；禁止在认证、权限、配置、支付和审计路径无日志吞异常；记录结构化错误并保留 cause。
 
@@ -343,10 +343,10 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 代表性文件：
 
-- [`CompetitionPage.tsx`](lumira-ui/src/pages/competition/CompetitionPage.tsx)：7,719 行。
-- [`SystemManagementAppService.java`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java)：3,814 行。
-- [`CompetitionRegistrationAppService.java`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/competition/app/CompetitionRegistrationAppService.java)：3,189 行。
-- [`InternalSystemController.java`](lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java)：2,334 行。
+- [`CompetitionPage.tsx`](../../lumira-ui/src/pages/competition/CompetitionPage.tsx)：7,719 行。
+- [`SystemManagementAppService.java`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java)：3,814 行。
+- [`CompetitionRegistrationAppService.java`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/competition/app/CompetitionRegistrationAppService.java)：3,189 行。
+- [`InternalSystemController.java`](../../lumira-backend/services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java)：2,334 行。
 
 整改：按聚合、用例和端口拆分；控制器只做协议适配；前端按页面子域、状态机和可复用面板拆分。新增复杂度和文件行数增量门禁。
 
@@ -354,14 +354,14 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 - 前端存在 `test:coverage`，但 CI 只运行普通测试且无阈值。
 - Maven 未配置 JaCoCo、SpotBugs、PMD、Checkstyle 或 PIT。
-- 根 [`package.json:10`](package.json#L10) 的默认 `test` 仍是占位失败脚本。
+- 根 [`package.json:10`](../../package.json#L10) 的默认 `test` 仍是占位失败脚本。
 
 整改：建立变更覆盖率与核心模块覆盖率基线；启用 SpotBugs/Checkstyle/复杂度门禁；根脚本统一编排实际测试。
 
 ### P2-10 配置契约和仓库制品漂移
 
-- 文档声明 `LUMIRA_INITIAL_ADMIN_PASSWORD` 可设置首登口令并传入容器：[`deploy/.env.example:159`](deploy/.env.example#L159)、[`docker-compose.prod.yml:389`](deploy/docker-compose.prod.yml#L389)，但代码中没有消费者。
-- [`build-identity.env`](build-identity.env) 内容损坏，包含多个无效 `FRONTEND_VERSION` 行。
+- 文档声明 `LUMIRA_INITIAL_ADMIN_PASSWORD` 可设置首登口令并传入容器：[`deploy/.env.example:159`](../../deploy/.env.example#L159)、[`docker-compose.prod.yml:389`](../../deploy/docker-compose.prod.yml#L389)，但代码中没有消费者。
+- 根目录曾存在内容损坏的 `build-identity.env`（后续已清理），其中包含多个无效 `FRONTEND_VERSION` 行。
 - 仓库跟踪了两份 SHA256 完全相同的编译 JAR：
   - `artifacts/boot-jar-patch/BOOT-INF/lib/system-service-0.1.0.jar`
   - `artifacts/boot-jar-patch-2/BOOT-INF/lib/system-service-0.1.0.jar`
@@ -375,14 +375,14 @@ GitHub 证据：Security Scan run `30540376421`，提交与本报告一致。
 
 本地 Lint 为 0 error、2 warning：
 
-- [`ActivityRegistrationPage.tsx:51`](lumira-ui/src/pages/competition/ActivityRegistrationPage.tsx#L51) 未使用 `initialState`。
-- [`CompetitionPage.tsx:6843`](lumira-ui/src/pages/competition/CompetitionPage.tsx#L6843) 未使用 `CompetitionStageWindowsPanel`。
+- [`ActivityRegistrationPage.tsx:51`](../../lumira-ui/src/pages/competition/ActivityRegistrationPage.tsx#L51) 未使用 `initialState`。
+- [`CompetitionPage.tsx:6843`](../../lumira-ui/src/pages/competition/CompetitionPage.tsx#L6843) 未使用 `CompetitionStageWindowsPanel`。
 
 建议将生产 CI 配置为零警告或显式预算。
 
 ### P3-02 GitHub Actions 未全部固定到不可变提交
 
-Actions 使用 `@v4`、`@v1` 等浮动主版本；Gitleaks 二进制通过 `curl` 下载后未校验 checksum：[`security-scan.yml:18`](.github/workflows/security-scan.yml#L18)、[`security-scan.yml:24`](.github/workflows/security-scan.yml#L24)。
+Actions 使用 `@v4`、`@v1` 等浮动主版本；Gitleaks 二进制通过 `curl` 下载后未校验 checksum：[`security-scan.yml:18`](../../.github/workflows/security-scan.yml#L18)、[`security-scan.yml:24`](../../.github/workflows/security-scan.yml#L24)。
 
 建议固定完整 commit SHA，并校验外部二进制签名或摘要。
 
@@ -391,7 +391,7 @@ Actions 使用 `@v4`、`@v1` 等浮动主版本；Gitleaks 二进制通过 `curl
 两处 MyBatis `${}` 经复核未发现可利用注入：
 
 - 消息排序字段由固定 `<when>` 选择，方向归一化为 `asc/desc`。
-- 本地化排序列来自固定映射，方向归一化为 `asc/desc`：[`LocalizationManagementAppService:200`](lumira-backend/services/lumira-localization/src/main/java/com/lumira/localization/app/LocalizationManagementAppService.java#L200)。
+- 本地化排序列来自固定映射，方向归一化为 `asc/desc`：[`LocalizationManagementAppService:200`](../../lumira-backend/services/lumira-localization/src/main/java/com/lumira/localization/app/LocalizationManagementAppService.java#L200)。
 
 建议改为枚举分支生成固定 SQL，避免后续调用者绕开白名单。
 

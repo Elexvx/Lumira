@@ -1,7 +1,6 @@
 package com.lumira.team;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
-import com.lumira.team.app.NoopTeamAuditPort;
 import com.lumira.team.app.TeamAppService;
 import com.lumira.team.app.TeamInternalApiService;
 import com.lumira.team.app.TeamInviteService;
@@ -14,6 +13,7 @@ import com.lumira.team.infrastructure.persistence.JdbcTeamMemberRepository;
 import com.lumira.team.infrastructure.persistence.JdbcTeamRepository;
 import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
 import com.lumira.team.infrastructure.persistence.RawSqlMapper;
+import com.lumira.team.infrastructure.audit.SystemOwnerTeamAuditPort;
 import com.lumira.team.mapper.TeamMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -30,7 +30,7 @@ import org.springframework.context.annotation.Import;
         annotationClass = Mapper.class
 )
 @Import({
-        NoopTeamAuditPort.class,
+        SystemOwnerTeamAuditPort.class,
         TeamAppService.class,
         TeamInternalApiService.class,
         TeamInviteService.class,

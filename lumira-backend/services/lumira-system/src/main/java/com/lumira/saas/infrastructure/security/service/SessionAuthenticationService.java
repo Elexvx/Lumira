@@ -246,28 +246,37 @@ public class SessionAuthenticationService {
     }
 
     private void validateSession(TokenClaims claims, AuthSession session, Instant now) {
+        if (session.getUserId() == null || session.getUserId() <= 0) {
+            invalidateSession(session, "session identity snapshot is incomplete");
+        }
         if (!session.getUserId().equals(claims.getUserId())) {
-            invalidateSession(session, "token与会话不匹配");
+            rejectStaleCredentials("token and session user identity mismatch");
         }
         if (!StringUtils.hasText(session.getUserUuid())) {
             invalidateSession(session, "session identity snapshot is incomplete");
         }
         if (!StringUtils.hasText(claims.getUserUuid()) || !session.getUserUuid().trim().equals(claims.getUserUuid().trim())) {
-            invalidateSession(session, "token and session user identity mismatch");
+            rejectStaleCredentials("token and session user identity mismatch");
         }
-        if (!StringUtils.hasText(session.getUsername()) || !session.getUsername().trim().equals(claims.getUsername().trim())) {
-            invalidateSession(session, "token and session identity mismatch");
+        if (!StringUtils.hasText(session.getUsername())) {
+            invalidateSession(session, "session identity snapshot is incomplete");
+        }
+        if (!session.getUsername().trim().equals(claims.getUsername().trim())) {
+            rejectStaleCredentials("token and session identity mismatch");
         }
         if (!Objects.equals(normalizeSimulatedRoleId(session.getSimulatedRoleId()), normalizeSimulatedRoleId(claims.getSimulatedRoleId()))) {
-            invalidateSession(session, "token and session role identity mismatch");
+            rejectStaleCredentials("token and session role identity mismatch");
         }
-        if (session.getSessionVersion() == null || !session.getSessionVersion().equals(claims.getSessionVersion())) {
-            invalidateSession(session, "会话版本已变更，请重新登录");
+        if (session.getSessionVersion() == null || session.getSessionVersion() <= 0) {
+            invalidateSession(session, "session version is invalid");
+        }
+        if (!session.getSessionVersion().equals(claims.getSessionVersion())) {
+            rejectStaleCredentials("session version changed");
         }
         if (!securitySettingsService.isAllowMultiDeviceLogin()) {
             String latestSessionId = authSessionStore.findLatestActiveUserSessionId(session.getUserId(), session.getUserUuid()).orElse(null);
             if (latestSessionId == null || !session.getSessionId().equals(latestSessionId)) {
-                invalidateSession(session, "当前账号已在其他设备登录，请重新登录");
+                forceInvalidateSession(session, "当前账号已在其他设备登录，请重新登录");
             }
         }
         if (jwtTokenService.isExpired(session.getExpireTime())) {
@@ -370,7 +379,26 @@ public class SessionAuthenticationService {
 
     private void invalidateSession(AuthSession session, String message) {
         authenticatedAccessCache.invalidateAll();
+        authSessionStore.removeIfUnchanged(session, true);
+        throw new BizException(
+                ErrorCode.SESSION_EXPIRED,
+                message,
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+        );
+    }
+
+    private void forceInvalidateSession(AuthSession session, String message) {
+        authenticatedAccessCache.invalidateAll();
         authSessionStore.remove(session, true);
+        throw new BizException(
+                ErrorCode.SESSION_EXPIRED,
+                message,
+                ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
+        );
+    }
+
+    private void rejectStaleCredentials(String message) {
+        authenticatedAccessCache.invalidateAll();
         throw new BizException(
                 ErrorCode.SESSION_EXPIRED,
                 message,
@@ -409,7 +437,7 @@ public class SessionAuthenticationService {
             PermissionSnapshotService.PermissionSnapshot snapshot
     ) {
         Set<String> permissions = snapshot.getPermissions() == null ? Collections.emptySet() : snapshot.getPermissions();
-        if (!isProtectedAdminAccount(session)) {
+        if (!isProtectedAdminAccount(session) || session.getSimulatedRoleId() != null) {
             return permissions;
         }
         LinkedHashSet<String> effectivePermissions = new LinkedHashSet<>(permissions);

@@ -199,6 +199,27 @@ describe('handleApiError', () => {
     });
   });
 
+  it('preserves the active session for an explicit role-transition unauthorized response', () => {
+    mocks.buildUnauthorizedRuntimeState.mockReturnValue({
+      ...runtimeAt('/dashboard/home'),
+      currentAccessToken: 'token-a',
+    });
+
+    handleApiError(sessionExpiredError(), {
+      allowUnauthorizedWithoutRedirect: true,
+      preserveAuthSessionOnUnauthorized: true,
+      silent: true,
+    }, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-a',
+      hasAuthToken: true,
+    });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
   it('does not destroy the platform session when a business service still returns 401 after refresh', () => {
     handleApiError(sessionExpiredError(), {}, {
       ...baseAuthSnapshot,
@@ -218,6 +239,18 @@ describe('handleApiError', () => {
     }, { refreshTemporarilyUnavailable: true });
 
     expect(mocks.messageWarning).toHaveBeenCalledWith('session expired');
+    expect(mocks.performLogout).not.toHaveBeenCalled();
+  });
+
+  it('does not destroy the platform session when refresh was superseded by a role transition', () => {
+    handleApiError(sessionExpiredError(), {}, {
+      ...baseAuthSnapshot,
+      accessToken: 'token-during-role-switch',
+      hasAuthToken: true,
+    }, { refreshSuperseded: true });
+
+    expect(mocks.messageInfo).not.toHaveBeenCalled();
+    expect(mocks.messageWarning).not.toHaveBeenCalled();
     expect(mocks.performLogout).not.toHaveBeenCalled();
   });
 });

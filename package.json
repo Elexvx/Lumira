@@ -1,22 +1,23 @@
 {
   "name": "lumira",
   "version": "1.0.0",
+  "private": true,
   "description": "Lumira 是一套面向企业管理场景的 SaaS 平台底座，提供用户、权限、配置、文件、消息、插件、国际化、支付、AI 助手和后台任务等基础能力。",
-  "main": "index.js",
   "directories": {
     "doc": "doc"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test bin/*.test.mjs",
     "test:competition-load": "node bin/competition-workflow-load-smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Elexvx/Lumira.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Elexvx/Lumira/issues"

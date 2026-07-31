@@ -2,12 +2,15 @@ package com.lumira.common.web;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.OperationAuditRecordRequestDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -16,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class SystemInternalClientConfigurationTest {
 
@@ -196,6 +200,61 @@ class SystemInternalClientConfigurationTest {
         assertThatThrownBy(api::smtpRuntimeConfigValues)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("/internal/system/config/runtime/smtp");
+    }
+
+    @Test
+    void systemInternalApiPreservesTrustedPermissionSnapshotError() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SystemInternalApi api = systemInternalApi(builder, "message-token-2026");
+        server.expect(requestTo("http://system-service:8081/internal/system/permissions/simulated-role-snapshot?userId=42&userUuid=user-uuid-42&roleId=7"))
+                .andRespond(withStatus(HttpStatus.CONFLICT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"httpStatus\":409,\"code\":\"P1001\",\"message\":\"jdbc secret\",\"userMessage\":\"untrusted remote text\"}"));
+
+        assertThatThrownBy(() -> api.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 7L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PERMISSION_SNAPSHOT_ERROR);
+                    assertThat(exception.getMessage()).isEqualTo(ErrorCode.PERMISSION_SNAPSHOT_ERROR.getDefaultMessage());
+                    assertThat(exception.getUserMessage()).isEqualTo(ErrorCode.PERMISSION_SNAPSHOT_ERROR.getDefaultUserMessage());
+                });
+        server.verify();
+    }
+
+    @Test
+    void systemInternalApiPreservesTrustedForbiddenError() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SystemInternalApi api = systemInternalApi(builder, "message-token-2026");
+        server.expect(requestTo("http://system-service:8081/internal/system/permissions/simulated-role-snapshot?userId=42&userUuid=user-uuid-42&roleId=7"))
+                .andRespond(withStatus(HttpStatus.FORBIDDEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"httpStatus\":403,\"code\":\"A0403\",\"message\":\"forbidden\",\"userMessage\":\"remote text\"}"));
+
+        assertThatThrownBy(() -> api.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 7L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN);
+                    assertThat(exception.getUserMessage()).isEqualTo(ErrorCode.FORBIDDEN.getDefaultUserMessage());
+                });
+        server.verify();
+    }
+
+    @Test
+    void systemInternalApiRejectsUntrustedRemoteErrorContent() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        SystemInternalApi api = systemInternalApi(builder, "message-token-2026");
+        server.expect(requestTo("http://system-service:8081/internal/system/permissions/simulated-role-snapshot?userId=42&userUuid=user-uuid-42&roleId=7"))
+                .andRespond(withStatus(HttpStatus.CONFLICT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"httpStatus\":409,\"code\":\"EVIL\",\"message\":\"database-password\"}"));
+
+        assertThatThrownBy(() -> api.simulatedRolePermissionSnapshot(42L, "user-uuid-42", 7L))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.DEPENDENCY_UNAVAILABLE);
+                    assertThat(exception.getMessage()).doesNotContain("database-password");
+                });
+        server.verify();
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.lumira.common.security.FieldCryptoService;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
+import com.lumira.saas.infrastructure.readmodel.ReadModelEventKey;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -18,6 +19,7 @@ import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -307,6 +309,7 @@ public class SystemVerificationSettingsAppService {
         return settings;
     }
 
+    @Transactional
     public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
@@ -324,6 +327,7 @@ public class SystemVerificationSettingsAppService {
         return getVerificationSettings();
     }
 
+    @Transactional
     public SystemVO.SmsVerificationSettingsVO updateSmsSettings(CurrentUser currentUser, SystemDTO.SmsVerificationSettingsRequest request) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
@@ -352,6 +356,7 @@ public class SystemVerificationSettingsAppService {
         return getSmsSettings();
     }
 
+    @Transactional
     public SystemVO.SmsVerificationSettingsVO resetSmsSettings(CurrentUser currentUser) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
@@ -378,6 +383,7 @@ public class SystemVerificationSettingsAppService {
         return wechatLoginSettingsService.resetSettings(currentUser);
     }
 
+    @Transactional
     public SystemVO.PasskeySettingsVO updatePasskeySettings(CurrentUser currentUser, SystemDTO.PasskeySettingsRequest request) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
@@ -406,6 +412,7 @@ public class SystemVerificationSettingsAppService {
         return getPasskeySettings();
     }
 
+    @Transactional
     public SystemVO.PasskeySettingsVO resetPasskeySettings(CurrentUser currentUser) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
@@ -501,24 +508,20 @@ public class SystemVerificationSettingsAppService {
     }
 
     private Long queryConfigId(String configKey) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select id
-                            from sys_config
-                            where config_key = ?
-                              and config_scope = 'PLATFORM'
-                              and is_system = 0
-                              and deleted = 0
-                            order by id desc
-                            limit 1
-                            """,
-                    Long.class,
-                    configKey
-            );
-        } catch (Exception ignored) {
-            return null;
-        }
+        return jdbcTemplate.queryForObject(
+                """
+                        select id
+                        from sys_config
+                        where config_key = ?
+                          and config_scope = 'PLATFORM'
+                          and is_system = 0
+                          and deleted = 0
+                        order by id desc
+                        limit 1
+                        """,
+                Long.class,
+                configKey
+        );
     }
 
     private List<String> smsConfigKeys() {
@@ -626,7 +629,7 @@ public class SystemVerificationSettingsAppService {
             readModelVersionService.bump(
                     READ_MODEL_CONTEXT_PLATFORM,
                     READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
-                    eventKey
+                    ReadModelEventKey.unique(eventKey)
             );
         }
     }

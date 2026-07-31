@@ -54,6 +54,12 @@ public class PluginRuntimeLoader {
             PluginDTO.PluginPackageMetadata metadata,
             Path versionHome
     ) {
+        if (!pluginProperties.isAllowInProcessBackendPlugins()) {
+            throw new BizException(
+                    ErrorCode.PLUGIN_RUNTIME_ERROR,
+                    "in-process backend plugin execution is disabled; use an isolated plugin runtime"
+            );
+        }
         try {
             Path jarPath = versionHome.resolve("lumira-backend/plugin.jar");
             URLClassLoader classLoader = new URLClassLoader(
