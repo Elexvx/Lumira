@@ -50,6 +50,17 @@ describe('competition settings page-level save guards', () => {
     })).toBe(true);
   });
 
+  it('keeps legacy registration input fields compatible with field-module saves', () => {
+    expect(isConfigModuleReadyToSave('fields', [
+      {
+        itemType: 'REGISTRATION_FIELD',
+        title: '联系人',
+        itemKey: 'contact-name',
+        metadata: {},
+      },
+    ])).toBe(true);
+  });
+
   it('requires confirmed timeline rows to be complete before autosave', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026.07.01 09:00', '2026.07.31 18:00'],

@@ -24,6 +24,7 @@ export type CompetitionSettingsScheduleFormItem = {
 export type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
 
 export type CompetitionSettingsConfigItemDraft = {
+  itemType?: string | null;
   title?: string | null;
   itemKey?: string | null;
   metadata?: {
@@ -231,10 +232,12 @@ export const isConfigModuleReadyToSave = (
       return hasText(item.title);
     }
     if (moduleKey === 'fields') {
+      const fieldType = item.metadata?.fieldType
+        || (item.itemType === 'REGISTRATION_FIELD' ? 'TEXT' : undefined);
       return hasText(item.title)
         && hasText(item.itemKey)
-        && hasText(item.metadata?.fieldType)
-        && (!['SELECT', 'MULTI_SELECT'].includes(item.metadata?.fieldType || '') || hasText(item.metadata?.options));
+        && hasText(fieldType)
+        && (!['SELECT', 'MULTI_SELECT'].includes(fieldType || '') || hasText(item.metadata?.options));
     }
     if (moduleKey === 'files') {
       return hasText(item.title)

@@ -14,7 +14,7 @@ export const calculateRegistrationPayableAmount = (
   entryFeeMinor: number | null | undefined,
   feeMode: CompetitionFeeMode | null | undefined,
   memberCount: number,
-) => Math.max(0, entryFeeMinor || 0) * (feeMode === 'MEMBER' ? Math.max(1, memberCount) : 1);
+) => Math.max(0, entryFeeMinor || 0) * (feeMode === 'MEMBER' ? Math.max(0, memberCount) : 1);
 
 export const buildRegistrationPaymentResultUrl = (origin: string, registrationId: number) => {
   const url = new URL('/competitions/register/payment-result', origin);
