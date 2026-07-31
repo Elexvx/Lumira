@@ -15,8 +15,8 @@ jobs:
     name: Backend Maven Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -31,11 +31,11 @@ jobs:
       run:
         working-directory: lumira-ui
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
         with:
           version: 10.33.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
@@ -64,7 +64,7 @@ jobs:
       CN_REGISTRY: ${{ vars.CN_REGISTRY }}
       CN_REGISTRY_NAMESPACE: ${{ vars.CN_REGISTRY_NAMESPACE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test updater state machine and deployment contracts
         run: node --test bin/*.test.mjs
       - name: Validate blue-green Compose topology

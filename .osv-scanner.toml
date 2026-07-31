@@ -2,3 +2,23 @@
 id = "CVE-2026-14257"
 ignoreUntil = 2027-01-31
 reason = "brace-expansion 1.1.18 and 2.1.4 contain the upstream CVE-2026-14257 backport; CI verifies the installed source."
+
+[[IgnoredVulns]]
+id = "GHSA-frvp-7c67-39w9"
+ignoreUntil = 2026-10-31
+reason = "@hono/node-server is pulled in by the Umi build toolchain; production is static Nginx and does not ship or run the Node static server."
+
+[[IgnoredVulns]]
+id = "GHSA-848j-6mx2-7j84"
+ignoreUntil = 2026-10-31
+reason = "elliptic is a transitive Umi crypto-browserify build dependency; Lumira does not use it for signing and the production dist contains no elliptic runtime."
+
+[[IgnoredVulns]]
+id = "GHSA-337j-9hxr-rhxg"
+ignoreUntil = 2026-10-31
+reason = "Lumira is a declarative static SPA served by Nginx and does not use React Router framework/data-mode SSR hydration."
+
+[[IgnoredVulns]]
+id = "GHSA-wrjc-x8rr-h8h6"
+ignoreUntil = 2026-10-31
+reason = "Attacker-controlled login and activity destinations are normalized to local forward-slash paths; protocol-relative and backslash targets are rejected by regression tests."
