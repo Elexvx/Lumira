@@ -1,5 +1,5 @@
 import { DownloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
@@ -25,7 +25,6 @@ export default function MyCertificatesPage() {
     <ManagementPage title="我的证书">
       <ManagementPageBody>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Alert type="info" showIcon message="这里展示与你本人或所在参赛团队关联的获奖证书。" />
           <Card>
             <Table<CertificateRecord>
               rowKey="id"

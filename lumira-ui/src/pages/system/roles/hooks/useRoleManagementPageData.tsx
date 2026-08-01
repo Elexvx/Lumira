@@ -23,6 +23,7 @@ import type { PagedResult } from '@/types/api';
 import { APP_SPACING } from '@/theme/spacing';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { notifyCurrentUserSync } from '@/auth/currentUserSync';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -965,6 +966,7 @@ export const useRoleManagementPageData = () => {
           data: { permissionKeys },
           ...API_OPTS.NO_REDIRECT,
         });
+        notifyCurrentUserSync();
         message.success(t('角色权限已更新', 'Role permissions updated'));
         closeEditorDrawer();
         roleCrud.reloadTable();
@@ -989,6 +991,7 @@ export const useRoleManagementPageData = () => {
         });
         message.success(t('角色已创建', 'Role created'));
       }
+      notifyCurrentUserSync();
       closeEditorDrawer();
       roleCrud.reloadTable();
     } finally {
@@ -1010,6 +1013,7 @@ export const useRoleManagementPageData = () => {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
+          notifyCurrentUserSync();
           message.success(t('角色已删除', 'Role deleted'));
           roleCrud.reloadTable();
         },

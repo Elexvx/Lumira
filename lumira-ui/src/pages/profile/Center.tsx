@@ -824,7 +824,7 @@ const ProfileBasicEditDrawer = ({
 
 type ProfileCenterOverviewSectionProps = {
   isMobile: boolean;
-  profileBasicCardRef: RefObject<HTMLDivElement | null>;
+  profileBasicCardRef: RefObject<HTMLDivElement>;
   avatarValue?: string;
   currentUser?: CurrentUser | null;
   displayName: string;

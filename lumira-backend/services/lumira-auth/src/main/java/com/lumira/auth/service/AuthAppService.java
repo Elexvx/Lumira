@@ -562,6 +562,12 @@ public class AuthAppService {
             }
             AuthSession session = requireActiveSessionById(claims.getSessionId());
             validateRefreshTokenClaims(claims, session);
+            if (!refreshPermissionSnapshotVersionIfNeeded(session)) {
+                throw new BizException(
+                        ErrorCode.DEPENDENCY_UNAVAILABLE,
+                        "Permission snapshot is temporarily unavailable"
+                );
+            }
             String refreshTokenId = UUID.randomUUID().toString();
             session.setRefreshTokenId(refreshTokenId);
             authSessionStore.save(session, true);
@@ -569,7 +575,9 @@ public class AuthAppService {
                     jwtTokenService.generateAccessToken(session),
                     jwtTokenService.generateRefreshToken(session, refreshTokenId),
                     "Bearer",
-                    jwtTokenService.getAccessTokenExpireSeconds()
+                    jwtTokenService.getAccessTokenExpireSeconds(),
+                    session.getSessionVersion(),
+                    session.getPermissionsVersion()
             );
         } finally {
             stopAuthTimer(authRefreshTokenTimer, start);
@@ -592,8 +600,7 @@ public class AuthAppService {
                 || !Objects.equals(claims.getUserId(), session.getUserId())
                 || !Objects.equals(claimUserUuid, sessionUserUuid)
                 || !Objects.equals(claimSimulatedRoleId, sessionSimulatedRoleId)
-                || !Objects.equals(claims.getSessionVersion(), session.getSessionVersion())
-                || !Objects.equals(claimPermissionsVersion, sessionPermissionsVersion)) {
+                || !Objects.equals(claims.getSessionVersion(), session.getSessionVersion())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
         }
     }

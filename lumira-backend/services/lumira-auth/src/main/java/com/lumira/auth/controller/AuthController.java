@@ -156,7 +156,14 @@ public class AuthController {
         String refreshToken = request != null && request.refreshToken() != null ? request.refreshToken() : authCookieService.readRefreshToken(httpServletRequest);
         RefreshTokenResponseDTO response = authAppService.refreshToken(new RefreshTokenRequest(refreshToken));
         authCookieService.writeRefreshToken(httpServletResponse, response.refreshToken());
-        return ApiResponse.success(new RefreshTokenResponseDTO(response.accessToken(), null, response.tokenType(), response.expiresIn()), TraceContext.getRequestId());
+        return ApiResponse.success(new RefreshTokenResponseDTO(
+                response.accessToken(),
+                null,
+                response.tokenType(),
+                response.expiresIn(),
+                response.sessionVersion(),
+                response.permissionsVersion()
+        ), TraceContext.getRequestId());
     }
 
     @GetMapping("/current-user")

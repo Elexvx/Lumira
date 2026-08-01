@@ -87,7 +87,6 @@ public class UserExportAppService {
         );
     }
 
-    @Autowired
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
             ExcelExportService excelExportService,
@@ -103,9 +102,7 @@ public class UserExportAppService {
                 permissionSnapshotService,
                 null,
                 sessionAuthenticationService,
-                executorServiceProvider,
-                null,
-                true
+                executorServiceProvider
         );
     }
 
@@ -131,6 +128,7 @@ public class UserExportAppService {
         );
     }
 
+    @Autowired
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
             ExcelExportService excelExportService,

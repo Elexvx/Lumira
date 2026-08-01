@@ -212,17 +212,91 @@ class AuthAppServiceTest {
     }
 
     @Test
-    void refreshTokenShouldRejectStalePermissionsVersion() {
+    void refreshTokenShouldAcceptStalePermissionsVersionAfterSessionSnapshotRefresh() {
         AuthSession session = cachedSession();
         session.setRefreshTokenId("current-refresh-id");
-        session.setPermissionsVersion("permissions-2");
+        session.setPermissionsVersion("v2");
         JwtTokenClaims claims = new JwtTokenClaims();
         claims.setTokenType(JwtTokenType.REFRESH);
         claims.setSessionId(session.getSessionId());
         claims.setUserId(session.getUserId());
         claims.setUserUuid(session.getUserUuid());
         claims.setSessionVersion(session.getSessionVersion());
-        claims.setPermissionsVersion("permissions-1");
+        claims.setPermissionsVersion("v1");
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(2L);
+        seedPermissionVersionCache(42L, "v2");
+        when(jwtTokenService.generateAccessToken(session)).thenReturn("access-token-2");
+        when(jwtTokenService.generateRefreshToken(eq(session), anyString())).thenReturn("refresh-token-2");
+        when(jwtTokenService.getAccessTokenExpireSeconds()).thenReturn(1800L);
+
+        RefreshTokenResponseDTO response = authAppService.refreshToken(new RefreshTokenRequest("refresh-token"));
+
+        assertEquals("access-token-2", response.accessToken());
+        assertEquals("refresh-token-2", response.refreshToken());
+        assertEquals("v2", session.getPermissionsVersion());
+        assertEquals(session.getSessionVersion(), response.sessionVersion());
+        assertEquals("v2", response.permissionsVersion());
+        verify(authSessionStore).save(session, true);
+    }
+
+    @Test
+    void refreshTokenShouldHydrateLatestPermissionsBeforeIssuingTokens() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        session.setPermissionsVersion("v1");
+        session.setPermissions(List.of("dashboard:view"));
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion("v1");
+        claims.setTokenId(session.getRefreshTokenId());
+        PermissionSnapshotDTO refreshedSnapshot = new PermissionSnapshotDTO(
+                "v2",
+                List.of("dashboard:view", "competition:registration:view"),
+                List.of(3L),
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                "/competitions/register"
+        );
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(2L);
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(refreshedSnapshot);
+        when(jwtTokenService.generateAccessToken(session)).thenReturn("access-token-v2");
+        when(jwtTokenService.generateRefreshToken(eq(session), anyString())).thenReturn("refresh-token-v2");
+        when(jwtTokenService.getAccessTokenExpireSeconds()).thenReturn(1800L);
+
+        RefreshTokenResponseDTO response = authAppService.refreshToken(new RefreshTokenRequest("refresh-token"));
+
+        assertEquals("v2", session.getPermissionsVersion());
+        assertEquals(List.of("dashboard:view", "competition:registration:view"), session.getPermissions());
+        assertEquals("/competitions/register", session.getDefaultHomePath());
+        assertEquals("access-token-v2", response.accessToken());
+        assertEquals("refresh-token-v2", response.refreshToken());
+        assertEquals(session.getSessionVersion(), response.sessionVersion());
+        assertEquals("v2", response.permissionsVersion());
+        verify(authSessionStore).save(session, false);
+        verify(authSessionStore).save(session, true);
+    }
+
+    @Test
+    void refreshTokenShouldRejectClaimsWithoutPermissionsVersion() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
         claims.setTokenId(session.getRefreshTokenId());
         when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
         when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
@@ -233,6 +307,34 @@ class AuthAppServiceTest {
         );
 
         verify(authSessionStore, never()).save(any(), anyBoolean());
+    }
+
+    @Test
+    void refreshTokenShouldReportTemporaryFailureWhenLatestPermissionsAreUnavailable() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        session.setPermissionsVersion("v1");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setUserUuid(session.getUserUuid());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setPermissionsVersion("v1");
+        claims.setTokenId(session.getRefreshTokenId());
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(2L);
+        when(systemInternalApi.permissionSnapshot(42L, "user-uuid-42")).thenReturn(null);
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
+
+        assertEquals(ErrorCode.DEPENDENCY_UNAVAILABLE, exception.getErrorCode());
+        verify(jwtTokenService, never()).generateAccessToken(any());
+        verify(jwtTokenService, never()).generateRefreshToken(any(), anyString());
     }
 
     @Test

@@ -95,12 +95,6 @@ const CompetitionReviewResultsPage = () => {
   return (
     <ManagementPage title="评审结果与申诉">
       <ManagementPageBody>
-        <Alert
-          showIcon
-          type="info"
-          message="这里仅显示当前账号所属报名团队的已发布评审结果"
-          description="每个发布版本只能提交一次申诉。申诉处理不会覆盖专家原始评分；申诉成立后由赛事管理员进入更正发布流程。"
-        />
         <Spin spinning={loading}>
           <Card title="已发布结果" extra={<Button onClick={() => void load()}>刷新</Button>}>
             <Table<ReviewPublishedResult>

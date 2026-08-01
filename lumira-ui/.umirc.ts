@@ -1,12 +1,25 @@
 import { defineConfig } from '@umijs/max';
+import fs from 'node:fs';
 import path from 'node:path';
 import { backendRoutes } from './src/routes/meta';
 import { createLocalePreferenceBootstrapScript } from './src/i18n/locale';
 import { createThemePreferenceBootstrapScript } from './src/theme/settings';
 
+const pnpmModulesPath = path.resolve(process.cwd(), 'node_modules/.pnpm');
+const eventEmitterPackageDirectory = fs
+  .readdirSync(pnpmModulesPath)
+  .find((directory) => directory.startsWith('event-emitter@'));
+if (!eventEmitterPackageDirectory) {
+  throw new Error('Unable to resolve the event-emitter package used by the Umi locale plugin.');
+}
+const eventEmitterPackagePath = path
+  .resolve(pnpmModulesPath, eventEmitterPackageDirectory, 'node_modules/event-emitter')
+  .replace(/\\/g, '/');
+
 export default defineConfig({
   alias: {
     '@umijs/max': path.resolve(process.cwd(), 'src/.umi/exports.ts'),
+    [eventEmitterPackagePath]: path.resolve(process.cwd(), 'src/shims/eventEmitter.ts'),
   },
   access: {},
   initialState: {
@@ -21,6 +34,9 @@ export default defineConfig({
     useLocalStorage: true,
     antd: true,
     baseSeparator: '-',
+  },
+  moment2dayjs: {
+    preset: 'antd',
   },
   utoopack: {
     output: {

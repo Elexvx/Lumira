@@ -19,7 +19,7 @@
   inset: 0;
   z-index: -2;
   content: '';
-  background-image: var(--saas-login-background-image, url('../../assets/login-cloud-platform.png'));
+  background-image: var(--saas-login-background-image, url('../../assets/login-cloud-platform.jpg'));
   background-position: center bottom;
   background-repeat: no-repeat;
   background-size: cover;

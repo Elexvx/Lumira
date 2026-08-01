@@ -170,13 +170,15 @@ class AuthV2ControllerTest {
         RefreshTokenRequest request = new RefreshTokenRequest("refresh-token");
         HttpServletRequest httpRequest = mock(HttpServletRequest.class);
         HttpServletResponse httpResponse = mock(HttpServletResponse.class);
-        RefreshTokenResponseDTO refreshResponse = new RefreshTokenResponseDTO("access", "refresh", "Bearer", 7200L);
+        RefreshTokenResponseDTO refreshResponse = new RefreshTokenResponseDTO("access", "refresh", "Bearer", 7200L, 3, "perm-v3");
         when(authAppService.refreshToken(request)).thenReturn(refreshResponse);
 
         var response = controller.refreshToken(request, httpRequest, httpResponse);
 
         assertThat(response.getData().accessToken()).isEqualTo("access");
         assertThat(response.getData().refreshToken()).isNull();
+        assertThat(response.getData().sessionVersion()).isEqualTo(3);
+        assertThat(response.getData().permissionsVersion()).isEqualTo("perm-v3");
         verify(authAppService).refreshToken(request);
         verify(authCookieService).writeRefreshToken(httpResponse, "refresh");
     }

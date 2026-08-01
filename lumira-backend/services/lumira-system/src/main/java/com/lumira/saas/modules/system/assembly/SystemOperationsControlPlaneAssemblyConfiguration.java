@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.assembly;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
+import com.lumira.saas.infrastructure.job.InternalUserExportJobController;
 import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
@@ -51,6 +52,8 @@ import com.lumira.saas.modules.system.update.app.PlatformUpdateAppService;
 import com.lumira.saas.modules.system.update.controller.PlatformUpdateController;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
+import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
+import com.lumira.saas.modules.system.user.infrastructure.JdbcUserExportTaskWorkerRepository;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationProperties;
 import com.lumira.saas.modules.system.verification.SystemVerificationSettingsAppService;
@@ -90,6 +93,7 @@ import org.springframework.context.annotation.Import;
         JdbcDictRuntimeRepository.class,
         ExcelExportService.class,
         ExportTaskService.class,
+        InternalUserExportJobController.class,
         InternalSystemController.class,
         OnlineSessionController.class,
         JdbcOnlineSessionUserRepository.class,
@@ -132,10 +136,12 @@ import org.springframework.context.annotation.Import;
         SystemProfileSettingsAppService.class,
         SystemRoleManagementAppService.class,
         SystemUserManagementAppService.class,
+        JdbcUserExportTaskWorkerRepository.class,
         SystemVerificationAppService.class,
         SystemVerificationController.class,
         SystemVerificationSettingsAppService.class,
         UserExportAppService.class,
+        UserExportTaskWorkerService.class,
         VerificationDeliveryAuditService.class,
         WechatLoginSettingsService.class,
         WorkOrderFeedbackController.class,

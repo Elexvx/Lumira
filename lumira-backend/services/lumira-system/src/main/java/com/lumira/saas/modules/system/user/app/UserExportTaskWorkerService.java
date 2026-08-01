@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.system.export.ExportDTO;
@@ -21,7 +20,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@ConditionalOnLumiraAsyncEnabled
 @ConditionalOnLumiraControlPlaneEnabled
 public class UserExportTaskWorkerService {
     private static final Logger log = LoggerFactory.getLogger(UserExportTaskWorkerService.class);

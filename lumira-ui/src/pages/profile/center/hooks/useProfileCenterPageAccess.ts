@@ -908,7 +908,7 @@ export const useProfileCenterPageAccess = () => {
   const avatarValue = Form.useWatch('avatarUrl', profileForm);
   const hasVisibleProfileFields = visibleProfileFields.size > 0;
   const profileFormProps = useStandardFormProps({ form: profileForm });
-  const profileBasicCardRef = useRef<HTMLDivElement | null>(null);
+  const profileBasicCardRef = useRef<HTMLDivElement>(null);
   const [profileEditingOpen, setProfileEditingOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);

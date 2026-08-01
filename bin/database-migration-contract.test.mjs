@@ -2,11 +2,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { crc32 } from 'node:zlib';
 
 import { resolveRepoRoot } from './lib/exec-utils.mjs';
 
 const repoRoot = resolveRepoRoot(import.meta.url);
 const read = (file) => readFileSync(path.join(repoRoot, file), 'utf8');
+const flywayChecksum = (source) => source
+  .split(/\r?\n/u)
+  .reduce((checksum, line) => crc32(Buffer.from(line, 'utf8'), checksum), 0) | 0;
 
 test('fresh bootstrap and online migration both contain activity persistence', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
@@ -251,22 +255,40 @@ test('regular deployments run migrations before application containers', () => {
   assert.ok(applicationStart > migrationCall, 'database migrations must finish before application containers start');
 });
 
-test('certificate closure migration tolerates indexes already present in the fresh bootstrap', () => {
+test('certificate closure migration remains immutable and owns its certificate indexes', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607300004__add_competition_award_certificate_closure.sql');
+
+  assert.equal(flywayChecksum(migration), 638071010);
 
   for (const indexName of [
     'idx_certificate_record_registration',
     'idx_certificate_record_user',
     'idx_certificate_record_team',
   ]) {
-    assert.ok(bootstrap.includes('KEY `' + indexName + '`'));
-    assert.match(migration, new RegExp(`index_name = '${indexName}'`));
+    assert.ok(!bootstrap.includes('KEY `' + indexName + '`'));
+    assert.match(migration, new RegExp(`ADD INDEX ${indexName}`));
   }
+  assert.doesNotMatch(migration, /information_schema\.statistics/);
+  assert.doesNotMatch(migration, /PREPARE certificate_/);
+});
+
+test('platform event outbox audit identity repair matches the fresh bootstrap', () => {
+  const bootstrap = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202607310001__repair_platform_event_outbox_audit_identity.sql');
+
+  assert.equal(flywayChecksum(migration), -827839598);
+
+  assert.match(bootstrap, /CREATE TABLE `platform_event_outbox`[\s\S]*?`created_by_uuid` char\(36\) DEFAULT NULL/);
+  assert.match(bootstrap, /CREATE TABLE `platform_event_outbox`[\s\S]*?`updated_by_uuid` char\(36\) DEFAULT NULL/);
+  assert.match(bootstrap, /KEY `idx_platform_event_outbox_creator_uuid` \(`created_by`,`created_by_uuid`,`created_at`\)/);
+  assert.match(migration, /information_schema\.columns/);
   assert.match(migration, /information_schema\.statistics/);
-  assert.match(migration, /PREPARE certificate_registration_index_statement/);
-  assert.match(migration, /PREPARE certificate_user_index_statement/);
-  assert.match(migration, /PREPARE certificate_team_index_statement/);
+  assert.match(migration, /ADD COLUMN `created_by_uuid` char\(36\) DEFAULT NULL AFTER `created_by`/);
+  assert.match(migration, /ADD COLUMN `updated_by_uuid` char\(36\) DEFAULT NULL AFTER `updated_by`/);
+  assert.match(migration, /ADD INDEX `idx_platform_event_outbox_creator_uuid` \(`created_by`,`created_by_uuid`,`created_at`\)/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
 test('built-in administrator bootstrap is secret-driven and migration-backed', () => {

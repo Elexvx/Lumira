@@ -321,6 +321,75 @@ class UserExportAppServiceTest {
     }
 
     @Test
+    void productionConstructorShouldDelegateAsyncTaskToClaimAwareWorker() {
+        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        ExportTaskService exportTaskService = mock(ExportTaskService.class);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        UserExportTaskWorkerService workerService = mock(UserExportTaskWorkerService.class);
+        RecordingExecutorService executorService = new RecordingExecutorService();
+        UserExportAppService service = new UserExportAppService(
+                userManagementAppService,
+                mock(ExcelExportService.class),
+                exportTaskService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                executorServiceProvider(executorService),
+                userExportTaskWorkerServiceProvider(workerService)
+        );
+        PageResponse<com.lumira.saas.modules.system.vo.SystemVO.UserVO> countPage = new PageResponse<>();
+        countPage.setTotal(5001L);
+        when(sessionAuthenticationService.authenticateSessionTicket(
+                "session-1", 1001L, "user-uuid-1001", null, 1, "permissions-1"
+        )).thenReturn(authenticatedAccess(Set.of("system:user:export"), "permissions-1"));
+        when(userManagementAppService.listUsersFromTrustedSnapshot(
+                any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
+        )).thenReturn(countPage);
+        ExportTaskEntity task = new ExportTaskEntity();
+        task.setId(9001L);
+        when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
+                .thenReturn(task);
+
+        service.exportUsers(trustedUser(Set.of("system:user:export")), request(List.of("id")));
+        executorService.runSubmitted();
+
+        verify(workerService).processPendingTasks(1);
+        verify(exportTaskService, never()).markRunningFromTrustedSnapshot(any(CurrentUser.class), eq(9001L));
+        service.shutdown();
+    }
+
+    @Test
+    void productionConstructorShouldProvideTrustedResolverForQueuedWorker() {
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        UserExportAppService service = new UserExportAppService(
+                mock(SystemUserManagementAppService.class),
+                mock(ExcelExportService.class),
+                mock(ExportTaskService.class),
+                permissionSnapshotService,
+                systemInternalApi,
+                mock(SessionAuthenticationService.class),
+                executorServiceProvider(mock(ExecutorService.class)),
+                userExportTaskWorkerServiceProvider(mock(UserExportTaskWorkerService.class))
+        );
+        when(systemInternalApi.findUserIdentityById(1001L))
+                .thenReturn(userSnapshot(1001L, "user-uuid-1001", "operator-live", "ENABLED"));
+        when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
+        when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
+                .thenReturn(permissionSnapshot(Set.of("system:user:export")));
+
+        CurrentUser queuedUser = service.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L);
+
+        assertThat(queuedUser.getUserId()).isEqualTo(1001L);
+        assertThat(queuedUser.getUserUuid()).isEqualTo("user-uuid-1001");
+        assertThat(queuedUser.getSessionId()).isEqualTo("internal-export-task-9001");
+        assertThat(queuedUser.getPermissions()).containsExactly("system:user:export");
+        service.shutdown();
+    }
+
+    @Test
     void exportUsersShouldRunAsyncTaskWithTrustedUserSnapshot() {
         SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
         ExcelExportService excelExportService = mock(ExcelExportService.class);
@@ -978,6 +1047,49 @@ class UserExportAppServiceTest {
 
             @Override
             public Stream<ExecutorService> orderedStream() {
+                return stream();
+            }
+        };
+    }
+
+    private static ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider(
+            UserExportTaskWorkerService workerService
+    ) {
+        return new ObjectProvider<>() {
+            @Override
+            public UserExportTaskWorkerService getObject(Object... args) {
+                return workerService;
+            }
+
+            @Override
+            public UserExportTaskWorkerService getIfAvailable() {
+                return workerService;
+            }
+
+            @Override
+            public UserExportTaskWorkerService getIfUnique() {
+                return workerService;
+            }
+
+            @Override
+            public UserExportTaskWorkerService getObject() {
+                return workerService;
+            }
+
+            @Override
+            public Iterator<UserExportTaskWorkerService> iterator() {
+                return workerService == null
+                        ? List.<UserExportTaskWorkerService>of().iterator()
+                        : List.of(workerService).iterator();
+            }
+
+            @Override
+            public Stream<UserExportTaskWorkerService> stream() {
+                return workerService == null ? Stream.empty() : Stream.of(workerService);
+            }
+
+            @Override
+            public Stream<UserExportTaskWorkerService> orderedStream() {
                 return stream();
             }
         };
