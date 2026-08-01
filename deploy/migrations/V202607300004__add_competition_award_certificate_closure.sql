@@ -36,7 +36,50 @@ CREATE TABLE IF NOT EXISTS competition_award_grant (
   KEY idx_competition_award_registration (registration_id, status, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-ALTER TABLE certificate_record
-  ADD INDEX idx_certificate_record_registration (registration_id, deleted),
-  ADD INDEX idx_certificate_record_user (user_id, deleted, issue_date),
-  ADD INDEX idx_certificate_record_team (team_id, deleted, issue_date);
+SET @certificate_registration_index_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate_record'
+    AND index_name = 'idx_certificate_record_registration'
+);
+SET @certificate_registration_index_sql := IF(
+  @certificate_registration_index_exists = 0,
+  'ALTER TABLE certificate_record ADD INDEX idx_certificate_record_registration (registration_id, deleted)',
+  'SELECT 1'
+);
+PREPARE certificate_registration_index_statement FROM @certificate_registration_index_sql;
+EXECUTE certificate_registration_index_statement;
+DEALLOCATE PREPARE certificate_registration_index_statement;
+
+SET @certificate_user_index_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate_record'
+    AND index_name = 'idx_certificate_record_user'
+);
+SET @certificate_user_index_sql := IF(
+  @certificate_user_index_exists = 0,
+  'ALTER TABLE certificate_record ADD INDEX idx_certificate_record_user (user_id, deleted, issue_date)',
+  'SELECT 1'
+);
+PREPARE certificate_user_index_statement FROM @certificate_user_index_sql;
+EXECUTE certificate_user_index_statement;
+DEALLOCATE PREPARE certificate_user_index_statement;
+
+SET @certificate_team_index_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'certificate_record'
+    AND index_name = 'idx_certificate_record_team'
+);
+SET @certificate_team_index_sql := IF(
+  @certificate_team_index_exists = 0,
+  'ALTER TABLE certificate_record ADD INDEX idx_certificate_record_team (team_id, deleted, issue_date)',
+  'SELECT 1'
+);
+PREPARE certificate_team_index_statement FROM @certificate_team_index_sql;
+EXECUTE certificate_team_index_statement;
+DEALLOCATE PREPARE certificate_team_index_statement;

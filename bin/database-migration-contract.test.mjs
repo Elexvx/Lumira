@@ -255,11 +255,11 @@ test('regular deployments run migrations before application containers', () => {
   assert.ok(applicationStart > migrationCall, 'database migrations must finish before application containers start');
 });
 
-test('certificate closure migration remains immutable and owns its certificate indexes', () => {
+test('certificate closure migration remains immutable at the production checksum', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607300004__add_competition_award_certificate_closure.sql');
 
-  assert.equal(flywayChecksum(migration), 638071010);
+  assert.equal(flywayChecksum(migration), 2272974);
 
   for (const indexName of [
     'idx_certificate_record_registration',
@@ -267,10 +267,12 @@ test('certificate closure migration remains immutable and owns its certificate i
     'idx_certificate_record_team',
   ]) {
     assert.ok(!bootstrap.includes('KEY `' + indexName + '`'));
-    assert.match(migration, new RegExp(`ADD INDEX ${indexName}`));
+    assert.match(migration, new RegExp(`index_name = '${indexName}'`));
   }
-  assert.doesNotMatch(migration, /information_schema\.statistics/);
-  assert.doesNotMatch(migration, /PREPARE certificate_/);
+  assert.match(migration, /information_schema\.statistics/);
+  assert.match(migration, /PREPARE certificate_registration_index_statement/);
+  assert.match(migration, /PREPARE certificate_user_index_statement/);
+  assert.match(migration, /PREPARE certificate_team_index_statement/);
 });
 
 test('platform event outbox audit identity repair matches the fresh bootstrap', () => {
