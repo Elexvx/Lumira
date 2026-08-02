@@ -23,11 +23,22 @@ The revised chart observes its rendered card width and updates the SVG view box 
 
 At widths below the `xl` breakpoint, the two chart cards stack vertically so the plots are not compressed into narrow half-width columns.
 
+## Redis sample-time typography
+
+- Source visual truth: the browser annotation attached to this task at metadata viewport `1380 × 994`. A supporting production capture is saved at `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/design-qa/redis-sample-time-font-before.png`.
+- Implementation screenshot: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/design-qa/redis-sample-time-font-after.png`.
+- Viewport and density: the implementation uses browser override `1380 × 994`, device scale factor `1`, and captures to `1365 × 984` pixels after scrollbar/capture trimming. The supporting production capture uses the browser's default `1280 × 720` viewport at device scale factor `1.25` and captures to `1265 × 712`; it is used only to corroborate computed typography, while the attached annotation and implementation are compared at the same `1380 × 994` viewport.
+- State: dark theme, authenticated administrator, `/settings/monitoring?tab=redis`, live Redis samples.
+
+The annotated production state rendered the first fifteen values at `24px / 700` with a `37.7px` line height, but rendered **采样时间** at `18px / 700` with a `28.3px` line height. The revised state uses the shared `24px / 700` statistic style for all sixteen values. The sample-time column expands from one `xl` grid track (`159.3px`) to two tracks (`334.7px`), keeping the full timestamp on one line without overflow.
+
+At a `1024 × 900` viewport, the sample-time item follows the existing half-width responsive layout, remains `24px`, and reports equal client and scroll widths (`334px`), confirming that the value is not clipped.
+
 ## Findings
 
 No actionable P0, P1, or P2 differences remain in the requested regions.
 
-- Typography: existing Ant Design type styles and weights are preserved; long update-source values no longer wrap.
+- Typography: all sixteen Redis overview values now share the same `24px / 700` hierarchy and line height; long update-source values no longer wrap.
 - Layout rhythm: card padding, gutters, and height are preserved; update metadata aligns in a stable two-column grid and both trend plots use their available card width consistently.
 - Colors and tokens: existing dark-theme surfaces, borders, status colors, and primary chart color are unchanged.
 - Assets: no new image assets or substitute icons were introduced.
@@ -39,7 +50,8 @@ The final browser check found no runtime errors. The remaining console warnings 
 
 1. Update source: fixed an unintended three-column desktop layout by explicitly defining every responsive breakpoint, removing full-row spans, and constraining long values with ellipsis.
 2. Redis trends: fixed narrow centered plots by measuring each SVG with `ResizeObserver`, reducing horizontal padding, anchoring edge labels safely, and stacking cards below `xl`.
-3. Post-fix verification: both trend charts report identical dimensions and plot coverage; desktop and `1024px` responsive layouts render without overlap or clipped labels.
+3. Redis sample time: fixed the P2 typography mismatch by removing the isolated `18px` override and widening the item from `xl=4` to `xl=8`; the post-fix capture shows the same font size, weight, and line height as adjacent metrics with no wrapping.
+4. Post-fix verification: both trend charts report identical dimensions and plot coverage; desktop and `1024px` responsive layouts render without overlap or clipped labels.
 
 ## Final result
 

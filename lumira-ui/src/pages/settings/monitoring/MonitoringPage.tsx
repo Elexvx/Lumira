@@ -1234,8 +1234,8 @@ const RedisMonitorContent = () => {
           <Col xs={24} sm={12} xl={4}>
             <Statistic title={t('总命令数', 'Total commands')} value={formatNumber(overview?.totalCommandsProcessed)} valueStyle={valueStyle} />
           </Col>
-          <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('采样时间', 'Sample time')} value={formatDateTime(redis?.sampleTime)} valueStyle={{ ...valueStyle, fontSize: 18 }} />
+          <Col xs={24} sm={12} xl={8}>
+            <Statistic title={t('采样时间', 'Sample time')} value={formatDateTime(redis?.sampleTime)} valueStyle={valueStyle} />
           </Col>
         </Row>
       </Card>
