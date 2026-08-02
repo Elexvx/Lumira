@@ -507,6 +507,20 @@ const usePlatformUpdateMonitor = () => {
 
 const BreakableValue = ({ value }: { value?: string | null }) => <span className="saas-monitor-break-value">{value || '-'}</span>;
 
+const UpdateSourceValue = ({ value, copyable = false }: { value?: string | null; copyable?: boolean }) => {
+  const displayValue = value || '-';
+
+  return (
+    <Typography.Text
+      className="saas-update-source-value"
+      copyable={copyable && value ? { text: value } : false}
+      ellipsis={{ tooltip: displayValue }}
+    >
+      {displayValue}
+    </Typography.Text>
+  );
+};
+
 const SWAGGER_UI_VERSION = '5.17.14';
 const SWAGGER_UI_CSS = `https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_UI_VERSION}/swagger-ui.css`;
 const SWAGGER_UI_BUNDLE = `https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_UI_VERSION}/swagger-ui-bundle.js`;
@@ -728,7 +742,8 @@ const TrendAreaChart = ({
   valueFormatter: (value: number) => string;
 }) => {
   const { token } = theme.useToken();
-  const width = APP_SPACING.monitoringTrendChart.width;
+  const chartRef = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(APP_SPACING.monitoringTrendChart.width);
   const height = APP_SPACING.monitoringTrendChart.height;
   const padding = APP_SPACING.monitoringTrendChart.padding;
   const chartAxisOffsetX = APP_SPACING.monitoringTrendChart.axisOffsetX;
@@ -755,8 +770,37 @@ const TrendAreaChart = ({
     return index === 0 || index === Math.floor((coordinates.length - 1) / 2) || index === coordinates.length - 1;
   });
 
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return undefined;
+    }
+
+    const syncWidth = (nextWidth: number) => {
+      const roundedWidth = Math.round(nextWidth);
+      if (roundedWidth <= 0) {
+        return;
+      }
+      setWidth((currentWidth) => (currentWidth === roundedWidth ? currentWidth : roundedWidth));
+    };
+
+    syncWidth(chart.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        syncWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(chart);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <svg className="saas-redis-trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="trend chart" style={{ display: 'block', width: '100%', height: '100%' }}>
+    <svg ref={chartRef} className="saas-redis-trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="trend chart">
       {yTicks.map((tick) => {
         const y = padding.top + plotHeight - (tick / maxValue) * plotHeight;
         return (
@@ -773,8 +817,8 @@ const TrendAreaChart = ({
       {coordinates.map((item) => (
         <circle key={`${item.label}-${item.x}`} className="saas-redis-trend-chart__point" cx={item.x} cy={item.y} r={3.5} fill={token.colorBgContainer} stroke={token.colorPrimary} strokeWidth={2} />
       ))}
-      {xAxisLabels.map((item) => (
-          <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - chartAxisOffsetY} textAnchor="middle" fill={token.colorTextTertiary} fontSize={chartAxisFontSize}>
+      {xAxisLabels.map((item, index) => (
+          <text key={`${item.label}-${item.x}-label`} className="saas-redis-trend-chart__axis" x={item.x} y={height - chartAxisOffsetY} textAnchor={index === 0 ? 'start' : index === xAxisLabels.length - 1 ? 'end' : 'middle'} fill={token.colorTextTertiary} fontSize={chartAxisFontSize}>
           {item.label}
         </text>
       ))}
@@ -1081,36 +1125,36 @@ const PlatformUpdateContent = () => {
           />
         </Card>
         <Card title={t('更新源', 'Update source')}>
-          <Descriptions size="small" column={{ xs: 1, md: 2 }}>
+          <Descriptions
+            className="saas-update-source-descriptions"
+            size="small"
+            column={{ xs: 1, sm: 1, md: 2, lg: 2, xl: 2, xxl: 2 }}
+          >
             <Descriptions.Item label={t('来源类型', 'Source type')}>
               <Tag icon={<ApiOutlined />} color={updateStatus?.sourceType === 'github' ? 'blue' : 'default'}>
                 {updateStatus?.sourceType === 'github' ? 'GitHub' : updateStatus?.sourceType || '-'}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label={t('比较依据', 'Comparison basis')}>{updateStatus?.comparisonBasis || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('最新说明', 'Latest note')} span={2}>
-              {updateStatus?.latest?.title || '-'}
+            <Descriptions.Item label={t('比较依据', 'Comparison basis')}>
+              <UpdateSourceValue value={updateStatus?.comparisonBasis} />
             </Descriptions.Item>
-            <Descriptions.Item label={t('后端镜像', 'Server image')} span={2}>
-              <Typography.Text copyable ellipsis style={{ maxWidth: '100%' }}>
-                {updateStatus?.latest?.serverImage || '-'}
-              </Typography.Text>
+            <Descriptions.Item label={t('最新说明', 'Latest note')}>
+              <UpdateSourceValue value={updateStatus?.latest?.title} />
             </Descriptions.Item>
-            <Descriptions.Item label={t('前端镜像', 'Frontend image')} span={2}>
-              <Typography.Text copyable ellipsis style={{ maxWidth: '100%' }}>
-                {updateStatus?.latest?.frontendImage || '-'}
-              </Typography.Text>
+            <Descriptions.Item label={t('地址', 'Address')}>
+              <UpdateSourceValue value={updateStatus?.sourceUrl} copyable />
+            </Descriptions.Item>
+            <Descriptions.Item label={t('后端镜像', 'Server image')}>
+              <UpdateSourceValue value={updateStatus?.latest?.serverImage} copyable />
+            </Descriptions.Item>
+            <Descriptions.Item label={t('前端镜像', 'Frontend image')}>
+              <UpdateSourceValue value={updateStatus?.latest?.frontendImage} copyable />
             </Descriptions.Item>
             <Descriptions.Item label={t('迁移', 'Migration')}>
               <Tag color={updateStatus?.latest?.migrationRequired ? 'orange' : 'green'}>{updateStatus?.latest?.migrationRequired ? t('需要', 'Required') : t('不需要', 'Not required')}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label={t('可回滚', 'Rollback')}>
               <Tag color={updateStatus?.latest?.rollbackSupported === false ? 'red' : 'green'}>{updateStatus?.latest?.rollbackSupported === false ? t('否', 'No') : t('是', 'Yes')}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label={t('地址', 'Address')} span={2}>
-              <Typography.Text copyable ellipsis style={{ maxWidth: '100%' }}>
-                {updateStatus?.sourceUrl || '-'}
-              </Typography.Text>
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -1197,7 +1241,7 @@ const RedisMonitorContent = () => {
       </Card>
       <Row gutter={rowGutter}>
         {trendCharts.map((chart) => (
-          <Col key={chart.title} xs={24} lg={12}>
+          <Col key={chart.title} xs={24} xl={12}>
             <Card title={chart.title} extra={<Typography.Text type="secondary">{chart.subtitle}</Typography.Text>}>
               <div style={{ height: 'var(--saas-spacing-220)' }}>
                 <TrendAreaChart points={chart.points} valueFormatter={chart.valueFormatter || ((value) => value.toFixed(0))} />

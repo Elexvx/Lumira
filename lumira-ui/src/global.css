@@ -650,6 +650,29 @@ body,
   height: 100%;
 }
 
+.saas-update-source-descriptions {
+  .ant-descriptions-item-container,
+  .ant-descriptions-item-content {
+    min-width: 0;
+  }
+
+  .ant-descriptions-item-label {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .ant-descriptions-item-content {
+    overflow: hidden;
+  }
+}
+
+.saas-update-source-value {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
 .saas-update-mono {
   font-variant-numeric: tabular-nums;
 }

@@ -79,9 +79,9 @@ export const APP_SPACING = {
     axisFontSize: 11,
     padding: {
       top: 24,
-      right: 56,
+      right: 16,
       bottom: 54,
-      left: 64,
+      left: 52,
     },
   },
   sliderCaptcha: {
