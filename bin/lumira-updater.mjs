@@ -640,6 +640,7 @@ async function runInstall(task, request) {
   if (!preflight.ready) throw new Error(`Preflight failed: ${preflight.blockers.join(' ')}`);
   const manifest = preflight.manifest;
   const targetBuildTime = manifest.releasedAt || new Date().toISOString();
+  const targetFrontendVersion = `${manifest.version}+${manifest.commit.slice(0, 12)}`;
   const state = deploymentState();
   const activeSlot = normalizeSlot(state.activeSlot);
   const targetSlot = inactiveSlot(activeSlot);
@@ -686,8 +687,10 @@ async function runInstall(task, request) {
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_DATABASE_VERSION`]: manifest.database.targetVersion,
       APP_VERSION: manifest.version,
       BUILD_VERSION: `${manifest.version}+${manifest.commit}`,
+      FRONTEND_VERSION: targetFrontendVersion,
       BUILD_TIME: targetBuildTime,
       GIT_COMMIT: manifest.commit,
+      GIT_BRANCH: 'main',
       DATABASE_VERSION: manifest.database.targetVersion,
     });
     await runCompose(task, '--profile', targetSlot, 'up', '-d', '--no-deps', '--force-recreate', `lumira-server-${targetSlot}`);

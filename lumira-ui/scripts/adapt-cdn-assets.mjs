@@ -1,9 +1,13 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
-const distRoot = fileURLToPath(new URL('../dist/', import.meta.url));
-const packageJsonPath = fileURLToPath(new URL('../package.json', import.meta.url));
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const uiRoot = resolve(scriptDirectory, '..');
+const repoRoot = resolve(uiRoot, '..');
+const distRoot = join(uiRoot, 'dist');
+const packageJsonPath = join(uiRoot, 'package.json');
 
 const readPackageVersion = () => {
   try {
@@ -13,13 +17,48 @@ const readPackageVersion = () => {
   }
 };
 
-const resolveBuildInfo = () => ({
-  app: 'lumira-ui',
-  version: process.env.UMI_APP_FRONTEND_VERSION || process.env.FRONTEND_VERSION || process.env.BUILD_VERSION || readPackageVersion(),
-  buildTime: process.env.UMI_APP_BUILD_TIME || process.env.BUILD_TIME || new Date().toISOString(),
-  gitCommit: process.env.UMI_APP_GIT_COMMIT || process.env.GIT_COMMIT || 'unknown',
-  gitBranch: process.env.UMI_APP_GIT_BRANCH || process.env.GIT_BRANCH || 'unknown',
-});
+const firstText = (...values) => values
+  .map((value) => String(value ?? '').trim())
+  .find((value) => value && value.toLowerCase() !== 'unknown') || '';
+
+const readGitValue = (...args) => {
+  try {
+    return execFileSync('git', ['-C', repoRoot, ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch (_error) {
+    return '';
+  }
+};
+
+const resolveBuildInfo = () => {
+  const packageVersion = readPackageVersion();
+  const gitCommit = firstText(
+    process.env.UMI_APP_GIT_COMMIT,
+    process.env.GIT_COMMIT,
+    readGitValue('rev-parse', 'HEAD'),
+  );
+  const gitBranch = firstText(
+    process.env.UMI_APP_GIT_BRANCH,
+    process.env.GIT_BRANCH,
+    readGitValue('rev-parse', '--abbrev-ref', 'HEAD'),
+  );
+  const version = firstText(
+    process.env.UMI_APP_FRONTEND_VERSION,
+    process.env.FRONTEND_VERSION,
+    process.env.BUILD_VERSION,
+    gitCommit ? `${packageVersion}+${gitCommit.slice(0, 12)}` : packageVersion,
+  );
+
+  return {
+    app: 'lumira-ui',
+    version,
+    buildTime: firstText(process.env.UMI_APP_BUILD_TIME, process.env.BUILD_TIME, new Date().toISOString()),
+    gitCommit: gitCommit || 'unknown',
+    gitBranch: gitBranch || 'unknown',
+  };
+};
 
 const safeAssetName = (name) => {
   const extensionIndex = name.lastIndexOf('.');

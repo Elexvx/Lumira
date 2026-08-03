@@ -16,6 +16,34 @@ const updaterInstaller = readFileSync(path.join(repoRoot, 'bin', 'install-lumira
 const updater = readFileSync(path.join(repoRoot, 'bin', 'lumira-updater.mjs'), 'utf8');
 const releaseManifestGenerator = readFileSync(path.join(repoRoot, 'bin', 'generate-release-manifest.mjs'), 'utf8');
 const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
+const gitignore = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
+const frontendAssetAdapter = readFileSync(path.join(repoRoot, 'lumira-ui', 'scripts', 'adapt-cdn-assets.mjs'), 'utf8');
+
+test('generated updater state stays local to the deployment host', () => {
+  for (const entry of [
+    'deploy/.update-state.json',
+    'deploy/.update.lock',
+    'deploy/.update-tasks/',
+    'deploy/.update-preflights/',
+  ]) {
+    assert.match(gitignore, new RegExp(`^${entry.replaceAll('.', '\\.')}\\r?$`, 'm'));
+  }
+});
+
+test('frontend builds always receive a traceable release identity', () => {
+  const buildStep = ciWorkflow.slice(
+    ciWorkflow.indexOf('- name: Build lumira-ui image'),
+    ciWorkflow.indexOf('- name: Build lumira-async image'),
+  );
+  for (const buildArg of ['FRONTEND_VERSION', 'BUILD_TIME', 'GIT_COMMIT', 'GIT_BRANCH']) {
+    assert.match(buildStep, new RegExp(`^\\s+${buildArg}=`, 'm'), `lumira-ui image must receive ${buildArg}`);
+  }
+  assert.match(frontendAssetAdapter, /readGitValue\('rev-parse', 'HEAD'\)/);
+  assert.match(frontendAssetAdapter, /readGitValue\('rev-parse', '--abbrev-ref', 'HEAD'\)/);
+  assert.match(updater, /const targetFrontendVersion = `\$\{manifest\.version\}\+\$\{manifest\.commit\.slice\(0, 12\)\}`/);
+  assert.match(updater, /FRONTEND_VERSION: targetFrontendVersion/);
+  assert.match(updater, /GIT_BRANCH: 'main'/);
+});
 
 test('frontend and edge nginx enforce browser security headers', () => {
   for (const [name, config] of [['frontend', uiNginx], ['edge', edgeNginx]]) {

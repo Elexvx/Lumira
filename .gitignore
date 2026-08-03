@@ -21,6 +21,10 @@ deploy/.env
 deploy/.env.*
 !deploy/.env.example
 deploy/build-identity.env
+deploy/.update-state.json
+deploy/.update.lock
+deploy/.update-tasks/
+deploy/.update-preflights/
 deploy/.generated/
 deploy/.backup/
 deploy/secrets/*
