@@ -60,6 +60,25 @@ test('corrupted payment translations have a guarded forward repair', () => {
   assert.doesNotMatch(migration, /ON DUPLICATE KEY UPDATE/i);
 });
 
+test('upgraded localization tables receive the audit identity schema used by runtime reads', () => {
+  const repair = read('deploy/migrations/V202608030006__repair_localization_audit_identity.sql');
+
+  for (const table of [
+    'sys_localization_language',
+    'sys_localization_namespace',
+    'sys_localization_entry',
+    'sys_localization_translation',
+    'sys_localization_usage_ref',
+  ]) {
+    assert.match(repair, new RegExp('ALTER TABLE `' + table + '` ADD COLUMN `created_by_uuid`'));
+    assert.match(repair, new RegExp(`idx_${table}_creator_uuid`));
+  }
+  assert.match(repair, /ALTER TABLE `sys_localization_release` ADD COLUMN `published_by_uuid`/);
+  assert.match(repair, /idx_sys_localization_release_publisher_uuid/);
+  assert.match(repair, /information_schema\.columns/);
+  assert.match(repair, /information_schema\.statistics/);
+});
+
 test('catalog initialization preserves database-managed edits', () => {
   const initializer = read('lumira-backend/services/lumira-localization/src/main/java/com/lumira/localization/app/DatabaseLocalizationCatalogInitializer.java');
   const persistenceAdapter = read('lumira-backend/services/lumira-localization/src/main/java/com/lumira/localization/infrastructure/persistence/JdbcLocalizationCatalogRepository.java');
