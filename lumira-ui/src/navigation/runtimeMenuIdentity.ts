@@ -9,6 +9,11 @@ interface ResolveRuntimeMenuIdentityOptions<T extends RuntimeMenuIdentityItem> {
   stableKeyByPath?: Record<string, string>;
 }
 
+const normalizeIdentityPath = (path: string) => {
+  const pathname = path.trim().split('?')[0].split('#')[0];
+  return pathname.replace(/\/+$/, '') || '/';
+};
+
 /**
  * Route aliases describe navigation targets, not menu identity. A catalog such
  * as `/certificates` may redirect to `/certificates/mine`, but it must still
@@ -20,7 +25,8 @@ export const resolveRuntimeMenuIdentity = <T extends RuntimeMenuIdentityItem>({
   localByPath,
   stableKeyByPath = {},
 }: ResolveRuntimeMenuIdentityOptions<T>) => {
-  const directLocalItem = localByPath.get(backendPath);
+  const normalizedBackendPath = normalizeIdentityPath(backendPath);
+  const directLocalItem = localByPath.get(backendPath) || localByPath.get(normalizedBackendPath);
   const localItem = directLocalItem || localByPath.get(canonicalPath);
   const localKey = localItem?.key;
 
@@ -28,6 +34,7 @@ export const resolveRuntimeMenuIdentity = <T extends RuntimeMenuIdentityItem>({
     localItem,
     key:
       stableKeyByPath[backendPath]
+      || stableKeyByPath[normalizedBackendPath]
       || stableKeyByPath[canonicalPath]
       || (localKey === undefined ? undefined : String(localKey)),
   };

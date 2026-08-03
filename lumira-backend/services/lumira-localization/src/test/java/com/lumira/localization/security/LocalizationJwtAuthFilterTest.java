@@ -42,4 +42,21 @@ class LocalizationJwtAuthFilterTest {
         assertThat(chainInvoked).isTrue();
         verifyNoInteractions(jwtTokenService, authInternalApi);
     }
+
+    @Test
+    void publicRuntimeBundleSkipsJwtAuthentication() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/localization/runtime/zh-CN");
+        request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + "a".repeat(8 * 1024 + 1));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+        FilterChain chain = (servletRequest, servletResponse) -> {
+            chainInvoked.set(true);
+            assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        };
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(chainInvoked).isTrue();
+        verifyNoInteractions(jwtTokenService, authInternalApi);
+    }
 }

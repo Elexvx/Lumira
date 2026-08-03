@@ -51,4 +51,21 @@ describe('resolveRuntimeMenuIdentity', () => {
 
     expect(identity.key).toBe('main:certificates');
   });
+
+  it('normalizes a trailing slash before resolving catalog metadata and stable keys', () => {
+    const catalog = { key: 'catalog:certificates' };
+    const leaf = { key: 'leaf:mine' };
+    const identity = resolveRuntimeMenuIdentity({
+      backendPath: '/certificates/',
+      canonicalPath: '/certificates/mine',
+      localByPath: new Map([
+        ['/certificates', catalog],
+        ['/certificates/mine', leaf],
+      ]),
+      stableKeyByPath: { '/certificates': 'main:certificates' },
+    });
+
+    expect(identity.localItem).toBe(catalog);
+    expect(identity.key).toBe('main:certificates');
+  });
 });

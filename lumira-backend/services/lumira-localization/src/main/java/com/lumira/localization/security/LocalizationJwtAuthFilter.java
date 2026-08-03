@@ -33,7 +33,7 @@ public class LocalizationJwtAuthFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/localization/runtime/**",
+            "/api/v2/localization/runtime/**",
             "/api/version",
             "/api/v1/version",
             "/api/v1/*/version",

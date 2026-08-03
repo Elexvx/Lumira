@@ -8357,7 +8357,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "??",
+        "zh-CN": "可用",
         "en-US": "Available"
       }
     },
@@ -8368,7 +8368,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "???",
+        "zh-CN": "未测试",
         "en-US": "Not tested"
       }
     },
@@ -8379,7 +8379,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "???",
+        "zh-CN": "不可用",
         "en-US": "Unavailable"
       }
     },
@@ -8390,7 +8390,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentDisplay.ts",
       "translations": {
-        "zh-CN": "??",
+        "zh-CN": "正式",
         "en-US": "Production"
       }
     },
@@ -8401,7 +8401,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentDisplay.ts",
       "translations": {
-        "zh-CN": "??",
+        "zh-CN": "测试",
         "en-US": "Test"
       }
     },
@@ -8412,7 +8412,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "??????????{reason}",
+        "zh-CN": "支付连通性测试失败：{reason}",
         "en-US": "Payment connectivity test failed: {reason}"
       }
     },
@@ -8423,7 +8423,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "?????????",
+        "zh-CN": "支付连通性测试通过",
         "en-US": "Payment connectivity test passed"
       }
     },
@@ -8434,7 +8434,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "?????????{reason}",
+        "zh-CN": "缺少必填支付字段：{reason}",
         "en-US": "Missing required payment fields: {reason}"
       }
     },
@@ -8445,7 +8445,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "????????",
+        "zh-CN": "支付服务商已停用",
         "en-US": "Payment provider is disabled"
       }
     },
@@ -8456,7 +8456,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "???????????",
+        "zh-CN": "支付服务商尚未完成配置",
         "en-US": "Payment provider is not configured"
       }
     },
@@ -8467,7 +8467,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "?????????",
+        "zh-CN": "支付服务商配置可用",
         "en-US": "Payment provider is ready"
       }
     },
@@ -8478,7 +8478,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentMessage.ts",
       "translations": {
-        "zh-CN": "?????????",
+        "zh-CN": "支付服务商测试失败",
         "en-US": "Payment provider test failed"
       }
     },
@@ -8489,7 +8489,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentDisplay.ts",
       "translations": {
-        "zh-CN": "???",
+        "zh-CN": "支付宝",
         "en-US": "Alipay"
       }
     },
@@ -8522,7 +8522,7 @@
       "sourceType": "UI",
       "sourceRef": "lumira-ui/src/pages/settings/components/payment/paymentDisplay.ts",
       "translations": {
-        "zh-CN": "????",
+        "zh-CN": "微信支付",
         "en-US": "WeChat Pay"
       }
     },

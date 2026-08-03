@@ -97,7 +97,7 @@ saas:
       - /api/v1/public/captcha/**
       - /api/v2/account-activation/**
       - /api/v2/platform/public/bootstrap
-      - /api/v2/localization/bundles
+      - /api/v2/localization/runtime/**
       - /api/v1/payment/webhooks/**
       - /api/v2/payment/webhook/**
       - /api/v2/payment/webhooks/**

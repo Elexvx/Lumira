@@ -201,7 +201,7 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
       if (url === '/v1/system/floating-window-settings') {
         return mocks.defaultFloatingWindowSettings;
       }
-      if (url === '/v1/localization/runtime/zh-CN') {
+      if (url === '/v2/localization/runtime/zh-CN') {
         return { localeCode: 'zh-CN', messages: {} };
       }
       throw new Error(`Unhandled request: ${url}`);
@@ -252,22 +252,9 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
     const { getAppInitialState } = await import('@/app.bootstrap');
     const initialState = await getAppInitialState();
 
-    expect(initialState.menuTree).toEqual(expect.arrayContaining([
+    expect(initialState.menuTree).toEqual([
       { menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' },
-      expect.objectContaining({
-        menuCode: 'registration.root',
-        children: expect.arrayContaining([
-          expect.objectContaining({ menuCode: 'competition.registration' }),
-          expect.objectContaining({ menuCode: 'certificate.mine' }),
-        ]),
-      }),
-      expect.objectContaining({
-        menuCode: 'expert.review.root',
-        children: expect.arrayContaining([
-          expect.objectContaining({ menuCode: 'expert.application' }),
-        ]),
-      }),
-    ]));
+    ]);
     expect(initialState.availablePlugins).toEqual([
       { pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' },
     ]);
@@ -278,7 +265,7 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/runtime-appearance-settings', expect.any(Object));
   });
 
-  it('places competition registration under the registration group when menus are missing', async () => {
+  it('does not manufacture registration routes when the server omits them', async () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
@@ -297,20 +284,12 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
     const initialState = await getAppInitialState();
 
     const registrationRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'registration.root');
-    expect(registrationRoot).toMatchObject({
-      name: '报名',
-      path: '/registration',
-      component: 'redirect:/competitions/register',
-    });
-    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual([
-      'competition.registration',
-      'certificate.mine',
-    ]);
+    expect(registrationRoot).toBeUndefined();
     expect(initialState.menuTree?.some((menu) => menu.menuCode === 'activity.registration')).toBe(false);
-    expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'competition.registration'))).toBe(false);
+    expect(initialState.menuTree?.some((menu) => menu.menuCode === 'certificate.mine')).toBe(false);
   });
 
-  it('places expert application under the expert review group', async () => {
+  it('preserves the server-owned parent of expert application', async () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
@@ -337,22 +316,19 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
           ],
         },
       ],
+      availablePlugins: [],
     });
 
     const { getAppInitialState } = await import('@/app.bootstrap');
     const initialState = await getAppInitialState();
 
     const expertReviewRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'expert.review.root');
-    expect(expertReviewRoot).toMatchObject({
-      name: 'nav.expertReview.root',
-      path: '/expert-review',
-      component: 'redirect:/expert-review/reviews',
-    });
-    expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual(['expert.application']);
-    expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'expert.application'))).toBe(false);
+    expect(expertReviewRoot).toBeUndefined();
+    expect(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children)
+      .toEqual([expect.objectContaining({ menuCode: 'expert.application' })]);
   });
 
-  it('places the independent review workbench under the expert review group', async () => {
+  it('does not manufacture the review workbench when the server returns no menus', async () => {
     mocks.restoreSession.mockResolvedValue({
       currentUser: {
         userId: 10,
@@ -366,25 +342,13 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
       },
       securitySettings: {},
       menuTree: [],
+      availablePlugins: [],
     });
 
     const { getAppInitialState } = await import('@/app.bootstrap');
     const initialState = await getAppInitialState();
 
-    const expertReviewRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'expert.review.root');
-    expect(expertReviewRoot).toMatchObject({
-      path: '/expert-review',
-      component: 'redirect:/expert-review/reviews',
-    });
-    expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual([
-      'expert.review.tasks',
-      'expert.application',
-    ]);
-    expect(expertReviewRoot?.children?.[0]).toMatchObject({
-      name: 'nav.expertReview.reviews',
-      path: '/expert-review/reviews',
-      component: '@/pages/competition/CompetitionReviewPage',
-    });
+    expect(initialState.menuTree).toEqual([]);
   });
 
   it('falls back to authenticated v1 platform settings when v2 runtime appearance endpoint is unavailable', async () => {
@@ -413,7 +377,7 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
       if (url === '/v1/plugins/current/bootstrap') {
         return { menuTree: [], availablePlugins: [] };
       }
-      if (url === '/v1/localization/runtime/zh-CN') {
+      if (url === '/v2/localization/runtime/zh-CN') {
         return { localeCode: 'zh-CN', messages: {} };
       }
       throw new Error(`Unhandled request: ${url}`);
@@ -462,7 +426,7 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
           loginCapabilities: { passwordLoginAvailable: true, smsLoginAvailable: false, emailLoginAvailable: false },
         };
       }
-      if (url === '/v1/localization/runtime/zh-CN') {
+      if (url === '/v2/localization/runtime/zh-CN') {
         return { localeCode: 'zh-CN', messages: {} };
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -504,7 +468,7 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
       if (url === '/v1/public/login-capabilities') {
         return { passwordLoginAvailable: true, smsLoginAvailable: false, emailLoginAvailable: true };
       }
-      if (url === '/v1/localization/runtime/zh-CN') {
+      if (url === '/v2/localization/runtime/zh-CN') {
         return { localeCode: 'zh-CN', messages: {} };
       }
       throw new Error(`Unexpected request: ${url}`);

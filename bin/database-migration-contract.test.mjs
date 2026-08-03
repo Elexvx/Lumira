@@ -279,6 +279,7 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   const baseline = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202608030002__repair_builtin_navigation_hierarchy.sql');
   const dynamicParentRepair = read('deploy/migrations/V202608030003__repair_dynamic_registration_parent.sql');
+  const navigationAuthorityRepair = read('deploy/migrations/V202608030005__repair_navigation_authority.sql');
   const menuInsertStart = baseline.indexOf('INSERT INTO `sys_menu`');
   const menuInsertEnd = baseline.indexOf('ON DUPLICATE KEY UPDATE', menuInsertStart);
   const menuInsert = baseline.slice(menuInsertStart, menuInsertEnd);
@@ -325,6 +326,17 @@ test('built-in navigation hierarchy has unique seed identities and an online rep
   assert.doesNotMatch(dynamicParentRepair, /child_menu\.`parent_id`\s*=\s*-1069/);
   assert.doesNotMatch(dynamicParentRepair, /\bDELETE\s+FROM\b/i);
   assert.doesNotMatch(dynamicParentRepair, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+
+  for (const parentCode of ['registration.root', 'expert.review.root', 'certificate.root']) {
+    assert.match(navigationAuthorityRepair, new RegExp(parentCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(navigationAuthorityRepair, /custom_child\.`parent_id` = competition_root\.`id`/);
+  assert.match(navigationAuthorityRepair, /custom_child\.`status` = 'ENABLED'/);
+  assert.match(navigationAuthorityRepair, /migration:V202608030005:navigation-authority/);
+  assert.doesNotMatch(navigationAuthorityRepair, /child_menu\.`status`\s*=/);
+  assert.doesNotMatch(navigationAuthorityRepair, /child_menu\.`deleted`\s*=/);
+  assert.doesNotMatch(navigationAuthorityRepair, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(navigationAuthorityRepair, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
 test('platform event outbox audit identity repair matches the fresh bootstrap', () => {

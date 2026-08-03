@@ -34,7 +34,30 @@ test('database catalog has unique, complete Chinese and English entries', () => 
   for (const entry of catalog.entries) {
     assert.ok(entry.translations?.['zh-CN'], `${entry.messageKey} is missing zh-CN`);
     assert.ok(entry.translations?.['en-US'], `${entry.messageKey} is missing en-US`);
+    assert.doesNotMatch(
+      entry.translations['zh-CN'],
+      /\?{2,}/,
+      `${entry.messageKey} contains a corrupted zh-CN translation`,
+    );
   }
+});
+
+test('corrupted payment translations have a guarded forward repair', () => {
+  const migration = read('deploy/migrations/V202608030004__repair_payment_localization_catalog.sql');
+  for (const messageKey of [
+    'payment.connectivity.available',
+    'payment.connectivity.notTested',
+    'payment.connectivity.unavailable',
+    'payment.message.connectivityFailedWithReason',
+    'payment.message.missingFields',
+    'payment.provider.alipay',
+    'payment.provider.wechatPay',
+  ]) {
+    assert.match(migration, new RegExp(messageKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(migration, /translated_message` REGEXP '\^\[\?\]\+/);
+  assert.match(migration, /default_message` REGEXP '\^\[\?\]\+/);
+  assert.doesNotMatch(migration, /ON DUPLICATE KEY UPDATE/i);
 });
 
 test('catalog initialization preserves database-managed edits', () => {

@@ -95,7 +95,7 @@ saas:
       - /api/v1/public/aiadc/activities
       - /api/v1/public/captcha/**
       - /api/v2/platform/public/bootstrap
-      - /api/v2/localization/bundles
+      - /api/v2/localization/runtime/**
       - /api/v2/payment/webhook/**
       - /api/v2/payment/webhooks/**
       - /api/uploads/**

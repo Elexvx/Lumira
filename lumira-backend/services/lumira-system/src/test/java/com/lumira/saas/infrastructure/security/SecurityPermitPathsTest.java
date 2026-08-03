@@ -15,6 +15,8 @@ class SecurityPermitPathsTest {
         String mainConfig = readMainConfig();
         String testConfig = readConfig("src/test/resources/application.yml");
 
+        Assertions.assertTrue(mainConfig.contains("- /api/v2/localization/runtime/**"), mainConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/v2/localization/runtime/**"), testConfig);
         Assertions.assertFalse(mainConfig.contains("- /api/v1/localization/runtime/**"), mainConfig);
         Assertions.assertFalse(testConfig.contains("- /api/v1/localization/runtime/**"), testConfig);
     }
@@ -98,7 +100,7 @@ class SecurityPermitPathsTest {
         String mainConfig = readMainConfig();
         String testConfig = readConfig("src/test/resources/application.yml");
 
-        for (String path : new String[]{"/api/v2/platform/public/bootstrap", "/api/v2/localization/bundles", "/api/v2/payment/webhook/**", "/api/v2/payment/webhooks/**"}) {
+        for (String path : new String[]{"/api/v2/platform/public/bootstrap", "/api/v2/localization/runtime/**", "/api/v2/payment/webhook/**", "/api/v2/payment/webhooks/**"}) {
             Assertions.assertTrue(mainConfig.contains("- " + path), mainConfig);
             Assertions.assertTrue(testConfig.contains("- " + path), testConfig);
         }

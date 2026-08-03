@@ -23,7 +23,7 @@ const baseMenuTree: MenuNode[] = [
 ];
 
 describe('normalizeAuthenticatedMenuTree', () => {
-  it('restores competition registration menus for common users with registration permissions', () => {
+  it('does not synthesize routes that are absent from the server menu tree', () => {
     const currentUser = buildCurrentUser([
       'dashboard:view',
       'profile:view',
@@ -33,28 +33,34 @@ describe('normalizeAuthenticatedMenuTree', () => {
     ]);
 
     const normalized = normalizeAuthenticatedMenuTree(baseMenuTree, currentUser);
-    const registrationRoot = normalized.find((menu) => menu.menuCode === 'registration.root');
 
-    expect(registrationRoot).toBeDefined();
-    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual([
-      'competition.registration',
-      'activity.registration',
-      'certificate.mine',
-    ]);
+    expect(normalized).toEqual(baseMenuTree);
+    expect(normalized.some((menu) => menu.menuCode === 'registration.root')).toBe(false);
   });
 
-  it('only injects the personal certificate entry when the current user has no registration permissions', () => {
+  it('filters server-provided registration routes without adding missing siblings', () => {
     const currentUser = buildCurrentUser([
       'dashboard:view',
       'profile:view',
       'system:file:view',
     ]);
 
-    const normalized = normalizeAuthenticatedMenuTree(baseMenuTree, currentUser);
+    const normalized = normalizeAuthenticatedMenuTree([
+      ...baseMenuTree,
+      {
+        id: 2,
+        menuCode: 'registration.root',
+        name: '报名',
+        path: '/registration',
+        children: [
+          { id: 3, menuCode: 'competition.registration', name: '赛事报名', path: '/competitions/register' },
+          { id: 4, menuCode: 'certificate.mine', name: '我的证书', path: '/certificates/mine' },
+        ],
+      },
+    ], currentUser);
 
     const registrationRoot = normalized.find((menu) => menu.menuCode === 'registration.root');
     expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual(['certificate.mine']);
-    expect(normalized.some((menu) => menu.menuCode === 'competition.registration')).toBe(false);
   });
 
   it('deduplicates canonical menu paths and preserves unique descendants', () => {

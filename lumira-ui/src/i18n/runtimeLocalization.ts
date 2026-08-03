@@ -20,7 +20,7 @@ export const loadRuntimeLocalizationBundle = async (localeCode?: string | null) 
 
   const loadPromise = (async () => {
     try {
-      const bundle = await request<LocalizationRuntimeBundle>(`/v1/localization/runtime/${normalizedLocale}`, {
+      const bundle = await request<LocalizationRuntimeBundle>(`/v2/localization/runtime/${normalizedLocale}`, {
         method: 'GET',
         skipAuth: true,
         silent: true,
@@ -34,7 +34,9 @@ export const loadRuntimeLocalizationBundle = async (localeCode?: string | null) 
       runtimeBundleCache.set(normalizedLocale, bundle || null);
       return bundle || null;
     } catch {
-      runtimeBundleCache.set(normalizedLocale, null);
+      // A transient localization outage must remain retryable. The frontend no
+      // longer ships the full message catalog, so caching a failed request would
+      // leave the rest of the session rendering message keys.
       return null;
     } finally {
       runtimeBundleInflight.delete(normalizedLocale);

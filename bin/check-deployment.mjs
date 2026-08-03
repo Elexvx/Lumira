@@ -14,6 +14,7 @@ const checks = [
   ...(includeBackendCheck ? [{ label: 'lumira-server actuator', url: `${backendUrl}/actuator/health` }] : []),
   { label: 'runtime version API', url: `${baseUrl}/api/v2/runtime/version` },
   { label: 'public login capabilities API', url: `${baseUrl}/api/v1/public/login-capabilities` },
+  { label: 'public localization runtime bundle', url: `${baseUrl}/api/v2/localization/runtime/zh-CN` },
   { label: 'auth owner API is routed', url: `${baseUrl}/api/v2/auth/current-user`, expectedStatus: 401 },
   { label: 'file owner API is routed', url: `${baseUrl}/api/v2/files`, expectedStatus: 401 },
   { label: 'message owner API is routed', url: `${baseUrl}/api/v2/message/messages`, expectedStatus: 401 },

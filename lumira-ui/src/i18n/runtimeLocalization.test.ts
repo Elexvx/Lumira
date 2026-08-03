@@ -39,8 +39,34 @@ describe('loadRuntimeLocalizationBundle', () => {
     expect(first).toBe(second);
     expect(third).toBe(first);
     expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request).toHaveBeenCalledWith(
+      '/v2/localization/runtime/zh-CN',
+      expect.objectContaining({ skipAuth: true }),
+    );
     expect(mocks.addLocale).toHaveBeenCalledTimes(1);
     const { databaseMessage } = await import('./databaseMessage');
     expect(databaseMessage('common.ok')).toBe('确定');
+  });
+
+  it('retries after a transient bundle request failure', async () => {
+    mocks.request
+      .mockRejectedValueOnce(new Error('temporary outage'))
+      .mockResolvedValueOnce({
+        localeCode: 'zh-CN',
+        messages: {
+          'common.ok': '确定',
+        },
+      });
+
+    const { loadRuntimeLocalizationBundle } = await import('./runtimeLocalization');
+    expect(await loadRuntimeLocalizationBundle('zh-CN')).toBeNull();
+    expect(await loadRuntimeLocalizationBundle('zh-CN')).toEqual({
+      localeCode: 'zh-CN',
+      messages: {
+        'common.ok': '确定',
+      },
+    });
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+    expect(mocks.addLocale).toHaveBeenCalledTimes(1);
   });
 });
