@@ -9,6 +9,7 @@ const installScript = readFileSync(path.join(repoRoot, 'bin', 'install-platform.
 const startScript = readFileSync(path.join(repoRoot, 'bin', 'start-platform.mjs'), 'utf8');
 const envExample = readFileSync(path.join(repoRoot, 'deploy', '.env.example'), 'utf8');
 const composeProd = readFileSync(path.join(repoRoot, 'deploy', 'docker-compose.prod.yml'), 'utf8');
+const serviceDockerfile = readFileSync(path.join(repoRoot, 'deploy', 'docker', 'service.Dockerfile'), 'utf8');
 const apiNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'api.conf.template'), 'utf8');
 const edgeNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'edge.conf'), 'utf8');
 const uiNginx = readFileSync(path.join(repoRoot, 'deploy', 'nginx', 'lumira-ui.conf'), 'utf8');
@@ -43,6 +44,29 @@ test('frontend builds always receive a traceable release identity', () => {
   assert.match(updater, /const targetFrontendVersion = `\$\{manifest\.version\}\+\$\{manifest\.commit\.slice\(0, 12\)\}`/);
   assert.match(updater, /FRONTEND_VERSION: targetFrontendVersion/);
   assert.match(updater, /GIT_BRANCH: 'main'/);
+});
+
+test('service images carry immutable release identity independent of stale host environment', () => {
+  const requiredIdentityFields = [
+    'APP_VERSION',
+    'BUILD_VERSION',
+    'FRONTEND_VERSION',
+    'BACKEND_VERSION',
+    'DATABASE_VERSION',
+    'BUILD_TIME',
+    'GIT_COMMIT',
+    'GIT_BRANCH',
+  ];
+  for (const buildName of ['lumira-server', 'lumira-async', 'lumira-job-executor']) {
+    const start = ciWorkflow.indexOf(`- name: Build ${buildName} image`);
+    const end = ciWorkflow.indexOf('- name: Build ', start + 1);
+    const buildStep = ciWorkflow.slice(start, end < 0 ? ciWorkflow.length : end);
+    for (const field of requiredIdentityFields) {
+      assert.match(buildStep, new RegExp(`^\\s+${field}=`, 'm'), `${buildName} image must receive ${field}`);
+      assert.match(serviceDockerfile, new RegExp(`LUMIRA_IMAGE_${field}=\\$\\{${field}\\}`));
+    }
+  }
+  assert.match(updater, /BACKEND_VERSION: targetBackendVersion/);
 });
 
 test('frontend and edge nginx enforce browser security headers', () => {
@@ -513,7 +537,7 @@ test('online migrator joins the configurable database network used by production
 
 test('blue and green slots persist independent build identities for safe container recreation', () => {
   for (const slot of ['BLUE', 'GREEN']) {
-    for (const field of ['APP_VERSION', 'BUILD_VERSION', 'BUILD_TIME', 'GIT_COMMIT', 'DATABASE_VERSION']) {
+    for (const field of ['APP_VERSION', 'BUILD_VERSION', 'FRONTEND_VERSION', 'BACKEND_VERSION', 'BUILD_TIME', 'GIT_COMMIT', 'GIT_BRANCH', 'DATABASE_VERSION']) {
       assert.match(envExample, new RegExp(`^LUMIRA_SERVER_${slot}_${field}=`, 'm'));
       assert.match(composeProd, new RegExp(`LUMIRA_SERVER_${slot}_${field}`));
     }

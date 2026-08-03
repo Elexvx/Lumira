@@ -125,6 +125,14 @@ jobs:
           build-args: |
             SERVICE_DIR=services/lumira-admin
             SERVICE_MODULE=services/lumira-admin
+            APP_VERSION=main
+            BUILD_VERSION=main+${{ github.sha }}
+            FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
+            BACKEND_VERSION=main+${{ steps.images.outputs.short_sha }}
+            DATABASE_VERSION=${{ steps.database_migrations.outputs.version }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_server }}:main
@@ -161,6 +169,14 @@ jobs:
           build-args: |
             SERVICE_DIR=services/lumira-async
             SERVICE_MODULE=services/lumira-async
+            APP_VERSION=main
+            BUILD_VERSION=main+${{ github.sha }}
+            FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
+            BACKEND_VERSION=main+${{ steps.images.outputs.short_sha }}
+            DATABASE_VERSION=${{ steps.database_migrations.outputs.version }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_async }}:main
@@ -178,6 +194,14 @@ jobs:
           build-args: |
             SERVICE_DIR=services/lumira-quartz
             SERVICE_MODULE=services/lumira-quartz
+            APP_VERSION=main
+            BUILD_VERSION=main+${{ github.sha }}
+            FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
+            BACKEND_VERSION=main+${{ steps.images.outputs.short_sha }}
+            DATABASE_VERSION=${{ steps.database_migrations.outputs.version }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_job_executor }}:main

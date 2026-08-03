@@ -191,7 +191,10 @@ function deploymentState() {
     commit: env[`${slotPrefix}GIT_COMMIT`] || env.GIT_COMMIT,
     version: env[`${slotPrefix}APP_VERSION`] || env.APP_VERSION,
     buildVersion: env[`${slotPrefix}BUILD_VERSION`] || env.BUILD_VERSION,
+    frontendVersion: env[`${slotPrefix}FRONTEND_VERSION`] || env.FRONTEND_VERSION,
+    backendVersion: env[`${slotPrefix}BACKEND_VERSION`] || env.BACKEND_VERSION,
     buildTime: env[`${slotPrefix}BUILD_TIME`] || env.BUILD_TIME,
+    branch: env[`${slotPrefix}GIT_BRANCH`] || env.GIT_BRANCH,
     databaseVersion: env[`${slotPrefix}DATABASE_VERSION`] || env.DATABASE_VERSION,
     serverImage: env[`${slotPrefix}IMAGE`] || env.LUMIRA_SERVER_IMAGE,
     asyncImage: env.LUMIRA_ASYNC_IMAGE,
@@ -609,8 +612,11 @@ async function rollbackTraffic(task, state, failedSlot) {
   updateEnv({
     APP_VERSION: previousRelease.version,
     BUILD_VERSION: previousRelease.buildVersion || previousRelease.version,
+    FRONTEND_VERSION: previousRelease.frontendVersion || previousRelease.version,
+    BACKEND_VERSION: previousRelease.backendVersion || previousRelease.buildVersion || previousRelease.version,
     BUILD_TIME: previousRelease.buildTime,
     GIT_COMMIT: previousRelease.commit,
+    GIT_BRANCH: previousRelease.branch,
     DATABASE_VERSION: previousRelease.databaseVersion,
   });
   await runCompose(task, '--profile', previousSlot, 'up', '-d', '--no-deps', `lumira-server-${previousSlot}`);
@@ -641,6 +647,7 @@ async function runInstall(task, request) {
   const manifest = preflight.manifest;
   const targetBuildTime = manifest.releasedAt || new Date().toISOString();
   const targetFrontendVersion = `${manifest.version}+${manifest.commit.slice(0, 12)}`;
+  const targetBackendVersion = `${manifest.version}+${manifest.commit.slice(0, 12)}`;
   const state = deploymentState();
   const activeSlot = normalizeSlot(state.activeSlot);
   const targetSlot = inactiveSlot(activeSlot);
@@ -682,12 +689,16 @@ async function runInstall(task, request) {
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_IMAGE`]: manifest.images.server,
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_APP_VERSION`]: manifest.version,
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_BUILD_VERSION`]: `${manifest.version}+${manifest.commit}`,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_FRONTEND_VERSION`]: targetFrontendVersion,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_BACKEND_VERSION`]: targetBackendVersion,
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_BUILD_TIME`]: targetBuildTime,
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_GIT_COMMIT`]: manifest.commit,
+      [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_GIT_BRANCH`]: 'main',
       [`LUMIRA_SERVER_${targetSlot.toUpperCase()}_DATABASE_VERSION`]: manifest.database.targetVersion,
       APP_VERSION: manifest.version,
       BUILD_VERSION: `${manifest.version}+${manifest.commit}`,
       FRONTEND_VERSION: targetFrontendVersion,
+      BACKEND_VERSION: targetBackendVersion,
       BUILD_TIME: targetBuildTime,
       GIT_COMMIT: manifest.commit,
       GIT_BRANCH: 'main',
@@ -729,7 +740,10 @@ async function runInstall(task, request) {
       commit: manifest.commit,
       version: manifest.version,
       buildVersion: `${manifest.version}+${manifest.commit}`,
+      frontendVersion: targetFrontendVersion,
+      backendVersion: targetBackendVersion,
       buildTime: targetBuildTime,
+      branch: 'main',
       databaseVersion: manifest.database.targetVersion,
       serverImage: manifest.images.server,
       activatedAt: new Date().toISOString(),
@@ -773,8 +787,11 @@ async function runRollback(task) {
   updateEnv({
     APP_VERSION: state.slots[previousSlot].version,
     BUILD_VERSION: state.slots[previousSlot].buildVersion || state.slots[previousSlot].version,
+    FRONTEND_VERSION: state.slots[previousSlot].frontendVersion || state.slots[previousSlot].version,
+    BACKEND_VERSION: state.slots[previousSlot].backendVersion || state.slots[previousSlot].buildVersion || state.slots[previousSlot].version,
     BUILD_TIME: state.slots[previousSlot].buildTime,
     GIT_COMMIT: state.slots[previousSlot].commit,
+    GIT_BRANCH: state.slots[previousSlot].branch,
     DATABASE_VERSION: state.slots[previousSlot].databaseVersion,
   });
   setPhase(task, 'STARTING_INACTIVE', `Restarting previous ${previousSlot} slot.`);

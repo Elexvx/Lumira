@@ -25,20 +25,25 @@ public class ServiceVersionProvider {
         String applicationName = environment.getProperty("spring.application.name");
         String artifact = buildProperties == null ? null : buildProperties.getArtifact();
         String version = ServiceVersionInfoFactory.firstText(
+                environment.getProperty("LUMIRA_IMAGE_APP_VERSION"),
+                environment.getProperty("LUMIRA_IMAGE_BUILD_VERSION"),
                 environment.getProperty("APP_VERSION"),
                 environment.getProperty("BUILD_VERSION"),
                 buildProperties == null ? null : buildProperties.getVersion()
         );
         String buildTime = ServiceVersionInfoFactory.firstText(
+                environment.getProperty("LUMIRA_IMAGE_BUILD_TIME"),
                 environment.getProperty("BUILD_TIME"),
                 formatBuildTime(buildProperties)
         );
         String commitId = ServiceVersionInfoFactory.firstText(
+                environment.getProperty("LUMIRA_IMAGE_GIT_COMMIT"),
                 environment.getProperty("GIT_COMMIT"),
                 environment.getProperty("COMMIT_SHA"),
                 environment.getProperty("VERCEL_GIT_COMMIT_SHA")
         );
         String branch = ServiceVersionInfoFactory.firstText(
+                environment.getProperty("LUMIRA_IMAGE_GIT_BRANCH"),
                 environment.getProperty("GIT_BRANCH"),
                 environment.getProperty("VERCEL_GIT_COMMIT_REF")
         );
@@ -50,9 +55,9 @@ public class ServiceVersionProvider {
                 commitId,
                 branch,
                 String.join(",", environment.getActiveProfiles()),
-                environment.getProperty("FRONTEND_VERSION"),
-                ServiceVersionInfoFactory.firstText(environment.getProperty("BACKEND_VERSION"), environment.getProperty("BUILD_VERSION")),
-                environment.getProperty("DATABASE_VERSION")
+                ServiceVersionInfoFactory.firstText(environment.getProperty("LUMIRA_IMAGE_FRONTEND_VERSION"), environment.getProperty("FRONTEND_VERSION")),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("LUMIRA_IMAGE_BACKEND_VERSION"), environment.getProperty("LUMIRA_IMAGE_BUILD_VERSION"), environment.getProperty("BACKEND_VERSION"), environment.getProperty("BUILD_VERSION")),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("DATABASE_VERSION"), environment.getProperty("LUMIRA_IMAGE_DATABASE_VERSION"))
         );
     }
 
