@@ -43,8 +43,19 @@ public class ReadModelVersionCache {
         CompletableFuture<Long> existing = inFlight.putIfAbsent(cacheKey, created);
         if (existing == null) {
             try {
+                // Another loader may have populated the cache after this thread observed
+                // the initial miss but before it claimed the single-flight slot.
+                long claimedAt = System.currentTimeMillis();
+                CachedVersion refreshed = cache.get(cacheKey);
+                if (refreshed != null && refreshed.expiresAtMillis() > claimedAt) {
+                    created.complete(refreshed.version());
+                    return new ReadResult(refreshed.version(), true);
+                }
                 Long loaded = loader.get();
-                cache.put(cacheKey, new CachedVersion(loaded, now + Math.max(1L, ttlMillis)));
+                cache.put(cacheKey, new CachedVersion(
+                        loaded,
+                        System.currentTimeMillis() + Math.max(1L, ttlMillis)
+                ));
                 created.complete(loaded);
                 return new ReadResult(loaded, false);
             } catch (Throwable throwable) {
