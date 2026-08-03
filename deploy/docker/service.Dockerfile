@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 ARG MAVEN_IMAGE=maven:3.9.11-eclipse-temurin-21
 ARG JRE_IMAGE=eclipse-temurin:21-jre
 
