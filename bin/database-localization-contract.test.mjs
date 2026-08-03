@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -15,7 +15,9 @@ test('UI localization is database-owned and frontend catalogs are empty', () => 
 
   for (const localeDirectory of ['lumira-ui/src/locales/zh-CN', 'lumira-ui/src/locales/en-US']) {
     const absolute = path.join(repoRoot, localeDirectory);
-    assert.deepEqual(readdirSync(absolute, { withFileTypes: true }).filter((entry) => entry.isFile()), []);
+    if (existsSync(absolute)) {
+      assert.deepEqual(readdirSync(absolute, { withFileTypes: true }).filter((entry) => entry.isFile()), []);
+    }
   }
 
   const databaseMessage = read('lumira-ui/src/i18n/databaseMessage.ts');
@@ -37,9 +39,12 @@ test('database catalog has unique, complete Chinese and English entries', () => 
 
 test('catalog initialization preserves database-managed edits', () => {
   const initializer = read('lumira-backend/services/lumira-localization/src/main/java/com/lumira/localization/app/DatabaseLocalizationCatalogInitializer.java');
-  assert.match(initializer, /INSERT IGNORE INTO sys_localization_entry/);
-  assert.match(initializer, /INSERT IGNORE INTO sys_localization_translation/);
-  assert.doesNotMatch(initializer, /ON DUPLICATE KEY UPDATE/);
+  const persistenceAdapter = read('lumira-backend/services/lumira-localization/src/main/java/com/lumira/localization/infrastructure/persistence/JdbcLocalizationCatalogRepository.java');
+  assert.match(initializer, /catalogRepository\.initialize\(entries\)/);
+  assert.doesNotMatch(initializer, /JdbcTemplate|INSERT INTO|INSERT IGNORE/);
+  assert.match(persistenceAdapter, /INSERT IGNORE INTO sys_localization_entry/);
+  assert.match(persistenceAdapter, /INSERT IGNORE INTO sys_localization_translation/);
+  assert.doesNotMatch(persistenceAdapter, /ON DUPLICATE KEY UPDATE/);
 
   const localizationPage = read('lumira-ui/src/pages/settings/localization/LocalizationPage.tsx');
   assert.doesNotMatch(localizationPage, /@\/locales/);
