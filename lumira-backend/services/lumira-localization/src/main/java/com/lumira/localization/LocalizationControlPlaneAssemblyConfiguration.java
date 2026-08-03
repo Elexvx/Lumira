@@ -5,6 +5,7 @@ import com.lumira.localization.security.JwtTokenService;
 import com.lumira.localization.security.LocalizationJwtAuthFilter;
 import com.lumira.localization.security.SecurityProperties;
 import com.lumira.localization.app.LocalizationManagementAppService;
+import com.lumira.localization.app.DatabaseLocalizationCatalogInitializer;
 import com.lumira.localization.controller.LocalizationController;
 import com.lumira.localization.controller.LocalizationReadinessV2Controller;
 import com.lumira.localization.controller.LocalizationV2Controller;
@@ -26,6 +27,7 @@ import org.springframework.context.annotation.Import;
         LocalizationSecurityConfig.class,
         JwtTokenService.class,
         LocalizationJwtAuthFilter.class,
+        DatabaseLocalizationCatalogInitializer.class,
         LocalizationManagementAppService.class,
         LocalizationController.class,
         LocalizationReadinessV2Controller.class,

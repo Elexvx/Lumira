@@ -1,4 +1,4 @@
-import { getLocale, history, useLocation } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
 import { Button, Card, Checkbox, Descriptions, Dropdown, Empty, Form, Image, Input, InputNumber, Radio, Select, Space, Spin, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -23,7 +23,7 @@ import { confirmAction } from '@/utils/confirm';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { rejectAntUploadFile, validateDocumentUploadFile } from '@/utils/uploadValidation';
-import { normalizeLocale } from '@/i18n/locale';
+import { databaseMessage } from '@/i18n/databaseMessage';
 
 type BuildFileListRequestParams = {
   fileScope: 'mine' | 'shared' | 'download-center';
@@ -91,8 +91,7 @@ const STORAGE_PROVIDER_LABELS: Record<FileStorageProvider, string> = {
   TENCENT_COS: FILE_STORAGE_PROVIDER_OPTIONS[2].label,
 };
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const DEFAULT_STORAGE_MAX_FILE_SIZE_MB = 20;
 
@@ -118,9 +117,9 @@ const storageUploadHint = (storageSpace?: FileStorageSpaceRecord | null) => {
   const maxFileSizeMb = storageSpace?.maxFileSizeMb || DEFAULT_STORAGE_MAX_FILE_SIZE_MB;
   const allowedMimeTypes = storageSpace?.allowedMimeTypes || '*';
   if (allowedMimeTypes.trim() === '*') {
-    return t(`按存储空间配置允许的文件类型上传，单个文件不超过 ${maxFileSizeMb}MB，单次最多 5 个。`, `Upload file types allowed by the storage space. Each file must be under ${maxFileSizeMb}MB. Up to 5 files at a time.`);
+    return t('ui.files.center.uploadFileTypesAllowedByTheStorageSpace', { maxFileSizeMb: maxFileSizeMb });
   }
-  return t(`仅允许 ${allowedMimeTypes}，单个文件不超过 ${maxFileSizeMb}MB，单次最多 5 个。`, `Only ${allowedMimeTypes} is allowed. Each file must be under ${maxFileSizeMb}MB. Up to 5 files at a time.`);
+  return t('ui.files.center.onlyIsAllowedEachFileMustBeUnder', { allowedMimeTypes: allowedMimeTypes, maxFileSizeMb: maxFileSizeMb });
 };
 
 const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpacePayload => ({
@@ -253,7 +252,7 @@ const buildFileObjectColumns = ({
         items={[
           {
             key: 'preview',
-            label: t('预览', 'Preview'),
+            label: t('ui.files.center.preview'),
             icon: <FileOutlined />,
             onClick: () => void onOpenPreviewDrawer(record),
           },
@@ -321,84 +320,84 @@ function FileStorageDrawer({
 }) {
   return (
     <ManagementDrawer
-      title={mode === 'edit' ? t(`编辑 - ${editingStorageSpace?.title || '存储空间'}`, `Edit - ${editingStorageSpace?.title || 'Storage space'}`) : t('新增存储空间', 'Create storage space')}
+      title={mode === 'edit' ? t('ui.files.center.edit', { value1: editingStorageSpace?.title || '存储空间' }) : t('ui.files.center.createStorageSpace')}
       open={open}
       onClose={onClose}
       footerActions={[
-        { key: 'cancel', label: t('取消', 'Cancel'), onClick: onClose },
-        { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canManageStorage, onClick: onSave },
+        { key: 'cancel', label: t('ui.files.center.cancel'), onClick: onClose },
+        { key: 'save', label: t('ui.files.center.save'), type: 'primary', loading: saving, disabled: !canManageStorage, onClick: onSave },
       ]}
     >
       <Form form={form} layout="vertical" initialValues={{ provider: 'LOCAL', renameStrategy: 'APPEND_RANDOM_ID' }}>
         <>
-          <Form.Item name="provider" label={t('存储类型', 'Storage type')} rules={[{ required: true, message: t('请选择存储类型', 'Please select a storage type') }]}>
+          <Form.Item name="provider" label={t('ui.files.center.storageType')} rules={[{ required: true, message: t('ui.files.center.pleaseSelectAStorageType') }]}>
             <Select options={providerOptions} disabled={mode === 'edit'} />
           </Form.Item>
-          <Form.Item name="title" label={t('标题', 'Title')} rules={[{ required: true, message: t('请输入标题', 'Please enter a title') }]}>
-            <Input placeholder={t('本地存储', 'Local storage')} />
+          <Form.Item name="title" label={t('ui.files.center.title')} rules={[{ required: true, message: t('ui.files.center.pleaseEnterATitle') }]}>
+            <Input placeholder={t('ui.files.center.localStorage')} />
           </Form.Item>
           <Form.Item
             name="storageKey"
-            label={t('存储空间标识', 'Storage key')}
+            label={t('ui.files.center.storageKey')}
             rules={[
-              { required: true, message: t('请输入存储空间标识', 'Please enter the storage key') },
-              { pattern: /^[a-z][a-z0-9_]*$/, message: t('必须以英文字母开头，仅支持英文、数字和下划线', 'Must start with a letter and contain only letters, numbers, and underscores') },
+              { required: true, message: t('ui.files.center.pleaseEnterTheStorageKey') },
+              { pattern: /^[a-z][a-z0-9_]*$/, message: t('ui.files.center.mustStartWithALetterAndContainOnly') },
             ]}
-            extra={t('随机生成，可修改。支持英文、数字和下划线，必须以英文字母开头。', 'Generated randomly and can be edited. It must start with a letter and may contain letters, numbers, and underscores.')}
+            extra={t('ui.files.center.generatedRandomlyAndCanBeEditedItMust')}
           >
-            <Input placeholder={t('local', 'local')} disabled={mode === 'edit'} />
+            <Input placeholder={t('ui.files.center.local')} disabled={mode === 'edit'} />
           </Form.Item>
           {provider === 'LOCAL' ? (
-            <Form.Item name="rootPath" label={t('路径', 'Path')}>
-              <Input addonAfter="/" placeholder={t('storage/uploads', 'storage/uploads')} />
+            <Form.Item name="rootPath" label={t('ui.files.center.path')}>
+              <Input addonAfter="/" placeholder={t('ui.files.center.storageUploads')} />
             </Form.Item>
           ) : null}
           {showRemoteStorageFields ? (
             <>
-              <Form.Item name="bucketName" label={t('存储桶', 'Bucket')} rules={[{ required: true, message: t('请输入 Bucket', 'Please enter a Bucket') }]}>
-                <Input placeholder={t('对象存储 Bucket 名称', 'Object storage Bucket name')} />
+              <Form.Item name="bucketName" label={t('ui.files.center.bucket')} rules={[{ required: true, message: t('ui.files.center.pleaseEnterABucket') }]}>
+                <Input placeholder={t('ui.files.center.objectStorageBucketName')} />
               </Form.Item>
-              <Form.Item name="endpoint" label={t('访问端点', 'Endpoint')} rules={[{ required: true, message: t('请输入 Endpoint', 'Please enter an Endpoint') }]}>
+              <Form.Item name="endpoint" label={t('ui.files.center.endpoint')} rules={[{ required: true, message: t('ui.files.center.pleaseEnterAnEndpoint') }]}>
                 <Input placeholder="https://oss-cn-hangzhou.aliyuncs.com" />
               </Form.Item>
-              <Form.Item name="region" label={t('地域', 'Region')}>
+              <Form.Item name="region" label={t('ui.files.center.region')}>
                 <Input placeholder="cn-hangzhou / ap-guangzhou / us-east-1" />
               </Form.Item>
-              <Form.Item name="accessKeyId" label={t('访问密钥 ID', 'Access Key ID')}>
-                <Input placeholder={t('对象存储访问密钥 ID', 'Object storage access key ID')} />
+              <Form.Item name="accessKeyId" label={t('ui.files.center.accessKeyId')}>
+                <Input placeholder={t('ui.files.center.objectStorageAccessKeyId')} />
               </Form.Item>
-              <Form.Item name="accessKeySecret" label={t('访问密钥 Secret', 'Access Key Secret')} extra={editingStorageSpace?.secretConfigured ? t('留空则保持现有密钥。', 'Leave blank to keep the existing secret.') : undefined}>
-                <Input.Password placeholder={t('留空则不修改已保存密钥', 'Leave blank to keep the saved secret')} />
+              <Form.Item name="accessKeySecret" label={t('ui.files.center.accessKeySecret')} extra={editingStorageSpace?.secretConfigured ? t('ui.files.center.leaveBlankToKeepTheExistingSecret') : undefined}>
+                <Input.Password placeholder={t('ui.files.center.leaveBlankToKeepTheSavedSecret')} />
               </Form.Item>
             </>
           ) : null}
-          <Form.Item name="renameStrategy" label={t('重命名', 'Rename strategy')} rules={[{ required: true, message: t('请选择重命名策略', 'Please select a rename strategy') }]}>
+          <Form.Item name="renameStrategy" label={t('ui.files.center.renameStrategy')} rules={[{ required: true, message: t('ui.files.center.pleaseSelectARenameStrategy') }]}>
             <Radio.Group options={renameStrategyOptions} />
           </Form.Item>
-          <Form.Item name="maxFileSizeMb" label={t('文件大小限制', 'Max file size')} rules={[{ required: true, message: t('请输入文件大小限制', 'Please enter the max file size') }]}>
+          <Form.Item name="maxFileSizeMb" label={t('ui.files.center.maxFileSize')} rules={[{ required: true, message: t('ui.files.center.pleaseEnterTheMaxFileSize') }]}>
             <InputNumber min={1} addonAfter="MB" style={{ width: 'var(--saas-spacing-220)' }} />
           </Form.Item>
-          <Form.Item name="allowedMimeTypes" label={t('允许的文件类型（MIME 格式）', 'Allowed file types (MIME)')}>
+          <Form.Item name="allowedMimeTypes" label={t('ui.files.center.allowedFileTypesMime')}>
             <Input placeholder="*" />
           </Form.Item>
           <Form.Item name="defaultStorage" valuePropName="checked">
-            <Checkbox disabled={Boolean(editingStorageSpace?.defaultStorage)}>{t('默认存储空间', 'Default storage space')}</Checkbox>
+            <Checkbox disabled={Boolean(editingStorageSpace?.defaultStorage)}>{t('ui.files.center.defaultStorageSpace')}</Checkbox>
           </Form.Item>
           <Form.Item name="retainFileOnRecordDelete" valuePropName="checked">
-            <Checkbox>{t('删除文件记录时保留文件', 'Keep the file when its record is deleted')}</Checkbox>
+            <Checkbox>{t('ui.files.center.keepTheFileWhenItsRecordIsDeleted')}</Checkbox>
           </Form.Item>
           <Form.Item
             name="anonymousAccessAllowed"
             valuePropName="checked"
-            extra={t('关闭后，该存储空间下的文件即使标记为公开，也不能被未登录用户通过直链访问。', 'When disabled, files in this storage space cannot be accessed by anonymous users through direct links, even if they are marked public.')}
+            extra={t('ui.files.center.whenDisabledFilesInThisStorageSpaceCannot')}
           >
-            <Checkbox>{t('允许未登录访问公开文件', 'Allow anonymous access to public files')}</Checkbox>
+            <Checkbox>{t('ui.files.center.allowAnonymousAccessToPublicFiles')}</Checkbox>
           </Form.Item>
-          <Form.Item name="status" label={t('状态', 'Status')}>
+          <Form.Item name="status" label={t('ui.files.center.status')}>
             <Select
               options={[
-                { label: t('启用', 'Enabled'), value: 'ENABLED' },
-                { label: t('停用', 'Disabled'), value: 'DISABLED' },
+                { label: t('ui.files.center.enabled'), value: 'ENABLED' },
+                { label: t('ui.files.center.disabled'), value: 'DISABLED' },
               ]}
             />
           </Form.Item>
@@ -452,22 +451,22 @@ function FileUploadDrawer({
         }
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (!extension || !ALLOWED_UPLOAD_EXTENSIONS.includes(extension)) {
-          message.error(t('当前文件格式暂不支持安全上传', 'This file format is not supported for secure upload yet'));
+          message.error(t('ui.files.center.thisFileFormatIsNotSupportedForSecure'));
           return Upload.LIST_IGNORE;
         }
         if (file.size > maxFileSizeBytes) {
-          message.error(t(`文件大小不能超过 ${maxFileSizeMb}MB`, `The file size cannot exceed ${maxFileSizeMb}MB`));
+          message.error(t('ui.files.center.theFileSizeCannotExceedMb', { maxFileSizeMb: maxFileSizeMb }));
           return Upload.LIST_IGNORE;
         }
         if (!isMimeAllowedByStorage(file as File, allowedMimeTypes)) {
-          message.error(t('当前存储空间不允许上传该文件类型', 'This storage space does not allow this file type'));
+          message.error(t('ui.files.center.thisStorageSpaceDoesNotAllowThisFile'));
           return Upload.LIST_IGNORE;
         }
         return false;
       },
       onChange: (info) => {
         if (info.fileList.length > MAX_UPLOAD_FILE_COUNT) {
-          message.warning(t(`一次最多上传 ${MAX_UPLOAD_FILE_COUNT} 个文件`, `You can upload at most ${MAX_UPLOAD_FILE_COUNT} files at a time`));
+          message.warning(t('ui.files.center.youCanUploadAtMostFilesAtA', { MAX_UPLOAD_FILE_COUNT: MAX_UPLOAD_FILE_COUNT }));
         }
         setUploadFileList(info.fileList.slice(-MAX_UPLOAD_FILE_COUNT));
       },
@@ -487,17 +486,17 @@ function FileUploadDrawer({
 
   const handleSubmit = async () => {
     if (!canUpload) {
-      message.warning(t('存储空间不支持从后台直接上传', 'This storage space does not support direct upload from the backend'));
+      message.warning(t('ui.files.center.thisStorageSpaceDoesNotSupportDirectUpload'));
       return;
     }
     const values = await form.validateFields();
     const files = uploadFileList.map((item) => item.originFileObj).filter(Boolean) as File[];
     if (!files.length) {
-      message.warning(t('请先选择文件', 'Please select files first'));
+      message.warning(t('ui.files.center.pleaseSelectFilesFirst'));
       return;
     }
     if (files.length > MAX_UPLOAD_FILE_COUNT) {
-      message.warning(t(`一次最多上传 ${MAX_UPLOAD_FILE_COUNT} 个文件`, `You can upload at most ${MAX_UPLOAD_FILE_COUNT} files at a time`));
+      message.warning(t('ui.files.center.youCanUploadAtMostFilesAtA', { MAX_UPLOAD_FILE_COUNT: MAX_UPLOAD_FILE_COUNT }));
       return;
     }
     const category = Array.isArray(values.category) ? values.category.filter(Boolean).join(',') : values.category;
@@ -515,40 +514,40 @@ function FileUploadDrawer({
 
   return (
     <ManagementDrawer
-      title={t('上传文件', 'Upload files')}
+      title={t('ui.files.center.uploadFiles')}
       open={open}
       onClose={handleClose}
       footerActions={[
-        { key: 'cancel', label: t('取消', 'Cancel'), onClick: handleClose },
-        { key: 'upload', label: t('开始上传', 'Start upload'), type: 'primary', loading: uploading, disabled: !canUpload, onClick: () => void handleSubmit() },
+        { key: 'cancel', label: t('ui.files.center.cancel'), onClick: handleClose },
+        { key: 'upload', label: t('ui.files.center.startUpload'), type: 'primary', loading: uploading, disabled: !canUpload, onClick: () => void handleSubmit() },
       ]}
     >
       <Form form={form} layout="vertical">
         <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-          <Card title={t('选择文件', 'Select files')} bodyStyle={{ padding: 0 }} style={{ borderRadius: 'var(--saas-card-radius)' }}>
+          <Card title={t('ui.files.center.selectFiles')} bodyStyle={{ padding: 0 }} style={{ borderRadius: 'var(--saas-card-radius)' }}>
             <Upload.Dragger {...uploadDraggerProps} style={{ borderRadius: 'var(--saas-card-radius)' }}>
               <p className="ant-upload-drag-icon">
                 <InboxOutlined />
               </p>
-              <p className="ant-upload-text">{t('点击或拖拽文件到此处上传', 'Click or drag files here to upload')}</p>
+              <p className="ant-upload-text">{t('ui.files.center.clickOrDragFilesHereToUpload')}</p>
               <p className="ant-upload-hint">{uploadHint}</p>
             </Upload.Dragger>
           </Card>
 
-          <Form.Item label={t('分类', 'Category')} name="category">
+          <Form.Item label={t('ui.files.center.category')} name="category">
             <Select
               allowClear
               mode="tags"
               tokenSeparators={[',', '，']}
               options={FILE_CATEGORY_OPTIONS}
-              placeholder={t('例如：制度文档、业务资料、合同协议', 'e.g. policies, business materials, contracts')}
+              placeholder={t('ui.files.center.eGPoliciesBusinessMaterialsContracts')}
             />
           </Form.Item>
-          <Form.Item label={t('标签', 'Tags')} name="tags" extra={t('多个标签请用逗号分隔', 'Separate multiple tags with commas')}>
-            <Input placeholder={t('例如：ops,contract,archive', 'e.g. ops,contract,archive')} allowClear />
+          <Form.Item label={t('ui.files.center.tags')} name="tags" extra={t('ui.files.center.separateMultipleTagsWithCommas')}>
+            <Input placeholder={t('ui.files.center.eGOpsContractArchive')} allowClear />
           </Form.Item>
-          <Form.Item label={t('备注', 'Remark')} name="remark">
-            <Input.TextArea rows={4} placeholder={t('选填，写一段简短备注', 'Optional, write a short note about the file')} maxLength={512} showCount />
+          <Form.Item label={t('ui.files.center.remark')} name="remark">
+            <Input.TextArea rows={4} placeholder={t('ui.files.center.optionalWriteAShortNoteAboutTheFile')} maxLength={512} showCount />
           </Form.Item>
         </Space>
       </Form>
@@ -597,7 +596,7 @@ function FilePreviewDrawer({
 }) {
   return (
     <ManagementDrawer
-      title={record ? record.originalFileName : t('文件预览', 'File preview')}
+      title={record ? record.originalFileName : t('ui.files.center.filePreview')}
       open={open}
       onClose={onClose}
       footer={
@@ -605,13 +604,13 @@ function FilePreviewDrawer({
           <Space wrap>
             {allowCopyLink ? (
               <Button icon={<CopyOutlined />} onClick={() => record && void onCopyLink(record)} disabled={!record}>
-                {t('复制链接', 'Copy link')}
+                {t('ui.files.center.copyLink')}
               </Button>
             ) : null}
             <Button icon={<DownloadOutlined />} onClick={() => record && void onDownload(record)} disabled={!record}>
-              {t('下载', 'Download')}
+              {t('ui.files.center.download')}
             </Button>
-            <Button onClick={onClose}>{t('关闭', 'Close')}</Button>
+            <Button onClick={onClose}>{t('ui.files.center.close')}</Button>
           </Space>
         </div>
       }
@@ -619,20 +618,20 @@ function FilePreviewDrawer({
       {record ? (
         <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
           <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label={t('文件名', 'File name')}>{record.originalFileName}</Descriptions.Item>
-            <Descriptions.Item label={t('类型', 'Type')}>{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
-            <Descriptions.Item label={t('大小', 'Size')}>{record.fileSizeLabel || formatFileSize(record.fileSizeBytes)}</Descriptions.Item>
-            <Descriptions.Item label={t('预览', 'Preview')}>{<Tag color={previewMeta.color}>{previewMeta.text}</Tag>}</Descriptions.Item>
-            <Descriptions.Item label={t('分类', 'Category')}>{record.category || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('上传人', 'Uploader')}>{record.uploadedByName || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('标签', 'Tags')}>
+            <Descriptions.Item label={t('ui.files.center.fileName')}>{record.originalFileName}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.type')}>{resolveFileTypeLabel(record.fileExtension)}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.size')}>{record.fileSizeLabel || formatFileSize(record.fileSizeBytes)}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.preview')}>{<Tag color={previewMeta.color}>{previewMeta.text}</Tag>}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.category')}>{record.category || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.uploader')}>{record.uploadedByName || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.tags')}>
               {renderTags(record.tags)}
             </Descriptions.Item>
-            <Descriptions.Item label={t('备注', 'Remark')}>
+            <Descriptions.Item label={t('ui.files.center.remark')}>
               {record.remark || '-'}
             </Descriptions.Item>
-            <Descriptions.Item label={t('上传时间', 'Upload time')}>{formatDateTime(record.createdAt)}</Descriptions.Item>
-            <Descriptions.Item label={t('下载链接', 'Download link')}>
+            <Descriptions.Item label={t('ui.files.center.uploadTime')}>{formatDateTime(record.createdAt)}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.files.center.downloadLink')}>
               <Typography.Text copyable={{ text: previewAbsoluteUrl }} style={{ wordBreak: 'break-all' }}>
                 {previewAbsoluteUrl || '-'}
               </Typography.Text>
@@ -641,7 +640,7 @@ function FilePreviewDrawer({
 
           <Spin
             spinning={loading || textLoading || fileLoading}
-            tip={fileLoading ? t('文件预览加载中', 'Loading file preview') : textLoading ? t('文本内容加载中', 'Loading text content') : t('文件详情加载中', 'Loading file details')}
+            tip={fileLoading ? t('ui.files.center.loadingFilePreview') : textLoading ? t('ui.files.center.loadingTextContent') : t('ui.files.center.loadingFileDetails')}
           >
             <div
               style={{
@@ -679,14 +678,14 @@ function FilePreviewDrawer({
                     overflow: 'auto',
                   }}
                 >
-                  {previewText || t('暂无文本内容', 'No text content yet')}
+                  {previewText || t('ui.files.center.noTextContentYet')}
                 </Typography.Paragraph>
               ) : null}
               {previewMode === 'UNSUPPORTED' ? (
                 <Empty
                   description={
                     <Typography.Text>
-                      {t('当前格式暂不支持在线预览', 'This format is not supported for online preview yet')}
+                      {t('ui.files.center.thisFormatIsNotSupportedForOnlinePreview')}
                     </Typography.Text>
                   }
                 />
@@ -695,7 +694,7 @@ function FilePreviewDrawer({
           </Spin>
         </Space>
       ) : (
-        <Empty description={t('暂无文件详情', 'No file details yet')} />
+        <Empty description={t('ui.files.center.noFileDetailsYet')} />
       )}
     </ManagementDrawer>
   );
@@ -726,8 +725,8 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
     ? readOnlyCenter
       ? formatMessage({ id: 'system.files.title.downloadCenter', defaultMessage: 'Download Center' })
       : activeBucket
-      ? t(`存储空间文件 / ${activeBucket}`, `Storage files / ${activeBucket}`)
-      : t('文件管理器', 'File Manager')
+      ? t('ui.files.center.storageFiles', { activeBucket: activeBucket })
+      : t('ui.files.center.fileManager')
     : formatMessage({ id: 'system.files.title.my', defaultMessage: 'My Files' });
   const requestOptions = useMemo(
     () => ({
@@ -833,14 +832,14 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
           data: values,
           ...requestOptions,
         });
-        message.success(t('存储空间已更新', 'Storage space updated'));
+        message.success(t('ui.files.center.storageSpaceUpdated'));
       } else {
         savedStorageSpace = await request<FileStorageSpaceRecord>('/v1/files/storage-spaces', {
           method: 'POST',
           data: values,
           ...requestOptions,
         });
-        message.success(t('存储空间已创建', 'Storage space created'));
+        message.success(t('ui.files.center.storageSpaceCreated'));
       }
       if (savedStorageSpace.defaultStorage || defaultStorageSpace?.id === savedStorageSpace.id) {
         setDefaultStorageSpace(savedStorageSpace);
@@ -857,16 +856,16 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         return;
       }
       confirmAction({
-        title: t('删除存储空间', 'Delete storage space'),
-        content: t(`确认删除存储空间「${record.title}」吗？仅空存储空间可以删除。`, `Delete storage space "${record.title}"? Only empty storage spaces can be deleted.`),
-        okText: t('确认删除', 'Confirm delete'),
+        title: t('ui.files.center.deleteStorageSpace'),
+        content: t('ui.files.center.deleteStorageSpaceOnlyEmptyStorageSpacesCan', { title: record.title }),
+        okText: t('ui.files.center.confirmDelete'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/files/storage-spaces/${record.id}`, {
             method: 'DELETE',
             ...requestOptions,
           });
-          message.success(t('存储空间已删除', 'Storage space deleted'));
+          message.success(t('ui.files.center.storageSpaceDeleted'));
           storageActionRef.current?.reload();
         },
       });
@@ -880,10 +879,10 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         ...requestOptions,
       });
       if (result.status === 'UP') {
-        message.success(result.message || t('存储空间连接正常', 'Storage connection is healthy'));
+        message.success(result.message || t('ui.files.center.storageConnectionIsHealthy'));
         return;
       }
-      message.warning(result.message || t('存储空间连接异常', 'Storage connection is unhealthy'));
+      message.warning(result.message || t('ui.files.center.storageConnectionIsUnhealthy'));
     },
     [requestOptions],
   );
@@ -893,7 +892,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   const storageColumns = useMemo<ProColumns<FileStorageSpaceRecord>[]>(
     () => [
       {
-        title: t('标题', 'Title'),
+        title: t('ui.files.center.title'),
         dataIndex: 'title',
         width: 'var(--saas-spacing-260)',
         render: (_, record) => (
@@ -903,42 +902,42 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         ),
       },
       {
-        title: t('存储空间标识', 'Storage key'),
+        title: t('ui.files.center.storageKey'),
         dataIndex: 'storageKey',
         width: 'var(--saas-spacing-220)',
       },
       {
-        title: t('类型', 'Type'),
+        title: t('ui.files.center.type'),
         dataIndex: 'provider',
         width: 'var(--saas-spacing-160)',
         render: (_, record) => <Tag>{STORAGE_PROVIDER_LABELS[record.provider] || record.provider}</Tag>,
       },
       {
-        title: t('默认存储空间', 'Default storage space'),
+        title: t('ui.files.center.defaultStorageSpace'),
         dataIndex: 'defaultStorage',
         width: 'var(--saas-spacing-160)',
         render: (_, record) => (record.defaultStorage ? <span style={{ color: token.colorSuccess, fontSize: 20 }}>✓</span> : '-'),
       },
       {
-        title: t('匿名访问', 'Anonymous access'),
+        title: t('ui.files.center.anonymousAccess'),
         dataIndex: 'anonymousAccessAllowed',
         width: 'var(--saas-spacing-140)',
-        render: (_, record) => (record.anonymousAccessAllowed ? <Tag color="green">{t('允许', 'Allowed')}</Tag> : <Tag>{t('关闭', 'Off')}</Tag>),
+        render: (_, record) => (record.anonymousAccessAllowed ? <Tag color="green">{t('ui.files.center.allowed')}</Tag> : <Tag>{t('ui.files.center.off')}</Tag>),
       },
       {
-        title: t('文件数', 'File count'),
+        title: t('ui.files.center.fileCount'),
         dataIndex: 'fileCount',
         width: 'var(--saas-spacing-120)',
         render: (_, record) => record.fileCount ?? 0,
       },
       {
-        title: t('容量', 'Size'),
+        title: t('ui.files.center.size.33ff764e'),
         dataIndex: 'totalSizeLabel',
         width: 'var(--saas-spacing-120)',
         render: (_, record) => record.totalSizeLabel || formatFileSize(record.totalSizeBytes),
       },
       {
-        title: t('操作', 'Actions'),
+        title: t('ui.files.center.actions'),
         valueType: 'option',
         fixed: 'right',
         width: 'var(--saas-spacing-180)',
@@ -948,19 +947,19 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
             items={[
               {
                 key: 'edit',
-                label: t('编辑', 'Edit'),
+                label: t('ui.files.center.edit.ed035142'),
                 disabled: !canManageStorage,
                 onClick: () => openStorageDrawer(record.provider, record),
               },
               {
                 key: 'test',
-                label: t('测试', 'Test'),
+                label: t('ui.files.center.test'),
                 disabled: !canManageStorage,
                 onClick: () => void handleTestStorageSpace(record),
               },
               {
                 key: 'delete',
-                label: t('删除', 'Delete'),
+                label: t('ui.files.center.delete'),
                 danger: true,
                 disabled: !canDeleteStorage || Boolean(record.defaultStorage),
                 onClick: () => handleDeleteStorageSpace(record),
@@ -987,7 +986,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         {
           value: (
             <Button key="delete" icon={<DeleteOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canDeleteStorage}>
-              {t('删除', 'Delete')}
+              {t('ui.files.center.delete')}
             </Button>
           ),
         },
@@ -995,7 +994,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
           value: (
             <Dropdown key="add" menu={{ items: addStorageItems }} trigger={['click']}>
               <Button type="primary" icon={<PlusOutlined />} size={responsive.isMobile ? 'small' : 'middle'} disabled={!canManageStorage}>
-                {t('添加', 'Add')} <DownOutlined />
+                {t('ui.files.center.add')} <DownOutlined />
               </Button>
             </Dropdown>
           ),
@@ -1320,7 +1319,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
           hidden: !activeBucket || readOnlyCenter,
           value: (
             <Button key="back" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => history.push('/settings/files/all')}>
-              {t('返回存储空间', 'Back to storage spaces')}
+              {t('ui.files.center.backToStorageSpaces')}
             </Button>
           ),
         },

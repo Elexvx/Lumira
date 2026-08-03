@@ -6,11 +6,10 @@ import { useResponsive } from '@/hooks/useResponsive';
 import type { BrandingSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 type BrandingAssetField = 'websiteFaviconUrl' | 'websiteLogoUrl' | 'loginBackgroundUrl';
 type BrandingAssetTarget = 'favicon' | 'logo' | 'loginBackground';
@@ -36,15 +35,15 @@ type BrandingAssetItemConfig = {
 const BRANDING_ASSET_ITEM_CONFIGS = [
   {
     field: 'websiteFaviconUrl',
-    label: t('网站 Icon', 'Website icon'),
-    clearLabel: t('网站 Icon', 'Website icon'),
+    label: t('ui.settings.personalization.branding.websiteIcon'),
+    clearLabel: t('ui.settings.personalization.branding.websiteIcon'),
     target: 'favicon',
     previewKey: 'websiteFaviconUrl',
     cardWidth: 128,
     cardHeight: 128,
     imageWidth: 72,
     imageHeight: 72,
-    cropModalTitle: t('裁切网站 Icon', 'Crop website icon'),
+    cropModalTitle: t('ui.settings.personalization.branding.cropWebsiteIcon'),
     cropAspect: 1,
     accept: 'image/*,.ico',
     useCrop: true,
@@ -58,28 +57,28 @@ const BRANDING_ASSET_ITEM_CONFIGS = [
   },
   {
     field: 'websiteLogoUrl',
-    label: t('Logo', 'Logo'),
-    clearLabel: t('Logo', 'Logo'),
+    label: t('ui.settings.personalization.branding.logo'),
+    clearLabel: t('ui.settings.personalization.branding.logo'),
     target: 'logo',
     previewKey: 'websiteLogoUrl',
     cardWidth: 240,
     cardHeight: 128,
     imageWidth: 200,
     imageHeight: 72,
-    cropModalTitle: t('裁切 Logo', 'Crop logo'),
+    cropModalTitle: t('ui.settings.personalization.branding.cropLogo'),
     cropAspect: 25 / 9,
     accept: 'image/*',
   },
   {
     field: 'loginBackgroundUrl',
-    label: t('登录页背景图', 'Login background'),
-    clearLabel: t('登录页背景图', 'Login background'),
+    label: t('ui.settings.personalization.branding.loginBackground'),
+    clearLabel: t('ui.settings.personalization.branding.loginBackground'),
     target: 'loginBackground',
     previewKey: 'loginBackgroundUrl',
     cardWidth: 320,
     cardHeight: 180,
     accept: 'image/*',
-    note: t('建议上传 16:9 或更宽的图片，登录页会自动铺满并裁切。', 'Use a 16:9 image or wider. The login page will fill and crop it automatically.'),
+    note: t('ui.settings.personalization.branding.useA169ImageOrWiderThe'),
   },
 ] as const satisfies readonly BrandingAssetItemConfig[];
 
@@ -186,7 +185,7 @@ const renderBrandingUploadField = ({
         ) : (
           <Space direction="vertical" size={8} align="center">
             <InboxOutlined style={{ fontSize: 24, color: 'var(--ant-color-text-quaternary)' }} />
-            <Typography.Text type="secondary">{isUploading ? t('上传中...', 'Uploading...') : t('点击选择图片', 'Click to choose an image')}</Typography.Text>
+            <Typography.Text type="secondary">{isUploading ? t('ui.settings.personalization.branding.uploading') : t('ui.settings.personalization.branding.clickToChooseAnImage')}</Typography.Text>
           </Space>
         )}
       </div>
@@ -227,7 +226,7 @@ export const BrandingTab = ({
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="websiteName" label={t('网站名称', 'Website name')} rules={[{ required: true }]}>
+        <Form.Item name="websiteName" label={t('ui.settings.personalization.branding.websiteName')} rules={[{ required: true }]}>
           <Input />
         </Form.Item>
 
@@ -254,7 +253,7 @@ export const BrandingTab = ({
                 cropModalTitle: assetConfig.cropModalTitle,
                 cropAspect: assetConfig.cropAspect,
                 accept: assetConfig.accept,
-                clearLabel: t('清除', 'Clear'),
+                clearLabel: t('ui.settings.personalization.branding.clear'),
                 note: assetConfig.note,
                 useCrop: assetConfig.useCrop,
                 beforeCrop: assetConfig.beforeCrop,
@@ -265,7 +264,7 @@ export const BrandingTab = ({
             </Form.Item>
           );
         })}
-        <Form.Item label={t('GitHub 链接', 'GitHub link')}>
+        <Form.Item label={t('ui.settings.personalization.branding.githubLink')}>
           <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
             <Form.Item name="githubLinkEnabled" valuePropName="checked" noStyle>
               <Switch />
@@ -279,7 +278,7 @@ export const BrandingTab = ({
             </Form.Item>
           </Space>
         </Form.Item>
-        <Form.Item label={t('帮助链接', 'Help link')}>
+        <Form.Item label={t('ui.settings.personalization.branding.helpLink')}>
           <Space direction="vertical" size={tagWrapGap} style={{ width: '100%' }}>
             <Form.Item name="helpLinkEnabled" valuePropName="checked" noStyle>
               <Switch />
@@ -293,20 +292,20 @@ export const BrandingTab = ({
             </Form.Item>
           </Space>
         </Form.Item>
-        <Form.Item name="footerIcp" label={t('ICP备案号', 'ICP filing number')}>
+        <Form.Item name="footerIcp" label={t('ui.settings.personalization.branding.icpFilingNumber')}>
           <Input />
         </Form.Item>
-        <Form.Item name="footerPoliceBeian" label={t('公安备案号', 'Public security filing number')}>
+        <Form.Item name="footerPoliceBeian" label={t('ui.settings.personalization.branding.publicSecurityFilingNumber')}>
           <Input />
         </Form.Item>
-        <Form.Item name="footerCopyright" label={t('版权声明', 'Copyright notice')}>
+        <Form.Item name="footerCopyright" label={t('ui.settings.personalization.branding.copyrightNotice')}>
           <Input.TextArea rows={3} />
         </Form.Item>
       </Form>
 
       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" loading={brandingSaving} disabled={!canUpdate} onClick={onSave}>
-          {t('保存设置', 'Save settings')}
+          {t('ui.settings.personalization.branding.saveSettings')}
         </Button>
       </div>
     </Space>

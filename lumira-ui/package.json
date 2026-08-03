@@ -29,6 +29,7 @@
     "test:login-storage-sync": "tsx scripts/login-storage-sync-smoke.ts",
     "test:online-users-session-removal": "tsx scripts/online-users-session-removal-smoke.ts",
     "test:antd-static-theme": "tsx scripts/antd-static-theme-smoke.ts",
+    "test:database-i18n": "node scripts/audit-database-i18n.mjs --strict",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --grep @smoke",
     "test:e2e:reset": "node ../bin/reset-e2e-platform.mjs && playwright test",

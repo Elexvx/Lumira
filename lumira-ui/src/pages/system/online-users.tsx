@@ -23,11 +23,11 @@ import type { OnlineSessionEventRecord, OnlineSessionRecord, PagedResult } from 
 import { API_OPTS } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+import { resolveRuntimeLocale } from '@/i18n/locale';
+
+const t = databaseMessage;
 
 interface OnlineSessionStreamOptions {
   onEvent: (event: OnlineSessionEventRecord) => void;
@@ -157,7 +157,7 @@ const formatDateTime = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString('zh-CN', { hour12: false });
+  return date.toLocaleString(resolveRuntimeLocale(), { hour12: false });
 };
 
 const buildOnlineUserColumns = ({
@@ -180,7 +180,7 @@ const buildOnlineUserColumns = ({
   onBan: (record: OnlineSessionRecord) => void;
 }): ProColumns<OnlineSessionRecord>[] => [
   {
-    title: t('用户', 'User'),
+    title: t('ui.system.online-users.user'),
     dataIndex: 'username',
     width: 'var(--saas-spacing-360)',
     render: (_, record) => (
@@ -188,8 +188,8 @@ const buildOnlineUserColumns = ({
         <Typography.Text className="saas-online-users-page__user-name" strong ellipsis={{ tooltip: record.realName || record.nickname || record.username }}>
           {record.realName || record.nickname || record.username}
         </Typography.Text>
-        {record.userId === currentUserId ? <Tag color="orange">{t('当前账号', 'Current account')}</Tag> : null}
-        {record.sessionId === currentSessionId ? <Tag color="blue">{t('当前会话', 'Current session')}</Tag> : null}
+        {record.userId === currentUserId ? <Tag color="orange">{t('ui.system.online-users.currentAccount')}</Tag> : null}
+        {record.sessionId === currentSessionId ? <Tag color="blue">{t('ui.system.online-users.currentSession')}</Tag> : null}
         <Typography.Text className="saas-online-users-page__username" type="secondary" ellipsis={{ tooltip: record.username }}>
           {record.username}
         </Typography.Text>
@@ -197,7 +197,7 @@ const buildOnlineUserColumns = ({
     ),
   },
   {
-    title: t('终端', 'Client'),
+    title: t('ui.system.online-users.client'),
     dataIndex: 'clientType',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -209,7 +209,7 @@ const buildOnlineUserColumns = ({
     ),
   },
   {
-    title: t('登录 IP', 'Login IP'),
+    title: t('ui.system.online-users.loginIp'),
     dataIndex: 'loginIp',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -221,7 +221,7 @@ const buildOnlineUserColumns = ({
     ),
   },
   {
-    title: t('登录时间', 'Login time'),
+    title: t('ui.system.online-users.loginTime'),
     dataIndex: 'loginTime',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -233,7 +233,7 @@ const buildOnlineUserColumns = ({
     ),
   },
   {
-    title: t('最近活跃', 'Last active'),
+    title: t('ui.system.online-users.lastActive'),
     dataIndex: 'lastActivityAt',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -245,7 +245,7 @@ const buildOnlineUserColumns = ({
     ),
   },
   {
-    title: t('过期时间', 'Expiry time'),
+    title: t('ui.system.online-users.expiryTime'),
     dataIndex: 'expireTime',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -257,7 +257,7 @@ const buildOnlineUserColumns = ({
     ),
   },
   {
-    title: t('会话 ID', 'Session ID'),
+    title: t('ui.system.online-users.sessionId'),
     dataIndex: 'sessionId',
     search: false,
     width: 'var(--saas-spacing-260)',
@@ -286,7 +286,7 @@ const buildOnlineUserColumns = ({
       ),
   },
   {
-    title: t('Actions', 'Actions'),
+    title: t('ui.system.online-users.actions'),
     valueType: 'option',
     fixed: 'right',
     width: 'var(--saas-spacing-180)',
@@ -298,12 +298,12 @@ const buildOnlineUserColumns = ({
           items={buildActions([
             {
               key: 'detail',
-              label: t('详情', 'Details'),
+              label: t('ui.system.online-users.details'),
               onClick: () => onShowDetail(record),
             },
             {
               key: 'kick',
-              label: t('踢出', 'Kick'),
+              label: t('ui.system.online-users.kick'),
               permission: 'system:online-user:kick',
               danger: true,
               disabled: isSelfUser,
@@ -311,7 +311,7 @@ const buildOnlineUserColumns = ({
             },
             {
               key: 'ban',
-              label: t('封禁', 'Ban'),
+              label: t('ui.system.online-users.ban'),
               permission: 'system:online-user:ban',
               danger: true,
               disabled: isSelfUser,
@@ -325,15 +325,15 @@ const buildOnlineUserColumns = ({
 ];
 
 const buildOnlineUserDetailColumns = (): ProDescriptionsItemProps<OnlineSessionRecord>[] => [
-  { title: t('用户名', 'Username'), dataIndex: 'username' },
-  { title: t('姓名', 'Full name'), dataIndex: 'realName', renderText: (value) => value || '-' },
-  { title: t('昵称', 'Nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
-  { title: t('终端', 'Client'), dataIndex: 'clientType', renderText: (value) => value || '-' },
-  { title: t('登录 IP', 'Login IP'), dataIndex: 'loginIp', renderText: (value) => value || '-' },
-  { title: t('登录时间', 'Login time'), dataIndex: 'loginTime', renderText: (value) => formatDateTime(value) },
-  { title: t('最近活跃', 'Last active'), dataIndex: 'lastActivityAt', renderText: (value) => formatDateTime(value) },
-  { title: t('过期时间', 'Expiry time'), dataIndex: 'expireTime', renderText: (value) => formatDateTime(value) },
-  { title: t('会话 ID', 'Session ID'), dataIndex: 'sessionId', renderText: (value) => value || '-' },
+  { title: t('ui.system.online-users.username'), dataIndex: 'username' },
+  { title: t('ui.system.online-users.fullName'), dataIndex: 'realName', renderText: (value) => value || '-' },
+  { title: t('ui.system.online-users.nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
+  { title: t('ui.system.online-users.client'), dataIndex: 'clientType', renderText: (value) => value || '-' },
+  { title: t('ui.system.online-users.loginIp'), dataIndex: 'loginIp', renderText: (value) => value || '-' },
+  { title: t('ui.system.online-users.loginTime'), dataIndex: 'loginTime', renderText: (value) => formatDateTime(value) },
+  { title: t('ui.system.online-users.lastActive'), dataIndex: 'lastActivityAt', renderText: (value) => formatDateTime(value) },
+  { title: t('ui.system.online-users.expiryTime'), dataIndex: 'expireTime', renderText: (value) => formatDateTime(value) },
+  { title: t('ui.system.online-users.sessionId'), dataIndex: 'sessionId', renderText: (value) => value || '-' },
   { title: 'User-Agent', dataIndex: 'userAgent', renderText: (value) => value || '-' },
 ];
 
@@ -365,17 +365,17 @@ const OnlineUsersPage = () => {
   const onKick = useCallback(
     (record: OnlineSessionRecord) => {
       confirmAction({
-        title: t('踢出在线会话', 'Kick online session'),
-        content: t('确定要踢出该会话吗？踢出后该会话将立即失效。', 'Kick this session? It will become invalid immediately.'),
-        okText: t('确定踢出', 'Kick'),
-        cancelText: t('取消', 'Cancel'),
+        title: t('ui.system.online-users.kickOnlineSession'),
+        content: t('ui.system.online-users.kickThisSessionItWillBecomeInvalidImmediately'),
+        okText: t('ui.system.online-users.kick.9754093d'),
+        cancelText: t('ui.system.online-users.cancel'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/online-users/${record.sessionId}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(t('会话已踢出', 'Session kicked'));
+          message.success(t('ui.system.online-users.sessionKicked'));
           reloadOnlineUsers();
         },
       });
@@ -385,17 +385,17 @@ const OnlineUsersPage = () => {
   const onBan = useCallback(
     (record: OnlineSessionRecord) => {
       confirmAction({
-        title: t('封禁账户', 'Ban account'),
-        content: t('确定要封禁该账号吗？封禁后将清退该账号所有在线会话，并禁止后续登录。', 'Ban this account? It will remove all online sessions and block future sign-ins.'),
-        okText: t('确定封禁', 'Ban'),
-        cancelText: t('取消', 'Cancel'),
+        title: t('ui.system.online-users.banAccount'),
+        content: t('ui.system.online-users.banThisAccountItWillRemoveAllOnline'),
+        okText: t('ui.system.online-users.ban.3a454e65'),
+        cancelText: t('ui.system.online-users.cancel'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/online-users/${record.userId}/ban`, {
             method: 'PATCH',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(t('账号已封禁', 'Account banned'));
+          message.success(t('ui.system.online-users.accountBanned'));
           reloadOnlineUsers();
         },
       });
@@ -464,7 +464,7 @@ const OnlineUsersPage = () => {
   const detailColumns = useMemo(() => buildOnlineUserDetailColumns(), []);
 
   return (
-    <ManagementPage title={t('在线用户', 'Online users')} className="saas-online-users-page" ghost>
+    <ManagementPage title={t('ui.system.online-users.onlineUsers')} className="saas-online-users-page" ghost>
       <ManagementPageBody>
         <ManagementTable<OnlineSessionRecord>
           actionRef={actionRef}
@@ -482,14 +482,14 @@ const OnlineUsersPage = () => {
           )}
           toolBarRender={() => [
             <Button key="refresh" size={responsive.isMobile ? 'small' : 'middle'} onClick={() => actionRef.current?.reload()}>
-              {t('刷新', 'Refresh')}
+              {t('ui.system.online-users.refresh')}
             </Button>,
           ]}
         />
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={selectedRecord ? `${t('在线会话详情', 'Online session details')} · ${selectedRecord.realName || selectedRecord.nickname || selectedRecord.username}` : t('在线会话详情', 'Online session details')}
+        title={selectedRecord ? `${t('ui.system.online-users.onlineSessionDetails')} · ${selectedRecord.realName || selectedRecord.nickname || selectedRecord.username}` : t('ui.system.online-users.onlineSessionDetails')}
         open={detailOpen && canViewOnlineUsers}
         onClose={closeDetail}
       >

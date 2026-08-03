@@ -11,8 +11,7 @@ import { useAuthenticatorManagement } from './components/verification/hooks/useA
 import { DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
+
 import type {
   PasskeySettings,
   SmsVerificationSettings,
@@ -21,6 +20,7 @@ import type {
   VerificationSettings,
   WechatLoginSettings,
 } from '@/types/api';
+import { databaseMessage } from '@/i18n/databaseMessage';
 
 const SETTINGS_REQUEST_TIMEOUT_MS = 30000;
 const SETTINGS_QUERY_RETRY_COUNT = 1;
@@ -128,25 +128,24 @@ const useSystemVerificationPageAccess = () => {
   };
 };
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const resolveDrawerTitle = (mode: 'basic' | 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | null) => {
   switch (mode) {
     case 'sms':
-      return t('短信配置', 'SMS settings');
+      return t('ui.settings.verification.smsSettings');
     case 'email':
-      return t('邮箱配置', 'Email settings');
+      return t('ui.settings.verification.emailSettings');
     case 'wechat':
-      return t('微信配置', 'WeChat settings');
+      return t('ui.settings.verification.wechatSettings');
     case 'passkey':
-      return t('通行密钥', 'Passkey');
+      return t('ui.settings.verification.passkey');
     case 'totp':
-      return t('验证设置', 'Verification settings');
+      return t('ui.settings.verification.verificationSettings');
     case 'basic':
-      return t('基础配置', 'Basic settings');
+      return t('ui.settings.verification.basicSettings');
     default:
-      return t('验证管理', 'Verification management');
+      return t('ui.settings.verification.verificationManagement');
   }
 };
 
@@ -228,21 +227,21 @@ const SystemVerificationPage = () => {
   };
 
   return (
-    <ManagementPage title={t('验证管理', 'Verification management')}>
+    <ManagementPage title={t('ui.settings.verification.verificationManagement')}>
       <ManagementPageBody>
         <ManagementTable
           {...verificationTableProps}
           toolBarRender={() => [
             <Popconfirm
               key="verification-delete"
-              title={t('删除认证器', 'Delete authenticator')}
-              description={t('可删除的认证器会被停用，基础密码认证器会保留。', 'Deletable authenticators will be disabled. The basic password authenticator will be kept.')}
-              okText={t('确认', 'Confirm')}
-              cancelText={t('取消', 'Cancel')}
+              title={t('ui.settings.verification.deleteAuthenticator')}
+              description={t('ui.settings.verification.deletableAuthenticatorsWillBeDisabledTheBasicPassword')}
+              okText={t('ui.settings.verification.confirm')}
+              cancelText={t('ui.settings.verification.cancel')}
               onConfirm={() => void tablePack.toolbarProps.onDeleteSelectedAuthenticators()}
             >
               <Button disabled={!tablePack.tableProps.canManageSettings} icon={<DeleteOutlined />}>
-                {t('删除', 'Delete')}
+                {t('ui.settings.verification.delete')}
               </Button>
             </Popconfirm>,
             <Dropdown
@@ -252,7 +251,7 @@ const SystemVerificationPage = () => {
               placement="bottomRight"
             >
               <Button type="primary" disabled={!tablePack.tableProps.canManageSettings || !tablePack.toolbarProps.addAuthenticatorItems?.length} icon={<PlusOutlined />}>
-                {t('添加', 'Add')} <DownOutlined />
+                {t('ui.settings.verification.add')} <DownOutlined />
               </Button>
             </Dropdown>,
           ]}

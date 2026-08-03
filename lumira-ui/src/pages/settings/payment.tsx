@@ -6,22 +6,21 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { useResponsive } from '@/hooks/useResponsive';
 import { usePaymentManagement } from './components/payment/hooks/usePaymentManagement';
 import { SandboxPaymentOrderTab } from './components/payment/SandboxPaymentOrderTab';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
+
 import { Button, Dropdown, Tabs } from 'antd';
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import { paymentProviderDisplayName } from './components/payment/paymentDisplay';
+import { databaseMessage } from '@/i18n/databaseMessage';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const resolveDrawerTitle = (providerCode?: string | null) => {
   if (!providerCode) {
-    return t('支付设置', 'Payment settings');
+    return t('ui.settings.payment.paymentSettings');
   }
-  return t('{provider} 配置', '{provider} configuration').replace(
+  return t('ui.settings.payment.configuration').replace(
     '{provider}',
-    paymentProviderDisplayName(providerCode, providerCode, isEnglishLocale()),
+    paymentProviderDisplayName(providerCode, providerCode),
   );
 };
 
@@ -38,7 +37,7 @@ const SystemPaymentPage = () => {
   });
 
   return (
-    <ManagementPage title={t('支付设置', 'Payment settings')}>
+    <ManagementPage title={t('ui.settings.payment.paymentSettings')}>
       <ManagementPageBody>
         <Tabs
           defaultActiveKey={new URLSearchParams(window.location.search).get('tab') || 'settings'}
@@ -46,7 +45,7 @@ const SystemPaymentPage = () => {
           items={[
             {
               key: 'settings',
-              label: t('支付设置', 'Payment settings'),
+              label: t('ui.settings.payment.paymentSettings'),
               children: (
                 <ManagementTable
                   columns={tablePack.paymentColumns}
@@ -65,7 +64,7 @@ const SystemPaymentPage = () => {
                       placement="bottomRight"
                     >
                       <Button type="primary" disabled={!tablePack.toolbarProps.canUpdateSettings || !tablePack.toolbarProps.addPaymentProviderItems?.length} icon={<PlusOutlined />}>
-                        {t('添加', 'Add')} <DownOutlined />
+                        {t('ui.settings.payment.add')} <DownOutlined />
                       </Button>
                     </Dropdown>,
                   ]}
@@ -74,7 +73,7 @@ const SystemPaymentPage = () => {
             },
             {
               key: 'sandbox-orders',
-              label: t('手动生成支付订单', 'Manual payment order'),
+              label: t('ui.settings.payment.manualPaymentOrder'),
               children: (
                 <SandboxPaymentOrderTab
                   paymentSettings={tablePack.paymentSettingsData}

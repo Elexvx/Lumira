@@ -14,15 +14,14 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
 import type { DepartmentRecord } from '@/types/api';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const STATUS_OPTIONS = [
-  { label: t('启用', 'Enabled'), value: 'ENABLED' },
-  { label: t('停用', 'Disabled'), value: 'DISABLED' },
+  { label: t('ui.system.departments.enabled'), value: 'ENABLED' },
+  { label: t('ui.system.departments.disabled'), value: 'DISABLED' },
 ];
 
 const flattenDepartments = (departments: DepartmentRecord[], depth = 0): { label: string; value: number }[] =>
@@ -47,67 +46,67 @@ const buildDepartmentColumns = ({
   isMobile: boolean;
 }): ProColumns<DepartmentRecord>[] => [
   {
-    title: t('部门名称', 'Department name'),
+    title: t('ui.system.departments.departmentName'),
     dataIndex: 'deptName',
     width: 'var(--saas-spacing-260)',
   },
   {
-    title: t('部门编码', 'Department code'),
+    title: t('ui.system.departments.departmentCode'),
     dataIndex: 'deptCode',
     width: 'var(--saas-spacing-180)',
   },
   {
-    title: t('状态', 'Status'),
+    title: t('ui.system.departments.status'),
     dataIndex: 'status',
     width: 'var(--saas-spacing-100)',
-    render: (status) => <Tag color={status === 'ENABLED' ? 'green' : 'default'}>{status === 'ENABLED' ? t('启用', 'Enabled') : t('停用', 'Disabled')}</Tag>,
+    render: (status) => <Tag color={status === 'ENABLED' ? 'green' : 'default'}>{status === 'ENABLED' ? t('ui.system.departments.enabled') : t('ui.system.departments.disabled')}</Tag>,
   },
   {
-    title: t('用户数', 'User count'),
+    title: t('ui.system.departments.userCount'),
     dataIndex: 'userCount',
     width: 'var(--saas-spacing-100)',
   },
   {
-    title: t('排序', 'Sort order'),
+    title: t('ui.system.departments.sortOrder'),
     dataIndex: 'sortNo',
     width: 'var(--saas-spacing-90)',
   },
   {
-    title: t('操作', 'Actions'),
+    title: t('ui.system.departments.actions'),
     width: 'var(--saas-spacing-260)',
     fixed: 'right',
     render: (_, record) => {
       const userCount = record.userCount ?? 0;
       const hasChildren = !!record.children?.length;
       const cannotDelete = userCount > 0 || hasChildren;
-      const deleteDisabledReason = hasChildren ? t('该部门存在下级部门，不能删除', 'This department has child departments and cannot be deleted') : userCount > 0 ? t('该部门下仍有 {count} 名用户，不能删除', 'This department still has {count} users and cannot be deleted').replace('{count}', String(userCount)) : null;
+      const deleteDisabledReason = hasChildren ? t('ui.system.departments.thisDepartmentHasChildDepartmentsAndCannotBe') : userCount > 0 ? t('ui.system.departments.thisDepartmentStillHasUsersAndCannotBe').replace('{count}', String(userCount)) : null;
 
       return (
         <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)} wrap>
           <Button type="link" size="small" onClick={() => void openDetail(record)}>
-            {t('详情', 'Details')}
+            {t('ui.system.departments.details')}
           </Button>
           {actionPermission.can('system:department:create') ? (
             <Button type="link" size="small" onClick={() => openCreateChild(record)}>
-              {t('新增下级', 'Add child')}
+              {t('ui.system.departments.addChild')}
             </Button>
           ) : null}
           {actionPermission.can('system:department:update') ? (
             <Button type="link" size="small" onClick={() => void openEdit(record)}>
-              {t('编辑', 'Edit')}
+              {t('ui.system.departments.edit')}
             </Button>
           ) : null}
           {actionPermission.can('system:department:delete') ? (
             cannotDelete ? (
               <Tooltip title={deleteDisabledReason}>
                 <Button type="link" size="small" danger disabled>
-                  {t('删除', 'Delete')}
+                  {t('ui.system.departments.delete')}
                 </Button>
               </Tooltip>
             ) : (
-              <Popconfirm title={t('删除部门', 'Delete department')} description={t(`确认删除「${record.deptName}」吗？`, `Delete "${record.deptName}"?`)} onConfirm={() => void deleteDepartment(record)}>
+              <Popconfirm title={t('ui.system.departments.deleteDepartment')} description={t('ui.system.departments.delete.d9ac9dcc', { deptName: record.deptName })} onConfirm={() => void deleteDepartment(record)}>
                 <Button type="link" size="small" danger>
-                  {t('删除', 'Delete')}
+                  {t('ui.system.departments.delete')}
                 </Button>
               </Popconfirm>
             )
@@ -230,14 +229,14 @@ const useDepartmentManagement = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('部门已更新', 'Department updated'));
+        message.success(t('ui.system.departments.departmentUpdated'));
       } else {
         await request<DepartmentRecord>('/v1/system/departments', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('部门已创建', 'Department created'));
+        message.success(t('ui.system.departments.departmentCreated'));
       }
       drawer.close();
       await loadDepartments();
@@ -251,7 +250,7 @@ const useDepartmentManagement = () => {
         method: 'DELETE',
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success(t('部门已删除', 'Department deleted'));
+      message.success(t('ui.system.departments.departmentDeleted'));
       await loadDepartments();
     },
     [loadDepartments],
@@ -275,12 +274,12 @@ const useDepartmentManagement = () => {
           key: 'create',
           permission: 'system:department:create',
           type: 'primary',
-          label: t('新增部门', 'Add department'),
+          label: t('ui.system.departments.addDepartment'),
           onClick: openCreate,
         },
         {
           key: 'refresh',
-          label: t('刷新', 'Refresh'),
+          label: t('ui.system.departments.refresh'),
           onClick: async () => {
             await loadDepartments();
           },
@@ -338,7 +337,7 @@ const DepartmentManagementPage = () => {
   } = useDepartmentManagement();
 
   return (
-    <ManagementPage title={t('组织部门', 'Organization departments')}>
+    <ManagementPage title={t('ui.system.departments.organizationDepartments')}>
       <ManagementPageBody>
         <ManagementTable<DepartmentRecord>
           rowKey="id"
@@ -355,45 +354,45 @@ const DepartmentManagementPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={drawer.editingId ? t('编辑部门', 'Edit department') : t('新增部门', 'Add department')}
+        title={drawer.editingId ? t('ui.system.departments.editDepartment') : t('ui.system.departments.addDepartment')}
         open={drawer.open}
         onClose={drawer.close}
         footerActions={[
-          { key: 'cancel', label: t('取消', 'Cancel'), onClick: drawer.close },
-          { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSaveDepartment, onClick: () => void saveDepartment() },
+          { key: 'cancel', label: t('ui.system.departments.cancel'), onClick: drawer.close },
+          { key: 'save', label: t('ui.system.departments.save'), type: 'primary', loading: saving, disabled: !canSaveDepartment, onClick: () => void saveDepartment() },
         ]}
       >
         <Form {...formProps}>
-          <Form.Item name="parentId" label={t('上级部门', 'Parent department')}>
-            <Select allowClear options={departmentOptions.filter((item) => item.value !== drawer.editingId)} placeholder={t('请选择上级部门', 'Select a parent department')} />
+          <Form.Item name="parentId" label={t('ui.system.departments.parentDepartment')}>
+            <Select allowClear options={departmentOptions.filter((item) => item.value !== drawer.editingId)} placeholder={t('ui.system.departments.selectAParentDepartment')} />
           </Form.Item>
-          <Form.Item name="deptCode" label={t('部门编码', 'Department code')} rules={[{ required: true, message: t('请输入部门编码', 'Please enter the department code') }]}>
-            <Input placeholder={t('例如 product', 'e.g. product')} />
+          <Form.Item name="deptCode" label={t('ui.system.departments.departmentCode')} rules={[{ required: true, message: t('ui.system.departments.pleaseEnterTheDepartmentCode') }]}>
+            <Input placeholder={t('ui.system.departments.eGProduct')} />
           </Form.Item>
-          <Form.Item name="deptName" label={t('部门名称', 'Department name')} rules={[{ required: true, message: t('请输入部门名称', 'Please enter the department name') }]}>
-            <Input placeholder={t('例如 产品部', 'e.g. Product Department')} />
+          <Form.Item name="deptName" label={t('ui.system.departments.departmentName')} rules={[{ required: true, message: t('ui.system.departments.pleaseEnterTheDepartmentName') }]}>
+            <Input placeholder={t('ui.system.departments.eGProductDepartment')} />
           </Form.Item>
-          <Form.Item name="sortNo" label={t('排序', 'Sort order')}>
+          <Form.Item name="sortNo" label={t('ui.system.departments.sortOrder')}>
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="status" label={t('状态', 'Status')} rules={[{ required: true, message: t('请选择状态', 'Please select a status') }]}>
+          <Form.Item name="status" label={t('ui.system.departments.status')} rules={[{ required: true, message: t('ui.system.departments.pleaseSelectAStatus') }]}>
             <Select options={STATUS_OPTIONS} />
           </Form.Item>
         </Form>
       </ManagementDrawer>
 
-      <ManagementDrawer title={selectedDepartment ? `${t('部门详情', 'Department details')} · ${selectedDepartment.deptName}` : t('部门详情', 'Department details')} open={detail.open} onClose={closeDetail}>
+      <ManagementDrawer title={selectedDepartment ? `${t('ui.system.departments.departmentDetails')} · ${selectedDepartment.deptName}` : t('ui.system.departments.departmentDetails')} open={detail.open} onClose={closeDetail}>
         {selectedDepartment ? (
           <ProDescriptions<DepartmentRecord>
             {...detailProps}
             columns={[
-              { title: t('部门名称', 'Department name'), dataIndex: 'deptName' },
-              { title: t('部门编码', 'Department code'), dataIndex: 'deptCode' },
-              { title: t('状态', 'Status'), dataIndex: 'status' },
-              { title: t('用户数', 'User count'), dataIndex: 'userCount' },
-              { title: t('排序', 'Sort order'), dataIndex: 'sortNo' },
-              { title: t('创建时间', 'Created at'), dataIndex: 'createdAt', valueType: 'dateTime' },
-              { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', valueType: 'dateTime' },
+              { title: t('ui.system.departments.departmentName'), dataIndex: 'deptName' },
+              { title: t('ui.system.departments.departmentCode'), dataIndex: 'deptCode' },
+              { title: t('ui.system.departments.status'), dataIndex: 'status' },
+              { title: t('ui.system.departments.userCount'), dataIndex: 'userCount' },
+              { title: t('ui.system.departments.sortOrder'), dataIndex: 'sortNo' },
+              { title: t('ui.system.departments.createdAt'), dataIndex: 'createdAt', valueType: 'dateTime' },
+              { title: t('ui.system.departments.updatedAt'), dataIndex: 'updatedAt', valueType: 'dateTime' },
             ]}
           />
         ) : null}

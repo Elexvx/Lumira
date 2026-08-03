@@ -1,4 +1,4 @@
-import { HistoryOutlined, PlusOutlined, SaveOutlined, SyncOutlined } from '@ant-design/icons';
+import { HistoryOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import { Button, Form, Input, List, Select, Space, Spin, Tag, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -9,56 +9,32 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { TableActionBar } from '@/features/table/TableActionBar';
-import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
-import { backendRouteMeta } from '@/routes/meta';
+import {
+  clearRuntimeLocalizationBundleCache,
+  loadRuntimeLocalizationBundle,
+} from '@/i18n/runtimeLocalization';
 import { request } from '@/services/common/request';
-import zhCN from '@/locales/zh-CN';
-import enUS from '@/locales/en-US';
-import type {
-  LocalizationSyncPayload,
-  LocalizationEntryPayload,
-} from '@/services/localization/types';
+import type { LocalizationEntryPayload } from '@/services/localization/types';
 import type { LocalizationLanguage, LocalizationNamespace, LocalizationRelease } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { copyTextToClipboard } from '@/utils/clipboard';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
-
-const fallbackLanguages: LocalizationLanguage[] = [
-  { id: -1, localeCode: 'zh-CN', languageName: 'Simplified Chinese', nativeName: '简体中文', status: 'ENABLED', defaultLanguage: true },
-  { id: -2, localeCode: 'en-US', languageName: 'English', nativeName: 'English', status: 'ENABLED' },
-];
+import { databaseMessage } from '@/i18n/databaseMessage';
 
 const DEFAULT_LOCALE = 'zh-CN';
-const PINNED_LOCALES = ['zh-CN', 'en-US'];
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
-const localeLabel = (language: LocalizationLanguage) => {
-  if (language.localeCode === 'zh-CN') {
-    return t('中文', 'Chinese');
-  }
-  if (language.localeCode === 'en-US') {
-    return t('英文', 'English');
-  }
-  return language.nativeName || language.languageName || language.localeCode;
-};
+const localeLabel = (language: LocalizationLanguage) =>
+  language.nativeName || language.languageName || language.localeCode;
 
 const sortLanguages = (items: LocalizationLanguage[]) =>
-  [...items].sort((left, right) => {
-    const leftPinned = PINNED_LOCALES.indexOf(left.localeCode);
-    const rightPinned = PINNED_LOCALES.indexOf(right.localeCode);
-    if (leftPinned !== -1 || rightPinned !== -1) {
-      return (leftPinned === -1 ? 999 : leftPinned) - (rightPinned === -1 ? 999 : rightPinned);
-    }
-    return (left.sortNo ?? 0) - (right.sortNo ?? 0) || left.localeCode.localeCompare(right.localeCode);
-  });
+  [...items].sort((left, right) =>
+    (left.sortNo ?? 0) - (right.sortNo ?? 0) || left.localeCode.localeCompare(right.localeCode));
 
 const EntryStatusOptions = [
-  { label: t('启用', 'Enabled'), value: 'ENABLED' },
-  { label: t('停用', 'Disabled'), value: 'DISABLED' },
+  { label: t('ui.settings.localization.localization.enabled'), value: 'ENABLED' },
+  { label: t('ui.settings.localization.localization.disabled'), value: 'DISABLED' },
 ];
 
 type EntryDrafts = Record<number, Record<string, string>>;
@@ -74,90 +50,10 @@ const translationValue = (record: import('@/types/api').LocalizationEntry, local
   return record.sourceLocale === localeCode ? record.defaultMessage : '';
 };
 
-const NAMESPACE_LABELS: Record<string, string> = {
-  common: t('公共', 'Common'),
-  nav: t('导航', 'Navigation'),
-  page: t('页面', 'Pages'),
-  message: t('消息', 'Messages'),
-  theme: t('主题', 'Theme'),
-  platform: t('平台', 'Platform'),
-  auth: t('认证', 'Auth'),
-  system: t('系统', 'System'),
-  app: t('应用', 'App'),
-};
-
-const SOURCE_REF_BY_NAMESPACE: Record<string, string> = {
-  nav: 'lumira-ui/src/routes/meta.ts',
-  common: 'lumira-ui/src/locales/zh-CN.ts',
-  page: 'lumira-ui/src/locales/zh-CN.ts',
-  message: 'lumira-ui/src/locales/zh-CN.ts',
-  theme: 'lumira-ui/src/locales/zh-CN.ts',
-  platform: 'lumira-ui/src/locales/zh-CN.ts',
-  auth: 'lumira-ui/src/locales/zh-CN.ts',
-  system: 'lumira-ui/src/locales/zh-CN.ts',
-  app: 'lumira-ui/src/locales/zh-CN.ts',
-};
-
-const routeKeySet = new Set(backendRouteMeta.map((item) => item.name).filter(Boolean));
-
-const resolveNamespaceCode = (key: string) => key.split('.')[0] || 'common';
-
-const resolveNamespaceName = (namespaceCode: string) => NAMESPACE_LABELS[namespaceCode] || namespaceCode;
-
-const resolveSourceType = (key: string) => (key.startsWith('nav.') ? 'ROUTE' : 'UI');
-
-const resolveSourceRef = (key: string, namespaceCode: string) => {
-  if (routeKeySet.has(key) || namespaceCode === 'nav') {
-    return 'lumira-ui/src/routes/meta.ts';
-  }
-
-  return SOURCE_REF_BY_NAMESPACE[namespaceCode] || 'lumira-ui/src/locales/zh-CN.ts';
-};
-
-
-const buildLocalizationSyncPayload = (): LocalizationSyncPayload => {
-  const zhMessages = zhCN as Record<string, string>;
-  const enMessages = enUS as Record<string, string>;
-  const keys = new Set<string>([...Object.keys(zhMessages), ...Object.keys(enMessages)]);
-
-  const items = Array.from(keys)
-    .sort()
-    .map((key) => {
-      const namespaceCode = resolveNamespaceCode(key);
-      const translations: Record<string, string> = {};
-      if (zhMessages[key]) {
-        translations['zh-CN'] = zhMessages[key];
-      }
-      if (enMessages[key]) {
-        translations['en-US'] = enMessages[key];
-      }
-
-      return {
-        namespaceCode,
-        namespaceName: resolveNamespaceName(namespaceCode),
-        messageKey: key,
-        defaultMessage: zhMessages[key] || enMessages[key] || key,
-        sourceLocale: 'zh-CN',
-        sourceType: resolveSourceType(key),
-        sourceRef: resolveSourceRef(key, namespaceCode),
-        status: 'ENABLED',
-        translations,
-      };
-    });
-
-  return {
-    sourceLocale: 'zh-CN',
-    items,
-  };
-};
-
-const LOCALIZATION_SOURCE_ENTRY_COUNT = buildLocalizationSyncPayload().items.length;
-
 const LocalizationPage = () => {
   const { actionPermission, responsive, searchConfig, buttonSize } = usePagePermissionActions();
   const tableActionRef = useRef<ActionType>(null);
   const searchValuesRef = useRef<{ namespaceCode?: string }>({ namespaceCode: 'all' });
-  const initialSyncAttemptedRef = useRef(false);
   const [languages, setLanguages] = useState<LocalizationLanguage[]>([]);
   const [namespaces, setNamespaces] = useState<LocalizationNamespace[]>([]);
   const [releases, setReleases] = useState<LocalizationRelease[]>([]);
@@ -166,16 +62,14 @@ const LocalizationPage = () => {
   const [editingEntry, setEditingEntry] = useState<import('@/types/api').LocalizationEntry | null>(null);
   const [entrySaving, setEntrySaving] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [savingEntryId, setSavingEntryId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<EntryDrafts>({});
   const [entryForm] = Form.useForm<LocalizationEntryPayload>();
-  const canSyncLocalization = actionPermission.can('localization:sync');
   const languageColumns = useMemo(() => {
     const enabled = languages.filter((item) => item.status !== 'DISABLED');
     const merged = new Map<string, LocalizationLanguage>();
-    for (const language of [...fallbackLanguages, ...enabled]) {
+    for (const language of enabled) {
       merged.set(language.localeCode, language);
     }
     return sortLanguages(Array.from(merged.values()));
@@ -190,7 +84,7 @@ const LocalizationPage = () => {
     [languageColumns],
   );
   const namespaceOptions = useMemo(
-    () => [{ label: t('全部模块', 'All modules'), value: 'all' }].concat(
+    () => [{ label: t('ui.settings.localization.localization.allModules'), value: 'all' }].concat(
       namespaces.map((item) => ({
         label: `${item.namespaceName} (${item.namespaceCode})`,
         value: item.namespaceCode,
@@ -221,7 +115,7 @@ const LocalizationPage = () => {
       setNamespaces(namespaceList);
       setReleases(releaseList);
     } catch (error) {
-      showErrorMessage(error, t('本地化数据加载失败', 'Failed to load localization data'));
+      showErrorMessage(error, t('ui.settings.localization.localization.failedToLoadLocalizationData'));
     } finally {
       setLoadingMeta(false);
     }
@@ -244,6 +138,7 @@ const LocalizationPage = () => {
     }));
   }, []);
   const refreshBundles = useCallback(async () => {
+    clearRuntimeLocalizationBundleCache();
     await Promise.all(languageColumns.map((language) => loadRuntimeLocalizationBundle(language.localeCode)));
     tableActionRef.current?.reload();
     await refreshMeta();
@@ -278,7 +173,7 @@ const LocalizationPage = () => {
           delete next[record.id];
           return next;
         });
-        message.success(t('已保存', 'Saved'));
+        message.success(t('ui.settings.localization.localization.saved'));
         await refreshBundles();
       } finally {
         setSavingEntryId(null);
@@ -288,7 +183,7 @@ const LocalizationPage = () => {
   );
   const copyKey = useCallback(async (messageKey: string) => {
     await copyTextToClipboard(messageKey);
-    message.success(t('已复制', 'Copied'));
+    message.success(t('ui.settings.localization.localization.copied'));
   }, []);
   const openEntryDrawer = useCallback(
     (record?: import('@/types/api').LocalizationEntry | null) => {
@@ -338,7 +233,7 @@ const LocalizationPage = () => {
           ...API_OPTS.NO_REDIRECT,
         });
       }
-      message.success(t('已保存', 'Saved'));
+      message.success(t('ui.settings.localization.localization.saved'));
       setEntryDrawerOpen(false);
       setEditingEntry(null);
       await refreshBundles();
@@ -346,26 +241,6 @@ const LocalizationPage = () => {
       setEntrySaving(false);
     }
   }, [editingEntry, entryForm, refreshBundles]);
-  const syncLocalizationSource = useCallback(
-    () =>
-      request<import('@/types/api').LocalizationSyncResult>('/v1/localization/sync', {
-        method: 'POST',
-        data: buildLocalizationSyncPayload(),
-        autoRedirectOnUnauthorized: false,
-        timeoutMs: 60000,
-      }),
-    [],
-  );
-  const syncEntries = useCallback(async () => {
-    setSyncing(true);
-    try {
-      await syncLocalizationSource();
-      message.success(t('已同步', 'Synced'));
-      await refreshBundles();
-    } finally {
-      setSyncing(false);
-    }
-  }, [refreshBundles, syncLocalizationSource]);
   const publishEntries = useCallback(async () => {
     setPublishing(true);
     try {
@@ -373,13 +248,13 @@ const LocalizationPage = () => {
         languageColumns.map((language) =>
           request<LocalizationRelease>('/v1/localization/publish', {
             method: 'POST',
-            data: { localeCode: language.localeCode, note: t('本地化中心发布', 'Localization center release') },
+            data: { localeCode: language.localeCode, note: t('ui.settings.localization.localization.localizationCenterRelease') },
             autoRedirectOnUnauthorized: false,
             timeoutMs: 30000,
           }),
         ),
       );
-      message.success(t('已发布', 'Published'));
+      message.success(t('ui.settings.localization.localization.published'));
       await refreshBundles();
     } finally {
       setPublishing(false);
@@ -389,7 +264,7 @@ const LocalizationPage = () => {
   const columns = useMemo<ProColumns<import('@/types/api').LocalizationEntry>[]>(
     () => [
       {
-        title: t('当前语言', 'Current locale'),
+        title: t('ui.settings.localization.localization.currentLocale'),
         dataIndex: 'localeCode',
         hideInTable: true,
         valueType: 'select',
@@ -406,7 +281,7 @@ const LocalizationPage = () => {
         },
       },
       {
-        title: t('模块', 'Module'),
+        title: t('ui.settings.localization.localization.module'),
         dataIndex: 'namespaceCode',
         hideInTable: true,
         valueType: 'select',
@@ -421,37 +296,37 @@ const LocalizationPage = () => {
         },
       },
       {
-        title: t('关键字', 'Keyword'),
+        title: t('ui.settings.localization.localization.keyword'),
         dataIndex: 'keyword',
         hideInTable: true,
         fieldProps: {
           allowClear: true,
-          placeholder: t('搜索键名、原文或来源', 'Search key, source text, or source'),
+          placeholder: t('ui.settings.localization.localization.searchKeySourceTextOrSource'),
         },
       },
       {
-        title: t('翻译状态', 'Translation status'),
+        title: t('ui.settings.localization.localization.translationStatus'),
         dataIndex: 'translationStatus',
         hideInTable: true,
         valueType: 'select',
         initialValue: 'all',
         valueEnum: {
-          all: { text: t('全部', 'All') },
-          PENDING: { text: t('待翻译', 'Pending translation') },
+          all: { text: t('ui.settings.localization.localization.all') },
+          PENDING: { text: t('ui.settings.localization.localization.pendingTranslation') },
         },
         search: {
           transform: (value: string) => ({ translationStatus: value === 'all' ? undefined : value }),
         },
       },
       {
-        title: t('序号', 'No.'),
+        title: t('ui.settings.localization.localization.no'),
         valueType: 'index',
         width: 'var(--saas-spacing-64)',
         align: 'center',
         render: (_: unknown, __: import('@/types/api').LocalizationEntry, index: number) => index + 1,
       },
       {
-        title: t('标识符', 'Key'),
+        title: t('ui.settings.localization.localization.key'),
         dataIndex: 'messageKey',
         width: 'var(--saas-spacing-360)',
         fixed: responsive.isMobile ? undefined : 'left',
@@ -471,12 +346,12 @@ const LocalizationPage = () => {
           }),
       })),
       {
-        title: t('模块', 'Module'),
+        title: t('ui.settings.localization.localization.module'),
         width: 'var(--saas-spacing-150)',
         render: (_: unknown, record: import('@/types/api').LocalizationEntry) => createElement(Tag, null, record.namespaceName || record.namespaceCode),
       },
       {
-        title: t('操作', 'Actions'),
+        title: t('ui.settings.localization.localization.actions'),
         valueType: 'option',
         width: 'var(--saas-spacing-210)',
         fixed: responsive.isMobile ? undefined : 'right',
@@ -486,20 +361,20 @@ const LocalizationPage = () => {
             items: actionPermission.buildTableActions([
               {
                 key: 'save',
-                label: t('保存', 'Save'),
+                label: t('ui.settings.localization.localization.save'),
                 permission: 'localization:update',
                 disabled: !hasDraft(record) || savingEntryId === record.id,
                 onClick: () => void saveRow(record),
               },
               {
                 key: 'edit',
-                label: t('编辑', 'Edit'),
+                label: t('ui.settings.localization.localization.edit'),
                 permission: 'localization:update',
                 onClick: () => openEntryDrawer(record),
               },
               {
                 key: 'copy',
-                label: t('复制标识符', 'Copy key'),
+                label: t('ui.settings.localization.localization.copyKey'),
                 onClick: async () => {
                   await copyKey(record.messageKey);
                 },
@@ -553,53 +428,25 @@ const LocalizationPage = () => {
         ...API_OPTS.SILENT_NO_REDIRECT,
       });
 
-      const shouldInitialize =
-        !initialSyncAttemptedRef.current &&
-        canSyncLocalization &&
-        pageNo === 1 &&
-        !namespaceCode &&
-        !keyword &&
-        !translationStatus &&
-        result.total < LOCALIZATION_SOURCE_ENTRY_COUNT;
-
-      if (!shouldInitialize) {
-        return result;
-      }
-
-      initialSyncAttemptedRef.current = true;
-      setSyncing(true);
-      try {
-        await syncLocalizationSource();
-        await refreshMeta();
-        return request<import('@/types/api').PagedResult<import('@/types/api').LocalizationEntry>>('/v1/localization/entries', {
-          method: 'GET',
-          params: requestParams,
-          ...API_OPTS.SILENT_NO_REDIRECT,
-        });
-      } finally {
-        setSyncing(false);
-      }
+      return result;
     },
-    [canSyncLocalization, primaryLocale, refreshMeta, syncLocalizationSource],
+    [primaryLocale],
   );
   const tableRequest = useMemo(() => buildTableRequest(requestEntries), [requestEntries]);
   const toolbarActions = actionPermission.buildToolbarActions([
     {
-      value: createElement(Button, { key: 'sync', size: buttonSize, icon: createElement(SyncOutlined, {}), loading: syncing, disabled: !canSyncLocalization, onClick: () => void syncEntries() }, t('同步', 'Sync')),
+      value: createElement(Button, { key: 'publish', type: 'primary', size: buttonSize, icon: createElement(SaveOutlined, {}), loading: publishing, disabled: !actionPermission.can('localization:publish'), onClick: () => void publishEntries() }, t('ui.settings.localization.localization.publish')),
     },
     {
-      value: createElement(Button, { key: 'publish', type: 'primary', size: buttonSize, icon: createElement(SaveOutlined, {}), loading: publishing, disabled: !actionPermission.can('localization:publish'), onClick: () => void publishEntries() }, t('发布', 'Publish')),
+      value: createElement(Button, { key: 'create', type: 'primary', size: buttonSize, icon: createElement(PlusOutlined, {}), disabled: !actionPermission.can('localization:create'), onClick: () => openEntryDrawer() }, t('ui.settings.localization.localization.addEntry')),
     },
     {
-      value: createElement(Button, { key: 'create', type: 'primary', size: buttonSize, icon: createElement(PlusOutlined, {}), disabled: !actionPermission.can('localization:create'), onClick: () => openEntryDrawer() }, t('新增词条', 'Add entry')),
-    },
-    {
-      value: createElement(Button, { key: 'history', size: buttonSize, icon: createElement(HistoryOutlined, {}), onClick: openHistoryDrawer }, t('版本历史', 'Version history')),
+      value: createElement(Button, { key: 'history', size: buttonSize, icon: createElement(HistoryOutlined, {}), onClick: openHistoryDrawer }, t('ui.settings.localization.localization.versionHistory')),
     },
   ]);
 
   return (
-    <ManagementPage title={t('本地化', 'Localization')}>
+    <ManagementPage title={t('ui.settings.localization.localization.localization')}>
       <ManagementPageBody>
         <Spin spinning={loadingMeta}>
           <ManagementTable<import('@/types/api').LocalizationEntry>
@@ -615,22 +462,22 @@ const LocalizationPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={editingEntry ? t('编辑词条', 'Edit entry') : t('新增词条', 'Add entry')}
+        title={editingEntry ? t('ui.settings.localization.localization.editEntry') : t('ui.settings.localization.localization.addEntry')}
         open={entryDrawerOpen}
         onClose={() => setEntryDrawerOpen(false)}
         footerActions={[
-          { key: 'cancel', label: t('取消', 'Cancel'), onClick: () => setEntryDrawerOpen(false) },
-          { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: entrySaving, onClick: () => void saveEntry() },
+          { key: 'cancel', label: t('ui.settings.localization.localization.cancel'), onClick: () => setEntryDrawerOpen(false) },
+          { key: 'save', label: t('ui.settings.localization.localization.save'), type: 'primary', loading: entrySaving, onClick: () => void saveEntry() },
         ]}
       >
         <Form form={entryForm} layout="vertical">
-          <Form.Item name="namespaceCode" label={t('模块', 'Module')} rules={[{ required: true }]}>
+          <Form.Item name="namespaceCode" label={t('ui.settings.localization.localization.module')} rules={[{ required: true }]}>
             <Select options={namespaceOptions.filter((item) => item.value !== 'all')} showSearch optionFilterProp="label" />
           </Form.Item>
-          <Form.Item name="messageKey" label={t('标识符', 'Key')} rules={[{ required: true }]}>
+          <Form.Item name="messageKey" label={t('ui.settings.localization.localization.key')} rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="defaultMessage" label={t('默认文案', 'Default text')} rules={[{ required: true }]}>
+          <Form.Item name="defaultMessage" label={t('ui.settings.localization.localization.defaultText')} rules={[{ required: true }]}>
             <Input.TextArea rows={2} />
           </Form.Item>
           {languageOptions.map((language) => (
@@ -638,32 +485,32 @@ const LocalizationPage = () => {
               <Input.TextArea rows={3} />
             </Form.Item>
           ))}
-          <Form.Item name="sourceLocale" label={t('源语言', 'Source locale')}>
+          <Form.Item name="sourceLocale" label={t('ui.settings.localization.localization.sourceLocale')}>
             <Select options={languageOptions} />
           </Form.Item>
-          <Form.Item name="sourceType" label={t('来源类型', 'Source type')}>
+          <Form.Item name="sourceType" label={t('ui.settings.localization.localization.sourceType')}>
             <Select options={[{ label: 'UI', value: 'UI' }, { label: 'ROUTE', value: 'ROUTE' }, { label: 'BACKEND', value: 'BACKEND' }, { label: 'TEMPLATE', value: 'TEMPLATE' }]} />
           </Form.Item>
-          <Form.Item name="sourceRef" label={t('来源', 'Source')}>
+          <Form.Item name="sourceRef" label={t('ui.settings.localization.localization.source')}>
             <Input />
           </Form.Item>
-          <Form.Item name="status" label={t('状态', 'Status')}>
+          <Form.Item name="status" label={t('ui.settings.localization.localization.status')}>
             <Select options={EntryStatusOptions} />
           </Form.Item>
         </Form>
       </ManagementDrawer>
 
-      <ManagementDrawer title={t('版本历史', 'Version history')} open={historyDrawerOpen} onClose={() => setHistoryDrawerOpen(false)}>
+      <ManagementDrawer title={t('ui.settings.localization.localization.versionHistory')} open={historyDrawerOpen} onClose={() => setHistoryDrawerOpen(false)}>
         <List
           dataSource={releases}
-          locale={{ emptyText: t('暂无发布记录', 'No release records yet') }}
+          locale={{ emptyText: t('ui.settings.localization.localization.noReleaseRecordsYet') }}
           renderItem={(item) => (
             <List.Item>
               <List.Item.Meta
                 title={
                   <Space>
                     <span>{`${item.localeCode} · v${item.releaseVersion}`}</span>
-                    {item.active ? <Tag color="green">{t('当前生效', 'Active')}</Tag> : null}
+                    {item.active ? <Tag color="green">{t('ui.settings.localization.localization.active')}</Tag> : null}
                   </Space>
                 }
                 description={item.publishedAt || '-'}

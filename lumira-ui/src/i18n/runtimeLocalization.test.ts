@@ -40,5 +40,7 @@ describe('loadRuntimeLocalizationBundle', () => {
     expect(third).toBe(first);
     expect(mocks.request).toHaveBeenCalledTimes(1);
     expect(mocks.addLocale).toHaveBeenCalledTimes(1);
+    const { databaseMessage } = await import('./databaseMessage');
+    expect(databaseMessage('common.ok')).toBe('确定');
   });
 });

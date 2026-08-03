@@ -1,10 +1,8 @@
 import { Upload } from 'antd';
 import type { RcFile } from 'antd/es/upload';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
+import { databaseMessage } from '@/i18n/databaseMessage';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 export const DOCUMENT_UPLOAD_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt'] as const;
 export const DOCUMENT_UPLOAD_ACCEPT = DOCUMENT_UPLOAD_EXTENSIONS.map((extension) => `.${extension}`).join(',');
@@ -50,31 +48,27 @@ export const validateDocumentUploadFile = (
     allowedExtensions?: readonly string[];
     allowedMimeTypes?: string | null;
     maxSizeMb?: number;
-    allowedTypeLabelZh?: string;
-    allowedTypeLabelEn?: string;
+    allowedTypeLabel?: string;
   } = {},
 ) => {
   const allowedExtensions = options.allowedExtensions || DOCUMENT_UPLOAD_EXTENSIONS;
-  const allowedTypeLabel = t(
-    options.allowedTypeLabelZh || 'PDF、Word、Excel、PPT、Markdown 或 TXT 文件',
-    options.allowedTypeLabelEn || 'PDF, Word, Excel, PPT, Markdown, or TXT files',
-  );
+  const allowedTypeLabel = options.allowedTypeLabel || t('ui.utils.uploadvalidation.pdfWordExcelPptMarkdownOrTxtFiles');
   const extension = getFileExtension(file.name);
   if (!extension) {
-    return t(`文件缺少扩展名，请上传 ${allowedTypeLabel}`, `The file is missing an extension. Please upload ${allowedTypeLabel}.`);
+    return t('ui.utils.uploadvalidation.theFileIsMissingAnExtensionPleaseUpload', { allowedTypeLabel });
   }
   if (!allowedExtensions.includes(extension)) {
-    return t(`文件类型不支持，请上传 ${allowedTypeLabel}`, `Unsupported file type. Please upload ${allowedTypeLabel}.`);
+    return t('ui.utils.uploadvalidation.unsupportedFileTypePleaseUpload', { allowedTypeLabel });
   }
 
   const maxSizeMb = options.maxSizeMb || DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB;
   const maxSizeBytes = maxSizeMb * 1024 * 1024;
   if (file.size > maxSizeBytes) {
-    return t(`文件过大，单个文件不能超过 ${formatUploadSize(maxSizeBytes)}`, `The file is too large. Each file must be ${formatUploadSize(maxSizeBytes)} or smaller.`);
+    return t('ui.utils.uploadvalidation.theFileIsTooLargeEachFileMust', { value1: formatUploadSize(maxSizeBytes) });
   }
 
   if (!isMimeAllowed(file, options.allowedMimeTypes)) {
-    return t('当前存储空间不允许上传该文件类型', 'This storage space does not allow this file type.');
+    return t('ui.utils.uploadvalidation.thisStorageSpaceDoesNotAllowThisFile');
   }
 
   return undefined;

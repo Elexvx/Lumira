@@ -1,4 +1,4 @@
-import { request } from '@/services/common/request';
+import { request, requestFile } from '@/services/common/request';
 import type {
   CertificateGeneratePayload,
   CertificateGenerateResult,
@@ -80,6 +80,12 @@ export const listMyCertificates = () =>
 
 export const getCertificate = (id: number) =>
   request<CertificateRecord>(`${API}/certificates/${id}`, { method: 'GET' });
+
+export const downloadCertificate = (id: number) =>
+  requestFile(`${API}/certificates/${id}/download`, { method: 'GET' });
+
+export const downloadMyCertificate = (id: number) =>
+  requestFile(`${API}/certificates/mine/${id}/download`, { method: 'GET' });
 
 export const regenerateCertificate = (id: number) =>
   request<CertificateRecord>(`${API}/certificates/${id}/regenerate`, { method: 'POST' });

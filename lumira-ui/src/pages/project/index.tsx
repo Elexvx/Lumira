@@ -23,6 +23,7 @@ import { message } from '@/theme/antdFeedbackBridge';
 import { DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB, DOCUMENT_UPLOAD_ACCEPT, formatUploadSize, validateDocumentUploadFile } from '@/utils/uploadValidation';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { resolveRuntimeLocale } from '@/i18n/locale';
 import { normalizeTeamCreatePayload } from '../team/teamPayload';
 import './ProjectPage.css';
 
@@ -543,7 +544,7 @@ const materialFileName = (file: MaterialUploadFile | FileObjectRecord) =>
 
 const formatDraftSavedAt = (timestamp?: number) =>
   timestamp
-    ? new Date(timestamp).toLocaleTimeString('zh-CN', {
+    ? new Date(timestamp).toLocaleTimeString(resolveRuntimeLocale(), {
         hour12: false,
         hour: '2-digit',
         minute: '2-digit',

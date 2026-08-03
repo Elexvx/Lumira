@@ -19,13 +19,12 @@ import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, Plugi
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale, history } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
+import { history } from '@umijs/max';
 import SensitiveWordsPage from '@/pages/plugins/SensitiveWordsPage';
-import { localizeBuiltinPluginDefinition } from './pluginPresentation';
+import { localizeBuiltinPluginDefinition, localizePluginValue } from './pluginPresentation';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const pluginMessage = (id: string, defaultMessage: string) => formatMessage({ id, defaultMessage });
+const pluginValue = (value?: string | null) => localizePluginValue(value, pluginMessage);
 
 const resolvePluginManagementPath = (pluginCode: string) => {
   if (pluginCode === 'sensitive-words') {
@@ -76,7 +75,7 @@ const PluginCardsGrid = ({
   if (!loading && !definitions.length) {
     return (
       <div style={{ minHeight: 'var(--saas-spacing-240)', display: 'grid', placeItems: 'center' }}>
-        <Empty description={t('暂无插件定义', 'No plugin definitions')} />
+        <Empty description={pluginMessage('page.plugins.empty', 'No plugin definitions')} />
       </div>
     );
   }
@@ -101,7 +100,11 @@ const PluginCardsGrid = ({
                 <Space wrap>
                   <BuildOutlined />
                   <span>{plugin.pluginName}</span>
-                  <Tag color={enabled ? 'green' : 'default'}>{enabled ? t('已启用', 'Enabled') : t('未启用', 'Disabled')}</Tag>
+                  <Tag color={enabled ? 'green' : 'default'}>
+                    {enabled
+                      ? pluginMessage('page.plugins.enabled.true', 'Enabled')
+                      : pluginMessage('page.plugins.enabled.false', 'Disabled')}
+                  </Tag>
                 </Space>
               }
               extra={
@@ -113,20 +116,22 @@ const PluginCardsGrid = ({
               }
             >
               <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-                <Typography.Paragraph style={{ marginBottom: 0 }}>{plugin.description || t('暂无插件描述', 'No plugin description')}</Typography.Paragraph>
+                <Typography.Paragraph style={{ marginBottom: 0 }}>
+                  {plugin.description || pluginMessage('page.plugins.noDescription', 'No plugin description')}
+                </Typography.Paragraph>
                 <Space wrap>
                   {managementPath ? (
                     <Button type="primary" onClick={() => onOpenManagement(plugin)}>
-                      {t('管理', 'Manage')}
+                      {pluginMessage('page.plugins.manage', 'Manage')}
                     </Button>
                   ) : null}
-                  <Button onClick={() => onOpenDetails(plugin)}>{t('详情', 'Details')}</Button>
-                  <Button onClick={() => onOpenVersions(plugin)}>{t('版本', 'Versions')}</Button>
+                  <Button onClick={() => onOpenDetails(plugin)}>{pluginMessage('page.plugins.details', 'Details')}</Button>
+                  <Button onClick={() => onOpenVersions(plugin)}>{pluginMessage('page.plugins.versions', 'Versions')}</Button>
                   <Button disabled={!canViewLogs} onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>
-                    {t('日志', 'Logs')}
+                    {pluginMessage('page.plugins.logs', 'Logs')}
                   </Button>
                   <Button danger disabled={!canDisable || plugin.builtinFlag === 1} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
-                    {t('卸载', 'Uninstall')}
+                    {pluginMessage('page.plugins.uninstallAction', 'Uninstall')}
                   </Button>
                 </Space>
               </Space>
@@ -267,26 +272,32 @@ const buildVersionColumns = ({
   onDisable: (pluginCode: string) => void;
   onRollback: (pluginCode: string, version: string) => void;
 }): ProColumns<PluginVersion>[] => [
-  { title: t('版本', 'Version'), dataIndex: 'version' },
-  { title: t('安装状态', 'Install status'), dataIndex: 'installStatus' },
-  { title: t('加载状态', 'Load status'), dataIndex: 'loadStatus' },
-  { title: t('健康状态', 'Health status'), dataIndex: 'healthStatus' },
+  { title: pluginMessage('page.plugins.version', 'Version'), dataIndex: 'version' },
+  { title: pluginMessage('page.plugins.installStatus', 'Install status'), dataIndex: 'installStatus', render: (_, record) => pluginValue(record.installStatus) },
+  { title: pluginMessage('page.plugins.loadStatus', 'Load status'), dataIndex: 'loadStatus', render: (_, record) => pluginValue(record.loadStatus) },
+  { title: pluginMessage('page.plugins.healthStatus', 'Health status'), dataIndex: 'healthStatus', render: (_, record) => pluginValue(record.healthStatus) },
   {
-    title: t('激活', 'Active'),
+    title: pluginMessage('page.plugins.active', 'Active'),
     dataIndex: 'isActive',
-    render: (_, record) => <Tag color={record.isActive === 1 ? 'green' : 'default'}>{record.isActive === 1 ? t('是', 'Yes') : t('否', 'No')}</Tag>,
+    render: (_, record) => (
+      <Tag color={record.isActive === 1 ? 'green' : 'default'}>
+        {record.isActive === 1
+          ? pluginMessage('page.plugins.yes', 'Yes')
+          : pluginMessage('page.plugins.no', 'No')}
+      </Tag>
+    ),
   },
   {
-    title: t('操作', 'Actions'),
+    title: pluginMessage('page.plugins.actions', 'Actions'),
     fixed: isDesktop ? 'right' : undefined,
     render: (_, record) => (
       <TableActionBar
         isMobile={isMobile}
         items={[
-          { key: 'install', label: t('安装', 'Install'), disabled: !canInstall, onClick: () => onInstall(record.pluginCode, record.version) },
-          { key: 'activate', label: t('激活', 'Activate'), disabled: !canUpgrade, onClick: () => onActivate(record.pluginCode, record.version) },
-          { key: 'disable', label: t('停用', 'Disable'), disabled: !canDisable, onClick: () => onDisable(record.pluginCode), danger: true },
-          { key: 'rollback', label: t('回滚', 'Rollback'), disabled: !canRollback, onClick: () => onRollback(record.pluginCode, record.version) },
+          { key: 'install', label: pluginMessage('page.plugins.installAction', 'Install'), disabled: !canInstall, onClick: () => onInstall(record.pluginCode, record.version) },
+          { key: 'activate', label: pluginMessage('page.plugins.activateAction', 'Activate'), disabled: !canUpgrade, onClick: () => onActivate(record.pluginCode, record.version) },
+          { key: 'disable', label: pluginMessage('page.plugins.disableAction', 'Disable'), disabled: !canDisable, onClick: () => onDisable(record.pluginCode), danger: true },
+          { key: 'rollback', label: pluginMessage('page.plugins.rollbackAction', 'Rollback'), disabled: !canRollback, onClick: () => onRollback(record.pluginCode, record.version) },
         ]}
       />
     ),
@@ -888,14 +899,14 @@ const PluginDetailDrawer = ({
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.description', defaultMessage: 'Description' })}>{selectedPlugin.description || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.author', defaultMessage: 'Author' })}>{selectedPlugin.author || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.apiVersion', defaultMessage: 'API version' })}>{selectedPlugin.pluginApiVersion}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.status', defaultMessage: 'Status' })}>{selectedPlugin.status}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.status', defaultMessage: 'Status' })}>{pluginValue(selectedPlugin.status)}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentVersion', defaultMessage: 'Current version' })}>{selectedPluginAvailability?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.enabled', defaultMessage: 'Enabled' })}>{selectedPluginAvailability ? formatMessage({ id: 'page.plugins.enabled.true', defaultMessage: 'Enabled' }) : formatMessage({ id: 'page.plugins.enabled.false', defaultMessage: 'Disabled' })}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaMode', defaultMessage: 'Schema mode' })}>{selectedPlugin.schemaMode || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.lifecycleStatus', defaultMessage: 'Lifecycle status' })}>{selectedPluginAvailability?.lifecycleStatus || selectedActiveVersion?.lifecycleStatus || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaStatus', defaultMessage: 'Schema status' })}>{selectedPluginAvailability?.schemaStatus || selectedActiveVersion?.schemaStatus || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.hotDisable', defaultMessage: 'Hot disable' })}>{selectedPlugin.supportsHotDisable ? t('支持', 'Supported') : t('不支持', 'Not supported')}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.dataPurge', defaultMessage: 'Data purge' })}>{selectedPlugin.supportsDataPurge ? t('支持', 'Supported') : t('不支持', 'Not supported')}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaMode', defaultMessage: 'Schema mode' })}>{pluginValue(selectedPlugin.schemaMode)}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.lifecycleStatus', defaultMessage: 'Lifecycle status' })}>{pluginValue(selectedPluginAvailability?.lifecycleStatus || selectedActiveVersion?.lifecycleStatus)}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaStatus', defaultMessage: 'Schema status' })}>{pluginValue(selectedPluginAvailability?.schemaStatus || selectedActiveVersion?.schemaStatus)}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.hotDisable', defaultMessage: 'Hot disable' })}>{selectedPlugin.supportsHotDisable ? pluginMessage('page.plugins.supported', 'Supported') : pluginMessage('page.plugins.notSupported', 'Not supported')}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.dataPurge', defaultMessage: 'Data purge' })}>{selectedPlugin.supportsDataPurge ? pluginMessage('page.plugins.supported', 'Supported') : pluginMessage('page.plugins.notSupported', 'Not supported')}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.menuCount', defaultMessage: 'Menu count' })}>{selectedPluginAvailability?.menus?.length || 0}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.routeCount', defaultMessage: 'Route count' })}>{selectedPluginAvailability?.routes?.length || 0}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.runtimeContributions', defaultMessage: 'Runtime contributions' })}>
@@ -922,12 +933,12 @@ const PluginLogDrawer = ({
   setLogDrawerOpen: (open: boolean) => void;
 }) => {
   const logColumns: ProColumns<PluginRuntimeLog>[] = [
-    { title: t('时间', 'Time'), dataIndex: 'createdAt', width: 'var(--saas-spacing-180)' },
-    { title: t('操作类型', 'Operation type'), dataIndex: 'operationType', width: 'var(--saas-spacing-120)' },
-    { title: t('生命周期', 'Lifecycle'), dataIndex: 'lifecycleStatus', width: 'var(--saas-spacing-120)' },
-    { title: t('结果', 'Result'), dataIndex: 'resultStatus', width: 'var(--saas-spacing-120)' },
+    { title: pluginMessage('page.plugins.time', 'Time'), dataIndex: 'createdAt', width: 'var(--saas-spacing-180)' },
+    { title: pluginMessage('page.plugins.operationType', 'Operation type'), dataIndex: 'operationType', width: 'var(--saas-spacing-120)', render: (_, record) => pluginValue(record.operationType) },
+    { title: pluginMessage('page.plugins.lifecycle', 'Lifecycle'), dataIndex: 'lifecycleStatus', width: 'var(--saas-spacing-120)', render: (_, record) => pluginValue(record.lifecycleStatus) },
+    { title: pluginMessage('page.plugins.result', 'Result'), dataIndex: 'resultStatus', width: 'var(--saas-spacing-120)', render: (_, record) => pluginValue(record.resultStatus) },
     {
-      title: t('详情', 'Details'),
+      title: pluginMessage('page.plugins.details', 'Details'),
       dataIndex: 'detailMessage',
       responsive: ['lg', 'xl', 'xxl'],
       ellipsis: true,
@@ -1112,7 +1123,7 @@ const PluginDisableModal = ({
     >
       <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, isMobile)} style={{ width: '100%' }}>
         <Typography.Paragraph style={{ marginBottom: 0 }}>
-          {formatMessage({ id: 'page.plugins.confirmDisable', defaultMessage: 'You are about to disable {name}.' }, { name: disableTarget?.pluginName || disableTarget?.pluginCode || '-' })}
+          {formatMessage({ id: 'page.plugins.confirmDisableMessage', defaultMessage: 'You are about to disable {name}.' }, { name: disableTarget?.pluginName || disableTarget?.pluginCode || '-' })}
         </Typography.Paragraph>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
           {formatMessage({ id: 'page.plugins.disableDesc', defaultMessage: 'Choose whether to keep plugin data for later re-enable, or remove plugin-owned tables and data now.' })}
@@ -1301,7 +1312,7 @@ const PluginsPage = () => {
               <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
                 <Space wrap>
                   <Button icon={<ArrowLeftOutlined />} onClick={() => setManagedPluginCode(null)}>
-                    {t('返回插件列表', 'Back to plugins')}
+                    {pluginMessage('page.plugins.backToList', 'Back to plugins')}
                   </Button>
                   <Typography.Text strong>{managedPluginTitle}</Typography.Text>
                 </Space>

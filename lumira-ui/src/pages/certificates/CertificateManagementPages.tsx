@@ -24,6 +24,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import {
   archiveCertificateTemplate,
   createCertificateTemplate,
+  downloadCertificate,
   duplicateCertificateTemplate,
   generateCertificatesFromAwards,
   generateCertificates,
@@ -50,6 +51,8 @@ import type {
   CertificateTemplateVersionRecord,
 } from '@/services/certificates/types';
 import { message } from '@/theme/antdFeedbackBridge';
+import { saveBlobAsFile } from '@/utils/download';
+import { showErrorMessage } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import {
   haveAwardGrantsChanged,
@@ -105,6 +108,15 @@ const sceneTypeText: Record<string, string> = {
   COMPETITION_AWARD: '赛事获奖',
   PARTICIPATION: '参与证明',
   CUSTOM: '自定义',
+};
+
+const handleCertificateDownload = async (record: CertificateRecord) => {
+  try {
+    const blob = await downloadCertificate(record.id);
+    saveBlobAsFile(blob, `${record.certificateNo}.png`);
+  } catch (error) {
+    showErrorMessage(error, '证书下载失败');
+  }
 };
 
 const csvToRows = (text: string): CertificateDataPayload[] => {
@@ -924,7 +936,7 @@ export const GenerateManagementPage = () => {
                       width: 180,
                       render: (_, record) => (
                         <Space>
-                          <Button size="small" href={`/api/v2/aiadc/certificates/${record.id}/download`} icon={<DownloadOutlined />}>
+                          <Button size="small" onClick={() => void handleCertificateDownload(record)} icon={<DownloadOutlined />}>
                             下载
                           </Button>
                           <Button size="small" onClick={() => navigator.clipboard.writeText(`${location.origin}/certificate/verify/${record.publicToken}`)}>
@@ -1049,7 +1061,7 @@ export const RecordsManagementPage = () => {
                 label: '下载',
                 icon: <DownloadOutlined />,
                 permission: 'aiadc:certificate:download',
-                onClick: () => window.open(`/api/v2/aiadc/certificates/${record.id}/download`, '_blank'),
+                onClick: () => handleCertificateDownload(record),
               },
               {
                 key: 'copy',

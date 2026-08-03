@@ -17,6 +17,9 @@ import { message } from '@/theme/antdFeedbackBridge';
 import type { SensitiveWordImportResult, SensitiveWordRecord } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 type SensitiveWordFormValues = {
   word: string;
@@ -29,14 +32,14 @@ type SensitiveWordsPageProps = {
 };
 
 const ACTION_OPTIONS = [
-  { label: '拦截', value: 'BLOCK' },
-  { label: '仅记录', value: 'LOG_ONLY' },
+  { label: t('plugin.sensitiveWords.action.block'), value: 'BLOCK' },
+  { label: t('plugin.sensitiveWords.action.logOnly'), value: 'LOG_ONLY' },
 ];
 
 const CATEGORY_OPTIONS = [
-  { label: '默认', value: 'DEFAULT' },
-  { label: '导入', value: 'IMPORTED' },
-  { label: '自定义', value: 'CUSTOM' },
+  { label: t('plugin.sensitiveWords.category.default'), value: 'DEFAULT' },
+  { label: t('plugin.sensitiveWords.category.imported'), value: 'IMPORTED' },
+  { label: t('plugin.sensitiveWords.category.custom'), value: 'CUSTOM' },
 ];
 
 const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
@@ -78,14 +81,14 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
           data: values,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('敏感词已更新');
+        message.success(t('plugin.sensitiveWords.message.updated'));
       } else {
         await request<SensitiveWordRecord>('/v1/sensitive-words', {
           method: 'POST',
           data: values,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('敏感词已新增');
+        message.success(t('plugin.sensitiveWords.message.created'));
       }
       crud.reloadAndCloseEditor();
     } finally {
@@ -95,16 +98,16 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
 
   const deleteWord = useCallback(async (record: SensitiveWordRecord) => {
     confirmAction({
-      title: '删除敏感词',
+      title: t('plugin.sensitiveWords.delete.title'),
       content: `确定删除敏感词“${record.word}”吗？`,
-      okText: '删除',
+      okText: t('plugin.sensitiveWords.common.delete'),
       okButtonProps: { danger: true },
       onOk: async () => {
         await request<boolean>(`/v1/sensitive-words/${record.id}`, {
           method: 'DELETE',
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success('敏感词已删除');
+        message.success(t('plugin.sensitiveWords.message.deleted'));
         crud.reloadTable();
       },
     });
@@ -126,7 +129,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
   const submitImport = async () => {
     const file = fileList[0]?.originFileObj;
     if (!file) {
-      message.warning('请先选择导入文件');
+      message.warning(t('plugin.sensitiveWords.import.selectFileFirst'));
       return;
     }
     setImporting(true);
@@ -151,13 +154,13 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
     const actionItems = (record: SensitiveWordRecord): TableActionItem[] => [
       {
         key: 'edit',
-        label: '编辑',
+        label: t('plugin.sensitiveWords.common.edit'),
         disabled: !actionPermission.can('plugin:sensitive-words:manage'),
         onClick: () => openEdit(record),
       },
       {
         key: 'delete',
-        label: '删除',
+        label: t('plugin.sensitiveWords.common.delete'),
         danger: true,
         disabled: !actionPermission.can('plugin:sensitive-words:manage'),
         onClick: () => void deleteWord(record),
@@ -165,25 +168,25 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
     ];
 
     return [
-      { title: '敏感词', dataIndex: 'word' },
-      { title: '分类', dataIndex: 'category', search: false },
+      { title: t('plugin.sensitiveWords.field.word'), dataIndex: 'word' },
+      { title: t('plugin.sensitiveWords.field.category'), dataIndex: 'category', search: false },
       {
-        title: '执行操作',
+        title: t('plugin.sensitiveWords.field.action'),
         dataIndex: 'action',
         valueType: 'select',
         valueEnum: {
-          BLOCK: { text: '拦截' },
-          LOG_ONLY: { text: '仅记录' },
+          BLOCK: { text: t('plugin.sensitiveWords.action.block') },
+          LOG_ONLY: { text: t('plugin.sensitiveWords.action.logOnly') },
         },
       },
       {
-        title: '更新时间',
+        title: t('plugin.sensitiveWords.field.updatedAt'),
         dataIndex: 'updatedAt',
         search: false,
         width: 180,
       },
       {
-        title: '操作',
+        title: t('plugin.sensitiveWords.field.actions'),
         valueType: 'option',
         fixed: responsive.isMobile ? undefined : 'right',
         render: (_, record) => <TableActionBar isMobile={responsive.isMobile} items={actionItems(record)} />,
@@ -196,7 +199,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
       <ManagementPageBody>
         {!pluginEnabled ? (
           <Empty
-            description={<Alert type="warning" showIcon message="敏感词拦截插件当前未启用" />}
+            description={<Alert type="warning" showIcon message={t('plugin.sensitiveWords.disabled')} />}
           />
         ) : (
         <ManagementTable<SensitiveWordRecord, { keyword?: string }>
@@ -208,8 +211,8 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
           options={{ reload: false }}
           toolBarRender={() =>
             buildToolbarButtons([
-              { key: 'import', label: <><UploadOutlined /> 批量导入</>, onClick: () => setImportOpen(true), permission: 'plugin:sensitive-words:import' },
-              { key: 'create', label: <><PlusOutlined /> 新增敏感词</>, onClick: openCreate, permission: 'plugin:sensitive-words:manage', type: 'primary' },
+              { key: 'import', label: <><UploadOutlined /> {t('plugin.sensitiveWords.import.action')}</>, onClick: () => setImportOpen(true), permission: 'plugin:sensitive-words:import' },
+              { key: 'create', label: <><PlusOutlined /> {t('plugin.sensitiveWords.create.title')}</>, onClick: openCreate, permission: 'plugin:sensitive-words:manage', type: 'primary' },
             ])
           }
           request={buildTableRequest(async (params) => {
@@ -225,45 +228,45 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={crud.drawer.editingId ? '编辑敏感词' : '新增敏感词'}
+        title={crud.drawer.editingId ? t('plugin.sensitiveWords.edit.title') : t('plugin.sensitiveWords.create.title')}
         open={crud.drawer.open}
         onClose={crud.drawer.close}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: crud.drawer.close },
-          { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canCreate, onClick: () => void saveWord() },
+          { key: 'cancel', label: t('plugin.sensitiveWords.common.cancel'), onClick: crud.drawer.close },
+          { key: 'save', label: t('plugin.sensitiveWords.common.save'), type: 'primary', loading: saving, disabled: !canCreate, onClick: () => void saveWord() },
         ]}
       >
         <Form form={form} layout="vertical" initialValues={{ action: 'BLOCK', category: 'CUSTOM' }}>
-          <Form.Item name="word" label="敏感词" rules={[{ required: true, message: '请输入敏感词' }, { max: 128, message: '长度不能超过 128 个字符' }]}>
+          <Form.Item name="word" label={t('plugin.sensitiveWords.field.word')} rules={[{ required: true, message: t('plugin.sensitiveWords.validation.wordRequired') }, { max: 128, message: t('plugin.sensitiveWords.validation.wordMaxLength') }]}>
             <Input maxLength={128} showCount />
           </Form.Item>
-          <Form.Item name="category" label="分类">
+          <Form.Item name="category" label={t('plugin.sensitiveWords.field.category')}>
             <Select options={CATEGORY_OPTIONS} />
           </Form.Item>
-          <Form.Item name="action" label="执行操作">
+          <Form.Item name="action" label={t('plugin.sensitiveWords.field.action')}>
             <Select options={ACTION_OPTIONS} />
           </Form.Item>
         </Form>
       </ManagementDrawer>
 
       <ManagementDrawer
-        title="批量导入敏感词"
+        title={t('plugin.sensitiveWords.import.title')}
         open={importOpen}
         onClose={() => {
           setImportOpen(false);
           setFileList([]);
         }}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: () => setImportOpen(false) },
-          { key: 'submit', label: '开始导入', type: 'primary', loading: importing, disabled: !canImport, onClick: () => void submitImport() },
+          { key: 'cancel', label: t('plugin.sensitiveWords.common.cancel'), onClick: () => setImportOpen(false) },
+          { key: 'submit', label: t('plugin.sensitiveWords.import.submit'), type: 'primary', loading: importing, disabled: !canImport, onClick: () => void submitImport() },
         ]}
       >
         <Upload.Dragger {...uploadProps}>
           <p className="ant-upload-drag-icon">
             <InboxOutlined />
           </p>
-          <p className="ant-upload-text">拖拽文件到这里，或点击选择文件</p>
-          <Typography.Text type="secondary">支持 txt、md、docx、xls、xlsx</Typography.Text>
+          <p className="ant-upload-text">{t('plugin.sensitiveWords.import.dropHint')}</p>
+          <Typography.Text type="secondary">{t('plugin.sensitiveWords.import.formats')}</Typography.Text>
         </Upload.Dragger>
       </ManagementDrawer>
     </>
@@ -274,7 +277,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
   }
 
   return (
-    <ManagementPage title="敏感词拦截">
+    <ManagementPage title={t('plugin.sensitiveWords.page.title')}>
       {content}
     </ManagementPage>
   );

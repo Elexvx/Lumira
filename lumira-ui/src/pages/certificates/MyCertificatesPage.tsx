@@ -3,12 +3,23 @@ import { Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
-import { listMyCertificates } from '@/services/certificates/api';
+import { downloadMyCertificate, listMyCertificates } from '@/services/certificates/api';
 import type { CertificateRecord } from '@/services/certificates/types';
+import { saveBlobAsFile } from '@/utils/download';
+import { showErrorMessage } from '@/utils/errorMessage';
 
 const statusText: Record<string, string> = {
   ISSUED: '已签发',
   REVOKED: '已撤销',
+};
+
+const handleCertificateDownload = async (record: CertificateRecord) => {
+  try {
+    const blob = await downloadMyCertificate(record.id);
+    saveBlobAsFile(blob, `${record.certificateNo}.png`);
+  } catch (error) {
+    showErrorMessage(error, '证书下载失败');
+  }
 };
 
 export default function MyCertificatesPage() {
@@ -61,7 +72,7 @@ export default function MyCertificatesPage() {
                     <Button
                       icon={<DownloadOutlined />}
                       disabled={record.status !== 'ISSUED'}
-                      href={`/api/v2/aiadc/certificates/mine/${record.id}/download`}
+                      onClick={() => void handleCertificateDownload(record)}
                     >
                       下载
                     </Button>

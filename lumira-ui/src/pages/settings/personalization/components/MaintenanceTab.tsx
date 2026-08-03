@@ -3,11 +3,10 @@ import type { FormProps } from 'antd';
 import type { BrandingSettings } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 interface MaintenanceTabProps {
   formProps: FormProps<BrandingSettings>;
@@ -32,34 +31,31 @@ export const MaintenanceTab = ({
       <Alert
         type="warning"
         showIcon
-        message={t('开启后，全站将显示维护页面', 'When enabled, the maintenance page replaces the entire site')}
-        description={t(
-          '保存后立即生效。维护页面右下角保留一个低可见度管理员入口；只有具备系统配置权限的账号登录后才能返回此处关闭维护模式。',
-          'The change takes effect immediately. A subtle admin entry remains in the lower-right corner; only an account with system configuration permission can return here and disable maintenance mode.',
-        )}
+        message={t('ui.settings.personalization.maintenance.whenEnabledTheMaintenancePageReplacesTheEntire')}
+        description={t('ui.settings.personalization.maintenance.theChangeTakesEffectImmediatelyASubtleAdmin')}
       />
 
       <Form {...formProps} disabled={!canUpdate}>
         <Form.Item
           name="maintenanceModeEnabled"
-          label={t('维护模式', 'Maintenance mode')}
+          label={t('ui.settings.personalization.maintenance.maintenanceMode')}
           valuePropName="checked"
         >
           <Switch
-            checkedChildren={t('开启', 'On')}
-            unCheckedChildren={t('关闭', 'Off')}
+            checkedChildren={t('ui.settings.personalization.maintenance.on')}
+            unCheckedChildren={t('ui.settings.personalization.maintenance.off')}
           />
         </Form.Item>
         <Form.Item
           name="maintenanceTitle"
-          label={t('页面标题', 'Page title')}
+          label={t('ui.settings.personalization.maintenance.pageTitle')}
           rules={[{ required: true, whitespace: true }]}
         >
           <Input maxLength={80} />
         </Form.Item>
         <Form.Item
           name="maintenanceMessage"
-          label={t('页面说明', 'Page message')}
+          label={t('ui.settings.personalization.maintenance.pageMessage')}
           rules={[{ required: true, whitespace: true }]}
         >
           <Input.TextArea rows={4} maxLength={300} showCount />
@@ -85,7 +81,7 @@ export const MaintenanceTab = ({
 
       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" danger={Boolean(preview.maintenanceModeEnabled)} loading={saving} disabled={!canUpdate} onClick={onSave}>
-          {t('保存维护模式设置', 'Save maintenance settings')}
+          {t('ui.settings.personalization.maintenance.saveMaintenanceSettings')}
         </Button>
       </div>
     </Space>

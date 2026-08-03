@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { getLocale, history, useAccess, useLocation } from '@umijs/max';
+import { history, useAccess, useLocation } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Modal, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
@@ -26,11 +26,11 @@ import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { normalizeLocale } from '@/i18n/locale';
 import { canSubmitPlatformUpdate, resolvePlatformUpdateConfirmationDetails } from './platformUpdateState';
+import { databaseMessage } from '@/i18n/databaseMessage';
+import { resolveRuntimeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const valueStyle = { fontSize: 24, fontWeight: 700 };
 const REALTIME_REFRESH_INTERVAL_MS = 1000;
@@ -71,19 +71,19 @@ const formatDateTime = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString('zh-CN', { hour12: false });
+  return date.toLocaleString(resolveRuntimeLocale(), { hour12: false });
 };
 
 const formatNumber = (value?: number | null) => {
   if (value === undefined || value === null || Number.isNaN(value)) {
     return '-';
   }
-  return value.toLocaleString('zh-CN');
+  return value.toLocaleString(resolveRuntimeLocale());
 };
 
 const formatLoadAverage = (value?: number | null) => {
   if (value === undefined || value === null || Number.isNaN(value)) {
-    return t('当前系统不支持', 'Not supported by this system');
+    return t('ui.settings.monitoring.monitoring.notSupportedByThisSystem');
   }
   return value.toFixed(2);
 };
@@ -99,26 +99,26 @@ const statusMeta: Record<string, { color: string; icon: ReactNode; label: string
   UP_TO_DATE: {
     color: 'green',
     icon: <CheckCircleOutlined />,
-    label: t('已同步', 'Up to date'),
-    title: t('当前版本已同步', 'The current version is up to date'),
+    label: t('ui.settings.monitoring.monitoring.upToDate'),
+    title: t('ui.settings.monitoring.monitoring.theCurrentVersionIsUpToDate'),
   },
   UPDATE_AVAILABLE: {
     color: 'orange',
     icon: <CloudSyncOutlined />,
-    label: t('有更新', 'Update available'),
-    title: t('发现新版本', 'A new version was found'),
+    label: t('ui.settings.monitoring.monitoring.updateAvailable'),
+    title: t('ui.settings.monitoring.monitoring.aNewVersionWasFound'),
   },
   UNKNOWN: {
     color: 'gold',
     icon: <ExclamationCircleOutlined />,
-    label: t('待确认', 'Pending confirmation'),
-    title: t('版本信息不完整', 'Version information is incomplete'),
+    label: t('ui.settings.monitoring.monitoring.pendingConfirmation'),
+    title: t('ui.settings.monitoring.monitoring.versionInformationIsIncomplete'),
   },
   CHECK_FAILED: {
     color: 'red',
     icon: <ExclamationCircleOutlined />,
-    label: t('检查失败', 'Check failed'),
-    title: t('更新源暂时不可用', 'The update source is temporarily unavailable'),
+    label: t('ui.settings.monitoring.monitoring.checkFailed'),
+    title: t('ui.settings.monitoring.monitoring.theUpdateSourceIsTemporarilyUnavailable'),
   },
 };
 
@@ -200,31 +200,31 @@ const buildServiceRows = (snapshot?: ServiceMonitorSnapshot): ServiceMonitorRow[
 const buildServiceColumns = () => {
 
   const serviceColumns: ProColumns<ServiceMonitorRow>[] = [
-    { title: t('服务', 'Service'), dataIndex: 'serviceName' },
-    { title: t('地址', 'Address'), dataIndex: 'baseUrl', ellipsis: true },
+    { title: t('ui.settings.monitoring.monitoring.service'), dataIndex: 'serviceName' },
+    { title: t('ui.settings.monitoring.monitoring.address'), dataIndex: 'baseUrl', ellipsis: true },
     {
-      title: t('状态', 'Status'),
+      title: t('ui.settings.monitoring.monitoring.status'),
       dataIndex: 'serviceStatus',
       width: 'var(--saas-spacing-100)',
       render: (_: unknown, record: ServiceMonitorRow) => renderServiceStatusTag(record.serviceStatus),
     },
-    { title: t('响应', 'Response'), dataIndex: 'responseTimeMs', width: 'var(--saas-spacing-100)', render: (_: unknown, record: ServiceMonitorRow) => (record.responseTimeMs == null ? '-' : `${record.responseTimeMs} ms`) },
-    { title: t('检测时间', 'Checked at'), dataIndex: 'checkedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record: ServiceMonitorRow) => formatDateTime(record.checkedAt) },
-    { title: t('OpenAPI 地址', 'OpenAPI URL'), dataIndex: 'apiDocUrl', ellipsis: true, render: (_: unknown, record: ServiceMonitorRow) => record.apiDocUrl || '-' },
+    { title: t('ui.settings.monitoring.monitoring.response'), dataIndex: 'responseTimeMs', width: 'var(--saas-spacing-100)', render: (_: unknown, record: ServiceMonitorRow) => (record.responseTimeMs == null ? '-' : `${record.responseTimeMs} ms`) },
+    { title: t('ui.settings.monitoring.monitoring.checkedAt'), dataIndex: 'checkedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record: ServiceMonitorRow) => formatDateTime(record.checkedAt) },
+    { title: t('ui.settings.monitoring.monitoring.openapiUrl'), dataIndex: 'apiDocUrl', ellipsis: true, render: (_: unknown, record: ServiceMonitorRow) => record.apiDocUrl || '-' },
     {
-      title: t('文档状态', 'API docs status'),
+      title: t('ui.settings.monitoring.monitoring.apiDocsStatus'),
       dataIndex: 'apiDocStatus',
       width: 'var(--saas-spacing-120)',
       render: (_: unknown, record: ServiceMonitorRow) => renderServiceStatusTag(record.apiDocStatus),
     },
-    { title: t('说明', 'Note'), dataIndex: 'errorMessage', ellipsis: true, render: (_: unknown, record: ServiceMonitorRow) => record.errorMessage || '-' },
+    { title: t('ui.settings.monitoring.monitoring.note'), dataIndex: 'errorMessage', ellipsis: true, render: (_: unknown, record: ServiceMonitorRow) => record.errorMessage || '-' },
   ];
 
   const apiDocColumns = [
-    { title: t('服务', 'Service'), dataIndex: 'serviceName', width: 'var(--saas-spacing-180)' },
-    { title: t('OpenAPI 地址', 'OpenAPI URL'), dataIndex: 'url', ellipsis: true },
+    { title: t('ui.settings.monitoring.monitoring.service'), dataIndex: 'serviceName', width: 'var(--saas-spacing-180)' },
+    { title: t('ui.settings.monitoring.monitoring.openapiUrl'), dataIndex: 'url', ellipsis: true },
     {
-      title: t('服务状态', 'Service status'),
+      title: t('ui.settings.monitoring.monitoring.serviceStatus'),
       dataIndex: 'status',
       width: 'var(--saas-spacing-120)',
       render: (_: unknown, record: ServiceApiDocStatus) => <Tag color={record.status === 'UP' ? 'green' : 'red'}>{record.status || 'DOWN'}</Tag>,
@@ -236,29 +236,29 @@ const buildServiceColumns = () => {
 
 const buildRedisColumns = ({ isDesktop }: { isDesktop: boolean }) => {
   const commandColumns: ProColumns<RedisMonitorCommandStat>[] = [
-    { title: t('命令', 'Command'), dataIndex: 'command', width: 'var(--saas-spacing-180)', fixed: isDesktop ? ('left' as const) : undefined },
-    { title: t('调用次数', 'Calls'), dataIndex: 'calls', width: 'var(--saas-spacing-140)', render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.calls) },
-    { title: t('耗时(ms)', 'Total time (ms)'), dataIndex: 'totalUsec', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.totalUsec) },
-    { title: t('平均耗时(ms)', 'Average time (ms)'), dataIndex: 'avgUsec', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => record.avgUsec.toFixed(2) },
-    { title: t('拒绝次数', 'Rejected'), dataIndex: 'rejectedCalls', width: 'var(--saas-spacing-120)', responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.rejectedCalls) },
-    { title: t('失败次数', 'Failed'), dataIndex: 'failedCalls', width: 'var(--saas-spacing-120)', responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.failedCalls) },
+    { title: t('ui.settings.monitoring.monitoring.command'), dataIndex: 'command', width: 'var(--saas-spacing-180)', fixed: isDesktop ? ('left' as const) : undefined },
+    { title: t('ui.settings.monitoring.monitoring.calls'), dataIndex: 'calls', width: 'var(--saas-spacing-140)', render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.calls) },
+    { title: t('ui.settings.monitoring.monitoring.totalTimeMs'), dataIndex: 'totalUsec', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.totalUsec) },
+    { title: t('ui.settings.monitoring.monitoring.averageTimeMs'), dataIndex: 'avgUsec', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => record.avgUsec.toFixed(2) },
+    { title: t('ui.settings.monitoring.monitoring.rejected'), dataIndex: 'rejectedCalls', width: 'var(--saas-spacing-120)', responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.rejectedCalls) },
+    { title: t('ui.settings.monitoring.monitoring.failed'), dataIndex: 'failedCalls', width: 'var(--saas-spacing-120)', responsive: ['lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorCommandStat) => formatNumber(record.failedCalls) },
   ];
 
   const keyspaceColumns: ProColumns<RedisMonitorKeyspace>[] = [
-    { title: t('数据库', 'Database'), dataIndex: 'database', width: 'var(--saas-spacing-120)' },
-    { title: t('键数量', 'Keys'), dataIndex: 'keys', width: 'var(--saas-spacing-120)', render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.keys) },
-    { title: t('过期键数量', 'Expired keys'), dataIndex: 'expires', width: 'var(--saas-spacing-140)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.expires) },
-    { title: t('平均TTL(ms)', 'Average TTL (ms)'), dataIndex: 'avgTtl', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.avgTtl) },
+    { title: t('ui.settings.monitoring.monitoring.database'), dataIndex: 'database', width: 'var(--saas-spacing-120)' },
+    { title: t('ui.settings.monitoring.monitoring.keys'), dataIndex: 'keys', width: 'var(--saas-spacing-120)', render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.keys) },
+    { title: t('ui.settings.monitoring.monitoring.expiredKeys'), dataIndex: 'expires', width: 'var(--saas-spacing-140)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.expires) },
+    { title: t('ui.settings.monitoring.monitoring.averageTtlMs'), dataIndex: 'avgTtl', width: 'var(--saas-spacing-160)', responsive: ['md', 'lg', 'xl', 'xxl'] as const, render: (_: unknown, record: RedisMonitorKeyspace) => formatNumber(record.avgTtl) },
   ];
 
   const clientColumns: ProColumns<RedisMonitorClient>[] = [
-    { title: t('地址', 'Address'), dataIndex: 'addressPort', width: 'var(--saas-spacing-180)' },
-    { title: t('名称', 'Name'), dataIndex: 'name', width: 'var(--saas-spacing-160)' },
-    { title: t('空闲(s)', 'Idle (s)'), dataIndex: 'idle', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
-    { title: t('年龄(s)', 'Age (s)'), dataIndex: 'age', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
-    { title: t('数据库', 'Database'), dataIndex: 'databaseId', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
-    { title: t('标记', 'Flags'), dataIndex: 'flags', width: 'var(--saas-spacing-140)', responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
-    { title: t('最后命令', 'Last command'), dataIndex: 'lastCommand', width: 'var(--saas-spacing-140)', responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
+    { title: t('ui.settings.monitoring.monitoring.address'), dataIndex: 'addressPort', width: 'var(--saas-spacing-180)' },
+    { title: t('ui.settings.monitoring.monitoring.name'), dataIndex: 'name', width: 'var(--saas-spacing-160)' },
+    { title: t('ui.settings.monitoring.monitoring.idleS'), dataIndex: 'idle', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
+    { title: t('ui.settings.monitoring.monitoring.ageS'), dataIndex: 'age', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
+    { title: t('ui.settings.monitoring.monitoring.database'), dataIndex: 'databaseId', width: 'var(--saas-spacing-100)', responsive: ['md', 'lg', 'xl', 'xxl'] as const },
+    { title: t('ui.settings.monitoring.monitoring.flags'), dataIndex: 'flags', width: 'var(--saas-spacing-140)', responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
+    { title: t('ui.settings.monitoring.monitoring.lastCommand'), dataIndex: 'lastCommand', width: 'var(--saas-spacing-140)', responsive: ['lg', 'xl', 'xxl'] as const, ellipsis: true },
   ];
 
   return { commandColumns, keyspaceColumns, clientColumns };
@@ -287,27 +287,27 @@ const usePlatformUpdateMonitor = () => {
   const statusKey = resolveStatusKey(updateStatus);
   const currentStatusMeta = statusMeta[statusKey] || statusMeta.UNKNOWN;
   const canCompare = Boolean(updateStatus?.currentKnown && updateStatus?.latestKnown);
-  const detailDescription = updateStatus?.errorMessage || updateStatus?.actionRequired || t('无需处理。', 'No action required.');
+  const detailDescription = updateStatus?.errorMessage || updateStatus?.actionRequired || t('ui.settings.monitoring.monitoring.noActionRequired');
 
   const checkSteps = useMemo(
     () => [
       {
-        title: t('读取当前版本', 'Read current version'),
+        title: t('ui.settings.monitoring.monitoring.readCurrentVersion'),
         status: updateStatus?.currentKnown === false ? 'wait' : 'finish',
-        description: updateStatus?.currentKnown === false ? t('缺少提交号', 'Missing commit ID') : shortCommit(updateStatus?.current?.commitId),
+        description: updateStatus?.currentKnown === false ? t('ui.settings.monitoring.monitoring.missingCommitId') : shortCommit(updateStatus?.current?.commitId),
       },
       {
-        title: t('连接更新源', 'Connect update source'),
+        title: t('ui.settings.monitoring.monitoring.connectUpdateSource'),
         status: statusKey === 'CHECK_FAILED' ? 'error' : updateStatus?.latestKnown === false ? 'wait' : 'finish',
         description: updateStatus?.sourceType === 'github' ? 'GitHub' : updateStatus?.sourceType || '-',
       },
       {
-        title: t('比较提交', 'Compare commits'),
+        title: t('ui.settings.monitoring.monitoring.compareCommits'),
         status: statusKey === 'CHECK_FAILED' ? 'wait' : canCompare ? 'finish' : 'wait',
-        description: canCompare ? updateStatus?.comparisonBasis || 'commit' : t('等待完整版本信息', 'Waiting for complete version information'),
+        description: canCompare ? updateStatus?.comparisonBasis || 'commit' : t('ui.settings.monitoring.monitoring.waitingForCompleteVersionInformation'),
       },
       {
-        title: t('发布动作', 'Release action'),
+        title: t('ui.settings.monitoring.monitoring.releaseAction'),
         status: statusKey === 'UPDATE_AVAILABLE' ? 'process' : statusKey === 'UP_TO_DATE' ? 'finish' : 'wait',
         description: currentStatusMeta.label,
       },
@@ -322,9 +322,9 @@ const usePlatformUpdateMonitor = () => {
         ...API_OPTS.NO_REDIRECT,
       });
       await query.refetch();
-      message.success(result.updateAvailable ? t('发现新版本', 'A new version was found') : result.status === 'UNKNOWN' ? t('版本信息待确认', 'Version information pending confirmation') : t('当前已经是最新版本', 'You are already on the latest version'));
+      message.success(result.updateAvailable ? t('ui.settings.monitoring.monitoring.aNewVersionWasFound') : result.status === 'UNKNOWN' ? t('ui.settings.monitoring.monitoring.versionInformationPendingConfirmation') : t('ui.settings.monitoring.monitoring.youAreAlreadyOnTheLatestVersion'));
     } catch (error) {
-      showErrorMessage(error, t('检查更新失败', 'Failed to check for updates'));
+      showErrorMessage(error, t('ui.settings.monitoring.monitoring.failedToCheckForUpdates'));
     }
   };
 
@@ -334,15 +334,15 @@ const usePlatformUpdateMonitor = () => {
 
   const handleInstall = async () => {
     if (statusKey !== 'UPDATE_AVAILABLE') {
-      message.info(t('当前已经是最新版本，无需更新', 'You are already on the latest version. No update is needed.'));
+      message.info(t('ui.settings.monitoring.monitoring.youAreAlreadyOnTheLatestVersionNo'));
       return;
     }
     if (updateStatus?.updaterAvailable !== true) {
       Modal.info({
-        title: t('安装平台更新代理', 'Install platform updater'),
+        title: t('ui.settings.monitoring.monitoring.installPlatformUpdater'),
         content: (
           <Space direction="vertical">
-            <Typography.Text>{t('首次启用需要在服务器执行一次幂等安装。完成后，后续版本可从后台不停机更新。', 'A one-time idempotent host installation is required. Later releases can then update without planned HTTP downtime.')}</Typography.Text>
+            <Typography.Text>{t('ui.settings.monitoring.monitoring.aOneTimeIdempotentHostInstallationIsRequired')}</Typography.Text>
             <Typography.Text code copyable>node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy</Typography.Text>
           </Space>
         ),
@@ -353,8 +353,8 @@ const usePlatformUpdateMonitor = () => {
     const currentProtocol = updateStatus.updaterCapabilities?.protocolVersion || 1;
     if (currentProtocol < requiredProtocol) {
       Modal.warning({
-        title: t('更新代理版本过低', 'Updater protocol is too old'),
-        content: <Space direction="vertical"><Typography.Text>{t(`当前协议 ${currentProtocol}，此版本要求 ${requiredProtocol}。请先在服务器升级代理。`, `Current protocol is ${currentProtocol}; this release requires ${requiredProtocol}. Upgrade the host agent first.`)}</Typography.Text><Typography.Text code copyable>sudo node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy</Typography.Text></Space>,
+        title: t('ui.settings.monitoring.monitoring.updaterProtocolIsTooOld'),
+        content: <Space direction="vertical"><Typography.Text>{t('ui.settings.monitoring.monitoring.currentProtocolIsThisReleaseRequiresUpgradeThe', { currentProtocol: currentProtocol, requiredProtocol: requiredProtocol })}</Typography.Text><Typography.Text code copyable>sudo node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy</Typography.Text></Space>,
       });
       return;
     }
@@ -365,51 +365,51 @@ const usePlatformUpdateMonitor = () => {
         ...API_OPTS.NO_REDIRECT,
       });
     } catch (error) {
-      showErrorMessage(error, t('更新预检失败', 'Update preflight failed'));
+      showErrorMessage(error, t('ui.settings.monitoring.monitoring.updatePreflightFailed'));
       return;
     }
     const confirmationDetails = resolvePlatformUpdateConfirmationDetails(updateStatus, preflight);
     Modal.confirm({
       title: preflight.ready
-        ? t(`确认升级到版本 ${confirmationDetails.targetVersion}？`, `Confirm update to version ${confirmationDetails.targetVersion}?`)
-        : t('预检未通过', 'Preflight blocked'),
+        ? t('ui.settings.monitoring.monitoring.confirmUpdateToVersion', { targetVersion: confirmationDetails.targetVersion })
+        : t('ui.settings.monitoring.monitoring.preflightBlocked'),
       content: (
         <Space direction="vertical" style={{ width: '100%' }}>
           {preflight.ready ? (
             <Alert
               type="info"
               showIcon
-              message={t('请核对版本号和升级内容，确认无误后再开始升级。', 'Review the version and release notes before starting the update.')}
+              message={t('ui.settings.monitoring.monitoring.reviewTheVersionAndReleaseNotesBeforeStarting')}
             />
           ) : null}
           <Descriptions size="small" column={1} bordered>
-            <Descriptions.Item label={t('当前版本', 'Current version')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.currentVersion')}>
               {confirmationDetails.currentVersion}
               {confirmationDetails.currentCommit !== '-' ? ` (${shortCommit(confirmationDetails.currentCommit)})` : ''}
             </Descriptions.Item>
-            <Descriptions.Item label={t('目标版本', 'Target version')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.targetVersion')}>
               {confirmationDetails.targetVersion}
             </Descriptions.Item>
-            <Descriptions.Item label={t('目标提交', 'Target commit')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.targetCommit')}>
               <Typography.Text code copyable={confirmationDetails.targetCommit !== '-' ? { text: confirmationDetails.targetCommit } : false}>
                 {shortCommit(confirmationDetails.targetCommit)}
               </Typography.Text>
             </Descriptions.Item>
-            <Descriptions.Item label={t('升级内容', 'Release notes')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.releaseNotes')}>
               <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
-                {confirmationDetails.releaseNotes || t('本次发布未提供升级说明。', 'No release notes were provided for this update.')}
+                {confirmationDetails.releaseNotes || t('ui.settings.monitoring.monitoring.noReleaseNotesWereProvidedForThisUpdate')}
               </Typography.Paragraph>
             </Descriptions.Item>
-            <Descriptions.Item label={t('流量切换', 'Traffic switch')}>{preflight.activeSlot || '-'} → {preflight.targetSlot || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('数据库迁移', 'Database migration')}>{preflight.migrationMode || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.trafficSwitch')}>{preflight.activeSlot || '-'} → {preflight.targetSlot || '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.databaseMigration')}>{preflight.migrationMode || '-'}</Descriptions.Item>
           </Descriptions>
           {(preflight.blockers || []).map((item) => <Alert key={item} type="error" showIcon message={item} />)}
           {(preflight.warnings || []).map((item) => <Alert key={item} type="warning" showIcon message={item} />)}
-          {preflight.ready ? <Typography.Text type="secondary">{t('新槽位验证通过后热切流并排空旧连接；回滚不会逆向恢复数据库。', 'Traffic hot-switches only after the new slot passes verification. Rollback never reverses database migrations.')}</Typography.Text> : null}
+          {preflight.ready ? <Typography.Text type="secondary">{t('ui.settings.monitoring.monitoring.trafficHotSwitchesOnlyAfterTheNewSlot')}</Typography.Text> : null}
         </Space>
       ),
-      okText: t('确认并开始升级', 'Confirm and start update'),
-      cancelText: t('取消', 'Cancel'),
+      okText: t('ui.settings.monitoring.monitoring.confirmAndStartUpdate'),
+      cancelText: t('ui.settings.monitoring.monitoring.cancel'),
       okButtonProps: { disabled: !preflight.ready },
       onOk: async () => {
         try {
@@ -418,10 +418,10 @@ const usePlatformUpdateMonitor = () => {
             data: { preflightId: preflight.preflightId, targetCommit: preflight.targetCommit },
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(t('更新任务已提交', 'Update task submitted'));
+          message.success(t('ui.settings.monitoring.monitoring.updateTaskSubmitted'));
           await refreshAll();
         } catch (error) {
-          showErrorMessage(error, t('提交更新任务失败', 'Failed to submit update task'));
+          showErrorMessage(error, t('ui.settings.monitoring.monitoring.failedToSubmitUpdateTask'));
         }
       },
     });
@@ -429,10 +429,10 @@ const usePlatformUpdateMonitor = () => {
 
   const handleRollback = async () => {
     Modal.confirm({
-      title: t('确认回滚平台版本？', 'Rollback platform version?'),
-      content: t('系统将热切回上一稳定槽位。数据库扩展迁移会保留，不会覆盖更新期间产生的业务数据。', 'Traffic will hot-switch to the previous stable slot. Expand-only database migrations remain in place and business data is not overwritten.'),
-      okText: t('开始回滚', 'Start rollback'),
-      cancelText: t('取消', 'Cancel'),
+      title: t('ui.settings.monitoring.monitoring.rollbackPlatformVersion'),
+      content: t('ui.settings.monitoring.monitoring.trafficWillHotSwitchToThePreviousStable'),
+      okText: t('ui.settings.monitoring.monitoring.startRollback'),
+      cancelText: t('ui.settings.monitoring.monitoring.cancel'),
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
@@ -440,10 +440,10 @@ const usePlatformUpdateMonitor = () => {
             method: 'POST',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(t('回滚任务已提交', 'Rollback task submitted'));
+          message.success(t('ui.settings.monitoring.monitoring.rollbackTaskSubmitted'));
           await refreshAll();
         } catch (error) {
-          showErrorMessage(error, t('提交回滚任务失败', 'Failed to submit rollback task'));
+          showErrorMessage(error, t('ui.settings.monitoring.monitoring.failedToSubmitRollbackTask'));
         }
       },
     });
@@ -456,18 +456,18 @@ const usePlatformUpdateMonitor = () => {
         ...API_OPTS.NO_REDIRECT,
       });
       const switched = Boolean(task.phase && ['SWITCHING_TRAFFIC', 'VERIFYING_ACTIVE', 'DRAINING_OLD', 'UPDATING_WORKERS', 'FINALIZING'].includes(task.phase));
-      message.success(switched ? t('已请求自动回滚流量', 'Traffic rollback requested') : t('已请求取消更新', 'Update cancellation requested'));
+      message.success(switched ? t('ui.settings.monitoring.monitoring.trafficRollbackRequested') : t('ui.settings.monitoring.monitoring.updateCancellationRequested'));
       await refreshAll();
     } catch (error) {
-      showErrorMessage(error, t('取消更新失败', 'Failed to cancel update'));
+      showErrorMessage(error, t('ui.settings.monitoring.monitoring.failedToCancelUpdate'));
     }
   };
 
   const taskColumns = useMemo<ProColumns<PlatformUpdateTask>[]>(
     () => [
-      { title: t('类型', 'Type'), dataIndex: 'taskType', width: 'var(--saas-spacing-120)', render: (_: unknown, record) => record.taskType || '-' },
+      { title: t('ui.settings.monitoring.monitoring.type'), dataIndex: 'taskType', width: 'var(--saas-spacing-120)', render: (_: unknown, record) => record.taskType || '-' },
       {
-        title: t('状态', 'Status'),
+        title: t('ui.settings.monitoring.monitoring.status'),
         dataIndex: 'status',
         width: 'var(--saas-spacing-120)',
         render: (_: unknown, record) => {
@@ -476,13 +476,13 @@ const usePlatformUpdateMonitor = () => {
           return <Tag color={color}>{status}</Tag>;
         },
       },
-      { title: t('目标版本', 'Target version'), dataIndex: 'targetVersion', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.targetVersion || '-' },
-      { title: t('阶段', 'Phase'), dataIndex: 'phase', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.phase || '-' },
-      { title: t('进度', 'Progress'), dataIndex: 'progressPercent', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => <Progress percent={record.progressPercent || 0} size="small" /> },
-      { title: t('目标提交', 'Target commit'), dataIndex: 'targetCommit', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => shortCommit(record.targetCommit) },
-      { title: t('操作人', 'Operator'), dataIndex: 'createdByName', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => record.createdByName || '-' },
-      { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record) => formatDateTime(record.updatedAt) },
-      { title: t('说明', 'Message'), dataIndex: 'logSummary', ellipsis: true, render: (_: unknown, record) => record.errorMessage || record.logSummary || '-' },
+      { title: t('ui.settings.monitoring.monitoring.targetVersion'), dataIndex: 'targetVersion', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.targetVersion || '-' },
+      { title: t('ui.settings.monitoring.monitoring.phase'), dataIndex: 'phase', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.phase || '-' },
+      { title: t('ui.settings.monitoring.monitoring.progress'), dataIndex: 'progressPercent', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => <Progress percent={record.progressPercent || 0} size="small" /> },
+      { title: t('ui.settings.monitoring.monitoring.targetCommit'), dataIndex: 'targetCommit', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => shortCommit(record.targetCommit) },
+      { title: t('ui.settings.monitoring.monitoring.operator'), dataIndex: 'createdByName', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => record.createdByName || '-' },
+      { title: t('ui.settings.monitoring.monitoring.updatedAt'), dataIndex: 'updatedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record) => formatDateTime(record.updatedAt) },
+      { title: t('ui.settings.monitoring.monitoring.message'), dataIndex: 'logSummary', ellipsis: true, render: (_: unknown, record) => record.errorMessage || record.logSummary || '-' },
     ],
     [],
   );
@@ -575,7 +575,7 @@ const buildSwaggerHtml = (apiSpec: unknown, schemeContainerVerticalPadding: numb
 };
 
 const readApiDocsError = async (response: Response) => {
-  const fallback = t('接口文档加载失败：{status}', 'API docs failed to load: {status}').replace('{status}', String(response.status));
+  const fallback = t('ui.settings.monitoring.monitoring.apiDocsFailedToLoad').replace('{status}', String(response.status));
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     const text = await response.text().catch(() => '');
@@ -637,7 +637,7 @@ const ApiDocsContent = () => {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return;
         }
-        setLoadError(error instanceof Error ? error.message : t('接口文档加载失败', 'Failed to load API docs'));
+        setLoadError(error instanceof Error ? error.message : t('ui.settings.monitoring.monitoring.failedToLoadApiDocs'));
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -650,9 +650,9 @@ const ApiDocsContent = () => {
 
   if (!isLoggedIn) {
     return (
-      <ManagementPage title={t('接口文档', 'API docs')}>
+      <ManagementPage title={t('ui.settings.monitoring.monitoring.apiDocs')}>
         <ManagementPageBody>
-          <Result status="403" title={t('请先登录', 'Please log in first')} subTitle={t('接口文档只对已登录用户开放。', 'API docs are available only to signed-in users.')} />
+          <Result status="403" title={t('ui.settings.monitoring.monitoring.pleaseLogInFirst')} subTitle={t('ui.settings.monitoring.monitoring.apiDocsAreAvailableOnlyToSignedIn')} />
         </ManagementPageBody>
       </ManagementPage>
     );
@@ -660,12 +660,12 @@ const ApiDocsContent = () => {
 
   return (
     <ManagementPage
-      title={t('接口文档', 'API docs')}
+      title={t('ui.settings.monitoring.monitoring.apiDocs')}
       className="saas-monitoring-api-docs-page"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => window.location.reload()}>
-            {t('刷新页面', 'Refresh page')}
+            {t('ui.settings.monitoring.monitoring.refreshPage')}
           </Button>
         </Space>
       }
@@ -675,15 +675,15 @@ const ApiDocsContent = () => {
           <div className="saas-monitoring-api-docs__surface">
             {isLoading ? (
               <div className="saas-monitoring-api-docs__loading">
-                <Spin tip={t('正在加载接口文档...', 'Loading API docs...')} />
+                <Spin tip={t('ui.settings.monitoring.monitoring.loadingApiDocs')} />
               </div>
             ) : loadError ? (
               <div style={{ padding: token.paddingLG }}>
-                <Alert message={t('接口文档加载失败', 'Failed to load API docs')} description={loadError} type="error" showIcon />
+                <Alert message={t('ui.settings.monitoring.monitoring.failedToLoadApiDocs')} description={loadError} type="error" showIcon />
               </div>
             ) : (
               <iframe
-                title={t('接口文档', 'API docs')}
+                title={t('ui.settings.monitoring.monitoring.apiDocs')}
                 srcDoc={buildSwaggerHtml(apiSpec, schemeContainerVerticalPadding)}
                 sandbox="allow-scripts allow-forms allow-popups"
                 className="saas-monitoring-api-docs__iframe"
@@ -722,7 +722,7 @@ const ExpandableClampText = ({ value, lines = 2 }: { value?: string | null; line
       </div>
       {expandable ? (
         <Button type="link" size="small" className="saas-monitor-expandable-text__trigger" onClick={() => setExpanded((current) => !current)}>
-          {expanded ? t('收起', 'Collapse') : t('展开', 'Expand')}
+          {expanded ? t('ui.settings.monitoring.monitoring.collapse') : t('ui.settings.monitoring.monitoring.expand')}
         </Button>
       ) : null}
     </div>
@@ -902,7 +902,7 @@ const useRedisMonitor = () => {
       return;
     }
     const nextPoint = {
-      label: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+      label: new Date().toLocaleTimeString(resolveRuntimeLocale(), { hour12: false }),
       memoryBytes: snapshot.overview.memoryUsedBytes || 0,
       qps: snapshot.overview.instantaneousOpsPerSec || 0,
     };
@@ -928,14 +928,14 @@ const useRedisMonitor = () => {
   const trendCharts = useMemo(
     () => [
       {
-        title: t('内存趋势 (MB)', 'Memory trend (MB)'),
-        subtitle: t('最近 {count} 次采样', 'Latest {count} samples').replace('{count}', String(MAX_TREND_SAMPLES)),
+        title: t('ui.settings.monitoring.monitoring.memoryTrendMb'),
+        subtitle: t('ui.settings.monitoring.monitoring.latestSamples').replace('{count}', String(MAX_TREND_SAMPLES)),
         points: memoryTrend.map((item) => ({ ...item, value: item.value / 1024 / 1024 })),
         valueFormatter: (value: number) => `${value.toFixed(2)} MB`,
       },
       {
-        title: t('吞吐趋势 (OPS)', 'Throughput trend (OPS)'),
-        subtitle: t('最近 {count} 次采样', 'Latest {count} samples').replace('{count}', String(MAX_TREND_SAMPLES)),
+        title: t('ui.settings.monitoring.monitoring.throughputTrendOps'),
+        subtitle: t('ui.settings.monitoring.monitoring.latestSamples').replace('{count}', String(MAX_TREND_SAMPLES)),
         points: qpsTrend,
         valueFormatter: (value: number) => value.toFixed(0),
       },
@@ -988,10 +988,10 @@ const PlatformUpdateContent = () => {
   );
   const canRollback = updaterAvailable && !isTaskRunning;
   const installTooltip = statusKey === 'UP_TO_DATE'
-    ? t('当前已经是最新版本，无需更新', 'You are already on the latest version. No update is needed.')
+    ? t('ui.settings.monitoring.monitoring.youAreAlreadyOnTheLatestVersionNo')
     : canInstall
-      ? t('更新到最新发布版本', 'Update to the latest release')
-      : t('更新源暂未提供可安装镜像', 'The update source does not provide an installable image yet');
+      ? t('ui.settings.monitoring.monitoring.updateToTheLatestRelease')
+      : t('ui.settings.monitoring.monitoring.theUpdateSourceDoesNotProvideAnInstallable');
 
   return (
     <Space
@@ -1014,29 +1014,29 @@ const PlatformUpdateContent = () => {
             </Space>
           </Col>
           <Col xs={24} sm={8} lg={4}>
-            <Statistic title={t('当前提交', 'Current commit')} value={shortCommit(updateStatus?.current?.commitId)} valueStyle={{ fontSize: 22 }} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.currentCommit')} value={shortCommit(updateStatus?.current?.commitId)} valueStyle={{ fontSize: 22 }} />
           </Col>
           <Col xs={24} sm={8} lg={4}>
-            <Statistic title={t('最新提交', 'Latest commit')} value={shortCommit(updateStatus?.latest?.commitId)} valueStyle={{ fontSize: 22 }} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.latestCommit')} value={shortCommit(updateStatus?.latest?.commitId)} valueStyle={{ fontSize: 22 }} />
           </Col>
           <Col xs={24} sm={8} lg={3}>
-            <Statistic title={t('检查时间', 'Checked at')} value={formatDateTime(updateStatus?.checkedAt)} valueStyle={{ fontSize: 14 }} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.checkedAt.3d9490d4')} value={formatDateTime(updateStatus?.checkedAt)} valueStyle={{ fontSize: 14 }} />
           </Col>
           <Col xs={24} lg={3}>
             <Space wrap className="saas-update-actions">
-              <Tooltip title={t('重新检查更新源', 'Re-check update source')}>
+              <Tooltip title={t('ui.settings.monitoring.monitoring.reCheckUpdateSource')}>
                 <Button icon={<ReloadOutlined />} loading={query.isFetching} onClick={handleCheck}>
-                  {t('检查', 'Check')}
+                  {t('ui.settings.monitoring.monitoring.check')}
                 </Button>
               </Tooltip>
               <Tooltip title={installTooltip}>
                 <Button type="primary" icon={<CloudDownloadOutlined />} disabled={!canInstall} loading={isTaskRunning} onClick={handleInstall}>
-                  {t('更新', 'Update')}
+                  {t('ui.settings.monitoring.monitoring.update')}
                 </Button>
               </Tooltip>
-              <Tooltip title={t('使用最近一次 updater 环境备份回滚', 'Rollback with the latest updater env backup')}>
+              <Tooltip title={t('ui.settings.monitoring.monitoring.rollbackWithTheLatestUpdaterEnvBackup')}>
                 <Button danger icon={<RollbackOutlined />} disabled={!canRollback} onClick={handleRollback}>
-                  {t('回滚', 'Rollback')}
+                  {t('ui.settings.monitoring.monitoring.rollback')}
                 </Button>
               </Tooltip>
             </Space>
@@ -1047,29 +1047,29 @@ const PlatformUpdateContent = () => {
         <Alert
           type="warning"
           showIcon
-          message={t('当前部署缺少提交信息', 'The current deployment is missing commit information')}
-          description={t('更新中心已经连通更新源，但当前运行版本没有携带 GIT_COMMIT，不能可靠判断是否落后。部署时注入提交号后会自动恢复精确比较。', 'The update center can reach the source, but the running build does not include GIT_COMMIT, so it cannot reliably determine whether it is behind. Injecting the commit ID during deployment restores accurate comparison.')}
+          message={t('ui.settings.monitoring.monitoring.theCurrentDeploymentIsMissingCommitInformation')}
+          description={t('ui.settings.monitoring.monitoring.theUpdateCenterCanReachTheSourceBut')}
         />
       ) : null}
       {statusKey === 'CHECK_FAILED' ? (
-      <Alert type="error" showIcon message={t('更新源检查失败', 'Update source check failed')} description={updateStatus?.errorMessage || t('请检查更新源地址和服务器网络。', 'Please check the source URL and server network.')} />
+      <Alert type="error" showIcon message={t('ui.settings.monitoring.monitoring.updateSourceCheckFailed')} description={updateStatus?.errorMessage || t('ui.settings.monitoring.monitoring.pleaseCheckTheSourceUrlAndServerNetwork')} />
       ) : null}
       {updateStatus && updateStatus.sourceReachable === false && statusKey === 'UP_TO_DATE' ? (
         <Alert
           type="info"
           showIcon
-          message={t('已使用本地版本信息', 'Using local version information')}
-          description={updateStatus.errorMessage || t('远程更新源暂不可用，当前已回退到本地 Git 提交作为版本基准。', 'The remote update source is unavailable, so the local Git commit is used as the version baseline.')}
+          message={t('ui.settings.monitoring.monitoring.usingLocalVersionInformation')}
+          description={updateStatus.errorMessage || t('ui.settings.monitoring.monitoring.theRemoteUpdateSourceIsUnavailableSoThe')}
         />
       ) : null}
       {activeTask ? (
-        <Card size="small" title={`${activeTask.taskType || 'UPDATE'} · ${activeTask.phase || activeTask.status || ''}`} extra={isTaskRunning ? <Button danger size="small" onClick={() => void handleCancel(activeTask)}>{t('取消 / 回滚', 'Cancel / rollback')}</Button> : null}>
+        <Card size="small" title={`${activeTask.taskType || 'UPDATE'} · ${activeTask.phase || activeTask.status || ''}`} extra={isTaskRunning ? <Button danger size="small" onClick={() => void handleCancel(activeTask)}>{t('ui.settings.monitoring.monitoring.cancelRollback')}</Button> : null}>
           <Space direction="vertical" style={{ width: '100%' }}>
             <Progress percent={activeTask.progressPercent || 0} status={activeTask.status === 'FAILED' ? 'exception' : activeTask.status === 'SUCCEEDED' || activeTask.status === 'ROLLED_BACK' ? 'success' : 'active'} />
             <Descriptions size="small" column={{ xs: 1, md: 3 }}>
-              <Descriptions.Item label={t('阶段', 'Phase')}>{activeTask.phase || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('活动槽位', 'Active slot')}>{activeTask.activeSlot || '-'}</Descriptions.Item>
-              <Descriptions.Item label={t('目标槽位', 'Target slot')}>{activeTask.targetSlot || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('ui.settings.monitoring.monitoring.phase')}>{activeTask.phase || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('ui.settings.monitoring.monitoring.activeSlot')}>{activeTask.activeSlot || '-'}</Descriptions.Item>
+              <Descriptions.Item label={t('ui.settings.monitoring.monitoring.targetSlot')}>{activeTask.targetSlot || '-'}</Descriptions.Item>
             </Descriptions>
           </Space>
         </Card>
@@ -1079,41 +1079,41 @@ const PlatformUpdateContent = () => {
           type={activeTask.status === 'FAILED' ? 'error' : activeTask.status === 'SUCCEEDED' || activeTask.status === 'ROLLED_BACK' ? 'success' : 'info'}
           showIcon
           message={`${activeTask.taskType || 'UPDATE'} ${activeTask.status || ''}`}
-          description={activeTask.errorMessage || activeTask.logSummary || t('更新代理正在处理任务，请稍后刷新状态。', 'The updater agent is processing the task. Refresh status later.')}
+          description={activeTask.errorMessage || activeTask.logSummary || t('ui.settings.monitoring.monitoring.theUpdaterAgentIsProcessingTheTaskRefresh')}
         />
       ) : null}
       <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
         <Row gutter={rowGutter}>
           <Col xs={24} lg={12}>
-            <Card title={t('当前运行版本', 'Current running version')} className="saas-update-version-card">
+            <Card title={t('ui.settings.monitoring.monitoring.currentRunningVersion')} className="saas-update-version-card">
               <Descriptions size="small" column={1}>
-                <Descriptions.Item label={t('版本', 'Version')}>{updateStatus?.current?.version || '-'}</Descriptions.Item>
-                <Descriptions.Item label={t('提交', 'Commit')}>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.version')}>{updateStatus?.current?.version || '-'}</Descriptions.Item>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.commit')}>
                   <Typography.Text copyable={{ text: updateStatus?.current?.commitId || '' }} className="saas-update-mono">
                     {updateStatus?.current?.commitId?.slice(0, 12) || '-'}
                   </Typography.Text>
                 </Descriptions.Item>
-                <Descriptions.Item label={t('分支', 'Branch')}>{updateStatus?.current?.branch || '-'}</Descriptions.Item>
-                <Descriptions.Item label={t('构建时间', 'Build time')}>{formatDateTime(updateStatus?.current?.buildTime)}</Descriptions.Item>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.branch')}>{updateStatus?.current?.branch || '-'}</Descriptions.Item>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.buildTime')}>{formatDateTime(updateStatus?.current?.buildTime)}</Descriptions.Item>
               </Descriptions>
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title={t('更新源版本', 'Source version')} className="saas-update-version-card">
+            <Card title={t('ui.settings.monitoring.monitoring.sourceVersion')} className="saas-update-version-card">
               <Descriptions size="small" column={1}>
-                <Descriptions.Item label={t('版本', 'Version')}>{updateStatus?.latest?.version || '-'}</Descriptions.Item>
-                <Descriptions.Item label={t('提交', 'Commit')}>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.version')}>{updateStatus?.latest?.version || '-'}</Descriptions.Item>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.commit')}>
                   <Typography.Text copyable={{ text: updateStatus?.latest?.commitId || '' }} className="saas-update-mono">
                     {updateStatus?.latest?.commitId?.slice(0, 12) || '-'}
                   </Typography.Text>
                 </Descriptions.Item>
-                <Descriptions.Item label={t('分支', 'Branch')}>{updateStatus?.latest?.branch || '-'}</Descriptions.Item>
-                <Descriptions.Item label={t('提交时间', 'Release time')}>{formatDateTime(updateStatus?.latest?.releasedAt)}</Descriptions.Item>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.branch')}>{updateStatus?.latest?.branch || '-'}</Descriptions.Item>
+                <Descriptions.Item label={t('ui.settings.monitoring.monitoring.releaseTime')}>{formatDateTime(updateStatus?.latest?.releasedAt)}</Descriptions.Item>
               </Descriptions>
             </Card>
           </Col>
         </Row>
-        <Card title={t('检查链路', 'Check path')} loading={query.isLoading && !updateStatus}>
+        <Card title={t('ui.settings.monitoring.monitoring.checkPath')} loading={query.isLoading && !updateStatus}>
           <Steps
             size="small"
             responsive
@@ -1124,41 +1124,41 @@ const PlatformUpdateContent = () => {
             }))}
           />
         </Card>
-        <Card title={t('更新源', 'Update source')}>
+        <Card title={t('ui.settings.monitoring.monitoring.updateSource')}>
           <Descriptions
             className="saas-update-source-descriptions"
             size="small"
             column={{ xs: 1, sm: 1, md: 2, lg: 2, xl: 2, xxl: 2 }}
           >
-            <Descriptions.Item label={t('来源类型', 'Source type')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.sourceType')}>
               <Tag icon={<ApiOutlined />} color={updateStatus?.sourceType === 'github' ? 'blue' : 'default'}>
                 {updateStatus?.sourceType === 'github' ? 'GitHub' : updateStatus?.sourceType || '-'}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label={t('比较依据', 'Comparison basis')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.comparisonBasis')}>
               <UpdateSourceValue value={updateStatus?.comparisonBasis} />
             </Descriptions.Item>
-            <Descriptions.Item label={t('最新说明', 'Latest note')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.latestNote')}>
               <UpdateSourceValue value={updateStatus?.latest?.title} />
             </Descriptions.Item>
-            <Descriptions.Item label={t('地址', 'Address')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.address')}>
               <UpdateSourceValue value={updateStatus?.sourceUrl} copyable />
             </Descriptions.Item>
-            <Descriptions.Item label={t('后端镜像', 'Server image')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.serverImage')}>
               <UpdateSourceValue value={updateStatus?.latest?.serverImage} copyable />
             </Descriptions.Item>
-            <Descriptions.Item label={t('前端镜像', 'Frontend image')}>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.frontendImage')}>
               <UpdateSourceValue value={updateStatus?.latest?.frontendImage} copyable />
             </Descriptions.Item>
-            <Descriptions.Item label={t('迁移', 'Migration')}>
-              <Tag color={updateStatus?.latest?.migrationRequired ? 'orange' : 'green'}>{updateStatus?.latest?.migrationRequired ? t('需要', 'Required') : t('不需要', 'Not required')}</Tag>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.migration')}>
+              <Tag color={updateStatus?.latest?.migrationRequired ? 'orange' : 'green'}>{updateStatus?.latest?.migrationRequired ? t('ui.settings.monitoring.monitoring.required') : t('ui.settings.monitoring.monitoring.notRequired')}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label={t('可回滚', 'Rollback')}>
-              <Tag color={updateStatus?.latest?.rollbackSupported === false ? 'red' : 'green'}>{updateStatus?.latest?.rollbackSupported === false ? t('否', 'No') : t('是', 'Yes')}</Tag>
+            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.rollback.3ae1ddbb')}>
+              <Tag color={updateStatus?.latest?.rollbackSupported === false ? 'red' : 'green'}>{updateStatus?.latest?.rollbackSupported === false ? t('ui.settings.monitoring.monitoring.no') : t('ui.settings.monitoring.monitoring.yes')}</Tag>
             </Descriptions.Item>
           </Descriptions>
         </Card>
-        <Card title={t('更新任务历史', 'Update task history')} loading={tasksQuery.isLoading && !tasksQuery.data}>
+        <Card title={t('ui.settings.monitoring.monitoring.updateTaskHistory')} loading={tasksQuery.isLoading && !tasksQuery.data}>
           <ManagementTable<PlatformUpdateTask>
             rowKey="id"
             size="small"
@@ -1185,57 +1185,57 @@ const RedisMonitorContent = () => {
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-monitoring-tab-pane">
-      <Card loading={query.isLoading && !redis} title={t('Redis信息', 'Redis info')}>
+      <Card loading={query.isLoading && !redis} title={t('ui.settings.monitoring.monitoring.redisInfo')}>
         <Row gutter={rowGutter}>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('Redis版本', 'Redis version')} value={overview?.version || '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.redisVersion')} value={overview?.version || '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('运行模式', 'Mode')} value={overview?.mode || '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.mode')} value={overview?.mode || '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('端口', 'Port')} value={overview?.port ?? '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.port')} value={overview?.port ?? '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('客户端数', 'Clients')} value={overview?.connectedClients ?? '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.clients')} value={overview?.connectedClients ?? '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('运行时间(天)', 'Uptime (days)')} value={overview?.uptimeDays ?? '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.uptimeDays')} value={overview?.uptimeDays ?? '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('命中率', 'Hit rate')} value={formatPercent(overview?.hitRate)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.hitRate')} value={formatPercent(overview?.hitRate)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
             <Statistic title="QPS" value={overview?.instantaneousOpsPerSec ?? '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('键数量', 'Keys')} value={overview?.keyCount ?? '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.keys')} value={overview?.keyCount ?? '-'} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('内存使用量', 'Memory used')} value={formatBytes(overview?.memoryUsedBytes)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.memoryUsed')} value={formatBytes(overview?.memoryUsedBytes)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('内存峰值', 'Memory peak')} value={formatBytes(overview?.memoryPeakBytes)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.memoryPeak')} value={formatBytes(overview?.memoryPeakBytes)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('内存使用率', 'Memory usage')} value={formatPercent(overview?.memoryUsagePercent)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.memoryUsage')} value={formatPercent(overview?.memoryUsagePercent)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('总连接数', 'Total connections')} value={overview?.totalConnectionsReceived ?? '-'} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.totalConnections')} value={overview?.totalConnectionsReceived ?? '-'} valueStyle={valueStyle} />
           </Col>
         </Row>
         <Row gutter={rowGutter} style={{ marginTop: sectionGap }}>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('总命中', 'Total hits')} value={formatNumber(overview?.hits)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.totalHits')} value={formatNumber(overview?.hits)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('总未命中', 'Total misses')} value={formatNumber(overview?.misses)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.totalMisses')} value={formatNumber(overview?.misses)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={4}>
-            <Statistic title={t('总命令数', 'Total commands')} value={formatNumber(overview?.totalCommandsProcessed)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.totalCommands')} value={formatNumber(overview?.totalCommandsProcessed)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} xl={8}>
-            <Statistic title={t('采样时间', 'Sample time')} value={formatDateTime(redis?.sampleTime)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.sampleTime')} value={formatDateTime(redis?.sampleTime)} valueStyle={valueStyle} />
           </Col>
         </Row>
       </Card>
@@ -1250,7 +1250,7 @@ const RedisMonitorContent = () => {
           </Col>
         ))}
       </Row>
-      <Card title={t('命令统计', 'Command statistics')} loading={query.isLoading && !redis}>
+      <Card title={t('ui.settings.monitoring.monitoring.commandStatistics')} loading={query.isLoading && !redis}>
         <ManagementTable<RedisMonitorCommandStat>
           rowKey="command"
           search={false}
@@ -1261,7 +1261,7 @@ const RedisMonitorContent = () => {
           toolBarRender={false}
         />
       </Card>
-      <Card title={t('Key信息', 'Key info')} loading={query.isLoading && !redis}>
+      <Card title={t('ui.settings.monitoring.monitoring.keyInfo')} loading={query.isLoading && !redis}>
         <ManagementTable<RedisMonitorKeyspace>
           rowKey="database"
           search={false}
@@ -1272,7 +1272,7 @@ const RedisMonitorContent = () => {
           toolBarRender={false}
         />
       </Card>
-      <Card title={t('连接客户端', 'Connected clients')} loading={query.isLoading && !redis}>
+      <Card title={t('ui.settings.monitoring.monitoring.connectedClients')} loading={query.isLoading && !redis}>
         <ManagementTable<RedisMonitorClient>
           rowKey={(record) => `${record.addressPort || ''}-${record.name || ''}-${record.databaseId || ''}`}
           search={false}
@@ -1310,59 +1310,59 @@ const ServiceMonitorContent = () => {
           <Card title="CPU" loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
             <Row gutter={rowGutter}>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('用户使用率', 'Process CPU usage')} value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.processCpuUsage')} value={service?.cpu?.processUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('系统使用率', 'System CPU usage')} value={service?.cpu?.systemUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.systemCpuUsage')} value={service?.cpu?.systemUsagePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('当前空闲率', 'Idle rate')} value={service?.cpu?.idlePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.idleRate')} value={service?.cpu?.idlePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('平均负载', 'Load average')} value={formatLoadAverage(service?.cpu?.loadAverage)} valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.loadAverage')} value={formatLoadAverage(service?.cpu?.loadAverage)} valueStyle={valueStyle} />
               </Col>
             </Row>
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title={t('宿主机内存', 'Host memory')} loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
+          <Card title={t('ui.settings.monitoring.monitoring.hostMemory')} loading={query.isLoading && !service} style={{ height: '100%' }} bodyStyle={{ minHeight: isDesktop ? 108 : 0 }}>
             <Row gutter={rowGutter}>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('总内存', 'Total memory')} value={formatBytes(service?.memory?.hostTotalBytes ?? service?.memory?.totalBytes)} valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.totalMemory')} value={formatBytes(service?.memory?.hostTotalBytes ?? service?.memory?.totalBytes)} valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('已用内存', 'Used memory')} value={formatBytes(service?.memory?.hostUsedBytes ?? service?.memory?.usedBytes)} valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.usedMemory')} value={formatBytes(service?.memory?.hostUsedBytes ?? service?.memory?.usedBytes)} valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('可用内存', 'Available memory')} value={formatBytes(service?.memory?.hostFreeBytes ?? service?.memory?.freeBytes)} valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.availableMemory')} value={formatBytes(service?.memory?.hostFreeBytes ?? service?.memory?.freeBytes)} valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('使用率', 'Usage')} value={formatPercent(service?.memory?.hostUsagePercent ?? service?.memory?.usagePercent)} valueStyle={valueStyle} />
+                <Statistic title={t('ui.settings.monitoring.monitoring.usage')} value={formatPercent(service?.memory?.hostUsagePercent ?? service?.memory?.usagePercent)} valueStyle={valueStyle} />
               </Col>
             </Row>
           </Card>
         </Col>
       </Row>
 
-      <Card title={t('容器 / JVM 内存', 'Container / JVM memory')} loading={query.isLoading && !service}>
+      <Card title={t('ui.settings.monitoring.monitoring.containerJvmMemory')} loading={query.isLoading && !service}>
         <Row gutter={rowGutter}>
           <Col xs={24} sm={12} lg={6}>
-            <Statistic title={t('容器内存限制', 'Container memory limit')} value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.containerMemoryLimit')} value={formatBytes(service?.memory?.totalBytes)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Statistic title={t('容器已用内存', 'Container used memory')} value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.containerUsedMemory')} value={formatBytes(service?.memory?.usedBytes)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Statistic title={t('JVM 堆上限', 'JVM heap max')} value={formatBytes(service?.memory?.heapMaxBytes)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.jvmHeapMax')} value={formatBytes(service?.memory?.heapMaxBytes)} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Statistic title={t('JVM 已用堆', 'JVM heap used')} value={formatBytes(service?.memory?.heapUsedBytes)} valueStyle={valueStyle} />
+            <Statistic title={t('ui.settings.monitoring.monitoring.jvmHeapUsed')} value={formatBytes(service?.memory?.heapUsedBytes)} valueStyle={valueStyle} />
           </Col>
         </Row>
       </Card>
 
 
-      <Card title={t('基础服务与接口文档', 'Service health & API docs')} loading={query.isLoading && !service}>
+      <Card title={t('ui.settings.monitoring.monitoring.serviceHealthApiDocs')} loading={query.isLoading && !service}>
         <ManagementTable<ServiceMonitorRow>
           rowKey="key"
           size="small"
@@ -1375,74 +1375,74 @@ const ServiceMonitorContent = () => {
         />
       </Card>
 
-      <Card title={t('服务器信息', 'Server information')} loading={query.isLoading && !service}>
+      <Card title={t('ui.settings.monitoring.monitoring.serverInformation')} loading={query.isLoading && !service}>
         <Descriptions {...detailDescriptionsProps}>
-          <Descriptions.Item label={t('服务器名称', 'Server name')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.serverName')}>
             <BreakableValue value={service?.server?.serverName} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('服务器IP', 'Server IP')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.serverIp')}>
             <NumericValue value={service?.server?.serverIp || '-'} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('操作系统', 'Operating system')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.operatingSystem')}>
             <BreakableValue value={service?.server?.osName} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('系统架构', 'Architecture')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.architecture')}>
             <BreakableValue value={service?.server?.osArch} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('系统版本', 'OS version')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.osVersion')}>
             <NumericValue value={service?.server?.osVersion || '-'} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('项目路径', 'Project path')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.projectPath')}>
             <BreakableValue value={service?.server?.projectPath} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('安装路径', 'Install path')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.installPath')}>
             <BreakableValue value={service?.server?.installPath} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('用户目录', 'Home directory')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.homeDirectory')}>
             <BreakableValue value={service?.server?.userHome} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('临时目录', 'Temp directory')} span={fullRowSpan}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.tempDirectory')} span={fullRowSpan}>
             <BreakableValue value={service?.server?.tempDir} />
           </Descriptions.Item>
         </Descriptions>
       </Card>
 
-      <Card title={t('Java虚拟机信息', 'JVM information')} loading={query.isLoading && !service}>
+      <Card title={t('ui.settings.monitoring.monitoring.jvmInformation')} loading={query.isLoading && !service}>
         <Descriptions {...detailDescriptionsProps}>
-          <Descriptions.Item label={t('Java名称', 'Java name')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.javaName')}>
             <BreakableValue value={service?.jvm?.vmName} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('Java版本', 'Java version')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.javaVersion')}>
             <NumericValue value={service?.jvm?.javaVersion || '-'} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('虚拟机版本', 'VM version')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.vmVersion')}>
             <NumericValue value={service?.jvm?.vmVersion || '-'} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('虚拟机厂商', 'VM vendor')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.vmVendor')}>
             <BreakableValue value={service?.jvm?.vmVendor} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('启动时间', 'Start time')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.startTime')}>
             <NumericValue value={service?.jvm?.startTime || '-'} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('运行时长', 'Uptime')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.uptime')}>
             <NumericValue value={String(service?.jvm?.uptimeSeconds ?? '-')} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('进程ID', 'Process ID')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.processId')}>
             <NumericValue value={String(service?.jvm?.pid ?? '-')} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('线程数', 'Thread count')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.threadCount')}>
             <NumericValue value={String(service?.jvm?.threadCount ?? '-')} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('守护线程', 'Daemon threads')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.daemonThreads')}>
             <NumericValue value={String(service?.jvm?.daemonThreadCount ?? '-')} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('峰值线程数', 'Peak threads')}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.peakThreads')}>
             <NumericValue value={String(service?.jvm?.peakThreadCount ?? '-')} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('Java Home', 'Java Home')} span={fullRowSpan}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.javaHome')} span={fullRowSpan}>
             <BreakableValue value={service?.jvm?.javaHome} />
           </Descriptions.Item>
-          <Descriptions.Item label={t('启动参数', 'Startup arguments')} span={fullRowSpan}>
+          <Descriptions.Item label={t('ui.settings.monitoring.monitoring.startupArguments')} span={fullRowSpan}>
             <ExpandableClampText value={service?.jvm?.inputArguments?.join(' ')} />
           </Descriptions.Item>
         </Descriptions>
@@ -1464,21 +1464,21 @@ const MonitoringPage = () => {
         access.canVisitSystemMonitoringService
           ? {
               key: 'service',
-              label: t('服务监控', 'Service monitoring'),
+              label: t('ui.settings.monitoring.monitoring.serviceMonitoring'),
               children: <ServiceMonitorContent />,
             }
           : null,
         access.canVisitSystemMonitoringRedis
           ? {
               key: 'redis',
-              label: t('Redis监控', 'Redis monitoring'),
+              label: t('ui.settings.monitoring.monitoring.redisMonitoring'),
               children: <RedisMonitorContent />,
             }
           : null,
         access.canVisitPlatformUpdate
           ? {
               key: 'update',
-              label: t('平台更新', 'Platform updates'),
+              label: t('ui.settings.monitoring.monitoring.platformUpdates'),
               children: <PlatformUpdateContent />,
             }
           : null,
@@ -1499,7 +1499,7 @@ const MonitoringPage = () => {
   }
 
   return (
-    <ManagementPage title={t('系统监控', 'System monitoring')}>
+    <ManagementPage title={t('ui.settings.monitoring.monitoring.systemMonitoring')}>
       <ManagementPageBody>
         <Tabs
           activeKey={resolvedActiveTab}

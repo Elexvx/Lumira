@@ -6,11 +6,10 @@ import { request } from '@/services/common/request';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { requestMessageCreate, requestMessageRetract } from '@/services/message/api';
 import type { MessageChannel, MessageNoticeRecord, PagedResult, RoleRecord, SmtpSettings, SmtpTestPayload, UserRecord, WechatOfficialAccountSettings } from '@/types/api';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const MESSAGE_CENTER_REFRESH_EVENT = 'saas-message-center:refresh';
 
@@ -48,8 +47,8 @@ const smtpFormInitialValues: SmtpSettings = {
 };
 
 const smtpTestInitialValues: SmtpTestPayload = {
-  subject: t('系统通知测试邮件', 'System notification test email'),
-  content: t('这是一封来自系统通知能力的测试邮件。', 'This is a test email from the system notification feature.'),
+  subject: t('ui.settings.notifications.usenotificationcenter.systemNotificationTestEmail'),
+  content: t('ui.settings.notifications.usenotificationcenter.thisIsATestEmailFromTheSystem'),
   toEmail: '',
 };
 
@@ -59,9 +58,9 @@ const buildChannelRecord = (channel: NotificationChannelRecord['key'], configure
       key: 'INBOX',
       order: 1,
       identifier: 'inbox_notice',
-      type: t('站内信', 'In-app message'),
-      title: t('站内信通知', 'In-app notifications'),
-      description: t('发送到系统右上角消息中心，支持实时推送、已读和撤回。', 'Sent to the message center in the top-right corner, with realtime push, read status, and recall support.'),
+      type: t('ui.settings.notifications.usenotificationcenter.inAppMessage'),
+      title: t('ui.settings.notifications.usenotificationcenter.inAppNotifications'),
+      description: t('ui.settings.notifications.usenotificationcenter.sentToTheMessageCenterInTheTop'),
       enabled: true,
       configured: true,
     };
@@ -72,9 +71,9 @@ const buildChannelRecord = (channel: NotificationChannelRecord['key'], configure
       key: 'EMAIL',
       order: 2,
       identifier: 'email_notice',
-      type: t('邮箱', 'Email'),
-      title: t('邮箱通知', 'Email notifications'),
-      description: t('通过 SMTP 向已绑定邮箱的用户发送系统通知。', 'Send system notifications via SMTP to users with bound email addresses.'),
+      type: t('ui.settings.notifications.usenotificationcenter.email'),
+      title: t('ui.settings.notifications.usenotificationcenter.emailNotifications'),
+      description: t('ui.settings.notifications.usenotificationcenter.sendSystemNotificationsViaSmtpToUsersWith'),
       enabled: configured,
       configured,
     };
@@ -84,9 +83,9 @@ const buildChannelRecord = (channel: NotificationChannelRecord['key'], configure
     key: 'WECHAT_OFFICIAL',
     order: 3,
     identifier: 'wechat_official_notice',
-    type: t('微信', 'WeChat'),
-    title: t('微信服务号通知', 'WeChat official account notifications'),
-    description: t('通过微信公众号/服务号模板消息向已绑定微信 OpenID 的用户发送通知。', 'Send notifications via WeChat official account template messages to users with bound WeChat OpenIDs.'),
+    type: t('ui.settings.notifications.usenotificationcenter.wechat'),
+    title: t('ui.settings.notifications.usenotificationcenter.wechatOfficialAccountNotifications'),
+    description: t('ui.settings.notifications.usenotificationcenter.sendNotificationsViaWechatOfficialAccountTemplateMessages'),
     enabled: configured,
     configured,
   };
@@ -119,8 +118,8 @@ const buildAddChannelItems = ({
   onOpenPublishDrawer: () => void;
 }) =>
   [
-    { key: 'EMAIL', label: t('邮箱', 'Email'), configured: smtpConfigured, channel: 'EMAIL' as const },
-    { key: 'WECHAT_OFFICIAL', label: t('微信', 'WeChat'), configured: wechatConfigured, channel: 'WECHAT_OFFICIAL' as const },
+    { key: 'EMAIL', label: t('ui.settings.notifications.usenotificationcenter.email'), configured: smtpConfigured, channel: 'EMAIL' as const },
+    { key: 'WECHAT_OFFICIAL', label: t('ui.settings.notifications.usenotificationcenter.wechat'), configured: wechatConfigured, channel: 'WECHAT_OFFICIAL' as const },
   ]
     .filter((item) => !item.configured)
     .map((item) => ({
@@ -129,7 +128,7 @@ const buildAddChannelItems = ({
       disabled: !canManageSmtp,
       onClick: () => onAddChannel(item.channel),
     }))
-    .concat(canManualPublish ? [{ key: 'manual-send', label: t('手动发布', 'Manual publish'), disabled: false, onClick: onOpenPublishDrawer }] : []);
+    .concat(canManualPublish ? [{ key: 'manual-send', label: t('ui.settings.notifications.usenotificationcenter.manualPublish'), disabled: false, onClick: onOpenPublishDrawer }] : []);
 
 type UseNotificationChannelManagementParams = {
   canManageSmtp: boolean;
@@ -205,13 +204,13 @@ const useNotificationChannelManagement = ({
         ...nextSettings,
         password: nextSettings.passwordConfigured ? SMTP_PASSWORD_MASK : '',
       });
-      message.success(t('邮箱通知配置已保存', 'Email notification settings saved'));
+      message.success(t('ui.settings.notifications.usenotificationcenter.emailNotificationSettingsSaved'));
       return true;
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return false;
       }
-      showErrorMessage(error, t('邮箱通知配置保存失败，请稍后重试', 'Failed to save email notification settings. Please try again later.'));
+      showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToSaveEmailNotificationSettingsPleaseTry'));
       return false;
     } finally {
       setSavingSmtpSettings(false);
@@ -230,10 +229,10 @@ const useNotificationChannelManagement = ({
         ...requestOptions,
       });
       setSmtpSettings(nextSettings);
-      message.success(t('邮箱通知已停用', 'Email notifications disabled'));
+      message.success(t('ui.settings.notifications.usenotificationcenter.emailNotificationsDisabled'));
       return true;
     } catch (error) {
-      showErrorMessage(error, t('邮箱通知停用失败，请稍后重试', 'Failed to disable email notifications. Please try again later.'));
+      showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToDisableEmailNotificationsPleaseTryAgain'));
       return false;
     } finally {
       setSavingSmtpSettings(false);
@@ -249,13 +248,13 @@ const useNotificationChannelManagement = ({
         data: values,
         ...requestOptions,
       });
-      message.success(t('测试邮件已发送', 'Test email sent'));
+      message.success(t('ui.settings.notifications.usenotificationcenter.testEmailSent'));
       return true;
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return false;
       }
-      showErrorMessage(error, t('测试邮件发送失败，请检查配置', 'Failed to send the test email. Please check your configuration.'));
+      showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToSendTheTestEmailPleaseCheck'));
       return false;
     } finally {
       setTestingSmtpSettings(false);
@@ -325,13 +324,13 @@ const useNotificationChannelManagement = ({
         ...nextSettings,
         appSecret: nextSettings.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
       });
-      message.success(nextSettings.configured ? t('微信通知配置已保存', 'WeChat notification settings saved') : t('微信通知配置已保存，当前仍未完全启用', 'WeChat notification settings saved, but it is not fully enabled yet'));
+      message.success(nextSettings.configured ? t('ui.settings.notifications.usenotificationcenter.wechatNotificationSettingsSaved') : t('ui.settings.notifications.usenotificationcenter.wechatNotificationSettingsSavedButItIsNot'));
       return true;
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return false;
       }
-      showErrorMessage(error, t('微信通知配置保存失败，请稍后重试', 'Failed to save WeChat notification settings. Please try again later.'));
+      showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToSaveWechatNotificationSettingsPleaseTry'));
       return false;
     } finally {
       setSavingWechatOfficialSettings(false);
@@ -350,10 +349,10 @@ const useNotificationChannelManagement = ({
         ...requestOptions,
       });
       setWechatOfficialSettings(nextSettings);
-      message.success(t('微信通知已停用', 'WeChat notifications disabled'));
+      message.success(t('ui.settings.notifications.usenotificationcenter.wechatNotificationsDisabled'));
       return true;
     } catch (error) {
-      showErrorMessage(error, t('微信通知停用失败，请稍后重试', 'Failed to disable WeChat notifications. Please try again later.'));
+      showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToDisableWechatNotificationsPleaseTryAgain'));
       return false;
     } finally {
       setSavingWechatOfficialSettings(false);
@@ -414,7 +413,7 @@ const useNotificationChannelManagement = ({
         return;
       }
       if (record.key === 'INBOX') {
-        message.warning(t('站内信是基础通知渠道，不能删除', 'In-app messages are a base notification channel and cannot be removed'));
+        message.warning(t('ui.settings.notifications.usenotificationcenter.inAppMessagesAreABaseNotificationChannel'));
         return;
       }
       setTogglingChannelKey(record.key);
@@ -433,7 +432,7 @@ const useNotificationChannelManagement = ({
         }
         setSelectedChannelKeys((keys) => keys.filter((key) => key !== record.key));
       } catch (error) {
-        showErrorMessage(error, t('通知渠道停用失败，请稍后重试', 'Failed to disable the notification channel. Please try again later.'));
+        showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToDisableTheNotificationChannelPleaseTry'));
       } finally {
         setTogglingChannelKey(null);
       }
@@ -443,7 +442,7 @@ const useNotificationChannelManagement = ({
 
   const handleDeleteSelectedChannels = useCallback(async () => {
     if (!selectedChannelKeys.length) {
-      message.info(t('请先选择要删除的通知渠道', 'Please select the notification channels to delete first'));
+      message.info(t('ui.settings.notifications.usenotificationcenter.pleaseSelectTheNotificationChannelsToDeleteFirst'));
       return;
     }
     const selectedRecords = channelRecords.filter((record) => selectedChannelKeys.includes(record.key));
@@ -612,7 +611,7 @@ export const useNotificationCenter = ({
         },
         ...requestOptions,
       });
-      message.success(t('通知已提交发送', 'Notification queued for delivery'));
+      message.success(t('ui.settings.notifications.usenotificationcenter.notificationQueuedForDelivery'));
       closePublishDrawer();
       notifyMessageCenterRefresh();
       onReloadLog();
@@ -620,7 +619,7 @@ export const useNotificationCenter = ({
       if (error && typeof error === 'object' && 'errorFields' in error) {
         return;
       }
-      showErrorMessage(error, t('通知发送失败，请稍后重试', 'Failed to send the notification. Please try again later.'));
+      showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToSendTheNotificationPleaseTryAgain'));
     } finally {
       setPublishing(false);
     }
@@ -645,7 +644,7 @@ export const useNotificationCenter = ({
       })
       .catch(() => {
         if (active) {
-          message.error(t('角色列表加载失败，请稍后重试', 'Failed to load the role list. Please try again later.'));
+          message.error(t('ui.settings.notifications.usenotificationcenter.failedToLoadTheRoleListPleaseTry'));
         }
       })
       .finally(() => {
@@ -678,7 +677,7 @@ export const useNotificationCenter = ({
         })
         .catch(() => {
           if (active) {
-            message.error(t('用户名列表加载失败，请稍后重试', 'Failed to load the user list. Please try again later.'));
+            message.error(t('ui.settings.notifications.usenotificationcenter.failedToLoadTheUserListPleaseTry'));
           }
         })
         .finally(() => {
@@ -725,12 +724,12 @@ export const useNotificationCenter = ({
           method: 'POST',
           ...requestOptions,
         });
-        message.success(t('站内信已撤回', 'In-app message retracted'));
+        message.success(t('ui.settings.notifications.usenotificationcenter.inAppMessageRetracted'));
         setDetailRecord((current) => (current && current.id === record.id ? { ...current, publishStatus: 'RETRACTED' } : current));
         notifyMessageCenterRefresh();
         onReloadLog();
       } catch (error) {
-        showErrorMessage(error, t('站内信撤回失败，请稍后重试', 'Failed to retract the in-app message. Please try again later.'));
+        showErrorMessage(error, t('ui.settings.notifications.usenotificationcenter.failedToRetractTheInAppMessagePlease'));
       }
     },
     [canRetractMessage, onReloadLog, requestOptions],

@@ -275,6 +275,48 @@ test('certificate closure migration remains immutable at the production checksum
   assert.match(migration, /PREPARE certificate_team_index_statement/);
 });
 
+test('built-in navigation hierarchy has unique seed identities and an online repair', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const migration = read('deploy/migrations/V202608030002__repair_builtin_navigation_hierarchy.sql');
+  const menuInsertStart = baseline.indexOf('INSERT INTO `sys_menu`');
+  const menuInsertEnd = baseline.indexOf('ON DUPLICATE KEY UPDATE', menuInsertStart);
+  const menuInsert = baseline.slice(menuInsertStart, menuInsertEnd);
+  const menuRows = Array.from(menuInsert.matchAll(
+    /\((-?\d+),\s*(-?\d+),\s*'([^']+)',\s*'[^']*',\s*'([^']+)',\s*(?:NULL|'([^']*)')/g,
+  )).map((match) => ({
+    id: match[1],
+    parentId: match[2],
+    menuCode: match[3],
+    menuType: match[4],
+    path: match[5] || null,
+  }));
+
+  assert.ok(menuRows.length > 80, 'the sys_menu bootstrap block must be parsed');
+  assert.equal(new Set(menuRows.map((row) => row.id)).size, menuRows.length, 'menu ids must be unique');
+  assert.equal(new Set(menuRows.map((row) => row.menuCode)).size, menuRows.length, 'menu codes must be unique');
+
+  const byCode = new Map(menuRows.map((row) => [row.menuCode, row]));
+  assert.equal(byCode.get('competition.review-results')?.id, '-1113');
+  assert.equal(byCode.get('competition.review-results')?.parentId, '-1069');
+  assert.equal(byCode.get('certificate.mine')?.id, '-1114');
+  assert.equal(byCode.get('certificate.mine')?.parentId, '-1069');
+  assert.equal(byCode.get('expert.application')?.parentId, '-1068');
+
+  for (const marker of [
+    'competition.review-results',
+    'certificate.mine',
+    'expert.application',
+    'competition.root',
+    'certificate.root',
+    'certificate.templates',
+    "'platform', 'menu-tree'",
+  ]) {
+    assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
 test('platform event outbox audit identity repair matches the fresh bootstrap', () => {
   const bootstrap = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607310001__repair_platform_event_outbox_audit_identity.sql');

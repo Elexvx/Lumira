@@ -1,9 +1,8 @@
 import { Button, Result, Space, Typography } from 'antd';
-import { getLocale, history, useLocation } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import { useCallback, useEffect, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
-import { normalizeLocale } from '@/i18n/locale';
 import { getRegistration, getRegistrationPaymentStatus } from '@/services/competition/api';
 import type { CompetitionPaymentOrderRecord, CompetitionRegistrationRecord } from '@/services/competition/types';
 import { showErrorMessage } from '@/utils/errorMessage';
@@ -13,9 +12,9 @@ import {
   isRegistrationPaymentSuccessful,
   parsePaymentResultRegistrationId,
 } from './utils/registrationCheckout';
+import { databaseMessage } from '@/i18n/databaseMessage';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const PaymentResultPage = () => {
   const location = useLocation();
@@ -44,7 +43,7 @@ const PaymentResultPage = () => {
       }
     } catch (error) {
       setLoadError(true);
-      if (showError) showErrorMessage(error, t('支付结果加载失败', 'Failed to load the payment result'));
+      if (showError) showErrorMessage(error, t('ui.competition.paymentresult.failedToLoadThePaymentResult'));
     } finally {
       setLoading(false);
     }
@@ -74,42 +73,33 @@ const PaymentResultPage = () => {
   const failed = loadError || isPaymentOrderFailed(paymentOrder?.status);
   const resultStatus = successful ? 'success' : failed ? 'error' : 'info';
   const title = successful
-    ? t('付款成功，报名已确认', 'Payment successful; registration confirmed')
+    ? t('ui.competition.paymentresult.paymentSuccessfulRegistrationConfirmed')
     : failed
-      ? t('付款未完成', 'Payment incomplete')
-      : t('正在确认付款结果', 'Confirming payment result');
+      ? t('ui.competition.paymentresult.paymentIncomplete')
+      : t('ui.competition.paymentresult.confirmingPaymentResult');
   const subTitle = successful
-    ? t(
-      `报名编号：${registration?.registrationNo || registrationId}${registration?.participantNo ? `，参赛编号：${registration.participantNo}` : ''}`,
-      `Registration No.: ${registration?.registrationNo || registrationId}${registration?.participantNo ? `; Participant No.: ${registration.participantNo}` : ''}`,
-    )
+    ? t('ui.competition.paymentresult.registrationNo', { value1: registration?.registrationNo || registrationId, value2: registration?.participantNo ? `，参赛编号：${registration.participantNo}` : '' })
     : failed
-      ? t(
-        '未查询到有效的支付成功结果。你可以返回报名记录后重新支付。',
-        'No valid successful payment was found. Return to your registrations to try again.',
-      )
-      : t(
-        `报名编号：${registration?.registrationNo || registrationId || '-'}。支付回调可能稍有延迟，本页会自动刷新。`,
-        `Registration No.: ${registration?.registrationNo || registrationId || '-'}. The payment callback may be delayed; this page refreshes automatically.`,
-      );
+      ? t('ui.competition.paymentresult.noValidSuccessfulPaymentWasFoundReturnTo')
+      : t('ui.competition.paymentresult.registrationNoThePaymentCallbackMayBeDelayed', { value1: registration?.registrationNo || registrationId || '-' });
 
   return (
-    <ManagementPage title={t('支付结果', 'Payment result')}>
+    <ManagementPage title={t('ui.competition.paymentresult.paymentResult')}>
       <ManagementPageBody>
         <Result
           status={resultStatus}
-          title={loading ? t('正在查询付款结果…', 'Checking payment result…') : title}
+          title={loading ? t('ui.competition.paymentresult.checkingPaymentResult') : title}
           subTitle={subTitle}
           extra={
             <Space wrap>
-              {successful ? <Button type="primary" onClick={() => history.push('/')}>{t('返回首页', 'Back to home')}</Button> : null}
-              {!successful ? <Button type="primary" loading={loading} onClick={() => void refresh(true)}>{t('刷新结果', 'Refresh result')}</Button> : null}
-              <Button onClick={() => history.push('/competitions/register')}>{t('返回报名记录', 'Back to registrations')}</Button>
+              {successful ? <Button type="primary" onClick={() => history.push('/')}>{t('ui.competition.paymentresult.backToHome')}</Button> : null}
+              {!successful ? <Button type="primary" loading={loading} onClick={() => void refresh(true)}>{t('ui.competition.paymentresult.refreshResult')}</Button> : null}
+              <Button onClick={() => history.push('/competitions/register')}>{t('ui.competition.paymentresult.backToRegistrations')}</Button>
             </Space>
           }
         >
           {!successful && !failed
-            ? <Typography.Text type="secondary">{t('请勿重复创建订单；确认结果前可以安全刷新页面。', 'Do not create duplicate orders. You may safely refresh while confirmation is pending.')}</Typography.Text>
+            ? <Typography.Text type="secondary">{t('ui.competition.paymentresult.doNotCreateDuplicateOrdersYouMaySafely')}</Typography.Text>
             : null}
         </Result>
       </ManagementPageBody>

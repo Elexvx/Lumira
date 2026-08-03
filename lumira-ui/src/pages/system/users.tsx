@@ -17,12 +17,12 @@ import type { FormProps } from 'antd';
 import type { Rule } from 'antd/es/form';
 import type { SecuritySettings } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
-import { protectedUserStatusOptions } from './users/options';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { protectedUserStatusOptions } from './users/options';
+import { databaseMessage } from '@/i18n/databaseMessage';
+import { resolveRuntimeLocale } from '@/i18n/locale';
+
+const t = databaseMessage;
 
 const ALL_DEPARTMENTS_KEY = 'all';
 
@@ -94,7 +94,7 @@ const DepartmentTreeFilter = ({
         key: ALL_DEPARTMENTS_KEY,
         title: (
           <span className="saas-user-department-tree__node">
-          <span className="saas-user-department-tree__name">{t('全部部门', 'All departments')}</span>
+          <span className="saas-user-department-tree__name">{t('ui.system.users.allDepartments')}</span>
           </span>
         ),
         children: buildDepartmentTreeNodes(departments, normalizedDepartmentKeyword),
@@ -116,15 +116,15 @@ const DepartmentTreeFilter = ({
       title={
         <span className="saas-user-department-card__title">
           <ApartmentOutlined />
-          {t('组织部门', 'Org departments')}
+          {t('ui.system.users.orgDepartments')}
       </span>
       }
-      extra={<Button type="text" aria-label={t('刷新部门', 'Refresh departments')} icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />}
+      extra={<Button type="text" aria-label={t('ui.system.users.refreshDepartments')} icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />}
     >
       <Input.Search
         allowClear
         className="saas-user-department-card__search"
-        placeholder={t('搜索部门', 'Search departments')}
+        placeholder={t('ui.system.users.searchDepartments')}
         value={departmentKeyword}
         onChange={(event) => setDepartmentKeyword(event.target.value)}
       />
@@ -145,56 +145,56 @@ const DepartmentTreeFilter = ({
           }}
         />
       ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无匹配部门', 'No matching departments')} />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('ui.system.users.noMatchingDepartments')} />
       )}
     </Card>
   );
 };
 
 const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
-  { title: t('用户编号', 'User number'), dataIndex: 'userNo', renderText: (value) => value || '-' },
-  { title: t('用户名', 'Username'), dataIndex: 'username' },
-  { title: t('昵称', 'Nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
-  { title: t('姓名', 'Full name'), dataIndex: 'realName', renderText: (value) => value || '-' },
-  { title: t('手机号', 'Mobile number'), dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },
+  { title: t('ui.system.users.userNumber'), dataIndex: 'userNo', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.username'), dataIndex: 'username' },
+  { title: t('ui.system.users.nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.fullName'), dataIndex: 'realName', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.mobileNumber'), dataIndex: 'mobile', renderText: (value) => maskMobile(value) || '-' },
   {
-    title: t('身份证号码', 'ID card number'),
+    title: t('ui.system.users.idCardNumber'),
     dataIndex: 'idCardNumber',
     renderText: (value) => maskIdCardNumber(value) || '-',
   },
-  { title: t('邮箱', 'Email'), dataIndex: 'email', renderText: (value) => maskEmail(value) || '-' },
-  { title: t('头像地址', 'Avatar URL'), dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
-  { title: t('出生年月', 'Birth month'), dataIndex: 'birthMonth', renderText: (value) => value || '-' },
-  { title: t('性别', 'Gender'), dataIndex: 'gender', renderText: (value) => value || '-' },
-  { title: t('所在地区', 'Region'), dataIndex: 'region', renderText: (value) => value || '-' },
-  { title: t('可工作时间', 'Available time'), dataIndex: 'availableTime', renderText: (value) => value || '-' },
-  { title: t('状态', 'Status'), dataIndex: 'status' },
-  { title: t('来源', 'Source'), dataIndex: 'source', renderText: (value) => value || '-' },
-  { title: t('注册时间', 'Registered at'), dataIndex: 'registeredAt', renderText: (value) => value || '-' },
-  { title: t('最近登录', 'Last login'), dataIndex: 'lastLoginAt', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.email'), dataIndex: 'email', renderText: (value) => maskEmail(value) || '-' },
+  { title: t('ui.system.users.avatarUrl'), dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.birthMonth'), dataIndex: 'birthMonth', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.gender'), dataIndex: 'gender', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.region'), dataIndex: 'region', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.availableTime'), dataIndex: 'availableTime', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.status'), dataIndex: 'status' },
+  { title: t('ui.system.users.source'), dataIndex: 'source', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.registeredAt'), dataIndex: 'registeredAt', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.lastLogin'), dataIndex: 'lastLoginAt', renderText: (value) => value || '-' },
   {
-    title: t('角色', 'Roles'),
+    title: t('ui.system.users.roles'),
     dataIndex: 'roleNames',
     renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
   },
   {
-    title: t('部门', 'Departments'),
+    title: t('ui.system.users.departments'),
     dataIndex: 'deptNames',
     renderText: (value) => (Array.isArray(value) && value.length ? value.join(', ') : '-'),
   },
-  { title: t('创建时间', 'Created at'), dataIndex: 'createdAt', renderText: (value) => value || '-' },
-  { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.createdAt'), dataIndex: 'createdAt', renderText: (value) => value || '-' },
+  { title: t('ui.system.users.updatedAt'), dataIndex: 'updatedAt', renderText: (value) => value || '-' },
 ];
 
 const GENDER_OPTIONS = [
-  { label: t('男', 'Male'), value: 'MALE' },
-  { label: t('女', 'Female'), value: 'FEMALE' },
-  { label: t('其他', 'Other'), value: 'OTHER' },
+  { label: t('ui.system.users.male'), value: 'MALE' },
+  { label: t('ui.system.users.female'), value: 'FEMALE' },
+  { label: t('ui.system.users.other'), value: 'OTHER' },
 ];
 
 const USER_STATUS_OPTIONS = [
-  { label: t('启用', 'Enabled'), value: 'ENABLED' },
-  { label: t('禁用', 'Disabled'), value: 'DISABLED' },
+  { label: t('ui.system.users.enabled'), value: 'ENABLED' },
+  { label: t('ui.system.users.disabled'), value: 'DISABLED' },
 ];
 
 const USER_GENDER_DICT_FALLBACK_OPTIONS = [...GENDER_OPTIONS, { label: 'Unknown', value: 'UNKNOWN' }];
@@ -223,7 +223,7 @@ const isDigit = (charCode: number) => charCode >= 48 && charCode <= 57;
 const isLetter = (charCode: number) => charCode >= 97 && charCode <= 122;
 
 const buildPasswordPolicyRules = (editingId: number | null, securitySettings: SecuritySettings, containsConsecutiveCharacters: (value: string) => boolean): Rule[] => [
-  ...(!editingId ? [{ required: true, message: t('请输入密码', 'Please enter the password') }] : []),
+  ...(!editingId ? [{ required: true, message: t('ui.system.users.pleaseEnterThePassword') }] : []),
   {
     validator: async (_: unknown, value?: string) => {
       if (!value) {
@@ -231,19 +231,19 @@ const buildPasswordPolicyRules = (editingId: number | null, securitySettings: Se
       }
       const minLength = Math.max(1, Number(securitySettings.passwordMinLength || 0));
       if (value.length < minLength) {
-        return Promise.reject(new Error(t('密码长度不能少于 {count} 位', 'Password must be at least {count} characters').replace('{count}', String(minLength))));
+        return Promise.reject(new Error(t('ui.system.users.passwordMustBeAtLeastCharacters').replace('{count}', String(minLength))));
       }
       if (securitySettings.passwordRequireUppercase && !/[A-Z]/.test(value)) {
-        return Promise.reject(new Error(t('密码必须包含大写字母', 'Password must contain an uppercase letter')));
+        return Promise.reject(new Error(t('ui.system.users.passwordMustContainAnUppercaseLetter')));
       }
       if (securitySettings.passwordRequireLowercase && !/[a-z]/.test(value)) {
-        return Promise.reject(new Error(t('密码必须包含小写字母', 'Password must contain a lowercase letter')));
+        return Promise.reject(new Error(t('ui.system.users.passwordMustContainALowercaseLetter')));
       }
       if (securitySettings.passwordRequireSpecialCharacter && !/[^A-Za-z0-9]/.test(value)) {
-        return Promise.reject(new Error(t('密码必须包含特殊字符', 'Password must contain a special character')));
+        return Promise.reject(new Error(t('ui.system.users.passwordMustContainASpecialCharacter')));
       }
       if (!securitySettings.passwordAllowConsecutiveCharacters && containsConsecutiveCharacters(value)) {
-        return Promise.reject(new Error(t('密码不能包含连续字符', 'Password cannot contain consecutive characters')));
+        return Promise.reject(new Error(t('ui.system.users.passwordCannotContainConsecutiveCharacters')));
       }
       return Promise.resolve();
     },
@@ -251,18 +251,18 @@ const buildPasswordPolicyRules = (editingId: number | null, securitySettings: Se
 ];
 
 const buildPasswordPolicyHint = (securitySettings: SecuritySettings) => {
-  const parts = [t('至少 {count} 位', 'At least {count} characters').replace('{count}', String(Math.max(1, Number(securitySettings.passwordMinLength || 0))))];
+  const parts = [t('ui.system.users.atLeastCharacters').replace('{count}', String(Math.max(1, Number(securitySettings.passwordMinLength || 0))))];
   if (securitySettings.passwordRequireUppercase) {
-    parts.push(t('包含大写字母', 'Contains uppercase letters'));
+    parts.push(t('ui.system.users.containsUppercaseLetters'));
   }
   if (securitySettings.passwordRequireLowercase) {
-    parts.push(t('包含小写字母', 'Contains lowercase letters'));
+    parts.push(t('ui.system.users.containsLowercaseLetters'));
   }
   if (securitySettings.passwordRequireSpecialCharacter) {
-    parts.push(t('包含特殊字符', 'Contains special characters'));
+    parts.push(t('ui.system.users.containsSpecialCharacters'));
   }
   if (!securitySettings.passwordAllowConsecutiveCharacters) {
-    parts.push(t('不能包含连续字符', 'No consecutive characters'));
+    parts.push(t('ui.system.users.noConsecutiveCharacters'));
   }
   return parts.join('，');
 };
@@ -280,67 +280,67 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
   <Form {...formProps}>
     <Form.Item
       name="username"
-      label={t('用户名', 'Username')}
+      label={t('ui.system.users.username')}
       rules={[
-        { required: true, message: t('请输入用户名', 'Please enter the username') },
+        { required: true, message: t('ui.system.users.pleaseEnterTheUsername') },
         {
           pattern: USERNAME_PATTERN,
-          message: t('用户名只能包含英文字母、数字、下划线和连字符', 'Username can only contain letters, numbers, underscores, and hyphens'),
+          message: t('ui.system.users.usernameCanOnlyContainLettersNumbersUnderscoresAnd'),
         },
       ]}
       normalize={trimString}
     >
-      <Input autoComplete="username" placeholder={t('例如：zhangsan', 'e.g. zhangsan')} />
+      <Input autoComplete="username" placeholder={t('ui.system.users.eGZhangsan')} />
     </Form.Item>
-    <Form.Item name="roleIds" label={t('角色', 'Roles')} rules={[{ required: true, message: t('请选择角色', 'Please select roles') }]} extra={t('可为用户分配一个或多个角色', 'You can assign one or more roles to the user')}>
-      <Select mode="multiple" allowClear options={roleOptions} placeholder={t('请选择角色', 'Select roles')} />
+    <Form.Item name="roleIds" label={t('ui.system.users.roles')} rules={[{ required: true, message: t('ui.system.users.pleaseSelectRoles') }]} extra={t('ui.system.users.youCanAssignOneOrMoreRolesTo')}>
+      <Select mode="multiple" allowClear options={roleOptions} placeholder={t('ui.system.users.selectRoles')} />
     </Form.Item>
-    <Form.Item name="deptIds" label={t('所属部门', 'Departments')} extra={t('部门用于本部门、本部门及下级等数据权限范围', 'Departments are used for data scope like current department and descendants')}>
-      <Select mode="multiple" allowClear options={departmentOptions} placeholder={t('请选择部门', 'Select departments')} />
+    <Form.Item name="deptIds" label={t('ui.system.users.departments.b9e09338')} extra={t('ui.system.users.departmentsAreUsedForDataScopeLikeCurrent')}>
+      <Select mode="multiple" allowClear options={departmentOptions} placeholder={t('ui.system.users.selectDepartments')} />
     </Form.Item>
-    <Form.Item name="primaryDeptId" label={t('主部门', 'Primary department')}>
-      <Select allowClear options={departmentOptions} placeholder={t('请选择主部门', 'Select a primary department')} />
+    <Form.Item name="primaryDeptId" label={t('ui.system.users.primaryDepartment')}>
+      <Select allowClear options={departmentOptions} placeholder={t('ui.system.users.selectAPrimaryDepartment')} />
     </Form.Item>
     <Form.Item
       name="password"
-      label={editingId ? t('重置密码（可选）', 'Reset password (optional)') : t('初始密码', 'Initial password')}
+      label={editingId ? t('ui.system.users.resetPasswordOptional') : t('ui.system.users.initialPassword')}
       extra={buildPasswordPolicyHint(securitySettings)}
       rules={buildPasswordPolicyRules(editingId, securitySettings, containsConsecutiveCharacters)}
     >
-      <Input.Password placeholder={t('输入密码', 'Enter password')} />
+      <Input.Password placeholder={t('ui.system.users.enterPassword')} />
     </Form.Item>
-    <Form.Item name="status" label={t('状态', 'Status')} rules={[{ required: true, message: t('请选择状态', 'Please select a status') }]}>
+    <Form.Item name="status" label={t('ui.system.users.status')} rules={[{ required: true, message: t('ui.system.users.pleaseSelectAStatus') }]}>
       <Select disabled={protectedAdminSelected} options={protectedUserStatusOptions(userStatusOptions, protectedAdminSelected)} />
     </Form.Item>
-    <Form.Item name="mobile" label={t('手机号', 'Mobile number')} rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
+    <Form.Item name="mobile" label={t('ui.system.users.mobileNumber')} rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="idCardNumber" label={t('身份证号码', 'ID card number')} rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
+    <Form.Item name="idCardNumber" label={t('ui.system.users.idCardNumber')} rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="nickname" label={t('昵称', 'Nickname')} normalize={trimString}>
+    <Form.Item name="nickname" label={t('ui.system.users.nickname')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="realName" label={t('姓名', 'Full name')} normalize={trimString}>
+    <Form.Item name="realName" label={t('ui.system.users.fullName')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="email" label={t('邮箱', 'Email')} rules={[{ type: 'email', message: t('请输入有效邮箱地址', 'Please enter a valid email address') }]} normalize={trimString}>
+    <Form.Item name="email" label={t('ui.system.users.email')} rules={[{ type: 'email', message: t('ui.system.users.pleaseEnterAValidEmailAddress') }]} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="avatarUrl" label={t('头像地址', 'Avatar URL')} normalize={trimString}>
+    <Form.Item name="avatarUrl" label={t('ui.system.users.avatarUrl')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="birthMonth" label={t('出生年月', 'Birth month')}>
-      <DatePicker picker="month" placeholder={t('请选择出生年月', 'Select birth month')} format={isEnglishLocale() ? 'YYYY-MM' : 'YYYY年MM月'} style={{ width: '100%' }} />
+    <Form.Item name="birthMonth" label={t('ui.system.users.birthMonth')}>
+      <DatePicker picker="month" placeholder={t('ui.system.users.selectBirthMonth')} format={resolveRuntimeLocale() === 'en-US' ? 'YYYY-MM' : 'YYYY年MM月'} style={{ width: '100%' }} />
     </Form.Item>
-    <Form.Item name="gender" label={t('性别', 'Gender')}>
-      <Select allowClear options={genderOptions} placeholder={t('请选择性别', 'Select gender')} />
+    <Form.Item name="gender" label={t('ui.system.users.gender')}>
+      <Select allowClear options={genderOptions} placeholder={t('ui.system.users.selectGender')} />
     </Form.Item>
-    <Form.Item name="region" label={t('所在地区', 'Region')} normalize={trimString}>
+    <Form.Item name="region" label={t('ui.system.users.region')} normalize={trimString}>
       <Input />
     </Form.Item>
-    <Form.Item name="availableTime" label={t('可工作时间', 'Available time')} normalize={trimString}>
-      <Input.TextArea rows={2} placeholder={t('请输入可工作时间，如：周一至周五 09:00-18:00', 'Enter available time, e.g. Mon-Fri 09:00-18:00')} />
+    <Form.Item name="availableTime" label={t('ui.system.users.availableTime')} normalize={trimString}>
+      <Input.TextArea rows={2} placeholder={t('ui.system.users.enterAvailableTimeEGMonFri09')} />
     </Form.Item>
   </Form>
 );
@@ -391,7 +391,7 @@ const UserManagementPage = () => {
   } = userManagement;
 
   return (
-    <ManagementPage title={t('用户管理', 'User management')} className="saas-user-management-page">
+    <ManagementPage title={t('ui.system.users.userManagement')} className="saas-user-management-page">
       <ManagementPageBody>
         <div className="saas-user-management-layout">
           <DepartmentTreeFilter
@@ -418,19 +418,19 @@ const UserManagementPage = () => {
                     key: 'create',
                     permission: 'system:user:create',
                     type: 'primary',
-                    label: t('新增用户', 'Add user'),
+                    label: t('ui.system.users.addUser'),
                     onClick: () => void openCreate(),
                   },
                   {
                     key: 'export',
                     permission: 'system:user:export',
                     icon: <DownloadOutlined />,
-                    label: t('导出用户', 'Export users'),
+                    label: t('ui.system.users.exportUsers'),
                     onClick: () => void openExport(),
                   },
                   {
                     key: 'refresh',
-                    label: t('刷新', 'Refresh'),
+                    label: t('ui.system.users.refresh'),
                     onClick: () => void actionRef.current?.reload(),
                   },
                 ])
@@ -441,12 +441,12 @@ const UserManagementPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={drawer.editingId ? t('编辑用户', 'Edit user') : t('新增用户', 'Add user')}
+        title={drawer.editingId ? t('ui.system.users.editUser') : t('ui.system.users.addUser')}
         open={drawer.open}
         onClose={drawer.close}
         footerActions={[
-          { key: 'cancel', label: t('取消', 'Cancel'), onClick: drawer.close },
-          { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSaveUser, onClick: () => void saveUser() },
+          { key: 'cancel', label: t('ui.system.users.cancel'), onClick: drawer.close },
+          { key: 'save', label: t('ui.system.users.save'), type: 'primary', loading: saving, disabled: !canSaveUser, onClick: () => void saveUser() },
         ]}
       >
         <UserEditorForm
@@ -461,7 +461,7 @@ const UserManagementPage = () => {
         />
       </ManagementDrawer>
 
-      <ManagementDrawer title={detail.currentRecord?.username ? `${t('用户详情', 'User details')} · ${detail.currentRecord.username}` : t('用户详情', 'User details')} open={detail.open} onClose={detail.close}>
+      <ManagementDrawer title={detail.currentRecord?.username ? `${t('ui.system.users.userDetails')} · ${detail.currentRecord.username}` : t('ui.system.users.userDetails')} open={detail.open} onClose={detail.close}>
         {detail.loading ? (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: 'var(--saas-spacing-240)' }}>
             <Spin />
@@ -472,19 +472,19 @@ const UserManagementPage = () => {
       </ManagementDrawer>
 
       <Modal
-        title={t('导出用户', 'Export users')}
+        title={t('ui.system.users.exportUsers')}
         open={exportModalOpen}
         onCancel={() => setExportModalOpen(false)}
         onOk={() => void confirmExport()}
-        okText={t('开始导出', 'Start export')}
-        cancelText={t('取消', 'Cancel')}
+        okText={t('ui.system.users.startExport')}
+        cancelText={t('ui.system.users.cancel')}
         confirmLoading={exportLoading}
         width={720}
         destroyOnHidden
       >
         <Transfer
           dataSource={exportFields.map((field) => ({ key: field.key, title: field.label }))}
-          titles={[t('可选字段', 'Available fields'), t('导出字段', 'Export fields')]}
+          titles={[t('ui.system.users.availableFields'), t('ui.system.users.exportFields')]}
           targetKeys={selectedExportFields}
           onChange={(nextTargetKeys) => setSelectedExportFields(nextTargetKeys.map(String))}
           render={(item) => item.title}
@@ -494,18 +494,18 @@ const UserManagementPage = () => {
       </Modal>
 
       <Modal
-        title={t('导出任务', 'Export task')}
+        title={t('ui.system.users.exportTask')}
         open={exportTaskOpen}
         onCancel={() => setExportTaskOpen(false)}
         footer={[
           <Button key="close" onClick={() => setExportTaskOpen(false)}>
-            {t('关闭', 'Close')}
+            {t('ui.system.users.close')}
           </Button>,
           <Button key="center" onClick={openDownloadCenter}>
-            {t('前往下载中心', 'Download center')}
+            {t('ui.system.users.downloadCenter')}
           </Button>,
           <Button key="download" type="primary" disabled={exportTask?.status !== 'SUCCESS' || !exportTask.downloadUrl} onClick={downloadExportTaskFile}>
-            {t('下载文件', 'Download file')}
+            {t('ui.system.users.downloadFile')}
           </Button>,
         ]}
       >
@@ -515,18 +515,18 @@ const UserManagementPage = () => {
             showIcon
             message={
               exportTask?.status === 'SUCCESS'
-                ? t('导出完成', 'Export complete')
+                ? t('ui.system.users.exportComplete')
                 : exportTask?.status === 'FAILED'
-                  ? t('导出失败', 'Export failed')
-                  : t('导出进行中', 'Export in progress')
+                  ? t('ui.system.users.exportFailed')
+                  : t('ui.system.users.exportInProgress')
             }
-            description={exportTask?.errorMessage || t('数据较多时会在后台生成文件，完成后可在下载中心获取。', 'Large exports are generated in the background and can be downloaded from the download center.')}
+            description={exportTask?.errorMessage || t('ui.system.users.largeExportsAreGeneratedInTheBackgroundAnd')}
           />
           <Typography.Text type="secondary">
-            {t('记录数', 'Records')}: {exportTask?.totalCount ?? '-'}
+            {t('ui.system.users.records')}: {exportTask?.totalCount ?? '-'}
           </Typography.Text>
           <Typography.Text type="secondary">
-            {t('文件名', 'File name')}: {exportTask?.fileName || '-'}
+            {t('ui.system.users.fileName')}: {exportTask?.fileName || '-'}
           </Typography.Text>
         </Space>
       </Modal>

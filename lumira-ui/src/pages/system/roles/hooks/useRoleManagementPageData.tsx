@@ -21,12 +21,11 @@ import type { PermissionTreeRecord } from '@/types/api';
 import { request } from '@/services/common/request';
 import type { PagedResult } from '@/types/api';
 import { APP_SPACING } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
-import { notifyCurrentUserSync } from '@/auth/currentUserSync';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { notifyCurrentUserSync } from '@/auth/currentUserSync';
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const GLOBAL_DATA_SCOPE_RESOURCE = '*';
 const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
@@ -113,7 +112,7 @@ const buildPermissionTreeData = (nodes: NormalizedPermissionTreeRecord[]): Permi
       createElement(
         'span',
         { className: 'role-page-row__meta' },
-        node.nodeType === 'CATALOG' ? createElement('span', { className: 'role-page-row__kind' }, t('目录', 'Catalog')) : null,
+        node.nodeType === 'CATALOG' ? createElement('span', { className: 'role-page-row__kind' }, t('ui.system.roles.userolemanagementpagedata.catalog')) : null,
         node.nodeType === 'PAGE' && node.routePath
           ? createElement(
               'span',
@@ -124,10 +123,10 @@ const buildPermissionTreeData = (nodes: NormalizedPermissionTreeRecord[]): Permi
             )
           : null,
         node.nodeType === 'PAGE' && !node.routeMatched
-          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--mismatch' }, t('路由失配', 'Route mismatch'))
+          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--mismatch' }, t('ui.system.roles.userolemanagementpagedata.routeMismatch'))
           : null,
         node.nodeType === 'CATALOG'
-          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--catalog' }, t('仅作目录分组', 'Catalog grouping only'))
+          ? createElement('span', { className: 'role-page-row__hint role-page-row__hint--catalog' }, t('ui.system.roles.userolemanagementpagedata.catalogGroupingOnly'))
           : null,
       ),
     ),
@@ -263,23 +262,23 @@ const roleTypeValueEnum = ROLE_TYPE_OPTIONS.reduce<Record<string, { text: string
 
 const roleDataColumns: ProColumns<RoleRecord>[] = [
   {
-    title: t('角色编码', 'Role code'),
+    title: t('ui.system.roles.userolemanagementpagedata.roleCode'),
     dataIndex: 'roleCode',
     search: true,
   },
   {
-    title: t('角色名称', 'Role name'),
+    title: t('ui.system.roles.userolemanagementpagedata.roleName'),
     dataIndex: 'roleName',
     search: true,
     render: (_, record) => (
       <Space size={APP_SPACING.tagWrapGap.desktop[0]} wrap>
         <span>{record.roleName}</span>
-        {record.defaultRegistrationRole ? <Tag color="blue">{t('默认注册', 'Default registration')}</Tag> : null}
+        {record.defaultRegistrationRole ? <Tag color="blue">{t('ui.system.roles.userolemanagementpagedata.defaultRegistration')}</Tag> : null}
       </Space>
     ),
   },
   {
-    title: t('角色类型', 'Role type'),
+    title: t('ui.system.roles.userolemanagementpagedata.roleType'),
     dataIndex: 'roleType',
     valueEnum: roleTypeValueEnum,
     search: {
@@ -287,21 +286,21 @@ const roleDataColumns: ProColumns<RoleRecord>[] = [
     },
   },
   {
-    title: t('默认访问页', 'Default landing page'),
+    title: t('ui.system.roles.userolemanagementpagedata.defaultLandingPage'),
     dataIndex: 'defaultHomePath',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     render: (_, record) => record.defaultHomePath || '/dashboard/home',
   },
   {
-    title: t('权限数', 'Permission count'),
+    title: t('ui.system.roles.userolemanagementpagedata.permissionCount'),
     dataIndex: 'permissionCount',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => record.permissionCount ?? 0,
   },
   {
-    title: t('用户数', 'User count'),
+    title: t('ui.system.roles.userolemanagementpagedata.userCount'),
     dataIndex: 'userCount',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
@@ -326,7 +325,7 @@ const buildRoleActionColumn = ({
   onOpenPermissions: (record: RoleRecord) => void;
   onDelete: (record: RoleRecord) => void;
 }): ProColumns<RoleRecord> => ({
-  title: t('操作', 'Actions'),
+  title: t('ui.system.roles.userolemanagementpagedata.actions'),
   valueType: 'option',
   fixed: isDesktop ? 'right' : undefined,
   width: 'var(--saas-spacing-180)',
@@ -336,25 +335,25 @@ const buildRoleActionColumn = ({
       items={buildRowActions([
         {
           key: 'detail',
-          label: t('详情', 'Details'),
+          label: t('ui.system.roles.userolemanagementpagedata.details'),
           permission: 'system:role:view',
           onClick: () => onOpenDetail(record),
         },
         {
           key: 'edit',
-          label: t('编辑', 'Edit'),
+          label: t('ui.system.roles.userolemanagementpagedata.edit'),
           permission: 'system:role:update',
           onClick: () => onOpenEdit(record),
         },
         {
           key: 'permission',
-          label: t('权限分配', 'Permissions'),
+          label: t('ui.system.roles.userolemanagementpagedata.permissions'),
           permission: 'system:role:grant',
           onClick: () => onOpenPermissions(record),
         },
         {
           key: 'delete',
-          label: t('删除', 'Delete'),
+          label: t('ui.system.roles.userolemanagementpagedata.delete'),
           permission: 'system:role:delete',
           danger: true,
           disabled: Boolean(record.defaultRegistrationRole) || Number(record.userCount || 0) > 0,
@@ -549,7 +548,7 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
       })
       .catch(() => {
         if (active) {
-          message.error(t('加载权限树失败，请稍后重试', 'Failed to load the permission tree. Please try again later.'));
+          message.error(t('ui.system.roles.userolemanagementpagedata.failedToLoadThePermissionTreePleaseTry'));
         }
       })
       .finally(() => {
@@ -577,7 +576,7 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
       })
       .catch(() => {
         if (active) {
-          message.error(t('加载权限信息失败，请稍后重试', 'Failed to load the permission information. Please try again later.'));
+          message.error(t('ui.system.roles.userolemanagementpagedata.failedToLoadThePermissionInformationPleaseTry'));
         }
       });
 
@@ -817,14 +816,14 @@ export const useRoleManagementPageData = () => {
       setDefaultRoleId(defaultRole.id);
       setDefaultRoleOptions(rolePage.records || []);
     } catch {
-      message.error(t('默认注册角色加载失败，请稍后重试', 'Failed to load the default registration role. Please try again later.'));
+      message.error(t('ui.system.roles.userolemanagementpagedata.failedToLoadTheDefaultRegistrationRolePlease'));
     } finally {
       setDefaultRoleLoading(false);
     }
   }, []);
   const saveDefaultRole = useCallback(async () => {
     if (!defaultRoleId) {
-      message.warning(t('请选择默认注册角色', 'Please choose a default registration role'));
+      message.warning(t('ui.system.roles.userolemanagementpagedata.pleaseChooseADefaultRegistrationRole'));
       return;
     }
     setDefaultRoleSaving(true);
@@ -834,7 +833,7 @@ export const useRoleManagementPageData = () => {
         data: { roleId: defaultRoleId },
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success(t('默认注册角色已更新', 'Default registration role updated'));
+      message.success(t('ui.system.roles.userolemanagementpagedata.defaultRegistrationRoleUpdated'));
       setDefaultRoleModalOpen(false);
       roleCrud.reloadTable();
     } finally {
@@ -901,7 +900,7 @@ export const useRoleManagementPageData = () => {
         });
         permissionEditor.syncActivePageByPermissionKeys(permissionKeys);
       } catch {
-      message.error(t('加载角色信息失败，请稍后重试', 'Failed to load the role information. Please try again later.'));
+      message.error(t('ui.system.roles.userolemanagementpagedata.failedToLoadTheRoleInformationPleaseTry'));
         roleCrud.drawer.close();
       } finally {
         permissionEditor.setEditorLoading(false);
@@ -916,10 +915,10 @@ export const useRoleManagementPageData = () => {
     }
 
     confirmAction({
-      title: t('提示', 'Notice'),
-      content: t('关闭抽屉将丢失未保存的内容，是否确认关闭？', 'Closing the drawer will discard unsaved changes. Do you want to continue?'),
-      okText: t('继续编辑', 'Keep editing'),
-      cancelText: t('确认关闭', 'Close anyway'),
+      title: t('ui.system.roles.userolemanagementpagedata.notice'),
+      content: t('ui.system.roles.userolemanagementpagedata.closingTheDrawerWillDiscardUnsavedChangesDo'),
+      okText: t('ui.system.roles.userolemanagementpagedata.keepEditing'),
+      cancelText: t('ui.system.roles.userolemanagementpagedata.closeAnyway'),
       centered: true,
       onOk: () => Promise.resolve(),
       onCancel: closeEditorDrawer,
@@ -953,7 +952,7 @@ export const useRoleManagementPageData = () => {
   );
   const saveRole = useCallback(async () => {
     if (!canSaveRole) {
-      message.warning(t('当前账号没有保存该角色配置的权限', 'You do not have permission to save this role configuration'));
+      message.warning(t('ui.system.roles.userolemanagementpagedata.youDoNotHavePermissionToSaveThis'));
       return;
     }
     setSaving(true);
@@ -967,7 +966,7 @@ export const useRoleManagementPageData = () => {
           ...API_OPTS.NO_REDIRECT,
         });
         notifyCurrentUserSync();
-        message.success(t('角色权限已更新', 'Role permissions updated'));
+        message.success(t('ui.system.roles.userolemanagementpagedata.rolePermissionsUpdated'));
         closeEditorDrawer();
         roleCrud.reloadTable();
         return;
@@ -982,14 +981,14 @@ export const useRoleManagementPageData = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('角色已更新', 'Role updated'));
+        message.success(t('ui.system.roles.userolemanagementpagedata.roleUpdated'));
       } else {
         await request<RoleDetail>('/v1/system/roles', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('角色已创建', 'Role created'));
+        message.success(t('ui.system.roles.userolemanagementpagedata.roleCreated'));
       }
       notifyCurrentUserSync();
       closeEditorDrawer();
@@ -1001,12 +1000,9 @@ export const useRoleManagementPageData = () => {
   const deleteRole = useCallback(
     (record: RoleRecord) => {
       confirmAction({
-        title: t('删除角色', 'Delete role'),
-        content: t(
-          `确认删除角色「${record.roleName}」吗？删除后该角色的权限配置会一并移除。`,
-          `Delete role "${record.roleName}"? This will also remove its permission settings.`,
-        ),
-        okText: t('确认删除', 'Delete'),
+        title: t('ui.system.roles.userolemanagementpagedata.deleteRole'),
+        content: t('ui.system.roles.userolemanagementpagedata.deleteRoleThisWillAlsoRemoveItsPermission', { roleName: record.roleName }),
+        okText: t('ui.system.roles.userolemanagementpagedata.delete.0ad952f3'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/roles/${record.id}`, {
@@ -1014,7 +1010,7 @@ export const useRoleManagementPageData = () => {
             ...API_OPTS.NO_REDIRECT,
           });
           notifyCurrentUserSync();
-          message.success(t('角色已删除', 'Role deleted'));
+          message.success(t('ui.system.roles.userolemanagementpagedata.roleDeleted'));
           roleCrud.reloadTable();
         },
       });

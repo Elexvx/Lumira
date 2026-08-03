@@ -4,17 +4,6 @@ import type { CurrentUser, MenuNode } from '@/types/api';
 
 type BootstrapMenuNode = MenuNode & { access?: string };
 
-const COMPETITION_MENU_ROOT: MenuNode = {
-  id: -1070,
-  menuCode: 'competition.root',
-  name: '\u8d5b\u4e8b',
-  path: '/competitions',
-  component: 'redirect:/competitions/register',
-  icon: 'TrophyOutlined',
-  sortNo: 5,
-  children: [],
-};
-
 const REGISTRATION_MENU_ROOT: MenuNode = {
   id: -1069,
   menuCode: 'registration.root',
@@ -36,8 +25,6 @@ const EXPERT_REVIEW_MENU_ROOT: MenuNode = {
   sortNo: 6,
   children: [],
 };
-
-const COMPETITION_APPLICATION_MENUS: BootstrapMenuNode[] = [];
 
 const EXPERT_REVIEW_APPLICATION_MENUS: BootstrapMenuNode[] = [
   {
@@ -88,7 +75,7 @@ const REGISTRATION_APPLICATION_MENUS: BootstrapMenuNode[] = [
     access: 'canVisitActivityRegister',
   },
   {
-    id: -1074,
+    id: -1113,
     parentId: -1069,
     menuCode: 'competition.review-results',
     name: 'nav.competitions.reviewResults',
@@ -99,7 +86,7 @@ const REGISTRATION_APPLICATION_MENUS: BootstrapMenuNode[] = [
     access: 'canVisitCompetitionReviewResults',
   },
   {
-    id: -1079,
+    id: -1114,
     parentId: -1069,
     menuCode: 'certificate.mine',
     name: 'nav.certificates.mine',
@@ -148,57 +135,6 @@ const filterMenusByAccess = (menus: MenuNode[] | undefined, currentUser: Current
       };
     })
     .filter((menu): menu is MenuNode => Boolean(menu));
-
-const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined, currentUser: CurrentUser) => {
-  const nextChildren = [...(children || [])];
-  const access = buildAccess({ currentUser }) as Record<string, unknown>;
-  COMPETITION_APPLICATION_MENUS.forEach((requiredMenu) => {
-    if (requiredMenu.access && !access[requiredMenu.access]) {
-      return;
-    }
-    if (!hasMenuPath(nextChildren, requiredMenu.path)) {
-      nextChildren.push({ ...requiredMenu });
-    }
-  });
-  nextChildren.sort((left, right) => (left.sortNo ?? 0) - (right.sortNo ?? 0));
-  return nextChildren;
-};
-
-const ensureCompetitionApplicationMenus = (menus: MenuNode[], currentUser: CurrentUser): MenuNode[] => {
-  const access = buildAccess({ currentUser }) as Record<string, unknown>;
-  const visibleCompetitionMenus = COMPETITION_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
-  const normalizedMenus = menus;
-  if (!visibleCompetitionMenus.length) {
-    return normalizedMenus;
-  }
-  if (visibleCompetitionMenus.every((menu) => hasMenuPath(normalizedMenus, menu.path))) {
-    return normalizedMenus;
-  }
-
-  let attached = false;
-  const nextMenus = normalizedMenus.map((menu) => {
-    const isCompetitionRoot = menu.menuCode === COMPETITION_MENU_ROOT.menuCode || menu.path === COMPETITION_MENU_ROOT.path;
-    if (!isCompetitionRoot) {
-      return menu;
-    }
-
-    attached = true;
-    return {
-      ...menu,
-      children: mergeCompetitionApplicationChildren(menu.children, currentUser),
-    };
-  });
-
-  return attached
-    ? nextMenus
-    : [
-        ...nextMenus,
-        {
-          ...COMPETITION_MENU_ROOT,
-          children: mergeCompetitionApplicationChildren(COMPETITION_MENU_ROOT.children, currentUser),
-        },
-      ];
-};
 
 const isExpertReviewApplicationMenu = (menu: MenuNode) =>
   menu.menuCode === 'expert.application'
@@ -359,7 +295,7 @@ export const normalizeAuthenticatedMenuTree = (
 ): MenuNode[] =>
   dedupeMenuPaths(ensureRegistrationApplicationMenus(
     ensureExpertReviewApplicationMenus(
-      ensureCompetitionApplicationMenus(filterMenusByAccess(menuTree, currentUser), currentUser),
+      filterMenusByAccess(menuTree, currentUser),
       currentUser,
     ),
     currentUser,

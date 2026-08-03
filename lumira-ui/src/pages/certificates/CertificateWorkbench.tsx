@@ -23,6 +23,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import {
   archiveCertificateTemplate,
   createCertificateTemplate,
+  downloadCertificate,
   duplicateCertificateTemplate,
   generateCertificates,
   getCertificateTemplateVersion,
@@ -48,6 +49,8 @@ import type {
   CertificateTemplateVersionRecord,
 } from '@/services/certificates/types';
 import { message } from '@/theme/antdFeedbackBridge';
+import { saveBlobAsFile } from '@/utils/download';
+import { showErrorMessage } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import './certificate.css';
 
@@ -58,6 +61,15 @@ const defaultCanvas: CertificateCanvas = {
     { id: 'el_award', type: 'text', fieldKey: 'awardName', x: 1200, y: 1200, width: 1100, height: 100, fontSize: 56, color: '#222222', textAlign: 'center', placeholder: '${awardName}' },
     { id: 'el_qr', type: 'qrcode', fieldKey: 'verificationUrl', x: 2920, y: 1900, width: 220, height: 220 },
   ],
+};
+
+const handleCertificateDownload = async (record: CertificateRecord) => {
+  try {
+    const blob = await downloadCertificate(record.id);
+    saveBlobAsFile(blob, `${record.certificateNo}.png`);
+  } catch (error) {
+    showErrorMessage(error, '证书下载失败');
+  }
 };
 
 const customPaperKey = 'CUSTOM';
@@ -917,7 +929,7 @@ export const RecordsPage = () => {
           render: (_, record) => (
             <Space>
               <Button size="small" onClick={() => setDetail(record)}>详情</Button>
-              <Button size="small" icon={<DownloadOutlined />} href={`/api/v2/aiadc/certificates/${record.id}/download`}>下载</Button>
+              <Button size="small" icon={<DownloadOutlined />} onClick={() => void handleCertificateDownload(record)}>下载</Button>
               <Button size="small" icon={<CopyOutlined />} onClick={() => navigator.clipboard.writeText(`${location.origin}/certificate/verify/${record.publicToken}`)}>复制链接</Button>
               <Button size="small" onClick={async () => { await regenerateCertificate(record.id); await load(); }}>重生成</Button>
               <Button size="small" danger onClick={async () => { await revokeCertificate(record.id, '管理员撤销'); await load(); }}>撤销</Button>

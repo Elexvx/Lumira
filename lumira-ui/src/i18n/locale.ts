@@ -81,18 +81,6 @@ export const applyLocalePreference = (value?: string | null, reload = false) => 
   return locale;
 };
 
-export const getLocaleDisplayName = (value?: string | null) => {
-  const locale = normalizeLocale(value);
-  if (locale === 'en-US') {
-    return 'English';
-  }
-  if (locale === 'zh-CN') {
-    return '中文';
-  }
-
-  return locale;
-};
-
 export const createLocalePreferenceBootstrapScript = () => {
   const defaultLocale = JSON.stringify(DEFAULT_APP_LOCALE);
   return `(function(){try{var locale=${defaultLocale};var stored=localStorage.getItem('umi_locale');if(stored){locale=stored;}if(!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)){locale=${defaultLocale};}document.documentElement.lang=locale;document.documentElement.dataset.locale=locale;}catch(_error){}})();`;

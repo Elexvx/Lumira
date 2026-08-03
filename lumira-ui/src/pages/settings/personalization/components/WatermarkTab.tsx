@@ -6,11 +6,10 @@ import { useResponsive } from '@/hooks/useResponsive';
 import type { WatermarkSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -154,7 +153,7 @@ const WatermarkColorControl = ({
     <div style={{ width: 260 }}>
       <div
         role="slider"
-        aria-label={t('选择字体颜色', 'Select font color')}
+        aria-label={t('ui.settings.personalization.watermark.selectFontColor')}
         aria-valuetext={displayText}
         onMouseDown={updateFromPaletteEvent}
         onMouseMove={(event) => {
@@ -303,10 +302,10 @@ const renderImageUploadPreviewField = ({
               style={{ objectFit: 'contain' }}
             />
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('点击或拖拽上传', 'Click or drag to upload')} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('ui.settings.personalization.watermark.clickOrDragToUpload')} />
           )}
           <Typography.Text type="secondary">
-            {isUploading ? t('上传中...', 'Uploading...') : previewSrc ? t('点击或拖拽更换图片', 'Click or drag to replace the image') : t('点击或拖拽上传图片', 'Click or drag to upload an image')}
+            {isUploading ? t('ui.settings.personalization.watermark.uploading') : previewSrc ? t('ui.settings.personalization.watermark.clickOrDragToReplaceTheImage') : t('ui.settings.personalization.watermark.clickOrDragToUploadAnImage')}
           </Typography.Text>
         </div>
       </Upload.Dragger>
@@ -336,19 +335,19 @@ export const WatermarkTab = ({
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="enabled" label={t('启用水印', 'Enable watermark')} valuePropName="checked">
+        <Form.Item name="enabled" label={t('ui.settings.personalization.watermark.enableWatermark')} valuePropName="checked">
           <Switch />
         </Form.Item>
-        <Form.Item name="mode" label={t('模式', 'Mode')}>
+        <Form.Item name="mode" label={t('ui.settings.personalization.watermark.mode')}>
           <Segmented
             disabled={watermarkControlsDisabled}
-            options={[{ label: t('文字', 'Text'), value: 'TEXT' }, { label: t('图片', 'Image'), value: 'IMAGE' }]}
+            options={[{ label: t('ui.settings.personalization.watermark.text'), value: 'TEXT' }, { label: t('ui.settings.personalization.watermark.image'), value: 'IMAGE' }]}
           />
         </Form.Item>
         {!isImageMode ? (
           <Form.Item
             name="textLines"
-            label={t('多行文字（每行一个）', 'Multiple lines of text (one per line)')}
+            label={t('ui.settings.personalization.watermark.multipleLinesOfTextOnePerLine')}
             getValueProps={(value?: string[]) => ({ value: (value || []).join('\n') })}
             getValueFromEvent={(event: { target: { value: string } }) =>
               event.target.value
@@ -360,7 +359,7 @@ export const WatermarkTab = ({
             <Input.TextArea
               rows={4}
               disabled={watermarkControlsDisabled}
-              placeholder={t('每行输入一条水印文字', 'Enter one watermark line per row')}
+              placeholder={t('ui.settings.personalization.watermark.enterOneWatermarkLinePerRow')}
             />
           </Form.Item>
         ) : null}
@@ -369,7 +368,7 @@ export const WatermarkTab = ({
           <Input />
         </Form.Item>
         {isImageMode ? (
-          <Form.Item label={t('水印图片', 'Watermark image')}>
+          <Form.Item label={t('ui.settings.personalization.watermark.watermarkImage')}>
             {renderImageUploadPreviewField({
               target: 'watermark',
               previewSrc: watermarkPreview.imageUrl,
@@ -379,7 +378,7 @@ export const WatermarkTab = ({
               cardHeight: 100,
               imageWidth: 180,
               imageHeight: 100,
-              clearLabel: t('清除', 'Clear'),
+              clearLabel: t('ui.settings.personalization.watermark.clear'),
               onUpload,
               onClear: onClearWatermarkImage,
               tagWrapGap,
@@ -389,31 +388,31 @@ export const WatermarkTab = ({
 
         {!isImageMode ? (
           <>
-            <Form.Item name="fontColor" label={t('字体颜色', 'Font color')}>
+            <Form.Item name="fontColor" label={t('ui.settings.personalization.watermark.fontColor')}>
               <WatermarkColorControl disabled={watermarkControlsDisabled} />
             </Form.Item>
-            <Form.Item name="fontSize" label={t('字号', 'Font size')}>
+            <Form.Item name="fontSize" label={t('ui.settings.personalization.watermark.fontSize')}>
               <Slider min={10} max={48} disabled={watermarkControlsDisabled} marks={{ 10: '10', 48: '48' }} style={watermarkSliderStyle} />
             </Form.Item>
           </>
         ) : null}
-        <Form.Item name="gapX" label={t('横向间距', 'Horizontal spacing')}>
+        <Form.Item name="gapX" label={t('ui.settings.personalization.watermark.horizontalSpacing')}>
           <Slider min={40} max={400} disabled={watermarkControlsDisabled} marks={{ 40: '40', 400: '400' }} style={watermarkSliderStyle} />
         </Form.Item>
-        <Form.Item name="gapY" label={t('纵向间距', 'Vertical spacing')}>
+        <Form.Item name="gapY" label={t('ui.settings.personalization.watermark.verticalSpacing')}>
           <Slider min={40} max={400} disabled={watermarkControlsDisabled} marks={{ 40: '40', 400: '400' }} style={watermarkSliderStyle} />
         </Form.Item>
-        <Form.Item name="rotate" label={t('旋转', 'Rotation')}>
+        <Form.Item name="rotate" label={t('ui.settings.personalization.watermark.rotation')}>
           <Slider min={-180} max={180} disabled={watermarkControlsDisabled} marks={{ '-180': '-180', 0: '0', 180: '180' }} style={watermarkSliderStyle} />
         </Form.Item>
-        <Form.Item name="opacity" label={isImageMode ? t('图片透明度', 'Image opacity') : t('文字透明度', 'Text opacity')}>
+        <Form.Item name="opacity" label={isImageMode ? t('ui.settings.personalization.watermark.imageOpacity') : t('ui.settings.personalization.watermark.textOpacity')}>
           <Slider min={0.05} max={1} step={0.05} disabled={watermarkControlsDisabled} marks={{ 0.05: '0.05', 1: '1' }} style={watermarkSliderStyle} />
         </Form.Item>
       </Form>
 
       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" loading={watermarkSaving} disabled={!canUpdate} onClick={onSave}>
-          {t('保存设置', 'Save settings')}
+          {t('ui.settings.personalization.watermark.saveSettings')}
         </Button>
       </div>
     </Space>

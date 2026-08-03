@@ -6,13 +6,11 @@ import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
 import { persistSecuritySettings } from '@/auth/securitySettingsStorage';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
-import { normalizeLocale } from '@/i18n/locale';
 import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
 import { normalizeAuthenticatedMenuTree } from '@/auth/authenticatedMenuTree';
 import { restoreSession } from '@/auth/sessionBootstrap';
 import type { SessionBootstrapResult } from '@/auth/sessionBootstrap';
-import enUSMessages from '@/locales/en-US';
-import zhCNMessages from '@/locales/zh-CN';
+import { databaseMessage } from '@/i18n/databaseMessage';
 import { request } from '@/services/common/request';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
@@ -25,25 +23,7 @@ import { API_OPTS } from '@/utils/errorMessage';
 const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
 const GUEST_BOOTSTRAP_TIMEOUT_MS = 3000;
 const GUEST_PUBLIC_REQUEST_TIMEOUT_MS = 1500;
-const resolveBootstrapLocale = () => {
-  if (typeof document !== 'undefined') {
-    const domLocale = normalizeLocale(document.documentElement.lang);
-    if (domLocale) {
-      return domLocale;
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    return normalizeLocale(window.localStorage?.getItem('umi_locale'));
-  }
-
-  return 'zh-CN';
-};
-
-const t = (id: string, fallback: string) => {
-  const messages = (resolveBootstrapLocale() === 'en-US' ? enUSMessages : zhCNMessages) as Record<string, string>;
-  return messages[id] || fallback;
-};
+const t = (id: string, fallback: string) => databaseMessage(id, {}, fallback);
 
 type BootstrapPhase = 'idle' | 'health' | 'branding' | 'security' | 'captcha' | 'ready' | 'error';
 

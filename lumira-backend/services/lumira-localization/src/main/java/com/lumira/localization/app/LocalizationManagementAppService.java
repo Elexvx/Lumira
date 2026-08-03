@@ -937,6 +937,9 @@ public class LocalizationManagementAppService {
                         LocalizationVO.RuntimeBundleVO.class
                 );
                 if (storedBundle != null && storedBundle.getMessages() != null && !storedBundle.getMessages().isEmpty()) {
+                    Map<String, String> mergedMessages = loadRuntimeMessages(targetLocale, fallbackLocale);
+                    mergedMessages.putAll(storedBundle.getMessages());
+                    storedBundle.setMessages(mergedMessages);
                     runtimeBundleCache.put(targetLocale, readModelVersion, release.getReleaseVersion(), storedBundle);
                     return storedBundle;
                 }

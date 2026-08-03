@@ -5,11 +5,10 @@ import { useResponsive } from '@/hooks/useResponsive';
 import type { FloatingWindowSettings } from '@/types/api';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 type PersonalizationUploadTarget = 'favicon' | 'logo' | 'loginBackground' | 'watermark' | 'floatingQr';
 
@@ -36,7 +35,7 @@ const renderImageUploadPreviewField = ({
   imageHeight,
   buttonLabel,
   clearLabel,
-  emptyDescription = t('未上传', 'Not uploaded'),
+  emptyDescription = t('ui.settings.personalization.floatingwindow.notUploaded'),
   onUpload,
   onClear,
   sectionGap,
@@ -106,17 +105,17 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...formProps} disabled={!canUpdate}>
-        <Form.Item name="apiDocsQrEnabled" label={t('二维码', 'QR code')} valuePropName="checked">
+        <Form.Item name="apiDocsQrEnabled" label={t('ui.settings.personalization.floatingwindow.qrCode')} valuePropName="checked">
           <Switch />
         </Form.Item>
         <fieldset disabled={qrControlsDisabled} style={{ border: 0, margin: 0, padding: 0 }}>
-          <Form.Item name="apiDocsQrTitle" label={t('弹窗标题', 'Popup title')} rules={[{ required: !qrControlsDisabled, message: t('请输入弹窗标题', 'Please enter a popup title') }]}>
-            <Input maxLength={30} disabled={qrControlsDisabled} placeholder={t('微信扫码联系我们', 'Scan the QR code on WeChat to contact us')} />
+          <Form.Item name="apiDocsQrTitle" label={t('ui.settings.personalization.floatingwindow.popupTitle')} rules={[{ required: !qrControlsDisabled, message: t('ui.settings.personalization.floatingwindow.pleaseEnterAPopupTitle') }]}>
+            <Input maxLength={30} disabled={qrControlsDisabled} placeholder={t('ui.settings.personalization.floatingwindow.scanTheQrCodeOnWechatToContact')} />
           </Form.Item>
           <Form.Item name="apiDocsQrImageUrl" hidden>
             <Input />
           </Form.Item>
-          <Form.Item label={t('二维码图片', 'QR code image')} extra={t('用于悬浮窗按钮展开后的二维码弹窗。', 'Used in the QR code popup opened from the floating window button.')}>
+          <Form.Item label={t('ui.settings.personalization.floatingwindow.qrCodeImage')} extra={t('ui.settings.personalization.floatingwindow.usedInTheQrCodePopupOpenedFrom')}>
             {renderImageUploadPreviewField({
               target: 'floatingQr',
               previewSrc: preview.apiDocsQrImageUrl,
@@ -127,8 +126,8 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
               cardHeight: 132,
               imageWidth: 132,
               imageHeight: 132,
-              buttonLabel: t('上传二维码', 'Upload QR code'),
-              clearLabel: t('清除', 'Clear'),
+              buttonLabel: t('ui.settings.personalization.floatingwindow.uploadQrCode'),
+              clearLabel: t('ui.settings.personalization.floatingwindow.clear'),
               onUpload,
               onClear: onClearQrImage,
               sectionGap,
@@ -140,7 +139,7 @@ export const FloatingWindowTab = ({ formProps, preview, uploadingTarget, saving,
       </Form>
       <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
         <Button type="primary" loading={saving} disabled={!canUpdate} onClick={onSave}>
-          {t('保存设置', 'Save settings')}
+          {t('ui.settings.personalization.floatingwindow.saveSettings')}
         </Button>
       </div>
     </Space>

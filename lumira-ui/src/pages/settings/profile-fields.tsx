@@ -19,28 +19,26 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined } from "@ant-design/icons";
-import { getLocale } from "@umijs/max";
 import { useEffect, useMemo, useState } from "react";
 import { ManagementPage } from "@/features/management/ManagementPage";
 import { ManagementPageBody } from "@/features/management/ManagementPageBody";
 import { useActionPermission } from "@/features/permissions/useActionPermission";
 import { useResponsive } from "@/hooks/useResponsive";
-import { normalizeLocale } from "@/i18n/locale";
 import { request } from "@/services/common/request";
 import { message } from "@/theme/antdFeedbackBridge";
 import { APP_SPACING, resolveResponsiveValue } from "@/theme/spacing";
 import type { ProfileFieldSetting } from "@/types/api";
 import { API_OPTS, showErrorMessage } from "@/utils/errorMessage";
+import { databaseMessage } from '@/i18n/databaseMessage';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === "en-US";
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const FIELD_TYPE_OPTIONS = [
-  { label: t("单行文本", "Text"), value: "TEXT" },
-  { label: t("多行文本", "Textarea"), value: "TEXTAREA" },
-  { label: t("数字", "Number"), value: "NUMBER" },
-  { label: t("日期", "Date"), value: "DATE" },
-  { label: t("下拉选择", "Select"), value: "SELECT" },
+  { label: t('ui.settings.profile-fields.text'), value: "TEXT" },
+  { label: t('ui.settings.profile-fields.textarea'), value: "TEXTAREA" },
+  { label: t('ui.settings.profile-fields.number'), value: "NUMBER" },
+  { label: t('ui.settings.profile-fields.date'), value: "DATE" },
+  { label: t('ui.settings.profile-fields.select'), value: "SELECT" },
 ];
 
 const PROFILE_PAGE_KEY = "PROFILE";
@@ -101,7 +99,7 @@ const ProfileFieldManagementPage = () => {
     } catch (error) {
       showErrorMessage(
         error,
-        t("加载字段配置失败", "Failed to load field settings"),
+        t('ui.settings.profile-fields.failedToLoadFieldSettings'),
       );
     } finally {
       setLoading(false);
@@ -141,12 +139,12 @@ const ProfileFieldManagementPage = () => {
         },
       );
       setItems(result);
-      message.success(t("字段配置已保存", "Field settings saved"));
+      message.success(t('ui.settings.profile-fields.fieldSettingsSaved'));
       return true;
     } catch (error) {
       showErrorMessage(
         error,
-        t("保存字段配置失败", "Failed to save field settings"),
+        t('ui.settings.profile-fields.failedToSaveFieldSettings'),
       );
       return false;
     } finally {
@@ -167,7 +165,7 @@ const ProfileFieldManagementPage = () => {
     form.resetFields();
     form.setFieldsValue({
       fieldType: "TEXT",
-      groupLabel: t("自定义资料", "Custom profile"),
+      groupLabel: t('ui.settings.profile-fields.customProfile'),
       required: false,
       visible: true,
       weight: 5,
@@ -185,7 +183,7 @@ const ProfileFieldManagementPage = () => {
       fieldDescription: item.fieldDescription || undefined,
       fieldType: item.fieldType || "TEXT",
       placeholder: item.placeholder || undefined,
-      groupLabel: item.groupLabel || t("自定义资料", "Custom profile"),
+      groupLabel: item.groupLabel || t('ui.settings.profile-fields.customProfile'),
       required: Boolean(item.required),
       visible: Boolean(item.visible),
       weight: item.weight ?? 5,
@@ -197,13 +195,10 @@ const ProfileFieldManagementPage = () => {
   const closeDrawer = (force = false) => {
     if (!force && form.isFieldsTouched()) {
       Modal.confirm({
-        title: t("确认退出编辑？", "Discard changes?"),
-        content: t(
-          "当前字段修改尚未保存，退出后将丢失本次编辑内容。",
-          "Your field changes have not been saved. Closing now will discard them.",
-        ),
-        okText: t("退出", "Discard"),
-        cancelText: t("继续编辑", "Keep editing"),
+        title: t('ui.settings.profile-fields.discardChanges'),
+        content: t('ui.settings.profile-fields.yourFieldChangesHaveNotBeenSavedClosing'),
+        okText: t('ui.settings.profile-fields.discard'),
+        cancelText: t('ui.settings.profile-fields.keepEditing'),
         okButtonProps: { danger: true },
         onOk: () => closeDrawer(true),
       });
@@ -225,7 +220,7 @@ const ProfileFieldManagementPage = () => {
       )
     ) {
       message.warning(
-        t("字段标识已存在，请换一个", "This field key already exists."),
+        t('ui.settings.profile-fields.thisFieldKeyAlreadyExists'),
       );
       return;
     }
@@ -250,12 +245,12 @@ const ProfileFieldManagementPage = () => {
       fieldLabel: values.fieldLabel.trim(),
       fieldDescription:
         values.fieldDescription?.trim() ||
-        t("自定义资料字段", "Custom profile field"),
+        t('ui.settings.profile-fields.customProfileField'),
       fieldType: values.fieldType || "TEXT",
       placeholder: values.placeholder?.trim() || null,
       groupKey: "custom",
       groupLabel:
-        values.groupLabel?.trim() || t("自定义资料", "Custom profile"),
+        values.groupLabel?.trim() || t('ui.settings.profile-fields.customProfile'),
       required: Boolean(values.required),
       visible: values.visible ?? true,
       weight: values.weight ?? 5,
@@ -281,26 +276,26 @@ const ProfileFieldManagementPage = () => {
 
   const columns: ColumnsType<ProfileFieldSetting> = [
     {
-      title: t("字段", "Field"),
+      title: t('ui.settings.profile-fields.field'),
       dataIndex: "fieldLabel",
       width: 220,
       render: (_value, item) => (
         <Space wrap size={tagWrapGap} style={{ minWidth: 0 }}>
           <Typography.Text strong>{item.fieldLabel}</Typography.Text>
           <Tag color={item.custom ? "purple" : "blue"}>
-            {item.custom ? t("自定义", "Custom") : t("系统", "System")}
+            {item.custom ? t('ui.settings.profile-fields.custom') : t('ui.settings.profile-fields.system')}
           </Tag>
         </Space>
       ),
     },
     {
-      title: t("类型", "Type"),
+      title: t('ui.settings.profile-fields.type'),
       dataIndex: "fieldType",
       width: 120,
       render: (value) => <Tag>{value || "TEXT"}</Tag>,
     },
     {
-      title: t("占位提示", "Placeholder"),
+      title: t('ui.settings.profile-fields.placeholder'),
       dataIndex: "placeholder",
       width: 220,
       render: (_value, item) => (
@@ -310,7 +305,7 @@ const ProfileFieldManagementPage = () => {
       ),
     },
     {
-      title: t("必填", "Required"),
+      title: t('ui.settings.profile-fields.required'),
       dataIndex: "required",
       width: 96,
       align: "center",
@@ -325,7 +320,7 @@ const ProfileFieldManagementPage = () => {
       ),
     },
     {
-      title: t("权重", "Weight"),
+      title: t('ui.settings.profile-fields.weight'),
       dataIndex: "weight",
       width: 112,
       render: (_value, item) => (
@@ -345,7 +340,7 @@ const ProfileFieldManagementPage = () => {
       ),
     },
     {
-      title: t("排序", "Sort"),
+      title: t('ui.settings.profile-fields.sort'),
       dataIndex: "sortNo",
       width: 112,
       render: (_value, item) => (
@@ -365,7 +360,7 @@ const ProfileFieldManagementPage = () => {
       ),
     },
     {
-      title: t("启用", "Enabled"),
+      title: t('ui.settings.profile-fields.enabled'),
       dataIndex: "visible",
       width: 96,
       align: "center",
@@ -378,7 +373,7 @@ const ProfileFieldManagementPage = () => {
       ),
     },
     {
-      title: t("操作", "Actions"),
+      title: t('ui.settings.profile-fields.actions'),
       key: "actions",
       width: 128,
       align: "center",
@@ -388,20 +383,17 @@ const ProfileFieldManagementPage = () => {
               type="link"
               size="small"
               disabled={!canUpdate || saving}
-              aria-label={t("修改字段", "Edit field")}
+              aria-label={t('ui.settings.profile-fields.editField')}
               onClick={() => openEditDrawer(item)}
             >
-              {t("编辑", "Edit")}
+              {t('ui.settings.profile-fields.edit')}
             </Button>
             {item.custom ? (
               <Popconfirm
-              title={t("删除自定义字段", "Delete custom field")}
-              description={t(
-                "删除后将立即保存，确认删除吗？",
-                "Deletion is saved immediately. Continue?",
-              )}
-              okText={t("删除", "Delete")}
-              cancelText={t("取消", "Cancel")}
+              title={t('ui.settings.profile-fields.deleteCustomField')}
+              description={t('ui.settings.profile-fields.deletionIsSavedImmediatelyContinue')}
+              okText={t('ui.settings.profile-fields.delete')}
+              cancelText={t('ui.settings.profile-fields.cancel')}
               onConfirm={() => handleRemoveCustomField(item.fieldKey)}
             >
               <Button
@@ -409,9 +401,9 @@ const ProfileFieldManagementPage = () => {
                 type="link"
                 size="small"
                 disabled={!canUpdate || saving}
-                aria-label={t("删除字段", "Delete field")}
+                aria-label={t('ui.settings.profile-fields.deleteField')}
               >
-                {t("删除", "Delete")}
+                {t('ui.settings.profile-fields.delete')}
               </Button>
               </Popconfirm>
             ) : null}
@@ -424,19 +416,19 @@ const ProfileFieldManagementPage = () => {
   return (
     <ManagementPage
       ghost
-      title={t("字段管理", "Field management")}
+      title={t('ui.settings.profile-fields.fieldManagement')}
       content={null}
     >
       <ManagementPageBody>
         <Card
-          title={t("个人中心字段定义", "Profile field definitions")}
+          title={t('ui.settings.profile-fields.profileFieldDefinitions')}
           extra={
             <Space wrap>
               <Button
                 onClick={() => void loadItems()}
                 disabled={loading || saving}
               >
-                {t("刷新", "Refresh")}
+                {t('ui.settings.profile-fields.refresh')}
               </Button>
               <Button
                 type="primary"
@@ -444,7 +436,7 @@ const ProfileFieldManagementPage = () => {
                 disabled={!canUpdate || saving}
                 onClick={openAddDrawer}
               >
-                {t("新增字段", "Add field")}
+                {t('ui.settings.profile-fields.addField')}
               </Button>
             </Space>
           }
@@ -457,10 +449,7 @@ const ProfileFieldManagementPage = () => {
             <Alert
               type={enabledWeight === 100 ? "success" : "info"}
               showIcon
-              message={t(
-                `当前启用字段权重总和：${enabledWeight}`,
-                `Enabled weight total: ${enabledWeight}`,
-              )}
+              message={t('ui.settings.profile-fields.enabledWeightTotal', { enabledWeight: enabledWeight })}
             />
             {loading ? (
               <div
@@ -486,7 +475,7 @@ const ProfileFieldManagementPage = () => {
               />
             ) : (
               <Empty
-                description={t("暂无可配置字段", "No configurable fields")}
+                description={t('ui.settings.profile-fields.noConfigurableFields')}
               />
             )}
 
@@ -497,8 +486,8 @@ const ProfileFieldManagementPage = () => {
       <Drawer
         title={
           editingFieldKey
-            ? t("编辑字段", "Edit field")
-            : t("新增自定义字段", "Add custom field")
+            ? t('ui.settings.profile-fields.editField.90d0543b')
+            : t('ui.settings.profile-fields.addCustomField')
         }
         width={isMobile ? "100%" : 520}
         open={drawerOpen}
@@ -507,7 +496,7 @@ const ProfileFieldManagementPage = () => {
         onClose={() => closeDrawer()}
         footer={
           <Space>
-            <Button onClick={() => closeDrawer()}>{t("取消", "Cancel")}</Button>
+            <Button onClick={() => closeDrawer()}>{t('ui.settings.profile-fields.cancel')}</Button>
             <Button
               type="primary"
               loading={saving}
@@ -515,8 +504,8 @@ const ProfileFieldManagementPage = () => {
               onClick={() => void handleSubmitField()}
             >
               {editingFieldKey
-                ? t("保存修改", "Save changes")
-                : t("保存字段", "Save field")}
+                ? t('ui.settings.profile-fields.saveChanges')
+                : t('ui.settings.profile-fields.saveField')}
             </Button>
           </Space>
         }
@@ -526,7 +515,7 @@ const ProfileFieldManagementPage = () => {
           layout="vertical"
           initialValues={{
             fieldType: "TEXT",
-            groupLabel: t("自定义资料", "Custom profile"),
+            groupLabel: t('ui.settings.profile-fields.customProfile'),
             required: false,
             visible: true,
             weight: 5,
@@ -535,96 +524,90 @@ const ProfileFieldManagementPage = () => {
         >
           <Form.Item
             name="fieldLabel"
-            label={t("字段名称", "Field label")}
+            label={t('ui.settings.profile-fields.fieldLabel')}
             rules={[
               {
                 required: true,
-                message: t("请输入字段名称", "Please enter a field label"),
+                message: t('ui.settings.profile-fields.pleaseEnterAFieldLabel'),
               },
             ]}
           >
             <Input
-              placeholder={t("例如：学校", "e.g. School")}
+              placeholder={t('ui.settings.profile-fields.eGSchool')}
               maxLength={64}
             />
           </Form.Item>
           <Form.Item
             name="fieldKey"
-            label={t("字段标识", "Field key")}
+            label={t('ui.settings.profile-fields.fieldKey')}
             normalize={normalizeCustomFieldKey}
             rules={[
               {
                 required: true,
-                message: t("请输入字段标识", "Please enter a field key"),
+                message: t('ui.settings.profile-fields.pleaseEnterAFieldKey'),
               },
               {
                 pattern: /^[A-Za-z][A-Za-z0-9_]{1,63}$/,
-                message: t(
-                  "以字母开头，仅支持字母、数字、下划线",
-                  "Start with a letter; use letters, numbers, and underscores only",
-                ),
+                message: t('ui.settings.profile-fields.startWithALetterUseLettersNumbersAnd'),
               },
             ]}
           >
             <Input
-              placeholder={t("例如：school", "e.g. school")}
+              placeholder={t('ui.settings.profile-fields.eGSchool.f6fde123')}
               maxLength={64}
               disabled={Boolean(editingFieldKey)}
             />
           </Form.Item>
           <Form.Item
             name="fieldType"
-            label={t("字段类型", "Field type")}
+            label={t('ui.settings.profile-fields.fieldType')}
             rules={[
               {
                 required: true,
-                message: t("请选择字段类型", "Please select a field type"),
+                message: t('ui.settings.profile-fields.pleaseSelectAFieldType'),
               },
             ]}
           >
             <Select options={FIELD_TYPE_OPTIONS} disabled={editingSystemFieldType} />
           </Form.Item>
-          <Form.Item name="placeholder" label={t("占位提示", "Placeholder")}>
+          <Form.Item name="placeholder" label={t('ui.settings.profile-fields.placeholder')}>
             <Input
-              placeholder={t("例如：请输入学校名称", "e.g. Enter school name")}
+              placeholder={t('ui.settings.profile-fields.eGEnterSchoolName')}
               maxLength={120}
             />
           </Form.Item>
-          <Form.Item name="fieldDescription" label={t("说明", "Description")}>
+          <Form.Item name="fieldDescription" label={t('ui.settings.profile-fields.description')}>
             <Input.TextArea
               autoSize={{ minRows: 2, maxRows: 4 }}
-              placeholder={t(
-                "说明这个字段的用途",
-                "Describe how this field is used",
-              )}
+              placeholder={t('ui.settings.profile-fields.describeHowThisFieldIsUsed')}
               maxLength={200}
             />
           </Form.Item>
-          <Form.Item name="groupLabel" label={t("分组", "Group")}>
+          <Form.Item name="groupLabel" label={t('ui.settings.profile-fields.group')}>
             <Input
-              placeholder={t("例如：教育信息", "e.g. Education")}
+              placeholder={t('ui.settings.profile-fields.eGEducation')}
               maxLength={64}
             />
           </Form.Item>
           <Space size={tagWrapGap} wrap>
             <Form.Item
               name="required"
-              label={t("必填", "Required")}
+              label={t('ui.settings.profile-fields.required')}
               valuePropName="checked"
             >
               <Switch />
             </Form.Item>
             <Form.Item
               name="visible"
-              label={t("启用", "Enabled")}
+              label={t('ui.settings.profile-fields.enabled')}
               valuePropName="checked"
             >
               <Switch />
             </Form.Item>
-            <Form.Item name="weight" label={t("权重", "Weight")}>
+            <Form.Item name="weight" label={t('ui.settings.profile-fields.weight')}>
               <InputNumber min={1} precision={0} controls={false} />
             </Form.Item>
-            <Form.Item name="sortNo" label={t("排序", "Sort")}>
+            <Form.Item name="sortNo" label={t('ui.settings.profile-fields.sort')}>
               <InputNumber min={1} precision={0} controls={false} />
             </Form.Item>
           </Space>

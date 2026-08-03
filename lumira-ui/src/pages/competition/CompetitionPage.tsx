@@ -7,7 +7,7 @@ import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { getLocale, history, useLocation, useModel, useParams } from '@umijs/max';
+import { history, useLocation, useModel, useParams } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
@@ -18,7 +18,7 @@ import { useActionPermission } from '@/features/permissions/useActionPermission'
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
-import { normalizeLocale } from '@/i18n/locale';
+import { databaseMessage } from '@/i18n/databaseMessage';
 import {
   createCompetition,
   createCompetitionDraft,
@@ -235,19 +235,12 @@ type RegistrationTeamDraft = RegistrationSnapshotTeamPayload & {
 
 type RegistrationMemberEditorKey = number | 'new';
 const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
-const zhFallbackRegistrationTeamTypeOptions = [
-  { value: 'GENERAL', label: '通用团队' },
-  { value: 'DEV', label: '开发团队' },
-  { value: 'COMPETITION', label: '竞赛团队' },
-  { value: 'CLUB', label: '社团组织' },
-  { value: 'OTHER', label: '其他' },
-];
-const enFallbackRegistrationTeamTypeOptions = [
-  { value: 'GENERAL', label: 'General' },
-  { value: 'DEV', label: 'Development' },
-  { value: 'COMPETITION', label: 'Competition' },
-  { value: 'CLUB', label: 'Club' },
-  { value: 'OTHER', label: 'Other' },
+const fallbackRegistrationTeamTypeOptions = () => [
+  { value: 'GENERAL', label: databaseMessage('competition.teamType.general') },
+  { value: 'DEV', label: databaseMessage('competition.teamType.development') },
+  { value: 'COMPETITION', label: databaseMessage('competition.teamType.competition') },
+  { value: 'CLUB', label: databaseMessage('competition.teamType.club') },
+  { value: 'OTHER', label: databaseMessage('competition.teamType.other') },
 ];
 const emptyRegistrationTeamMember = (): RegistrationTeamMemberDraft => ({
   memberName: '',
@@ -336,42 +329,21 @@ const defaultRegistrationFormValues: Partial<RegistrationFormValues> = {
   },
 };
 
-const zhCategoryOptions = [
-  { label: '创新赛', value: 'INNOVATION' },
-  { label: '应用赛', value: 'APPLICATION' },
-  { label: '专项赛', value: 'SPECIAL' },
-  { label: '其他', value: 'OTHER' },
-];
-
-const enCategoryOptions = [
-  { label: 'Innovation', value: 'INNOVATION' },
-  { label: 'Application', value: 'APPLICATION' },
-  { label: 'Special', value: 'SPECIAL' },
-  { label: 'Other', value: 'OTHER' },
-];
-
-const zhLevelOptions = [
-  { label: '校级', value: 'SCHOOL' },
-  { label: '省级', value: 'PROVINCE' },
-  { label: '国家级', value: 'NATIONAL' },
-  { label: '国际级', value: 'INTERNATIONAL' },
-];
-
-const enLevelOptions = [
-  { label: 'School', value: 'SCHOOL' },
-  { label: 'Provincial', value: 'PROVINCE' },
-  { label: 'National', value: 'NATIONAL' },
-  { label: 'International', value: 'INTERNATIONAL' },
-];
-
-const useCompetitionDictFallbackOptions = () => {
-  const isEnglish = normalizeLocale(getLocale()) === 'en-US';
-  return useMemo(() => ({
-    categoryOptions: isEnglish ? enCategoryOptions : zhCategoryOptions,
-    levelOptions: isEnglish ? enLevelOptions : zhLevelOptions,
-    registrationTeamTypeOptions: isEnglish ? enFallbackRegistrationTeamTypeOptions : zhFallbackRegistrationTeamTypeOptions,
-  }), [isEnglish]);
-};
+const useCompetitionDictFallbackOptions = () => ({
+  categoryOptions: [
+    { label: databaseMessage('competition.category.innovation'), value: 'INNOVATION' },
+    { label: databaseMessage('competition.category.application'), value: 'APPLICATION' },
+    { label: databaseMessage('competition.category.special'), value: 'SPECIAL' },
+    { label: databaseMessage('competition.category.other'), value: 'OTHER' },
+  ],
+  levelOptions: [
+    { label: databaseMessage('competition.level.school'), value: 'SCHOOL' },
+    { label: databaseMessage('competition.level.provincial'), value: 'PROVINCE' },
+    { label: databaseMessage('competition.level.national'), value: 'NATIONAL' },
+    { label: databaseMessage('competition.level.international'), value: 'INTERNATIONAL' },
+  ],
+  registrationTeamTypeOptions: fallbackRegistrationTeamTypeOptions(),
+});
 
 const timeModeOptions: Array<{ label: string; value: CompetitionTimeMode }> = [
   { label: '确定', value: 'CONFIRMED' },
@@ -4977,15 +4949,15 @@ type PaymentProviderOption = {
 };
 
 const localizeLegacyConfigItemTitle = (item: CompetitionConfigItem): CompetitionConfigItem => {
-  const legacyTitles: Record<string, { english: string; chinese: string }> = {
-    'AGREEMENT:commitment': { english: 'Commitment', chinese: '赛事承诺书' },
-    'CONSENT:informed-consent': { english: 'Informed consent', chinese: '知情同意书' },
-    'REGISTRATION_FIELD:contact-name': { english: 'Contact name', chinese: '联系人姓名' },
-    'REQUIRED_FILE:work-file': { english: 'Work file', chinese: '作品文件' },
+  const legacyTitles: Record<string, { source: string; messageKey: string }> = {
+    'AGREEMENT:commitment': { source: 'Commitment', messageKey: 'competition.legacy.commitment' },
+    'CONSENT:informed-consent': { source: 'Informed consent', messageKey: 'competition.legacy.informedConsent' },
+    'REGISTRATION_FIELD:contact-name': { source: 'Contact name', messageKey: 'competition.legacy.contactName' },
+    'REQUIRED_FILE:work-file': { source: 'Work file', messageKey: 'competition.legacy.workFile' },
   };
   const localizedTitle = legacyTitles[`${item.itemType}:${item.itemKey}`];
-  return localizedTitle && item.title.trim().toLowerCase() === localizedTitle.english.toLowerCase()
-    ? { ...item, title: localizedTitle.chinese }
+  return localizedTitle && item.title.trim().toLowerCase() === localizedTitle.source.toLowerCase()
+    ? { ...item, title: databaseMessage(localizedTitle.messageKey) }
     : item;
 };
 
@@ -4993,7 +4965,9 @@ const localizeLegacyCompetitionSettings = (settings: CompetitionSettingsRecord):
   ...settings,
   competition: {
     ...settings.competition,
-    title: settings.competition.title === 'Untitled competition' ? '未命名赛事' : settings.competition.title,
+    title: settings.competition.title === 'Untitled competition'
+      ? databaseMessage('competition.legacy.untitled')
+      : settings.competition.title,
   },
   documents: settings.documents.map(localizeLegacyConfigItemTitle),
   fields: settings.fields.map(localizeLegacyConfigItemTitle),

@@ -2,6 +2,7 @@ import { addLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import { request } from '@/services/common/request';
 import type { LocalizationRuntimeBundle } from '@/types/api';
+import { clearDatabaseMessages, installDatabaseMessages } from './databaseMessage';
 
 const runtimeBundleCache = new Map<string, LocalizationRuntimeBundle | null>();
 const runtimeBundleInflight = new Map<string, Promise<LocalizationRuntimeBundle | null>>();
@@ -27,6 +28,7 @@ export const loadRuntimeLocalizationBundle = async (localeCode?: string | null) 
         allowUnauthorizedWithoutRedirect: true,
       });
       if (bundle?.messages && Object.keys(bundle.messages).length > 0) {
+        installDatabaseMessages(normalizedLocale, bundle.messages);
         addLocale(normalizedLocale, bundle.messages, {} as never);
       }
       runtimeBundleCache.set(normalizedLocale, bundle || null);
@@ -46,4 +48,5 @@ export const loadRuntimeLocalizationBundle = async (localeCode?: string | null) 
 export const clearRuntimeLocalizationBundleCache = () => {
   runtimeBundleCache.clear();
   runtimeBundleInflight.clear();
+  clearDatabaseMessages();
 };

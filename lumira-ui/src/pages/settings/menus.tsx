@@ -31,30 +31,29 @@ import { TableActionBar, type TableActionItem } from '@/features/table/TableActi
 import type { PermissionAwareTableAction } from '@/features/permissions/useActionPermission';
 import { isMainMenuHiddenSettingPath } from '@/navigation/settingsNavigationRuntime';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
-import { DEFAULT_SETTING_ROUTE_ORDER, SETTING_ROUTE_ORDER_KEY } from '@/navigation/settingsNavigationConfig';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { DEFAULT_SETTING_ROUTE_ORDER, SETTING_ROUTE_ORDER_KEY } from '@/navigation/settingsNavigationConfig';
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const MENU_TYPE_LABELS = {
-  CATALOG: t('目录', 'Catalog'),
-  MENU: t('菜单', 'Menu'),
-  TAB: t('页签', 'Tab'),
-  BUTTON: t('按钮', 'Button'),
+  CATALOG: t('ui.settings.menus.catalog'),
+  MENU: t('ui.settings.menus.menu'),
+  TAB: t('ui.settings.menus.tab'),
+  BUTTON: t('ui.settings.menus.button'),
 } as const;
 
 const MENU_TYPE_OPTIONS = [
-  { label: t('目录', 'Catalog'), value: 'CATALOG' },
-  { label: t('菜单', 'Menu'), value: 'MENU' },
-  { label: t('页签', 'Tab'), value: 'TAB' },
-  { label: t('按钮', 'Button'), value: 'BUTTON' },
+  { label: t('ui.settings.menus.catalog'), value: 'CATALOG' },
+  { label: t('ui.settings.menus.menu'), value: 'MENU' },
+  { label: t('ui.settings.menus.tab'), value: 'TAB' },
+  { label: t('ui.settings.menus.button'), value: 'BUTTON' },
 ];
 
 const MENU_STATUS_OPTIONS = [
-  { label: t('启用', 'Enabled'), value: 'ENABLED' },
-  { label: t('停用', 'Disabled'), value: 'DISABLED' },
+  { label: t('ui.settings.menus.enabled'), value: 'ENABLED' },
+  { label: t('ui.settings.menus.disabled'), value: 'DISABLED' },
 ];
 
 const MENU_TYPE_DICT_FALLBACK_OPTIONS = MENU_TYPE_OPTIONS as unknown as DictOption[];
@@ -535,7 +534,7 @@ const buildMenuColumns = ({
   onDelete: (record: MenuRecord) => void;
 }): ProColumns<MenuTreeRecord>[] => [
   {
-    title: t('拖拽', 'Drag'),
+    title: t('ui.settings.menus.drag'),
     dataIndex: 'dragHandle',
     width: 'var(--saas-spacing-96)',
     search: false,
@@ -548,7 +547,7 @@ const buildMenuColumns = ({
           <Button
             type="text"
             size="small"
-          aria-label={hasChildren ? (expanded ? t('折叠行', 'Collapse row') : t('展开行', 'Expand row')) : undefined}
+          aria-label={hasChildren ? (expanded ? t('ui.settings.menus.collapseRow') : t('ui.settings.menus.expandRow')) : undefined}
             icon={hasChildren ? (expanded ? <MinusOutlined /> : <PlusOutlined />) : null}
             disabled={!hasChildren}
             onClick={(event) => {
@@ -570,7 +569,7 @@ const buildMenuColumns = ({
     },
   },
   {
-    title: t('菜单编码', 'Menu code'),
+    title: t('ui.settings.menus.menuCode'),
     dataIndex: 'menuCode',
     search: false,
     width: 'var(--saas-spacing-180)',
@@ -580,7 +579,7 @@ const buildMenuColumns = ({
       record.menuCode ? <Typography.Text ellipsis={{ tooltip: record.menuCode }}>{record.menuCode}</Typography.Text> : '-',
   },
   {
-    title: t('菜单名称', 'Menu name'),
+    title: t('ui.settings.menus.menuName'),
     dataIndex: 'menuName',
     width: isMobile ? 'var(--saas-spacing-220)' : 'var(--saas-spacing-260)',
     search: true,
@@ -596,19 +595,19 @@ const buildMenuColumns = ({
     ),
   },
   {
-    title: t('菜单类型', 'Menu type'),
+    title: t('ui.settings.menus.menuType'),
     dataIndex: 'menuType',
     width: 'var(--saas-spacing-120)',
     responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
     valueEnum: {
-      CATALOG: { text: t('目录', 'Catalog') },
-      MENU: { text: t('菜单', 'Menu') },
-      TAB: { text: t('页签', 'Tab') },
-      BUTTON: { text: t('按钮', 'Button') },
+      CATALOG: { text: t('ui.settings.menus.catalog') },
+      MENU: { text: t('ui.settings.menus.menu') },
+      TAB: { text: t('ui.settings.menus.tab') },
+      BUTTON: { text: t('ui.settings.menus.button') },
     },
   },
   {
-    title: t('路由', 'Route'),
+    title: t('ui.settings.menus.route'),
     dataIndex: 'path',
     search: false,
     width: 'var(--saas-spacing-220)',
@@ -616,7 +615,7 @@ const buildMenuColumns = ({
     ellipsis: true,
   },
   {
-    title: t('图标', 'Icon'),
+    title: t('ui.settings.menus.icon'),
     dataIndex: 'icon',
     search: false,
     width: 'var(--saas-spacing-180)',
@@ -625,7 +624,7 @@ const buildMenuColumns = ({
     render: (_, record) => <MenuIconPreview icon={record.icon} />,
   },
   {
-    title: t('组件', 'Component'),
+    title: t('ui.settings.menus.component'),
     dataIndex: 'component',
     search: false,
     width: 'var(--saas-spacing-300)',
@@ -633,7 +632,7 @@ const buildMenuColumns = ({
     ellipsis: true,
   },
   {
-    title: t('权限标识', 'Permission key'),
+    title: t('ui.settings.menus.permissionKey'),
     dataIndex: 'permissionKey',
     width: 'var(--saas-spacing-220)',
     search: true,
@@ -643,7 +642,7 @@ const buildMenuColumns = ({
       record.permissionKey ? <Typography.Text ellipsis={{ tooltip: record.permissionKey }}>{record.permissionKey}</Typography.Text> : '-',
   },
   {
-    title: t('排序', 'Sort'),
+    title: t('ui.settings.menus.sort'),
     dataIndex: 'sortNo',
     search: false,
     width: 'var(--saas-spacing-88)',
@@ -651,7 +650,7 @@ const buildMenuColumns = ({
     render: (_, record) => record.sortNo ?? 0,
   },
   {
-    title: t('状态', 'Status'),
+    title: t('ui.settings.menus.status'),
     dataIndex: 'status',
     width: 'var(--saas-spacing-120)',
     search: false,
@@ -659,7 +658,7 @@ const buildMenuColumns = ({
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status}</Tag>,
   },
   {
-    title: t('操作', 'Actions'),
+    title: t('ui.settings.menus.actions'),
     valueType: 'option',
     fixed: 'right',
     width: isMobile ? 64 : 'var(--saas-spacing-180)',
@@ -671,20 +670,20 @@ const buildMenuColumns = ({
           items={buildRowActions([
             {
               key: 'detail',
-              label: t('详情', 'Details'),
+              label: t('ui.settings.menus.details'),
               permission: 'system:menu:view',
               onClick: () => onOpenDetail(record),
             },
             {
               key: 'edit',
-              label: t('编辑', 'Edit'),
+              label: t('ui.settings.menus.edit'),
               permission: 'system:menu:update',
               disabled: readonly,
               onClick: () => onOpenEdit(record),
             },
             {
               key: 'status',
-              label: record.status === 'ENABLED' ? t('停用', 'Disable') : t('启用', 'Enable'),
+              label: record.status === 'ENABLED' ? t('ui.settings.menus.disable') : t('ui.settings.menus.enable'),
               permission: 'system:menu:status',
               danger: record.status === 'ENABLED',
               disabled: readonly,
@@ -692,7 +691,7 @@ const buildMenuColumns = ({
             },
             {
               key: 'delete',
-              label: t('删除', 'Delete'),
+              label: t('ui.settings.menus.delete'),
               permission: 'system:menu:delete',
               danger: true,
               disabled: readonly || Boolean(record.children?.length),
@@ -790,7 +789,7 @@ const useMenuTreeManagement = ({
         data: { status },
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success(t('状态已更新', 'Status updated'));
+      message.success(t('ui.settings.menus.statusUpdated'));
       await loadMenus();
     },
     [loadMenus],
@@ -799,16 +798,16 @@ const useMenuTreeManagement = ({
   const deleteMenu = useCallback(
     (record: MenuRecord) => {
       confirmAction({
-        title: t('删除菜单', 'Delete menu'),
-        content: t('确认删除菜单「{name}」吗？删除后权限树和运行菜单将不再出现该项。', 'Delete menu "{name}"? After deletion, it will no longer appear in the permission tree or runtime menu.').replace('{name}', record.menuName),
-        okText: t('确认删除', 'Delete'),
+        title: t('ui.settings.menus.deleteMenu'),
+        content: t('ui.settings.menus.deleteMenuAfterDeletionItWillNoLonger').replace('{name}', record.menuName),
+        okText: t('ui.settings.menus.delete.0ad952f3'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/menus/${record.id}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(t('菜单已删除', 'Menu deleted'));
+          message.success(t('ui.settings.menus.menuDeleted'));
           await loadMenus();
         },
       });
@@ -824,9 +823,9 @@ const useMenuTreeManagement = ({
       }
 
       confirmAction({
-        title: t('停用菜单', 'Disable menu'),
-        content: t('确认停用菜单「{name}」吗？停用后该菜单将不再在前台展示。', 'Disable menu "{name}"? After disabling, it will no longer be shown in the lumira-ui.').replace('{name}', record.menuName),
-        okText: t('确认停用', 'Disable'),
+        title: t('ui.settings.menus.disableMenu'),
+        content: t('ui.settings.menus.disableMenuAfterDisablingItWillNoLonger').replace('{name}', record.menuName),
+        okText: t('ui.settings.menus.disable.7c69f3f7'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await updateMenuStatus(record, 'DISABLED');
@@ -890,7 +889,7 @@ const useMenuTreeManagement = ({
             ...API_OPTS.NO_REDIRECT,
           });
         }
-        message.success(t('菜单顺序已更新', 'Menu order updated'));
+        message.success(t('ui.settings.menus.menuOrderUpdated'));
       } catch (error) {
         setMenuTree(previousTree);
         persistMainRouteMenuOrder(flattenMenuOrder(previousTree));
@@ -985,12 +984,12 @@ const useMenuTreeManagement = ({
           key: 'create',
           permission: 'system:menu:create',
           type: 'primary',
-          label: t('新增菜单', 'Add menu'),
+          label: t('ui.settings.menus.addMenu'),
           onClick: onOpenCreate,
         },
         {
           key: 'refresh',
-          label: t('刷新', 'Refresh'),
+          label: t('ui.settings.menus.refresh'),
           onClick: async () => {
             await loadMenus();
           },
@@ -1137,7 +1136,7 @@ const SettingsRoutesTab = () => {
       persistSettingRouteOrder(nextOrder);
       setRouteOrder(nextOrder);
       refreshSettingsNavigation();
-      message.success(t('设置页路由顺序已更新', 'Settings route order updated'));
+      message.success(t('ui.settings.menus.settingsRouteOrderUpdated'));
     },
     [refreshSettingsNavigation],
   );
@@ -1214,7 +1213,7 @@ const SettingsRoutesTab = () => {
     resetSettingRouteOrder();
     setRouteOrder(DEFAULT_SETTING_ROUTE_ORDER);
     refreshSettingsNavigation();
-    message.success(t('设置页路由顺序已恢复默认', 'Settings route order restored to default'));
+    message.success(t('ui.settings.menus.settingsRouteOrderRestoredToDefault'));
   }, [refreshSettingsNavigation]);
 
   const resetRouteIcon = useCallback(() => {
@@ -1229,7 +1228,7 @@ const SettingsRoutesTab = () => {
     routeEditorForm.setFieldValue('icon', record.defaultIcon);
     setEditingRoute((current) => (current ? { ...current, icon: record.defaultIcon, customIcon: undefined } : current));
     refreshSettingsNavigation();
-    message.success(t('设置页路由图标已恢复默认', 'Settings route icons restored to default'));
+    message.success(t('ui.settings.menus.settingsRouteIconsRestoredToDefault'));
   }, [editingRoute, refreshSettingsNavigation, routeEditorForm, routeIcons]);
 
   const saveRouteEditor = useCallback(async () => {
@@ -1256,13 +1255,13 @@ const SettingsRoutesTab = () => {
     setRouteOrder(nextOrder);
     refreshSettingsNavigation();
     closeRouteEditor();
-    message.success(t('设置页路由已更新', 'Settings route updated'));
+    message.success(t('ui.settings.menus.settingsRouteUpdated'));
   }, [closeRouteEditor, editingRoute, refreshSettingsNavigation, routeIcons, routeOrder, routeEditorForm]);
 
   const footerActions: ManagementDrawerAction[] = [
-    { key: 'cancel', label: t('取消', 'Cancel'), onClick: closeRouteEditor },
-    { key: 'reset-icon', label: t('默认图标', 'Default icon'), disabled: !editingRoute?.customIcon, onClick: resetRouteIcon },
-    { key: 'save', label: t('保存', 'Save'), type: 'primary', onClick: () => void saveRouteEditor() },
+    { key: 'cancel', label: t('ui.settings.menus.cancel'), onClick: closeRouteEditor },
+    { key: 'reset-icon', label: t('ui.settings.menus.defaultIcon'), disabled: !editingRoute?.customIcon, onClick: resetRouteIcon },
+    { key: 'save', label: t('ui.settings.menus.save'), type: 'primary', onClick: () => void saveRouteEditor() },
   ];
   const { token } = theme.useToken();
   const getRouteRowProps = useMemo(
@@ -1290,7 +1289,7 @@ const SettingsRoutesTab = () => {
 
   const columns: ProColumns<SettingsRouteRecord>[] = [
     {
-        title: t('拖拽', 'Drag'),
+        title: t('ui.settings.menus.drag'),
       dataIndex: 'dragHandle',
       width: 'var(--saas-spacing-96)',
       search: false,
@@ -1298,7 +1297,7 @@ const SettingsRoutesTab = () => {
       render: () => <HolderOutlined style={{ color: token.colorTextTertiary, cursor: 'grab' }} />,
     },
     {
-      title: t('菜单编码', 'Menu code'),
+      title: t('ui.settings.menus.menuCode'),
       dataIndex: 'menuCode',
       search: false,
       width: 'var(--saas-spacing-180)',
@@ -1307,7 +1306,7 @@ const SettingsRoutesTab = () => {
       render: (_, record) => <Typography.Text ellipsis={{ tooltip: record.menuCode }}>{record.menuCode}</Typography.Text>,
     },
     {
-      title: t('菜单名称', 'Menu name'),
+      title: t('ui.settings.menus.menuName'),
       dataIndex: 'menuName',
       width: 'var(--saas-spacing-260)',
       search: true,
@@ -1319,15 +1318,15 @@ const SettingsRoutesTab = () => {
       ),
     },
     {
-      title: t('菜单类型', 'Menu type'),
+      title: t('ui.settings.menus.menuType'),
       dataIndex: 'menuType',
       width: 'var(--saas-spacing-120)',
       valueEnum: {
-        TAB: { text: t('页签', 'Tab') },
+        TAB: { text: t('ui.settings.menus.tab') },
       },
     },
     {
-      title: t('路由', 'Route'),
+      title: t('ui.settings.menus.route'),
       dataIndex: 'path',
       search: false,
       width: 'var(--saas-spacing-220)',
@@ -1335,7 +1334,7 @@ const SettingsRoutesTab = () => {
       ellipsis: true,
     },
     {
-      title: t('图标', 'Icon'),
+      title: t('ui.settings.menus.icon'),
       dataIndex: 'icon',
       search: false,
       width: 'var(--saas-spacing-180)',
@@ -1344,7 +1343,7 @@ const SettingsRoutesTab = () => {
       render: (_, record) => <MenuIconPreview icon={record.icon} />,
     },
     {
-      title: t('组件', 'Component'),
+      title: t('ui.settings.menus.component'),
       dataIndex: 'component',
       search: false,
       width: 'var(--saas-spacing-300)',
@@ -1352,7 +1351,7 @@ const SettingsRoutesTab = () => {
       ellipsis: true,
     },
     {
-      title: t('权限标识', 'Permission key'),
+      title: t('ui.settings.menus.permissionKey'),
       dataIndex: 'permissionKey',
       width: 'var(--saas-spacing-220)',
       search: true,
@@ -1362,7 +1361,7 @@ const SettingsRoutesTab = () => {
         record.permissionKey ? <Typography.Text ellipsis={{ tooltip: record.permissionKey }}>{record.permissionKey}</Typography.Text> : '-',
     },
     {
-      title: t('排序', 'Sort'),
+      title: t('ui.settings.menus.sort'),
       dataIndex: 'sortNo',
       search: false,
       width: 'var(--saas-spacing-88)',
@@ -1370,21 +1369,21 @@ const SettingsRoutesTab = () => {
       render: (_, record) => record.sortNo,
     },
     {
-      title: t('状态', 'Status'),
+      title: t('ui.settings.menus.status'),
       dataIndex: 'status',
       width: 'var(--saas-spacing-120)',
       search: false,
       render: (_, record) => <Tag color="green">{record.status}</Tag>,
     },
     {
-      title: t('操作', 'Actions'),
+      title: t('ui.settings.menus.actions'),
       valueType: 'option',
       width: 'var(--saas-spacing-144)',
       fixed: 'right',
       render: (_, record) => (
         <Space size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
           <Button type="link" onClick={() => openEditRoute(record)}>
-            {t('编辑', 'Edit')}
+            {t('ui.settings.menus.edit')}
           </Button>
         </Space>
       ),
@@ -1401,43 +1400,43 @@ const SettingsRoutesTab = () => {
         tableLayout="fixed"
         isMobile={responsive.isMobile}
         search={false}
-        toolBarRender={() => (canResetOrder ? [<Button key="reset" onClick={resetOrder}>{t('恢复默认顺序', 'Restore default order')}</Button>] : [])}
+        toolBarRender={() => (canResetOrder ? [<Button key="reset" onClick={resetOrder}>{t('ui.settings.menus.restoreDefaultOrder')}</Button>] : [])}
         columns={columns}
         onRow={getRouteRowProps}
       />
       <ManagementDrawer
-        title={editingRoute ? `${t('编辑设置页路由', 'Edit settings route')} · ${editingRoute.menuName}` : t('编辑设置页路由', 'Edit settings route')}
+        title={editingRoute ? `${t('ui.settings.menus.editSettingsRoute')} · ${editingRoute.menuName}` : t('ui.settings.menus.editSettingsRoute')}
         open={Boolean(editingRoute)}
         onClose={closeRouteEditor}
         footerActions={footerActions}
       >
         <Form {...routeEditorFormProps}>
-          <Form.Item label={t('菜单编码', 'Menu code')}>
+          <Form.Item label={t('ui.settings.menus.menuCode')}>
             <Input disabled value={editingRoute?.menuCode} />
           </Form.Item>
-          <Form.Item label={t('菜单名称', 'Menu name')}>
+          <Form.Item label={t('ui.settings.menus.menuName')}>
             <Input disabled value={editingRoute?.menuName} />
           </Form.Item>
-          <Form.Item label={t('菜单类型', 'Menu type')}>
-            <Select disabled value="TAB" options={[{ label: t('页签', 'Tab'), value: 'TAB' }]} />
+          <Form.Item label={t('ui.settings.menus.menuType')}>
+            <Select disabled value="TAB" options={[{ label: t('ui.settings.menus.tab'), value: 'TAB' }]} />
           </Form.Item>
-          <Form.Item label={t('路由', 'Route')}>
+          <Form.Item label={t('ui.settings.menus.route')}>
             <Input disabled value={editingRoute?.path} />
           </Form.Item>
-          <Form.Item label={t('组件', 'Component')}>
+          <Form.Item label={t('ui.settings.menus.component')}>
             <Input disabled value={editingRoute?.component} />
           </Form.Item>
-          <Form.Item name="icon" label={t('菜单项图标', 'Menu item icon')} extra={t('图标来自 Ant Design 图标库；清空后使用默认图标。', 'Icons come from the Ant Design icon library; clearing uses the default icon.')}>
+          <Form.Item name="icon" label={t('ui.settings.menus.menuItemIcon')} extra={t('ui.settings.menus.iconsComeFromTheAntDesignIconLibrary')}>
             <MenuIconPicker />
           </Form.Item>
-          <Form.Item name="sortNo" label={t('排序', 'Sort')} rules={[{ type: 'number', min: 1, max: records.length, message: t(`请输入 1-${records.length} 之间的排序`, `Please enter a sort between 1 and ${records.length}`) }]}>
+          <Form.Item name="sortNo" label={t('ui.settings.menus.sort')} rules={[{ type: 'number', min: 1, max: records.length, message: t('ui.settings.menus.pleaseEnterASortBetween1And', { length: records.length }) }]}>
             <InputNumber min={1} max={records.length} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item label={t('权限标识', 'Permission key')}>
+          <Form.Item label={t('ui.settings.menus.permissionKey')}>
             <Input disabled value={editingRoute?.permissionKey || '-'} />
           </Form.Item>
-          <Form.Item label={t('状态', 'Status')}>
-            <Select disabled value="ENABLED" options={[{ label: t('启用', 'Enabled'), value: 'ENABLED' }]} />
+          <Form.Item label={t('ui.settings.menus.status')}>
+            <Select disabled value="ENABLED" options={[{ label: t('ui.settings.menus.enabled'), value: 'ENABLED' }]} />
           </Form.Item>
         </Form>
       </ManagementDrawer>
@@ -1446,13 +1445,13 @@ const SettingsRoutesTab = () => {
 };
 
 const menuDetailColumns: ProDescriptionsItemProps<MenuRecord>[] = [
-  { title: t('菜单名称', 'Menu name'), dataIndex: 'menuName' },
-  { title: t('菜单类型', 'Menu type'), dataIndex: 'menuType', renderText: (value) => MENU_TYPE_LABELS[value as keyof typeof MENU_TYPE_LABELS] || value },
-  { title: t('路由', 'Route'), dataIndex: 'path', renderText: (value) => value || '-' },
-  { title: t('图标', 'Icon'), dataIndex: 'icon', renderText: (value) => value || '-' },
-  { title: t('组件', 'Component'), dataIndex: 'component', renderText: (value) => value || '-' },
-  { title: t('权限标识', 'Permission key'), dataIndex: 'permissionKey', renderText: (value) => value || '-' },
-  { title: t('状态', 'Status'), dataIndex: 'status' },
+  { title: t('ui.settings.menus.menuName'), dataIndex: 'menuName' },
+  { title: t('ui.settings.menus.menuType'), dataIndex: 'menuType', renderText: (value) => MENU_TYPE_LABELS[value as keyof typeof MENU_TYPE_LABELS] || value },
+  { title: t('ui.settings.menus.route'), dataIndex: 'path', renderText: (value) => value || '-' },
+  { title: t('ui.settings.menus.icon'), dataIndex: 'icon', renderText: (value) => value || '-' },
+  { title: t('ui.settings.menus.component'), dataIndex: 'component', renderText: (value) => value || '-' },
+  { title: t('ui.settings.menus.permissionKey'), dataIndex: 'permissionKey', renderText: (value) => value || '-' },
+  { title: t('ui.settings.menus.status'), dataIndex: 'status' },
 ];
 
 const MenuEditorForm = ({
@@ -1467,34 +1466,34 @@ const MenuEditorForm = ({
   menuStatusOptions: DictOption[];
 }) => (
   <Form {...formProps}>
-    <Form.Item name="parentId" label={t('上级菜单', 'Parent menu')}>
+    <Form.Item name="parentId" label={t('ui.settings.menus.parentMenu')}>
       <Select allowClear options={parentOptions} />
     </Form.Item>
-    <Form.Item name="menuCode" label={t('菜单编码', 'Menu code')} rules={[{ required: true, message: t('请输入菜单编码', 'Please enter the menu code') }]}>
+    <Form.Item name="menuCode" label={t('ui.settings.menus.menuCode')} rules={[{ required: true, message: t('ui.settings.menus.pleaseEnterTheMenuCode') }]}>
       <Input />
     </Form.Item>
-    <Form.Item name="menuName" label={t('菜单名称', 'Menu name')} rules={[{ required: true, message: t('请输入菜单名称', 'Please enter the menu name') }]}>
+    <Form.Item name="menuName" label={t('ui.settings.menus.menuName')} rules={[{ required: true, message: t('ui.settings.menus.pleaseEnterTheMenuName') }]}>
       <Input />
     </Form.Item>
-    <Form.Item name="menuType" label={t('菜单类型', 'Menu type')} rules={[{ required: true, message: t('请选择菜单类型', 'Please select a menu type') }]}>
+    <Form.Item name="menuType" label={t('ui.settings.menus.menuType')} rules={[{ required: true, message: t('ui.settings.menus.pleaseSelectAMenuType') }]}>
       <Select options={menuTypeOptions} />
     </Form.Item>
-    <Form.Item name="path" label={t('路由', 'Route')}>
+    <Form.Item name="path" label={t('ui.settings.menus.route')}>
       <Input />
     </Form.Item>
-    <Form.Item name="component" label={t('组件', 'Component')}>
+    <Form.Item name="component" label={t('ui.settings.menus.component')}>
       <Input />
     </Form.Item>
-    <Form.Item name="icon" label={t('菜单项图标', 'Menu item icon')} extra={t('图标来自 Ant Design 图标库，保存时记录原始图标名。', 'Icons come from the Ant Design icon library; the original icon name is stored on save.')}>
+    <Form.Item name="icon" label={t('ui.settings.menus.menuItemIcon')} extra={t('ui.settings.menus.iconsComeFromTheAntDesignIconLibrary.18ee93c1')}>
       <MenuIconPicker />
     </Form.Item>
-    <Form.Item name="sortNo" label={t('排序', 'Sort')}>
+    <Form.Item name="sortNo" label={t('ui.settings.menus.sort')}>
       <InputNumber style={{ width: '100%' }} />
     </Form.Item>
-    <Form.Item name="permissionKey" label={t('权限标识', 'Permission key')}>
+    <Form.Item name="permissionKey" label={t('ui.settings.menus.permissionKey')}>
       <Input />
     </Form.Item>
-    <Form.Item name="status" label={t('状态', 'Status')}>
+    <Form.Item name="status" label={t('ui.settings.menus.status')}>
       <Select options={menuStatusOptions} />
     </Form.Item>
   </Form>
@@ -1524,7 +1523,7 @@ const MenuManagementPage = () => {
   const openEdit = useCallback(
     async (record: MenuRecord) => {
       if (isBuiltinMenu(record)) {
-        message.warning(t('内置菜单不支持编辑', 'Built-in menus cannot be edited'));
+        message.warning(t('ui.settings.menus.builtInMenusCannotBeEdited'));
         return;
       }
       drawer.openEdit(record, record.id);
@@ -1595,14 +1594,14 @@ const MenuManagementPage = () => {
           data: values,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('菜单已更新', 'Menu updated'));
+        message.success(t('ui.settings.menus.menuUpdated'));
       } else {
         await request<MenuRecord>('/v1/system/menus', {
           method: 'POST',
           data: values,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('菜单已创建', 'Menu created'));
+        message.success(t('ui.settings.menus.menuCreated'));
       }
       drawer.close();
       await catalogPack.loadMenus();
@@ -1612,18 +1611,18 @@ const MenuManagementPage = () => {
   }, [catalogPack, drawer, editorForm]);
   const menuEditorProps = {
     open: drawer.open,
-    title: drawer.editingId ? t('编辑菜单', 'Edit menu') : t('新增菜单', 'Add menu'),
+    title: drawer.editingId ? t('ui.settings.menus.editMenu') : t('ui.settings.menus.addMenu'),
     onClose: drawer.close,
     footerActions: [
-      { key: 'cancel', label: t('取消', 'Cancel'), onClick: drawer.close },
-      { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSaveMenu, onClick: () => void saveMenu() },
+      { key: 'cancel', label: t('ui.settings.menus.cancel'), onClick: drawer.close },
+      { key: 'save', label: t('ui.settings.menus.save'), type: 'primary', loading: saving, disabled: !canSaveMenu, onClick: () => void saveMenu() },
     ] as ManagementDrawerAction[],
     formProps: editorFormProps,
     parentOptions: buildParentMenuOptions(catalogPack.editableFlatMenus),
   };
   const menuDetailDrawerProps = {
     open: detail.open,
-    title: detail.currentRecord ? `${t('菜单详情', 'Menu details')} · ${detail.currentRecord.menuName}` : t('菜单详情', 'Menu details'),
+    title: detail.currentRecord ? `${t('ui.settings.menus.menuDetails')} · ${detail.currentRecord.menuName}` : t('ui.settings.menus.menuDetails'),
     onClose: detail.close,
     loading: detail.loading,
     detailProps,
@@ -1633,7 +1632,7 @@ const MenuManagementPage = () => {
   const setActiveTab = catalogPack.setActiveTab;
 
   return (
-    <ManagementPage title={t('菜单管理', 'Menu management')}>
+    <ManagementPage title={t('ui.settings.menus.menuManagement')}>
       <ManagementPageBody>
         <Tabs
           activeKey={activeTab}
@@ -1641,7 +1640,7 @@ const MenuManagementPage = () => {
           items={[
             {
               key: 'main',
-              label: t('主路由菜单', 'Main route menus'),
+              label: t('ui.settings.menus.mainRouteMenus'),
               children: (
                 <ManagementTable
                   actionRef={actionRef}
@@ -1660,7 +1659,7 @@ const MenuManagementPage = () => {
             },
             {
               key: 'settings',
-              label: t('设置页路由', 'Settings routes'),
+              label: t('ui.settings.menus.settingsRoutes'),
               children: <SettingsRoutesTab />,
             },
           ]}

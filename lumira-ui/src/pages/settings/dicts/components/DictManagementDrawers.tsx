@@ -7,29 +7,28 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ManagementTableProps } from '@/features/management/ManagementTable';
 import type { DictItemRecord, DictTypeRecord } from '@/types/api';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const dictStatusOptions = [
-  { label: t('启用', 'Enabled'), value: 'ENABLED' },
-  { label: t('停用', 'Disabled'), value: 'DISABLED' },
+  { label: t('ui.settings.dicts.dictmanagementdrawers.enabled'), value: 'ENABLED' },
+  { label: t('ui.settings.dicts.dictmanagementdrawers.disabled'), value: 'DISABLED' },
 ];
 
 const DictTypeForm = ({ formProps }: { formProps: FormProps }) => (
   <Form {...formProps}>
-    <Form.Item name="dictCode" label={t('字典编码', 'Dictionary code')} rules={[{ required: true, message: t('请输入字典编码', 'Please enter the dictionary code') }]}>
+    <Form.Item name="dictCode" label={t('ui.settings.dicts.dictmanagementdrawers.dictionaryCode')} rules={[{ required: true, message: t('ui.settings.dicts.dictmanagementdrawers.pleaseEnterTheDictionaryCode') }]}>
       <Input />
     </Form.Item>
-    <Form.Item name="dictName" label={t('字典名称', 'Dictionary name')} rules={[{ required: true, message: t('请输入字典名称', 'Please enter the dictionary name') }]}>
+    <Form.Item name="dictName" label={t('ui.settings.dicts.dictmanagementdrawers.dictionaryName')} rules={[{ required: true, message: t('ui.settings.dicts.dictmanagementdrawers.pleaseEnterTheDictionaryName') }]}>
       <Input />
     </Form.Item>
-    <Form.Item name="status" label={t('状态', 'Status')}>
+    <Form.Item name="status" label={t('ui.settings.dicts.dictmanagementdrawers.status')}>
       <Select options={dictStatusOptions} />
     </Form.Item>
-    <Form.Item name="remark" label={t('备注', 'Remark')}>
+    <Form.Item name="remark" label={t('ui.settings.dicts.dictmanagementdrawers.remark')}>
       <Input.TextArea rows={3} />
     </Form.Item>
   </Form>
@@ -37,34 +36,34 @@ const DictTypeForm = ({ formProps }: { formProps: FormProps }) => (
 
 const DictItemForm = ({ formProps }: { formProps: FormProps }) => (
   <Form {...formProps}>
-    <Form.Item name="itemLabel" label={t('标签', 'Label')} rules={[{ required: true, message: t('请输入标签', 'Please enter the label') }]}>
+    <Form.Item name="itemLabel" label={t('ui.settings.dicts.dictmanagementdrawers.label')} rules={[{ required: true, message: t('ui.settings.dicts.dictmanagementdrawers.pleaseEnterTheLabel') }]}>
       <Input />
     </Form.Item>
-    <Form.Item name="itemValue" label={t('值', 'Value')} rules={[{ required: true, message: t('请输入值', 'Please enter the value') }]}>
+    <Form.Item name="itemValue" label={t('ui.settings.dicts.dictmanagementdrawers.value')} rules={[{ required: true, message: t('ui.settings.dicts.dictmanagementdrawers.pleaseEnterTheValue') }]}>
       <Input />
     </Form.Item>
-    <Form.Item name="sortNo" label={t('排序', 'Sort')}>
+    <Form.Item name="sortNo" label={t('ui.settings.dicts.dictmanagementdrawers.sort')}>
       <InputNumber style={{ width: '100%' }} />
     </Form.Item>
-    <Form.Item name="status" label={t('状态', 'Status')}>
+    <Form.Item name="status" label={t('ui.settings.dicts.dictmanagementdrawers.status')}>
       <Select options={dictStatusOptions} />
     </Form.Item>
-    <Form.Item name="remark" label={t('备注', 'Remark')}>
+    <Form.Item name="remark" label={t('ui.settings.dicts.dictmanagementdrawers.remark')}>
       <Input.TextArea rows={3} />
     </Form.Item>
   </Form>
 );
 
 const dictTypeDetailColumns: ProDescriptionsProps<DictTypeRecord>['columns'] = [
-  { title: t('字典编码', 'Dictionary code'), dataIndex: 'dictCode' },
-  { title: t('字典名称', 'Dictionary name'), dataIndex: 'dictName' },
-  { title: t('状态', 'Status'), dataIndex: 'status', renderText: (value) => (String(value) === 'ENABLED' ? t('启用', 'Enabled') : t('停用', 'Disabled')) },
+  { title: t('ui.settings.dicts.dictmanagementdrawers.dictionaryCode'), dataIndex: 'dictCode' },
+  { title: t('ui.settings.dicts.dictmanagementdrawers.dictionaryName'), dataIndex: 'dictName' },
+  { title: t('ui.settings.dicts.dictmanagementdrawers.status'), dataIndex: 'status', renderText: (value) => (String(value) === 'ENABLED' ? t('ui.settings.dicts.dictmanagementdrawers.enabled') : t('ui.settings.dicts.dictmanagementdrawers.disabled')) },
   {
-    title: t('系统内置', 'System built-in'),
+    title: t('ui.settings.dicts.dictmanagementdrawers.systemBuiltIn'),
     dataIndex: 'isSystem',
-    renderText: (value) => (Number(value) !== 0 ? t('是', 'Yes') : t('否', 'No')),
+    renderText: (value) => (Number(value) !== 0 ? t('ui.settings.dicts.dictmanagementdrawers.yes') : t('ui.settings.dicts.dictmanagementdrawers.no')),
   },
-  { title: t('备注', 'Remark'), dataIndex: 'remark', renderText: (value) => value || '-' },
+  { title: t('ui.settings.dicts.dictmanagementdrawers.remark'), dataIndex: 'remark', renderText: (value) => value || '-' },
 ];
 
 type DictManagementDrawersProps = {
@@ -133,8 +132,8 @@ export const DictManagementDrawers = ({
       open={typeDrawerOpen}
       onClose={onCloseTypeDrawer}
       footerActions={[
-        { key: 'cancel', label: t('取消', 'Cancel'), onClick: onCloseTypeDrawer },
-        { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: typeDrawerSaving, disabled: !canSaveType, onClick: onSaveType },
+        { key: 'cancel', label: t('ui.settings.dicts.dictmanagementdrawers.cancel'), onClick: onCloseTypeDrawer },
+        { key: 'save', label: t('ui.settings.dicts.dictmanagementdrawers.save'), type: 'primary', loading: typeDrawerSaving, disabled: !canSaveType, onClick: onSaveType },
       ]}
     >
       <DictTypeForm formProps={typeFormProps} />
@@ -161,7 +160,7 @@ export const DictManagementDrawers = ({
                   key: 'create-item',
                   permission: 'system:dict:update',
                   type: 'primary',
-                  label: t('新增项', 'Add item'),
+                  label: t('ui.settings.dicts.dictmanagementdrawers.addItem'),
                   onClick: onCreateItem,
                 },
               ])
@@ -176,8 +175,8 @@ export const DictManagementDrawers = ({
       open={itemDrawerOpen}
       onClose={onCloseItemDrawer}
       footerActions={[
-        { key: 'cancel', label: t('取消', 'Cancel'), onClick: onCloseItemDrawer },
-        { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: itemDrawerSaving, disabled: !canSaveItem, onClick: onSaveItem },
+        { key: 'cancel', label: t('ui.settings.dicts.dictmanagementdrawers.cancel'), onClick: onCloseItemDrawer },
+        { key: 'save', label: t('ui.settings.dicts.dictmanagementdrawers.save'), type: 'primary', loading: itemDrawerSaving, disabled: !canSaveItem, onClick: onSaveItem },
       ]}
     >
       <DictItemForm formProps={itemFormProps} />

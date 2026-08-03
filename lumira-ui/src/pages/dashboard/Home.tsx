@@ -13,11 +13,10 @@ import { API_OPTS } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './Home.css';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const MOBILE_HIDE_RESPONSIVE: Array<'md' | 'lg' | 'xl' | 'xxl'> = ['md', 'lg', 'xl', 'xxl'];
 const LOGIN_LOG_TABLE_SCROLL_X = 920;
@@ -43,47 +42,47 @@ const buildInitials = (name?: string | null, fallback = 'U') => {
 
 const buildGreeting = (hour: number) => {
   if (hour >= 5 && hour < 9) {
-    return t('早上好', 'Good morning');
+    return t('ui.dashboard.home.goodMorning');
   }
 
   if (hour >= 9 && hour < 12) {
-    return t('上午好', 'Good morning');
+    return t('ui.dashboard.home.goodMorning.22c41315');
   }
 
   if (hour >= 12 && hour < 14) {
-    return t('中午好', 'Good noon');
+    return t('ui.dashboard.home.goodNoon');
   }
 
   if (hour >= 14 && hour < 18) {
-    return t('下午好', 'Good afternoon');
+    return t('ui.dashboard.home.goodAfternoon');
   }
 
   if (hour >= 18 && hour < 24) {
-    return t('晚上好', 'Good evening');
+    return t('ui.dashboard.home.goodEvening');
   }
 
-  return t('凌晨好', 'Good early morning');
+  return t('ui.dashboard.home.goodEarlyMorning');
 };
 
 const formatLoginType = (value?: string | null) => {
   const map: Record<string, string> = {
-    PASSWORD: t('密码登录', 'Password login'),
-    SMS: t('短信登录', 'SMS login'),
-    EMAIL: t('邮箱登录', 'Email login'),
-    TOTP: t('二次验证', '2FA'),
-    PASSKEY: t('通行密钥', 'Passkey'),
-    WECHAT: t('微信登录', 'WeChat login'),
-    LOGOUT: t('退出登录', 'Logout'),
+    PASSWORD: t('ui.dashboard.home.passwordLogin'),
+    SMS: t('ui.dashboard.home.smsLogin'),
+    EMAIL: t('ui.dashboard.home.emailLogin'),
+    TOTP: t('ui.dashboard.home.2fa'),
+    PASSKEY: t('ui.dashboard.home.passkey'),
+    WECHAT: t('ui.dashboard.home.wechatLogin'),
+    LOGOUT: t('ui.dashboard.home.logout'),
   };
   return value ? map[value.toUpperCase()] || value : '-';
 };
 
 const formatLogResult = (value?: string | null) => {
   const map: Record<string, string> = {
-    SUCCESS: t('成功', 'Success'),
-    FAIL: t('失败', 'Failed'),
-    FAILED: t('失败', 'Failed'),
-    ERROR: t('异常', 'Error'),
+    SUCCESS: t('ui.dashboard.home.success'),
+    FAIL: t('ui.dashboard.home.failed'),
+    FAILED: t('ui.dashboard.home.failed'),
+    ERROR: t('ui.dashboard.home.error'),
   };
   return value ? map[value.toUpperCase()] || value : '-';
 };
@@ -101,26 +100,26 @@ const logResultColor = (value?: string | null) => {
 
 const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] => [
   {
-    title: t('时间', 'Time'),
+    title: t('ui.dashboard.home.time'),
     dataIndex: 'createdAt',
     width: 'var(--saas-spacing-180)',
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatDateTime(record.createdAt)}</Typography.Text>,
   },
   {
-    title: t('用户', 'User'),
+    title: t('ui.dashboard.home.user'),
     dataIndex: 'username',
     width: 'var(--saas-spacing-180)',
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
-    title: t('登录方式', 'Login method'),
+    title: t('ui.dashboard.home.loginMethod'),
     dataIndex: 'logType',
     width: 'var(--saas-spacing-140)',
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatLoginType(record.logType || record.loginType)}</Typography.Text>,
   },
   {
-    title: t('结果', 'Result'),
+    title: t('ui.dashboard.home.result'),
     dataIndex: 'logResult',
     width: 'var(--saas-spacing-96)',
     render: (_, record) => (
@@ -130,7 +129,7 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
     ),
   },
   {
-    title: t('登录信息', 'Login info'),
+    title: t('ui.dashboard.home.loginInfo'),
     dataIndex: 'loginIp',
     width: 'var(--saas-spacing-280)',
     ellipsis: true,
@@ -144,20 +143,20 @@ const buildLoginLogColumns = (isMobile: boolean): ProColumns<AuditLogRecord>[] =
 
 const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<AuditLogRecord>[] => [
   {
-    title: t('时间', 'Time'),
+    title: t('ui.dashboard.home.time'),
     dataIndex: 'createdAt',
     width: 'var(--saas-spacing-180)',
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{formatDateTime(record.createdAt)}</Typography.Text>,
   },
   {
-    title: t('用户', 'User'),
+    title: t('ui.dashboard.home.user'),
     dataIndex: 'username',
     width: 'var(--saas-spacing-180)',
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
     render: (_: unknown, record: AuditLogRecord) => <Typography.Text>{record.username || '-'}</Typography.Text>,
   },
   {
-    title: t('结果', 'Result'),
+    title: t('ui.dashboard.home.result'),
     dataIndex: 'logResult',
     width: 'var(--saas-spacing-100)',
     ...(isMobile ? { responsive: MOBILE_HIDE_RESPONSIVE } : {}),
@@ -168,7 +167,7 @@ const buildOperationLogColumns = (title: string, isMobile: boolean): ProColumns<
     ),
   },
   {
-    title: t('内容', 'Content'),
+    title: t('ui.dashboard.home.content'),
     dataIndex: 'detailMessage',
     width: 'var(--saas-spacing-320)',
     ellipsis: true,
@@ -197,11 +196,11 @@ const useDashboardHome = () => {
   const summary = dashboardQuery.data as DashboardSummary | undefined;
   const currentUser = summary?.currentUser || initialState?.currentUser;
   const greeting = buildGreeting(dayjs().hour());
-  const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || t('当前用户', 'Current user');
+  const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || t('ui.dashboard.home.currentUser');
   const recentLoginLogs = summary?.recentLoginLogs || [];
   const recentOperationLogs = summary?.recentOperationLogs || [];
   const loginLogColumns = buildLoginLogColumns(responsive.isMobile);
-  const operationLogColumns = buildOperationLogColumns(t('操作记录', 'Operation logs'), responsive.isMobile);
+  const operationLogColumns = buildOperationLogColumns(t('ui.dashboard.home.operationLogs'), responsive.isMobile);
   const pageContainerToken = {
     paddingInlinePageContainerContent: resolveResponsiveValue(APP_SPACING.pageContainerPaddingInline, responsive.isMobile),
     paddingBlockPageContainerContent: resolveResponsiveValue(APP_SPACING.pageContainerPaddingBlock, responsive.isMobile),
@@ -255,7 +254,7 @@ const DashboardHomePage = () => {
   ];
 
   return (
-    <PageContainer title={t('工作台', 'Dashboard')} ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
+    <PageContainer title={t('ui.dashboard.home.dashboard')} ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
       <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
         <ProCard variant="outlined" className="saas-dashboard-home__hero">
           <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
@@ -267,20 +266,20 @@ const DashboardHomePage = () => {
                 <Typography.Title level={3} style={{ margin: 0 }}>
                   {greeting}，{displayName}
                 </Typography.Title>
-                <Typography.Text type="secondary">{t('欢迎回来，继续处理今天的系统事项', 'Welcome back. Let’s keep working on today’s tasks.')}</Typography.Text>
+                <Typography.Text type="secondary">{t('ui.dashboard.home.welcomeBackLetSKeepWorkingOnToday')}</Typography.Text>
               </Space>
             </Space>
             {dashboardQuery.isLoading && !summary ? <Skeleton active paragraph={{ rows: 2 }} title={false} /> : null}
           </Space>
         </ProCard>
 
-        <ProCard title={t('近期动态', 'Recent activity')} variant="outlined" className="saas-dashboard-home__panel">
+        <ProCard title={t('ui.dashboard.home.recentActivity')} variant="outlined" className="saas-dashboard-home__panel">
           <Tabs
             defaultActiveKey="login"
             items={[
               {
                 key: 'login',
-                label: t('登录记录 ({count})', 'Login records ({count})').replace('{count}', String(recentLoginLogs.length)),
+                label: t('ui.dashboard.home.loginRecords').replace('{count}', String(recentLoginLogs.length)),
                 children: (
                   <ManagementTable<AuditLogRecord>
                     className="saas-dashboard-home__activity-table"
@@ -295,14 +294,14 @@ const DashboardHomePage = () => {
                     columns={loginLogColumns}
                     dataSource={recentLoginLogs}
                     locale={{
-                      emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无登录记录', 'No login records')} />,
+                      emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('ui.dashboard.home.noLoginRecords')} />,
                     }}
                   />
                 ),
               },
               {
                 key: 'operation',
-                label: t('操作记录 ({count})', 'Operation records ({count})').replace('{count}', String(recentOperationLogs.length)),
+                label: t('ui.dashboard.home.operationRecords').replace('{count}', String(recentOperationLogs.length)),
                 children: (
                   <ManagementTable<AuditLogRecord>
                     className="saas-dashboard-home__activity-table"
@@ -317,7 +316,7 @@ const DashboardHomePage = () => {
                     columns={operationLogColumns}
                     dataSource={recentOperationLogs}
                     locale={{
-                      emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无操作记录', 'No operation records')} />,
+                      emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('ui.dashboard.home.noOperationRecords')} />,
                     }}
                   />
                 ),

@@ -17,11 +17,10 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { useAuthenticatorConfigDrawer } from './useAuthenticatorConfigDrawer';
 import { request } from '@/services/common/request';
 import { API_OPTS } from '@/utils/errorMessage';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 type AuthenticatorCode = 'passkey_login' | 'sms_login' | 'email_login' | 'wechat_login' | 'password_login';
 type ConfigDrawerMode = 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | 'basic';
@@ -100,7 +99,7 @@ const disableSmsAuthenticator = async ({
     ...result,
     accessKeySecret: result.accessKeySecretConfigured ? SMS_ACCESS_KEY_SECRET_MASK : '',
   });
-  message.success(t('短信认证器已停用', 'SMS authenticator disabled'));
+  message.success(t('ui.settings.verification.useauthenticator.smsAuthenticatorDisabled'));
   await onSmsSettingsRefetch();
 };
 
@@ -121,7 +120,7 @@ const disableVerificationSettingsAuthenticator = async (
     ...API_OPTS.NO_REDIRECT,
   });
   verificationForm.setFieldsValue(result);
-  message.success(key === 'email_login' ? t('邮箱认证器已停用', 'Email authenticator disabled') : t('密码登录已停用', 'Password sign-in disabled'));
+  message.success(key === 'email_login' ? t('ui.settings.verification.useauthenticator.emailAuthenticatorDisabled') : t('ui.settings.verification.useauthenticator.passwordSignInDisabled'));
   await onVerificationSettingsRefetch();
 };
 
@@ -142,7 +141,7 @@ const disablePasskeyAuthenticator = async ({
     ...result,
     allowedOriginsText: result.allowedOrigins?.join('\n') || '',
   });
-  message.success(t('通行密钥已停用', 'Passkey disabled'));
+  message.success(t('ui.settings.verification.useauthenticator.passkeyDisabled'));
   await onPasskeySettingsRefetch();
 };
 
@@ -163,7 +162,7 @@ const disableWechatAuthenticator = async ({
     ...result,
     appSecret: result.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
   });
-  message.success(t('微信认证器已停用', 'WeChat authenticator disabled'));
+  message.success(t('ui.settings.verification.useauthenticator.wechatAuthenticatorDisabled'));
   await onWechatSettingsRefetch();
 };
 
@@ -313,7 +312,7 @@ const enableConfiguredAuthenticator = async (record: AuthenticatorRecord, deps: 
       accessKeySecret: result.accessKeySecretConfigured ? SMS_ACCESS_KEY_SECRET_MASK : '',
     });
     await deps.onSmsSettingsRefetch();
-    message.success(t('短信认证器已启用', 'SMS authenticator enabled'));
+    message.success(t('ui.settings.verification.useauthenticator.smsAuthenticatorEnabled'));
     return true;
   }
 
@@ -325,7 +324,7 @@ const enableConfiguredAuthenticator = async (record: AuthenticatorRecord, deps: 
     });
     deps.verificationForm.setFieldsValue(result);
     await deps.onVerificationSettingsRefetch();
-    message.success(record.key === 'email_login' ? t('邮箱认证器已启用', 'Email authenticator enabled') : t('密码登录已启用', 'Password sign-in enabled'));
+    message.success(record.key === 'email_login' ? t('ui.settings.verification.useauthenticator.emailAuthenticatorEnabled') : t('ui.settings.verification.useauthenticator.passwordSignInEnabled'));
     return true;
   }
 
@@ -340,7 +339,7 @@ const enableConfiguredAuthenticator = async (record: AuthenticatorRecord, deps: 
       allowedOriginsText: result.allowedOrigins?.join('\n') || '',
     });
     await deps.onPasskeySettingsRefetch();
-    message.success(t('通行密钥已启用', 'Passkey enabled'));
+    message.success(t('ui.settings.verification.useauthenticator.passkeyEnabled'));
     return true;
   }
 
@@ -354,7 +353,7 @@ const enableConfiguredAuthenticator = async (record: AuthenticatorRecord, deps: 
     appSecret: result.appSecretConfigured ? WECHAT_APP_SECRET_MASK : '',
   });
   await deps.onWechatSettingsRefetch();
-  message.success(t('微信认证器已启用', 'WeChat authenticator enabled'));
+  message.success(t('ui.settings.verification.useauthenticator.wechatAuthenticatorEnabled'));
   return true;
 };
 
@@ -378,11 +377,11 @@ const buildAddAuthenticatorItems = ({
   onEnableAuthenticator: (mode: 'passkey' | 'sms' | 'email' | 'wechat' | 'password') => void;
 }) =>
   [
-    { key: 'passkey', label: t('通行密钥', 'Passkey'), enabled: passkeyEnabled, mode: 'passkey' as const },
-    { key: 'sms', label: t('短信', 'SMS'), enabled: smsEnabled, mode: 'sms' as const },
-    { key: 'email', label: t('邮箱', 'Email'), enabled: emailEnabled, mode: 'email' as const },
-    { key: 'wechat', label: t('微信', 'WeChat'), enabled: wechatEnabled, mode: 'wechat' as const },
-    { key: 'password', label: t('密码', 'Password'), enabled: passwordEnabled, mode: 'password' as const },
+    { key: 'passkey', label: t('ui.settings.verification.useauthenticator.passkey'), enabled: passkeyEnabled, mode: 'passkey' as const },
+    { key: 'sms', label: t('ui.settings.verification.useauthenticator.sms'), enabled: smsEnabled, mode: 'sms' as const },
+    { key: 'email', label: t('ui.settings.verification.useauthenticator.email'), enabled: emailEnabled, mode: 'email' as const },
+    { key: 'wechat', label: t('ui.settings.verification.useauthenticator.wechat'), enabled: wechatEnabled, mode: 'wechat' as const },
+    { key: 'password', label: t('ui.settings.verification.useauthenticator.password'), enabled: passwordEnabled, mode: 'password' as const },
   ]
     .filter((item) => !existingLoginModes.includes(item.mode))
     .map((item) => ({
@@ -395,7 +394,7 @@ const buildAddAuthenticatorItems = ({
 const disableAuthenticatorByKey = async (key: AuthenticatorCode, deps: AuthenticatorDeletionDeps) => {
   const enabledKeys = getEnabledAuthenticatorKeys(deps.passkeySettingsData, deps.smsSettingsData, deps.verificationSettingsData, deps.wechatSettingsData);
   if (!canRemoveAuthenticators([key], enabledKeys)) {
-    message.warning(t('至少需要保留一种可用登录方式', 'At least one login method must remain enabled'));
+    message.warning(t('ui.settings.verification.useauthenticator.atLeastOneLoginMethodMustRemainEnabled'));
     return false;
   }
 
@@ -442,7 +441,7 @@ const disableAuthenticatorByKey = async (key: AuthenticatorCode, deps: Authentic
 const deleteAuthenticatorByKey = async (key: AuthenticatorCode, deps: AuthenticatorDeletionDeps) => {
   const enabledKeys = getEnabledAuthenticatorKeys(deps.passkeySettingsData, deps.smsSettingsData, deps.verificationSettingsData, deps.wechatSettingsData);
   if (!canRemoveAuthenticators([key], enabledKeys)) {
-    message.warning(t('至少需要保留一种可用登录方式', 'At least one login method must remain enabled'));
+    message.warning(t('ui.settings.verification.useauthenticator.atLeastOneLoginMethodMustRemainEnabled'));
     return;
   }
   if (key === 'sms_login') {
@@ -479,19 +478,19 @@ const deleteAuthenticatorByKey = async (key: AuthenticatorCode, deps: Authentica
   }
   const nextOrder = removeLoginMode(deps.verificationForm.getFieldValue('loginModeOrder') as string[] | undefined, resolveLoginModeFromAuthenticatorKey(key));
   await updateLoginModeOrder(nextOrder, deps);
-  message.success(t('认证器已删除', 'Authenticator deleted'));
+  message.success(t('ui.settings.verification.useauthenticator.authenticatorDeleted'));
 };
 
 const deleteSelectedAuthenticators = async (selectedAuthenticatorKeys: Key[], deps: AuthenticatorDeletionDeps) => {
   if (!selectedAuthenticatorKeys.length) {
-    message.info(t('请先选择要删除的认证器', 'Please select authenticators to delete first'));
+    message.info(t('ui.settings.verification.useauthenticator.pleaseSelectAuthenticatorsToDeleteFirst'));
     return;
   }
 
   const selectedKeys = new Set(selectedAuthenticatorKeys as AuthenticatorCode[]);
   const enabledKeys = getEnabledAuthenticatorKeys(deps.passkeySettingsData, deps.smsSettingsData, deps.verificationSettingsData, deps.wechatSettingsData);
   if (!canRemoveAuthenticators(Array.from(selectedKeys), enabledKeys)) {
-    message.warning(t('至少需要保留一种可用登录方式', 'At least one login method must remain enabled'));
+    message.warning(t('ui.settings.verification.useauthenticator.atLeastOneLoginMethodMustRemainEnabled'));
     return;
   }
 
@@ -543,46 +542,46 @@ const buildAuthenticatorRowMap = ({
 }): Record<LoginMode, Omit<AuthenticatorRecord, 'order'>> => ({
   passkey: {
     key: 'passkey_login',
-    identifier: t('通行密钥', 'Passkey'),
-    type: t('通行密钥', 'Passkey'),
-    title: t('通行密钥', 'Passkey'),
-    description: t('使用系统钥匙串或密码管理器进行 WebAuthn 验证', 'Use your system keychain or password manager for WebAuthn verification'),
+    identifier: t('ui.settings.verification.useauthenticator.passkey'),
+    type: t('ui.settings.verification.useauthenticator.passkey'),
+    title: t('ui.settings.verification.useauthenticator.passkey'),
+    description: t('ui.settings.verification.useauthenticator.useYourSystemKeychainOrPasswordManagerFor'),
     enabled: passkeyEnabled,
     configured: passkeyConfigured,
   },
   sms: {
     key: 'sms_login',
-    identifier: t('短信', 'SMS'),
-    type: t('短信', 'SMS'),
-    title: t('短信验证', 'SMS verification'),
-    description: t('使用短信验证码登录', 'Sign in with an SMS code'),
+    identifier: t('ui.settings.verification.useauthenticator.sms'),
+    type: t('ui.settings.verification.useauthenticator.sms'),
+    title: t('ui.settings.verification.useauthenticator.smsVerification'),
+    description: t('ui.settings.verification.useauthenticator.signInWithAnSmsCode'),
     enabled: smsEnabled,
     configured: smsConfigured,
   },
   email: {
     key: 'email_login',
-    identifier: t('邮箱', 'Email'),
-    type: t('邮箱', 'Email'),
-    title: t('邮箱验证码', 'Email verification code'),
-    description: t('使用邮箱验证码登录', 'Sign in with an email code'),
+    identifier: t('ui.settings.verification.useauthenticator.email'),
+    type: t('ui.settings.verification.useauthenticator.email'),
+    title: t('ui.settings.verification.useauthenticator.emailVerificationCode'),
+    description: t('ui.settings.verification.useauthenticator.signInWithAnEmailCode'),
     enabled: emailEnabled,
     configured: emailConfigured,
   },
   wechat: {
     key: 'wechat_login',
-    identifier: t('微信', 'WeChat'),
-    type: t('微信', 'WeChat'),
-    title: t('微信扫码登录', 'WeChat QR sign-in'),
-    description: t('使用微信扫码登录，未注册用户可自动创建账号', 'Sign in with WeChat QR code; unregistered users can be auto-created'),
+    identifier: t('ui.settings.verification.useauthenticator.wechat'),
+    type: t('ui.settings.verification.useauthenticator.wechat'),
+    title: t('ui.settings.verification.useauthenticator.wechatQrSignIn'),
+    description: t('ui.settings.verification.useauthenticator.signInWithWechatQrCodeUnregisteredUsers'),
     enabled: wechatEnabled,
     configured: wechatConfigured,
   },
   password: {
     key: 'password_login',
-    identifier: t('密码', 'Password'),
-    type: t('密码', 'Password'),
-    title: t('账号密码登录', 'Username/password sign-in'),
-    description: t('使用账号密码登录', 'Sign in with username and password'),
+    identifier: t('ui.settings.verification.useauthenticator.password'),
+    type: t('ui.settings.verification.useauthenticator.password'),
+    title: t('ui.settings.verification.useauthenticator.usernamePasswordSignIn'),
+    description: t('ui.settings.verification.useauthenticator.signInWithUsernameAndPassword'),
     enabled: passwordEnabled,
     configured: passwordConfigured,
   },
@@ -652,7 +651,7 @@ const buildAuthenticatorOrderColumn = ({
   tokenColorTextSecondary: string;
   isMobile: boolean;
 }): ProColumns<AuthenticatorRecord> => ({
-  title: t('排序', 'Sort'),
+  title: t('ui.settings.verification.useauthenticator.sort'),
   dataIndex: 'order',
   width: 'var(--saas-spacing-96)',
   search: false,
@@ -665,14 +664,14 @@ const buildAuthenticatorOrderColumn = ({
 });
 
 const buildAuthenticatorIdentityColumn = (): ProColumns<AuthenticatorRecord> => ({
-  title: t('认证标识', 'Authenticator ID'),
+  title: t('ui.settings.verification.useauthenticator.authenticatorId'),
   dataIndex: 'identifier',
   width: 'var(--saas-spacing-180)',
   search: false,
 });
 
 const buildAuthenticatorTypeColumn = (): ProColumns<AuthenticatorRecord> => ({
-  title: t('认证类型', 'Authenticator type'),
+  title: t('ui.settings.verification.useauthenticator.authenticatorType'),
   dataIndex: 'type',
   width: 'var(--saas-spacing-160)',
   search: false,
@@ -680,7 +679,7 @@ const buildAuthenticatorTypeColumn = (): ProColumns<AuthenticatorRecord> => ({
 });
 
 const buildAuthenticatorTitleColumn = (): ProColumns<AuthenticatorRecord> => ({
-  title: t('标题', 'Title'),
+  title: t('ui.settings.verification.useauthenticator.title'),
   dataIndex: 'title',
   width: 'var(--saas-spacing-180)',
   search: false,
@@ -691,7 +690,7 @@ const buildAuthenticatorStatusColumn = ({
 }: {
   tokenColorSuccess: string;
 }): ProColumns<AuthenticatorRecord> => ({
-  title: t('启用', 'Enabled'),
+  title: t('ui.settings.verification.useauthenticator.enabled'),
   dataIndex: 'enabled',
   width: 'var(--saas-spacing-120)',
   align: 'center',
@@ -737,7 +736,7 @@ const buildAuthenticatorToggleActionItem = (
   params: BuildAuthenticatorActionItemsParams,
 ): AuthenticatorActionItem => ({
   key: 'toggle',
-  label: record.enabled ? t('禁用', 'Disable') : t('启用', 'Enable'),
+  label: record.enabled ? t('ui.settings.verification.useauthenticator.disable') : t('ui.settings.verification.useauthenticator.enable'),
   danger: record.enabled,
   disabled: !params.canManageSettings,
   loading: params.togglingAuthenticatorKey === record.key,
@@ -749,7 +748,7 @@ const buildAuthenticatorConfigActionItem = (
   params: BuildAuthenticatorActionItemsParams,
 ): AuthenticatorActionItem => ({
   key: 'config',
-  label: t('配置', 'Configure'),
+  label: t('ui.settings.verification.useauthenticator.configure'),
   disabled: !params.canManageSettings,
   onClick: () => params.onOpenConfigDrawer(resolveAuthenticatorDrawerMode(record.key)),
 });
@@ -759,7 +758,7 @@ const buildAuthenticatorDeleteActionItem = (
   params: BuildAuthenticatorActionItemsParams,
 ): AuthenticatorActionItem => ({
   key: 'delete',
-  label: t('删除', 'Delete'),
+  label: t('ui.settings.verification.useauthenticator.delete'),
   danger: true,
   disabled: !params.canManageSettings,
   onClick: () => void params.onDeleteAuthenticator(record.key),
@@ -782,7 +781,7 @@ const buildAuthenticatorActionColumn = ({
   onOpenConfigDrawer,
   onDeleteAuthenticator,
 }: AuthenticatorColumnsActionsParams): ProColumns<AuthenticatorRecord> => ({
-  title: t('操作', 'Actions'),
+  title: t('ui.settings.verification.useauthenticator.actions'),
   valueType: 'option',
   fixed: 'right',
   width: 'var(--saas-spacing-240)',

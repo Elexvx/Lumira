@@ -25,7 +25,10 @@ import type {
 import { API_OPTS } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { sanitizeRichText } from '@/security/richTextSanitizer';
+import { databaseMessage } from '@/i18n/databaseMessage';
 import './WorkOrderFeedbackPage.css';
+
+const t = databaseMessage;
 
 type WorkOrderFormValues = {
   title: string;
@@ -47,17 +50,17 @@ type RichTextEditorProps = {
 const PLUGIN_CODE = 'work-order-feedback';
 
 const STATUS_OPTIONS = [
-  { label: '待处理', value: 'OPEN' },
-  { label: '处理中', value: 'PROCESSING' },
-  { label: '已解决', value: 'RESOLVED' },
-  { label: '已关闭', value: 'CLOSED' },
+  { label: t('plugin.workOrders.status.pending'), value: 'OPEN' },
+  { label: t('plugin.workOrders.status.processing'), value: 'PROCESSING' },
+  { label: t('plugin.workOrders.status.resolved'), value: 'RESOLVED' },
+  { label: t('plugin.workOrders.status.closed'), value: 'CLOSED' },
 ] satisfies Array<{ label: string; value: WorkOrderFeedbackStatus }>;
 
 const PRIORITY_OPTIONS = [
-  { label: '低', value: 'LOW' },
-  { label: '普通', value: 'NORMAL' },
-  { label: '高', value: 'HIGH' },
-  { label: '紧急', value: 'URGENT' },
+  { label: t('plugin.workOrders.priority.low'), value: 'LOW' },
+  { label: t('plugin.workOrders.priority.normal'), value: 'NORMAL' },
+  { label: t('plugin.workOrders.priority.high'), value: 'HIGH' },
+  { label: t('plugin.workOrders.priority.urgent'), value: 'URGENT' },
 ] satisfies Array<{ label: string; value: WorkOrderFeedbackPriority }>;
 
 const statusColor: Record<WorkOrderFeedbackStatus, string> = {
@@ -79,7 +82,7 @@ const labelOf = <T extends string>(options: Array<{ label: string; value: T }>, 
 
 const uploadRichTextImage = async (file: File) => {
   if (!file.type.startsWith('image/')) {
-    message.warning('只能粘贴图片');
+    message.warning(t('plugin.workOrders.validation.imagesOnly'));
     return null;
   }
   const formData = new FormData();
@@ -172,7 +175,7 @@ const RichTextEditor = ({ value, onChange, disabled, placeholder }: RichTextEdit
         editorRef.current?.appendChild(img);
       }
       emitChange();
-      message.success('图片已上传');
+      message.success(t('plugin.workOrders.message.imageUploaded'));
     } finally {
       setUploading(false);
     }
@@ -203,14 +206,14 @@ const RichTextEditor = ({ value, onChange, disabled, placeholder }: RichTextEdit
         <Button size="small" icon={<ItalicOutlined />} disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => exec('italic')} />
         <Button size="small" icon={<UnorderedListOutlined />} disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => exec('insertUnorderedList')} />
         <Button size="small" icon={<OrderedListOutlined />} disabled={disabled} onMouseDown={(event) => event.preventDefault()} onClick={() => exec('insertOrderedList')} />
-        {uploading ? <Typography.Text type="secondary">上传中...</Typography.Text> : null}
+        {uploading ? <Typography.Text type="secondary">{t('plugin.workOrders.message.uploading')}</Typography.Text> : null}
       </div>
       <div
         ref={editorRef}
         className="work-order-rich-editor-body"
         contentEditable={!disabled}
         suppressContentEditableWarning
-        data-placeholder={placeholder || '请输入详情'}
+        data-placeholder={placeholder || t('plugin.workOrders.validation.detailRequired')}
         onInput={emitChange}
         onBlur={emitChange}
         onKeyUp={rememberSelection}
@@ -272,7 +275,7 @@ const WorkOrderFeedbackPage = () => {
   const saveWorkOrder = async () => {
     const sanitizedDetail = sanitizeRichText(detailHtml);
     if (!sanitizedDetail.replace(/<[^>]*>/g, '').trim() && !sanitizedDetail.includes('<img')) {
-      message.warning('请填写问题详情');
+      message.warning(t('plugin.workOrders.validation.descriptionRequired'));
       return;
     }
     setSaving(true);
@@ -288,7 +291,7 @@ const WorkOrderFeedbackPage = () => {
         data: payload,
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success('工单已提交');
+      message.success(t('plugin.workOrders.message.submitted'));
       crud.reloadAndCloseEditor();
       setDetailHtml('');
     } finally {
@@ -312,7 +315,7 @@ const WorkOrderFeedbackPage = () => {
         data: payload,
         ...API_OPTS.NO_REDIRECT,
       });
-      message.success('工单状态已更新');
+      message.success(t('plugin.workOrders.message.statusUpdated'));
       setDetailRecord(result);
       setStatusDrawerOpen(false);
       crud.reloadTable();
@@ -323,34 +326,34 @@ const WorkOrderFeedbackPage = () => {
 
   const columns = useMemo<ProColumns<WorkOrderFeedbackRecord>[]>(() => {
     const actionItems = (record: WorkOrderFeedbackRecord): TableActionItem[] => [
-      { key: 'detail', label: '详情', onClick: () => void openDetail(record) },
+      { key: 'detail', label: t('plugin.workOrders.common.details'), onClick: () => void openDetail(record) },
       {
         key: 'status',
-        label: '处理',
+        label: t('plugin.workOrders.common.process'),
         disabled: !canManage,
         onClick: () => openStatus(record),
       },
     ];
     return [
-      { title: '标题', dataIndex: 'title' },
+      { title: t('plugin.workOrders.field.title'), dataIndex: 'title' },
       {
-        title: '状态',
+        title: t('plugin.workOrders.field.status'),
         dataIndex: 'status',
         valueType: 'select',
         valueEnum: Object.fromEntries(STATUS_OPTIONS.map((item) => [item.value, { text: item.label }])),
         render: (_, record) => <Tag color={statusColor[record.status]}>{labelOf(STATUS_OPTIONS, record.status)}</Tag>,
       },
       {
-        title: '优先级',
+        title: t('plugin.workOrders.field.priority'),
         dataIndex: 'priority',
         valueType: 'select',
         valueEnum: Object.fromEntries(PRIORITY_OPTIONS.map((item) => [item.value, { text: item.label }])),
         render: (_, record) => <Tag color={priorityColor[record.priority]}>{labelOf(PRIORITY_OPTIONS, record.priority)}</Tag>,
       },
-      { title: '提交人', dataIndex: 'submitterName', search: false, hideInTable: tableScope !== 'admin' },
-      { title: '更新时间', dataIndex: 'updatedAt', search: false, width: 180 },
+      { title: t('plugin.workOrders.field.submitter'), dataIndex: 'submitterName', search: false, hideInTable: tableScope !== 'admin' },
+      { title: t('plugin.workOrders.field.updatedAt'), dataIndex: 'updatedAt', search: false, width: 180 },
       {
-        title: '操作',
+        title: t('plugin.workOrders.field.actions'),
         valueType: 'option',
         fixed: responsive.isMobile ? undefined : 'right',
         render: (_, record) => <TableActionBar isMobile={responsive.isMobile} items={actionItems(record)} />,
@@ -362,7 +365,7 @@ const WorkOrderFeedbackPage = () => {
     <>
       <ManagementPageBody>
         {!pluginEnabled ? (
-          <Empty description="工单反馈插件当前未启用" />
+          <Empty description={t('plugin.workOrders.disabled')} />
         ) : (
           <ManagementTable<WorkOrderFeedbackRecord, { keyword?: string; status?: string; priority?: string; scope?: string }>
             rowKey="id"
@@ -380,15 +383,15 @@ const WorkOrderFeedbackPage = () => {
                       size="small"
                       value={scope}
                       options={[
-                        { label: '我的工单', value: 'mine' },
-                        { label: '全部工单', value: 'admin' },
+                        { label: t('plugin.workOrders.scope.mine'), value: 'mine' },
+                        { label: t('plugin.workOrders.scope.all'), value: 'admin' },
                       ]}
                       onChange={(value) => setScope(value as 'mine' | 'admin')}
                     />,
                   ]
                 : []),
               ...buildToolbarButtons([
-                { key: 'create', label: <><PlusOutlined /> 新增工单</>, onClick: openCreate, permission: 'plugin:work-order-feedback:create', type: 'primary' },
+                { key: 'create', label: <><PlusOutlined /> {t('plugin.workOrders.create.title')}</>, onClick: openCreate, permission: 'plugin:work-order-feedback:create', type: 'primary' },
               ]),
             ]}
             request={buildTableRequest(async (params) => {
@@ -404,34 +407,34 @@ const WorkOrderFeedbackPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title="新增工单"
+        title={t('plugin.workOrders.create.title')}
         open={crud.drawer.open}
         onClose={crud.drawer.close}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: crud.drawer.close },
-          { key: 'save', label: '提交', type: 'primary', loading: saving, disabled: !canCreate, onClick: () => void saveWorkOrder() },
+          { key: 'cancel', label: t('plugin.workOrders.common.cancel'), onClick: crud.drawer.close },
+          { key: 'save', label: t('plugin.workOrders.common.submit'), type: 'primary', loading: saving, disabled: !canCreate, onClick: () => void saveWorkOrder() },
         ]}
       >
         <Form form={form} layout="vertical" initialValues={{ priority: 'NORMAL' }}>
-          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入工单标题' }, { max: 160, message: '长度不能超过 160 个字符' }]}>
+          <Form.Item name="title" label={t('plugin.workOrders.field.title')} rules={[{ required: true, message: t('plugin.workOrders.validation.titleRequired') }, { max: 160, message: t('plugin.workOrders.validation.titleMaxLength') }]}>
             <Input maxLength={160} showCount />
           </Form.Item>
-          <Form.Item name="priority" label="优先级">
+          <Form.Item name="priority" label={t('plugin.workOrders.field.priority')}>
             <Select options={PRIORITY_OPTIONS} />
           </Form.Item>
-          <Form.Item label="详情" required>
-            <RichTextEditor value={detailHtml} onChange={setDetailHtml} placeholder="描述问题，可直接粘贴截图" />
+          <Form.Item label={t('plugin.workOrders.common.details')} required>
+            <RichTextEditor value={detailHtml} onChange={setDetailHtml} placeholder={t('plugin.workOrders.editor.placeholder')} />
           </Form.Item>
         </Form>
       </ManagementDrawer>
 
       <ManagementDrawer
-        title="工单详情"
+        title={t('plugin.workOrders.detail.title')}
         open={Boolean(detailRecord)}
         onClose={() => setDetailRecord(null)}
         footerActions={[
-          { key: 'close', label: '关闭', onClick: () => setDetailRecord(null) },
-          { key: 'handle', label: '处理', type: 'primary', disabled: !canManage || !detailRecord, onClick: () => detailRecord && openStatus(detailRecord) },
+          { key: 'close', label: t('plugin.workOrders.common.close'), onClick: () => setDetailRecord(null) },
+          { key: 'handle', label: t('plugin.workOrders.common.process'), type: 'primary', disabled: !canManage || !detailRecord, onClick: () => detailRecord && openStatus(detailRecord) },
         ]}
       >
         {detailRecord ? (
@@ -446,7 +449,7 @@ const WorkOrderFeedbackPage = () => {
             <RichTextPreview html={detailRecord.detailHtml} />
             {detailRecord.adminReply ? (
               <div>
-                <Typography.Text strong>处理回复</Typography.Text>
+                <Typography.Text strong>{t('plugin.workOrders.field.reply')}</Typography.Text>
                 <Typography.Paragraph style={{ marginTop: 8 }}>{detailRecord.adminReply}</Typography.Paragraph>
               </div>
             ) : null}
@@ -455,19 +458,19 @@ const WorkOrderFeedbackPage = () => {
       </ManagementDrawer>
 
       <ManagementDrawer
-        title="处理工单"
+        title={t('plugin.workOrders.process.title')}
         open={statusDrawerOpen}
         onClose={() => setStatusDrawerOpen(false)}
         footerActions={[
-          { key: 'cancel', label: '取消', onClick: () => setStatusDrawerOpen(false) },
-          { key: 'save', label: '保存', type: 'primary', loading: statusSaving, disabled: !canManage, onClick: () => void saveStatus() },
+          { key: 'cancel', label: t('plugin.workOrders.common.cancel'), onClick: () => setStatusDrawerOpen(false) },
+          { key: 'save', label: t('plugin.workOrders.common.save'), type: 'primary', loading: statusSaving, disabled: !canManage, onClick: () => void saveStatus() },
         ]}
       >
         <Form form={statusForm} layout="vertical">
-          <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+          <Form.Item name="status" label={t('plugin.workOrders.field.status')} rules={[{ required: true, message: t('plugin.workOrders.validation.statusRequired') }]}>
             <Select options={STATUS_OPTIONS} />
           </Form.Item>
-          <Form.Item name="adminReply" label="处理回复">
+          <Form.Item name="adminReply" label={t('plugin.workOrders.field.reply')}>
             <Input.TextArea rows={5} maxLength={4000} showCount />
           </Form.Item>
         </Form>
@@ -476,7 +479,7 @@ const WorkOrderFeedbackPage = () => {
   );
 
   return (
-    <ManagementPage title="工单反馈">
+    <ManagementPage title={t('plugin.workOrders.page.title')}>
       {content}
     </ManagementPage>
   );

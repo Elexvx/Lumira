@@ -19,12 +19,11 @@ import {
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
 import './AgreementMarkdownEditor.css';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
-import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 type AgreementMarkdownEditorMode = 'edit' | 'preview';
 
@@ -47,20 +46,20 @@ type AgreementMarkdownToolbarAction = {
 };
 
 const AGREEMENT_MARKDOWN_TOOLBAR_ACTIONS: readonly AgreementMarkdownToolbarAction[] = [
-  { key: 'quote', title: t('引用', 'Quote'), icon: <CommentOutlined />, before: '> ', sample: t('引用内容', 'Quoted text'), mode: 'line' },
-  { key: 'bold', title: t('加粗', 'Bold'), icon: <BoldOutlined />, before: '**', after: '**', sample: t('加粗文字', 'Bold text') },
-  { key: 'italic', title: t('斜体', 'Italic'), icon: <ItalicOutlined />, before: '*', after: '*', sample: t('斜体文字', 'Italic text') },
-  { key: 'unordered-list', title: t('无序列表', 'Unordered list'), icon: <UnorderedListOutlined />, before: '- ', sample: t('列表项', 'List item'), mode: 'line' },
-  { key: 'ordered-list', title: t('有序列表', 'Ordered list'), icon: <OrderedListOutlined />, before: '1. ', sample: t('列表项', 'List item'), mode: 'line' },
-  { key: 'task-list', title: t('任务列表', 'Task list'), icon: <CheckSquareOutlined />, before: '- [ ] ', sample: t('待办项', 'Todo item'), mode: 'line' },
-  { key: 'link', title: t('链接', 'Link'), icon: <LinkOutlined />, before: '[', after: '](https://example.com)', sample: t('链接文字', 'Link text') },
-  { key: 'image', title: t('图片', 'Image'), icon: <PictureOutlined />, before: '![', after: '](https://example.com/image.png)', sample: t('图片描述', 'Image description') },
-  { key: 'code', title: t('代码', 'Code'), icon: <CodeOutlined />, before: '`', after: '`', sample: 'code' },
+  { key: 'quote', title: t('ui.settings.personalization.agreementmarkdowneditor.quote'), icon: <CommentOutlined />, before: '> ', sample: t('ui.settings.personalization.agreementmarkdowneditor.quotedText'), mode: 'line' },
+  { key: 'bold', title: t('ui.settings.personalization.agreementmarkdowneditor.bold'), icon: <BoldOutlined />, before: '**', after: '**', sample: t('ui.settings.personalization.agreementmarkdowneditor.boldText') },
+  { key: 'italic', title: t('ui.settings.personalization.agreementmarkdowneditor.italic'), icon: <ItalicOutlined />, before: '*', after: '*', sample: t('ui.settings.personalization.agreementmarkdowneditor.italicText') },
+  { key: 'unordered-list', title: t('ui.settings.personalization.agreementmarkdowneditor.unorderedList'), icon: <UnorderedListOutlined />, before: '- ', sample: t('ui.settings.personalization.agreementmarkdowneditor.listItem'), mode: 'line' },
+  { key: 'ordered-list', title: t('ui.settings.personalization.agreementmarkdowneditor.orderedList'), icon: <OrderedListOutlined />, before: '1. ', sample: t('ui.settings.personalization.agreementmarkdowneditor.listItem'), mode: 'line' },
+  { key: 'task-list', title: t('ui.settings.personalization.agreementmarkdowneditor.taskList'), icon: <CheckSquareOutlined />, before: '- [ ] ', sample: t('ui.settings.personalization.agreementmarkdowneditor.todoItem'), mode: 'line' },
+  { key: 'link', title: t('ui.settings.personalization.agreementmarkdowneditor.link'), icon: <LinkOutlined />, before: '[', after: '](https://example.com)', sample: t('ui.settings.personalization.agreementmarkdowneditor.linkText') },
+  { key: 'image', title: t('ui.settings.personalization.agreementmarkdowneditor.image'), icon: <PictureOutlined />, before: '![', after: '](https://example.com/image.png)', sample: t('ui.settings.personalization.agreementmarkdowneditor.imageDescription') },
+  { key: 'code', title: t('ui.settings.personalization.agreementmarkdowneditor.code'), icon: <CodeOutlined />, before: '`', after: '`', sample: 'code' },
   {
     key: 'table',
-    title: t('表格', 'Table'),
+    title: t('ui.settings.personalization.agreementmarkdowneditor.table'),
     icon: <TableOutlined />,
-    before: t('| 标题 | 内容 |\n| --- | --- |\n| 示例 | 文本 |', '| Header | Content |\n| --- | --- |\n| Example | Text |'),
+    before: t('ui.settings.personalization.agreementmarkdowneditor.headerContentExampleText'),
     sample: '',
     mode: 'block',
   },
@@ -167,7 +166,7 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
                 insertAgreementMarkdown(
                   markdown,
                   getTextArea,
-                  { key: 'paragraph', title: t('段落', 'Paragraph'), icon: null, before: '\n\n', sample: '', mode: 'block' },
+                  { key: 'paragraph', title: t('ui.settings.personalization.agreementmarkdowneditor.paragraph'), icon: null, before: '\n\n', sample: '', mode: 'block' },
                   onChange,
                 )
               }
@@ -191,10 +190,10 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
         <div className="agreement-markdown-editor__mode">
           <Space.Compact size="small">
             <Button type={mode === 'edit' ? 'primary' : 'default'} onClick={() => setMode('edit')}>
-              {t('编辑', 'Edit')}
+              {t('ui.settings.personalization.agreementmarkdowneditor.edit')}
             </Button>
             <Button type={mode === 'preview' ? 'primary' : 'default'} onClick={() => setMode('preview')}>
-              {t('预览', 'Preview')}
+              {t('ui.settings.personalization.agreementmarkdowneditor.preview')}
             </Button>
           </Space.Compact>
         </div>
@@ -216,7 +215,7 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
                 <XMarkdown content={markdown} openLinksInNewTab escapeRawHtml />
               </div>
             ) : (
-              <div className="agreement-markdown-editor__preview-empty">{t('预览会显示在这里', 'Preview will appear here')}</div>
+              <div className="agreement-markdown-editor__preview-empty">{t('ui.settings.personalization.agreementmarkdowneditor.previewWillAppearHere')}</div>
             )}
           </div>
         )}

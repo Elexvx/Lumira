@@ -1,5 +1,4 @@
 import { history, useLocation } from '@umijs/max';
-import { getLocale } from '@umijs/max';
 import type { FormInstance } from 'antd';
 import { Button, Card, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -19,12 +18,11 @@ import { useStandardFormProps } from '@/features/form/config';
 import type { ManagementDrawerAction } from '@/features/management/ManagementDrawer';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { normalizeLocale } from '@/i18n/locale';
 import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
+import { databaseMessage } from '@/i18n/databaseMessage';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 type ConfigDrawerMode = 'totp' | 'sms' | 'email' | 'wechat' | 'passkey' | 'basic';
 type SmsProviderCode = 'aliyun' | 'tencent' | 'mock' | 'custom';
@@ -60,8 +58,8 @@ const smtpFormInitialValues: SmtpSettings = {
 };
 
 const smtpTestInitialValues: SmtpTestPayload = {
-  subject: t('SMTP 测试邮件', 'SMTP test email'),
-  content: t('这是一封来自系统的 SMTP 测试邮件。', 'This is an SMTP test email from the system.'),
+  subject: t('ui.settings.verification.useauthenticatorconfig.smtpTestEmail'),
+  content: t('ui.settings.verification.useauthenticatorconfig.thisIsAnSmtpTestEmailFromThe'),
   toEmail: '',
 };
 
@@ -122,47 +120,47 @@ const buildPasskeyDefaults = (rpName: string) => {
 };
 
 const SMS_PROVIDER_OPTIONS: Array<{ label: string; value: SmsProviderCode }> = [
-  { label: t('阿里云短信', 'Alibaba Cloud SMS'), value: 'aliyun' },
-  { label: t('腾讯云短信', 'Tencent Cloud SMS'), value: 'tencent' },
-  { label: t('本地模拟', 'Local mock'), value: 'mock' },
-  { label: t('自定义网关', 'Custom gateway'), value: 'custom' },
+  { label: t('ui.settings.verification.useauthenticatorconfig.alibabaCloudSms'), value: 'aliyun' },
+  { label: t('ui.settings.verification.useauthenticatorconfig.tencentCloudSms'), value: 'tencent' },
+  { label: t('ui.settings.verification.useauthenticatorconfig.localMock'), value: 'mock' },
+  { label: t('ui.settings.verification.useauthenticatorconfig.customGateway'), value: 'custom' },
 ];
 
 const SMS_PROVIDER_SCHEMAS: Record<SmsProviderCode, SmsProviderSchema> = {
   aliyun: {
     fields: [
-      { name: 'signName', label: t('短信签名', 'SMS sign name'), placeholder: t('例如：宏翔商道', 'e.g. Hongxiang Shangdao'), required: true },
-      { name: 'templateCode', label: t('模板编码', 'Template code'), placeholder: t('例如：SMS_123456789', 'e.g. SMS_123456789'), required: true },
-      { name: 'accessKeyId', label: 'Access Key ID', placeholder: t('短信服务访问密钥 ID', 'SMS service access key ID'), required: true },
-      { name: 'accessKeySecret', label: 'Access Key Secret', placeholder: t('留空则保持现有密钥', 'Leave blank to keep the existing secret'), password: true },
-      { name: 'endpoint', label: t('服务地址', 'Endpoint'), placeholder: t('例如：https://dysmsapi.aliyuncs.com', 'e.g. https://dysmsapi.aliyuncs.com') },
-      { name: 'region', label: t('地域', 'Region'), placeholder: t('例如：cn-hangzhou', 'e.g. cn-hangzhou') },
+      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.smsSignName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHongxiangShangdao'), required: true },
+      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.templateCode'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGSms123456789'), required: true },
+      { name: 'accessKeyId', label: 'Access Key ID', placeholder: t('ui.settings.verification.useauthenticatorconfig.smsServiceAccessKeyId'), required: true },
+      { name: 'accessKeySecret', label: 'Access Key Secret', placeholder: t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret'), password: true },
+      { name: 'endpoint', label: t('ui.settings.verification.useauthenticatorconfig.endpoint'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHttpsDysmsapiAliyuncsCom') },
+      { name: 'region', label: t('ui.settings.verification.useauthenticatorconfig.region'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGCnHangzhou') },
     ],
   },
   tencent: {
     fields: [
-      { name: 'signName', label: t('短信签名', 'SMS sign name'), placeholder: t('例如：宏翔商道', 'e.g. Hongxiang Shangdao'), required: true },
-      { name: 'templateCode', label: t('模板 ID', 'Template ID'), placeholder: t('例如：1234567', 'e.g. 1234567'), required: true },
-      { name: 'accessKeyId', label: 'SecretId', placeholder: t('腾讯云 SecretId', 'Tencent Cloud SecretId'), required: true },
-      { name: 'accessKeySecret', label: 'SecretKey', placeholder: t('留空则保持现有密钥', 'Leave blank to keep the existing secret'), password: true, required: true },
-      { name: 'endpoint', label: t('API 地址', 'API endpoint'), placeholder: t('例如：https://sms.tencentcloudapi.com', 'e.g. https://sms.tencentcloudapi.com') },
-      { name: 'region', label: t('地域', 'Region'), placeholder: t('例如：ap-guangzhou', 'e.g. ap-guangzhou') },
+      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.smsSignName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHongxiangShangdao'), required: true },
+      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.templateId'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eG1234567'), required: true },
+      { name: 'accessKeyId', label: 'SecretId', placeholder: t('ui.settings.verification.useauthenticatorconfig.tencentCloudSecretid'), required: true },
+      { name: 'accessKeySecret', label: 'SecretKey', placeholder: t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret'), password: true, required: true },
+      { name: 'endpoint', label: t('ui.settings.verification.useauthenticatorconfig.apiEndpoint'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHttpsSmsTencentcloudapiCom') },
+      { name: 'region', label: t('ui.settings.verification.useauthenticatorconfig.region'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGApGuangzhou') },
     ],
   },
   mock: {
     fields: [
-      { name: 'signName', label: t('模拟签名', 'Mock sign name'), placeholder: t('例如：测试短信', 'e.g. test SMS') },
-      { name: 'templateCode', label: t('模拟模板编码', 'Mock template code'), placeholder: t('例如：MOCK_SMS_001', 'e.g. MOCK_SMS_001') },
+      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.mockSignName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGTestSms') },
+      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.mockTemplateCode'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGMockSms001') },
     ],
   },
   custom: {
     fields: [
-      { name: 'endpoint', label: t('网关地址', 'Gateway URL'), placeholder: t('例如：https://sms.example.com/api', 'e.g. https://sms.example.com/api'), required: true },
-      { name: 'accessKeyId', label: t('网关账号', 'Gateway account'), placeholder: t('例如：gateway-user', 'e.g. gateway-user'), required: true },
-      { name: 'accessKeySecret', label: t('网关密钥', 'Gateway secret'), placeholder: t('留空则保持现有密钥', 'Leave blank to keep the existing secret'), password: true, required: true },
-      { name: 'signName', label: t('签名', 'Sign name'), placeholder: t('例如：宏翔商道', 'e.g. Hongxiang Shangdao'), required: true },
-      { name: 'templateCode', label: t('模板编码', 'Template code'), placeholder: t('例如：SMS_123456789', 'e.g. SMS_123456789'), required: true },
-      { name: 'region', label: t('地域', 'Region'), placeholder: t('按网关要求填写', 'Fill in as required by the gateway') },
+      { name: 'endpoint', label: t('ui.settings.verification.useauthenticatorconfig.gatewayUrl'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHttpsSmsExampleComApi'), required: true },
+      { name: 'accessKeyId', label: t('ui.settings.verification.useauthenticatorconfig.gatewayAccount'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGGatewayUser'), required: true },
+      { name: 'accessKeySecret', label: t('ui.settings.verification.useauthenticatorconfig.gatewaySecret'), placeholder: t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret'), password: true, required: true },
+      { name: 'signName', label: t('ui.settings.verification.useauthenticatorconfig.signName'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGHongxiangShangdao'), required: true },
+      { name: 'templateCode', label: t('ui.settings.verification.useauthenticatorconfig.templateCode'), placeholder: t('ui.settings.verification.useauthenticatorconfig.eGSms123456789'), required: true },
+      { name: 'region', label: t('ui.settings.verification.useauthenticatorconfig.region'), placeholder: t('ui.settings.verification.useauthenticatorconfig.fillInAsRequiredByTheGateway') },
     ],
   },
 } as const;
@@ -209,10 +207,10 @@ const BasicDrawerContent = () => {
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Typography.Paragraph style={{ marginBottom: 0 }}>
-        {t('密码复杂度、验证码和登录防御阈值请在安全设置中统一维护。', 'Password complexity, verification codes, and login defense thresholds are managed centrally in Security Settings.')}
+        {t('ui.settings.verification.useauthenticatorconfig.passwordComplexityVerificationCodesAndLoginDefenseThresholds')}
       </Typography.Paragraph>
       <Button type="primary" onClick={() => history.push('/settings/security')}>
-        {t('前往安全设置', 'Go to Security Settings')}
+        {t('ui.settings.verification.useauthenticatorconfig.goToSecuritySettings')}
       </Button>
     </Space>
   );
@@ -233,9 +231,9 @@ const TotpDrawerContent = ({
       <Form {...verificationFormProps}>
         <Form.Item
           name="enabled"
-          label={t('启用 2FA', 'Enable 2FA')}
+          label={t('ui.settings.verification.useauthenticatorconfig.enable2fa')}
           valuePropName="checked"
-          extra={t('关闭后，系统中的高危操作二次确认将不再要求 2FA。', 'When disabled, high-risk operation confirmations will no longer require 2FA.')}
+          extra={t('ui.settings.verification.useauthenticatorconfig.whenDisabledHighRiskOperationConfirmationsWillNo')}
         >
           <Switch disabled={!canManageSettings} />
         </Form.Item>
@@ -265,13 +263,13 @@ const SmsDrawerContent = ({
       <Form {...smsFormProps}>
         <Form.Item
           name="provider"
-          label={t('服务商', 'Provider')}
-          rules={[{ required: true, message: t('请选择短信服务商', 'Please select an SMS provider') }]}
+          label={t('ui.settings.verification.useauthenticatorconfig.provider')}
+          rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseSelectAnSmsProvider') }]}
         >
           <Select
             disabled={!canManageSettings}
             options={SMS_PROVIDER_OPTIONS}
-            placeholder={t('请选择短信服务商', 'Please select an SMS provider')}
+            placeholder={t('ui.settings.verification.useauthenticatorconfig.pleaseSelectAnSmsProvider')}
             onChange={handleSmsProviderChange}
           />
         </Form.Item>
@@ -280,12 +278,12 @@ const SmsDrawerContent = ({
             key={String(field.name)}
             name={field.name}
             label={field.label}
-            rules={field.required ? [{ required: true, message: t('请输入{label}', 'Please enter {label}').replace('{label}', field.label) }] : undefined}
+            rules={field.required ? [{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnter').replace('{label}', field.label) }] : undefined}
             extra={
               field.password && field.name === 'accessKeySecret'
                 ? smsSettingsData?.accessKeySecretConfigured
-                  ? t('当前密钥已脱敏显示，留空则保持现有密钥', 'The current secret is masked. Leave blank to keep the existing one.')
-                  : t('留空则保持现有密钥', 'Leave blank to keep the existing secret')
+                  ? t('ui.settings.verification.useauthenticatorconfig.theCurrentSecretIsMaskedLeaveBlankTo')
+                  : t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret')
                 : undefined
             }
           >
@@ -319,56 +317,56 @@ const SmsDrawerContent = ({
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-      <Card title={t('邮箱与 SMTP', 'Email and SMTP')} loading={verificationLoading}>
+      <Card title={t('ui.settings.verification.useauthenticatorconfig.emailAndSmtp')} loading={verificationLoading}>
         <div style={{ opacity: 1, transition: 'opacity 0.2s ease' }}>
       <Form {...smtpFormProps}>
             <Typography.Title level={5} style={{ marginTop: 0 }}>
-              {t('SMTP 基础配置', 'SMTP settings')}
+              {t('ui.settings.verification.useauthenticatorconfig.smtpSettings')}
             </Typography.Title>
-            <Form.Item name="host" label={t('SMTP 主机', 'SMTP host')} rules={[{ required: true, message: t('请输入 SMTP 主机', 'Please enter the SMTP host') }]}>
+            <Form.Item name="host" label={t('ui.settings.verification.useauthenticatorconfig.smtpHost')} rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheSmtpHost') }]}>
               <Input disabled={!canManageSettings} placeholder="smtp.example.com" />
             </Form.Item>
-            <Form.Item name="port" label={t('SMTP 端口', 'SMTP port')} rules={[{ required: true, message: t('请输入 SMTP 端口', 'Please enter the SMTP port') }]}>
+            <Form.Item name="port" label={t('ui.settings.verification.useauthenticatorconfig.smtpPort')} rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheSmtpPort') }]}>
               <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={1} max={65535} />
             </Form.Item>
-            <Form.Item name="username" label={t('SMTP 用户名', 'SMTP username')} rules={[{ required: true, message: t('请输入 SMTP 用户名', 'Please enter the SMTP username') }]}>
+            <Form.Item name="username" label={t('ui.settings.verification.useauthenticatorconfig.smtpUsername')} rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheSmtpUsername') }]}>
               <Input disabled={!canManageSettings} placeholder="username@example.com" />
             </Form.Item>
             <Form.Item
               name="password"
-              label={t('SMTP 密码', 'SMTP password')}
-              extra={smtpSettingsData?.passwordConfigured ? t('当前密码已脱敏显示，留空则保留现有密码', 'The current password is masked. Leave blank to keep the existing one.') : t('留空则保留现有密码', 'Leave blank to keep the existing password')}
+              label={t('ui.settings.verification.useauthenticatorconfig.smtpPassword')}
+              extra={smtpSettingsData?.passwordConfigured ? t('ui.settings.verification.useauthenticatorconfig.theCurrentPasswordIsMaskedLeaveBlankTo') : t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingPassword')}
             >
-              <Input.Password disabled={!canManageSettings} placeholder={t('留空则保持现有密码', 'Leave blank to keep the existing password')} />
+              <Input.Password disabled={!canManageSettings} placeholder={t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingPassword.64d7267a')} />
             </Form.Item>
-            <Form.Item name="from" label={t('发件人地址', 'From address')} rules={[{ required: true, message: t('请输入发件人地址', 'Please enter the from address') }]}>
+            <Form.Item name="from" label={t('ui.settings.verification.useauthenticatorconfig.fromAddress')} rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheFromAddress') }]}>
               <Input disabled={!canManageSettings} placeholder="noreply@example.com" />
             </Form.Item>
-            <Form.Item name="authEnabled" label={t('启用认证', 'Enable authentication')} valuePropName="checked">
+            <Form.Item name="authEnabled" label={t('ui.settings.verification.useauthenticatorconfig.enableAuthentication')} valuePropName="checked">
               <Switch disabled={!canManageSettings} />
             </Form.Item>
-            <Form.Item name="startTlsEnabled" label={t('启用 STARTTLS', 'Enable STARTTLS')} valuePropName="checked">
+            <Form.Item name="startTlsEnabled" label={t('ui.settings.verification.useauthenticatorconfig.enableStarttls')} valuePropName="checked">
               <Switch disabled={!canManageSettings} />
             </Form.Item>
-            <Form.Item name="sslEnabled" label={t('启用 SSL', 'Enable SSL')} valuePropName="checked">
+            <Form.Item name="sslEnabled" label={t('ui.settings.verification.useauthenticatorconfig.enableSsl')} valuePropName="checked">
               <Switch disabled={!canManageSettings} />
             </Form.Item>
           </Form>
         </div>
       </Card>
-      <Card title={t('SMTP 测试发送', 'SMTP test send')} loading={verificationLoading}>
+      <Card title={t('ui.settings.verification.useauthenticatorconfig.smtpTestSend')} loading={verificationLoading}>
         <Form {...smtpTestFormProps}>
           <Form.Item
             name="toEmail"
-            label={t('收件人邮箱', 'Recipient email')}
-            rules={[{ required: true, message: t('请输入收件人邮箱', 'Please enter the recipient email') }, { type: 'email', message: t('请输入有效邮箱地址', 'Please enter a valid email address') }]}
+            label={t('ui.settings.verification.useauthenticatorconfig.recipientEmail')}
+            rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheRecipientEmail') }, { type: 'email', message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterAValidEmailAddress') }]}
           >
             <Input disabled={!canManageSettings} placeholder="recipient@example.com" />
           </Form.Item>
-          <Form.Item name="subject" label={t('邮件主题', 'Email subject')}>
+          <Form.Item name="subject" label={t('ui.settings.verification.useauthenticatorconfig.emailSubject')}>
             <Input disabled={!canManageSettings} />
           </Form.Item>
-          <Form.Item name="content" label={t('邮件内容', 'Email content')}>
+          <Form.Item name="content" label={t('ui.settings.verification.useauthenticatorconfig.emailContent')}>
             <Input.TextArea disabled={!canManageSettings} rows={6} />
           </Form.Item>
         </Form>
@@ -415,36 +413,36 @@ const WechatDrawerContent = ({
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
       <Form {...wechatFormProps}>
-        <Form.Item name="enabled" label={t('启用微信登录', 'Enable WeChat login')} valuePropName="checked">
+        <Form.Item name="enabled" label={t('ui.settings.verification.useauthenticatorconfig.enableWechatLogin')} valuePropName="checked">
           <Switch disabled={!canManageSettings} />
         </Form.Item>
         <Form.Item
           name="appId"
-          label={t('AppID', 'AppID')}
-          rules={wechatEnabled ? [{ required: true, message: t('请输入 AppID', 'Please enter the AppID') }] : undefined}
+          label={t('ui.settings.verification.useauthenticatorconfig.appid')}
+          rules={wechatEnabled ? [{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheAppid') }] : undefined}
         >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('微信开放平台网站应用 AppID', 'WeChat Open Platform website application AppID')} />
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('ui.settings.verification.useauthenticatorconfig.wechatOpenPlatformWebsiteApplicationAppid')} />
         </Form.Item>
         <Form.Item
           name="appSecret"
-          label={t('AppSecret', 'AppSecret')}
-          extra={wechatSettingsData?.appSecretConfigured ? t('当前密钥已脱敏显示，留空则保持现有密钥', 'The current secret is masked. Leave blank to keep the existing one.') : t('留空则保持现有密钥', 'Leave blank to keep the existing secret')}
+          label={t('ui.settings.verification.useauthenticatorconfig.appsecret')}
+          extra={wechatSettingsData?.appSecretConfigured ? t('ui.settings.verification.useauthenticatorconfig.theCurrentSecretIsMaskedLeaveBlankTo') : t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret')}
         >
-          <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder={t('留空则保持现有密钥', 'Leave blank to keep the existing secret')} />
+          <Input.Password disabled={!canManageSettings || !wechatEnabled} placeholder={t('ui.settings.verification.useauthenticatorconfig.leaveBlankToKeepTheExistingSecret')} />
         </Form.Item>
         <Form.Item
           name="redirectUri"
-          label={t('回调地址', 'Callback URL')}
-          rules={wechatEnabled ? [{ required: true, message: t('请输入回调地址', 'Please enter the callback URL') }] : undefined}
+          label={t('ui.settings.verification.useauthenticatorconfig.callbackUrl')}
+          rules={wechatEnabled ? [{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheCallbackUrl') }] : undefined}
         >
-          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('https://你的域名/api/v1/auth/wechat/callback', 'https://your-domain.com/api/v1/auth/wechat/callback')} />
+          <Input disabled={!canManageSettings || !wechatEnabled} placeholder={t('ui.settings.verification.useauthenticatorconfig.httpsYourDomainComApiV1AuthWechat')} />
         </Form.Item>
         <Form.Item
           name="stateExpireMinutes"
-          label={t('状态有效期', 'State TTL')}
-          rules={wechatEnabled ? [{ required: true, message: t('请输入状态有效期', 'Please enter the state TTL') }] : undefined}
+          label={t('ui.settings.verification.useauthenticatorconfig.stateTtl')}
+          rules={wechatEnabled ? [{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheStateTtl') }] : undefined}
         >
-          <InputNumber disabled={!canManageSettings || !wechatEnabled} style={{ width: '100%' }} min={1} max={60} addonAfter={t('分钟', 'min')} />
+          <InputNumber disabled={!canManageSettings || !wechatEnabled} style={{ width: '100%' }} min={1} max={60} addonAfter={t('ui.settings.verification.useauthenticatorconfig.min')} />
         </Form.Item>
       </Form>
     </Space>
@@ -468,31 +466,31 @@ const WechatDrawerContent = ({
       <Form {...passkeyFormProps}>
         <Form.Item
           name="passwordlessEnabled"
-          label={t('允许无账号登录', 'Allow sign-in without an account')}
+          label={t('ui.settings.verification.useauthenticatorconfig.allowSignInWithoutAnAccount')}
           valuePropName="checked"
-          extra={t('开启后，登录页可直接唤起密码管理器或系统钥匙串选择通行密钥。', 'When enabled, the login page can directly open your password manager or system keychain to select a passkey.')}
+          extra={t('ui.settings.verification.useauthenticatorconfig.whenEnabledTheLoginPageCanDirectlyOpen')}
         >
           <Switch disabled={!canManageSettings} />
         </Form.Item>
-        <Form.Item name="selfBindingEnabled" label={t('允许用户自助绑定', 'Allow self-service binding')} valuePropName="checked">
+        <Form.Item name="selfBindingEnabled" label={t('ui.settings.verification.useauthenticatorconfig.allowSelfServiceBinding')} valuePropName="checked">
           <Switch disabled={!canManageSettings} />
         </Form.Item>
-        <Form.Item name="rpId" label={t('RP ID', 'RP ID')} rules={[{ required: true, message: t('请输入 RP ID', 'Please enter the RP ID') }]}>
-          <Input disabled={!canManageSettings} placeholder={currentRpId || t('当前网站域名', 'Current website host')} />
+        <Form.Item name="rpId" label={t('ui.settings.verification.useauthenticatorconfig.rpId')} rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheRpId') }]}>
+          <Input disabled={!canManageSettings} placeholder={currentRpId || t('ui.settings.verification.useauthenticatorconfig.currentWebsiteHost')} />
         </Form.Item>
-        <Form.Item name="rpName" label={t('RP 名称', 'RP name')} rules={[{ required: true, message: t('请输入 RP 名称', 'Please enter the RP name') }]}>
-          <Input disabled={!canManageSettings} placeholder={t('宏翔商道后台管理系统', 'SaaS admin system')} />
+        <Form.Item name="rpName" label={t('ui.settings.verification.useauthenticatorconfig.rpName')} rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheRpName') }]}>
+          <Input disabled={!canManageSettings} placeholder={t('ui.settings.verification.useauthenticatorconfig.saasAdminSystem')} />
         </Form.Item>
         <Form.Item
           name="allowedOriginsText"
-          label={t('允许的 Origin', 'Allowed origins')}
-          rules={[{ required: true, message: t('请输入允许的 Origin', 'Please enter the allowed origins') }]}
-          extra={t('每行一个当前站点 Origin；生产环境应使用 HTTPS，localhost 调试除外。Vercel Preview 域名不会默认放行。', 'One current-site origin per line. Use HTTPS in production, except localhost development. Vercel Preview domains are not allowed by default.')}
+          label={t('ui.settings.verification.useauthenticatorconfig.allowedOrigins')}
+          rules={[{ required: true, message: t('ui.settings.verification.useauthenticatorconfig.pleaseEnterTheAllowedOrigins') }]}
+          extra={t('ui.settings.verification.useauthenticatorconfig.oneCurrentSiteOriginPerLineUseHttps')}
         >
-          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder={currentOrigin || t('当前网站 Origin', 'Current website origin')} />
+          <Input.TextArea disabled={!canManageSettings} rows={4} placeholder={currentOrigin || t('ui.settings.verification.useauthenticatorconfig.currentWebsiteOrigin')} />
         </Form.Item>
-        <Form.Item name="challengeTtlSeconds" label={t('Challenge 有效期', 'Challenge TTL')}>
-          <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter={t('秒', 's')} />
+        <Form.Item name="challengeTtlSeconds" label={t('ui.settings.verification.useauthenticatorconfig.challengeTtl')}>
+          <InputNumber disabled={!canManageSettings} style={{ width: '100%' }} min={30} max={600} addonAfter={t('ui.settings.verification.useauthenticatorconfig.s')} />
         </Form.Item>
       </Form>
     </Space>
@@ -538,7 +536,7 @@ const resolveDrawerContentRoute = (params: DrawerContentRouteParams) => {
 
 const cancelAction = (closeConfigDrawer: () => void): ManagementDrawerAction => ({
   key: 'cancel',
-  label: t('取消', 'Cancel'),
+  label: t('ui.settings.verification.useauthenticatorconfig.cancel'),
   onClick: () => closeConfigDrawer(),
 });
 
@@ -573,14 +571,14 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.savingSmsSettings,
-        label: t('保存配置', 'Save settings'),
+        label: t('ui.settings.verification.useauthenticatorconfig.saveSettings'),
         onSave: params.handleSaveSmsSettings,
       });
     case 'email':
       return [
         {
           key: 'test',
-          label: t('发送测试邮件', 'Send test email'),
+          label: t('ui.settings.verification.useauthenticatorconfig.sendTestEmail'),
           loading: params.testingSmtpSettings,
           disabled: !params.canManageSettings,
           onClick: () => void params.handleTestSmtpSettings(),
@@ -588,7 +586,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         cancelAction(params.closeConfigDrawer),
         {
           key: 'save',
-          label: t('保存设置', 'Save settings'),
+          label: t('ui.settings.verification.useauthenticatorconfig.saveSettings.63fceb75'),
           type: 'primary',
           loading: params.savingEmailSettings,
           disabled: !params.canManageSettings,
@@ -600,7 +598,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.savingWechatSettings,
-        label: t('保存配置', 'Save settings'),
+        label: t('ui.settings.verification.useauthenticatorconfig.saveSettings'),
         onSave: params.handleSaveWechatSettings,
       });
     case 'passkey':
@@ -608,7 +606,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.savingPasskeySettings,
-        label: t('保存配置', 'Save settings'),
+        label: t('ui.settings.verification.useauthenticatorconfig.saveSettings'),
         onSave: params.handleSavePasskeySettings,
       });
     case 'totp':
@@ -616,7 +614,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.verificationLoading,
-        label: t('保存 2FA 设置', 'Save 2FA settings'),
+        label: t('ui.settings.verification.useauthenticatorconfig.save2faSettings'),
         onSave: () => params.handleSaveVerificationSettings({ closeDrawer: true }),
       });
     case 'basic':
@@ -625,7 +623,7 @@ const buildDrawerFooterActionsRoute = (configDrawerMode: ConfigDrawerMode | null
         canManageSettings: params.canManageSettings,
         closeConfigDrawer: params.closeConfigDrawer,
         loading: params.verificationLoading,
-        label: t('保存设置', 'Save settings'),
+        label: t('ui.settings.verification.useauthenticatorconfig.saveSettings.63fceb75'),
         onSave: async () => {
           params.verificationForm.setFieldValue('passwordLoginEnabled', true);
           await params.handleSaveVerificationSettings({ closeDrawer: true });
@@ -681,7 +679,7 @@ export const useAuthenticatorConfigDrawer = ({
   const { initialState } = useInitialStateModel();
   const brandingSettings = normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS);
   const dynamicPasskeyDefaults = useMemo(
-    () => buildPasskeyDefaults(t(`${brandingSettings.websiteName}后台管理系统`, `${brandingSettings.websiteName} admin system`)),
+    () => buildPasskeyDefaults(t('ui.settings.verification.useauthenticatorconfig.adminSystem', { websiteName: brandingSettings.websiteName })),
     [brandingSettings.websiteName],
   );
 

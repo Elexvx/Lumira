@@ -13,25 +13,24 @@ import type { TreeProps } from 'antd';
 import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree/normalize';
 import type { PermissionActionRecord, PermissionTreeRecord, RoleDataScope } from '@/types/api';
 import './roles.css';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
 const ACTIVITY_REGISTRATION_SCOPE_RESOURCE = 'activity:registration';
 
 const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM' }> = [
-  { label: t('全部数据', 'All data'), value: 'ALL' },
-  { label: t('本部门数据', 'Current department data'), value: 'DEPT' },
-  { label: t('本部门及下级', 'Current department and descendants'), value: 'DEPT_AND_CHILD' },
-  { label: t('仅本人数据', 'My data only'), value: 'SELF' },
-  { label: t('自定义范围', 'Custom scope'), value: 'CUSTOM' },
+  { label: t('ui.system.roles.allData'), value: 'ALL' },
+  { label: t('ui.system.roles.currentDepartmentData'), value: 'DEPT' },
+  { label: t('ui.system.roles.currentDepartmentAndDescendants'), value: 'DEPT_AND_CHILD' },
+  { label: t('ui.system.roles.myDataOnly'), value: 'SELF' },
+  { label: t('ui.system.roles.customScope'), value: 'CUSTOM' },
 ];
 const REGISTRATION_DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'SELF' }> = [
-  { label: t('全部数据', 'All data'), value: 'ALL' },
-  { label: t('仅本人数据', 'My data only'), value: 'SELF' },
+  { label: t('ui.system.roles.allData'), value: 'ALL' },
+  { label: t('ui.system.roles.myDataOnly'), value: 'SELF' },
 ];
 const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc, item) => {
   acc[item.value] = item.label;
@@ -42,13 +41,13 @@ const ROLE_TYPE_DICT_FALLBACK_OPTIONS = ROLE_TYPE_OPTIONS as unknown as DictOpti
 
 const formatDataScopeResource = (resourceCode: string) => {
   if (resourceCode === '*') {
-    return t('全局', 'Global');
+    return t('ui.system.roles.global');
   }
   if (resourceCode === COMPETITION_REGISTRATION_SCOPE_RESOURCE) {
-    return t('赛事报名', 'Competition registrations');
+    return t('ui.system.roles.competitionRegistrations');
   }
   if (resourceCode === ACTIVITY_REGISTRATION_SCOPE_RESOURCE) {
-    return t('活动报名', 'Activity registrations');
+    return t('ui.system.roles.activityRegistrations');
   }
   return resourceCode;
 };
@@ -56,14 +55,14 @@ const formatDataScopeResource = (resourceCode: string) => {
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
     {
-      audit: t('审计', 'Audit'),
-      dashboard: t('首页', 'Dashboard'),
+      audit: t('ui.system.roles.audit'),
+      dashboard: t('ui.system.roles.dashboard'),
       iam: 'IAM',
-      message: t('消息', 'Messages'),
-      plugin: t('插件', 'Plugins'),
-      profile: t('个人中心', 'Profile'),
-      system: t('系统', 'System'),
-      platform: t('平台', 'Platform'),
+      message: t('ui.system.roles.messages'),
+      plugin: t('ui.system.roles.plugins'),
+      profile: t('ui.system.roles.profile'),
+      system: t('ui.system.roles.system'),
+      platform: t('ui.system.roles.platform'),
     } as Record<string, string>
   )[permissionGroup] || permissionGroup;
 
@@ -94,23 +93,23 @@ const DefaultRegistrationRoleModal = ({
 
   return (
     <Modal
-      title={t('默认注册角色', 'Default registration role')}
+      title={t('ui.system.roles.defaultRegistrationRole')}
       open={open}
       confirmLoading={saving}
       onOk={onSubmit}
       onCancel={onCancel}
       okButtonProps={{ disabled: !canSave }}
-      okText={t('保存', 'Save')}
-      cancelText={t('取消', 'Cancel')}
+      okText={t('ui.system.roles.save')}
+      cancelText={t('ui.system.roles.cancel')}
     >
       <Space direction="vertical" size={modalFooterGap} style={{ width: '100%' }}>
-        <Typography.Text type="secondary">{t('新用户通过注册或验证码自动创建后，会默认绑定该角色；后续仍可在用户管理中单独调整角色。', 'New users created through registration or verification code will be bound to this role by default; you can adjust roles later in user management.')}</Typography.Text>
+        <Typography.Text type="secondary">{t('ui.system.roles.newUsersCreatedThroughRegistrationOrVerificationCode')}</Typography.Text>
         <Select
           showSearch
           loading={loading}
           value={value}
           onChange={onChange}
-          placeholder={t('请选择默认注册角色', 'Select default registration role')}
+          placeholder={t('ui.system.roles.selectDefaultRegistrationRole')}
           optionFilterProp="label"
           style={{ width: '100%' }}
           options={options.map((role) => ({
@@ -185,15 +184,15 @@ const RolePermissionEditor = ({
         <section className="role-editor-section">
           <div className="role-editor-section__header">
             <div>
-              <div className="role-editor-section__title">{t('页面路由权限', 'Page route permissions')}</div>
-              <div className="role-editor-section__meta">{t('先勾选可访问的页面，目录节点仅用于分组，再配置该页面下的按钮权限', 'First select accessible pages. Directory nodes are for grouping only, then configure button permissions.')}</div>
+              <div className="role-editor-section__title">{t('ui.system.roles.pageRoutePermissions')}</div>
+              <div className="role-editor-section__meta">{t('ui.system.roles.firstSelectAccessiblePagesDirectoryNodesAreFor')}</div>
             </div>
             <Space>
               <Button size="small" onClick={onExpandToggle}>
-                {expandedKeys.length ? t('折叠全部', 'Collapse all') : t('展开全部', 'Expand all')}
+                {expandedKeys.length ? t('ui.system.roles.collapseAll') : t('ui.system.roles.expandAll')}
               </Button>
               <Button size="small" onClick={onSelectAllPages}>
-                {selectedPageCount === totalPageCount ? t('全不选', 'Deselect all') : t('全选', 'Select all')}
+                {selectedPageCount === totalPageCount ? t('ui.system.roles.deselectAll') : t('ui.system.roles.selectAll')}
               </Button>
             </Space>
           </div>
@@ -226,7 +225,7 @@ const RolePermissionEditor = ({
                 }}
               />
             ) : (
-              <Empty description={t('暂无可配置页面权限', 'No page permissions available')} style={{ padding: 'var(--saas-spacing-48) 0' }} />
+              <Empty description={t('ui.system.roles.noPagePermissionsAvailable')} style={{ padding: 'var(--saas-spacing-48) 0' }} />
             )}
           </div>
         </section>
@@ -234,22 +233,22 @@ const RolePermissionEditor = ({
         <section className="role-editor-section role-action-panel">
           <div className="role-editor-section__header">
             <div>
-              <div className="role-editor-section__title">{t('页面动作权限', 'Page action permissions')}</div>
-              <div className="role-editor-section__meta">{t('按钮权限仅在页面权限勾选后生效', 'Button permissions take effect only after page permissions are selected')}</div>
+              <div className="role-editor-section__title">{t('ui.system.roles.pageActionPermissions')}</div>
+              <div className="role-editor-section__meta">{t('ui.system.roles.buttonPermissionsTakeEffectOnlyAfterPagePermissions')}</div>
             </div>
           </div>
 
           {permissionTree.length ? (
             <>
               <div className="role-action-panel__page-name">
-                {activePageNode?.pageName || t('请从左侧选择页面', 'Select a page from the left')}
+                {activePageNode?.pageName || t('ui.system.roles.selectAPageFromTheLeft')}
                 {activePageNode?.routeMatched && activePageNode?.routePath ? (
                   <Tag style={{ marginInlineStart: tagWrapGap[0] }} color="blue">
                     {activePageNode?.routePath}
                   </Tag>
                 ) : activePageNode?.nodeType === 'PAGE' ? (
                   <Tag style={{ marginInlineStart: tagWrapGap[0] }} color="red">
-                    {t('路由失配', 'Route mismatch')}
+                    {t('ui.system.roles.routeMismatch')}
                   </Tag>
                 ) : null}
               </div>
@@ -267,18 +266,18 @@ const RolePermissionEditor = ({
                   />
                 ) : (
                   <div className="role-action-panel__empty">
-                    <Empty description={t('该页面暂无子权限', 'No child permissions on this page')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    <Empty description={t('ui.system.roles.noChildPermissionsOnThisPage')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                   </div>
                 )
               ) : (
                 <div className="role-action-panel__empty">
-                  <Empty description={t('请从左侧页面权限树中选择一个页面', 'Select a page from the left permission tree')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  <Empty description={t('ui.system.roles.selectAPageFromTheLeftPermissionTree')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                 </div>
               )}
             </>
           ) : (
             <div className="role-action-panel__empty">
-              <Empty description={t('请先在上方勾选一个页面', 'Please select a page above first')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty description={t('ui.system.roles.pleaseSelectAPageAboveFirst')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
             </div>
           )}
         </section>
@@ -309,7 +308,7 @@ const RoleManagementPage = () => {
         key: `group:${group.permissionGroup}`,
         title: (
           <div className="role-page-row role-permission-detail__group-row">
-            <span className="role-page-row__name">{t('分类', 'Group')}: {formatPermissionGroupLabel(group.permissionGroup)}</span>
+            <span className="role-page-row__name">{t('ui.system.roles.group')}: {formatPermissionGroupLabel(group.permissionGroup)}</span>
           </div>
         ),
         children: group.pages.map((page) => ({
@@ -320,7 +319,7 @@ const RoleManagementPage = () => {
                 <span className="role-page-row__name">{page.pageName}</span>
                 <span className="role-page-row__meta">
                   {page.routePath ? <span className="role-page-row__route">{page.routePath}</span> : null}
-                  <Tag color="blue">{page.permissions.some((item) => item.isPagePermission) ? t('页面', 'Page') : t('权限', 'Permission')}</Tag>
+                  <Tag color="blue">{page.permissions.some((item) => item.isPagePermission) ? t('ui.system.roles.page') : t('ui.system.roles.permission')}</Tag>
                 </span>
               </div>
               <Space wrap size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} className="role-permission-detail__tags">
@@ -338,11 +337,11 @@ const RoleManagementPage = () => {
   );
   const editorDrawer = {
     open: roleCrud.drawer.open,
-    title: roleActions.roleEditorMode === 'permissions' ? t('分配角色权限', 'Assign role permissions') : roleCrud.drawer.editingId ? t('编辑角色 / 分配权限', 'Edit role / Assign permissions') : t('新增角色', 'Add role'),
+    title: roleActions.roleEditorMode === 'permissions' ? t('ui.system.roles.assignRolePermissions') : roleCrud.drawer.editingId ? t('ui.system.roles.editRoleAssignPermissions') : t('ui.system.roles.addRole'),
     onClose: roleActions.handleEditorClose,
     footerActions: [
-      { key: 'cancel', label: t('取消', 'Cancel'), onClick: roleActions.handleEditorClose },
-      { key: 'save', label: t('保存', 'Save'), type: 'primary' as const, loading: roleActions.saving, disabled: !roleActions.canSaveRole, onClick: () => void roleActions.saveRole() },
+      { key: 'cancel', label: t('ui.system.roles.cancel'), onClick: roleActions.handleEditorClose },
+      { key: 'save', label: t('ui.system.roles.save'), type: 'primary' as const, loading: roleActions.saving, disabled: !roleActions.canSaveRole, onClick: () => void roleActions.saveRole() },
     ] as ManagementDrawerAction[],
     formProps: roleActions.editorFormProps,
     isPermissionOnlyEditor: roleActions.isPermissionOnlyEditor,
@@ -361,7 +360,7 @@ const RoleManagementPage = () => {
     permissionDetailTreeData: typeof permissionDetailTreeData;
   } = {
     open: roleCrud.detail.open,
-    title: roleActions.selectedRoleDetail ? `${t('角色详情', 'Role details')} · ${roleActions.selectedRoleDetail.roleName}` : t('角色详情', 'Role details'),
+    title: roleActions.selectedRoleDetail ? `${t('ui.system.roles.roleDetails')} · ${roleActions.selectedRoleDetail.roleName}` : t('ui.system.roles.roleDetails'),
     onClose: () => {
       roleCrud.detail.close();
       roleActions.setSelectedRoleDetail(null);
@@ -373,7 +372,7 @@ const RoleManagementPage = () => {
   };
 
   return (
-    <ManagementPage title={t('角色管理', 'Role management')}>
+    <ManagementPage title={t('ui.system.roles.roleManagement')}>
       <ManagementPageBody>
         <ManagementTable
           actionRef={roleCrud.actionRef}
@@ -388,18 +387,18 @@ const RoleManagementPage = () => {
                 key: 'create',
                 permission: 'system:role:create',
                 type: 'primary',
-                label: t('新增角色', 'Add role'),
+                label: t('ui.system.roles.addRole'),
                 onClick: roleActions.openCreate,
               },
               {
                 key: 'default-registration-role',
                 permission: 'system:role:update',
-                label: t('默认注册角色', 'Default registration role'),
+                label: t('ui.system.roles.defaultRegistrationRole'),
                 onClick: () => void openDefaultRoleModal(),
               },
               {
                 key: 'refresh',
-                label: t('刷新', 'Refresh'),
+                label: t('ui.system.roles.refresh'),
                 onClick: roleCrud.reloadTable,
               },
             ])
@@ -462,23 +461,23 @@ const RoleManagementPage = () => {
           <>
             <ProDescriptions
               columns={[
-                { title: t('角色编码', 'Role code'), dataIndex: 'roleCode' },
-                { title: t('角色名称', 'Role name'), dataIndex: 'roleName' },
+                { title: t('ui.system.roles.roleCode'), dataIndex: 'roleCode' },
+                { title: t('ui.system.roles.roleName'), dataIndex: 'roleName' },
                 {
-                  title: t('角色类型', 'Role type'),
+                  title: t('ui.system.roles.roleType'),
                   dataIndex: 'roleType',
                   renderText: (value) => ROLE_TYPE_LABEL_MAP[String(value)] || String(value || '-'),
                 },
-                { title: t('默认访问页', 'Default home page'), dataIndex: 'defaultHomePath' },
-                { title: t('权限数', 'Permission count'), dataIndex: 'permissionCount' },
-                { title: t('用户数', 'User count'), dataIndex: 'userCount' },
+                { title: t('ui.system.roles.defaultHomePage'), dataIndex: 'defaultHomePath' },
+                { title: t('ui.system.roles.permissionCount'), dataIndex: 'permissionCount' },
+                { title: t('ui.system.roles.userCount'), dataIndex: 'userCount' },
               ]}
               dataSource={detailDrawer.selectedRoleDetail}
               column={detailDrawer.column}
             />
             <div style={{ marginTop: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile) }}>
               <Space wrap size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)}>
-                <Typography.Text strong>{t('数据范围', 'Data scope')}</Typography.Text>
+                <Typography.Text strong>{t('ui.system.roles.dataScope')}</Typography.Text>
                 {(detailDrawer.selectedRoleDetail.dataScopes?.length ? detailDrawer.selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
                   <Tag key={`${scope.resourceCode}:${scope.scopeType}`} color="purple">
                     {formatDataScopeResource(scope.resourceCode)} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
@@ -488,13 +487,13 @@ const RoleManagementPage = () => {
             </div>
             <div style={{ marginTop: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile) }}>
               <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.tagWrapGap, responsive.isMobile)} style={{ width: '100%' }}>
-                <Typography.Text strong>{t('当前权限', 'Current permissions')}</Typography.Text>
+                <Typography.Text strong>{t('ui.system.roles.currentPermissions')}</Typography.Text>
                 {detailDrawer.permissionDetailTreeData?.length ? (
                   <div className="role-permission-tree role-permission-detail-tree">
                     <Tree blockNode defaultExpandAll selectable={false} showIcon={false} treeData={detailDrawer.permissionDetailTreeData} />
                   </div>
                 ) : (
-                  <Tag>{t('暂无权限', 'No permissions')}</Tag>
+                  <Tag>{t('ui.system.roles.noPermissions')}</Tag>
                 )}
               </Space>
             </div>
@@ -520,19 +519,19 @@ const RoleEditorBasicFields = ({
   <>
     <Form.Item
       name="roleCode"
-      label={t('角色编码', 'Role code')}
+      label={t('ui.system.roles.roleCode')}
       rules={[
         {
           validator: (_, value) => {
             const roleCode = typeof value === 'string' ? value.trim() : '';
             if (!roleCode) {
-              return Promise.reject(new Error(t('请输入角色编码', 'Please enter the role code')));
+              return Promise.reject(new Error(t('ui.system.roles.pleaseEnterTheRoleCode')));
             }
             if (roleCode.length > 64) {
-              return Promise.reject(new Error(t('角色编码长度不能超过64个字符', 'Role code cannot exceed 64 characters')));
+              return Promise.reject(new Error(t('ui.system.roles.roleCodeCannotExceed64Characters')));
             }
             if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(roleCode)) {
-              return Promise.reject(new Error(t('角色编码只能由字母、数字和下划线组成，且必须以字母开头', 'Role code can contain only letters, numbers and underscores, and must start with a letter')));
+              return Promise.reject(new Error(t('ui.system.roles.roleCodeCanContainOnlyLettersNumbersAnd')));
             }
             return Promise.resolve();
           },
@@ -541,13 +540,13 @@ const RoleEditorBasicFields = ({
     >
       <Input maxLength={64} disabled={isPermissionOnlyEditor} onBlur={handleRoleCodeBlur} />
     </Form.Item>
-    <Form.Item name="roleName" label={t('角色名称', 'Role name')} rules={[{ required: true, message: t('请输入角色名称', 'Please enter the role name') }]}>
+    <Form.Item name="roleName" label={t('ui.system.roles.roleName')} rules={[{ required: true, message: t('ui.system.roles.pleaseEnterTheRoleName') }]}>
       <Input disabled={isPermissionOnlyEditor} />
     </Form.Item>
-    <Form.Item name="roleType" label={t('角色类型', 'Role type')} rules={[{ required: true, message: t('请选择角色类型', 'Please select a role type') }]}>
+    <Form.Item name="roleType" label={t('ui.system.roles.roleType')} rules={[{ required: true, message: t('ui.system.roles.pleaseSelectARoleType') }]}>
       <Select disabled={isPermissionOnlyEditor} options={roleTypeOptions} />
     </Form.Item>
-    <Form.Item name="defaultHomePath" label={t('默认访问页面', 'Default home page')} rules={[{ required: true, message: t('请选择默认访问页面', 'Please select a default home page') }]}>
+    <Form.Item name="defaultHomePath" label={t('ui.system.roles.defaultHomePage.a026a47d')} rules={[{ required: true, message: t('ui.system.roles.pleaseSelectADefaultHomePage') }]}>
       <Select
         showSearch
         disabled={isPermissionOnlyEditor}
@@ -555,28 +554,28 @@ const RoleEditorBasicFields = ({
         listHeight={360}
         optionFilterProp="label"
         options={defaultHomeOptions}
-        placeholder={t('请选择登录后的默认访问页面', 'Select the default page after login')}
+        placeholder={t('ui.system.roles.selectTheDefaultPageAfterLogin')}
       />
     </Form.Item>
     <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
-    <Form.Item name={['dataScopes', 0, 'scopeType']} label={t('数据范围', 'Data scope')} rules={[{ required: true, message: t('请选择数据范围', 'Please select a data scope') }]}>
+    <Form.Item name={['dataScopes', 0, 'scopeType']} label={t('ui.system.roles.dataScope')} rules={[{ required: true, message: t('ui.system.roles.pleaseSelectADataScope') }]}>
       <Select disabled={isPermissionOnlyEditor} options={DATA_SCOPE_OPTIONS} />
     </Form.Item>
     <Form.Item name={['dataScopes', 1, 'resourceCode']} hidden initialValue={COMPETITION_REGISTRATION_SCOPE_RESOURCE} />
     <Form.Item
       name={['dataScopes', 1, 'scopeType']}
-      label={t('赛事报名数据范围', 'Competition registration data scope')}
-      rules={[{ required: true, message: t('请选择赛事报名数据范围', 'Please select the competition registration data scope') }]}
-      extra={t('控制该角色在赛事报名页面可查看的数据范围。', 'Controls which competition registration records this role can view on the registration page.')}
+      label={t('ui.system.roles.competitionRegistrationDataScope')}
+      rules={[{ required: true, message: t('ui.system.roles.pleaseSelectTheCompetitionRegistrationDataScope') }]}
+      extra={t('ui.system.roles.controlsWhichCompetitionRegistrationRecordsThisRoleCan')}
     >
       <Select disabled={isPermissionOnlyEditor} options={REGISTRATION_DATA_SCOPE_OPTIONS} />
     </Form.Item>
     <Form.Item name={['dataScopes', 2, 'resourceCode']} hidden initialValue={ACTIVITY_REGISTRATION_SCOPE_RESOURCE} />
     <Form.Item
       name={['dataScopes', 2, 'scopeType']}
-      label={t('活动报名数据范围', 'Activity registration data scope')}
-      rules={[{ required: true, message: t('请选择活动报名数据范围', 'Please select the activity registration data scope') }]}
-      extra={t('控制该角色在活动报名页面可查看的数据范围。', 'Controls which activity registration records this role can view on the activity registration page.')}
+      label={t('ui.system.roles.activityRegistrationDataScope')}
+      rules={[{ required: true, message: t('ui.system.roles.pleaseSelectTheActivityRegistrationDataScope') }]}
+      extra={t('ui.system.roles.controlsWhichActivityRegistrationRecordsThisRoleCan')}
     >
       <Select disabled={isPermissionOnlyEditor} options={REGISTRATION_DATA_SCOPE_OPTIONS} />
     </Form.Item>

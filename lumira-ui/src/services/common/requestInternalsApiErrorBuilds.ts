@@ -4,15 +4,14 @@ import { buildFallbackError } from './requestInternalsFallbackStatusErrors';
 import { getResponseRequestId, isApiResponse } from './requestInternalsResponse';
 import { handleApiError } from './requestInternalsApiErrorHandling';
 import type { AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 export const buildDuplicateRequestError = () => {
-  return new ApiRequestError(ErrorCode.REPEAT_SUBMIT, t('请求正在处理中，请勿重复提交', 'The request is still being processed. Please do not submit again.'), {
-    userMessage: t('请求正在处理中，请勿重复提交', 'The request is still being processed. Please do not submit again.'),
+  return new ApiRequestError(ErrorCode.REPEAT_SUBMIT, t('ui.services.common.requestinternalsapierrorbuilds.theRequestIsStillBeingProcessedPleaseDo'), {
+    userMessage: t('ui.services.common.requestinternalsapierrorbuilds.theRequestIsStillBeingProcessedPleaseDo'),
     httpStatus: 429,
   });
 };

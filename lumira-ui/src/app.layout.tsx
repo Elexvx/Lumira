@@ -32,6 +32,7 @@ import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPat
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
 import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from '@/navigation/mainMenuFilter';
 import { dedupeRuntimeMenuItems } from '@/navigation/runtimeMenuDedupe';
+import { resolveRuntimeMenuIdentity } from '@/navigation/runtimeMenuIdentity';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, isCanonicalRealPageRoutePath, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -74,6 +75,8 @@ const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
   [/^\/team\/create$/, '/data-management'],
 ];
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
+  '/certificates': 'main:certificates',
+  '/experts': 'main:experts',
   [USER_CENTER_GROUP_PATH]: 'main:user-center',
   [PERSONAL_CENTER_GROUP_PATH]: 'main:personal-center',
   [DATA_MANAGEMENT_GROUP_PATH]: 'main:data-management',
@@ -1289,7 +1292,13 @@ const composeMenuItemForLayout = (
 
   const backendPath = backendNode.path || '';
   const normalizedPath = resolveCanonicalRoutePath(backendPath);
-  const localMeta = localByPath.get(normalizedPath);
+  const menuIdentity = resolveRuntimeMenuIdentity({
+    backendPath,
+    canonicalPath: normalizedPath,
+    localByPath,
+    stableKeyByPath: MAIN_MENU_KEY_BY_PATH,
+  });
+  const localMeta = menuIdentity.localItem;
   const mergedMeta = routeMetaMap.get(backendPath) || routeMetaMap.get(normalizedPath);
   const hasLocalRoute = Boolean(
     isCanonicalRealPageRoutePath(backendNode.path)
@@ -1314,7 +1323,7 @@ const composeMenuItemForLayout = (
 
   return {
     ...localItemMeta,
-    key: MAIN_MENU_KEY_BY_PATH[normalizedPath] || localItemMeta.key,
+    key: menuIdentity.key,
     path: isRedirectGroup || isUserCenterMenuGroup ? undefined : normalizedPath || localMeta?.path,
     name: resolveNavigationMenuName(menuLabelId, mergedMeta?.name || backendNode.name),
     locale: false as const,

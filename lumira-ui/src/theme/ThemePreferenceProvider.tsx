@@ -5,6 +5,7 @@ import enUS from 'antd/locale/en_US';
 import type { ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { resolveRuntimeLocale } from '@/i18n/locale';
+import { databaseMessage } from '@/i18n/databaseMessage';
 import { buildAntdThemeConfig, resolveResponsiveSpaceSize } from '@/theme/antdTheme';
 import { commitThemePreference, getSystemDarkMode, syncThemePreferenceRuntime } from '@/theme/apply';
 import { registerAntdFeedbackApi } from '@/theme/antdFeedbackBridge';
@@ -24,19 +25,6 @@ interface ThemePreferenceContextValue {
 
 const ThemePreferenceContext = createContext<ThemePreferenceContextValue | null>(null);
 
-const TABLE_TOOLBAR_LABELS: Record<string, Record<string, string>> = {
-  'zh-CN': {
-    'tableToolBar.density': '间距',
-    'tableToolBar.columnDisplay': '设置展示字段',
-    'tableToolBar.columnSetting': '设置展示字段',
-  },
-  'en-US': {
-    'tableToolBar.density': 'Spacing',
-    'tableToolBar.columnDisplay': 'Display fields',
-    'tableToolBar.columnSetting': 'Display fields',
-  },
-};
-
 const withTableToolbarLabels = (intl: IntlType, labels: Record<string, string>): IntlType => ({
   ...intl,
   getMessage: (id: string, defaultMessage?: string) => labels[id] || intl.getMessage(id, defaultMessage || id),
@@ -47,7 +35,11 @@ const resolveAntdLocale = () => (resolveRuntimeLocale().startsWith('en') ? enUS 
 const resolveProComponentsIntl = () => {
   const locale = resolveRuntimeLocale();
   const baseIntl = locale.startsWith('en') ? enUSIntl : zhCNIntl;
-  const labels = locale.startsWith('en') ? TABLE_TOOLBAR_LABELS['en-US'] : TABLE_TOOLBAR_LABELS['zh-CN'];
+  const labels = {
+    'tableToolBar.density': databaseMessage('table.toolbar.density'),
+    'tableToolBar.columnDisplay': databaseMessage('table.toolbar.columnDisplay'),
+    'tableToolBar.columnSetting': databaseMessage('table.toolbar.columnSetting'),
+  };
 
   return withTableToolbarLabels(baseIntl, labels);
 };

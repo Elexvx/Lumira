@@ -17,9 +17,8 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { getLocale } from '@umijs/max';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { normalizeLocale } from '@/i18n/locale';
 import {
   cancelPaymentOrder,
   createPaymentOrder,
@@ -46,9 +45,10 @@ import {
 import type { ManualPaymentFormValues } from './manualPaymentOrder';
 import { formatPaymentOrderCreatedAt, sortPaymentOrdersNewestFirst } from './paymentOrderTime';
 import { buildCleanSandboxOrderPath } from './sandboxPaymentReturnUrl';
+import { databaseMessage } from '@/i18n/databaseMessage';
+import { resolveRuntimeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+const t = databaseMessage;
 
 const PAID_STATUSES = ['PAID', 'SUCCESS', 'SETTLED'];
 const TERMINAL_STATUSES = [...PAID_STATUSES, 'FAILED', 'CANCELLED', 'CLOSED', 'EXPIRED'];
@@ -58,7 +58,6 @@ const isPending = (status?: string | null) => !TERMINAL_STATUSES.includes(status
 const providerName = (providerCode?: string | null) => paymentProviderDisplayName(
   providerCode,
   providerCode,
-  isEnglishLocale(),
 );
 
 const statusColor = (status?: string | null) => (
@@ -140,10 +139,7 @@ export const SandboxPaymentOrderTab = ({
         setDetailOrder((current) => current?.orderNo === order.orderNo ? order : current);
         upsertOrder(order);
         if (!wasPaid && isPaid(order.status)) {
-          message.success(t(
-            `${providerName(order.providerCode)}收款成功，订单状态已同步`,
-            `${providerName(order.providerCode)} payment received and synchronized`,
-          ));
+          message.success(t('ui.settings.payment.sandboxpaymentorder.paymentReceivedAndSynchronized', { value1: providerName(order.providerCode) }));
         }
       });
     }, 3000);
@@ -157,7 +153,7 @@ export const SandboxPaymentOrderTab = ({
     form.setFieldsValue({
       providerCode: initial?.providerCode,
       amountYuan: 0.01,
-      subject: t('Lumira 手动支付接口验收', 'Lumira manual payment verification'),
+      subject: t('ui.settings.payment.sandboxpaymentorder.lumiraManualPaymentVerification'),
       scene: initial?.providerCode === 'wechat_pay' ? scenes[0] : undefined,
       productionConfirmed: false,
     });
@@ -181,7 +177,7 @@ export const SandboxPaymentOrderTab = ({
       const values = await form.validateFields();
       const settings = providers.find((item) => item.providerCode === values.providerCode);
       if (!settings) {
-        message.error(t('所选支付接口未启用或配置不完整', 'The selected provider is unavailable'));
+        message.error(t('ui.settings.payment.sandboxpaymentorder.theSelectedProviderIsUnavailable'));
         return;
       }
       const request = buildManualPaymentRequest({
@@ -204,12 +200,12 @@ export const SandboxPaymentOrderTab = ({
 
       if (!order.paymentUrl) {
         checkoutWindow?.close();
-        message.error(t('支付接口未返回付款地址', 'The provider did not return a payment URL'));
+        message.error(t('ui.settings.payment.sandboxpaymentorder.theProviderDidNotReturnAPaymentUrl'));
         return;
       }
       if (nativeWechat) {
         checkoutWindow?.close();
-        message.success(t('微信支付订单已生成，请扫描二维码付款', 'WeChat Pay order created. Scan the QR code to pay.'));
+        message.success(t('ui.settings.payment.sandboxpaymentorder.wechatPayOrderCreatedScanTheQrCode'));
         return;
       }
       if (checkoutWindow) {
@@ -217,7 +213,7 @@ export const SandboxPaymentOrderTab = ({
       } else {
         window.location.assign(order.paymentUrl);
       }
-      message.success(t('支付订单已生成，已打开付款页面', 'Payment order created and checkout opened'));
+      message.success(t('ui.settings.payment.sandboxpaymentorder.paymentOrderCreatedAndCheckoutOpened'));
     } catch {
       checkoutWindow?.close();
     } finally {
@@ -245,7 +241,7 @@ export const SandboxPaymentOrderTab = ({
       upsertOrder(cancelled);
       setActiveOrder((current) => current?.orderNo === cancelled.orderNo ? cancelled : current);
       setDetailOrder((current) => current?.orderNo === cancelled.orderNo ? cancelled : current);
-      message.success(t('订单已取消', 'Payment order cancelled'));
+      message.success(t('ui.settings.payment.sandboxpaymentorder.paymentOrderCancelled'));
     } finally {
       setCancellingOrderNo(undefined);
     }
@@ -260,21 +256,21 @@ export const SandboxPaymentOrderTab = ({
         <Space direction="vertical" align="center" size={compact ? 8 : 12}>
           <QRCode value={order.paymentUrl} size={compact ? 152 : 196} />
           <Typography.Text type="secondary">
-            {t('请使用微信扫描二维码付款', 'Scan with WeChat to pay')}
+            {t('ui.settings.payment.sandboxpaymentorder.scanWithWechatToPay')}
           </Typography.Text>
         </Space>
       );
     }
     return (
       <Button type="primary" href={order.paymentUrl} target="_blank" rel="noreferrer">
-        {t('继续付款', 'Continue payment')}
+        {t('ui.settings.payment.sandboxpaymentorder.continuePayment')}
       </Button>
     );
   };
 
   const columns = useMemo<ColumnsType<PaymentOrderRecord>>(() => [
     {
-      title: t('订单号', 'Order number'),
+      title: t('ui.settings.payment.sandboxpaymentorder.orderNumber'),
       dataIndex: 'orderNo',
       width: 270,
       render: (value: string, record) => (
@@ -284,64 +280,61 @@ export const SandboxPaymentOrderTab = ({
       ),
     },
     {
-      title: t('支付接口', 'Provider'),
+      title: t('ui.settings.payment.sandboxpaymentorder.provider'),
       dataIndex: 'providerCode',
       width: 140,
       render: (value: string) => providerName(value),
     },
     {
-      title: t('环境', 'Environment'),
+      title: t('ui.settings.payment.sandboxpaymentorder.environment'),
       width: 120,
       render: (_, record) => {
         const environment = resolveManualOrderEnvironment(record, paymentSettings);
         return (
           <Tag color={environment === 'PRODUCTION' ? 'red' : 'blue'}>
-            {paymentEnvironmentDisplayName(environment, isEnglishLocale())}
+            {paymentEnvironmentDisplayName(environment)}
           </Tag>
         );
       },
     },
     {
-      title: t('场景', 'Scene'),
+      title: t('ui.settings.payment.sandboxpaymentorder.scene'),
       width: 100,
       render: (_, record) => resolveManualOrderScene(record) || '-',
     },
     {
-      title: t('金额', 'Amount'),
+      title: t('ui.settings.payment.sandboxpaymentorder.amount'),
       dataIndex: 'amountMinor',
       width: 130,
       render: (value: number, record) => `${(value / 100).toFixed(2)} ${record.currency || 'CNY'}`,
     },
     {
-      title: t('状态', 'Status'),
+      title: t('ui.settings.payment.sandboxpaymentorder.status'),
       dataIndex: 'status',
       width: 120,
       render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
     },
     {
-      title: t('创建时间', 'Created at'),
+      title: t('ui.settings.payment.sandboxpaymentorder.createdAt'),
       dataIndex: 'createdAt',
       width: 190,
       render: (value: string, record) => formatPaymentOrderCreatedAt(
         record.orderNo,
         value,
-        isEnglishLocale() ? 'en-US' : 'zh-CN',
+        resolveRuntimeLocale(),
       ),
     },
     {
-      title: t('操作', 'Actions'),
+      title: t('ui.settings.payment.sandboxpaymentorder.actions'),
       width: 120,
       fixed: 'right',
       render: (_, record) => (
         isManualPaymentOrderCancellable(record) && canCreateOrders ? (
           <Popconfirm
-            title={t('确认取消该订单？', 'Cancel this payment order?')}
-            description={t(
-              '取消后原付款链接或二维码将失效，且无法恢复。',
-              'The existing checkout link or QR code will stop working and cannot be restored.',
-            )}
-            okText={t('确认取消', 'Cancel order')}
-            cancelText={t('保留订单', 'Keep order')}
+            title={t('ui.settings.payment.sandboxpaymentorder.cancelThisPaymentOrder')}
+            description={t('ui.settings.payment.sandboxpaymentorder.theExistingCheckoutLinkOrQrCodeWill')}
+            okText={t('ui.settings.payment.sandboxpaymentorder.cancelOrder')}
+            cancelText={t('ui.settings.payment.sandboxpaymentorder.keepOrder')}
             onConfirm={() => cancelOrder(record)}
           >
             <Button
@@ -349,7 +342,7 @@ export const SandboxPaymentOrderTab = ({
               type="link"
               loading={cancellingOrderNo === record.orderNo}
             >
-              {t('取消订单', 'Cancel')}
+              {t('ui.settings.payment.sandboxpaymentorder.cancel')}
             </Button>
           </Popconfirm>
         ) : '-'
@@ -360,28 +353,28 @@ export const SandboxPaymentOrderTab = ({
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       {!canCreateOrders ? (
-        <Alert showIcon type="warning" message={t('当前账号没有生成支付订单的权限', 'You cannot create payment orders')} />
+        <Alert showIcon type="warning" message={t('ui.settings.payment.sandboxpaymentorder.youCannotCreatePaymentOrders')} />
       ) : null}
       {providers.length === 0 ? (
         <Alert
           showIcon
           type="warning"
-          message={t('暂无可手动验收的支付接口', 'No payment provider is ready for manual verification')}
-          description={t('请先启用并完整配置支付宝或微信支付。', 'Enable and configure Alipay or WeChat Pay first.')}
+          message={t('ui.settings.payment.sandboxpaymentorder.noPaymentProviderIsReadyForManualVerification')}
+          description={t('ui.settings.payment.sandboxpaymentorder.enableAndConfigureAlipayOrWechatPayFirst')}
         />
       ) : null}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div>
           <Typography.Title level={5} style={{ margin: 0 }}>
-            {t('手动生成支付订单', 'Manual payment order')}
+            {t('ui.settings.payment.sandboxpaymentorder.manualPaymentOrder')}
           </Typography.Title>
           <Typography.Text type="secondary">
-            {t('选择已配置的支付接口，创建最低金额订单并验证付款及回调状态。', 'Create a minimum-value order through a configured provider and verify payment callbacks.')}
+            {t('ui.settings.payment.sandboxpaymentorder.createAMinimumValueOrderThroughAConfigured')}
           </Typography.Text>
         </div>
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={() => void loadOrders()} loading={loading}>
-            {t('刷新订单记录', 'Refresh order history')}
+            {t('ui.settings.payment.sandboxpaymentorder.refreshOrderHistory')}
           </Button>
           <Button
             type="primary"
@@ -389,7 +382,7 @@ export const SandboxPaymentOrderTab = ({
             onClick={openCreateDrawer}
             disabled={!canCreateOrders || providers.length === 0}
           >
-            {t('创建订单', 'Create order')}
+            {t('ui.settings.payment.sandboxpaymentorder.createOrder')}
           </Button>
         </Space>
       </div>
@@ -398,10 +391,7 @@ export const SandboxPaymentOrderTab = ({
         <Alert
           showIcon
           type="info"
-          message={t(
-            `${providerName(activeOrder.providerCode)}订单 ${activeOrder.orderNo} 正在等待付款`,
-            `${providerName(activeOrder.providerCode)} order ${activeOrder.orderNo} is awaiting payment`,
-          )}
+          message={t('ui.settings.payment.sandboxpaymentorder.orderIsAwaitingPayment', { value1: providerName(activeOrder.providerCode), orderNo: activeOrder.orderNo })}
           description={renderPaymentAction(activeOrder)}
         />
       ) : null}
@@ -409,11 +399,8 @@ export const SandboxPaymentOrderTab = ({
       <Alert
         showIcon
         type="info"
-        message={t('生产订单记录说明', 'Production order history')}
-        description={t(
-          '生产和沙箱手动订单会保存在系统中，刷新页面后仍可查看；待支付订单可在列表中取消。',
-          'Production and sandbox manual orders remain available after refresh. Pending orders can be cancelled from the list.',
-        )}
+        message={t('ui.settings.payment.sandboxpaymentorder.productionOrderHistory')}
+        description={t('ui.settings.payment.sandboxpaymentorder.productionAndSandboxManualOrdersRemainAvailableAfter')}
       />
 
       <Table<PaymentOrderRecord>
@@ -423,57 +410,56 @@ export const SandboxPaymentOrderTab = ({
         loading={loading}
         pagination={{ pageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50] }}
         scroll={{ x: 1170 }}
-        locale={{ emptyText: t('暂无手动支付订单', 'No manual payment orders') }}
+        locale={{ emptyText: t('ui.settings.payment.sandboxpaymentorder.noManualPaymentOrders') }}
       />
 
       <Drawer
-        title={t('交易详情', 'Transaction details')}
+        title={t('ui.settings.payment.sandboxpaymentorder.transactionDetails')}
         width={560}
         open={Boolean(detailOrder)}
         onClose={() => setDetailOrder(undefined)}
         destroyOnClose
-        extra={detailLoading ? <Typography.Text type="secondary">{t('刷新中…', 'Refreshing…')}</Typography.Text> : null}
+        extra={detailLoading ? <Typography.Text type="secondary">{t('ui.settings.payment.sandboxpaymentorder.refreshing')}</Typography.Text> : null}
       >
         {detailOrder ? (
           <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label={t('订单号', 'Order number')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.orderNumber')}>
               <Typography.Text copyable>{detailOrder.orderNo}</Typography.Text>
             </Descriptions.Item>
-            <Descriptions.Item label={t('支付接口', 'Provider')}>{providerName(detailOrder.providerCode)}</Descriptions.Item>
-            <Descriptions.Item label={t('交易环境', 'Environment')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.provider')}>{providerName(detailOrder.providerCode)}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.environment.38aa5d01')}>
               {paymentEnvironmentDisplayName(
                 resolveManualOrderEnvironment(detailOrder, paymentSettings),
-                isEnglishLocale(),
               )}
             </Descriptions.Item>
-            <Descriptions.Item label={t('支付场景', 'Payment scene')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.paymentScene')}>
               {resolveManualOrderScene(detailOrder) || '-'}
             </Descriptions.Item>
-            <Descriptions.Item label={t('交易状态', 'Status')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.status.3dc9b722')}>
               <Tag color={statusColor(detailOrder.status)}>{detailOrder.status}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label={t('交易金额', 'Amount')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.amount.f456317d')}>
               {(detailOrder.amountMinor / 100).toFixed(2)} {detailOrder.currency || 'CNY'}
             </Descriptions.Item>
-            <Descriptions.Item label={t('订单标题', 'Subject')}>{detailOrder.subject}</Descriptions.Item>
-            <Descriptions.Item label={t('渠道交易号', 'Provider transaction number')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.subject')}>{detailOrder.subject}</Descriptions.Item>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.providerTransactionNumber')}>
               {detailOrder.providerOrderNo || '-'}
             </Descriptions.Item>
-            <Descriptions.Item label={t('创建时间', 'Created at')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.createdAt')}>
               {formatPaymentOrderCreatedAt(
                 detailOrder.orderNo,
                 detailOrder.createdAt,
-                isEnglishLocale() ? 'en-US' : 'zh-CN',
+                resolveRuntimeLocale(),
               )}
             </Descriptions.Item>
-            <Descriptions.Item label={t('付款时间', 'Paid at')}>
+            <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.paidAt')}>
               {detailOrder.paidAt?.replace('T', ' ') || '-'}
             </Descriptions.Item>
             {detailOrder.failureMessage ? (
-              <Descriptions.Item label={t('失败原因', 'Failure reason')}>{detailOrder.failureMessage}</Descriptions.Item>
+              <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.failureReason')}>{detailOrder.failureMessage}</Descriptions.Item>
             ) : null}
             {detailOrder.paymentUrl && isPending(detailOrder.status) ? (
-              <Descriptions.Item label={t('付款操作', 'Payment action')}>
+              <Descriptions.Item label={t('ui.settings.payment.sandboxpaymentorder.paymentAction')}>
                 {renderPaymentAction(detailOrder, true)}
               </Descriptions.Item>
             ) : null}
@@ -482,18 +468,18 @@ export const SandboxPaymentOrderTab = ({
       </Drawer>
 
       <Drawer
-        title={t('创建手动支付订单', 'Create manual payment order')}
+        title={t('ui.settings.payment.sandboxpaymentorder.createManualPaymentOrder')}
         width={500}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         destroyOnClose
         extra={(
           <Space>
-            <Button onClick={() => setDrawerOpen(false)}>{t('取消', 'Cancel')}</Button>
+            <Button onClick={() => setDrawerOpen(false)}>{t('ui.settings.payment.sandboxpaymentorder.cancel.d94a8eaf')}</Button>
             <Button type="primary" loading={submitting} onClick={() => void submitOrder()}>
               {selectedProviderCode === 'wechat_pay' && selectedScene === 'NATIVE'
-                ? t('生成付款二维码', 'Create payment QR code')
-                : t('生成并打开收银台', 'Create and open checkout')}
+                ? t('ui.settings.payment.sandboxpaymentorder.createPaymentQrCode')
+                : t('ui.settings.payment.sandboxpaymentorder.createAndOpenCheckout')}
             </Button>
           </Space>
         )}
@@ -501,14 +487,14 @@ export const SandboxPaymentOrderTab = ({
         <Form<ManualPaymentFormValues> form={form} layout="vertical">
           <Form.Item
             name="providerCode"
-            label={t('支付接口', 'Payment provider')}
-            rules={[{ required: true, message: t('请选择支付接口', 'Select a payment provider') }]}
+            label={t('ui.settings.payment.sandboxpaymentorder.paymentProvider')}
+            rules={[{ required: true, message: t('ui.settings.payment.sandboxpaymentorder.selectAPaymentProvider') }]}
           >
             <Select
               onChange={changeProvider}
               options={providers.map((settings) => ({
                 value: settings.providerCode,
-                label: `${providerName(settings.providerCode)} · ${paymentEnvironmentDisplayName(settings.environment, isEnglishLocale())}`,
+                label: `${providerName(settings.providerCode)} · ${paymentEnvironmentDisplayName(settings.environment)}`,
               }))}
             />
           </Form.Item>
@@ -516,8 +502,8 @@ export const SandboxPaymentOrderTab = ({
           {selectedProviderCode === 'wechat_pay' ? (
             <Form.Item
               name="scene"
-              label={t('微信支付场景', 'WeChat Pay scene')}
-              rules={[{ required: true, message: t('请选择微信支付场景', 'Select a WeChat Pay scene') }]}
+              label={t('ui.settings.payment.sandboxpaymentorder.wechatPayScene')}
+              rules={[{ required: true, message: t('ui.settings.payment.sandboxpaymentorder.selectAWechatPayScene') }]}
             >
               <Select options={wechatScenes.map((scene) => ({ value: scene, label: scene }))} />
             </Form.Item>
@@ -526,11 +512,11 @@ export const SandboxPaymentOrderTab = ({
           {selectedProviderCode === 'wechat_pay' && selectedScene === 'H5' ? (
             <Form.Item
               name="clientIp"
-              label={t('付款客户端 IP', 'Payer client IP')}
+              label={t('ui.settings.payment.sandboxpaymentorder.payerClientIp')}
               rules={[
-                { required: true, whitespace: true, message: t('请输入付款客户端公网 IP', 'Enter the payer public IP') },
+                { required: true, whitespace: true, message: t('ui.settings.payment.sandboxpaymentorder.enterThePayerPublicIp') },
               ]}
-              extra={t('微信 H5 下单必填，应填写实际发起付款设备的公网 IP。', 'Required by WeChat H5; use the payer device public IP.')}
+              extra={t('ui.settings.payment.sandboxpaymentorder.requiredByWechatH5UseThePayerDevice')}
             >
               <Input placeholder="203.0.113.10" />
             </Form.Item>
@@ -541,7 +527,7 @@ export const SandboxPaymentOrderTab = ({
               name="openid"
               label="OpenID"
               rules={[
-                { required: true, whitespace: true, message: t('请输入当前 AppID 下的用户 OpenID', 'Enter the user OpenID for this AppID') },
+                { required: true, whitespace: true, message: t('ui.settings.payment.sandboxpaymentorder.enterTheUserOpenidForThisAppid') },
               ]}
             >
               <Input />
@@ -550,17 +536,17 @@ export const SandboxPaymentOrderTab = ({
 
           <Form.Item
             name="subject"
-            label={t('订单标题', 'Order subject')}
-            rules={[{ required: true, whitespace: true, message: t('请输入订单标题', 'Enter an order subject') }]}
+            label={t('ui.settings.payment.sandboxpaymentorder.orderSubject')}
+            rules={[{ required: true, whitespace: true, message: t('ui.settings.payment.sandboxpaymentorder.enterAnOrderSubject') }]}
           >
             <Input maxLength={256} />
           </Form.Item>
           <Form.Item
             name="amountYuan"
-            label={t('订单金额（元）', 'Order amount (CNY)')}
+            label={t('ui.settings.payment.sandboxpaymentorder.orderAmountCny')}
             rules={[
-              { required: true, message: t('请输入订单金额', 'Enter an order amount') },
-              { type: 'number', min: 0.01, message: t('订单金额必须大于 0', 'Amount must be greater than zero') },
+              { required: true, message: t('ui.settings.payment.sandboxpaymentorder.enterAnOrderAmount') },
+              { type: 'number', min: 0.01, message: t('ui.settings.payment.sandboxpaymentorder.amountMustBeGreaterThanZero') },
             ]}
           >
             <InputNumber min={0.01} precision={2} step={0.01} style={{ width: '100%' }} addonAfter="CNY" />
@@ -570,15 +556,15 @@ export const SandboxPaymentOrderTab = ({
             <Alert
               showIcon
               type="error"
-              message={t('这是生产环境，将创建真实支付订单', 'This is production and creates a real payment order')}
-              description={t('请保持 0.01 元验收金额；付款后会产生真实资金交易和支付回调。', 'Keep the ¥0.01 verification amount. Paying causes a real funds transfer and callback.')}
+              message={t('ui.settings.payment.sandboxpaymentorder.thisIsProductionAndCreatesARealPayment')}
+              description={t('ui.settings.payment.sandboxpaymentorder.keepThe001VerificationAmountPayingCauses')}
               style={{ marginBottom: 20 }}
             />
           ) : (
             <Alert
               showIcon
               type="info"
-              message={t('当前为沙箱环境，不会扣除真实资金', 'This is a sandbox; no real funds are charged')}
+              message={t('ui.settings.payment.sandboxpaymentorder.thisIsASandboxNoRealFundsAre')}
               style={{ marginBottom: 20 }}
             />
           )}
@@ -590,11 +576,11 @@ export const SandboxPaymentOrderTab = ({
               rules={[{
                 validator: (_, checked) => checked
                   ? Promise.resolve()
-                  : Promise.reject(new Error(t('请确认真实交易风险', 'Confirm the real-transaction warning'))),
+                  : Promise.reject(new Error(t('ui.settings.payment.sandboxpaymentorder.confirmTheRealTransactionWarning'))),
               }]}
             >
               <Checkbox>
-                {t('我确认这是生产订单，付款将产生真实资金交易', 'I understand this is a production order involving real funds')}
+                {t('ui.settings.payment.sandboxpaymentorder.iUnderstandThisIsAProductionOrderInvolving')}
               </Checkbox>
             </Form.Item>
           ) : null}

@@ -20,11 +20,10 @@ import { confirmAction } from '@/utils/confirm';
 import type { DepartmentRecord, PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { maskEmail, maskMobile } from '@/utils/sensitive';
 import { TableActionBar } from '@/features/table/TableActionBar';
-import { getLocale } from '@umijs/max';
-import { normalizeLocale } from '@/i18n/locale';
 
-const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
-const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+import { databaseMessage } from '@/i18n/databaseMessage';
+
+const t = databaseMessage;
 
 const PROTECTED_ADMIN_ID = 1001;
 const PROTECTED_ADMIN_USERNAME = 'admin';
@@ -118,7 +117,7 @@ const exportableQueryParams = (params: Record<string, unknown>) => {
 
 const userListIdentityColumns: ProColumns<UserRecord>[] = [
   {
-    title: t('序号', 'No.'),
+    title: t('ui.system.users.useuser.no'),
     search: false,
     width: 'var(--saas-spacing-80)',
     align: 'center',
@@ -135,7 +134,7 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     },
   },
   {
-    title: t('用户编号', 'User number'),
+    title: t('ui.system.users.useuser.userNumber'),
     dataIndex: 'userNo',
     hideInTable: true,
     search: false,
@@ -143,7 +142,7 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     ellipsis: true,
   },
   {
-    title: t('用户名', 'Username'),
+    title: t('ui.system.users.useuser.username'),
     dataIndex: 'username',
     search: true,
   },
@@ -151,7 +150,7 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
 
 const userListContactColumns: ProColumns<UserRecord>[] = [
   {
-    title: t('手机号', 'Mobile number'),
+    title: t('ui.system.users.useuser.mobileNumber'),
     dataIndex: 'mobile',
     search: true,
     responsive: ['lg', 'xl', 'xxl'],
@@ -168,7 +167,7 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
     },
   },
   {
-    title: t('邮箱', 'Email'),
+    title: t('ui.system.users.useuser.email'),
     dataIndex: 'email',
     search: true,
     ellipsis: true,
@@ -182,33 +181,33 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
 
 const userListStatusColumns: ProColumns<UserRecord>[] = [
   {
-    title: t('状态', 'Status'),
+    title: t('ui.system.users.useuser.status'),
     dataIndex: 'status',
     responsive: ['lg', 'xl', 'xxl'],
     valueEnum: {
-      ENABLED: { text: t('启用', 'Enabled'), status: 'Success' },
-      DISABLED: { text: t('禁用', 'Disabled'), status: 'Default' },
+      ENABLED: { text: t('ui.system.users.useuser.enabled'), status: 'Success' },
+      DISABLED: { text: t('ui.system.users.useuser.disabled'), status: 'Default' },
     },
     search: true,
-    render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status === 'ENABLED' ? t('启用', 'Enabled') : t('禁用', 'Disabled')}</Tag>,
+    render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status === 'ENABLED' ? t('ui.system.users.useuser.enabled') : t('ui.system.users.useuser.disabled')}</Tag>,
   },
   {
-    title: t('来源', 'Source'),
+    title: t('ui.system.users.useuser.source'),
     dataIndex: 'source',
     valueEnum: {
-      LEGACY_SYS_USER: { text: t('旧系统迁移', 'Legacy migration') },
-      PASSWORD: { text: t('账号密码', 'Username/password') },
-      SMS: { text: t('短信注册', 'SMS sign-up') },
-      EMAIL: { text: t('邮箱注册', 'Email sign-up') },
-      WECHAT: { text: t('微信', 'WeChat') },
-      ADMIN_CREATE: { text: t('后台创建', 'Admin created') },
-      SYSTEM: { text: t('系统', 'System') },
+      LEGACY_SYS_USER: { text: t('ui.system.users.useuser.legacyMigration') },
+      PASSWORD: { text: t('ui.system.users.useuser.usernamePassword') },
+      SMS: { text: t('ui.system.users.useuser.smsSignUp') },
+      EMAIL: { text: t('ui.system.users.useuser.emailSignUp') },
+      WECHAT: { text: t('ui.system.users.useuser.wechat') },
+      ADMIN_CREATE: { text: t('ui.system.users.useuser.adminCreated') },
+      SYSTEM: { text: t('ui.system.users.useuser.system') },
     },
     search: true,
     responsive: ['lg', 'xl', 'xxl'],
   },
   {
-    title: t('注册时间', 'Registered at'),
+    title: t('ui.system.users.useuser.registeredAt'),
     dataIndex: 'registeredAt',
     valueType: 'dateRange',
     search: true,
@@ -216,7 +215,7 @@ const userListStatusColumns: ProColumns<UserRecord>[] = [
     renderText: (value) => value || '-',
   },
   {
-    title: t('最近登录', 'Last login'),
+    title: t('ui.system.users.useuser.lastLogin'),
     dataIndex: 'lastLoginAt',
     valueType: 'dateRange',
     search: true,
@@ -248,19 +247,19 @@ const buildUserColumns = ({
   ...userListContactColumns,
   ...userListStatusColumns,
   {
-    title: t('昵称', 'Nickname'),
+    title: t('ui.system.users.useuser.nickname'),
     dataIndex: 'nickname',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
   },
   {
-    title: t('姓名', 'Full name'),
+    title: t('ui.system.users.useuser.fullName'),
     dataIndex: 'realName',
     search: false,
     responsive: ['md', 'lg', 'xl', 'xxl'],
   },
   {
-    title: t('角色', 'Roles'),
+    title: t('ui.system.users.useuser.roles'),
     dataIndex: 'roleNames',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
@@ -271,7 +270,7 @@ const buildUserColumns = ({
     },
   },
   {
-    title: t('部门', 'Departments'),
+    title: t('ui.system.users.useuser.departments'),
     dataIndex: 'deptNames',
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
@@ -282,7 +281,7 @@ const buildUserColumns = ({
     },
   },
   {
-    title: t('操作', 'Actions'),
+    title: t('ui.system.users.useuser.actions'),
     valueType: 'option',
     fixed: 'right',
     width: 'var(--saas-spacing-220)',
@@ -292,19 +291,19 @@ const buildUserColumns = ({
         items={buildRowActions([
           {
             key: 'view',
-            label: t('详情', 'Details'),
+            label: t('ui.system.users.useuser.details'),
             permission: 'system:user:view',
             onClick: () => onOpenDetail(record),
           },
           {
             key: 'edit',
-            label: t('编辑', 'Edit'),
+            label: t('ui.system.users.useuser.edit'),
             permission: 'system:user:update',
             onClick: () => onOpenEdit(record),
           },
           {
             key: 'toggle',
-            label: record.status === 'ENABLED' ? t('禁用', 'Disable') : t('启用', 'Enable'),
+            label: record.status === 'ENABLED' ? t('ui.system.users.useuser.disable') : t('ui.system.users.useuser.enable'),
             permission: 'system:user:status',
             hidden: isProtectedAdminAccount(record),
             danger: record.status === 'ENABLED',
@@ -312,7 +311,7 @@ const buildUserColumns = ({
           },
           {
             key: 'delete',
-            label: t('删除', 'Delete'),
+            label: t('ui.system.users.useuser.delete'),
             permission: 'system:user:delete',
             hidden: isProtectedAdminAccount(record),
             danger: true,
@@ -528,14 +527,14 @@ export const useUserManagement = () => {
         if (drawer.editingId === initialState?.currentUser?.userId) {
           notifyCurrentUserSync();
         }
-        message.success(t('用户已更新', 'User updated'));
+        message.success(t('ui.system.users.useuser.userUpdated'));
       } else {
         await request<UserDetail>('/v1/system/users', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('用户已创建', 'User created'));
+        message.success(t('ui.system.users.useuser.userCreated'));
       }
 
       drawer.close();
@@ -558,15 +557,15 @@ export const useUserManagement = () => {
           data: { status: 'ENABLED' },
           ...API_OPTS.NO_REDIRECT,
         });
-        message.success(t('状态已更新', 'Status updated'));
+        message.success(t('ui.system.users.useuser.statusUpdated'));
         reloadTable();
         return;
       }
 
       confirmAction({
-        title: t('禁用用户', 'Disable user'),
-        content: t(`确认禁用用户「${record.username}」吗？禁用后该账号将无法继续登录。`, `Disable user "${record.username}"? This account will no longer be able to sign in.`),
-        okText: t('确认禁用', 'Disable'),
+        title: t('ui.system.users.useuser.disableUser'),
+        content: t('ui.system.users.useuser.disableUserThisAccountWillNoLongerBe', { username: record.username }),
+        okText: t('ui.system.users.useuser.disable.c857adf6'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/users/${record.id}/status`, {
@@ -574,7 +573,7 @@ export const useUserManagement = () => {
             data: { status: 'DISABLED' },
             ...API_OPTS.NO_REDIRECT,
           });
-          message.success(t('状态已更新', 'Status updated'));
+          message.success(t('ui.system.users.useuser.statusUpdated'));
           reloadTable();
         },
       });
@@ -585,9 +584,9 @@ export const useUserManagement = () => {
   const handleDelete = useCallback(
     (record: UserRecord) => {
       confirmAction({
-        title: t('删除用户', 'Delete user'),
-        content: t(`确认删除用户「${record.username}」吗？删除后该账号将无法恢复。`, `Delete user "${record.username}"? This action cannot be undone.`),
-        okText: t('确认删除', 'Delete'),
+        title: t('ui.system.users.useuser.deleteUser'),
+        content: t('ui.system.users.useuser.deleteUserThisActionCannotBeUndone', { username: record.username }),
+        okText: t('ui.system.users.useuser.delete.0ad952f3'),
         okButtonProps: { danger: true },
         onOk: async () => {
           await request<boolean>(`/v1/system/users/${record.id}`, {
@@ -622,7 +621,7 @@ export const useUserManagement = () => {
 
   const confirmExport = useCallback(async () => {
     if (!selectedExportFields.length) {
-      message.warning(t('请至少选择一个导出字段', 'Please select at least one export field'));
+      message.warning(t('ui.system.users.useuser.pleaseSelectAtLeastOneExportField'));
       return;
     }
     setExportLoading(true);
@@ -640,9 +639,9 @@ export const useUserManagement = () => {
         downloadBase64File(
           result.contentBase64,
           result.contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          result.fileName || t('用户管理导出.xlsx', 'User management export.xlsx'),
+          result.fileName || t('ui.system.users.useuser.userManagementExportXlsx'),
         );
-        message.success(t('导出文件已生成', 'Export file generated'));
+        message.success(t('ui.system.users.useuser.exportFileGenerated'));
         setExportModalOpen(false);
         return;
       }
@@ -655,7 +654,7 @@ export const useUserManagement = () => {
         });
         setExportTaskOpen(true);
         setExportModalOpen(false);
-        message.success(t('数据较多，已创建异步导出任务', 'Large export task created'));
+        message.success(t('ui.system.users.useuser.largeExportTaskCreated'));
       }
     } finally {
       setExportLoading(false);
