@@ -31,6 +31,14 @@ test('database catalog has unique, complete Chinese and English entries', () => 
   assert.ok(catalog.entries.length > 2000, 'database catalog should contain the migrated application UI');
   const keys = catalog.entries.map((entry) => entry.messageKey);
   assert.equal(new Set(keys).size, keys.length, 'database localization keys must be unique');
+  for (const loginKey of [
+    'page.login.joinUs',
+    'page.login.noAccount',
+    'page.login.registrationUnavailable',
+    'page.login.welcomeTitle',
+  ]) {
+    assert.ok(keys.includes(loginKey), `${loginKey} must remain database-managed`);
+  }
   for (const entry of catalog.entries) {
     assert.ok(entry.translations?.['zh-CN'], `${entry.messageKey} is missing zh-CN`);
     assert.ok(entry.translations?.['en-US'], `${entry.messageKey} is missing en-US`);

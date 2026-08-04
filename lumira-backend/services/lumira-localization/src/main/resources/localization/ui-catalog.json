@@ -4787,6 +4787,17 @@
       }
     },
     {
+      "messageKey": "page.login.joinUs",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/user/login/components/LoginFormFields.tsx",
+      "translations": {
+        "zh-CN": "加入我们",
+        "en-US": "Join us"
+      }
+    },
+    {
       "messageKey": "page.login.loadingEncryption",
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",
@@ -4817,6 +4828,17 @@
       "translations": {
         "zh-CN": "登录方式",
         "en-US": "Login method"
+      }
+    },
+    {
+      "messageKey": "page.login.noAccount",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/user/login/components/LoginFormFields.tsx",
+      "translations": {
+        "zh-CN": "没有账号？",
+        "en-US": "No account?"
       }
     },
     {
@@ -5260,6 +5282,17 @@
       }
     },
     {
+      "messageKey": "page.login.registrationUnavailable",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/user/login/components/LoginFormFields.tsx",
+      "translations": {
+        "zh-CN": "注册入口暂未开放",
+        "en-US": "Registration is not available yet"
+      }
+    },
+    {
       "messageKey": "page.login.secondFactor.prompt",
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",
@@ -5367,6 +5400,17 @@
       "translations": {
         "zh-CN": "登录",
         "en-US": "Login"
+      }
+    },
+    {
+      "messageKey": "page.login.welcomeTitle",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "lumira-ui/src/pages/user/Login.tsx",
+      "translations": {
+        "zh-CN": "欢迎登录 {websiteName}",
+        "en-US": "Welcome to {websiteName}"
       }
     },
     {

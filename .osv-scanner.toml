@@ -1,9 +1,4 @@
 [[IgnoredVulns]]
-id = "CVE-2026-14257"
-ignoreUntil = 2027-01-31
-reason = "brace-expansion 1.1.18 and 2.1.4 contain the upstream CVE-2026-14257 backport; CI verifies the installed source."
-
-[[IgnoredVulns]]
 id = "GHSA-frvp-7c67-39w9"
 ignoreUntil = 2026-10-31
 reason = "@hono/node-server is pulled in by the Umi build toolchain; production is static Nginx and does not ship or run the Node static server."

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyBrandingRuntime } from './settings';
+import { applyBrandingRuntime, buildCopyrightText, DEFAULT_BRANDING_SETTINGS } from './settings';
 
 class FakeHead {
   iconLink: { rel: string; href: string } | null = null;
@@ -43,5 +43,11 @@ describe('applyBrandingRuntime', () => {
       rel: 'icon',
       href: 'https://cdn.example.com/favicon.ico',
     });
+  });
+
+  it('uses the Lumira project name in the default title and copyright', () => {
+    expect(DEFAULT_BRANDING_SETTINGS.websiteName).toBe('Lumira');
+    expect(DEFAULT_BRANDING_SETTINGS.companyName).toBe('Lumira');
+    expect(buildCopyrightText()).toContain('Lumira All Rights Reserved');
   });
 });

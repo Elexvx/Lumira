@@ -2,16 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { resolvePresentedLoginMode, resolvePresentedLoginModes } from './loginModePresentation';
 
 describe('login mode presentation', () => {
-  it('keeps all backend-enabled modes on mobile', () => {
+  it('keeps all backend-enabled modes on mobile without duplicating wechat', () => {
     expect(resolvePresentedLoginModes(true, ['password', 'sms', 'wechat', 'passkey'])).toEqual(['password', 'sms', 'wechat', 'passkey']);
   });
 
-  it('keeps desktop forms aligned with backend modes while avoiding duplicate wechat panels', () => {
-    expect(resolvePresentedLoginModes(false, ['password', 'sms', 'wechat', 'passkey'])).toEqual(['password', 'sms', 'passkey']);
+  it('keeps wechat in the unified desktop login modes', () => {
+    expect(resolvePresentedLoginModes(false, ['password', 'sms', 'wechat', 'passkey'])).toEqual(['password', 'sms', 'wechat', 'passkey']);
   });
 
-  it('falls back to the first desktop-capable mode when desktop active mode points at wechat', () => {
-    expect(resolvePresentedLoginMode(false, 'wechat', ['password', 'wechat', 'passkey'])).toBe('password');
+  it('keeps wechat selectable when runtime capabilities are temporarily unavailable', () => {
+    expect(resolvePresentedLoginModes(false, ['password'])).toEqual(['password', 'wechat']);
+    expect(resolvePresentedLoginMode(false, 'wechat', ['password'])).toBe('wechat');
   });
 
   it('keeps wechat when it is the only backend-enabled mode', () => {
