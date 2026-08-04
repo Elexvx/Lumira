@@ -4433,7 +4433,7 @@ INSERT INTO `sys_plugin_version` (
 )
 VALUES (
     'sensitive-words', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
-    'INSTALLED', 'READY', 1, 0,
+    'ENABLED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'sensitive-words',
         'pluginName', 'Sensitive Words Plugin',
@@ -4520,7 +4520,7 @@ INSERT INTO `sys_plugin_version` (
 )
 VALUES (
     'work-order-feedback', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
-    'INSTALLED', 'READY', 1, 0,
+    'ENABLED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'work-order-feedback',
         'pluginName', '工单反馈',
