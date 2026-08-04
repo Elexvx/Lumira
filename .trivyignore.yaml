@@ -1,9 +1,1 @@
-vulnerabilities:
-  - id: CVE-2026-14257
-    paths:
-      - "lumira-ui/pnpm-lock.yaml"
-    purls:
-      - "pkg:npm/brace-expansion@1.1.18"
-      - "pkg:npm/brace-expansion@2.1.4"
-    expired_at: 2027-01-31
-    statement: The pinned upstream legacy backports contain the CVE-2026-14257 expansion length bound; CI verifies their installed source before scanning.
+vulnerabilities: []
