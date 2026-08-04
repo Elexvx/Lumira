@@ -1,9 +1,4 @@
 import { resolveBuiltinMessage } from './messages';
-import { resolveRuntimeLocale } from './locale';
-import {
-  isMessageCompatibleWithLocale,
-  resolveBuiltinLocaleMessage,
-} from './builtinMessages';
 
 export interface MessageDescriptor {
   id?: string;
@@ -19,15 +14,10 @@ export const formatMessage = (
   descriptor: MessageDescriptor,
   values: MessageValues = {},
 ) => {
-  const locale = resolveRuntimeLocale();
-  const localizedFallback = resolveBuiltinLocaleMessage(locale, descriptor.id);
-  const resolvedTemplate = resolveBuiltinMessage(
+  const template = resolveBuiltinMessage(
     descriptor.id,
-    localizedFallback || descriptor.defaultMessage || descriptor.id || '',
+    descriptor.defaultMessage || descriptor.id || '',
   );
-  const template = isMessageCompatibleWithLocale(locale, resolvedTemplate, localizedFallback)
-    ? resolvedTemplate
-    : localizedFallback || resolvedTemplate;
 
   return template.replace(/\{([A-Za-z_][\w-]*)\}/g, (token, key: string) => {
     const value = values[key];
