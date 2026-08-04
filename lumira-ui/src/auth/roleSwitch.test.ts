@@ -7,6 +7,7 @@ import {
   ROLE_SWITCH_STORAGE_KEY,
   buildRoleSwitchOptions,
   buildSimulatedRoleSwitchRequestOptions,
+  canSwitchRole,
   completeRoleSwitchClientTransition,
   createRoleSwitchRequestGuard,
   handleRoleSwitchBroadcastMessage,
@@ -36,6 +37,17 @@ afterEach(() => {
 });
 
 describe('role switch options', () => {
+  it('does not expose role switching while an initial password change is required', () => {
+    expect(canSwitchRole(roles, null, true)).toBe(false);
+    expect(canSwitchRole([], 9, true)).toBe(false);
+  });
+
+  it('exposes role switching for an eligible session with available role state', () => {
+    expect(canSwitchRole(roles, null, false)).toBe(true);
+    expect(canSwitchRole([], 9, false)).toBe(true);
+    expect(canSwitchRole([], null, false)).toBe(false);
+  });
+
   it('always exposes current-account permissions and resolves it to roleId null', () => {
     const options = buildRoleSwitchOptions(roles, 9, {
       currentAccountLabel: 'Current account permissions',

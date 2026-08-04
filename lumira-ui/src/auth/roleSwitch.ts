@@ -52,6 +52,12 @@ export interface RoleSwitchOption {
   selected: boolean;
 }
 
+export const canSwitchRole = (
+  availableRoles: CurrentUserRoleOption[],
+  simulatedRoleId: number | null,
+  requiresPasswordChange: boolean,
+) => !requiresPasswordChange && (availableRoles.length > 0 || simulatedRoleId != null);
+
 export const buildRoleSwitchOptions = (
   availableRoles: CurrentUserRoleOption[],
   simulatedRoleId: number | null,

@@ -13,6 +13,7 @@ import { tokenManager } from '@/auth/token';
 import {
   buildRoleSwitchOptions,
   buildSimulatedRoleSwitchRequestOptions,
+  canSwitchRole,
   completeRoleSwitchClientTransition,
   createRoleSwitchRequestGuard,
   resolveRoleSwitchTarget,
@@ -302,6 +303,15 @@ export const TopActions = () => {
     }
   };
   const handleSwitchRole = async (nextRoleValue: string) => {
+    if (currentUser?.requiresPasswordChange) {
+      message.warning(
+        intl.formatMessage({
+          id: 'page.login.initialPasswordChange.required',
+          defaultMessage: '当前账号仍在使用初始密码，请先修改密码',
+        }),
+      );
+      return;
+    }
     const nextRoleId = resolveRoleSwitchTarget(nextRoleValue, roleSwitchOptions);
     if (nextRoleId === undefined || nextRoleId === simulatedRoleId) {
       return;
@@ -413,7 +423,7 @@ export const TopActions = () => {
     [currentLocale, intl],
   );
   const roleMenuItems = useMemo<NonNullable<MenuProps['items']>>(() => {
-    if (!availableRoles.length && simulatedRoleId == null) {
+    if (!canSwitchRole(availableRoles, simulatedRoleId, Boolean(currentUser?.requiresPasswordChange))) {
       return [];
     }
 
@@ -436,7 +446,7 @@ export const TopActions = () => {
           })),
         },
       ];
-  }, [availableRoles.length, currentRoleTag, intl, roleSwitchOptions, simulatedRoleId]);
+  }, [availableRoles, currentRoleTag, currentUser?.requiresPasswordChange, intl, roleSwitchOptions, simulatedRoleId]);
   const userMenuItems: MenuProps['items'] = useMemo(
     () => [
       {
