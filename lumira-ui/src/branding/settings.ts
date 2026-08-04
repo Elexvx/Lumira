@@ -6,7 +6,7 @@ let currentBrandingSettings: BrandingSettings | null = null;
 const brandingSettingsListeners = new Set<() => void>();
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
-  websiteName: '宏翔商道',
+  websiteName: 'Lumira',
   websiteFaviconUrl: '',
   websiteLogoUrl: '',
   loginBackgroundUrl: '',
@@ -14,7 +14,7 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   githubLinkUrl: '',
   helpLinkEnabled: true,
   helpLinkUrl: '',
-  companyName: '宏翔商道',
+  companyName: 'Lumira',
   copyrightStartYear: new Date().getFullYear(),
   footerIcp: '',
   footerPoliceBeian: '',

@@ -1,18 +1,20 @@
-import { useLocation } from '@umijs/max';
+import { getLocale, setLocale, useLocation } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
-import { Alert, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
+import { Alert, App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
+import { GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
-import { LoginFormFields, WechatLoginPanel, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
+import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { resolvePresentedLoginMode, resolvePresentedLoginModes } from '@/pages/user/login/utils/loginModePresentation';
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { request } from '@/services/common/request';
 import { isSessionExpiredLoginSearch } from '@/auth/sessionLifecycle';
 import { showSessionExpiredNotice } from '@/pages/user/login/utils/sessionExpiredNotice';
+import { useThemePreference } from '@/theme/ThemePreferenceProvider';
 import './Login.css';
 
 const INITIAL_PASSWORD = '123456';
@@ -36,7 +38,6 @@ type LoginPageMainSectionProps = {
   loginPageStyle: CSSProperties;
   brandingWebsiteName: string;
   brandingFooterItems: string[];
-  loginSubTitle: string;
   submitButtonText: string;
   activeLoginMode: LoginMode;
   availableLoginModes: LoginMode[];
@@ -69,132 +70,174 @@ type LoginPageMainSectionProps = {
   openPasswordReset: () => void;
 };
 
-const LoginPageMainSection = ({
-  loginForm,
-  loginPageStyle,
-  brandingWebsiteName,
-  brandingFooterItems,
-  loginSubTitle: _loginSubTitle,
-  submitButtonText,
-  activeLoginMode,
-  availableLoginModes,
-  pendingSecondFactorLogin,
-  pendingSecondFactorPrompt,
-  agreementSettings,
-  securityCaptchaEnabled,
-  securityCaptchaType,
-  captchaChallenge,
-  captchaLoading,
-  captchaImageLoadFailed,
-  sendingLoginType,
-  loginCodeChallenges,
-  loginCodeCooldownSeconds,
-  loginCapabilities,
-  submitting,
-  passkeySubmitting,
-  setActiveLoginMode,
-  openAgreementPreview,
-  handleSendLoginCode,
-  handleWechatLogin,
-  handlePasskeyLogin,
-  refreshCaptcha,
-  setCaptchaImageLoadFailed,
-  setCaptchaChallenge,
-  handleSubmit,
-  handleFinishFailed,
-  setCaptchaProof,
-  resetCaptchaProof,
-  openPasswordReset,
-}: LoginPageMainSectionProps) => (
-  <div className="saas-login-page" style={loginPageStyle}>
-    <main className="saas-login-page__stage">
-      <header className="saas-login-page__brand" aria-label={brandingWebsiteName}>
-        <div className="saas-login-page__brand-title">{brandingWebsiteName}</div>
-      </header>
-      <section className="saas-login-page__panel" aria-label={formatMessage({ id: 'page.login.title', defaultMessage: 'Login' })}>
-        <aside className="saas-login-page__qr-panel">
-          <div className="saas-login-page__qr-title">{formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}</div>
-          <div className="saas-login-page__qr-copy">{formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: '使用微信扫描二维码登录' })}</div>
-          <WechatLoginPanel
-            available={Boolean(loginCapabilities.wechatLoginAvailable)}
-            onWechatLogin={() => void handleWechatLogin()}
-            showCopy={false}
+const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, brandingFooterItems, submitButtonText, activeLoginMode, availableLoginModes, pendingSecondFactorLogin, pendingSecondFactorPrompt, agreementSettings, securityCaptchaEnabled, securityCaptchaType, captchaChallenge, captchaLoading, captchaImageLoadFailed, sendingLoginType, loginCodeChallenges, loginCodeCooldownSeconds, loginCapabilities, submitting, passkeySubmitting, setActiveLoginMode, openAgreementPreview, handleSendLoginCode, handleWechatLogin, handlePasskeyLogin, refreshCaptcha, setCaptchaImageLoadFailed, setCaptchaChallenge, handleSubmit, handleFinishFailed, setCaptchaProof, resetCaptchaProof, openPasswordReset }: LoginPageMainSectionProps) => {
+  const { message: messageApi } = App.useApp();
+  const { resolvedColorMode, setThemePreference } = useThemePreference();
+  const currentLocale = getLocale();
+  const nextLocale = currentLocale.startsWith('zh') ? 'en-US' : 'zh-CN';
+  const nextColorMode = resolvedColorMode === 'dark' ? 'light' : 'dark';
+  const themeToggleLabel = currentLocale.startsWith('zh')
+    ? nextColorMode === 'light'
+      ? '切换为日间模式'
+      : '切换为夜间模式'
+    : nextColorMode === 'light'
+      ? 'Switch to light mode'
+      : 'Switch to dark mode';
+  const joinMode = availableLoginModes.includes('sms')
+    ? 'sms'
+    : availableLoginModes.includes('email')
+      ? 'email'
+      : null;
+
+  return (
+    <div className="saas-login-page" style={loginPageStyle}>
+      <section className="saas-login-page__hero" aria-label={brandingWebsiteName} />
+
+      <section className="saas-login-page__auth-shell">
+        <div className="saas-login-page__utility-actions">
+          <Button
+            type="text"
+            className="saas-login-page__theme-switch"
+            icon={resolvedColorMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+            aria-label={themeToggleLabel}
+            title={themeToggleLabel}
+            onClick={() => setThemePreference(nextColorMode)}
           />
-          <div className="saas-login-page__qr-method">
-            {loginCapabilities.wechatLoginAvailable
-              ? formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: '使用微信扫描二维码登录' })
-              : formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: '微信登录暂未启用' })}
-          </div>
-        </aside>
-        <div className="saas-login-page__divider" aria-hidden="true" />
-        <Form<LoginFormValues>
-          form={loginForm}
-          className="saas-login-page__form"
-          onFinish={handleSubmit}
-          onFinishFailed={handleFinishFailed}
-        >
-          <LoginFormFields
-            activeLoginMode={activeLoginMode}
-            availableLoginModes={availableLoginModes}
-            pendingSecondFactorLogin={pendingSecondFactorLogin}
-            pendingSecondFactorPrompt={pendingSecondFactorPrompt}
-            agreementSettings={agreementSettings}
-            securityCaptchaEnabled={securityCaptchaEnabled}
-            securityCaptchaType={securityCaptchaType}
-            captchaChallenge={captchaChallenge}
-            captchaLoading={captchaLoading}
-            captchaImageLoadFailed={captchaImageLoadFailed}
-            sendingLoginType={sendingLoginType}
-            loginCodeChallenges={loginCodeChallenges}
-            loginCodeCooldownSeconds={loginCodeCooldownSeconds}
-            wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
-            passkeyLoading={passkeySubmitting}
-            onModeChange={setActiveLoginMode}
-            onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
-            onWechatLogin={() => void handleWechatLogin()}
-            onPasskeyLogin={() => void handlePasskeyLogin()}
-            onRefreshCaptcha={() => void refreshCaptcha()}
-            onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
-            onSliderCaptchaChallengeChange={setCaptchaChallenge}
-            onSliderCaptchaVerified={setCaptchaProof}
-            onSliderCaptchaReset={resetCaptchaProof}
-            onOpenAgreementPreview={openAgreementPreview}
-            onForgotPassword={openPasswordReset}
-          />
-          {(activeLoginMode === 'passkey' || activeLoginMode === 'wechat') && !pendingSecondFactorLogin ? null : (
-            <Button
-              block
-              size="large"
-              type="primary"
-              loading={submitting}
-              data-testid="login-submit-button"
-              className="saas-login-page__submit-button"
-              htmlType="submit"
-              onClick={() => {
-                const formValues = loginForm.getFieldsValue(true);
-                const accountInput = document.querySelector<HTMLInputElement>('[data-testid="login-account-input"]');
-                const passwordInput = document.querySelector<HTMLInputElement>('[data-testid="login-password-input"]');
-                const nextValues = {
-                  ...formValues,
-                  passwordAccount: formValues.passwordAccount || accountInput?.value,
-                  passwordPassword: formValues.passwordPassword || passwordInput?.value,
-                };
-                loginForm.setFieldsValue(nextValues);
-              }}
-            >
-              {submitButtonText}
-            </Button>
-          )}
-        </Form>
+          <Button
+            type="text"
+            className="saas-login-page__locale-switch"
+            icon={<GlobalOutlined />}
+            aria-label={formatMessage({
+              id: 'app.locale.switch',
+              defaultMessage: '切换语言',
+            })}
+            onClick={() => setLocale(nextLocale, true)}
+          >
+            {nextLocale === 'en-US' ? 'EN' : '中'}
+          </Button>
+        </div>
+
+        <main className="saas-login-page__stage">
+          <header className="saas-login-page__brand">
+            <div className="saas-login-page__brand-title">
+              {formatMessage(
+                {
+                  id: 'page.login.welcomeTitle',
+                  defaultMessage: '欢迎登录 {websiteName}',
+                },
+                { websiteName: brandingWebsiteName },
+              )}
+            </div>
+          </header>
+
+          <section
+            className="saas-login-page__panel"
+            aria-label={formatMessage({
+              id: 'page.login.title',
+              defaultMessage: '登录',
+            })}
+          >
+            <Form<LoginFormValues> form={loginForm} className="saas-login-page__form" onFinish={handleSubmit} onFinishFailed={handleFinishFailed}>
+              <LoginFormFields
+                activeLoginMode={activeLoginMode}
+                availableLoginModes={availableLoginModes}
+                pendingSecondFactorLogin={pendingSecondFactorLogin}
+                pendingSecondFactorPrompt={pendingSecondFactorPrompt}
+                agreementSettings={agreementSettings}
+                securityCaptchaEnabled={securityCaptchaEnabled}
+                securityCaptchaType={securityCaptchaType}
+                captchaChallenge={captchaChallenge}
+                captchaLoading={captchaLoading}
+                captchaImageLoadFailed={captchaImageLoadFailed}
+                sendingLoginType={sendingLoginType}
+                loginCodeChallenges={loginCodeChallenges}
+                loginCodeCooldownSeconds={loginCodeCooldownSeconds}
+                wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
+                passkeyLoading={passkeySubmitting}
+                onModeChange={setActiveLoginMode}
+                onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
+                onWechatLogin={() => void handleWechatLogin()}
+                onPasskeyLogin={() => void handlePasskeyLogin()}
+                onRefreshCaptcha={() => void refreshCaptcha()}
+                onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
+                onSliderCaptchaChallengeChange={setCaptchaChallenge}
+                onSliderCaptchaVerified={setCaptchaProof}
+                onSliderCaptchaReset={resetCaptchaProof}
+                onOpenAgreementPreview={openAgreementPreview}
+                onForgotPassword={openPasswordReset}
+              />
+              {(activeLoginMode === 'passkey' || activeLoginMode === 'wechat') && !pendingSecondFactorLogin ? null : (
+                <>
+                  <Button
+                    block
+                    size="large"
+                    type="primary"
+                    loading={submitting}
+                    data-testid="login-submit-button"
+                    className="saas-login-page__submit-button"
+                    htmlType="submit"
+                    onClick={() => {
+                      const formValues = loginForm.getFieldsValue(true);
+                      const accountInput = document.querySelector<HTMLInputElement>('[data-testid="login-account-input"]');
+                      const passwordInput = document.querySelector<HTMLInputElement>('[data-testid="login-password-input"]');
+                      const nextValues = {
+                        ...formValues,
+                        passwordAccount: formValues.passwordAccount || accountInput?.value,
+                        passwordPassword: formValues.passwordPassword || passwordInput?.value,
+                      };
+                      loginForm.setFieldsValue(nextValues);
+                    }}
+                  >
+                    {submitButtonText}
+                  </Button>
+                  <Button
+                    type="link"
+                    data-testid="login-join-button"
+                    className="saas-login-page__join-button"
+                    htmlType="button"
+                    onClick={() => {
+                      if (joinMode) {
+                        setActiveLoginMode(joinMode);
+                        return;
+                      }
+                      messageApi.info(
+                        formatMessage({
+                          id: 'page.login.registrationUnavailable',
+                          defaultMessage: currentLocale.startsWith('zh')
+                            ? '注册通道暂未开放，请联系管理员'
+                            : 'Registration is not available yet. Please contact an administrator.',
+                        }),
+                      );
+                    }}
+                  >
+                    <span className="saas-login-page__join-prompt">
+                      {formatMessage({
+                        id: 'page.login.noAccount',
+                        defaultMessage: currentLocale.startsWith('zh') ? '没有账号？' : 'No account?',
+                      })}
+                    </span>
+                    <span className="saas-login-page__join-action">
+                      {formatMessage({
+                        id: 'page.login.joinUs',
+                        defaultMessage: currentLocale.startsWith('zh') ? '加入我们' : 'Join us',
+                      })}
+                    </span>
+                  </Button>
+                </>
+              )}
+            </Form>
+          </section>
+        </main>
+
+        <footer className="saas-login-page__footer">
+          {brandingFooterItems.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </footer>
       </section>
-    </main>
-    <footer className="saas-login-page__footer">
-      {brandingFooterItems.map((item) => (
-        <span key={item}>{item}</span>
-      ))}
-    </footer>
-  </div>
-);
+    </div>
+  );
+};
 
 const PasswordResetModal = ({
   open,
@@ -404,16 +447,6 @@ const Login = () => {
   const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const presentedLoginModes = resolvePresentedLoginModes(responsive.isMobile, loginFlow.availableLoginModes);
   const presentedLoginMode = resolvePresentedLoginMode(responsive.isMobile, loginFlow.activeLoginMode, loginFlow.availableLoginModes);
-  const loginSubTitle =
-    presentedLoginMode === 'password'
-      ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
-      : presentedLoginMode === 'passkey'
-        ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
-        : presentedLoginMode === 'wechat'
-          ? formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })
-          : presentedLoginMode === 'sms'
-            ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
-            : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' });
   const submitButtonText = loginFlow.viewState.pendingSecondFactorLogin
     ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
     : presentedLoginMode === 'passkey'
@@ -468,7 +501,6 @@ const Login = () => {
         loginPageStyle={loginFlow.loginPageStyle}
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}
-        loginSubTitle={loginSubTitle}
         submitButtonText={submitButtonText}
       />
       <PasswordResetModal open={passwordResetOpen} onClose={() => setPasswordResetOpen(false)} />

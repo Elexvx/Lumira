@@ -457,9 +457,7 @@ const OfficialWechatLoginPanel = ({
         {available ? (
           <Skeleton.Image active className="saas-login-page__wechat-skeleton" />
         ) : (
-          <Typography.Text type="secondary">
-            {formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: 'WeChat login is not enabled' })}
-          </Typography.Text>
+          <WechatOutlined className="saas-login-page__wechat-unavailable-icon" aria-hidden="true" />
         )}
       </div>
       {showCopy ? (
@@ -468,9 +466,11 @@ const OfficialWechatLoginPanel = ({
             {formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: 'WeChat QR login' })}
           </div>
           <div className="saas-login-page__wechat-hint">
-            {loadFailed
-              ? formatMessage({ id: 'page.login.qr.wechatLoadFailed', defaultMessage: 'Failed to load the official WeChat QR code. Use redirect login instead.' })
-              : formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: 'Scan with WeChat to log in' })}
+            {!available
+              ? formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: 'WeChat login is not enabled' })
+              : loadFailed
+                ? formatMessage({ id: 'page.login.qr.wechatLoadFailed', defaultMessage: 'Failed to load the official WeChat QR code. Use redirect login instead.' })
+                : formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: 'Scan with WeChat to log in' })}
           </div>
         </div>
       ) : null}
@@ -907,21 +907,13 @@ export const LoginFormFields = ({
         passkeyLoading={passkeyLoading}
         modeContent={modeContent}
       />
-      {activeLoginMode !== 'passkey' && activeLoginMode !== 'wechat' && !pendingSecondFactorLogin ? (
+      {activeLoginMode !== 'passkey' && !pendingSecondFactorLogin ? (
         <>
           <div className="saas-login-page__other-login">
             <div className="saas-login-page__other-title">
               <span>{formatMessage({ id: 'page.login.otherMethods', defaultMessage: '其他方式登录' })}</span>
             </div>
             <div className="saas-login-page__social-actions">
-              <Button
-                shape="circle"
-                icon={<WechatOutlined />}
-                onClick={wechatLoginAvailable ? onWechatLogin : undefined}
-                disabled={!wechatLoginAvailable}
-                className="saas-login-page__social-button saas-login-page__social-button--wechat"
-                aria-label={formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
-              />
               <Button
                 shape="circle"
                 icon={<QqOutlined />}
@@ -944,14 +936,16 @@ export const LoginFormFields = ({
               />
             </div>
           </div>
-          <div className="saas-login-page__actions">
-            <Form.Item noStyle name="remember" valuePropName="checked">
-              <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>
-            </Form.Item>
-            <Button type="link" className="saas-login-page__forgot-link" onClick={onForgotPassword}>
+          {activeLoginMode !== 'wechat' ? (
+            <div className="saas-login-page__actions">
+              <Form.Item noStyle name="remember" valuePropName="checked">
+                <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>
+              </Form.Item>
+              <Button type="link" className="saas-login-page__forgot-link" onClick={onForgotPassword}>
               {formatMessage({ id: 'page.login.forgotPassword', defaultMessage: '忘记密码' })}
-            </Button>
-          </div>
+              </Button>
+            </div>
+          ) : null}
           <div className="saas-login-page__agreement">
             <span className="saas-login-page__agreement-text">
               {formatMessage({
