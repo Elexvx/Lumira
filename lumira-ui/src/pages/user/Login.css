@@ -891,6 +891,17 @@ html[data-theme="dark"] .saas-login-page__agreement {
 }
 
 /* Split-screen authentication layout */
+html.saas-login-viewport {
+  overflow-y: auto;
+  scrollbar-gutter: auto;
+}
+
+@media (min-width: 901px) {
+  html.saas-login-viewport {
+    overflow: hidden;
+  }
+}
+
 .saas-login-page {
   --saas-login-panel-min-height: 461px;
 
@@ -966,6 +977,12 @@ html[data-theme="dark"] .saas-login-page__agreement {
       transparent 30%
     ),
     #090b0f;
+  scrollbar-width: none;
+}
+
+.saas-login-page__auth-shell::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .saas-login-page__utility-actions {

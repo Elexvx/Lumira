@@ -455,6 +455,15 @@ const Login = () => {
       : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' });
 
   useEffect(() => {
+    const viewportClassName = 'saas-login-viewport';
+    document.documentElement.classList.add(viewportClassName);
+
+    return () => {
+      document.documentElement.classList.remove(viewportClassName);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!sessionExpired) {
       return;
     }
