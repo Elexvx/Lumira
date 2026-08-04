@@ -243,24 +243,21 @@ public class PermissionSnapshotService {
             return false;
         }
         try {
-            Boolean granted = jdbcTemplate.queryForObject(
+            return jdbcTemplate.exists(
                     """
-                            select exists(
-                                select 1
-                                from sys_user_role ur
-                                join sys_role r on r.id = ur.role_id and r.deleted = 0
-                                where ur.user_id = ?
-                                  and ur.user_uuid = ?
-                                  and ur.role_id = ?
-                                  and ur.deleted = 0
-                            )
+                            select 1
+                            from sys_user_role ur
+                            join sys_role r on r.id = ur.role_id and r.deleted = 0
+                            where ur.user_id = ?
+                              and ur.user_uuid = ?
+                              and ur.role_id = ?
+                              and ur.deleted = 0
+                            limit 1
                             """,
-                    Boolean.class,
                     userId,
                     userUuid.trim(),
                     roleId
             );
-            return Boolean.TRUE.equals(granted);
         } catch (RuntimeException exception) {
             log.warn("Failed to validate granted role userId={} roleId={}", userId, roleId, exception);
             throw new BizException(ErrorCode.PERMISSION_SNAPSHOT_ERROR, "Trusted role grant lookup failed");

@@ -419,7 +419,7 @@ class PermissionSnapshotServiceTest {
         }
 
         @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+        public boolean exists(String sql, Object... args) {
             throw lookupFailure;
         }
     }
@@ -432,11 +432,8 @@ class PermissionSnapshotServiceTest {
         }
 
         @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (Boolean.class.equals(requiredType) && sql.contains("from sys_user_role ur")) {
-                return requiredType.cast(Boolean.TRUE);
-            }
-            return null;
+        public boolean exists(String sql, Object... args) {
+            return true;
         }
 
         @Override
@@ -503,6 +500,16 @@ class PermissionSnapshotServiceTest {
             } catch (SQLException exception) {
                 throw new IllegalStateException(exception);
             }
+        }
+
+        @Override
+        public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            queryCount.incrementAndGet();
+            recordLegacyScopeArgs(args);
+            if (sql.contains("from sys_user_role ur") && sql.contains("and ur.role_id = ?")) {
+                return roleGranted ? List.of(Map.of("granted", 1)) : List.of();
+            }
+            return List.of();
         }
 
         @Override
