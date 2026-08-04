@@ -190,11 +190,10 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                   >
                     {submitButtonText}
                   </Button>
-                  <Button
-                    type="link"
+                  <button
+                    type="button"
                     data-testid="login-join-button"
                     className="saas-login-page__join-button"
-                    htmlType="button"
                     onClick={() => {
                       if (joinMode) {
                         setActiveLoginMode(joinMode);
@@ -222,7 +221,7 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
                         defaultMessage: currentLocale.startsWith('zh') ? '加入我们' : 'Join us',
                       })}
                     </span>
-                  </Button>
+                  </button>
                 </>
               )}
             </Form>

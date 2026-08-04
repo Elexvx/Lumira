@@ -1181,7 +1181,7 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
   box-shadow: 0 10px 28px rgba(22, 119, 255, 0.18);
 }
 
-.saas-login-page__join-button.ant-btn {
+.saas-login-page__join-button {
   order: 5;
   align-self: flex-start;
   width: auto;
@@ -1192,15 +1192,20 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
   border-radius: 0;
   color: #aeb6c2;
   background: transparent;
+  font: inherit;
   font-size: 13px;
   box-shadow: none;
+  cursor: pointer;
+  animation: none;
+  transition: none;
 }
 
-.saas-login-page__join-button.ant-btn:hover,
-.saas-login-page__join-button.ant-btn:focus-visible {
+.saas-login-page__join-button:hover,
+.saas-login-page__join-button:focus-visible {
   border-color: transparent;
   color: #dce8f8;
   background: transparent;
+  transform: none;
 }
 
 .saas-login-page__join-prompt {
@@ -1349,14 +1354,14 @@ html[data-theme="light"] .saas-login-page__forgot-link.ant-btn {
   color: #475569;
 }
 
-html[data-theme="light"] .saas-login-page__join-button.ant-btn {
+html[data-theme="light"] .saas-login-page__join-button {
   color: #475569;
   border-color: transparent;
   background: transparent;
 }
 
-html[data-theme="light"] .saas-login-page__join-button.ant-btn:hover,
-html[data-theme="light"] .saas-login-page__join-button.ant-btn:focus-visible {
+html[data-theme="light"] .saas-login-page__join-button:hover,
+html[data-theme="light"] .saas-login-page__join-button:focus-visible {
   color: #0958d9;
   border-color: transparent;
   background: transparent;
@@ -1506,7 +1511,7 @@ html[data-theme="light"] .saas-login-page__footer {
     font-size: 16px;
   }
 
-  .saas-login-page__join-button.ant-btn {
+  .saas-login-page__join-button {
     height: auto;
     margin-top: 14px;
     border-radius: 0;

@@ -304,3 +304,107 @@ No actionable P0, P1, or P2 differences remain for the two annotations.
 ## Final result
 
 final result: passed
+
+---
+
+# Design QA — Login control sizing (2026-08-05)
+
+## Visual truth and implementation evidence
+
+- Source visual: browser annotation on `http://127.0.0.1:8001/user/login`, captured at a requested 1380 × 994 CSS viewport (device pixel ratio 1.25). Saved evidence: `.codex-tmp/login-controls-source.png` (1365 × 982 px).
+- Implementation visual: local preview at `http://127.0.0.1:8898/user/login`, same requested 1380 × 994 CSS viewport and state. Saved evidence: `.codex-tmp/login-controls-implementation.png` (1365 × 984 px).
+- Focused responsive evidence: `.codex-tmp/login-controls-mobile.png`, 490 × 938 CSS viewport, dark theme, password-login tab.
+- Interaction state checked: password login and WeChat QR login tabs both switch successfully; password-login state was used for the final comparison.
+
+## Acceptance checks
+
+| Check | Result |
+| --- | --- |
+| Input control height | 52 px |
+| Primary login button height | 52 px |
+| Input and primary button text | 16 px |
+| Login method tab height / text | 40 px / 18 px |
+| Secondary join link text | 15 px |
+| Agreement text | 14 px |
+| Desktop horizontal overflow | None |
+| Mobile horizontal overflow at 490 px | None |
+| Primary tab interactions | Passed |
+
+## Comparison findings and fix history
+
+1. Initial source inspection showed 44 px inputs/buttons and 14 px primary control text, which appeared undersized inside the 400 px-wide authentication panel.
+2. Default control sizing was promoted to the existing large-control values: 52 px fields and CTA, 16 px form text, 40 px tabs, and proportionally increased gaps/radii.
+3. Full-page desktop comparison confirmed the auth panel remains aligned and balanced without changing the page structure or background treatment.
+4. Focused mobile verification at 490 × 938 confirmed the controls stay within the viewport and preserve readable spacing.
+5. Local preview may show fallback English strings when its localization API is unavailable; this is an existing environment behavior and is unrelated to the CSS sizing change.
+
+## Validation
+
+- Stylelint: passed.
+- TypeScript typecheck: passed.
+- Vitest: 79 files / 402 tests passed.
+- Production build: passed.
+
+## Final result
+
+passed
+
+---
+
+# Design QA — Login language consistency and default sizing (2026-08-05)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: browser annotation on `http://127.0.0.1:8898/user/login`; captured pre-fix state at `.codex-tmp/login-language-size-source.png` (1265 × 712 px).
+- Implementation: local preview at `http://127.0.0.1:8898/user/login`; captured post-fix state at `.codex-tmp/login-language-size-final.png` (1265 × 712 px).
+- CSS viewport: native 1280 × 720 browser viewport, device pixel ratio 1.25; both artifacts use identical capture dimensions.
+- State: dark theme, password-login tab, Chinese locale. English locale and WeChat-login state were also exercised.
+
+## Findings and comparison history
+
+1. Earlier sizing work had promoted the normal controls from the repository defaults to 52 px / 16 px, creating a P2 density mismatch. The default values are now restored to 44 px height and 14 px text for account input, password input, and login CTA; related gaps, radii, tabs, secondary copy, and social controls were restored with them.
+2. The pre-fix Chinese view mixed Chinese navigation labels with English placeholders, checkbox copy, CTA copy, and agreement conjunctions because the runtime localization bundle was partial. A built-in login fallback catalog now fills missing or wrong-language values while preserving valid database translations.
+3. Browser measurements confirm 44 px inputs and CTA at desktop and mobile widths. The 490 × 938 responsive check reports a 490 px document width with no horizontal overflow.
+4. Chinese password-login content is fully Chinese apart from product/legal proper names (`Lumira`, `Copyright`). Chinese WeChat content is also fully Chinese. English switching produces fully English password-login content and labels.
+5. Full-view comparison finds no regression in layout, typography hierarchy, color tokens, background image quality, icon treatment, or copy placement.
+
+## Validation
+
+- Stylelint: passed.
+- TypeScript typecheck: passed.
+- Vitest: 80 files / 406 tests passed, including four new bilingual fallback tests.
+- Production build: passed.
+
+## Final result
+
+passed
+
+---
+
+# Design QA — Join link motion removal (2026-08-05)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: browser annotation on `http://127.0.0.1:8001/user/login`, saved as `.codex-tmp/login-join-source.png` (1365 × 984 px).
+- Implementation: `http://127.0.0.1:8898/user/login`, saved as `.codex-tmp/login-join-no-motion.png` (1379 × 994 px).
+- Requested CSS viewport: 1380 × 994, device pixel ratio 1.25. The production capture excludes its native scrollbar gutter; comparison used the same CSS viewport and the matching authentication-panel region rather than treating scrollbar pixels as design drift.
+- State: dark theme, password-login tab, join link idle and clicked.
+
+## Findings and comparison history
+
+1. Source behavior used an Ant Design link button, which inherited the library click-wave animation.
+2. The implementation replaces only this entry with a semantic native `button`; its copy, alignment, typography, colors, and click handler are unchanged.
+3. Focused DOM/style evidence after the fix: element tag `button`, class `saas-login-page__join-button`, `animation-name: none`, `animation-duration: 0s`, `transition-property: none`, `transition-duration: 0s`, and `transform: none`.
+4. Full-view comparison found no layout, spacing, typography, color, image, or copy regression attributable to the motion removal. Local preview fallback English strings and temporary service-unavailable notices are existing development-environment behavior.
+5. Browser click verification completed without a visual wave, transition, or displacement.
+
+## Validation
+
+- Stylelint: passed.
+- TypeScript typecheck: passed.
+- Vitest: 79 files / 402 tests passed.
+- Production build: passed.
+
+## Final result
+
+passed

@@ -1,4 +1,5 @@
 import { databaseMessage, hasDatabaseMessage } from './databaseMessage';
+import { resolveBuiltinFallbackMessage, shouldUseBuiltinFallback } from './builtinFallbackMessages';
 
 const looksLikeMessageKey = (value?: string | null) => Boolean(value && /^[a-z][\w-]*(?:\.[\w-]+)+$/.test(value));
 
@@ -10,7 +11,15 @@ export const resolveBuiltinMessage = (id?: string | null, fallback?: string | nu
   }
 
   if (hasDatabaseMessage(normalizedId)) {
-    return databaseMessage(normalizedId);
+    const resolvedDatabaseMessage = databaseMessage(normalizedId);
+    if (!shouldUseBuiltinFallback(normalizedId, resolvedDatabaseMessage)) {
+      return resolvedDatabaseMessage;
+    }
+  }
+
+  const builtinFallback = resolveBuiltinFallbackMessage(normalizedId);
+  if (builtinFallback) {
+    return builtinFallback;
   }
 
   if (normalizedFallback && looksLikeMessageKey(normalizedFallback)) {
