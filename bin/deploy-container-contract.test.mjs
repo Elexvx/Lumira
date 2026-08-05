@@ -108,6 +108,8 @@ test('embedded API docs initialize through a same-origin CSP-compatible bootstra
   assert.match(swaggerBootstrap, /supportedSubmitMethods: \[\]/);
   assert.doesNotMatch(swaggerBootstrap, /\beval\s*\(|new Function\s*\(/);
   assert.match(monitoringPage, /swagger-ui-bootstrap\.js\?v=[a-z0-9.-]+/i);
+  assert.match(monitoringPage, /postMessage\([\s\S]*window\.location\.origin/);
+  assert.doesNotMatch(monitoringPage, /postMessage\([\s\S]*['"]\*['"]/);
 });
 
 test('production disables the Hikari periodic JDBC keepalive explicitly', () => {

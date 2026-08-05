@@ -664,10 +664,10 @@ const ApiDocsContent = () => {
                       spec: apiSpec,
                       schemeContainerVerticalPadding,
                     },
-                    // about:srcdoc may serialize its origin as opaque even when it
-                    // inherits the parent origin. The bootstrap authenticates the
-                    // sender with event.source === window.parent instead.
-                    '*',
+                    // The srcdoc document inherits this security origin. Its own
+                    // location.origin serialization is not reliable, so the
+                    // bootstrap authenticates the sender by parent-window identity.
+                    window.location.origin,
                   );
                 }}
               />
