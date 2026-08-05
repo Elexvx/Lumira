@@ -540,7 +540,7 @@ const SWAGGER_UI_SHELL_HTML = `<!doctype html>
     <div id="swagger-ui"><div id="swagger-status">正在加载接口文档…</div></div>
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" integrity="sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js" integrity="sha384-2YH8WDRaj7V2OqU/trsmzSagmk/E2SutiCsGkdgoQwC9pNUJV1u/141DHB6jgs8t" crossorigin="anonymous"></script>
-    <script src="/swagger-ui-bootstrap.js"></script>
+    <script src="/swagger-ui-bootstrap.js?v=2"></script>
   </body>
 </html>`;
 

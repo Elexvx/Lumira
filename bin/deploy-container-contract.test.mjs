@@ -20,6 +20,7 @@ const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.
 const gitignore = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
 const frontendAssetAdapter = readFileSync(path.join(repoRoot, 'lumira-ui', 'scripts', 'adapt-cdn-assets.mjs'), 'utf8');
 const swaggerBootstrap = readFileSync(path.join(repoRoot, 'lumira-ui', 'public', 'swagger-ui-bootstrap.js'), 'utf8');
+const monitoringPage = readFileSync(path.join(repoRoot, 'lumira-ui', 'src', 'pages', 'settings', 'monitoring', 'MonitoringPage.tsx'), 'utf8');
 
 test('generated updater state stays local to the deployment host', () => {
   for (const entry of [
@@ -106,6 +107,7 @@ test('embedded API docs initialize through a same-origin CSP-compatible bootstra
   assert.match(swaggerBootstrap, /event\.data\.type !== 'lumira:swagger-spec'/);
   assert.match(swaggerBootstrap, /supportedSubmitMethods: \[\]/);
   assert.doesNotMatch(swaggerBootstrap, /\beval\s*\(|new Function\s*\(/);
+  assert.match(monitoringPage, /swagger-ui-bootstrap\.js\?v=[a-z0-9.-]+/i);
 });
 
 test('production disables the Hikari periodic JDBC keepalive explicitly', () => {
