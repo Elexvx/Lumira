@@ -22,6 +22,7 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { history } from '@umijs/max';
 import SensitiveWordsPage from '@/pages/plugins/SensitiveWordsPage';
 import { localizeBuiltinPluginDefinition, localizePluginValue } from './pluginPresentation';
+import { refreshPluginMutationSession } from './pluginMutationSession';
 
 const pluginMessage = (id: string, defaultMessage: string) => formatMessage({ id, defaultMessage });
 const pluginValue = (value?: string | null) => localizePluginValue(value, pluginMessage);
@@ -379,6 +380,19 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
   }, [setInitialState]);
 
   const refreshAfterMutation = useCallback(async () => {
+    const sessionState = await refreshPluginMutationSession();
+    if (sessionState !== 'ready') {
+      if (sessionState === 'temporarily_unavailable') {
+        message.warning(
+          formatMessage({
+            id: 'page.plugins.error.sessionRefresh',
+            defaultMessage: '插件已更新，但账号权限暂时无法刷新，请稍后手动刷新页面。',
+          }),
+        );
+      }
+      return;
+    }
+
     try {
       await loadOverview();
     } catch {
