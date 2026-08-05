@@ -1,5 +1,5 @@
 import { formatMessage } from '@/i18n/formatMessage';
-import { ArrowLeftOutlined, BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, BuildOutlined, CloudUploadOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
 import { Alert, Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { DescriptionsProps } from 'antd';
@@ -14,8 +14,8 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
-import { request, type RequestOptions } from '@/services/common/request';
-import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, PluginAvailability } from '@/types/api';
+import { request } from '@/services/common/request';
+import type { MenuNode, PluginDefinition, PluginVersion, PluginAvailability } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
@@ -46,11 +46,9 @@ const PluginCardsGrid = ({
   mutationLoading,
   canEnable,
   canDisable,
-  canViewLogs,
   onToggleEnable,
   onOpenDetails,
   onOpenVersions,
-  onOpenLogs,
   onOpenManagement,
   onUninstall,
 }: {
@@ -62,11 +60,9 @@ const PluginCardsGrid = ({
   mutationLoading: boolean;
   canEnable: boolean;
   canDisable: boolean;
-  canViewLogs: boolean;
   onToggleEnable: (pluginCode: string, enabled: boolean, versionLabel?: string) => void;
   onOpenDetails: (plugin: PluginDefinition) => void;
   onOpenVersions: (plugin: PluginDefinition) => void;
-  onOpenLogs: (plugin: PluginDefinition) => void;
   onOpenManagement: (plugin: PluginDefinition) => void;
   onUninstall: (plugin: PluginDefinition) => void;
 }) => {
@@ -128,9 +124,6 @@ const PluginCardsGrid = ({
                   ) : null}
                   <Button onClick={() => onOpenDetails(plugin)}>{pluginMessage('page.plugins.details', 'Details')}</Button>
                   <Button onClick={() => onOpenVersions(plugin)}>{pluginMessage('page.plugins.versions', 'Versions')}</Button>
-                  <Button disabled={!canViewLogs} onClick={() => onOpenLogs(plugin)} icon={<FileSearchOutlined />}>
-                    {pluginMessage('page.plugins.logs', 'Logs')}
-                  </Button>
                   <Button danger disabled={!canDisable || plugin.builtinFlag === 1} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
                     {pluginMessage('page.plugins.uninstallAction', 'Uninstall')}
                   </Button>
@@ -244,12 +237,6 @@ const filterPluginDefinitions = (definitions: PluginDefinition[], keyword: strin
   });
 };
 
-const runtimeLogs = (pluginCode: string, options: RequestOptions = {}) =>
-  request<PluginRuntimeLog[]>(`/v1/plugins/${pluginCode}/logs`, {
-    method: 'GET',
-    ...options,
-  });
-
 const buildVersionColumns = ({
   isDesktop,
   isMobile,
@@ -310,18 +297,12 @@ export type PluginPanelState = {
   setSelectedPlugin: (value: PluginDefinition | null | ((current: PluginDefinition | null) => PluginDefinition | null)) => void;
   versionDrawerOpen: boolean;
   setVersionDrawerOpen: (value: boolean | ((current: boolean) => boolean)) => void;
-  logDrawerOpen: boolean;
-  setLogDrawerOpen: (value: boolean | ((current: boolean) => boolean)) => void;
   detailDrawerOpen: boolean;
   setDetailDrawerOpen: (value: boolean | ((current: boolean) => boolean)) => void;
   uploadVisible: boolean;
   setUploadVisible: (value: boolean | ((current: boolean) => boolean)) => void;
   uploadFile: File | null;
   setUploadFile: (value: File | null | ((current: File | null) => File | null)) => void;
-  runtimeLogs: PluginRuntimeLog[];
-  setRuntimeLogs: (value: PluginRuntimeLog[] | ((current: PluginRuntimeLog[]) => PluginRuntimeLog[])) => void;
-  logsLoading: boolean;
-  setLogsLoading: (value: boolean | ((current: boolean) => boolean)) => void;
   mutationLoading: boolean;
   setMutationLoading: (value: boolean | ((current: boolean) => boolean)) => void;
   uninstallDialogOpen: boolean;
@@ -654,22 +635,6 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
     panel.setDetailDrawerOpen(true);
   }, [panel]);
 
-  const handleOpenLogs = useCallback(
-    async (plugin: PluginDefinition) => {
-      panel.setSelectedPlugin(plugin);
-      panel.setLogDrawerOpen(true);
-      panel.setLogsLoading(true);
-      try {
-        panel.setRuntimeLogs(await runtimeLogs(plugin.pluginCode, API_OPTS.NO_REDIRECT));
-      } catch (error) {
-        handlePluginPageError(error, formatMessage({ id: 'page.plugins.error.logs', defaultMessage: 'Failed to load plugin logs, please try again later' }));
-      } finally {
-        panel.setLogsLoading(false);
-      }
-    },
-    [handlePluginPageError, panel],
-  );
-
   return {
     handleInstall,
     handleActivate,
@@ -682,7 +647,6 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
-    handleOpenLogs,
   };
 };
 
@@ -705,12 +669,9 @@ const usePluginManagementActions = ({
 }: UsePluginManagementActionsParams) => {
   const [selectedPlugin, setSelectedPlugin] = useState<PluginDefinition | null>(null);
   const [versionDrawerOpen, setVersionDrawerOpen] = useState(false);
-  const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [uploadVisible, setUploadVisible] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [runtimeLogs, setRuntimeLogs] = useState<PluginRuntimeLog[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
   const [mutationLoading, setMutationLoading] = useState(false);
   const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
   const [uninstallTarget, setUninstallTarget] = useState<PluginDefinition | null>(null);
@@ -723,18 +684,12 @@ const usePluginManagementActions = ({
     setSelectedPlugin,
     versionDrawerOpen,
     setVersionDrawerOpen,
-    logDrawerOpen,
-    setLogDrawerOpen,
     detailDrawerOpen,
     setDetailDrawerOpen,
     uploadVisible,
     setUploadVisible,
     uploadFile,
     setUploadFile,
-    runtimeLogs,
-    setRuntimeLogs,
-    logsLoading,
-    setLogsLoading,
     mutationLoading,
     setMutationLoading,
     uninstallDialogOpen,
@@ -770,7 +725,6 @@ const usePluginManagementActions = ({
   const canRollbackPlugin = actionPermission.can('plugin:management:rollback');
   const canEnablePlugin = actionPermission.can('plugin:management:enable');
   const canDisablePlugin = actionPermission.can('plugin:management:disable');
-  const canViewPluginLogs = actionPermission.can('plugin:management:logs');
   const {
     handleInstall,
     handleActivate,
@@ -783,7 +737,6 @@ const usePluginManagementActions = ({
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
-    handleOpenLogs,
   } = usePluginMutationActions({
     definitions,
     versionMap,
@@ -820,14 +773,12 @@ const usePluginManagementActions = ({
     canUploadPlugin,
     canEnablePlugin,
     canDisablePlugin,
-    canViewPluginLogs,
     getPreferredEnableVersionForPlugin,
     versionColumns,
     ...panel,
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
-    handleOpenLogs,
     handleUninstall,
     handleEnable,
     handleDisable,
@@ -930,62 +881,6 @@ const PluginDetailDrawer = ({
     ) : null}
   </ManagementDrawer>
 );
-
-const PluginLogDrawer = ({
-  responsive,
-  selectedPlugin,
-  runtimeLogs,
-  logsLoading,
-  logDrawerOpen,
-  setLogDrawerOpen,
-}: {
-  responsive: { isMobile: boolean };
-  selectedPlugin: PluginDefinition | null;
-  runtimeLogs: PluginRuntimeLog[];
-  logsLoading: boolean;
-  logDrawerOpen: boolean;
-  setLogDrawerOpen: (open: boolean) => void;
-}) => {
-  const logColumns: ProColumns<PluginRuntimeLog>[] = [
-    { title: pluginMessage('page.plugins.time', 'Time'), dataIndex: 'createdAt', width: 'var(--saas-spacing-180)' },
-    { title: pluginMessage('page.plugins.operationType', 'Operation type'), dataIndex: 'operationType', width: 'var(--saas-spacing-120)', render: (_, record) => pluginValue(record.operationType) },
-    { title: pluginMessage('page.plugins.lifecycle', 'Lifecycle'), dataIndex: 'lifecycleStatus', width: 'var(--saas-spacing-120)', render: (_, record) => pluginValue(record.lifecycleStatus) },
-    { title: pluginMessage('page.plugins.result', 'Result'), dataIndex: 'resultStatus', width: 'var(--saas-spacing-120)', render: (_, record) => pluginValue(record.resultStatus) },
-    {
-      title: pluginMessage('page.plugins.details', 'Details'),
-      dataIndex: 'detailMessage',
-      responsive: ['lg', 'xl', 'xxl'],
-      ellipsis: true,
-      render: (_, record) =>
-        record.detailMessage ? (
-          <Typography.Text copyable={{ text: record.detailMessage }} ellipsis={{ tooltip: record.detailMessage }}>
-            {record.detailMessage}
-          </Typography.Text>
-        ) : (
-          '-'
-        ),
-    },
-  ];
-
-  return (
-    <ManagementDrawer
-      title={selectedPlugin ? `${selectedPlugin.pluginName} · ${formatMessage({ id: 'page.plugins.log', defaultMessage: 'Logs' })}` : formatMessage({ id: 'page.plugins.log', defaultMessage: 'Plugin logs' })}
-      open={logDrawerOpen}
-      onClose={() => setLogDrawerOpen(false)}
-    >
-      <ManagementTable
-        rowKey="id"
-        loading={logsLoading}
-        dataSource={runtimeLogs}
-        pagination={false}
-        columns={logColumns}
-        isMobile={responsive.isMobile}
-        search={false}
-        toolBarRender={false}
-      />
-    </ManagementDrawer>
-  );
-};
 
 const PluginUninstallModal = ({
   token,
@@ -1270,8 +1165,6 @@ const PluginsPage = () => {
     selectedPluginVersions,
     selectedPluginAvailability,
     selectedActiveVersion,
-    runtimeLogs,
-    logsLoading,
     mutationLoading,
     uninstallDialogOpen,
     uninstallTarget,
@@ -1280,18 +1173,15 @@ const PluginsPage = () => {
     disableTarget,
     purgePluginDataOnDisable,
     versionDrawerOpen,
-    logDrawerOpen,
     detailDrawerOpen,
     uploadVisible,
     canUploadPlugin,
     canEnablePlugin,
     canDisablePlugin,
-    canViewPluginLogs,
     getPreferredEnableVersionForPlugin,
     versionColumns,
     setSearchKeyword,
     setVersionDrawerOpen,
-    setLogDrawerOpen,
     setDetailDrawerOpen,
     setUploadVisible,
     setUploadFile,
@@ -1304,7 +1194,6 @@ const PluginsPage = () => {
     handleUpload,
     handleOpenVersions,
     handleOpenDetails,
-    handleOpenLogs,
     handleUninstall,
     handleEnable,
     handleDisable,
@@ -1372,14 +1261,12 @@ const PluginsPage = () => {
                 mutationLoading={mutationLoading}
                 canEnable={canEnablePlugin}
                 canDisable={canDisablePlugin}
-                canViewLogs={canViewPluginLogs}
                 isMobile={responsive.isMobile}
                 onToggleEnable={(pluginCode, enabled, versionLabel) =>
                   void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
                 }
                 onOpenDetails={handleOpenDetails}
                 onOpenVersions={handleOpenVersions}
-                onOpenLogs={(plugin) => void handleOpenLogs(plugin)}
                 onOpenManagement={(plugin) => {
                   const managementPath = resolvePluginManagementPath(plugin.pluginCode);
                   if (managementPath) {
@@ -1412,14 +1299,6 @@ const PluginsPage = () => {
         selectedActiveVersion={selectedActiveVersion}
         detailDrawerOpen={detailDrawerOpen}
         setDetailDrawerOpen={setDetailDrawerOpen}
-      />
-      <PluginLogDrawer
-        responsive={responsive}
-        selectedPlugin={selectedPlugin}
-        runtimeLogs={runtimeLogs}
-        logsLoading={logsLoading}
-        logDrawerOpen={logDrawerOpen}
-        setLogDrawerOpen={setLogDrawerOpen}
       />
       <PluginUninstallModal
         token={token}
