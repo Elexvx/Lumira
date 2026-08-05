@@ -358,14 +358,11 @@
 }
 
 .saas-login-page__wechat-official {
-  width: 214px;
-  height: auto;
-  aspect-ratio: 1;
+  width: 188px;
+  height: 188px;
   flex: 0 0 auto;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   overflow: hidden;
   border-radius: 6px;
   background: #fff;
@@ -379,15 +376,15 @@
 
 .saas-login-page__wechat-official iframe {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 14px;
+  left: 50%;
   width: 300px !important;
   min-width: 300px !important;
-  height: 400px !important;
-  transform: scale(0.7133);
-  transform-origin: top left;
+  height: 160px !important;
+  transform: translateX(-50%);
+  transform-origin: top center;
   border: 0;
-  background: #fff;
+  background: transparent;
 }
 
 .saas-login-page__qr-panel .saas-login-page__wechat-official {
@@ -398,14 +395,7 @@
 }
 
 .saas-login-page__qr-panel .saas-login-page__wechat-official iframe {
-  position: absolute;
-  top: 8px;
-  left: calc(50% - 150px);
-  width: 300px !important;
-  min-width: 300px !important;
-  height: 400px !important;
-  transform: scale(1.12);
-  transform-origin: top center;
+  top: 14px;
 }
 
 .saas-login-page__wechat-skeleton,
