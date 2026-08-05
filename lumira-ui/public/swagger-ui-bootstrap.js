@@ -12,7 +12,7 @@
   }
 
   window.addEventListener('message', function (event) {
-    if (event.origin !== window.location.origin || !event.data || event.data.type !== 'lumira:swagger-spec') {
+    if (event.source !== window.parent || !event.data || event.data.type !== 'lumira:swagger-spec') {
       return;
     }
 

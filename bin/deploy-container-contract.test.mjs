@@ -102,7 +102,7 @@ test('frontend and edge nginx enforce browser security headers', () => {
 });
 
 test('embedded API docs initialize through a same-origin CSP-compatible bootstrap', () => {
-  assert.match(swaggerBootstrap, /event\.origin !== window\.location\.origin/);
+  assert.match(swaggerBootstrap, /event\.source !== window\.parent/);
   assert.match(swaggerBootstrap, /event\.data\.type !== 'lumira:swagger-spec'/);
   assert.match(swaggerBootstrap, /supportedSubmitMethods: \[\]/);
   assert.doesNotMatch(swaggerBootstrap, /\beval\s*\(|new Function\s*\(/);
