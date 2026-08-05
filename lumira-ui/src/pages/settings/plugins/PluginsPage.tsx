@@ -1,6 +1,6 @@
 import { formatMessage } from '@/i18n/formatMessage';
 import { ArrowLeftOutlined, BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { DescriptionsProps } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -1167,6 +1167,19 @@ const PluginDisableModal = ({
             </Radio>
           </Space>
         </Radio.Group>
+        <Alert
+          type={supportsDataPurge ? 'warning' : 'info'}
+          showIcon
+          message={supportsDataPurge
+            ? formatMessage({
+                id: 'page.plugins.disablePurgeWarning',
+                defaultMessage: 'This permanently deletes plugin-owned data. Re-enabling recreates empty tables; deleted data cannot be recovered.',
+              })
+            : formatMessage({
+                id: 'page.plugins.disablePurgeUnavailable',
+                defaultMessage: 'Data removal is unavailable because this plugin has no verified down migration.',
+              })}
+        />
       </Space>
     </Modal>
   );

@@ -34,23 +34,41 @@ public class PluginMigrationService {
     }
 
     public void executeUpMigrations(String pluginCode, String pluginVersion, Path versionHome, Long operatorId, String operatorUuid) {
-        execute(pluginCode, pluginVersion, versionHome, "up", operatorId, operatorUuid);
+        execute(pluginCode, pluginVersion, versionHome, "up", false, operatorId, operatorUuid);
     }
 
     public void executeDownMigrations(String pluginCode, String pluginVersion, Path versionHome, Long operatorId, String operatorUuid) {
-        execute(pluginCode, pluginVersion, versionHome, "down", operatorId, operatorUuid);
+        execute(pluginCode, pluginVersion, versionHome, "down", true, operatorId, operatorUuid);
     }
 
-    private void execute(String pluginCode, String pluginVersion, Path versionHome, String direction, Long operatorId, String operatorUuid) {
+    private void execute(
+            String pluginCode,
+            String pluginVersion,
+            Path versionHome,
+            String direction,
+            boolean requireScripts,
+            Long operatorId,
+            String operatorUuid
+    ) {
         try {
             List<ResourceScript> scripts = resolveScripts(pluginCode, versionHome, direction);
             if (scripts.isEmpty()) {
+                if (requireScripts) {
+                    throw new BizException(
+                            ErrorCode.PLUGIN_RUNTIME_ERROR,
+                            "Plugin data purge requires at least one verified down migration"
+                    );
+                }
                 return;
             }
             Connection connection = DataSourceUtils.getConnection(dataSource);
             for (ResourceScript script : scripts) {
-                if ("up".equals(direction)
-                        && pluginPersistenceService.hasSuccessfulSchemaHistory(pluginCode, pluginVersion, direction, script.stepName())) {
+                String latestSuccessfulDirection = pluginPersistenceService.latestSuccessfulSchemaDirection(
+                        pluginCode,
+                        pluginVersion,
+                        script.stepName()
+                );
+                if (direction.equalsIgnoreCase(latestSuccessfulDirection)) {
                     continue;
                 }
                 try {
@@ -81,6 +99,8 @@ public class PluginMigrationService {
                     throw throwable;
                 }
             }
+        } catch (BizException exception) {
+            throw exception;
         } catch (Throwable throwable) {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件迁移执行失败: " + throwable.getMessage());
         }
@@ -89,9 +109,15 @@ public class PluginMigrationService {
     private List<ResourceScript> resolveScripts(String pluginCode, Path versionHome, String direction) throws IOException {
         if (BUILTIN_SENSITIVE_WORDS_PLUGIN.equals(pluginCode)) {
             Resource[] resources = RESOURCE_RESOLVER.getResources("classpath*:builtin-plugins/sensitive-words/migrations/" + direction + "/*.sql");
+            Comparator<Resource> comparator = Comparator.comparing(
+                    resource -> resource.getFilename() == null ? "" : resource.getFilename()
+            );
+            if ("down".equals(direction)) {
+                comparator = comparator.reversed();
+            }
             return Arrays.stream(resources)
                     .filter(Resource::exists)
-                    .sorted(Comparator.comparing(resource -> resource.getFilename() == null ? "" : resource.getFilename()))
+                    .sorted(comparator)
                     .map(resource -> new ResourceScript(
                             resource.getFilename() == null ? direction : resource.getFilename(),
                             "classpath:builtin-plugins/sensitive-words/migrations/" + direction + "/" + resource.getFilename(),
@@ -114,9 +140,13 @@ public class PluginMigrationService {
             }
             return List.of();
         }
+        Comparator<Path> comparator = Comparator.comparing(path -> path.getFileName().toString());
+        if ("down".equals(direction)) {
+            comparator = comparator.reversed();
+        }
         return Files.list(migrationsDir)
                 .filter(path -> path.getFileName().toString().endsWith(".sql"))
-                .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                .sorted(comparator)
                 .map(path -> new ResourceScript(path.getFileName().toString(), path.toString(), new FileSystemResource(path)))
                 .toList();
     }

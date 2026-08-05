@@ -125,10 +125,9 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     List<PluginVersionEntity> listInstalledVersions(@Param("pluginCode") String pluginCode);
 
-    Integer hasSuccessfulSchemaHistory(
+    String latestSuccessfulSchemaDirection(
             @Param("pluginCode") String pluginCode,
             @Param("pluginVersion") String pluginVersion,
-            @Param("direction") String direction,
             @Param("stepName") String stepName
     );
 

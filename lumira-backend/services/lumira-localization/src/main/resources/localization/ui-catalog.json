@@ -5810,6 +5810,28 @@
       }
     },
     {
+      "messageKey": "page.plugins.disablePurgeUnavailable",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/plugins/PluginsPage.tsx",
+      "translations": {
+        "zh-CN": "该插件未提供经过验证的下行迁移，因此不能在停用时删除数据。",
+        "en-US": "Data removal is unavailable because this plugin has no verified down migration."
+      }
+    },
+    {
+      "messageKey": "page.plugins.disablePurgeWarning",
+      "namespaceCode": "page",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/plugins/PluginsPage.tsx",
+      "translations": {
+        "zh-CN": "此操作会永久删除插件自有数据。重新启用只会重建空表，已删除的数据无法恢复。",
+        "en-US": "This permanently deletes plugin-owned data. Re-enabling recreates empty tables; deleted data cannot be recovered."
+      }
+    },
+    {
       "messageKey": "page.plugins.disableKeepData",
       "namespaceCode": "page",
       "sourceLocale": "zh-CN",

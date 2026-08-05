@@ -401,14 +401,15 @@
         order by created_at desc
     </select>
 
-    <select id="hasSuccessfulSchemaHistory" resultType="java.lang.Integer">
-        select count(1)
+    <select id="latestSuccessfulSchemaDirection" resultType="java.lang.String">
+        select direction
         from sys_plugin_schema_history
         where plugin_code = #{pluginCode}
           and plugin_version = #{pluginVersion}
-          and direction = #{direction}
           and step_name = #{stepName}
           and execution_status = 'SUCCESS'
+        order by id desc
+        limit 1
     </select>
 
     <insert id="insertSchemaHistory">

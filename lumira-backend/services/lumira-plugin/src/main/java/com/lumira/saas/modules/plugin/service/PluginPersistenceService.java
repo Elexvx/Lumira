@@ -311,9 +311,8 @@ public class PluginPersistenceService {
         return pluginPersistenceMapper.listInstalledVersions(pluginCode);
     }
 
-    public boolean hasSuccessfulSchemaHistory(String pluginCode, String pluginVersion, String direction, String stepName) {
-        Integer count = pluginPersistenceMapper.hasSuccessfulSchemaHistory(pluginCode, pluginVersion, direction, stepName);
-        return count != null && count > 0;
+    public String latestSuccessfulSchemaDirection(String pluginCode, String pluginVersion, String stepName) {
+        return pluginPersistenceMapper.latestSuccessfulSchemaDirection(pluginCode, pluginVersion, stepName);
     }
 
     @Transactional

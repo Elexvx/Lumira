@@ -4410,7 +4410,7 @@ INSERT INTO `sys_plugin_definition` (
 )
 VALUES (
     'sensitive-words', 'Sensitive Words Plugin', 'SECURITY', 'Provides sensitive word dictionary maintenance, request content blocking, and import capabilities.',
-    'Lumira', '1.0', 1, 'ENABLED', 10, 'SHARED', 1, 0,
+    'Lumira', '1.0', 1, 'ENABLED', 10, 'SHARED', 1, 1,
     JSON_ARRAY('routes', 'menus', 'permissions', 'importers', 'interceptors'), 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE

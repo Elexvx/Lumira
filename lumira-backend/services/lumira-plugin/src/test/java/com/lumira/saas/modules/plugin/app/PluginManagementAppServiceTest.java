@@ -305,13 +305,13 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
-    void disable_shouldRejectPurgeWhenPluginDoesNotSupportDataPurge() {
+    void disable_shouldPurgeSensitiveWordsSchemaWhenCapabilityIsEnabled() {
         PluginVersionEntity enabledVersion = new PluginVersionEntity();
         enabledVersion.setPluginCode("sensitive-words");
         enabledVersion.setVersion("1.0.0");
 
         PluginVO.PluginStatusVO pluginStatus = new PluginVO.PluginStatusVO();
-        pluginStatus.setSupportsDataPurge(false);
+        pluginStatus.setSupportsDataPurge(true);
         when(pluginPersistenceService.findEnabledVersion("sensitive-words")).thenReturn(Optional.of(enabledVersion));
         when(pluginPersistenceService.pluginStatus("sensitive-words")).thenReturn(Optional.of(pluginStatus));
 
@@ -319,7 +319,31 @@ class PluginManagementAppServiceTest {
         request.setPluginCode("sensitive-words");
         request.setPurgeData(true);
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> pluginManagementAppService.disable(request, currentUser()))
+        pluginManagementAppService.disable(request, currentUser());
+
+        verify(pluginMigrationService).executeDownMigrations("sensitive-words", "1.0.0", null, 100L, "user-uuid-100");
+        verify(pluginPersistenceService).updateVersionStatus(
+                "sensitive-words", "1.0.0", "LOADED", "UNLOADED", "HEALTHY", "DISABLED", "REMOVED",
+                100L, "user-uuid-100"
+        );
+    }
+
+    @Test
+    void disable_shouldRejectPurgeWhenPluginDoesNotSupportDataPurge() {
+        PluginVersionEntity enabledVersion = new PluginVersionEntity();
+        enabledVersion.setPluginCode("work-order-feedback");
+        enabledVersion.setVersion("1.0.0");
+
+        PluginVO.PluginStatusVO pluginStatus = new PluginVO.PluginStatusVO();
+        pluginStatus.setSupportsDataPurge(false);
+        when(pluginPersistenceService.findEnabledVersion("work-order-feedback")).thenReturn(Optional.of(enabledVersion));
+        when(pluginPersistenceService.pluginStatus("work-order-feedback")).thenReturn(Optional.of(pluginStatus));
+
+        PluginDTO.DisableRequest request = new PluginDTO.DisableRequest();
+        request.setPluginCode("work-order-feedback");
+        request.setPurgeData(true);
+
+        assertThatThrownBy(() -> pluginManagementAppService.disable(request, currentUser()))
                 .hasMessageContaining("does not support data purge");
 
         verify(pluginPersistenceService, never()).disablePlugin(any(), any(), any());
