@@ -33,6 +33,31 @@ const dictStatusLabelMap: Record<string, string> = {
 
 const renderStatusLabel = (status?: string | null) => dictStatusLabelMap[status || ''] || status || '-';
 
+const renderAdaptiveText = (value?: string | null) =>
+  value ? (
+    <Typography.Text
+      ellipsis={{ tooltip: value }}
+      style={{ display: 'block', width: '100%', minWidth: 0 }}
+    >
+      {value}
+    </Typography.Text>
+  ) : (
+    '-'
+  );
+
+const renderCopyableRemark = (remark?: string | null) =>
+  remark ? (
+    <Typography.Text
+      copyable={{ text: remark }}
+      ellipsis={{ tooltip: remark }}
+      style={{ display: 'inline-block', width: '100%', verticalAlign: 'middle' }}
+    >
+      {remark}
+    </Typography.Text>
+  ) : (
+    '-'
+  );
+
 const buildDictItemColumns = ({
   isMobile,
   buildRowActions,
@@ -59,14 +84,7 @@ const buildDictItemColumns = ({
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
-    render: (_, record) =>
-      record.remark ? (
-        <Typography.Text copyable={{ text: record.remark }} ellipsis={{ tooltip: record.remark }}>
-          {record.remark}
-        </Typography.Text>
-      ) : (
-        '-'
-      ),
+    render: (_, record) => renderCopyableRemark(record.remark),
   },
   {
     title: t('ui.settings.dicts.actions'),
@@ -108,8 +126,20 @@ const buildDictTypeColumns = ({
   onOpenEdit: (record: DictTypeRecord) => void;
   onDelete: (record: DictTypeRecord) => void;
 }): ProColumns<DictTypeRecord>[] => [
-  { title: t('ui.settings.dicts.dictionaryCode'), dataIndex: 'dictCode', search: true },
-  { title: t('ui.settings.dicts.dictionaryName'), dataIndex: 'dictName', search: true },
+  {
+    title: t('ui.settings.dicts.dictionaryCode'),
+    dataIndex: 'dictCode',
+    search: true,
+    ellipsis: true,
+    render: (_, record) => renderAdaptiveText(record.dictCode),
+  },
+  {
+    title: t('ui.settings.dicts.dictionaryName'),
+    dataIndex: 'dictName',
+    search: true,
+    ellipsis: true,
+    render: (_, record) => renderAdaptiveText(record.dictName),
+  },
   {
     title: t('ui.settings.dicts.status'),
     dataIndex: 'status',
@@ -132,14 +162,7 @@ const buildDictTypeColumns = ({
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,
-    render: (_, record) =>
-      record.remark ? (
-        <Typography.Text copyable={{ text: record.remark }} ellipsis={{ tooltip: record.remark }}>
-          {record.remark}
-        </Typography.Text>
-      ) : (
-        '-'
-      ),
+    render: (_, record) => renderCopyableRemark(record.remark),
   },
   {
     title: t('ui.settings.dicts.actions'),

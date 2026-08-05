@@ -521,58 +521,28 @@ const UpdateSourceValue = ({ value, copyable = false }: { value?: string | null;
   );
 };
 
-const SWAGGER_UI_VERSION = '5.17.14';
-const SWAGGER_UI_CSS = `https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_UI_VERSION}/swagger-ui.css`;
-const SWAGGER_UI_BUNDLE = `https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_UI_VERSION}/swagger-ui-bundle.js`;
-const SWAGGER_UI_PRESET = `https://cdn.jsdelivr.net/npm/swagger-ui-dist@${SWAGGER_UI_VERSION}/swagger-ui-standalone-preset.js`;
-
-const serializeForScript = (value: unknown) =>
-  JSON.stringify(value)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-
-const buildSwaggerHtml = (apiSpec: unknown, schemeContainerVerticalPadding: number) => {
-  const serializedSpec = serializeForScript(apiSpec);
-
-  return `<!doctype html>
+const SWAGGER_UI_SHELL_HTML = `<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="${SWAGGER_UI_CSS}" />
+    <title>接口文档</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css" integrity="sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn" crossorigin="anonymous" />
     <style>
-      html, body, #swagger-ui { height: 100%; margin: 0; background: #fff; }
+      html, body, #swagger-ui { min-height: 100%; margin: 0; background: #fff; }
+      #swagger-status { box-sizing: border-box; padding: 48px 24px; color: #667085; font: 14px/1.6 system-ui, sans-serif; text-align: center; }
+      #swagger-status.is-error { color: #d92d20; }
       .swagger-ui .topbar { display: none; }
-      .swagger-ui .scheme-container { padding: ${schemeContainerVerticalPadding}px 0; box-shadow: none; }
+      .swagger-ui .scheme-container { padding: var(--swagger-scheme-padding, 16px) 0; box-shadow: none; }
     </style>
   </head>
   <body>
-    <div id="swagger-ui"></div>
-    <script src="${SWAGGER_UI_BUNDLE}"></script>
-    <script src="${SWAGGER_UI_PRESET}"></script>
-    <script>
-      const apiSpec = ${serializedSpec};
-      window.onload = function () {
-        window.ui = SwaggerUIBundle({
-          spec: apiSpec,
-          dom_id: '#swagger-ui',
-          deepLinking: true,
-          displayRequestDuration: true,
-          supportedSubmitMethods: [],
-          presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIStandalonePreset
-          ],
-          layout: 'StandaloneLayout'
-        });
-      };
-    </script>
+    <div id="swagger-ui"><div id="swagger-status">正在加载接口文档…</div></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" integrity="sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js" integrity="sha384-2YH8WDRaj7V2OqU/trsmzSagmk/E2SutiCsGkdgoQwC9pNUJV1u/141DHB6jgs8t" crossorigin="anonymous"></script>
+    <script src="/swagger-ui-bootstrap.js"></script>
   </body>
 </html>`;
-};
 
 const readApiDocsError = async (response: Response) => {
   const fallback = t('ui.settings.monitoring.monitoring.apiDocsFailedToLoad').replace('{status}', String(response.status));
@@ -684,9 +654,19 @@ const ApiDocsContent = () => {
             ) : (
               <iframe
                 title={t('ui.settings.monitoring.monitoring.apiDocs')}
-                srcDoc={buildSwaggerHtml(apiSpec, schemeContainerVerticalPadding)}
-                sandbox="allow-scripts allow-forms allow-popups"
+                srcDoc={SWAGGER_UI_SHELL_HTML}
+                sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
                 className="saas-monitoring-api-docs__iframe"
+                onLoad={(event) => {
+                  event.currentTarget.contentWindow?.postMessage(
+                    {
+                      type: 'lumira:swagger-spec',
+                      spec: apiSpec,
+                      schemeContainerVerticalPadding,
+                    },
+                    window.location.origin,
+                  );
+                }}
               />
             )}
           </div>

@@ -1,12 +1,19 @@
 import { request } from '@/services/common/request';
+import { tokenManager } from '@/auth/token';
 import type { CurrentUser, MenuNode, PluginAvailability } from '@/types/api';
 
 export const CURRENT_USER_SYNC_EVENT = 'lumira:current-user-sync';
 export const CURRENT_USER_SYNC_INTERVAL_MS = 5_000;
 
 const CURRENT_USER_SYNC_TIMEOUT_MS = 8_000;
-let currentUserRequest: Promise<CurrentUser> | null = null;
-let currentNavigationRequest: Promise<CurrentNavigationSnapshot> | null = null;
+
+interface AuthScopedRequest<T> {
+  tokenGeneration: number;
+  promise: Promise<T>;
+}
+
+let currentUserRequest: AuthScopedRequest<CurrentUser> | null = null;
+let currentNavigationRequest: AuthScopedRequest<CurrentNavigationSnapshot> | null = null;
 
 export interface CurrentNavigationSnapshot {
   menuTree: MenuNode[];
@@ -39,14 +46,20 @@ const requestCurrentUser = () =>
   );
 
 export const loadCurrentUserSnapshot = (): Promise<CurrentUser> => {
-  if (currentUserRequest) {
-    return currentUserRequest;
+  const tokenGeneration = tokenManager.getTokenGeneration();
+  if (currentUserRequest?.tokenGeneration === tokenGeneration) {
+    return currentUserRequest.promise;
   }
 
-  currentUserRequest = requestCurrentUser().finally(() => {
-    currentUserRequest = null;
+  let attempt!: AuthScopedRequest<CurrentUser>;
+  const promise = requestCurrentUser().finally(() => {
+    if (currentUserRequest === attempt) {
+      currentUserRequest = null;
+    }
   });
-  return currentUserRequest;
+  attempt = { tokenGeneration, promise };
+  currentUserRequest = attempt;
+  return attempt.promise;
 };
 
 const requestCurrentNavigation = () =>
@@ -54,14 +67,20 @@ const requestCurrentNavigation = () =>
     .catch(() => request<CurrentNavigationSnapshot>('/v1/plugins/current/bootstrap', currentNavigationRequestOptions));
 
 export const loadCurrentNavigationSnapshot = (): Promise<CurrentNavigationSnapshot> => {
-  if (currentNavigationRequest) {
-    return currentNavigationRequest;
+  const tokenGeneration = tokenManager.getTokenGeneration();
+  if (currentNavigationRequest?.tokenGeneration === tokenGeneration) {
+    return currentNavigationRequest.promise;
   }
 
-  currentNavigationRequest = requestCurrentNavigation().finally(() => {
-    currentNavigationRequest = null;
+  let attempt!: AuthScopedRequest<CurrentNavigationSnapshot>;
+  const promise = requestCurrentNavigation().finally(() => {
+    if (currentNavigationRequest === attempt) {
+      currentNavigationRequest = null;
+    }
   });
-  return currentNavigationRequest;
+  attempt = { tokenGeneration, promise };
+  currentNavigationRequest = attempt;
+  return attempt.promise;
 };
 
 export const hasCurrentUserSnapshotChanged = (

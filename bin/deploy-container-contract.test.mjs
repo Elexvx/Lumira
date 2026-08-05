@@ -19,6 +19,7 @@ const releaseManifestGenerator = readFileSync(path.join(repoRoot, 'bin', 'genera
 const ciWorkflow = readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
 const gitignore = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
 const frontendAssetAdapter = readFileSync(path.join(repoRoot, 'lumira-ui', 'scripts', 'adapt-cdn-assets.mjs'), 'utf8');
+const swaggerBootstrap = readFileSync(path.join(repoRoot, 'lumira-ui', 'public', 'swagger-ui-bootstrap.js'), 'utf8');
 
 test('generated updater state stays local to the deployment host', () => {
   for (const entry of [
@@ -79,8 +80,13 @@ test('frontend and edge nginx enforce browser security headers', () => {
     assert.match(config, /add_header_inherit merge/, `${name} nginx must retain headers in locations with cache headers`);
     assert.match(
       config,
-      /script-src 'self' https:\/\/res\.wx\.qq\.com;/,
-      `${name} nginx must allow only the official WeChat login script origin`,
+      /script-src 'self' https:\/\/res\.wx\.qq\.com https:\/\/cdn\.jsdelivr\.net;/,
+      `${name} nginx must allow only the approved executable origins`,
+    );
+    assert.match(
+      config,
+      /style-src 'self' 'unsafe-inline' https:\/\/cdn\.jsdelivr\.net;/,
+      `${name} nginx must allow the pinned Swagger UI stylesheet origin`,
     );
     assert.match(
       config,
@@ -93,6 +99,13 @@ test('frontend and edge nginx enforce browser security headers', () => {
       `${name} nginx must not use wildcard HTTPS origins for executable or framed content`,
     );
   }
+});
+
+test('embedded API docs initialize through a same-origin CSP-compatible bootstrap', () => {
+  assert.match(swaggerBootstrap, /event\.origin !== window\.location\.origin/);
+  assert.match(swaggerBootstrap, /event\.data\.type !== 'lumira:swagger-spec'/);
+  assert.match(swaggerBootstrap, /supportedSubmitMethods: \[\]/);
+  assert.doesNotMatch(swaggerBootstrap, /\beval\s*\(|new Function\s*\(/);
 });
 
 test('production disables the Hikari periodic JDBC keepalive explicitly', () => {

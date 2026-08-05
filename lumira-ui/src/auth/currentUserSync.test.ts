@@ -2,8 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentUser } from '@/types/api';
 import { request } from '@/services/common/request';
 
+const mocks = vi.hoisted(() => ({
+  tokenGeneration: { value: 1 },
+}));
+
 vi.mock('@/services/common/request', () => ({
   request: vi.fn(),
+}));
+
+vi.mock('@/auth/token', () => ({
+  tokenManager: {
+    getTokenGeneration: () => mocks.tokenGeneration.value,
+  },
 }));
 
 const currentUser = (overrides: Partial<CurrentUser> = {}): CurrentUser => ({
@@ -29,6 +39,7 @@ const currentUser = (overrides: Partial<CurrentUser> = {}): CurrentUser => ({
 describe('currentUserSync', () => {
   beforeEach(() => {
     vi.mocked(request).mockReset();
+    mocks.tokenGeneration.value = 1;
   });
 
   it('detects role and permission changes in a refreshed current-user snapshot', async () => {
@@ -71,6 +82,30 @@ describe('currentUserSync', () => {
       method: 'GET',
       silent: true,
     }));
+  });
+
+  it('never reuses an in-flight current-user request after the auth generation changes', async () => {
+    const previousSession = Promise.withResolvers<CurrentUser>();
+    const nextSession = Promise.withResolvers<CurrentUser>();
+    vi.mocked(request)
+      .mockReturnValueOnce(previousSession.promise)
+      .mockReturnValueOnce(nextSession.promise);
+    const { loadCurrentUserSnapshot } = await import('@/auth/currentUserSync');
+
+    const previousRequest = loadCurrentUserSnapshot();
+    mocks.tokenGeneration.value = 2;
+    const nextRequest = loadCurrentUserSnapshot();
+
+    expect(request).toHaveBeenCalledTimes(2);
+    previousSession.resolve(currentUser({ userId: 1001, sessionId: 'previous-session' }));
+    await expect(previousRequest).resolves.toMatchObject({ sessionId: 'previous-session' });
+
+    const deduplicatedNextRequest = loadCurrentUserSnapshot();
+    expect(deduplicatedNextRequest).toBe(nextRequest);
+    expect(request).toHaveBeenCalledTimes(2);
+
+    nextSession.resolve(currentUser({ userId: 2002, sessionId: 'next-session' }));
+    await expect(nextRequest).resolves.toMatchObject({ userId: 2002, sessionId: 'next-session' });
   });
 
   it('falls back to the legacy current-user endpoint', async () => {

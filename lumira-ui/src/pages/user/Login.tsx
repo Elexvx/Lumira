@@ -15,6 +15,8 @@ import { request } from '@/services/common/request';
 import { isSessionExpiredLoginSearch } from '@/auth/sessionLifecycle';
 import { showSessionExpiredNotice } from '@/pages/user/login/utils/sessionExpiredNotice';
 import { useThemePreference } from '@/theme/ThemePreferenceProvider';
+import policeBeianIcon from '@/assets/police-beian.png';
+import { isPoliceBeianText, resolvePoliceBeianQueryUrl } from '@/branding/beian';
 import './Login.css';
 
 const INITIAL_PASSWORD = '123456';
@@ -229,9 +231,23 @@ const LoginPageMainSection = ({ loginForm, loginPageStyle, brandingWebsiteName, 
         </main>
 
         <footer className="saas-login-page__footer">
-          {brandingFooterItems.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
+          {brandingFooterItems.map((item) =>
+            isPoliceBeianText(item) ? (
+              <a
+                key={item}
+                className="saas-login-page__footer-link"
+                href={resolvePoliceBeianQueryUrl(item)}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="login-police-beian-link"
+              >
+                <img className="saas-police-beian-icon" src={policeBeianIcon} alt="" aria-hidden="true" />
+                <span>{item}</span>
+              </a>
+            ) : (
+              <span key={item}>{item}</span>
+            ),
+          )}
         </footer>
       </section>
     </div>
@@ -457,9 +473,11 @@ const Login = () => {
   useEffect(() => {
     const viewportClassName = 'saas-login-viewport';
     document.documentElement.classList.add(viewportClassName);
+    document.body.classList.add(viewportClassName);
 
     return () => {
       document.documentElement.classList.remove(viewportClassName);
+      document.body.classList.remove(viewportClassName);
     };
   }, []);
 

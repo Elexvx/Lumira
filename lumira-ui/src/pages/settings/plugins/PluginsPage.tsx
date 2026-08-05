@@ -48,7 +48,6 @@ const PluginCardsGrid = ({
   canDisable,
   onToggleEnable,
   onOpenDetails,
-  onOpenVersions,
   onOpenManagement,
   onUninstall,
 }: {
@@ -62,7 +61,6 @@ const PluginCardsGrid = ({
   canDisable: boolean;
   onToggleEnable: (pluginCode: string, enabled: boolean, versionLabel?: string) => void;
   onOpenDetails: (plugin: PluginDefinition) => void;
-  onOpenVersions: (plugin: PluginDefinition) => void;
   onOpenManagement: (plugin: PluginDefinition) => void;
   onUninstall: (plugin: PluginDefinition) => void;
 }) => {
@@ -123,7 +121,6 @@ const PluginCardsGrid = ({
                     </Button>
                   ) : null}
                   <Button onClick={() => onOpenDetails(plugin)}>{pluginMessage('page.plugins.details', 'Details')}</Button>
-                  <Button onClick={() => onOpenVersions(plugin)}>{pluginMessage('page.plugins.versions', 'Versions')}</Button>
                   <Button danger disabled={!canDisable || plugin.builtinFlag === 1} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
                     {pluginMessage('page.plugins.uninstallAction', 'Uninstall')}
                   </Button>
@@ -625,11 +622,6 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
     }
   }, [handlePluginPageError, loadOverview, panel]);
 
-  const handleOpenVersions = useCallback((plugin: PluginDefinition) => {
-    panel.setSelectedPlugin(plugin);
-    panel.setVersionDrawerOpen(true);
-  }, [panel]);
-
   const handleOpenDetails = useCallback((plugin: PluginDefinition) => {
     panel.setSelectedPlugin(plugin);
     panel.setDetailDrawerOpen(true);
@@ -645,7 +637,6 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
     confirmUninstall,
     confirmDisable,
     handleUpload,
-    handleOpenVersions,
     handleOpenDetails,
   };
 };
@@ -707,7 +698,7 @@ const usePluginManagementActions = ({
   };
   const { token } = theme.useToken();
   const { actionPermission, responsive } = usePagePermissionActions();
-  const detailDescriptionsProps = useDetailDescriptionsProps({ column: responsive.isMobile ? 1 : 2 });
+  const detailDescriptionsProps = useDetailDescriptionsProps({ column: 1 });
   useEffect(() => {
     if (!selectedPlugin && definitions.length) {
       setSelectedPlugin(definitions[0] || null);
@@ -735,7 +726,6 @@ const usePluginManagementActions = ({
     confirmUninstall,
     confirmDisable,
     handleUpload,
-    handleOpenVersions,
     handleOpenDetails,
   } = usePluginMutationActions({
     definitions,
@@ -777,7 +767,6 @@ const usePluginManagementActions = ({
     versionColumns,
     ...panel,
     handleUpload,
-    handleOpenVersions,
     handleOpenDetails,
     handleUninstall,
     handleEnable,
@@ -1192,7 +1181,6 @@ const PluginsPage = () => {
     setDisableTarget,
     setPurgePluginDataOnDisable,
     handleUpload,
-    handleOpenVersions,
     handleOpenDetails,
     handleUninstall,
     handleEnable,
@@ -1266,7 +1254,6 @@ const PluginsPage = () => {
                   void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
                 }
                 onOpenDetails={handleOpenDetails}
-                onOpenVersions={handleOpenVersions}
                 onOpenManagement={(plugin) => {
                   const managementPath = resolvePluginManagementPath(plugin.pluginCode);
                   if (managementPath) {

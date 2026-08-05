@@ -1450,10 +1450,11 @@ body,
   color: inherit;
 }
 
-.saas-layout-footer__police-beian-icon {
+.saas-police-beian-icon {
   width: 20px;
   height: 20px;
   flex: 0 0 20px;
+  object-fit: contain;
 }
 
 .saas-layout-footer__link:hover {

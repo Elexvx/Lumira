@@ -44,6 +44,7 @@ import type { ThemePreference } from '@/theme/settings';
 import { resolveThemeRuntimeSnapshot } from '@/theme/runtime';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import policeBeianIcon from '@/assets/police-beian.png';
+import { ICP_QUERY_URL, resolvePoliceBeianQueryUrl } from '@/branding/beian';
 import GlobalSensitiveWordGuard from '@/components/GlobalSensitiveWordGuard';
 import './layouts/components/GlobalFloatActions.css';
 import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
@@ -969,17 +970,9 @@ const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialSt
   }
 };
 
-const ICP_QUERY_URL = 'https://beian.miit.gov.cn/';
-const POLICE_BEIAN_QUERY_URL = 'https://beian.mps.gov.cn/#/query/webSearch';
-
-const resolvePoliceBeianQueryUrl = (text: string) => {
-  const recordCode = text.match(/\d{13,}/)?.[0];
-  return recordCode ? `${POLICE_BEIAN_QUERY_URL}?code=${encodeURIComponent(recordCode)}` : POLICE_BEIAN_QUERY_URL;
-};
-
 const renderBeianLink = (text: string, href: string, icon?: string) => (
   <a className="saas-layout-footer__link" href={href} target="_blank" rel="noreferrer">
-    {icon ? <img className="saas-layout-footer__police-beian-icon" src={icon} alt="" aria-hidden="true" /> : null}
+    {icon ? <img className="saas-police-beian-icon" src={icon} alt="" aria-hidden="true" /> : null}
     <span>{text}</span>
   </a>
 );
