@@ -3,9 +3,13 @@ import type { AppInitialState } from '@/app';
 import {
   CURRENT_USER_SYNC_EVENT,
   CURRENT_USER_SYNC_INTERVAL_MS,
+  hasCurrentUserNavigationChanged,
   hasCurrentUserSnapshotChanged,
+  loadCurrentNavigationSnapshot,
   loadCurrentUserSnapshot,
+  type CurrentNavigationSnapshot,
 } from '@/auth/currentUserSync';
+import { normalizeAuthenticatedMenuTree } from '@/auth/authenticatedMenuTree';
 import { persistCurrentUser } from '@/auth/sessionState';
 import { tokenManager } from '@/auth/token';
 import type { CurrentUser } from '@/types/api';
@@ -14,6 +18,35 @@ interface CurrentUserRealtimeSyncOptions {
   currentUser?: CurrentUser;
   setInitialState: Dispatch<SetStateAction<AppInitialState | undefined>>;
 }
+
+export const mergeCurrentUserRuntimeState = (
+  previousState: AppInitialState | undefined,
+  refreshedUser: CurrentUser,
+  refreshedNavigation?: CurrentNavigationSnapshot,
+): AppInitialState | undefined => {
+  const previousUser = previousState?.currentUser;
+  if (
+    !previousState
+    || !previousUser
+    || previousUser.userId !== refreshedUser.userId
+    || previousUser.sessionId !== refreshedUser.sessionId
+    || !hasCurrentUserSnapshotChanged(previousUser, refreshedUser)
+  ) {
+    return previousState;
+  }
+
+  return {
+    ...previousState,
+    currentUser: persistCurrentUser(refreshedUser),
+    ...(refreshedNavigation
+      ? {
+          menuTree: normalizeAuthenticatedMenuTree(refreshedNavigation.menuTree, refreshedUser),
+          availablePlugins: refreshedNavigation.availablePlugins,
+          menuVersion: (previousState.menuVersion ?? 0) + 1,
+        }
+      : {}),
+  };
+};
 
 export const useCurrentUserRealtimeSync = ({
   currentUser,
@@ -40,23 +73,16 @@ export const useCurrentUserRealtimeSync = ({
         return;
       }
 
-      setInitialState((previousState) => {
-        const previousUser = previousState?.currentUser;
-        if (
-          !previousState ||
-          !previousUser ||
-          previousUser.userId !== refreshedUser.userId ||
-          previousUser.sessionId !== refreshedUser.sessionId ||
-          !hasCurrentUserSnapshotChanged(previousUser, refreshedUser)
-        ) {
-          return previousState;
-        }
+      const navigationChanged = hasCurrentUserNavigationChanged(expectedUser, refreshedUser);
+      const refreshedNavigation = navigationChanged
+        ? await loadCurrentNavigationSnapshot()
+        : undefined;
 
-        return {
-          ...previousState,
-          currentUser: persistCurrentUser(refreshedUser),
-        };
-      });
+      setInitialState((previousState) => mergeCurrentUserRuntimeState(
+        previousState,
+        refreshedUser,
+        refreshedNavigation,
+      ));
     } catch {
       // Background synchronization is best effort. Normal requests retain the
       // existing session-expiry and user-facing error behavior.

@@ -32,7 +32,7 @@ describe('currentUserSync', () => {
   });
 
   it('detects role and permission changes in a refreshed current-user snapshot', async () => {
-    const { hasCurrentUserSnapshotChanged } = await import('@/auth/currentUserSync');
+    const { hasCurrentUserNavigationChanged, hasCurrentUserSnapshotChanged } = await import('@/auth/currentUserSync');
     const previous = currentUser();
     const refreshed = currentUser({
       permissionsVersion: 'permissions-2',
@@ -51,6 +51,8 @@ describe('currentUserSync', () => {
 
     expect(hasCurrentUserSnapshotChanged(previous, refreshed)).toBe(true);
     expect(hasCurrentUserSnapshotChanged(refreshed, { ...refreshed })).toBe(false);
+    expect(hasCurrentUserNavigationChanged(previous, refreshed)).toBe(true);
+    expect(hasCurrentUserNavigationChanged(refreshed, { ...refreshed, nickname: 'Administrator' })).toBe(false);
   });
 
   it('deduplicates concurrent current-user refresh requests', async () => {
@@ -80,5 +82,40 @@ describe('currentUserSync', () => {
     await expect(loadCurrentUserSnapshot()).resolves.toMatchObject({ username: 'admin' });
     expect(request).toHaveBeenNthCalledWith(1, '/v2/auth/current-user', expect.any(Object));
     expect(request).toHaveBeenNthCalledWith(2, '/v1/auth/current-user', expect.any(Object));
+  });
+
+  it('reloads and deduplicates the authoritative menu tree after permission changes', async () => {
+    const deferred = Promise.withResolvers<{
+      menuTree: Array<{ menuCode: string; name: string; path: string }>;
+      availablePlugins: [];
+    }>();
+    vi.mocked(request).mockReturnValue(deferred.promise);
+    const { loadCurrentNavigationSnapshot } = await import('@/auth/currentUserSync');
+
+    const first = loadCurrentNavigationSnapshot();
+    const second = loadCurrentNavigationSnapshot();
+    deferred.resolve({
+      menuTree: [{ menuCode: 'workflow.root', name: 'Workflow', path: '/workflows' }],
+      availablePlugins: [],
+    });
+
+    await expect(first).resolves.toMatchObject({ menuTree: [{ menuCode: 'workflow.root' }] });
+    await expect(second).resolves.toMatchObject({ menuTree: [{ menuCode: 'workflow.root' }] });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith('/v2/plugins/current/bootstrap', expect.objectContaining({
+      method: 'GET',
+      silent: true,
+    }));
+  });
+
+  it('falls back to the legacy navigation bootstrap endpoint', async () => {
+    vi.mocked(request)
+      .mockRejectedValueOnce(new Error('v2 unavailable'))
+      .mockResolvedValueOnce({ menuTree: [], availablePlugins: [] });
+    const { loadCurrentNavigationSnapshot } = await import('@/auth/currentUserSync');
+
+    await expect(loadCurrentNavigationSnapshot()).resolves.toEqual({ menuTree: [], availablePlugins: [] });
+    expect(request).toHaveBeenNthCalledWith(1, '/v2/plugins/current/bootstrap', expect.any(Object));
+    expect(request).toHaveBeenNthCalledWith(2, '/v1/plugins/current/bootstrap', expect.any(Object));
   });
 });
