@@ -768,9 +768,8 @@ class InternalSystemControllerTest {
         when(userDomainService.findById(2001L)).thenReturn(Optional.of(user));
 
         MyBatisQueryOperations failingJdbcTemplate = mock(MyBatisQueryOperations.class);
-        when(failingJdbcTemplate.queryForObject(
+        when(failingJdbcTemplate.exists(
                 anyString(),
-                eq(Boolean.class),
                 eq(2001L),
                 eq("user-uuid-2001"),
                 eq(3001L)
