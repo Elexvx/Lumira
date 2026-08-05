@@ -60,6 +60,10 @@ public class PluginManagementAppService {
     };
     private static final String BUILTIN_SENSITIVE_WORDS_PLUGIN = "sensitive-words";
     private static final String BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN = "work-order-feedback";
+    private static final Set<String> AUTHENTICATED_PERMISSIONLESS_MENU_CODES = Set.of(
+            "certificate.mine",
+            "expert.application"
+    );
     private static final Map<String, BuiltinPluginRuntime> BUILTIN_PLUGIN_RUNTIMES = Map.of(
             BUILTIN_SENSITIVE_WORDS_PLUGIN,
             new BuiltinPluginRuntime(
@@ -1058,7 +1062,8 @@ public class PluginManagementAppService {
         if (StringUtils.hasText(permissionKey)) {
             return permissions.contains("*") || permissions.contains(permissionKey.trim());
         }
-        return false;
+        Object menuCode = menu.get("menuCode");
+        return menuCode instanceof String code && AUTHENTICATED_PERMISSIONLESS_MENU_CODES.contains(code.trim());
     }
 
     private boolean isBuiltinCorePlugin(String pluginCode) {

@@ -220,16 +220,12 @@ export const normalizePermissionKeysByPages = (
   nextPageKeys: string[],
   allPageKeys: Set<string>,
   actionPermissionPageMap: Map<string, string>,
-  assignablePermissionKeys?: Set<string>,
+  _assignablePermissionKeys?: Set<string>,
 ) => {
   const nextPageKeySet = new Set(nextPageKeys);
   const nextPermissionKeys = new Set<string>();
 
   currentPermissionKeys.forEach((permissionKey) => {
-    if (assignablePermissionKeys && !assignablePermissionKeys.has(permissionKey)) {
-      return;
-    }
-
     if (nextPageKeySet.has(permissionKey)) {
       nextPermissionKeys.add(permissionKey);
       return;
@@ -638,8 +634,8 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
   const isActivePageSelected = Boolean(activePageNode?.permissionKey && selectedPagePermissionKeys.includes(activePageNode.permissionKey));
   const selectedPageCount = selectedPageNodeKeys.length;
   const sanitizePermissionKeys = useCallback(
-    (permissionKeys: string[] = []) => permissionKeys.filter((permissionKey) => assignablePermissionKeys.has(permissionKey)),
-    [assignablePermissionKeys],
+    (permissionKeys: string[] = []) => Array.from(new Set(permissionKeys.filter(Boolean))),
+    [],
   );
   const applyPermissionKeys = useCallback(
     (nextPermissionKeys: string[]) => {
@@ -729,7 +725,7 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
         return;
       }
 
-      const nextPermissionKeys = new Set<string>(watchedPermissionKeys.filter((permissionKey) => assignablePermissionKeys.has(permissionKey)));
+      const nextPermissionKeys = new Set<string>(watchedPermissionKeys);
       activePageActionPermissions.forEach((action) => {
         if (action.permissionKey) {
           nextPermissionKeys.delete(action.permissionKey);
@@ -744,7 +740,7 @@ const useRolePermissionEditor = ({ form, editorOpen, onDirty }: UseRolePermissio
       form.setFieldsValue({ permissionKeys: Array.from(nextPermissionKeys) });
       onDirty();
     },
-    [activePageActionPermissions, activePageNode?.permissionKey, assignablePermissionKeys, form, onDirty, watchedPermissionKeys],
+    [activePageActionPermissions, activePageNode?.permissionKey, form, onDirty, watchedPermissionKeys],
   );
 
   return {

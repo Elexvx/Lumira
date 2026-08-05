@@ -1,8 +1,12 @@
 import { Button, Drawer, Space } from 'antd';
 import type { DrawerProps } from 'antd';
 import type { ReactNode } from 'react';
-import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
+import {
+  MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE,
+  type ManagementDrawerContentSize,
+} from '@/constants/ui';
 import { useResponsive } from '@/hooks/useResponsive';
+import { resolveResponsiveValue } from '@/theme/spacing';
 import { useConfirmableDrawerClose } from './drawerCloseConfirm';
 
 export interface ManagementDrawerAction {
@@ -17,11 +21,13 @@ export interface ManagementDrawerAction {
 
 export interface ManagementDrawerProps extends DrawerProps {
   footerActions?: ManagementDrawerAction[];
+  contentSize?: ManagementDrawerContentSize;
 }
 
 export const ManagementDrawer = ({
   width,
   size,
+  contentSize = 'default',
   destroyOnHidden = true,
   footerActions,
   extra,
@@ -34,7 +40,9 @@ export const ManagementDrawer = ({
   const responsive = useResponsive();
   const drawerClassName = ['saas-management-drawer', className].filter(Boolean).join(' ');
   const handleClose = useConfirmableDrawerClose(onClose);
-  const drawerSize = size ?? width ?? STANDARD_DRAWER_WIDTH;
+  const drawerSize = size
+    ?? width
+    ?? resolveResponsiveValue(MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE[contentSize], responsive.isMobile);
   const renderedActions = footerActions?.length ? (
     <div className="saas-drawer-footer">
       <Space wrap>

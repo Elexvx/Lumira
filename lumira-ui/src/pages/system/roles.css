@@ -182,3 +182,13 @@
 .role-action-grid .ant-checkbox + span {
   padding-inline-start: var(--saas-spacing-xs);
 }
+
+@media (min-width: 1280px) {
+  .role-editor-drawer .role-editor-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(var(--saas-spacing-300), 0.65fr);
+  }
+
+  .role-editor-drawer .role-permission-tree {
+    max-height: min(var(--saas-spacing-560), calc(100vh - var(--saas-spacing-340)));
+  }
+}

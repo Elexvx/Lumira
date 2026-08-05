@@ -462,7 +462,7 @@ class PluginManagementAppServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void currentBootstrap_shouldHidePermissionlessPagesWithoutRolePermissions() throws Exception {
+    void currentBootstrap_shouldHideUnknownPermissionlessPagesButKeepAuthenticatedPages() throws Exception {
         MenuNodeDTO settingsRoot = new MenuNodeDTO();
         settingsRoot.setMenuCode("settings.root");
         settingsRoot.setName("Settings");
@@ -487,16 +487,38 @@ class PluginManagementAppServiceTest {
         permissionlessRegistrationPage.setSortNo(2);
         permissionlessRegistrationPage.setChildren(List.of());
 
+        MenuNodeDTO personalCertificatePage = new MenuNodeDTO();
+        personalCertificatePage.setMenuCode("certificate.mine");
+        personalCertificatePage.setName("My certificates");
+        personalCertificatePage.setPath("/certificates/mine");
+        personalCertificatePage.setComponent("@/pages/certificates/MyCertificatesPage");
+        personalCertificatePage.setSortNo(3);
+        personalCertificatePage.setChildren(List.of());
+
+        MenuNodeDTO expertApplicationPage = new MenuNodeDTO();
+        expertApplicationPage.setMenuCode("expert.application");
+        expertApplicationPage.setName("Expert application");
+        expertApplicationPage.setPath("/competitions/expert-apply");
+        expertApplicationPage.setComponent("@/pages/competition");
+        expertApplicationPage.setSortNo(4);
+        expertApplicationPage.setChildren(List.of());
+
         settingsRoot.setChildren(List.of(unsafeManagementPage));
 
         when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
         when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L);
         when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of());
-        when(systemInternalApi.builtinMenus()).thenReturn(List.of(settingsRoot, permissionlessRegistrationPage));
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(
+                settingsRoot,
+                permissionlessRegistrationPage,
+                personalCertificatePage,
+                expertApplicationPage
+        ));
 
         Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(List.of(), "wechat-common-user");
 
         assertThat(collectMenuCodes((List<Map<String, Object>>) bootstrap.get("menuTree")))
+                .contains("certificate.mine", "expert.application")
                 .doesNotContain("settings.root", "settings.unsafe", "competition.registration");
     }
 

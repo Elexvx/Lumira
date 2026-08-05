@@ -32,7 +32,7 @@ describe('role permission page/action normalization', () => {
     expect(normalized.sort()).toEqual(['system:user:update', 'system:user:view'].sort());
   });
 
-  it('drops stale keys that are not present in the assignable permission tree', () => {
+  it('preserves permissions that are valid for the role but not represented in the page tree', () => {
     const normalized = normalizePermissionKeysByPages(
       ['system:role:view', 'system:role:update', 'system:config:update'],
       ['system:role:view'],
@@ -41,6 +41,6 @@ describe('role permission page/action normalization', () => {
       assignablePermissionKeys,
     );
 
-    expect(normalized.sort()).toEqual(['system:role:update', 'system:role:view'].sort());
+    expect(normalized.sort()).toEqual(['system:config:update', 'system:role:update', 'system:role:view'].sort());
   });
 });

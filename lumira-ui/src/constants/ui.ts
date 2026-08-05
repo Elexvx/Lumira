@@ -23,6 +23,23 @@ export const STANDARD_DRAWER_WIDTH_BY_BREAKPOINT = {
   mobile: `min(var(--saas-spacing-${APP_SPACING.standardDrawerWidth.mobile}), 100vw)`,
 } as const;
 
+export const MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE = {
+  compact: {
+    desktop: 'min(var(--saas-spacing-560), calc(100vw - var(--saas-spacing-48)))',
+    mobile: '100vw',
+  },
+  default: {
+    desktop: 'min(var(--saas-spacing-700), calc(100vw - var(--saas-spacing-48)))',
+    mobile: '100vw',
+  },
+  wide: {
+    desktop: 'min(var(--saas-spacing-840), calc(100vw - var(--saas-spacing-48)))',
+    mobile: '100vw',
+  },
+} as const;
+
+export type ManagementDrawerContentSize = keyof typeof MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE;
+
 export const STANDARD_DRAWER_WIDTH = STANDARD_DRAWER_WIDTH_BY_BREAKPOINT.desktop;
 export const MESSAGE_CENTER_DRAWER_WIDTH_BY_BREAKPOINT = STANDARD_DRAWER_WIDTH_BY_BREAKPOINT;
 export const MESSAGE_CENTER_DRAWER_WIDTH = MESSAGE_CENTER_DRAWER_WIDTH_BY_BREAKPOINT.desktop;

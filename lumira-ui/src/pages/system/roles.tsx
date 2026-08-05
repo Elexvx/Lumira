@@ -419,7 +419,14 @@ const RoleManagementPage = () => {
         isMobile={responsive.isMobile}
       />
 
-      <ManagementDrawer title={editorDrawer.title} open={editorDrawer.open} onClose={editorDrawer.onClose} footerActions={editorDrawer.footerActions}>
+      <ManagementDrawer
+        title={editorDrawer.title}
+        open={editorDrawer.open}
+        onClose={editorDrawer.onClose}
+        footerActions={editorDrawer.footerActions}
+        contentSize="wide"
+        className="role-editor-drawer"
+      >
         <Form {...editorDrawer.formProps}>
           <RoleEditorBasicFields
             isPermissionOnlyEditor={editorDrawer.isPermissionOnlyEditor}
