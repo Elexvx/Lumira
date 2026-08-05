@@ -2,12 +2,12 @@ import { message as staticMessage, Modal as staticModal, notification as staticN
 
 type MessageApi = Pick<typeof staticMessage, 'destroy' | 'error' | 'info' | 'loading' | 'open' | 'success' | 'warning'>;
 type NotificationApi = Pick<typeof staticNotification, 'destroy' | 'error' | 'info' | 'open' | 'success' | 'warning'>;
-type ModalConfirmApi = Pick<typeof staticModal, 'confirm'>;
+type ModalApi = Pick<typeof staticModal, 'confirm' | 'info' | 'warning'>;
 
 type AntdFeedbackRuntimeApi = {
   message: MessageApi;
   notification: NotificationApi;
-  modal: ModalConfirmApi;
+  modal: ModalApi;
 };
 
 const fallbackApi: AntdFeedbackRuntimeApi = {
@@ -15,6 +15,8 @@ const fallbackApi: AntdFeedbackRuntimeApi = {
   notification: staticNotification,
   modal: {
     confirm: staticModal.confirm,
+    info: staticModal.info,
+    warning: staticModal.warning,
   },
 };
 
@@ -39,7 +41,7 @@ const createProxy = <T extends object>(getApi: () => T): T =>
 export const registerAntdFeedbackApi = (nextApi: {
   message?: MessageApi;
   notification?: NotificationApi;
-  modal?: Partial<ModalConfirmApi>;
+  modal?: Partial<ModalApi>;
 }) => {
   runtimeApi = {
     ...runtimeApi,
@@ -54,4 +56,4 @@ export const registerAntdFeedbackApi = (nextApi: {
 
 export const message: MessageApi = createProxy<MessageApi>(() => runtimeApi.message);
 export const notification: NotificationApi = createProxy<NotificationApi>(() => runtimeApi.notification);
-export const modal: ModalConfirmApi = createProxy<ModalConfirmApi>(() => runtimeApi.modal);
+export const modal: ModalApi = createProxy<ModalApi>(() => runtimeApi.modal);

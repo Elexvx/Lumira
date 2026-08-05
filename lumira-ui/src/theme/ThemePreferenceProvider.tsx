@@ -50,7 +50,11 @@ const AntdFeedbackBridge = ({ children }: { children: ReactNode }) => {
   useLayoutEffect(() => {
     registerAntdFeedbackApi({
       message,
-      modal: { confirm: modal.confirm },
+      modal: {
+        confirm: modal.confirm,
+        info: modal.info,
+        warning: modal.warning,
+      },
       notification,
     });
   }, [message, modal, notification]);

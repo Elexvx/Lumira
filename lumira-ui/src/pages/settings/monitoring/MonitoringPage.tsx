@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { history, useAccess, useLocation } from '@umijs/max';
-import { Alert, Button, Card, Col, Descriptions, Modal, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
@@ -20,7 +20,7 @@ import type {
   ServiceMonitorSnapshot,
 } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
-import { message } from '@/theme/antdFeedbackBridge';
+import { message, modal } from '@/theme/antdFeedbackBridge';
 import { request } from '@/services/common/request';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
@@ -338,7 +338,7 @@ const usePlatformUpdateMonitor = () => {
       return;
     }
     if (updateStatus?.updaterAvailable !== true) {
-      Modal.info({
+      modal.info({
         title: t('ui.settings.monitoring.monitoring.installPlatformUpdater'),
         content: (
           <Space direction="vertical">
@@ -352,7 +352,7 @@ const usePlatformUpdateMonitor = () => {
     const requiredProtocol = updateStatus.latest?.minUpdaterProtocol || 1;
     const currentProtocol = updateStatus.updaterCapabilities?.protocolVersion || 1;
     if (currentProtocol < requiredProtocol) {
-      Modal.warning({
+      modal.warning({
         title: t('ui.settings.monitoring.monitoring.updaterProtocolIsTooOld'),
         content: <Space direction="vertical"><Typography.Text>{t('ui.settings.monitoring.monitoring.currentProtocolIsThisReleaseRequiresUpgradeThe', { currentProtocol: currentProtocol, requiredProtocol: requiredProtocol })}</Typography.Text><Typography.Text code copyable>sudo node bin/install-lumira-updater.mjs --deploy-dir /opt/lumira/deploy</Typography.Text></Space>,
       });
@@ -369,7 +369,7 @@ const usePlatformUpdateMonitor = () => {
       return;
     }
     const confirmationDetails = resolvePlatformUpdateConfirmationDetails(updateStatus, preflight);
-    Modal.confirm({
+    modal.confirm({
       title: preflight.ready
         ? t('ui.settings.monitoring.monitoring.confirmUpdateToVersion', { targetVersion: confirmationDetails.targetVersion })
         : t('ui.settings.monitoring.monitoring.preflightBlocked'),
@@ -428,7 +428,7 @@ const usePlatformUpdateMonitor = () => {
   };
 
   const handleRollback = async () => {
-    Modal.confirm({
+    modal.confirm({
       title: t('ui.settings.monitoring.monitoring.rollbackPlatformVersion'),
       content: t('ui.settings.monitoring.monitoring.trafficWillHotSwitchToThePreviousStable'),
       okText: t('ui.settings.monitoring.monitoring.startRollback'),
