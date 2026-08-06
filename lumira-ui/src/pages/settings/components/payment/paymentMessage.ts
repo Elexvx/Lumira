@@ -41,3 +41,13 @@ export const paymentConnectivityStatusDisplayName = (lastTestSuccess: boolean | 
   }
   return databaseMessage('payment.connectivity.notTested');
 };
+
+export const paymentConnectivityStatusDisplayName = (lastTestSuccess: boolean | null | undefined, english: boolean) => {
+  if (lastTestSuccess === true) {
+    return english ? 'Available' : '可用';
+  }
+  if (lastTestSuccess === false) {
+    return english ? 'Unavailable' : '不可用';
+  }
+  return english ? 'Not tested' : '未测试';
+};

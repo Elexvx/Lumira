@@ -37,4 +37,12 @@ describe('localizePaymentMessage', () => {
     expect(paymentConnectivityStatusDisplayName(false)).toBe('不可用');
     expect(paymentConnectivityStatusDisplayName(null)).toBe('未测试');
   });
+
+  it('uses concise labels for connectivity status', () => {
+    expect(paymentConnectivityStatusDisplayName(true, false)).toBe('可用');
+    expect(paymentConnectivityStatusDisplayName(false, false)).toBe('不可用');
+    expect(paymentConnectivityStatusDisplayName(null, false)).toBe('未测试');
+    expect(paymentConnectivityStatusDisplayName(true, true)).toBe('Available');
+    expect(paymentConnectivityStatusDisplayName(false, true)).toBe('Unavailable');
+  });
 });
