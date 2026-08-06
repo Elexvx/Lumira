@@ -19,11 +19,6 @@ CREATE TABLE IF NOT EXISTS `sys_platform_setting_definition` (
   KEY `idx_platform_setting_group` (`group_code`,`status`,`deleted`,`sort_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-ALTER TABLE `sys_platform_setting_definition`
-  ADD COLUMN IF NOT EXISTS `config_name` varchar(128) NOT NULL DEFAULT '' AFTER `config_key`,
-  ADD COLUMN IF NOT EXISTS `remark` varchar(512) DEFAULT NULL AFTER `config_name`,
-  ADD COLUMN IF NOT EXISTS `reset_value` text AFTER `default_value`;
-
 INSERT INTO `sys_platform_setting_definition` (`group_code`,`config_key`,`default_value`,`sort_no`,`status`,`created_by`,`updated_by`,`deleted`)
 VALUES
     ('BRANDING','branding.website-name','Lumira',10,'ENABLED',0,0,0),

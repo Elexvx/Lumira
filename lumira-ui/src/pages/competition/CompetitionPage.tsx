@@ -982,6 +982,93 @@ const parseFeaturedFilter = (value: unknown) => {
   return undefined;
 };
 
+const CompetitionSharedBasicFields = ({
+  categoryOptions,
+  levelOptions,
+  onListChange,
+}: {
+  categoryOptions: Array<{ label: string; value: string }>;
+  levelOptions: Array<{ label: string; value: string }>;
+  onListChange?: () => void;
+}) => (
+  <>
+    <section className="competition-basic-section">
+      <Typography.Title className="competition-basic-section__title" level={5}>
+        基础信息
+      </Typography.Title>
+      <div className="competition-basic-section__grid">
+        <Form.Item name="title" label="竞赛名称" rules={[{ required: true, message: '请输入竞赛名称' }]}>
+          <Input maxLength={128} placeholder="请输入竞赛名称" />
+        </Form.Item>
+        <Form.Item name="shortName" label="竞赛简称">
+          <Input maxLength={128} placeholder="请输入竞赛简称" />
+        </Form.Item>
+        <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请选择竞赛类别' }]}>
+          <Select options={categoryOptions} placeholder="请选择竞赛类别" />
+        </Form.Item>
+        <Form.Item name="competitionLevel" label="竞赛级别" rules={[{ required: true, message: '请选择竞赛级别' }]}>
+          <Select options={levelOptions} placeholder="请选择竞赛级别" />
+        </Form.Item>
+      </div>
+    </section>
+
+    <section className="competition-basic-section">
+      <Typography.Title className="competition-basic-section__title" level={5}>
+        组织与参赛
+      </Typography.Title>
+      <Form.List name="organizers">
+        {(fields, { add, remove }) => (
+          <Form.Item className="competition-organizer-list" label="组织者" required>
+            <Space direction="vertical" size={12} className="competition-dynamic-list">
+              {fields.map((field, index) => (
+                <div key={field.key} className="competition-dynamic-list__row">
+                  <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输入组织者类型' }]} className="competition-dynamic-list__role">
+                    <Input maxLength={64} placeholder="例如：主办方" />
+                  </Form.Item>
+                  <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输入组织者名称' }]} className="competition-dynamic-list__main">
+                    <Input maxLength={128} placeholder="例如：大学赛事组委会" />
+                  </Form.Item>
+                  <div className="competition-dynamic-list__actions">
+                    {index === fields.length - 1 ? (
+                      <Button
+                        aria-label="添加组织者"
+                        title="添加组织者"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                          add({ role: '', name: '' });
+                          onListChange?.();
+                        }}
+                      />
+                    ) : null}
+                    <Button
+                      aria-label="移除组织者"
+                      title="移除组织者"
+                      icon={<DeleteOutlined />}
+                      disabled={fields.length <= 1}
+                      onClick={() => {
+                        remove(field.name);
+                        onListChange?.();
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </Space>
+          </Form.Item>
+        )}
+      </Form.List>
+      <div className="competition-basic-section__grid">
+        <Form.Item className="competition-basic-section__full" name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
+          <Input maxLength={255} placeholder="请输入参赛范围" />
+        </Form.Item>
+        <Form.Item className="competition-basic-section__full" name="participationRequirement" label="参赛要求">
+          <Input.TextArea rows={4} placeholder="请输入参赛要求" />
+        </Form.Item>
+      </div>
+    </section>
+  </>
+);
+
 const CompetitionBasicFields = ({
   form,
   categoryOptions,
@@ -6940,11 +7027,11 @@ const CompetitionSettingsPage = () => {
     if (nextSearch === location.search) {
       return;
     }
-    const nextLocation = { pathname: location.pathname, search: nextSearch };
+    const nextPath = `${location.pathname}${nextSearch}`;
     if (replace) {
-      history.replace(nextLocation);
+      history.replace(nextPath);
     } else {
-      history.push(nextLocation);
+      history.push(nextPath);
     }
   }, [location.pathname, location.search]);
 
@@ -7022,6 +7109,15 @@ const CompetitionSettingsPage = () => {
     await activePanelRef.current?.flushPendingSave();
   }, []);
 
+  const flushPanelInBackground = useCallback((panel: CompetitionSettingsPanelHandle | null) => {
+    if (!panel) {
+      return;
+    }
+    window.setTimeout(() => {
+      void panel.flushPendingSave().catch(() => undefined);
+    }, 0);
+  }, []);
+
   const handleBack = useCallback(async () => {
     await flushActivePanel();
     history.push('/competitions/management');
@@ -7048,7 +7144,7 @@ const CompetitionSettingsPage = () => {
     if (nextKey === activeKey) {
       return;
     }
-    await flushActivePanel();
+    const previousPanel = activePanelRef.current;
     setActiveKey(nextKey);
     if (nextKey === 'registration') {
       setRegistrationDetail('MEMBER_FIELD');
@@ -7063,21 +7159,21 @@ const CompetitionSettingsPage = () => {
     updateNavigationUrl(nextKey);
   }, [activeKey, flushActivePanel, updateNavigationUrl]);
 
-  const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
-    const pendingSave = flushActivePanel();
+  const handleRegistrationDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
+    const previousPanel = activePanelRef.current;
     setRegistrationDetail(nextDetail);
     updateNavigationUrl('registration', nextDetail);
-    await pendingSave;
-  }, [flushActivePanel, updateNavigationUrl]);
+    flushPanelInBackground(previousPanel);
+  }, [flushPanelInBackground, updateNavigationUrl]);
 
-  const handleStageDetailChange = useCallback(async (nextKey: string) => {
-    const pendingSave = flushActivePanel();
+  const handleStageDetailChange = useCallback((nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsStageTab;
+    const previousPanel = activePanelRef.current;
     setStageDetail(nextDetail);
     updateNavigationUrl('stages', nextDetail);
-    await pendingSave;
-  }, [flushActivePanel, updateNavigationUrl]);
+    flushPanelInBackground(previousPanel);
+  }, [flushPanelInBackground, updateNavigationUrl]);
 
   return (
     <ManagementPage
