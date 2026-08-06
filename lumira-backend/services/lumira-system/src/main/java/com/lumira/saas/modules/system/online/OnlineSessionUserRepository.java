@@ -16,6 +16,7 @@ public interface OnlineSessionUserRepository {
         private String username;
         private String nickname;
         private String realName;
+        private String avatarUrl;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
         public String getUuid() { return uuid; }
@@ -26,5 +27,7 @@ public interface OnlineSessionUserRepository {
         public void setNickname(String nickname) { this.nickname = nickname; }
         public String getRealName() { return realName; }
         public void setRealName(String realName) { this.realName = realName; }
+        public String getAvatarUrl() { return avatarUrl; }
+        public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     }
 }

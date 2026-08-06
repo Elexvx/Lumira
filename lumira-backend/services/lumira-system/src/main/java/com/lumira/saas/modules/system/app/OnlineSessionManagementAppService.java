@@ -535,6 +535,7 @@ public class OnlineSessionManagementAppService {
         vo.setUsername(session.getUsername());
         vo.setNickname(userRow != null && userRow.getNickname() != null ? userRow.getNickname() : null);
         vo.setRealName(userRow != null && userRow.getRealName() != null ? userRow.getRealName() : null);
+        vo.setAvatarUrl(userRow != null && userRow.getAvatarUrl() != null ? userRow.getAvatarUrl() : null);
         vo.setLoginTime(toLocalDateTime(session.getLoginTime()));
         vo.setLastActivityAt(toLocalDateTime(session.getLastActivityAt()));
         vo.setExpireTime(toLocalDateTime(session.getExpireTime()));

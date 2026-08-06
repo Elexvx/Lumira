@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentUserRoleOption } from '@/types/api';
 import { TOKEN_STORAGE_KEY } from '@/auth/token';
 import {
-  CURRENT_ACCOUNT_ROLE_KEY,
   ROLE_SWITCH_BROADCAST_TYPE,
   ROLE_SWITCH_STORAGE_KEY,
   buildRoleSwitchOptions,
@@ -38,40 +37,28 @@ afterEach(() => {
 
 describe('role switch options', () => {
   it('does not expose role switching while an initial password change is required', () => {
-    expect(canSwitchRole(roles, null, true)).toBe(false);
-    expect(canSwitchRole([], 9, true)).toBe(false);
+    expect(canSwitchRole(roles, true)).toBe(false);
+    expect(canSwitchRole([], true)).toBe(false);
   });
 
   it('exposes role switching for an eligible session with available role state', () => {
-    expect(canSwitchRole(roles, null, false)).toBe(true);
-    expect(canSwitchRole([], 9, false)).toBe(true);
-    expect(canSwitchRole([], null, false)).toBe(false);
+    expect(canSwitchRole(roles, false)).toBe(true);
+    expect(canSwitchRole([], false)).toBe(false);
   });
 
-  it('always exposes current-account permissions and resolves it to roleId null', () => {
-    const options = buildRoleSwitchOptions(roles, 9, {
-      currentAccountLabel: 'Current account permissions',
-      currentAccountMeta: 'Default permission view for the current account',
-    });
+  it('only exposes selectable roles and marks the simulated role as selected', () => {
+    const options = buildRoleSwitchOptions(roles, 9);
 
-    expect(options[0]).toEqual({
-      key: CURRENT_ACCOUNT_ROLE_KEY,
-      roleId: null,
-      label: 'Current account permissions',
-      meta: 'Default permission view for the current account',
-      selected: false,
-    });
-    expect(resolveRoleSwitchTarget(CURRENT_ACCOUNT_ROLE_KEY, options)).toBeNull();
+    expect(options).toHaveLength(2);
+    expect(options.map((option) => option.label)).toEqual(['Reviewer', 'Operator']);
+    expect(options.every((option) => option.roleId != null)).toBe(true);
     expect(options.find((option) => option.roleId === 9)?.selected).toBe(true);
   });
 
-  it('marks current-account permissions as selected outside role simulation', () => {
-    const options = buildRoleSwitchOptions(roles, null, {
-      currentAccountLabel: 'Current account permissions',
-      currentAccountMeta: 'Default permission view for the current account',
-    });
+  it('does not mark a role as selected outside role simulation', () => {
+    const options = buildRoleSwitchOptions(roles, null);
 
-    expect(options[0].selected).toBe(true);
+    expect(options.every((option) => !option.selected)).toBe(true);
   });
 
   it('sends the reset target and rotated refresh cookie through the role switch request', () => {

@@ -4,7 +4,6 @@ import {
   Button,
   Checkbox,
   Descriptions,
-  Drawer,
   Form,
   Input,
   InputNumber,
@@ -27,6 +26,7 @@ import {
   listManualPaymentOrders,
 } from '@/services/payment/api';
 import { message } from '@/theme/antdFeedbackBridge';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 import type { PaymentOrderRecord, PaymentProviderSettings } from '@/types/api';
 import {
   normalizePaymentEnvironment,
@@ -413,9 +413,8 @@ export const SandboxPaymentOrderTab = ({
         locale={{ emptyText: t('ui.settings.payment.sandboxpaymentorder.noManualPaymentOrders') }}
       />
 
-      <Drawer
+      <StandardDrawer
         title={t('ui.settings.payment.sandboxpaymentorder.transactionDetails')}
-        width={560}
         open={Boolean(detailOrder)}
         onClose={() => setDetailOrder(undefined)}
         destroyOnClose
@@ -465,11 +464,10 @@ export const SandboxPaymentOrderTab = ({
             ) : null}
           </Descriptions>
         ) : null}
-      </Drawer>
+      </StandardDrawer>
 
-      <Drawer
+      <StandardDrawer
         title={t('ui.settings.payment.sandboxpaymentorder.createManualPaymentOrder')}
-        width={500}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         destroyOnClose
@@ -585,7 +583,7 @@ export const SandboxPaymentOrderTab = ({
             </Form.Item>
           ) : null}
         </Form>
-      </Drawer>
+      </StandardDrawer>
     </Space>
   );
 };

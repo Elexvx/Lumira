@@ -18,13 +18,13 @@ public class JdbcOnlineSessionUserRepository implements OnlineSessionUserReposit
     public List<UserRecord> findByIds(Collection<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) return List.of();
         String placeholders = userIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        return database.query("select id, uuid, username, nickname, real_name as realName from sys_user where deleted = 0 and id in (" + placeholders + ")",
+        return database.query("select id, uuid, username, nickname, real_name as realName, avatar_url as avatarUrl from sys_user where deleted = 0 and id in (" + placeholders + ")",
                 new BeanPropertyRowMapper<>(UserRecord.class), userIds.toArray());
     }
 
     @Override
     public Optional<UserRecord> findById(Long userId) {
-        return database.query("select id, uuid, username, nickname, real_name as realName from sys_user where id = ? and deleted = 0 limit 1",
+        return database.query("select id, uuid, username, nickname, real_name as realName, avatar_url as avatarUrl from sys_user where id = ? and deleted = 0 limit 1",
                 new BeanPropertyRowMapper<>(UserRecord.class), userId).stream().findFirst();
     }
 

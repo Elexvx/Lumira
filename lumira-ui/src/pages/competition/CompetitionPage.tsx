@@ -67,6 +67,7 @@ import {
   getCompetitionCreateMissingFields,
   isBasicSettingsPageReadyToSave,
   isConfigModuleDraftSaveCurrent,
+  isConfigModuleItemKeyDuplicate,
   isConfigModuleReadyToSave,
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
@@ -5479,7 +5480,19 @@ const renderConfigItemFields = (
               </Form.Item>
             ) : null}
           </Form.Item>
-          <Form.Item name={[fieldName, 'itemKey']} label="字段标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
+          <Form.Item
+            name={[fieldName, 'itemKey']}
+            label="字段标识"
+            normalize={normalizeConfigKey}
+            rules={[
+              { required: true, message: '请输入字段标识' },
+              ({ getFieldValue }) => ({
+                validator: () => isConfigModuleItemKeyDuplicate(getFieldValue('items') || [], fieldName)
+                  ? Promise.reject(new Error('同一适用范围内的字段标识不能重复'))
+                  : Promise.resolve(),
+              }),
+            ]}
+          >
             <Input placeholder="例如 mobile、school、projectName" maxLength={64} />
           </Form.Item>
           <Form.Item name={[fieldName, 'title']} label="字段名称" rules={[{ required: true, message: '请输入字段名称' }]}>
@@ -5623,7 +5636,18 @@ const renderFieldSettingsTable = (
             <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入字段名称' }]}>
               <Input placeholder="字段名称" maxLength={64} />
             </Form.Item>
-            <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
+            <Form.Item
+              name={[field.name, 'itemKey']}
+              normalize={normalizeConfigKey}
+              rules={[
+                { required: true, message: '请输入字段标识' },
+                ({ getFieldValue }) => ({
+                  validator: () => isConfigModuleItemKeyDuplicate(getFieldValue('items') || [], field.name)
+                    ? Promise.reject(new Error('同一适用范围内的字段标识不能重复'))
+                    : Promise.resolve(),
+                }),
+              ]}
+            >
               <Input placeholder="字段标识" maxLength={64} />
             </Form.Item>
             <Form.Item name={[field.name, 'metadata', 'fieldType']} rules={[{ required: true, message: '请选择字段类型' }]}>

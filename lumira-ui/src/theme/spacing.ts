@@ -59,8 +59,8 @@ export const APP_SPACING = {
     mobile: 10,
   },
   standardDrawerWidth: {
-    desktop: 560,
-    mobile: 560,
+    desktop: 700,
+    mobile: 700,
   },
   avatarSize: {
     tiny: { desktop: 32, mobile: 32 },

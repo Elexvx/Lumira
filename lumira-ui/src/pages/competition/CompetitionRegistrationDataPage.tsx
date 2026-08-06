@@ -1,11 +1,12 @@
 import { DownloadOutlined, EyeOutlined, FileZipOutlined, TeamOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { useAccess } from '@umijs/max';
-import { Alert, Button, Card, Descriptions, Drawer, Empty, Space, Spin, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Table, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 import { useResponsive } from '@/hooks/useResponsive';
 import { message } from '@/theme/antdFeedbackBridge';
 import { requestFile } from '@/services/common/request';
@@ -482,9 +483,8 @@ const CompetitionRegistrationDataPage = () => {
         />
       </ManagementPageBody>
 
-      <Drawer
+      <StandardDrawer
         title={detail ? `${detail.teamName || '报名团队'} · 完整资料` : '报名团队资料'}
-        width="min(1100px, 96vw)"
         open={detailOpen}
         destroyOnHidden
         onClose={() => setDetailOpen(false)}
@@ -588,7 +588,7 @@ const CompetitionRegistrationDataPage = () => {
             </Space>
           ) : detailLoading ? null : <Empty description="未能加载报名资料" />}
         </Spin>
-      </Drawer>
+      </StandardDrawer>
     </ManagementPage>
   );
 };

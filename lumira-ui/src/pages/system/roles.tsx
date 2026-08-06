@@ -424,7 +424,6 @@ const RoleManagementPage = () => {
         open={editorDrawer.open}
         onClose={editorDrawer.onClose}
         footerActions={editorDrawer.footerActions}
-        contentSize="wide"
         className="role-editor-drawer"
       >
         <Form {...editorDrawer.formProps}>

@@ -1638,6 +1638,7 @@ export interface OnlineSessionRecord {
   username: string;
   nickname?: string | null;
   realName?: string | null;
+  avatarUrl?: string | null;
   loginTime?: string | null;
   lastActivityAt?: string | null;
   expireTime?: string | null;

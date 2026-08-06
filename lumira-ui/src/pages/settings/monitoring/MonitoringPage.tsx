@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { history, useAccess, useLocation } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
-import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
+import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleFilled, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
 import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -369,10 +369,17 @@ const usePlatformUpdateMonitor = () => {
       return;
     }
     const confirmationDetails = resolvePlatformUpdateConfirmationDetails(updateStatus, preflight);
+    const confirmationTitle = preflight.ready
+      ? t('ui.settings.monitoring.monitoring.confirmUpdateToVersion', { targetVersion: confirmationDetails.targetVersion })
+      : t('ui.settings.monitoring.monitoring.preflightBlocked');
     modal.confirm({
-      title: preflight.ready
-        ? t('ui.settings.monitoring.monitoring.confirmUpdateToVersion', { targetVersion: confirmationDetails.targetVersion })
-        : t('ui.settings.monitoring.monitoring.preflightBlocked'),
+      icon: null,
+      title: (
+        <span className="saas-platform-update-confirm__title">
+          <ExclamationCircleFilled aria-hidden />
+          <span>{confirmationTitle}</span>
+        </span>
+      ),
       content: (
         <Space direction="vertical" style={{ width: '100%' }}>
           {preflight.ready ? (

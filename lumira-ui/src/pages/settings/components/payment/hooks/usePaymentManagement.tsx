@@ -126,8 +126,9 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
         fixed: 'right',
         width: 180,
         render: (_, record) => (
-          <Space size={8} wrap>
+          <Space className="saas-table-action-bar" size={8} wrap={false}>
             <Button
+              type="link"
               size="small"
               onClick={() => openConfigDrawer(record.providerCode as PaymentProviderCode)}
               disabled={!canUpdateSettings}
@@ -141,7 +142,7 @@ export const usePaymentManagement = ({ canUpdateSettings, canTestSettings, isMob
               cancelText={t('ui.settings.payment.usepayment.cancel')}
               onConfirm={() => void handleTestProvider(record.providerCode as PaymentProviderCode)}
             >
-              <Button size="small" disabled={!record.configured || !canTestSettings}>{t('ui.settings.payment.usepayment.test')}</Button>
+              <Button type="link" size="small" disabled={!record.configured || !canTestSettings}>{t('ui.settings.payment.usepayment.test')}</Button>
             </Popconfirm>
           </Space>
         ),

@@ -2,15 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { ReloadOutlined } from '@ant-design/icons';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Avatar, Button, Empty, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
+import { Button, Empty, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { UserAvatar } from '@/components/UserAvatar';
 import { request } from '@/services/common/request';
 import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
-import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './Home.css';
 
@@ -29,15 +29,6 @@ const formatDateTime = (value?: string | null) => {
 
   const parsed = dayjs(value);
   return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm') : value;
-};
-
-const buildInitials = (name?: string | null, fallback = 'U') => {
-  const source = name?.trim();
-  if (!source) {
-    return fallback;
-  }
-
-  return source.slice(0, 1).toUpperCase();
 };
 
 const buildGreeting = (hour: number) => {
@@ -218,7 +209,6 @@ const useDashboardHome = () => {
     loginLogColumns,
     operationLogColumns,
     pageContainerToken,
-    buildInitials,
     LOGIN_LOG_TABLE_SCROLL_X,
     OPERATION_LOG_TABLE_SCROLL_X,
   };
@@ -237,7 +227,6 @@ const DashboardHomePage = () => {
     loginLogColumns,
     operationLogColumns,
     pageContainerToken,
-    buildInitials,
     LOGIN_LOG_TABLE_SCROLL_X,
     OPERATION_LOG_TABLE_SCROLL_X,
   } = useDashboardHome();
@@ -259,9 +248,13 @@ const DashboardHomePage = () => {
         <ProCard variant="outlined" className="saas-dashboard-home__hero">
           <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
-              <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={normalizeUploadUrl(currentUser?.avatarUrl) || undefined}>
-                {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
-              </Avatar>
+              <UserAvatar
+                size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)}
+                avatarUrl={currentUser?.avatarUrl}
+                userId={currentUser?.userId}
+                userUuid={currentUser?.userUuid}
+                username={currentUser?.username}
+              />
               <Space orientation="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
                 <Typography.Title level={3} style={{ margin: 0 }}>
                   {greeting}，{displayName}

@@ -1132,7 +1132,7 @@ export const RecordsManagementPage = () => {
           pagination={{ pageSize: 10, showSizeChanger: true }}
         />
       </ManagementPageBody>
-      <ManagementDrawer title="证书详情" open={Boolean(detail)} onClose={() => setDetail(null)} width={760}>
+      <ManagementDrawer title="证书详情" open={Boolean(detail)} onClose={() => setDetail(null)}>
         {detail ? (
           <Space direction="vertical" size={16} className="certificate-detail">
             <Descriptions

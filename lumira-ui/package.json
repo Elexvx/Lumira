@@ -41,6 +41,7 @@
     "@ant-design/pro-components": "^3.1.12-0",
     "@ant-design/x": "^2.7.0",
     "@ant-design/x-markdown": "^2.7.0",
+    "@outpacelabs/avatars": "0.4.0",
     "@tanstack/react-query": "^5.100.9",
     "@umijs/max": "^4.6.51",
     "@xyflow/react": "^12.11.1",

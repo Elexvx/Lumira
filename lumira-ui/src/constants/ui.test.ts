@@ -6,10 +6,11 @@ import {
 } from './ui';
 
 describe('management drawer widths', () => {
-  it('uses progressively wider desktop sizes for richer content', () => {
-    expect(MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE.compact.desktop).toContain('--saas-spacing-560');
-    expect(MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE.default.desktop).toContain('--saas-spacing-700');
-    expect(MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE.wide.desktop).toContain('--saas-spacing-840');
+  it('uses one global desktop width for every drawer content type', () => {
+    Object.values(MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE).forEach((widths) => {
+      expect(widths).toBe(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT);
+      expect(widths.desktop).toContain('--saas-spacing-700');
+    });
   });
 
   it('keeps every size viewport-safe and uses the full mobile viewport', () => {
@@ -19,8 +20,8 @@ describe('management drawer widths', () => {
     });
   });
 
-  it('does not widen unrelated utility drawers', () => {
-    expect(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT.desktop).toContain('--saas-spacing-560');
+  it('uses the shared width for utility drawers too', () => {
+    expect(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT.desktop).toContain('--saas-spacing-700');
     expect(STANDARD_DRAWER_WIDTH).toBe(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT.desktop);
   });
 });

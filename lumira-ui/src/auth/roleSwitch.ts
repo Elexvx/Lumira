@@ -3,7 +3,6 @@ import type { RequestOptions } from '@/services/common/requestInternalsTypes';
 import type { CurrentUserRoleOption } from '@/types/api';
 import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
 
-export const CURRENT_ACCOUNT_ROLE_KEY = 'role-current-account';
 export const ROLE_SWITCH_STORAGE_KEY = 'auth_role_switch_epoch';
 export const ROLE_SWITCH_BROADCAST_TYPE = 'role-switched';
 
@@ -46,45 +45,31 @@ const resolveStoredRoleSwitchOccurrenceId = (value: string) => {
 
 export interface RoleSwitchOption {
   key: string;
-  roleId: number | null;
+  roleId: number;
   label: string;
-  meta?: string;
   selected: boolean;
 }
 
 export const canSwitchRole = (
   availableRoles: CurrentUserRoleOption[],
-  simulatedRoleId: number | null,
   requiresPasswordChange: boolean,
-) => !requiresPasswordChange && (availableRoles.length > 0 || simulatedRoleId != null);
+) => !requiresPasswordChange && availableRoles.length > 0;
 
 export const buildRoleSwitchOptions = (
   availableRoles: CurrentUserRoleOption[],
   simulatedRoleId: number | null,
-  labels: {
-    currentAccountLabel: string;
-    currentAccountMeta: string;
-  },
-): RoleSwitchOption[] => [
-  {
-    key: CURRENT_ACCOUNT_ROLE_KEY,
-    roleId: null,
-    label: labels.currentAccountLabel,
-    meta: labels.currentAccountMeta,
-    selected: simulatedRoleId == null,
-  },
-  ...availableRoles.map((role) => ({
+): RoleSwitchOption[] =>
+  availableRoles.map((role) => ({
     key: String(role.id),
     roleId: role.id,
     label: role.roleName,
     selected: simulatedRoleId === role.id,
-  })),
-];
+  }));
 
 export const resolveRoleSwitchTarget = (
   value: string,
   options: RoleSwitchOption[],
-): number | null | undefined => options.find((option) => option.key === value)?.roleId;
+): number | undefined => options.find((option) => option.key === value)?.roleId;
 
 export const buildSimulatedRoleSwitchRequestOptions = (
   roleId: number | null,

@@ -23,6 +23,7 @@ import type { OnlineSessionEventRecord, OnlineSessionRecord, PagedResult } from 
 import { API_OPTS } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { UserAvatar } from '@/components/UserAvatar';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
 import { resolveRuntimeLocale } from '@/i18n/locale';
@@ -185,6 +186,13 @@ const buildOnlineUserColumns = ({
     width: 'var(--saas-spacing-360)',
     render: (_, record) => (
       <Space className="saas-online-users-page__user-cell" size={userCellGap} wrap={false}>
+        <UserAvatar
+          size="small"
+          avatarUrl={record.avatarUrl}
+          userId={record.userId}
+          userUuid={record.userUuid}
+          username={record.username}
+        />
         <Typography.Text className="saas-online-users-page__user-name" strong ellipsis={{ tooltip: record.realName || record.nickname || record.username }}>
           {record.realName || record.nickname || record.username}
         </Typography.Text>
@@ -325,6 +333,19 @@ const buildOnlineUserColumns = ({
 ];
 
 const buildOnlineUserDetailColumns = (): ProDescriptionsItemProps<OnlineSessionRecord>[] => [
+  {
+    title: t('ui.system.online-users.user'),
+    dataIndex: 'avatarUrl',
+    render: (_, record) => (
+      <UserAvatar
+        size={48}
+        avatarUrl={record.avatarUrl}
+        userId={record.userId}
+        userUuid={record.userUuid}
+        username={record.username}
+      />
+    ),
+  },
   { title: t('ui.system.online-users.username'), dataIndex: 'username' },
   { title: t('ui.system.online-users.fullName'), dataIndex: 'realName', renderText: (value) => value || '-' },
   { title: t('ui.system.online-users.nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },

@@ -176,6 +176,19 @@ body.ant-scrolling-effect {
   overflow-x: hidden !important;
 }
 
+.saas-platform-update-confirm__title {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--ant-margin-sm);
+}
+
+.saas-platform-update-confirm__title > .anticon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ant-color-warning);
+  font-size: var(--ant-font-height, 22px);
+}
+
 body,
 #root {
   background-color: transparent;
@@ -214,23 +227,49 @@ body,
   min-width: var(--saas-spacing-88);
 }
 
-.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item {
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-form-item {
+  width: 100%;
   flex-direction: column;
 }
 
-.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item-label {
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-form-item-row {
+  flex-direction: column;
+}
+
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-form-item-label {
   flex: none;
+  width: 100%;
   max-width: 100%;
   text-align: left;
 }
 
-.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item-label > label {
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-form-item-label > label {
   height: auto;
 }
 
-.saas-management-drawer .ant-drawer-body > .ant-form:not(.ant-form-inline) .ant-form-item-control {
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-form-item-control {
   flex: 1 1 auto;
+  width: 100%;
   max-width: 100%;
+}
+
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-row:has(.ant-form-item) > .ant-col {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-pro-form-group-container,
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-space:has(> .ant-space-item > .ant-form-item) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-pro-form-group-container > *,
+.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-space:has(> .ant-space-item > .ant-form-item) > .ant-space-item {
+  width: 100%;
 }
 
 /*

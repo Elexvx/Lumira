@@ -88,6 +88,13 @@ class OnlineSessionManagementAppServiceTest {
         AuthSession staleSession = buildSession("stale-session", userId, now.minusSeconds(3600), now.plusSeconds(3600));
         AuthSession expiredSession = buildSession("expired-session", userId, now.minusSeconds(60), now.minusSeconds(60));
 
+        UserRecord user = new UserRecord();
+        user.setId(userId);
+        user.setUuid("user-uuid-" + userId);
+        user.setUsername("user-" + userId);
+        user.setAvatarUrl("/api/uploads/avatar/user-2001.png");
+        jdbcTemplate.userRows = List.of(user);
+
         authSessionStore.put(activeSession);
         authSessionStore.put(staleSession);
         authSessionStore.put(expiredSession);
@@ -99,6 +106,7 @@ class OnlineSessionManagementAppServiceTest {
         assertEquals(1L, page.getTotal());
         assertEquals(1, page.getRecords().size());
         assertEquals(activeSession.getSessionId(), page.getRecords().getFirst().getSessionId());
+        assertEquals("/api/uploads/avatar/user-2001.png", page.getRecords().getFirst().getAvatarUrl());
         assertEquals(1, authSessionStore.batchLookupCounts);
         assertTrue(authSessionStore.removedSessions.contains(staleSession));
         assertTrue(authSessionStore.removedSessions.contains(expiredSession));

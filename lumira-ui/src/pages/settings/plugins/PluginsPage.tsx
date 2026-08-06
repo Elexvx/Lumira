@@ -1,6 +1,6 @@
 import { formatMessage } from '@/i18n/formatMessage';
-import { ArrowLeftOutlined, BuildOutlined, CloudUploadOutlined, DeleteOutlined, SyncOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
+import { CloudUploadOutlined, SyncOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Descriptions, Input, Modal, Radio, Space, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { DescriptionsProps } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -19,120 +19,12 @@ import type { MenuNode, PluginDefinition, PluginVersion, PluginAvailability } fr
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { history } from '@umijs/max';
-import SensitiveWordsPage from '@/pages/plugins/SensitiveWordsPage';
 import { localizeBuiltinPluginDefinition, localizePluginValue } from './pluginPresentation';
 import { refreshPluginMutationSession } from './pluginMutationSession';
+import { PluginCardsGrid } from './PluginCardsGrid';
 
 const pluginMessage = (id: string, defaultMessage: string) => formatMessage({ id, defaultMessage });
 const pluginValue = (value?: string | null) => localizePluginValue(value, pluginMessage);
-
-const resolvePluginManagementPath = (pluginCode: string) => {
-  if (pluginCode === 'sensitive-words') {
-    return '/settings/sensitive-words';
-  }
-  if (pluginCode === 'work-order-feedback') {
-    return '/work-order-feedback';
-  }
-  return null;
-};
-
-const PluginCardsGrid = ({
-  isMobile,
-  loading,
-  definitions,
-  currentAvailableMap,
-  getPreferredEnableVersion,
-  mutationLoading,
-  canEnable,
-  canDisable,
-  onToggleEnable,
-  onOpenDetails,
-  onOpenManagement,
-  onUninstall,
-}: {
-  isMobile: boolean;
-  loading: boolean;
-  definitions: PluginDefinition[];
-  currentAvailableMap: Map<string, PluginAvailability>;
-  getPreferredEnableVersion: (pluginCode: string) => { version: string } | undefined;
-  mutationLoading: boolean;
-  canEnable: boolean;
-  canDisable: boolean;
-  onToggleEnable: (pluginCode: string, enabled: boolean, versionLabel?: string) => void;
-  onOpenDetails: (plugin: PluginDefinition) => void;
-  onOpenManagement: (plugin: PluginDefinition) => void;
-  onUninstall: (plugin: PluginDefinition) => void;
-}) => {
-  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
-  const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
-
-  if (!loading && !definitions.length) {
-    return (
-      <div style={{ minHeight: 'var(--saas-spacing-240)', display: 'grid', placeItems: 'center' }}>
-        <Empty description={pluginMessage('page.plugins.empty', 'No plugin definitions')} />
-      </div>
-    );
-  }
-
-  return (
-    <Row gutter={rowGutter}>
-      {definitions.map((plugin) => {
-        const preferredEnableVersion = getPreferredEnableVersion(plugin.pluginCode);
-        const enabledPlugin = currentAvailableMap.get(plugin.pluginCode);
-        const enabled = Boolean(enabledPlugin);
-        const versionLabel = enabledPlugin?.version || preferredEnableVersion?.version;
-        const canToggle = enabled ? canDisable : canEnable;
-        const managementPath = enabled ? resolvePluginManagementPath(plugin.pluginCode) : null;
-
-        return (
-          <Col key={plugin.pluginCode} xs={24} lg={12} xxl={8}>
-            <Card
-              loading={loading}
-              style={{ height: '100%' }}
-              bodyStyle={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
-              title={
-                <Space wrap>
-                  <BuildOutlined />
-                  <span>{plugin.pluginName}</span>
-                  <Tag color={enabled ? 'green' : 'default'}>
-                    {enabled
-                      ? pluginMessage('page.plugins.enabled.true', 'Enabled')
-                      : pluginMessage('page.plugins.enabled.false', 'Disabled')}
-                  </Tag>
-                </Space>
-              }
-              extra={
-                <Switch
-                  checked={enabled}
-                  disabled={mutationLoading || !versionLabel || !canToggle}
-                  onChange={(checked) => onToggleEnable(plugin.pluginCode, checked, versionLabel)}
-                />
-              }
-            >
-              <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-                <Typography.Paragraph style={{ marginBottom: 0 }}>
-                  {plugin.description || pluginMessage('page.plugins.noDescription', 'No plugin description')}
-                </Typography.Paragraph>
-                <Space wrap>
-                  {managementPath ? (
-                    <Button type="primary" onClick={() => onOpenManagement(plugin)}>
-                      {pluginMessage('page.plugins.manage', 'Manage')}
-                    </Button>
-                  ) : null}
-                  <Button onClick={() => onOpenDetails(plugin)}>{pluginMessage('page.plugins.details', 'Details')}</Button>
-                  <Button danger disabled={!canDisable || plugin.builtinFlag === 1} icon={<DeleteOutlined />} onClick={() => onUninstall(plugin)}>
-                    {pluginMessage('page.plugins.uninstallAction', 'Uninstall')}
-                  </Button>
-                </Space>
-              </Space>
-            </Card>
-          </Col>
-        );
-      })}
-    </Row>
-  );
-};
 
 const usePluginsPageData = () => {
   const { setInitialState } = useInitialStateModel();
@@ -1128,7 +1020,6 @@ const PluginUploadModal = ({
 
 const PluginsPage = () => {
   const { token } = theme.useToken();
-  const [managedPluginCode, setManagedPluginCode] = useState<string | null>(null);
   const { pluginPageDataPack } = usePluginsPageData();
   const localizedDefinitions = pluginPageDataPack.definitions.map((plugin) =>
     localizeBuiltinPluginDefinition(
@@ -1188,15 +1079,6 @@ const PluginsPage = () => {
     confirmUninstall,
     confirmDisable,
   } = { ...pluginPageDataPack, ...pluginActions };
-  const managedPlugin = managedPluginCode ? currentAvailableMap.get(managedPluginCode) : undefined;
-  const managedPluginDefinition = managedPluginCode
-    ? filteredDefinitions.find((plugin) => plugin.pluginCode === managedPluginCode)
-    : undefined;
-  const managedPluginTitle = managedPluginDefinition?.pluginName || managedPlugin?.pluginName || managedPluginCode;
-  const managedPluginContent = managedPluginCode === 'sensitive-words'
-    ? <SensitiveWordsPage embedded />
-    : null;
-
   return (
     <ManagementPage
       content={null}
@@ -1211,61 +1093,37 @@ const PluginsPage = () => {
             gap: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile),
           }}
         >
-          {managedPluginContent ? (
-            <>
-              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Space wrap>
-                  <Button icon={<ArrowLeftOutlined />} onClick={() => setManagedPluginCode(null)}>
-                    {pluginMessage('page.plugins.backToList', 'Back to plugins')}
-                  </Button>
-                  <Typography.Text strong>{managedPluginTitle}</Typography.Text>
-                </Space>
-              </Space>
-              {managedPluginContent}
-            </>
-          ) : (
-            <>
-              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Input.Search
-                  allowClear
-                  placeholder={formatMessage({ id: 'page.plugins.searchPlaceholder', defaultMessage: 'Enter plugin code or name' })}
-                  onChange={(event) => setSearchKeyword(event.target.value)}
-                  style={{ width: 'var(--saas-spacing-320)', maxWidth: '100%', flex: '0 1 var(--saas-spacing-320)' }}
-                />
-                <Space wrap>
-                  <Button icon={<SyncOutlined />} onClick={() => void pluginPageDataPack.loadOverview()} loading={loading || mutationLoading}>
-                    {formatMessage({ id: 'page.plugins.refresh', defaultMessage: 'Refresh' })}
-                  </Button>
-                  <Button icon={<CloudUploadOutlined />} type="primary" disabled={!canUploadPlugin} onClick={() => setUploadVisible(true)}>
-                    {formatMessage({ id: 'page.plugins.upload', defaultMessage: 'Upload plugin' })}
-                  </Button>
-                </Space>
-              </Space>
-              <PluginCardsGrid
-                loading={loading}
-                definitions={filteredDefinitions}
-                currentAvailableMap={currentAvailableMap}
-                getPreferredEnableVersion={getPreferredEnableVersionForPlugin}
-                mutationLoading={mutationLoading}
-                canEnable={canEnablePlugin}
-                canDisable={canDisablePlugin}
-                isMobile={responsive.isMobile}
-                onToggleEnable={(pluginCode, enabled, versionLabel) =>
-                  void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
-                }
-                onOpenDetails={handleOpenDetails}
-                onOpenManagement={(plugin) => {
-                  const managementPath = resolvePluginManagementPath(plugin.pluginCode);
-                  if (managementPath) {
-                    history.push(managementPath);
-                    return;
-                  }
-                  setManagedPluginCode(plugin.pluginCode);
-                }}
-                onUninstall={handleUninstall}
-              />
-            </>
-          )}
+          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Input.Search
+              allowClear
+              placeholder={formatMessage({ id: 'page.plugins.searchPlaceholder', defaultMessage: 'Enter plugin code or name' })}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+              style={{ width: 'var(--saas-spacing-320)', maxWidth: '100%', flex: '0 1 var(--saas-spacing-320)' }}
+            />
+            <Space wrap>
+              <Button icon={<SyncOutlined />} onClick={() => void pluginPageDataPack.loadOverview()} loading={loading || mutationLoading}>
+                {formatMessage({ id: 'page.plugins.refresh', defaultMessage: 'Refresh' })}
+              </Button>
+              <Button icon={<CloudUploadOutlined />} type="primary" disabled={!canUploadPlugin} onClick={() => setUploadVisible(true)}>
+                {formatMessage({ id: 'page.plugins.upload', defaultMessage: 'Upload plugin' })}
+              </Button>
+            </Space>
+          </Space>
+          <PluginCardsGrid
+            loading={loading}
+            definitions={filteredDefinitions}
+            currentAvailableMap={currentAvailableMap}
+            getPreferredEnableVersion={getPreferredEnableVersionForPlugin}
+            mutationLoading={mutationLoading}
+            canEnable={canEnablePlugin}
+            canDisable={canDisablePlugin}
+            isMobile={responsive.isMobile}
+            onToggleEnable={(pluginCode, enabled, versionLabel) =>
+              void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
+            }
+            onOpenDetails={handleOpenDetails}
+            onUninstall={handleUninstall}
+          />
         </Card>
       </ManagementPageBody>
       <PluginVersionDrawer

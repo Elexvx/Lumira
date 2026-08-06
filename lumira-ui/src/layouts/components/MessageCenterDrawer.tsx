@@ -3,7 +3,6 @@ import { Alert, Badge, Button, Empty, List, Space, Spin, Tag, Tabs, Typography, 
 import type { NotificationArgsProps } from 'antd';
 import { getLocale, useIntl } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { isTrustedCurrentUser } from '@/auth/sessionState';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -758,7 +757,6 @@ export const MessageCenterDrawer = () => {
         title={intl.formatMessage({ id: 'message.center.title', defaultMessage: '消息中心' })}
         open={open}
         onClose={() => setOpen(false)}
-        width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
         destroyOnHidden={false}
       >
         {contentModel.canOpenMessageCenter ? (

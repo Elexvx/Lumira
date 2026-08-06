@@ -51,6 +51,42 @@ describe('access', () => {
     expect(result.canVisitSystemPersonalization).toBe(false);
   });
 
+  it('exposes administrator-only settings while simulating the administrator role', () => {
+    const result = access({
+      currentUser: {
+        ...userWithPermissions([]),
+        simulatedRoleId: 1001,
+        availableRoles: [
+          { id: 1002, roleCode: 'commonuser', roleName: 'Common User', roleType: 'FUNCTIONAL' },
+          { id: 1001, roleCode: 'ADMIN', roleName: 'Administrator', roleType: 'SYSTEM' },
+        ],
+      },
+    });
+
+    expect(result.canVisitSystemSettings).toBe(true);
+    expect(result.canVisitSystemPersonalization).toBe(true);
+    expect(result.canVisitAiEmployees).toBe(true);
+  });
+
+  it('does not inherit administrator access while simulating a non-admin role', () => {
+    const result = access({
+      currentUser: {
+        ...userWithPermissions([]),
+        userId: 1001,
+        username: 'admin',
+        simulatedRoleId: 1002,
+        availableRoles: [
+          { id: 1002, roleCode: 'commonuser', roleName: 'Common User', roleType: 'FUNCTIONAL' },
+          { id: 1001, roleCode: 'ADMIN', roleName: 'Administrator', roleType: 'SYSTEM' },
+        ],
+      },
+    });
+
+    expect(result.canVisitSystemSettings).toBe(false);
+    expect(result.canVisitSystemPersonalization).toBe(false);
+    expect(result.canVisitAiEmployees).toBe(false);
+  });
+
   it('allows system security, profile fields, and verification for config viewers', () => {
     const result = access({ currentUser: userWithPermissions(['system:config:view']) });
 

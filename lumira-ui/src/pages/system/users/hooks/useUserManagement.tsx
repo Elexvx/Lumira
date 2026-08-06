@@ -1,4 +1,4 @@
-import { Form, Tag, Typography } from 'antd';
+import { Form, Space, Tag, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,6 +20,7 @@ import { confirmAction } from '@/utils/confirm';
 import type { DepartmentRecord, PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/api';
 import { maskEmail, maskMobile } from '@/utils/sensitive';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { UserAvatar } from '@/components/UserAvatar';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
 
@@ -145,6 +146,19 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     title: t('ui.system.users.useuser.username'),
     dataIndex: 'username',
     search: true,
+    width: 200,
+    render: (_, record) => (
+      <Space size="small" wrap={false}>
+        <UserAvatar
+          size="small"
+          avatarUrl={record.avatarUrl}
+          userId={record.id}
+          userUuid={record.userUuid || record.uid}
+          username={record.username}
+        />
+        <Typography.Text ellipsis={{ tooltip: record.username }}>{record.username}</Typography.Text>
+      </Space>
+    ),
   },
 ];
 

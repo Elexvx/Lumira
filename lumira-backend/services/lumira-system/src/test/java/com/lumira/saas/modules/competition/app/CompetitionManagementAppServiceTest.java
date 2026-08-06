@@ -857,12 +857,88 @@ class CompetitionManagementAppServiceTest {
                 .contains("created_by_uuid")
                 .contains("updated_by_uuid");
         assertThat(jdbcTemplate.updates.get(2))
+                .contains("delete from competition_config_item")
+                .contains("item_type = ?")
+                .contains("item_key = ?")
+                .contains("deleted = 1");
+        assertThat(jdbcTemplate.updates.get(3))
                 .contains("update competition_config_item")
                 .contains("set deleted = 1")
                 .contains("updated_by_uuid")
                 .contains("competition_uuid = ?")
                 .contains("config_set_id = ?")
                 .contains("id in");
+    }
+
+    @Test
+    void saveSettingsModuleMatchesKeysCaseInsensitivelyLikeTheDatabaseUniqueIndex() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionDTO.ConfigItemRequest requestItem = new CompetitionDTO.ConfigItemRequest();
+        requestItem.setItemType("MEMBER_FIELD");
+        requestItem.setItemKey("school");
+        requestItem.setTitle("学校");
+        requestItem.setContentJson("{\"fieldType\":\"TEXT\"}");
+        requestItem.setEnabled(true);
+        CompetitionDTO.SettingsModuleRequest request = new CompetitionDTO.SettingsModuleRequest();
+        request.setItems(List.of(requestItem));
+        CompetitionVO.ConfigItem existing = configItem(
+                "MEMBER_FIELD",
+                "School",
+                "School",
+                null,
+                "{\"fieldType\":\"TEXT\"}"
+        );
+        jdbcTemplate.enqueue(
+                List.of(competition("draft")),
+                List.of(configSet()),
+                List.of(existing),
+                List.of(competition("draft")),
+                List.of(configSet()),
+                List.of(),
+                List.of(existing),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        jdbcTemplate.updateCount = 1;
+
+        service.saveSettingsModule(admin(), "competition-uuid", "fields", request);
+
+        assertThat(jdbcTemplate.updates)
+                .anyMatch(sql -> sql.contains("update competition_config_item") && sql.contains("item_key = ? and deleted = 0"));
+        assertThat(jdbcTemplate.updates).noneMatch(sql -> sql.contains("insert into competition_config_item"));
+    }
+
+    @Test
+    void saveSettingsModuleRejectsCaseInsensitiveDuplicateKeysBeforeDatabaseWrite() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionDTO.ConfigItemRequest first = new CompetitionDTO.ConfigItemRequest();
+        first.setItemType("MEMBER_FIELD");
+        first.setItemKey("School");
+        first.setTitle("学校");
+        first.setContentJson("{\"fieldType\":\"TEXT\"}");
+        CompetitionDTO.ConfigItemRequest duplicate = new CompetitionDTO.ConfigItemRequest();
+        duplicate.setItemType("MEMBER_FIELD");
+        duplicate.setItemKey("school");
+        duplicate.setTitle("院校");
+        duplicate.setContentJson("{\"fieldType\":\"TEXT\"}");
+        CompetitionDTO.SettingsModuleRequest request = new CompetitionDTO.SettingsModuleRequest();
+        request.setItems(List.of(first, duplicate));
+        jdbcTemplate.enqueue(
+                List.of(competition("draft")),
+                List.of(configSet()),
+                List.of()
+        );
+
+        assertThatThrownBy(() -> service.saveSettingsModule(admin(), "competition-uuid", "fields", request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
+                    assertThat(exception.getUserMessage()).contains("不能使用重复", "school");
+                });
+        assertThat(jdbcTemplate.updates).isEmpty();
     }
 
     @Test

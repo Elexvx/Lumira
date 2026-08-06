@@ -2,7 +2,6 @@ import {
   Alert,
   Button,
   Card,
-  Drawer,
   Empty,
   Form,
   Input,
@@ -22,6 +21,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { useEffect, useMemo, useState } from "react";
 import { ManagementPage } from "@/features/management/ManagementPage";
 import { ManagementPageBody } from "@/features/management/ManagementPageBody";
+import { StandardDrawer } from "@/features/management/StandardDrawer";
 import { useActionPermission } from "@/features/permissions/useActionPermission";
 import { useResponsive } from "@/hooks/useResponsive";
 import { request } from "@/services/common/request";
@@ -483,13 +483,12 @@ const ProfileFieldManagementPage = () => {
         </Card>
       </ManagementPageBody>
 
-      <Drawer
+      <StandardDrawer
         title={
           editingFieldKey
             ? t('ui.settings.profile-fields.editField.90d0543b')
             : t('ui.settings.profile-fields.addCustomField')
         }
-        width={isMobile ? "100%" : 520}
         open={drawerOpen}
         destroyOnHidden
         forceRender
@@ -612,7 +611,7 @@ const ProfileFieldManagementPage = () => {
             </Form.Item>
           </Space>
         </Form>
-      </Drawer>
+      </StandardDrawer>
     </ManagementPage>
   );
 };

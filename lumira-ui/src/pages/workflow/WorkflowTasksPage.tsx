@@ -1,10 +1,11 @@
 import { CheckOutlined, CloseOutlined, FileSearchOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Drawer, Input, Modal, Space, Tag, Timeline, Typography } from 'antd';
+import { Input, Modal, Space, Tag, Timeline, Typography } from 'antd';
 import { useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { approveWorkflowTask, listMyWorkflowTasks, listWorkflowLogs, rejectWorkflowTask } from '@/services/workflow/api';
@@ -119,7 +120,7 @@ const WorkflowTasksPage = () => {
           }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
         />
-        <Drawer title="审批轨迹" open={logOpen} onClose={() => setLogOpen(false)} width={520}>
+        <StandardDrawer title="审批轨迹" open={logOpen} onClose={() => setLogOpen(false)}>
           <Timeline
             items={logs.map((log) => ({
               children: (
@@ -131,7 +132,7 @@ const WorkflowTasksPage = () => {
               ),
             }))}
           />
-        </Drawer>
+        </StandardDrawer>
       </ManagementPageBody>
     </ManagementPage>
   );

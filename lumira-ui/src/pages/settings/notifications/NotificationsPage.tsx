@@ -22,6 +22,7 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
 import { resolveRuntimeLocale } from '@/i18n/locale';
+import { UserAvatar } from '@/components/UserAvatar';
 
 const t = databaseMessage;
 
@@ -714,7 +715,21 @@ const NotificationsPage = () => {
                 onSearch={(value) => notificationCenter.setUserSearch(value.trim())}
                 options={notificationCenter.userOptions.map((item) => {
                   const displayName = item.realName || item.nickname;
-                  return { label: displayName ? `${item.username} · ${displayName}` : item.username, value: item.id };
+                  return {
+                    label: (
+                      <Space size="small" wrap={false}>
+                        <UserAvatar
+                          size="small"
+                          avatarUrl={item.avatarUrl}
+                          userId={item.id}
+                          userUuid={item.userUuid || item.uid}
+                          username={item.username}
+                        />
+                        <span>{displayName ? `${item.username} · ${displayName}` : item.username}</span>
+                      </Space>
+                    ),
+                    value: item.id,
+                  };
                 })}
                 notFoundContent={notificationCenter.userLoading ? t('ui.settings.notifications.notifications.loading') : t('ui.settings.notifications.notifications.noMatchingUsers')}
               />

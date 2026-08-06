@@ -9,6 +9,7 @@ public class OnlineSessionVO {
     private String username;
     private String nickname;
     private String realName;
+    private String avatarUrl;
     private LocalDateTime loginTime;
     private LocalDateTime lastActivityAt;
     private LocalDateTime expireTime;
@@ -39,6 +40,10 @@ public class OnlineSessionVO {
     public String getRealName() { return realName; }
 
     public void setRealName(String realName) { this.realName = realName; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public LocalDateTime getLoginTime() { return loginTime; }
 

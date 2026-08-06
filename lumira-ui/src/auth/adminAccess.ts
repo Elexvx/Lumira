@@ -8,19 +8,25 @@ const SUPER_ADMIN_ROLE_NAMES = new Set(['超级管理员', '平台超级管理�
 export const isProtectedAdminAccount = (user?: Pick<CurrentUser, 'userId' | 'username'> | null) =>
   Boolean(user && (user.userId === PROTECTED_ADMIN_ID || user.username?.toLowerCase() === PROTECTED_ADMIN_USERNAME));
 
+const isSuperAdminRole = (role: NonNullable<CurrentUser['availableRoles']>[number]) => {
+  const roleCode = role.roleCode?.trim().toLowerCase();
+  const roleName = role.roleName?.trim().toLowerCase();
+  return SUPER_ADMIN_ROLE_CODES.has(roleCode) || SUPER_ADMIN_ROLE_NAMES.has(roleName);
+};
+
 export const isSuperAdminUser = (user?: CurrentUser | null) => {
-  if (!user || user.simulatedRoleId) {
+  if (!user) {
     return false;
+  }
+  if (user.simulatedRoleId != null) {
+    const simulatedRole = user.availableRoles?.find((role) => role.id === user.simulatedRoleId);
+    return Boolean(simulatedRole && isSuperAdminRole(simulatedRole));
   }
   if (isProtectedAdminAccount(user)) {
     return true;
   }
 
-  return Boolean(user.availableRoles?.some((role) => {
-    const roleCode = role.roleCode?.trim().toLowerCase();
-    const roleName = role.roleName?.trim().toLowerCase();
-    return SUPER_ADMIN_ROLE_CODES.has(roleCode) || SUPER_ADMIN_ROLE_NAMES.has(roleName);
-  }));
+  return Boolean(user.availableRoles?.some(isSuperAdminRole));
 };
 
 export const isSettingsPermission = (permission: string) =>

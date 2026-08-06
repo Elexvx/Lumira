@@ -52,7 +52,15 @@ import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const resolveIsMobileViewport = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
-const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/data-management', '/certificates', '/experts', '/user-center'];
+const STABLE_MAIN_ROUTE_PATHS = [
+  '/dashboard/home',
+  '/data-management',
+  '/certificates',
+  '/experts',
+  '/expert-review',
+  '/workflows',
+  '/user-center',
+];
 const DASHBOARD_GROUP_PATH = '/dashboard';
 const DASHBOARD_HOME_PATH = '/dashboard/home';
 const LEGACY_COMPETITION_ROOT_MENU_CODE = 'competition.root';
@@ -78,6 +86,8 @@ const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
   '/certificates': 'main:certificates',
   '/experts': 'main:experts',
+  '/expert-review': 'main:expert-review',
+  '/workflows': 'main:workflows',
   [USER_CENTER_GROUP_PATH]: 'main:user-center',
   [PERSONAL_CENTER_GROUP_PATH]: 'main:personal-center',
   [DATA_MANAGEMENT_GROUP_PATH]: 'main:data-management',
@@ -1578,7 +1588,9 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       const backendMenus = mainMenuTree;
       const translatedLocalMenus = translateVisibleLocalMenuDataForLayout(initialState, menuData as RuntimeMenuDataItem[]);
       if (!backendMenus.length) {
-        return [];
+        return dedupeRuntimeMenuItems(removeRedundantParentPathItemsForLayout(
+          buildMainMenuDataForLayout(initialState, translatedLocalMenus, translatedLocalMenus, { allowMissingStableMenus: true }),
+        )) as RuntimeMenuDataItem[];
       }
 
       const localByPath = flattenLocalMenuMap(menuData as RuntimeMenuDataItem[]);
@@ -1588,7 +1600,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         .filter(Boolean) as RuntimeMenuDataItem[];
 
       return dedupeRuntimeMenuItems(removeRedundantParentPathItemsForLayout(
-        buildMainMenuDataForLayout(initialState, composedMenus, translatedLocalMenus, { allowMissingStableMenus: false }),
+        buildMainMenuDataForLayout(initialState, composedMenus, translatedLocalMenus, { allowMissingStableMenus: true }),
       )) as RuntimeMenuDataItem[];
     },
     onPageChange: createLayoutOnPageChange({ initialState }),

@@ -29,9 +29,6 @@
 }
 
 .saas-role-menu__item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--saas-spacing-xxs);
   min-width: var(--saas-spacing-180);
 }
 
@@ -46,12 +43,6 @@
   font-size: 14px;
   line-height: 1.5714;
   font-weight: 500;
-}
-
-.saas-role-menu__item-meta {
-  color: var(--ant-color-text-tertiary);
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .saas-user-menu-trigger {

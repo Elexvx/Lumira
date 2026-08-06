@@ -228,6 +228,25 @@ export const isConfigModuleDraftSaveCurrent = (saveRevision: number, currentRevi
 
 const hasText = (value?: string | null) => Boolean(trimOptional(value));
 
+const configModuleItemIdentity = (item: CompetitionSettingsConfigItemDraft) => {
+  const itemType = trimOptional(item.metadata?.fieldScope) || trimOptional(item.itemType);
+  const itemKey = trimOptional(item.itemKey);
+  return itemType && itemKey ? `${itemType.toUpperCase()}\u0000${itemKey.toLowerCase()}` : undefined;
+};
+
+export const isConfigModuleItemKeyDuplicate = (
+  items: CompetitionSettingsConfigItemDraft[],
+  itemIndex: number,
+) => {
+  const identity = configModuleItemIdentity(items[itemIndex] || {});
+  return Boolean(identity && items.some((item, index) => (
+    index !== itemIndex && configModuleItemIdentity(item) === identity
+  )));
+};
+
+const hasDuplicateConfigModuleItemKeys = (items: CompetitionSettingsConfigItemDraft[]) =>
+  items.some((_, index) => isConfigModuleItemKeyDuplicate(items, index));
+
 const getConfigModuleItemsInValidationScope = (
   moduleKey: CompetitionSettingsConfigModuleKey,
   items: CompetitionSettingsConfigItemDraft[],
@@ -268,6 +287,9 @@ export const isConfigModuleReadyToSave = (
   const validationItems = getConfigModuleItemsInValidationScope(moduleKey, items, validationScope);
   if (!validationItems.length) {
     return true;
+  }
+  if (hasDuplicateConfigModuleItemKeys(validationItems)) {
+    return false;
   }
   return validationItems.every((item) => {
     if (moduleKey === 'documents') {

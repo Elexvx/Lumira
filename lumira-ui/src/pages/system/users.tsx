@@ -21,6 +21,7 @@ import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } 
 import { protectedUserStatusOptions } from './users/options';
 import { databaseMessage } from '@/i18n/databaseMessage';
 import { resolveRuntimeLocale } from '@/i18n/locale';
+import { UserAvatar } from '@/components/UserAvatar';
 
 const t = databaseMessage;
 
@@ -152,6 +153,19 @@ const DepartmentTreeFilter = ({
 };
 
 const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
+  {
+    title: t('ui.system.users.avatarUrl'),
+    dataIndex: 'avatarUrl',
+    render: (_, record) => (
+      <UserAvatar
+        size={48}
+        avatarUrl={record.avatarUrl}
+        userId={record.id}
+        userUuid={record.userUuid || record.uid}
+        username={record.username}
+      />
+    ),
+  },
   { title: t('ui.system.users.userNumber'), dataIndex: 'userNo', renderText: (value) => value || '-' },
   { title: t('ui.system.users.username'), dataIndex: 'username' },
   { title: t('ui.system.users.nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
@@ -163,7 +177,6 @@ const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
     renderText: (value) => maskIdCardNumber(value) || '-',
   },
   { title: t('ui.system.users.email'), dataIndex: 'email', renderText: (value) => maskEmail(value) || '-' },
-  { title: t('ui.system.users.avatarUrl'), dataIndex: 'avatarUrl', renderText: (value) => value || '-' },
   { title: t('ui.system.users.birthMonth'), dataIndex: 'birthMonth', renderText: (value) => value || '-' },
   { title: t('ui.system.users.gender'), dataIndex: 'gender', renderText: (value) => value || '-' },
   { title: t('ui.system.users.region'), dataIndex: 'region', renderText: (value) => value || '-' },

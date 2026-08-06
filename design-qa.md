@@ -351,6 +351,111 @@ passed
 
 ---
 
+# Design QA - Payment settings action style (2026-08-06)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-ef2bb6fc-1491-467b-8f4b-b6747cfd4dcb.png`.
+- Source pixels: `2434 x 1028`, dark theme, authenticated payment settings page.
+- Intended implementation URL: `http://127.0.0.1:8899/settings/payment`.
+- Implementation screenshot: unavailable because the in-app browser has no authenticated local session and redirects to `/user/login`.
+- CSS viewport and density normalization: not applicable until the authenticated implementation state can be captured.
+
+## Findings
+
+- Source P2: the `配置` and `测试` actions render as bordered default buttons, unlike the project's established inline table-action treatment.
+- Implemented fix: both actions now use the shared link-style table action class and no-wrap spacing while preserving permission checks and the test confirmation.
+- Fonts and typography, spacing and layout rhythm, colors and visual tokens, image quality, and copy could not be compared against a rendered authenticated implementation.
+
+## Comparison history
+
+1. The source screenshot identified the inconsistent bordered actions.
+2. The code was updated to the existing `saas-table-action-bar` link treatment.
+3. ESLint, TypeScript typecheck, production build, and `git diff --check` passed.
+4. Browser capture remains blocked by the missing authenticated local session; no password or session data was inspected or reused.
+
+## Final result
+
+blocked
+
+---
+
+# Design QA - Platform update confirmation spacing (2026-08-06)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/settings/monitoring?tab=update`, dark theme, update-confirmation state, supplied at `1280 x 800`.
+- Focused implementation screenshot: `artifacts/design-qa/platform-update-modal-spacing-local.png`.
+- Implementation viewport: `1280 x 720` at device pixel ratio `1.25`.
+- Scope: the confirmation dialog only; fixture release values and the page content behind the mask are not comparison targets.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain in the requested spacing region.
+
+- The warning icon remains visually paired with the title, while the confirmation paragraph now uses the full body width.
+- The alert and bordered descriptions table both measure `24px` from the modal container's left edge and `24px` from its right edge.
+- Typography, copy, colors, table structure, warning hierarchy, and footer actions remain unchanged.
+- No image asset is involved in this change.
+
+## Validation
+
+- ESLint: passed.
+- Stylelint: passed.
+- TypeScript typecheck: passed.
+- Vitest: 86 files / 429 tests passed.
+- Production build: passed.
+- Browser visual and DOM measurement: passed.
+
+## Final result
+
+passed
+
+---
+
+# Design QA — Platform update dialogs in dark theme (2026-08-05)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: `artifacts/design-qa/platform-update-modal-before.png`.
+- Final implementation: `artifacts/design-qa/platform-update-modal-after.png`.
+- Viewport and pixels: both captures are `1365 × 982`; the implementation was captured with a `1365 × 982` CSS viewport and matching output pixels.
+- State: authenticated production system monitoring page, Chinese locale, dark theme. The source shows the update confirmation; after the successful deployment the system was already up to date, so the shared rollback confirmation was opened and cancelled to verify the same theme-aware modal runtime without changing production state.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain in the requested color treatment.
+
+- Earlier P1: the update confirmation used Ant Design's static modal API, so its white surface, dark text, pale table, and information alert ignored the active dark theme.
+- Fix: platform update, rollback, updater-installation, and updater-warning dialogs now use the application feedback bridge registered inside the active Ant Design theme context.
+- Post-fix evidence: the shared confirmation surface renders with `rgb(27, 27, 27)` background and `rgba(255, 255, 255, 0.85)` title/body text, matching the surrounding dark interface. The semantic warning and destructive-action colors remain distinct.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing Ant Design family, weights, sizes, wrapping, and hierarchy are unchanged; light foreground text remains legible on the dark surface.
+- Spacing and layout rhythm: modal width, content spacing, corner radius, button alignment, overlay, and page composition remain unchanged.
+- Colors and visual tokens: the modal now consumes the active dark-theme tokens instead of the static light defaults; warning orange and destructive red retain their semantic roles.
+- Image quality and asset fidelity: no raster, logo, illustration, or icon asset was replaced; existing Ant Design icons remain unchanged.
+- Copy and content: platform update and rollback text is unchanged.
+
+## Interaction and runtime checks
+
+- Production blue-green update completed with `SUCCEEDED`, `FINALIZING`, and `100%` for commit `5862ea650651`.
+- The post-deployment rollback confirmation opened successfully and was cancelled; no rollback request was submitted.
+- Browser console reported no warnings or errors after loading the deployed frontend.
+- TypeScript typecheck, static-theme smoke check, production frontend build, CI, frontend build workflow, security scan, and production deployment checks passed.
+
+## Comparison history
+
+- Pass 1: identified the light-only modal as a major theme mismatch.
+- Implementation: routed all platform-update feedback dialogs through the live theme context.
+- Pass 2: same-size production capture confirmed a dark modal surface with matching typography and semantic colors; no P0/P1/P2 visual issue remained.
+
+## Final result
+
+passed
+---
+
 # Design QA — Login language consistency and default sizing (2026-08-05)
 
 ## Visual truth and implementation evidence
@@ -404,6 +509,51 @@ passed
 - TypeScript typecheck: passed.
 - Vitest: 79 files / 402 tests passed.
 - Production build: passed.
+
+## Final result
+
+passed
+
+---
+
+# Design QA — Login viewport fit and police filing emblem (2026-08-05)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: the supplied screenshot at `944 × 415`, showing the login page scrolled to its footer and the police filing number without its emblem.
+- Before evidence: `.codex-tmp/login-before-rendered-944x415.png`.
+- Final implementation: `.codex-tmp/login-after-final-944x415.png` at the same `944 × 415` viewport.
+- Comparison artifacts: `.codex-tmp/login-design-qa-comparison.png` and `.codex-tmp/login-design-qa-footer-comparison.png`.
+- State: unauthenticated password-login mode, dark theme, Chinese locale.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain in the requested regions.
+
+- Viewport behavior: desktop login now locks both the document root and body to the viewport. At `944 × 415`, `1024 × 600`, and `1366 × 768`, the document, page, and authentication shell report equal client and scroll heights with no vertical scrollbar.
+- Short-height adaptation: below `680px` desktop height, nonessential alternate-login content is hidden and vertical gaps are compacted so the primary login workflow, agreement, and compliance footer remain visible.
+- Mobile behavior: `390 × 844` and `360 × 640` retain a single-column composition with equal client and scroll heights and no horizontal overflow.
+- Police filing identity: the existing official police filing asset is rendered directly before the police record text. It measures `20 × 20px` normally and `16 × 16px` in the short desktop layout.
+- Link behavior: the filing entry links to the Ministry of Public Security query page with record code `32010502011484`.
+- Existing visual language: hero imagery, panel proportions, typography, colors, control sizes, login modes, and备案 copy remain unchanged.
+- Browser console: no change-related error was introduced; only the existing Ant Design modal deprecation warnings remain.
+
+## Interaction checks
+
+- Password and WeChat login modes switch successfully and return to the initial state.
+- Account and password fields accept and clear input without submission.
+- Theme toggling works and was restored.
+- The login submit action remains enabled in the expected state.
+- The police filing link and emblem are visible in the footer.
+
+## Validation
+
+- Focused Vitest: `1` file / `2` tests passed.
+- TypeScript typecheck: passed.
+- Login-flow test suite: passed.
+- Stylelint: passed.
+- Production build: passed.
+- `git diff --check`: passed after preserving unrelated workspace changes.
 
 ## Final result
 

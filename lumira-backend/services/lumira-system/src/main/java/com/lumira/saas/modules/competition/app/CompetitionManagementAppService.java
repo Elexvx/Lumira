@@ -582,14 +582,17 @@ public class CompetitionManagementAppService {
         Map<String, CompetitionVO.ConfigItem> existingByKey = listConfigItems(competition.getUuid(), configSet.getId(), allowedTypes)
                 .stream()
                 .collect(Collectors.toMap(this::configItemIdentity, item -> item, (left, right) -> left));
-        Set<Long> retainedIds = new LinkedHashSet<>();
         Set<String> requestKeys = new LinkedHashSet<>();
-        int index = 0;
         for (CompetitionDTO.ConfigItemRequest normalized : normalizedItems) {
             String identity = configItemIdentity(normalized);
             if (!requestKeys.add(identity)) {
-                throw biz(ErrorCode.VALIDATION_ERROR, "Duplicate competition settings item key");
+                throw biz(ErrorCode.VALIDATION_ERROR, "同一配置类型内不能使用重复的设置项标识：" + normalized.getItemKey());
             }
+        }
+        Set<Long> retainedIds = new LinkedHashSet<>();
+        int index = 0;
+        for (CompetitionDTO.ConfigItemRequest normalized : normalizedItems) {
+            String identity = configItemIdentity(normalized);
             CompetitionVO.ConfigItem existing = existingByKey.get(identity);
             if (existing == null) {
                 insertConfigItem(
@@ -634,11 +637,12 @@ public class CompetitionManagementAppService {
             }
             index += 1;
         }
-        List<Long> deletedIds = existingByKey.values().stream()
-                .map(CompetitionVO.ConfigItem::getId)
-                .filter(id -> id != null && !retainedIds.contains(id))
+        List<CompetitionVO.ConfigItem> deletedItems = existingByKey.values().stream()
+                .filter(item -> item.getId() != null && !retainedIds.contains(item.getId()))
                 .toList();
-        if (!deletedIds.isEmpty()) {
+        if (!deletedItems.isEmpty()) {
+            purgePreviousConfigItemTombstones(configSet.getId(), deletedItems);
+            List<Long> deletedIds = deletedItems.stream().map(CompetitionVO.ConfigItem::getId).toList();
             int deleted = jdbcTemplate.update(
                     """
                             update competition_config_item
@@ -1518,11 +1522,26 @@ public class CompetitionManagementAppService {
     }
 
     private String configItemIdentity(CompetitionVO.ConfigItem item) {
-        return item.getItemType() + "\u0000" + item.getItemKey();
+        return configItemIdentity(item.getItemType(), item.getItemKey());
     }
 
     private String configItemIdentity(CompetitionDTO.ConfigItemRequest item) {
-        return item.getItemType() + "\u0000" + item.getItemKey();
+        return configItemIdentity(item.getItemType(), item.getItemKey());
+    }
+
+    private String configItemIdentity(String itemType, String itemKey) {
+        return itemType.trim().toUpperCase(Locale.ROOT) + "\u0000" + itemKey.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void purgePreviousConfigItemTombstones(Long configSetId, List<CompetitionVO.ConfigItem> items) {
+        for (CompetitionVO.ConfigItem item : items) {
+            jdbcTemplate.update(
+                    "delete from competition_config_item where config_set_id = ? and item_type = ? and item_key = ? and deleted = 1",
+                    configSetId,
+                    item.getItemType(),
+                    item.getItemKey()
+            );
+        }
     }
 
     private void recordConfigAudit(CurrentUser currentUser, String competitionUuid, String action, String module, String detail) {

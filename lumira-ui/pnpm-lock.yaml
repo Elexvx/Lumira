@@ -54,6 +54,9 @@ importers:
       '@ant-design/x-markdown':
         specifier: ^2.7.0
         version: 2.7.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@outpacelabs/avatars':
+        specifier: 0.4.0
+        version: 0.4.0(react@18.3.1)
       '@tanstack/react-query':
         specifier: ^5.100.9
         version: 5.100.9(react@18.3.1)
@@ -1219,6 +1222,11 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@outpacelabs/avatars@0.4.0':
+    resolution: {integrity: sha512-l//lzqRJmkvm8mNg70m9dHyYxHAq1/yyAAdOPPRC5nOMxX7TaE+ILyBQN+rxJGBQMNqktbLqkG1k9VmNbkBb1Q==}
+    peerDependencies:
+      react: '>=18'
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -8856,6 +8864,10 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@outpacelabs/avatars@0.4.0(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
 
   '@pkgjs/parseargs@0.11.0':
     optional: true

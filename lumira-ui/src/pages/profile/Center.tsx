@@ -1,13 +1,12 @@
 import { formatMessage } from '@/i18n/formatMessage';
 
-import { Alert, Avatar, Button, Card, Col, DatePicker, Descriptions, Divider, Drawer, Empty, Form, Input, List, Modal, Progress, QRCode, Result, Row, Select, Space, Tag, Timeline, Tooltip, Typography, Upload, theme } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Descriptions, Divider, Empty, Form, Input, List, Modal, Progress, QRCode, Result, Row, Select, Space, Tag, Timeline, Tooltip, Typography, Upload, theme } from 'antd';
 import type { DescriptionsProps, FormProps, UploadProps } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import { StepsForm } from '@ant-design/pro-components';
 import { useEffect } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { EditOutlined, KeyOutlined, UserOutlined } from '@ant-design/icons';
-import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
+import { EditOutlined, KeyOutlined } from '@ant-design/icons';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
@@ -16,11 +15,11 @@ import { useProfileCenterPageAccess, type LoginMethodItem } from '@/pages/profil
 import type { CurrentUser, PasskeyCredentialRecord, ProfileCompletionSummary, ProfileFieldSetting, ProfileSummary, SecondFactorBindingChallenge, SecondFactorChallenge, SecondFactorProviderStatus } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard } from '@/utils/validators';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { databaseMessage } from '@/i18n/databaseMessage';
+import { UserAvatar } from '@/components/UserAvatar';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 
 const t = databaseMessage;
-const normalizeAvatarSrc = (value?: string | null) => normalizeUploadUrl(value || '') || undefined;
 
 const GENDER_OPTIONS = [
   { label: t('ui.profile.center.male'), value: 'MALE' },
@@ -714,13 +713,10 @@ const ProfileBasicEditDrawer = ({
   onAvatarUploadRequest: UploadProps['customRequest'];
 }) => {
   const handleDrawerClose = useConfirmableDrawerClose(() => onEditOpenChange(false));
-  const avatarSrc = normalizeAvatarSrc(avatarValue || currentUser?.avatarUrl);
-
   return (
-    <Drawer
+    <StandardDrawer
       title={t('ui.profile.center.editProfile')}
       open={editingOpen}
-      width={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       destroyOnClose={false}
       onClose={handleDrawerClose}
       footer={
@@ -745,7 +741,13 @@ const ProfileBasicEditDrawer = ({
             <ImgCrop rotationSlider aspect={1} modalTitle={t('ui.profile.center.cropAvatar')} beforeCrop={onAvatarBeforeCrop}>
               <Upload accept="image/*" showUploadList={false} customRequest={onAvatarUploadRequest} disabled={avatarUploading}>
                 <Tooltip title={t('ui.profile.center.clickAvatarToEdit')} placement="top">
-                  <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.large, isMobile)} src={avatarSrc} icon={<UserOutlined />} />
+                  <UserAvatar
+                    size={resolveResponsiveValue(APP_SPACING.avatarSize.large, isMobile)}
+                    avatarUrl={avatarValue || currentUser?.avatarUrl}
+                    userId={currentUser?.userId}
+                    userUuid={currentUser?.userUuid}
+                    username={currentUser?.username}
+                  />
                 </Tooltip>
               </Upload>
             </ImgCrop>
@@ -817,7 +819,7 @@ const ProfileBasicEditDrawer = ({
         <Empty description={t('ui.profile.center.noEditableProfileFieldsAreEnabled')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}
     </Form>
-    </Drawer>
+    </StandardDrawer>
   );
 };
 
@@ -866,7 +868,6 @@ const ProfileCenterOverviewSection = ({
   onAvatarUploadRequest,
   recentLoginLogs,
 }: ProfileCenterOverviewSectionProps) => {
-  const avatarSrc = normalizeAvatarSrc(avatarValue || currentUser?.avatarUrl);
   const { token } = theme.useToken();
   const completionRate = profileCompletionSummary?.completionRate ?? 0;
 
@@ -877,10 +878,12 @@ const ProfileCenterOverviewSection = ({
           <div className="saas-profile-page__summary-content saas-profile-page__summary-content--account-only">
             <section className="saas-profile-page__account-panel" aria-label={t('ui.profile.center.accountIdentity')}>
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.mobileProfileSectionGap, isMobile)} className="saas-profile-page__welcome-profile">
-                <Avatar
+                <UserAvatar
                   size={isMobile ? 56 : 64}
-                  src={avatarSrc}
-                  icon={<UserOutlined />}
+                  avatarUrl={avatarValue || currentUser?.avatarUrl}
+                  userId={currentUser?.userId}
+                  userUuid={currentUser?.userUuid}
+                  username={currentUser?.username}
                   className="saas-profile-page__account-avatar"
                 />
                 <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, isMobile)} className="saas-profile-page__account-copy">
@@ -1438,4 +1441,3 @@ const ProfileCenterPage = () => {
 };
 
 export default ProfileCenterPage;
-

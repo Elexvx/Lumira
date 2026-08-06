@@ -15,11 +15,12 @@ import {
   ZoomOutOutlined,
 } from '@ant-design/icons';
 import { history, useParams } from '@umijs/max';
-import { Button, Card, Descriptions, Drawer, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Descriptions, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 import {
   archiveCertificateTemplate,
   createCertificateTemplate,
@@ -937,7 +938,7 @@ export const RecordsPage = () => {
           ),
         },
       ]} />
-      <Drawer width={720} open={Boolean(detail)} onClose={() => setDetail(null)} title="证书详情">
+      <StandardDrawer open={Boolean(detail)} onClose={() => setDetail(null)} title="证书详情">
         {detail ? (
           <Space direction="vertical" className="certificate-detail">
             <Descriptions column={2} bordered items={[
@@ -952,7 +953,7 @@ export const RecordsPage = () => {
             <Input.TextArea rows={8} value={detail.dataJson} readOnly />
           </Space>
         ) : null}
-      </Drawer>
+      </StandardDrawer>
     </div>
   );
 };

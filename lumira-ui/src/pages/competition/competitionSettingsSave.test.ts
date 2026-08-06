@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getCompetitionCreateMissingFields,
   isConfigModuleDraftSaveCurrent,
+  isConfigModuleItemKeyDuplicate,
   isBasicSettingsPageReadyToSave,
   isConfigModuleReadyToSave,
   isPaymentSettingsPageReadyToSave,
@@ -332,6 +333,26 @@ describe('competition settings page-level save guards', () => {
         expect(draft).toEqual(snapshot);
       });
     });
+  });
+
+  it('rejects field keys that only differ by letter case in the same scope', () => {
+    const items = [
+      { itemType: 'MEMBER_FIELD', itemKey: 'School', title: '学校', metadata: { fieldType: 'TEXT' } },
+      { itemType: 'MEMBER_FIELD', itemKey: 'school', title: '院校', metadata: { fieldType: 'TEXT' } },
+    ];
+
+    expect(isConfigModuleItemKeyDuplicate(items, 0)).toBe(true);
+    expect(isConfigModuleReadyToSave('fields', items)).toBe(false);
+  });
+
+  it('allows the same field key in different collection scopes', () => {
+    const items = [
+      { itemType: 'TEAM_FIELD', itemKey: 'school', title: '团队学校', metadata: { fieldType: 'TEXT' } },
+      { itemType: 'MEMBER_FIELD', itemKey: 'School', title: '成员学校', metadata: { fieldType: 'TEXT' } },
+    ];
+
+    expect(isConfigModuleItemKeyDuplicate(items, 0)).toBe(false);
+    expect(isConfigModuleReadyToSave('fields', items)).toBe(true);
   });
 
   it('requires configured options for a select field', () => {

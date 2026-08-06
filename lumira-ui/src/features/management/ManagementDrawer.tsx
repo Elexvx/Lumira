@@ -1,13 +1,8 @@
-import { Button, Drawer, Space } from 'antd';
-import type { DrawerProps } from 'antd';
+import { Button, Space } from 'antd';
 import type { ReactNode } from 'react';
-import {
-  MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE,
-  type ManagementDrawerContentSize,
-} from '@/constants/ui';
 import { useResponsive } from '@/hooks/useResponsive';
-import { resolveResponsiveValue } from '@/theme/spacing';
 import { useConfirmableDrawerClose } from './drawerCloseConfirm';
+import { StandardDrawer, type StandardDrawerProps } from './StandardDrawer';
 
 export interface ManagementDrawerAction {
   key: string;
@@ -19,15 +14,11 @@ export interface ManagementDrawerAction {
   onClick?: () => void;
 }
 
-export interface ManagementDrawerProps extends DrawerProps {
+export interface ManagementDrawerProps extends StandardDrawerProps {
   footerActions?: ManagementDrawerAction[];
-  contentSize?: ManagementDrawerContentSize;
 }
 
 export const ManagementDrawer = ({
-  width,
-  size,
-  contentSize = 'default',
   destroyOnHidden = true,
   footerActions,
   extra,
@@ -40,9 +31,6 @@ export const ManagementDrawer = ({
   const responsive = useResponsive();
   const drawerClassName = ['saas-management-drawer', className].filter(Boolean).join(' ');
   const handleClose = useConfirmableDrawerClose(onClose);
-  const drawerSize = size
-    ?? width
-    ?? resolveResponsiveValue(MANAGEMENT_DRAWER_WIDTH_BY_CONTENT_SIZE[contentSize], responsive.isMobile);
   const renderedActions = footerActions?.length ? (
     <div className="saas-drawer-footer">
       <Space wrap>
@@ -64,8 +52,8 @@ export const ManagementDrawer = ({
   ) : undefined;
 
   return (
-    <Drawer {...props} className={drawerClassName} size={drawerSize} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions} onClose={handleClose}>
+    <StandardDrawer {...props} className={drawerClassName} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions} onClose={handleClose}>
       {children}
-    </Drawer>
+    </StandardDrawer>
   );
 };

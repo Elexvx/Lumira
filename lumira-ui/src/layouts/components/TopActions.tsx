@@ -1,9 +1,8 @@
-import { Avatar, Button, Drawer, Dropdown, Form, Input, Space, Tag, type MenuProps } from 'antd';
+import { Button, Dropdown, Form, Input, Space, Tag, type MenuProps } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { getLocale, history, setLocale, useIntl } from '@umijs/max';
 import { useAccess, useLocation } from '@umijs/max';
 import { useMemo, useRef, useState } from 'react';
-import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { buildLoggedOutInitialState } from '@/auth/clientRuntimeState';
 import { resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
@@ -36,7 +35,9 @@ import type { ThemePreference } from '@/theme/settings';
 import type { SecuritySettings, SimulatedRoleSwitchResponse } from '@/types/api';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { MessageCenterDrawer } from '@/layouts/components/MessageCenterDrawer';
+import { StandardDrawer } from '@/features/management/StandardDrawer';
 import { useConfirmableDrawerClose } from '@/features/management/drawerCloseConfirm';
+import { UserAvatar } from '@/components/UserAvatar';
 import './TopActions.css';
 import {
   CheckOutlined,
@@ -53,7 +54,6 @@ import {
   SunOutlined,
   SwapOutlined,
   SyncOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 
 type PasswordFormValues = {
@@ -78,14 +78,12 @@ const resolveExternalLink = (value?: string | null) => {
 
 const TopActionsPasswordDrawer = ({
   open,
-  isMobile,
   form,
   securitySettings,
   onClose,
   onFinish,
 }: {
   open: boolean;
-  isMobile: boolean;
   form: ReturnType<typeof Form.useForm<PasswordFormValues>>[0];
   securitySettings: SecuritySettings;
   onClose: () => void;
@@ -118,10 +116,9 @@ const TopActionsPasswordDrawer = ({
   const handleDrawerClose = useConfirmableDrawerClose(onClose);
 
   return (
-    <Drawer
+    <StandardDrawer
       title={intl.formatMessage({ id: 'nav.user.changePassword', defaultMessage: 'Change password' })}
       open={open}
-      size={resolveResponsiveValue(STANDARD_DRAWER_WIDTH_BY_BREAKPOINT, isMobile)}
       destroyOnHidden
       onClose={handleDrawerClose}
       footer={
@@ -180,7 +177,7 @@ const TopActionsPasswordDrawer = ({
           <Input.Password autoComplete="new-password" />
         </Form.Item>
       </Form>
-    </Drawer>
+    </StandardDrawer>
   );
 };
 
@@ -206,31 +203,16 @@ export const TopActions = () => {
   const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
   const availableRoles = useMemo(() => currentUser?.availableRoles || [], [currentUser?.availableRoles]);
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;
-  const currentAccountRoleLabel = intl.formatMessage({
-    id: 'nav.user.role.current',
-    defaultMessage: 'Current account permissions',
-  });
-  const currentAccountRoleMeta = intl.formatMessage({
-    id: 'nav.user.role.currentMeta',
-    defaultMessage: 'Default permission view for the current account',
-  });
   const currentRoleTag = intl.formatMessage({
     id: 'nav.user.role.currentTag',
     defaultMessage: 'Current',
   });
   const roleSwitchOptions = useMemo(
-    () =>
-      buildRoleSwitchOptions(availableRoles, simulatedRoleId, {
-        currentAccountLabel: currentAccountRoleLabel,
-        currentAccountMeta: currentAccountRoleMeta,
-      }),
-    [availableRoles, currentAccountRoleLabel, currentAccountRoleMeta, simulatedRoleId],
+    () => buildRoleSwitchOptions(availableRoles, simulatedRoleId),
+    [availableRoles, simulatedRoleId],
   );
   const selectedRoleLabel =
-    simulatedRoleId == null
-      ? currentAccountRoleLabel
-      : availableRoles.find((item) => item.id === simulatedRoleId)?.roleName ||
-        currentAccountRoleLabel;
+    availableRoles.find((item) => item.id === simulatedRoleId)?.roleName || String(simulatedRoleId || '');
   const roleSimulationHint =
     simulatedRoleId == null
       ? ''
@@ -423,7 +405,7 @@ export const TopActions = () => {
     [currentLocale, intl],
   );
   const roleMenuItems = useMemo<NonNullable<MenuProps['items']>>(() => {
-    if (!canSwitchRole(availableRoles, simulatedRoleId, Boolean(currentUser?.requiresPasswordChange))) {
+    if (!canSwitchRole(availableRoles, Boolean(currentUser?.requiresPasswordChange))) {
       return [];
     }
 
@@ -440,7 +422,6 @@ export const TopActions = () => {
                   <span className="saas-role-menu__item-title">{option.label}</span>
                   {option.selected ? <Tag color="blue">{currentRoleTag}</Tag> : null}
                 </div>
-                {option.meta ? <span className="saas-role-menu__item-meta">{option.meta}</span> : null}
               </div>
             ),
           })),
@@ -660,10 +641,12 @@ export const TopActions = () => {
             disabled={model.loggingOut || model.switchingRole}
             data-testid="top-user-menu-button"
             icon={
-              <Avatar
+              <UserAvatar
                 size="small"
-                src={model.userAvatarUrl || undefined}
-                icon={<UserOutlined />}
+                avatarUrl={model.userAvatarUrl}
+                userId={currentUser?.userId}
+                userUuid={currentUser?.userUuid}
+                username={currentUser?.username}
               />
             }
           >
@@ -673,7 +656,6 @@ export const TopActions = () => {
       </Space>
       <TopActionsPasswordDrawer
         open={model.passwordDrawerOpen}
-        isMobile={model.isMobile}
         form={model.passwordForm}
         securitySettings={model.securitySettings}
         onClose={() => model.setPasswordDrawerOpen(false)}
