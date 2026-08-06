@@ -1,71 +1,39 @@
 package com.lumira.saas.common.vo;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.Collections;
-import java.util.List;
 
-public class PageResponse<T> {
+/**
+ * Service-local type retained for existing imports and JSON contracts.
+ *
+ * <p>New cross-service code should use {@link com.lumira.common.vo.PageResponse}
+ * directly. This adapter preserves the system endpoint's historical empty-list
+ * default and nullable continuation fields.</p>
+ */
+@Deprecated(since = "0.1.0", forRemoval = false)
+@JsonPropertyOrder({"records", "total", "pageNo", "pageSize", "hasMore", "nextCursorId", "nextCursorCreatedAt"})
+public class PageResponse<T> extends com.lumira.common.vo.PageResponse<T> {
 
-    private List<T> records = Collections.emptyList();
-    private long total;
-    private long pageNo;
-    private long pageSize;
-    private Boolean hasMore;
-    private Long nextCursorId;
-    private String nextCursorCreatedAt;
-
-    public List<T> getRecords() {
-        return records;
+    public PageResponse() {
+        setRecords(Collections.emptyList());
     }
 
-    public void setRecords(List<T> records) {
-        this.records = records;
-    }
-
-    public long getTotal() {
-        return total;
-    }
-
-    public void setTotal(long total) {
-        this.total = total;
-    }
-
-    public long getPageNo() {
-        return pageNo;
-    }
-
-    public void setPageNo(long pageNo) {
-        this.pageNo = pageNo;
-    }
-
-    public long getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(long pageSize) {
-        this.pageSize = pageSize;
-    }
-
+    @Override
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     public Boolean getHasMore() {
-        return hasMore;
+        return super.getHasMore();
     }
 
-    public void setHasMore(Boolean hasMore) {
-        this.hasMore = hasMore;
-    }
-
+    @Override
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     public Long getNextCursorId() {
-        return nextCursorId;
+        return super.getNextCursorId();
     }
 
-    public void setNextCursorId(Long nextCursorId) {
-        this.nextCursorId = nextCursorId;
-    }
-
+    @Override
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     public String getNextCursorCreatedAt() {
-        return nextCursorCreatedAt;
-    }
-
-    public void setNextCursorCreatedAt(String nextCursorCreatedAt) {
-        this.nextCursorCreatedAt = nextCursorCreatedAt;
+        return super.getNextCursorCreatedAt();
     }
 }

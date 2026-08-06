@@ -2,6 +2,7 @@ package com.lumira.saas.modules.competition.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.groups.Default;
 
 import java.util.List;
 
@@ -10,16 +11,38 @@ public final class CompetitionDTO {
     }
 
     public static class CompetitionUpsertRequest {
+        /**
+         * Full create requires the fields that identify a publishable
+         * competition. The group extends {@link Default} so the shared shape
+         * constraints continue to apply.
+         */
+        public interface Create extends Default {
+        }
+
+        /**
+         * Full updates may rely on persisted values for required fields, but
+         * still validate supplied field sizes.
+         */
+        public interface Update extends Default {
+        }
+
+        /**
+         * Draft saves validate supplied field shapes without imposing formal
+         * create requirements, so an incomplete draft remains resumable.
+         */
+        public interface Draft extends Default {
+        }
+
         @Size(max = 64)
         private String code;
         @Size(max = 64)
         private String locale;
-        @NotBlank
+        @NotBlank(groups = Create.class)
         @Size(max = 128)
         private String title;
         @Size(max = 128)
         private String shortName;
-        @NotBlank
+        @NotBlank(groups = Create.class)
         @Size(max = 64)
         private String category;
         @Size(max = 64)
@@ -33,12 +56,12 @@ public final class CompetitionDTO {
         private String registrationStart;
         @Size(max = 64)
         private String registrationEnd;
-        @NotBlank
+        @NotBlank(groups = Create.class)
         @Size(max = 64)
         private String competitionStart;
         @Size(max = 64)
         private String competitionEnd;
-        @NotBlank
+        @NotBlank(groups = Create.class)
         @Size(max = 255)
         private String location;
         @Size(max = 255)

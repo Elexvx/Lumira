@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -174,26 +175,40 @@ public class CompetitionV2Controller {
 
     @PostMapping
     @RepeatSubmit
-    public ApiResponse<CompetitionVO.Competition> createCompetition(@Valid @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+    public ApiResponse<CompetitionVO.Competition> createCompetition(
+            @Validated(CompetitionDTO.CompetitionUpsertRequest.Create.class)
+            @RequestBody CompetitionDTO.CompetitionUpsertRequest request
+    ) {
         CurrentUser currentUser = require(CREATE);
         return ApiResponse.success(competitionManagementAppService.createCompetition(currentUser, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/drafts")
-    public ApiResponse<CompetitionVO.Competition> createCompetitionDraft(@RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+    public ApiResponse<CompetitionVO.Competition> createCompetitionDraft(
+            @Validated(CompetitionDTO.CompetitionUpsertRequest.Draft.class)
+            @RequestBody CompetitionDTO.CompetitionUpsertRequest request
+    ) {
         CurrentUser currentUser = require(CREATE);
         return ApiResponse.success(competitionManagementAppService.createCompetitionDraft(currentUser, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/drafts/{id}")
-    public ApiResponse<CompetitionVO.Competition> updateCompetitionDraft(@PathVariable("id") Long id, @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+    public ApiResponse<CompetitionVO.Competition> updateCompetitionDraft(
+            @PathVariable("id") Long id,
+            @Validated(CompetitionDTO.CompetitionUpsertRequest.Draft.class)
+            @RequestBody CompetitionDTO.CompetitionUpsertRequest request
+    ) {
         CurrentUser currentUser = require(CREATE);
         return ApiResponse.success(competitionManagementAppService.updateCompetitionDraft(currentUser, id, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/{id}")
     @RepeatSubmit
-    public ApiResponse<CompetitionVO.Competition> updateCompetition(@PathVariable("id") Long id, @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+    public ApiResponse<CompetitionVO.Competition> updateCompetition(
+            @PathVariable("id") Long id,
+            @Validated(CompetitionDTO.CompetitionUpsertRequest.Update.class)
+            @RequestBody CompetitionDTO.CompetitionUpsertRequest request
+    ) {
         CurrentUser currentUser = require(UPDATE);
         return ApiResponse.success(competitionManagementAppService.updateCompetition(currentUser, id, request), TraceContext.getRequestId());
     }

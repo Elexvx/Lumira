@@ -1,52 +1,40 @@
 package com.lumira.ai.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.util.Collections;
-import java.util.List;
 
-public class PageResponse<T> {
-    private List<T> records = Collections.emptyList();
-    private long total;
-    private long pageNo;
-    private long pageSize;
-    private Boolean hasMore;
+/**
+ * Service-local type retained for existing imports and JSON contracts.
+ *
+ * <p>New cross-service code should use {@link com.lumira.common.vo.PageResponse}
+ * directly. This adapter preserves the AI endpoint's historical empty-list
+ * default and its nullable {@code hasMore} JSON field.</p>
+ */
+@Deprecated(since = "0.1.0", forRemoval = false)
+@JsonPropertyOrder({"records", "total", "pageNo", "pageSize", "hasMore"})
+public class PageResponse<T> extends com.lumira.common.vo.PageResponse<T> {
 
-    public List<T> getRecords() {
-        return records;
+    public PageResponse() {
+        setRecords(Collections.emptyList());
     }
 
-    public void setRecords(List<T> records) {
-        this.records = records;
-    }
-
-    public long getTotal() {
-        return total;
-    }
-
-    public void setTotal(long total) {
-        this.total = total;
-    }
-
-    public long getPageNo() {
-        return pageNo;
-    }
-
-    public void setPageNo(long pageNo) {
-        this.pageNo = pageNo;
-    }
-
-    public long getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(long pageSize) {
-        this.pageSize = pageSize;
-    }
-
+    @Override
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     public Boolean getHasMore() {
-        return hasMore;
+        return super.getHasMore();
     }
 
-    public void setHasMore(Boolean hasMore) {
-        this.hasMore = hasMore;
+    @Override
+    @JsonIgnore
+    public Long getNextCursorId() {
+        return super.getNextCursorId();
+    }
+
+    @Override
+    @JsonIgnore
+    public String getNextCursorCreatedAt() {
+        return super.getNextCursorCreatedAt();
     }
 }
