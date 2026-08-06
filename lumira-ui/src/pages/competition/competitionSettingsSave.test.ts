@@ -7,6 +7,7 @@ import {
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
   mergeStageMaterialSaveItems,
+  shouldValidateTeamMemberLimitsForPage,
   shouldHydrateConfigModuleDraft,
 } from './competitionSettingsSave';
 
@@ -213,6 +214,124 @@ describe('competition settings page-level save guards', () => {
         metadata: { fieldType: 'TEXT' },
       },
     ])).toBe(true);
+  });
+
+  it('validates only the registration field scope rendered on the current page', () => {
+    const items = [
+      {
+        itemType: 'MEMBER_FIELD',
+        title: 'Student name',
+        itemKey: 'memberName',
+        metadata: { fieldScope: 'MEMBER_FIELD', fieldType: 'TEXT' },
+      },
+      {
+        itemType: 'TEAM_FIELD',
+        title: '',
+        itemKey: 'team-school',
+        metadata: { fieldScope: 'TEAM_FIELD', fieldType: 'TEXT' },
+      },
+    ];
+
+    expect(isConfigModuleReadyToSave('fields', items, { fieldScope: 'MEMBER_FIELD' })).toBe(true);
+    expect(isConfigModuleReadyToSave('fields', items, { fieldScope: 'TEAM_FIELD' })).toBe(false);
+  });
+
+  it('validates project and intellectual-property groups as separate pages', () => {
+    const items = [
+      {
+        itemType: 'PROJECT_FIELD',
+        title: 'Project title',
+        itemKey: 'title',
+        metadata: { fieldScope: 'PROJECT_FIELD', fieldType: 'TEXT' },
+      },
+      {
+        itemType: 'PROJECT_FIELD',
+        title: '',
+        itemKey: 'patent-number',
+        metadata: { fieldScope: 'PROJECT_FIELD', groupLabel: 'Intellectual property', fieldType: 'TEXT' },
+      },
+    ];
+
+    expect(isConfigModuleReadyToSave('fields', items, {
+      fieldScope: 'PROJECT_FIELD',
+      excludeGroupLabel: 'Intellectual property',
+    })).toBe(true);
+    expect(isConfigModuleReadyToSave('fields', items, {
+      fieldScope: 'PROJECT_FIELD',
+      includeGroupLabel: 'Intellectual property',
+    })).toBe(false);
+  });
+
+  it('checks team member limits only on the team-information page', () => {
+    expect(shouldValidateTeamMemberLimitsForPage('fields', 'TEAM_FIELD')).toBe(true);
+    expect(shouldValidateTeamMemberLimitsForPage('fields', 'MEMBER_FIELD')).toBe(false);
+    expect(shouldValidateTeamMemberLimitsForPage('documents')).toBe(false);
+  });
+
+  it('isolates required-field validation across every registration field page', () => {
+    const intellectualPropertyGroup = 'Intellectual property';
+    const completeItems = [
+      {
+        itemType: 'MEMBER_FIELD',
+        title: 'Student name',
+        itemKey: 'memberName',
+        metadata: { fieldScope: 'MEMBER_FIELD', fieldType: 'TEXT' },
+      },
+      {
+        itemType: 'TEAM_FIELD',
+        title: 'Team name',
+        itemKey: 'teamName',
+        metadata: { fieldScope: 'TEAM_FIELD', fieldType: 'TEXT' },
+      },
+      {
+        itemType: 'PROJECT_FIELD',
+        title: 'Project title',
+        itemKey: 'title',
+        metadata: { fieldScope: 'PROJECT_FIELD', fieldType: 'TEXT' },
+      },
+      {
+        itemType: 'PROJECT_FIELD',
+        title: 'Patent number',
+        itemKey: 'patentNumber',
+        metadata: {
+          fieldScope: 'PROJECT_FIELD',
+          groupLabel: intellectualPropertyGroup,
+          fieldType: 'TEXT',
+        },
+      },
+    ];
+    const pages = [
+      { itemIndex: 0, validationScope: { fieldScope: 'MEMBER_FIELD' } },
+      { itemIndex: 1, validationScope: { fieldScope: 'TEAM_FIELD' } },
+      {
+        itemIndex: 2,
+        validationScope: {
+          fieldScope: 'PROJECT_FIELD',
+          excludeGroupLabel: intellectualPropertyGroup,
+        },
+      },
+      {
+        itemIndex: 3,
+        validationScope: {
+          fieldScope: 'PROJECT_FIELD',
+          includeGroupLabel: intellectualPropertyGroup,
+        },
+      },
+    ];
+
+    pages.forEach((currentPage) => {
+      pages.forEach((pageWithMissingValue) => {
+        const draft = completeItems.map((item, index) => index === pageWithMissingValue.itemIndex
+          ? { ...item, title: '' }
+          : { ...item });
+        const snapshot = structuredClone(draft);
+
+        expect(isConfigModuleReadyToSave('fields', draft, currentPage.validationScope)).toBe(
+          currentPage.itemIndex !== pageWithMissingValue.itemIndex,
+        );
+        expect(draft).toEqual(snapshot);
+      });
+    });
   });
 
   it('requires configured options for a select field', () => {

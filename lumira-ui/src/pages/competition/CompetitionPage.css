@@ -849,6 +849,7 @@
 
 .competition-settings-content .competition-organizer-list .competition-dynamic-list > .ant-space-item {
   width: 100%;
+  min-width: 0;
 }
 
 .competition-settings-content .competition-organizer-list .competition-dynamic-list__row {
@@ -856,6 +857,8 @@
   grid-template-columns: minmax(160px, 0.75fr) minmax(240px, 1fr) 72px;
   align-items: start;
   gap: 0 24px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .competition-settings-content .competition-organizer-list .competition-dynamic-list__role,
@@ -884,8 +887,14 @@
   }
 
   .competition-settings-content .competition-organizer-list .competition-dynamic-list__row {
-    grid-template-columns: minmax(160px, 1fr) minmax(220px, 1fr) 72px;
-    gap: 8px 12px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .competition-settings-content .competition-organizer-list .competition-dynamic-list__actions {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
   }
 }
 

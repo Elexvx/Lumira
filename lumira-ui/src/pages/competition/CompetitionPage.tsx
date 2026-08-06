@@ -71,6 +71,7 @@ import {
   isPaymentSettingsPageReadyToSave,
   isTimelineSettingsPageReadyToSave,
   mergeStageMaterialSaveItems,
+  shouldValidateTeamMemberLimitsForPage,
   shouldHydrateConfigModuleDraft,
 } from '@/pages/competition/competitionSettingsSave';
 import {
@@ -5868,10 +5869,21 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   const save = useCallback(async () => {
     const saveRevision = draftRevisionRef.current;
     const values = form.getFieldsValue(true);
-    if (!isConfigModuleReadyToSave(module.key, values.items || [])) {
+    const validationScope = module.key === 'fields' && fieldScope
+      ? {
+          fieldScope,
+          includeGroupLabel: fieldGroupLabel === INTELLECTUAL_PROPERTY_GROUP_LABEL
+            ? INTELLECTUAL_PROPERTY_GROUP_LABEL
+            : undefined,
+          excludeGroupLabel: fieldScope === 'PROJECT_FIELD' && fieldGroupLabel !== INTELLECTUAL_PROPERTY_GROUP_LABEL
+            ? INTELLECTUAL_PROPERTY_GROUP_LABEL
+            : undefined,
+        }
+      : undefined;
+    if (!isConfigModuleReadyToSave(module.key, values.items || [], validationScope)) {
       return false;
     }
-    if (module.key === 'fields') {
+    if (shouldValidateTeamMemberLimitsForPage(module.key, fieldScope)) {
       const minMembers = Number(values.teamMinMembers);
       const maxMembers = Number(values.teamMaxMembers);
       if (!Number.isInteger(minMembers) || !Number.isInteger(maxMembers)
@@ -5917,7 +5929,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
       showErrorMessage(error, formatMessage({ id: 'page.competition.settings.item.saveFailed', defaultMessage: 'Settings save failed' }));
       return false;
     }
-  }, [competitionUuid, fileStageCode, form, items, module.key, onSaved]);
+  }, [competitionUuid, fieldGroupLabel, fieldScope, fileStageCode, form, items, module.key, onSaved]);
   const { scheduleSave, flushPendingSave, saveNow } = useDebouncedAutoSave(save);
   const markDraftChangedAndScheduleSave = useCallback(() => {
     draftRevisionRef.current += 1;

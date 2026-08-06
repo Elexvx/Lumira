@@ -28,6 +28,8 @@ export type CompetitionSettingsConfigItemDraft = {
   title?: string | null;
   itemKey?: string | null;
   metadata?: {
+    fieldScope?: string | null;
+    groupLabel?: string | null;
     fieldType?: string | null;
     options?: string | null;
     stageCode?: string | null;
@@ -35,6 +37,12 @@ export type CompetitionSettingsConfigItemDraft = {
     maxSizeMb?: number | null;
     storageKey?: string | null;
   } | null;
+};
+
+export type CompetitionSettingsConfigValidationScope = {
+  fieldScope?: string | null;
+  includeGroupLabel?: string | null;
+  excludeGroupLabel?: string | null;
 };
 
 export type ConfigModuleDraftHydrationState = {
@@ -220,14 +228,48 @@ export const isConfigModuleDraftSaveCurrent = (saveRevision: number, currentRevi
 
 const hasText = (value?: string | null) => Boolean(trimOptional(value));
 
+const getConfigModuleItemsInValidationScope = (
+  moduleKey: CompetitionSettingsConfigModuleKey,
+  items: CompetitionSettingsConfigItemDraft[],
+  validationScope?: CompetitionSettingsConfigValidationScope,
+) => {
+  const fieldScope = trimOptional(validationScope?.fieldScope);
+  if (moduleKey !== 'fields' || !fieldScope) {
+    return items;
+  }
+  const includeGroupLabel = trimOptional(validationScope?.includeGroupLabel);
+  const excludeGroupLabel = trimOptional(validationScope?.excludeGroupLabel);
+  return items.filter((item) => {
+    const itemScope = trimOptional(item.metadata?.fieldScope) || trimOptional(item.itemType);
+    if (itemScope !== fieldScope) {
+      return false;
+    }
+    const groupLabel = trimOptional(item.metadata?.groupLabel);
+    if (includeGroupLabel) {
+      return groupLabel === includeGroupLabel;
+    }
+    if (excludeGroupLabel) {
+      return groupLabel !== excludeGroupLabel;
+    }
+    return true;
+  });
+};
+
+export const shouldValidateTeamMemberLimitsForPage = (
+  moduleKey: CompetitionSettingsConfigModuleKey,
+  fieldScope?: string | null,
+) => moduleKey === 'fields' && (!fieldScope || fieldScope === 'TEAM_FIELD');
+
 export const isConfigModuleReadyToSave = (
   moduleKey: CompetitionSettingsConfigModuleKey,
   items: CompetitionSettingsConfigItemDraft[],
+  validationScope?: CompetitionSettingsConfigValidationScope,
 ) => {
-  if (!items.length) {
+  const validationItems = getConfigModuleItemsInValidationScope(moduleKey, items, validationScope);
+  if (!validationItems.length) {
     return true;
   }
-  return items.every((item) => {
+  return validationItems.every((item) => {
     if (moduleKey === 'documents') {
       return hasText(item.title);
     }

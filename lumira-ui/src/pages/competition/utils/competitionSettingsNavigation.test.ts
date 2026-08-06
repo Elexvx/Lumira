@@ -3,6 +3,7 @@ import {
   createCompetitionSettingsSearch,
   getCompetitionSettingsStageTabFallback,
   parseCompetitionSettingsNavigation,
+  type CompetitionSettingsRegistrationTab,
 } from './competitionSettingsNavigation';
 
 describe('competition settings URL navigation', () => {
@@ -93,5 +94,29 @@ describe('competition settings URL navigation', () => {
     expect(createCompetitionSettingsSearch('', 'stages', 'timeline')).toBe('?section=stages&tab=timeline');
     expect(createCompetitionSettingsSearch('', 'stages', 'preliminary')).toBe('?section=stages&tab=preliminary');
     expect(createCompetitionSettingsSearch('', 'stages', 'final')).toBe('?section=stages&tab=final');
+  });
+
+  it('round-trips every registration page while switching forward and backward', () => {
+    const switchSequence: CompetitionSettingsRegistrationTab[] = [
+      'MEMBER_FIELD',
+      'TEAM_FIELD',
+      'PROJECT_FIELD',
+      'INTELLECTUAL_PROPERTY',
+      'documents',
+      'INTELLECTUAL_PROPERTY',
+      'PROJECT_FIELD',
+      'TEAM_FIELD',
+      'MEMBER_FIELD',
+    ];
+
+    let search = '?from=settings';
+    switchSequence.forEach((tab) => {
+      search = createCompetitionSettingsSearch(search, 'registration', tab);
+      expect(parseCompetitionSettingsNavigation(search)).toMatchObject({
+        section: 'registration',
+        registrationTab: tab,
+      });
+      expect(new URLSearchParams(search).get('from')).toBe('settings');
+    });
   });
 });
