@@ -268,7 +268,10 @@ body,
 }
 
 .saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-pro-form-group-container > *,
-.saas-standard-drawer .ant-form:not(.ant-form-inline) .ant-space:has(> .ant-space-item > .ant-form-item) > .ant-space-item {
+.saas-standard-drawer
+  .ant-form:not(.ant-form-inline)
+  .ant-space:has(> .ant-space-item > .ant-form-item)
+  > .ant-space-item {
   width: 100%;
 }
 
