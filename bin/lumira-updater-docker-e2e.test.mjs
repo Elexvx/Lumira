@@ -94,12 +94,23 @@ test('real Docker blue-green update and rollback keep HTTP available and drain w
     assert.equal(existing, '', `refusing to replace existing container ${name}`);
   }
 
-  for (const image of ['node:22-alpine', 'nginx:1.29-alpine']) {
+  const runtimeImageTags = {
+    server: 'node:22-alpine',
+    async: 'node:20-alpine',
+    jobExecutor: 'node:24-alpine',
+  };
+  for (const image of [...Object.values(runtimeImageTags), 'nginx:1.29-alpine']) {
     const inspected = command('docker', ['image', 'inspect', image], { check: false, includeStatus: true });
     if (inspected.status !== 0) command('docker', ['pull', image]);
   }
-  const nodeImage = JSON.parse(command('docker', ['image', 'inspect', 'node:22-alpine']))[0].RepoDigests[0];
-  assert.match(nodeImage, /^node@sha256:[0-9a-f]{64}$/);
+  const runtimeImages = Object.fromEntries(Object.entries(runtimeImageTags).map(([role, image]) => [
+    role,
+    JSON.parse(command('docker', ['image', 'inspect', image]))[0].RepoDigests[0],
+  ]));
+  for (const image of Object.values(runtimeImages)) {
+    assert.match(image, /^node@sha256:[0-9a-f]{64}$/);
+  }
+  assert.equal(new Set(Object.values(runtimeImages).map((image) => image.split('@')[1])).size, 3);
 
   const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-docker-e2e-'));
   const queueRoot = path.join(deployDir, 'queue');
@@ -190,9 +201,9 @@ networks:
     `E2E_QUEUE_DIR=${toWslPath(queueRoot)}`,
     `E2E_PROXY_PORT=${proxyPort}`,
     'LUMIRA_ACTIVE_SLOT=blue',
-    `LUMIRA_SERVER_IMAGE=${nodeImage}`,
-    `LUMIRA_SERVER_BLUE_IMAGE=${nodeImage}`,
-    `LUMIRA_SERVER_GREEN_IMAGE=${nodeImage}`,
+    `LUMIRA_SERVER_IMAGE=${runtimeImages.server}`,
+    `LUMIRA_SERVER_BLUE_IMAGE=${runtimeImages.server}`,
+    `LUMIRA_SERVER_GREEN_IMAGE=${runtimeImages.server}`,
     'LUMIRA_SERVER_BLUE_APP_VERSION=old',
     'LUMIRA_SERVER_GREEN_APP_VERSION=old',
     `LUMIRA_SERVER_BLUE_GIT_COMMIT=${oldCommit}`,
@@ -203,8 +214,8 @@ networks:
     `BUILD_VERSION=old+${oldCommit}`,
     `GIT_COMMIT=${oldCommit}`,
     'DATABASE_VERSION=baseline',
-    `LUMIRA_ASYNC_IMAGE=${nodeImage}`,
-    `LUMIRA_JOB_EXECUTOR_IMAGE=${nodeImage}`,
+    `LUMIRA_ASYNC_IMAGE=${runtimeImages.async}`,
+    `LUMIRA_JOB_EXECUTOR_IMAGE=${runtimeImages.jobExecutor}`,
     'DB_MIGRATION_NETWORK=unused',
     'BACKUP_ROOT=/tmp/lumira-e2e-backups',
     '',
@@ -274,7 +285,13 @@ networks:
     schemaVersion: 2,
     version: 'new',
     commit: newCommit,
-    images: { server: nodeImage, frontend: '', async: nodeImage, jobExecutor: nodeImage, migrator: nodeImage },
+    images: {
+      server: runtimeImages.server,
+      frontend: '',
+      async: runtimeImages.async,
+      jobExecutor: runtimeImages.jobExecutor,
+      migrator: runtimeImages.server,
+    },
     update: {
       strategy: 'single-host-blue-green',
       minUpdaterProtocol: 2,

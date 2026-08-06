@@ -16,7 +16,12 @@ const server = http.createServer((request, response) => {
     return;
   }
   if (request.url === '/api/v2/runtime/version' || request.url === '/api/version' || request.url === '/probe') {
-    response.end(JSON.stringify({ commitId: reportedCommit, version: process.env.APP_VERSION || 'test' }));
+    response.end(JSON.stringify({
+      serviceName: 'lumira-server',
+      artifact: 'lumira-admin',
+      commitId: reportedCommit,
+      version: process.env.APP_VERSION || 'test',
+    }));
     return;
   }
   response.statusCode = 404;
