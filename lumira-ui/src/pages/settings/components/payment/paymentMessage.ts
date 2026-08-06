@@ -32,12 +32,24 @@ export const localizePaymentMessage = (value: string | null | undefined) => {
   return databaseMessage(prefixKey, { reason: value.slice(prefix.length) });
 };
 
-export const paymentConnectivityStatusDisplayName = (lastTestSuccess: boolean | null | undefined) => {
+export const paymentConnectivityStatusDisplayName = (
+  lastTestSuccess: boolean | null | undefined,
+  english = false,
+) => {
+  if (!english) {
+    if (lastTestSuccess === true) {
+      return databaseMessage('payment.connectivity.available');
+    }
+    if (lastTestSuccess === false) {
+      return databaseMessage('payment.connectivity.unavailable');
+    }
+    return databaseMessage('payment.connectivity.notTested');
+  }
   if (lastTestSuccess === true) {
-    return databaseMessage('payment.connectivity.available');
+    return 'Available';
   }
   if (lastTestSuccess === false) {
-    return databaseMessage('payment.connectivity.unavailable');
+    return 'Unavailable';
   }
-  return databaseMessage('payment.connectivity.notTested');
+  return 'Not tested';
 };
