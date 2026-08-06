@@ -142,6 +142,19 @@ test('api proxy retires old keep-alive clients before the blue-green drain deadl
   assert.match(apiNginx, /^\s*keepalive_requests 100;$/m);
 });
 
+test('production disables the Hikari periodic JDBC keepalive explicitly', () => {
+  assert.match(
+    composeProd,
+    /SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME: \$\{SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME:-0\}/,
+    'production compose must not inherit HikariCP 6.2+ periodic keepalive defaults'
+  );
+  assert.match(
+    envExample,
+    /^SPRING_DATASOURCE_HIKARI_KEEPALIVE_TIME=0$/m,
+    'the production env template must document the keepalive safety override'
+  );
+});
+
 test('deploy-container generates every scoped internal token used by production compose', () => {
   for (const key of [
     'SAAS_INTERNAL_SYSTEM_TOKEN',
