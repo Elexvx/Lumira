@@ -49,6 +49,7 @@ lumira-backend/.env.*
 *.tar.gz
 # OCI image exports are delivery artifacts; publish deployable images through GHCR/CI.
 /tmplumira-server-0.1.0-fixed.tar
+/lumira-d64daa84e33d-images.tar
 output/
 tmp/
 backups/
