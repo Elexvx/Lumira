@@ -5,6 +5,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'Optional release note for a manually triggered main release'
+        required: false
+        type: string
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -99,7 +105,7 @@ jobs:
           echo "version=$(node bin/check-database-migrations.mjs --print-version)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v4
       - name: Login to GitHub Container Registry
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
@@ -107,7 +113,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to domestic container registry
         if: >-
-          github.event_name == 'push' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
           github.ref == 'refs/heads/main' &&
           env.CN_REGISTRY != '' &&
           env.CN_REGISTRY_NAMESPACE != ''
@@ -129,15 +135,15 @@ jobs:
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
             BACKEND_VERSION=main+${{ steps.images.outputs.short_sha }}
             DATABASE_VERSION=${{ steps.database_migrations.outputs.version }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp || github.run_started_at }}
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_server }}:main
             ${{ steps.images.outputs.lumira_server }}:sha-${{ steps.images.outputs.short_sha }}
-          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          provenance: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          sbom: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           cache-from: type=gha,scope=lumira-server
           cache-to: type=gha,mode=max,scope=lumira-server
       - name: Build lumira-ui image
@@ -148,15 +154,15 @@ jobs:
           file: deploy/docker/lumira-ui.Dockerfile
           build-args: |
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp || github.run_started_at }}
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_ui }}:main
             ${{ steps.images.outputs.lumira_ui }}:sha-${{ steps.images.outputs.short_sha }}
-          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          provenance: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          sbom: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           cache-from: type=gha,scope=lumira-ui
           cache-to: type=gha,mode=max,scope=lumira-ui
       - name: Build lumira-async image
@@ -172,15 +178,15 @@ jobs:
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
             BACKEND_VERSION=main+${{ steps.images.outputs.short_sha }}
             DATABASE_VERSION=${{ steps.database_migrations.outputs.version }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp || github.run_started_at }}
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_async }}:main
             ${{ steps.images.outputs.lumira_async }}:sha-${{ steps.images.outputs.short_sha }}
-          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          provenance: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          sbom: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           cache-from: type=gha,scope=lumira-async
           cache-to: type=gha,mode=max,scope=lumira-async
       - name: Build lumira-job-executor image
@@ -196,15 +202,15 @@ jobs:
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
             BACKEND_VERSION=main+${{ steps.images.outputs.short_sha }}
             DATABASE_VERSION=${{ steps.database_migrations.outputs.version }}
-            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp || github.run_started_at }}
             GIT_COMMIT=${{ github.sha }}
             GIT_BRANCH=${{ github.ref_name }}
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_job_executor }}:main
             ${{ steps.images.outputs.lumira_job_executor }}:sha-${{ steps.images.outputs.short_sha }}
-          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          provenance: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          sbom: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           cache-from: type=gha,scope=lumira-job-executor
           cache-to: type=gha,mode=max,scope=lumira-job-executor
       - name: Build lumira-migrator image
@@ -213,18 +219,18 @@ jobs:
         with:
           context: .
           file: deploy/docker/migrator.Dockerfile
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_migrator }}:main
             ${{ steps.images.outputs.lumira_migrator }}:sha-${{ steps.images.outputs.short_sha }}
-          provenance: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          sbom: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          provenance: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+          sbom: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
           cache-from: type=gha,scope=lumira-migrator
           cache-to: type=gha,mode=max,scope=lumira-migrator
       - name: Mirror release images to domestic registry
         id: mirror_images
         if: >-
-          github.event_name == 'push' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
           github.ref == 'refs/heads/main' &&
           env.CN_REGISTRY != '' &&
           env.CN_REGISTRY_NAMESPACE != ''
@@ -313,7 +319,7 @@ jobs:
           writeFileSync('tmp/release/domestic-image-mirror-evidence.json', `${JSON.stringify(evidence, null, 2)}\n`);
           NODE
       - name: Write image supply-chain evidence
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           mkdir -p tmp/release
@@ -358,7 +364,7 @@ jobs:
           EOF
       - name: Resolve release manifest image registry
         id: release_images
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           if [[ -n "${CN_REGISTRY}" && -n "${CN_REGISTRY_NAMESPACE}" ]]; then
@@ -387,7 +393,7 @@ jobs:
           echo "lumira_job_executor_digest=${job_executor_digest}" >> "$GITHUB_OUTPUT"
           echo "lumira_migrator_digest=${migrator_digest}" >> "$GITHUB_OUTPUT"
       - name: Generate release manifest
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
           GIT_COMMIT: ${{ github.sha }}
           APP_VERSION: main
@@ -399,10 +405,10 @@ jobs:
           LUMIRA_RELEASE_MIGRATION_MODE: expand-only
           LUMIRA_RELEASE_DATABASE_VERSION: ${{ steps.database_migrations.outputs.version }}
           LUMIRA_RELEASE_MIGRATION_REQUIRED: 'true'
-          LUMIRA_RELEASE_NOTES: ${{ github.event.head_commit.message }}
+          LUMIRA_RELEASE_NOTES: ${{ github.event.head_commit.message || inputs.release_notes || format('Manual release for {0}', github.sha) }}
         run: node bin/generate-release-manifest.mjs
       - name: Publish continuous release manifest
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -425,7 +431,7 @@ jobs:
             --clobber
       - name: Publish domestic image mirror evidence
         if: >-
-          github.event_name == 'push' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
           github.ref == 'refs/heads/main' &&
           env.CN_REGISTRY != '' &&
           env.CN_REGISTRY_NAMESPACE != ''
@@ -433,7 +439,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload continuous tmp/release/domestic-image-mirror-evidence.json --clobber
       - name: Upload release manifest
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: lumira-release-manifest
@@ -442,7 +448,7 @@ jobs:
             tmp/release/image-supply-chain-evidence.json
       - name: Upload domestic image mirror evidence
         if: >-
-          github.event_name == 'push' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
           github.ref == 'refs/heads/main' &&
           env.CN_REGISTRY != '' &&
           env.CN_REGISTRY_NAMESPACE != ''

@@ -76,6 +76,21 @@ test('service images do not advertise an unavailable Nacos or JM logging integra
   assert.match(serviceDockerfile, /csp\.sentinel\.log\.dir=\/tmp\/sentinel/);
 });
 
+test('main release workflow has a guarded manual dispatch fallback', () => {
+  assert.match(ciWorkflow, /\n  workflow_dispatch:\n/);
+  assert.match(ciWorkflow, /release_notes:/);
+  assert.match(ciWorkflow, /github\.event_name == 'workflow_dispatch'/);
+  assert.match(
+    ciWorkflow,
+    /push: \$\{\{ \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\) && github\.ref == 'refs\/heads\/main' \}\}/,
+  );
+  assert.match(
+    ciWorkflow,
+    /LUMIRA_RELEASE_NOTES: \$\{\{ github\.event\.head_commit\.message \|\| inputs\.release_notes/,
+  );
+  assert.doesNotMatch(ciWorkflow, /github\.event_name == 'pull_request'[^\n]*(?:push|provenance|sbom)/);
+});
+
 test('deployment configuration does not expose an unavailable Nacos capability', () => {
   for (const [name, content] of [
     ['production compose', composeProd],
