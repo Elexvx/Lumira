@@ -201,6 +201,37 @@ class WechatLoginSettingsServiceTest {
     }
 
     @Test
+    void updateSettingsShouldRejectEnablingIncompleteConfiguration() {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
+                .thenReturn(List.of(
+                        config("verification.wechat-login.enabled", "false"),
+                        config("verification.wechat-login.app-id", "appid-1"),
+                        config("verification.wechat-login.app-secret", ""),
+                        config("verification.wechat-login.redirect-uri", "https://example.com/callback"),
+                        config("verification.wechat-login.state-expire-minutes", "10")
+                ));
+
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService
+        );
+        SystemDTO.WechatLoginSettingsRequest request = new SystemDTO.WechatLoginSettingsRequest();
+        request.setEnabled(Boolean.TRUE);
+
+        assertThatThrownBy(() -> service.updateSettings(trustedOperator(9L), request))
+                .isInstanceOfSatisfying(BizException.class, exception -> {
+                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST);
+                    assertThat(exception.getMessage()).contains("AppSecret");
+                });
+        verify(mapper, never()).upsertPlatformConfig(any());
+        verify(readModelVersionService, never()).bump(any(), any(), any());
+    }
+
+    @Test
     void updateSettingsShouldRejectNullRequestBeforeLoadingSettings() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
         ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);

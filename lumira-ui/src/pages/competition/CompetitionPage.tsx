@@ -7045,6 +7045,7 @@ const CompetitionSettingsPage = () => {
     } else {
       history.push(nextPath);
     }
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }, [location.pathname, location.search]);
 
   useEffect(() => {
