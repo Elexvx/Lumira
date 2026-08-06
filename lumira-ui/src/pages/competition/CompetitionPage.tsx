@@ -1083,6 +1083,7 @@ const CompetitionBasicFields = ({
   onDraftChange?: () => void;
 }) => {
   const schedules = Form.useWatch('schedules', form) || [];
+  const registrationRange = Form.useWatch('registrationRange', form);
 
   return (
     <>
@@ -6678,6 +6679,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
   const schedules = Form.useWatch('schedules', form) || [];
+  const registrationRange = Form.useWatch('registrationRange', form);
 
   useEffect(() => {
     let cancelled = false;

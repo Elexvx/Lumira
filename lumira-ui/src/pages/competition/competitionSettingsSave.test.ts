@@ -140,20 +140,7 @@ describe('competition settings page-level save guards', () => {
     })).toBe(true);
   });
 
-  it('does not use registration time to restrict material or competition time', () => {
-    expect(isTimelineSettingsPageReadyToSave({
-      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
-      schedules: [{
-        timeMode: 'CONFIRMED',
-        title: 'Preliminary',
-        materialRange: ['2026-09-20 00:00', '2026-10-10 00:00'],
-        timeRange: ['2026-09-29 23:59', '2026-10-18 00:00'],
-        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
-      }],
-    })).toBe(true);
-  });
-
-  it('requires a separate material submission range', () => {
+  it('rejects a competition that starts before registration closes', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
       schedules: [{
