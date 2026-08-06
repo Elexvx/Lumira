@@ -336,6 +336,7 @@ public class CompetitionManagementAppService {
         );
         requireCompetitionWrite(inserted, "Competition changed, please retry");
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        synchronizeExistingStageWindows(id, normalized.getScheduleJson(), userId, userUuid);
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         requireCompetitionWrite(
                 registrationDatasetRepository.createDataset(competition.getId(), competition.getTitle(), userId, userUuid),
@@ -846,6 +847,114 @@ public class CompetitionManagementAppService {
         }
     }
 
+    private void synchronizeExistingStageWindows(
+            Long competitionId,
+            String scheduleJson,
+            Long userId,
+            String userUuid
+    ) {
+        for (String stageCode : List.of("PRELIMINARY", "FINAL")) {
+            StageScheduleWindow window = stageScheduleWindow(scheduleJson, stageCode);
+            if (window == null) {
+                continue;
+            }
+            jdbcTemplate.update(
+                    """
+                            update competition_stage
+                            set stage_name = ?, material_submit_start = ?, material_submit_end = ?,
+                                review_start = ?, review_end = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                            where competition_id = ? and stage_code = ? and deleted = 0
+                            """,
+                    window.stageName(),
+                    window.materialSubmitStart(),
+                    window.materialSubmitEnd(),
+                    window.reviewStart(),
+                    window.reviewEnd(),
+                    userId,
+                    userUuid,
+                    LocalDateTime.now(),
+                    competitionId,
+                    stageCode
+            );
+        }
+    }
+
+    private StageScheduleWindow stageScheduleWindow(Long competitionId, String stageCode) {
+        String scheduleJson = jdbcTemplate.queryForObject(
+                "select schedule_json from aiadc_competition where id = ? and deleted = 0",
+                String.class,
+                competitionId
+        );
+        return stageScheduleWindow(scheduleJson, stageCode);
+    }
+
+    private StageScheduleWindow stageScheduleWindow(String scheduleJson, String stageCode) {
+        if (!StringUtils.hasText(scheduleJson)) {
+            return null;
+        }
+        int scheduleIndex = "PRELIMINARY".equals(stageCode) ? 0 : "FINAL".equals(stageCode) ? 1 : -1;
+        if (scheduleIndex < 0) {
+            return null;
+        }
+        try {
+            JsonNode schedules = OBJECT_MAPPER.readTree(scheduleJson);
+            if (!schedules.isArray() || schedules.size() <= scheduleIndex) {
+                return null;
+            }
+            JsonNode schedule = schedules.get(scheduleIndex);
+            if (!"CONFIRMED".equalsIgnoreCase(schedule.path("timeMode").asText())) {
+                return null;
+            }
+            LocalDateTime materialStart = parseScheduleDateTime(schedule, "materialSubmitStart");
+            LocalDateTime materialEnd = parseScheduleDateTime(schedule, "materialSubmitEnd");
+            LocalDateTime reviewStart = parseScheduleDateTime(schedule, "reviewStart");
+            LocalDateTime reviewEnd = parseScheduleDateTime(schedule, "reviewEnd");
+            validateScheduleWindow(materialStart, materialEnd, "材料提交结束时间必须晚于开始时间");
+            validateScheduleWindow(reviewStart, reviewEnd, "评审结束时间必须晚于开始时间");
+            String defaultName = "PRELIMINARY".equals(stageCode) ? "初赛" : "决赛";
+            String stageName = trimToNull(schedule.path("title").asText());
+            return new StageScheduleWindow(
+                    stageName == null ? defaultName : stageName,
+                    materialStart,
+                    materialEnd,
+                    reviewStart,
+                    reviewEnd
+            );
+        } catch (BizException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Competition schedule JSON is invalid");
+        }
+    }
+
+    private LocalDateTime parseScheduleDateTime(JsonNode schedule, String fieldName) {
+        String value = trimToNull(schedule.path(fieldName).asText());
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.replace('T', ' ');
+        for (DateTimeFormatter formatter : List.of(
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        )) {
+            try {
+                return LocalDateTime.parse(normalized, formatter);
+            } catch (RuntimeException ignored) {
+                // Try the next supported persisted format.
+            }
+        }
+        throw biz(ErrorCode.VALIDATION_ERROR, "赛事阶段时间格式无效");
+    }
+
+    private void validateScheduleWindow(LocalDateTime start, LocalDateTime end, String message) {
+        if ((start == null) != (end == null)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "阶段开始和结束时间必须同时填写");
+        }
+        if (start != null && !end.isAfter(start)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, message);
+        }
+    }
+
     private void synchronizeStageForm(
             Long competitionId,
             String stageCode,
@@ -855,6 +964,7 @@ public class CompetitionManagementAppService {
             Long userId,
             String userUuid
     ) {
+        StageScheduleWindow scheduleWindow = stageScheduleWindow(competitionId, stageCode);
         Long stageId = jdbcTemplate.queryForObject(
                 "select id from competition_stage where competition_id = ? and stage_code = ? and deleted = 0 order by id asc limit 1",
                 Long.class,
@@ -883,10 +993,20 @@ public class CompetitionManagementAppService {
         }
         if (stageId == null) {
             int inserted = jdbcTemplate.update(
-                    "insert into competition_stage (competition_id, stage_code, stage_name, status, sort, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted) values (?, ?, ?, 'ENABLED', ?, ?, ?, ?, ?, 0)",
+                    """
+                            insert into competition_stage (
+                                competition_id, stage_code, stage_name, material_submit_start, material_submit_end,
+                                review_start, review_end, status, sort,
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, 'ENABLED', ?, ?, ?, ?, ?, 0)
+                            """,
                     competitionId,
                     stageCode,
-                    stageName,
+                    scheduleWindow == null ? stageName : scheduleWindow.stageName(),
+                    scheduleWindow == null ? null : scheduleWindow.materialSubmitStart(),
+                    scheduleWindow == null ? null : scheduleWindow.materialSubmitEnd(),
+                    scheduleWindow == null ? null : scheduleWindow.reviewStart(),
+                    scheduleWindow == null ? null : scheduleWindow.reviewEnd(),
                     sort,
                     userId,
                     userUuid,
@@ -896,16 +1016,39 @@ public class CompetitionManagementAppService {
             requireCompetitionWrite(inserted, "Competition stage changed, please retry");
             stageId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         } else {
-            jdbcTemplate.update(
-                    "update competition_stage set stage_name = ?, status = 'ENABLED', sort = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and competition_id = ? and deleted = 0",
-                    stageName,
-                    sort,
-                    userId,
-                    userUuid,
-                    LocalDateTime.now(),
-                    stageId,
-                    competitionId
-            );
+            if (scheduleWindow == null) {
+                jdbcTemplate.update(
+                        "update competition_stage set stage_name = ?, status = 'ENABLED', sort = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and competition_id = ? and deleted = 0",
+                        stageName,
+                        sort,
+                        userId,
+                        userUuid,
+                        LocalDateTime.now(),
+                        stageId,
+                        competitionId
+                );
+            } else {
+                jdbcTemplate.update(
+                        """
+                                update competition_stage
+                                set stage_name = ?, material_submit_start = ?, material_submit_end = ?,
+                                    review_start = ?, review_end = ?, status = 'ENABLED', sort = ?,
+                                    updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                                where id = ? and competition_id = ? and deleted = 0
+                                """,
+                        scheduleWindow.stageName(),
+                        scheduleWindow.materialSubmitStart(),
+                        scheduleWindow.materialSubmitEnd(),
+                        scheduleWindow.reviewStart(),
+                        scheduleWindow.reviewEnd(),
+                        sort,
+                        userId,
+                        userUuid,
+                        LocalDateTime.now(),
+                        stageId,
+                        competitionId
+                );
+            }
         }
 
         String formSchemaJson = buildStageFormSchema(items);
@@ -1519,6 +1662,15 @@ public class CompetitionManagementAppService {
         if (!StringUtils.hasText(metadata.path("storageKey").asText(null))) {
             throw biz(ErrorCode.VALIDATION_ERROR, label + "必须选择保存位置");
         }
+    }
+
+    private record StageScheduleWindow(
+            String stageName,
+            LocalDateTime materialSubmitStart,
+            LocalDateTime materialSubmitEnd,
+            LocalDateTime reviewStart,
+            LocalDateTime reviewEnd
+    ) {
     }
 
     private String configItemIdentity(CompetitionVO.ConfigItem item) {

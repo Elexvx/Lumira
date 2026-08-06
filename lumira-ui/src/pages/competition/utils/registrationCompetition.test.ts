@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildRegistrationCompetitionFallback,
+  filterOpenRegistrationCompetitions,
   hasRegistrationCompetitionPricing,
+  isRegistrationCompetitionOpen,
   mergeRegistrationCompetitionOptions,
 } from './registrationCompetition';
 
@@ -70,5 +72,47 @@ describe('registrationCompetition helpers', () => {
       competitionUuid: 'competition-uuid-103',
       competitionTitle: 'Competition 103',
     }))).toBe(false);
+  });
+
+  it('uses the registration window to decide whether a competition is selectable', () => {
+    const competition = {
+      registrationStart: '2026-07-28T09:00:00',
+      registrationEnd: '2026-07-28T17:00:00',
+    };
+
+    expect(isRegistrationCompetitionOpen(competition, '2026-07-28T09:00:00')).toBe(true);
+    expect(isRegistrationCompetitionOpen(competition, '2026-07-28T17:00:00')).toBe(true);
+    expect(isRegistrationCompetitionOpen(competition, '2026-07-28T08:59:59')).toBe(false);
+    expect(isRegistrationCompetitionOpen(competition, '2026-07-28T17:00:01')).toBe(false);
+    expect(isRegistrationCompetitionOpen({}, '2026-07-28T12:00:00')).toBe(false);
+  });
+
+  it('filters published options by registration time rather than competition time', () => {
+    const openCompetition = {
+      id: 101,
+      code: 'open',
+      locale: 'zh',
+      title: 'Open registration',
+      category: 'OTHER',
+      registrationStart: '2026-07-28T09:00:00',
+      registrationEnd: '2026-07-28T17:00:00',
+      competitionStart: '2027-01-01T09:00:00',
+      location: '',
+      status: 'published' as const,
+      featured: false,
+      sort: 101,
+    };
+    const closedCompetition = {
+      ...openCompetition,
+      id: 102,
+      code: 'closed',
+      title: 'Closed registration',
+      registrationEnd: '2026-07-28T08:00:00',
+    };
+
+    expect(filterOpenRegistrationCompetitions(
+      [openCompetition, closedCompetition],
+      '2026-07-28T12:00:00',
+    )).toEqual([openCompetition]);
   });
 });

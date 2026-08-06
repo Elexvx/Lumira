@@ -77,6 +77,7 @@ import {
 } from '@/pages/competition/competitionSettingsSave';
 import {
   buildRegistrationCompetitionFallback,
+  filterOpenRegistrationCompetitions,
   hasRegistrationCompetitionPricing,
   mergeRegistrationCompetitionOptions,
 } from '@/pages/competition/utils/registrationCompetition';
@@ -949,6 +950,7 @@ const hasCompetitionCreateDraftContent = (values: Partial<CompetitionFormValues>
       || schedules.some((schedule) => (
         normalizeTimeMode(schedule.timeMode) === 'CONFIRMED'
         || trimOptional(schedule.title)
+        || getCompleteTimeRange(schedule.materialRange)
         || getCompleteTimeRange(schedule.timeRange)
         || getCompleteTimeRange(schedule.reviewRange)
       ))
@@ -1081,7 +1083,6 @@ const CompetitionBasicFields = ({
   onDraftChange?: () => void;
 }) => {
   const schedules = Form.useWatch('schedules', form) || [];
-  const registrationRange = Form.useWatch('registrationRange', form);
 
   return (
     <>
@@ -2630,6 +2631,13 @@ const CompetitionRegistrationPage = () => {
   const registrationMaterialValues = Form.useWatch('materials', { form, preserve: true }) as Record<string, unknown> | undefined;
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], { form, preserve: true }) || []) as RegistrationTeamMemberDraft[];
   const registrationCompetitionOptions = useMemo(
+    () => mergeRegistrationCompetitionOptions(
+      filterOpenRegistrationCompetitions(competitions),
+      registrationCompetitionFallback,
+    ),
+    [competitions, registrationCompetitionFallback],
+  );
+  const registrationCompetitionCatalog = useMemo(
     () => mergeRegistrationCompetitionOptions(competitions, registrationCompetitionFallback),
     [competitions, registrationCompetitionFallback],
   );
@@ -3942,8 +3950,8 @@ const CompetitionRegistrationPage = () => {
   }, []);
 
   const competitionTitleMap = useMemo(
-    () => new Map(registrationCompetitionOptions.map((item) => [item.id, item.title || item.code])),
-    [registrationCompetitionOptions],
+    () => new Map(registrationCompetitionCatalog.map((item) => [item.id, item.title || item.code])),
+    [registrationCompetitionCatalog],
   );
   const canViewAllRegistrations = useMemo(() => {
     const matchedScopes = (initialState?.currentUser?.dataScopes || []).filter(
@@ -6670,7 +6678,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
 }, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
   const schedules = Form.useWatch('schedules', form) || [];
-  const registrationRange = Form.useWatch('registrationRange', form);
 
   useEffect(() => {
     let cancelled = false;
@@ -6742,6 +6749,9 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
           <Typography.Title className="competition-basic-section__title" level={5}>
             报名时间
           </Typography.Title>
+          <Typography.Paragraph type="secondary">
+            仅用于控制赛事报名下拉的可见时间，不限制材料提交或比赛阶段。
+          </Typography.Paragraph>
           <Form.Item
             name="registrationRange"
             label="报名时间"

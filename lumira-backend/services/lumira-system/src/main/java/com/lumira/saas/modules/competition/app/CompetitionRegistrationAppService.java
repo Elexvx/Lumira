@@ -832,6 +832,7 @@ public class CompetitionRegistrationAppService {
         if (stage == null) {
             throw biz(ErrorCode.NOT_FOUND, "Stage not found");
         }
+        requireReviewWindowOpen(stage);
         return jdbcTemplate.query(
                 """
                         select r.id as registrationId, r.registration_no as registrationNo, r.competition_id as competitionId,
@@ -870,6 +871,7 @@ public class CompetitionRegistrationAppService {
         if (stage == null || registration == null || !stage.getCompetitionId().equals(registration.getCompetitionId())) {
             throw biz(ErrorCode.NOT_FOUND, "Review candidate not found");
         }
+        requireReviewWindowOpen(stage);
         String decision = normalizeEnum(request.getDecision(), null, REVIEW_DECISIONS, "Invalid review decision");
         if (request.getScore() != null && (request.getScore().compareTo(BigDecimal.ZERO) < 0 || request.getScore().compareTo(new BigDecimal("100")) > 0)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Review score must be between 0 and 100");
@@ -902,6 +904,7 @@ public class CompetitionRegistrationAppService {
         if (stage == null || !"PRELIMINARY".equals(stage.getStageCode())) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Promotion rule can only be applied to the preliminary stage");
         }
+        requireReviewWindowOpen(stage);
         String ruleType = normalizeEnum(stage.getPromotionRuleType(), null, Set.of("PERCENTAGE", "COUNT"), "Please configure a promotion rule first");
         BigDecimal ruleValue = stage.getPromotionRuleValue();
         if (ruleValue == null || ruleValue.compareTo(BigDecimal.ZERO) <= 0) {
@@ -2914,6 +2917,17 @@ public class CompetitionRegistrationAppService {
             if (advanced == null || advanced == 0) {
                 throw biz(ErrorCode.FORBIDDEN, "仅已公布晋级的团队可以修改决赛材料");
             }
+        }
+    }
+
+    private void requireReviewWindowOpen(CompetitionRegistrationVO.Stage stage) {
+        if (!"ENABLED".equals(stage.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "当前阶段未开放评审");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (stage.getReviewStart() == null || stage.getReviewEnd() == null
+                || now.isBefore(stage.getReviewStart()) || now.isAfter(stage.getReviewEnd())) {
+            throw biz(ErrorCode.BIZ_ERROR, "当前不在评审时间内");
         }
     }
 
