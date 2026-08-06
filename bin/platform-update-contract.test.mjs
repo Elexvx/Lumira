@@ -8,12 +8,14 @@ import {
   inactiveSlot,
   migrateLegacyApiProxyConfig,
   normalizeReleaseManifest,
+  parseRuntimeVersionIdentity,
   phaseProgress,
   renderActiveUpstreams,
   repairDeploymentWorkerState,
 } from './lib/platform-update-contract.mjs';
 
-const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${'a'.repeat(64)}`;
+const digestCharacters = { server: 'a', frontend: 'b', async: 'c', job: 'd', migrator: 'e' };
+const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${(digestCharacters[name] || 'f').repeat(64)}`;
 const manifestV2 = (overrides = {}) => ({
   schemaVersion: 2,
   version: '2.0.0',
@@ -37,6 +39,24 @@ test('manifest v2 requires digest-pinned runtime images', () => {
   const normalized = normalizeReleaseManifest(manifestV2());
   assert.equal(normalized.images.async, digest('async'));
   assert.throws(() => normalizeReleaseManifest(manifestV2({ images: { server: 'server:latest' } })), /sha256 digest/);
+});
+
+test('manifest v2 rejects service roles that resolve to the same image digest', () => {
+  const repeatedDigest = `sha256:${'a'.repeat(64)}`;
+  const manifest = manifestV2();
+  manifest.images.async = `ghcr.io/elexvx/lumira/async@${repeatedDigest}`;
+  assert.throws(() => normalizeReleaseManifest(manifest), /server.*async.*distinct image digests/);
+});
+
+test('runtime identity parsing exposes the actual service behind a release image', () => {
+  assert.deepEqual(parseRuntimeVersionIdentity(JSON.stringify({
+    data: { serviceName: 'lumira-server', artifact: 'lumira-server', commitId: 'abcdef012345' },
+  })), {
+    serviceName: 'lumira-server',
+    artifact: 'lumira-server',
+    commitId: 'abcdef012345',
+  });
+  assert.equal(parseRuntimeVersionIdentity('not-json'), null);
 });
 
 test('manifest v1 remains readable for compatibility but is blocked for online updates', () => {

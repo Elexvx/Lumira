@@ -1,4 +1,4 @@
-import type { PlatformUpdatePreflight, PlatformUpdateStatus } from '@/types/api';
+import type { PlatformUpdatePreflight, PlatformUpdateStatus, PlatformUpdateTask } from '@/types/api';
 
 export const canSubmitPlatformUpdate = (
   serverImage?: string | null,
@@ -10,6 +10,27 @@ export const canSubmitPlatformUpdate = (
   && taskStatus !== 'RUNNING';
 
 const normalizedText = (value?: string | null) => value?.trim() || null;
+
+export const isPlatformUpdateFailure = (task?: PlatformUpdateTask | null) => {
+  if (!task || task.taskType !== 'INSTALL') {
+    return false;
+  }
+  if (task.status === 'FAILED') {
+    return true;
+  }
+  return task.status === 'ROLLED_BACK' && Boolean(normalizedText(task.errorMessage));
+};
+
+export const didPlatformUpdateBecomeFailed = (
+  previous?: Pick<PlatformUpdateTask, 'id' | 'status'> | null,
+  current?: PlatformUpdateTask | null,
+) => Boolean(
+  previous
+  && current
+  && previous.id === current.id
+  && (previous.status === 'PENDING' || previous.status === 'RUNNING')
+  && isPlatformUpdateFailure(current),
+);
 
 export const resolvePlatformUpdateConfirmationDetails = (
   status?: PlatformUpdateStatus | null,

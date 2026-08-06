@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { canSubmitPlatformUpdate, resolvePlatformUpdateConfirmationDetails } from './platformUpdateState';
+import {
+  canSubmitPlatformUpdate,
+  didPlatformUpdateBecomeFailed,
+  isPlatformUpdateFailure,
+  resolvePlatformUpdateConfirmationDetails,
+} from './platformUpdateState';
 
 describe('canSubmitPlatformUpdate', () => {
   it('allows an installable release only when a newer version is available', () => {
@@ -49,5 +54,33 @@ describe('canSubmitPlatformUpdate', () => {
       targetCommit: 'latest-commit',
       releaseNotes: 'Lumira main build',
     });
+  });
+});
+
+describe('platform update failure state', () => {
+  it('treats a failed install and an automatically rolled-back install as failures', () => {
+    expect(isPlatformUpdateFailure({ id: 1, taskType: 'INSTALL', status: 'FAILED' })).toBe(true);
+    expect(isPlatformUpdateFailure({
+      id: 2,
+      taskType: 'INSTALL',
+      status: 'ROLLED_BACK',
+      errorMessage: 'Public traffic did not switch.',
+    })).toBe(true);
+  });
+
+  it('does not report a successful manual rollback as a failed update', () => {
+    expect(isPlatformUpdateFailure({ id: 3, taskType: 'ROLLBACK', status: 'ROLLED_BACK' })).toBe(false);
+    expect(isPlatformUpdateFailure({ id: 4, taskType: 'INSTALL', status: 'ROLLED_BACK' })).toBe(false);
+  });
+
+  it('notifies only when the same running task transitions into a failure', () => {
+    expect(didPlatformUpdateBecomeFailed(
+      { id: 5, status: 'RUNNING' },
+      { id: 5, taskType: 'INSTALL', status: 'ROLLED_BACK', errorMessage: 'Rollback completed after failure.' },
+    )).toBe(true);
+    expect(didPlatformUpdateBecomeFailed(
+      { id: 4, status: 'RUNNING' },
+      { id: 5, taskType: 'INSTALL', status: 'FAILED' },
+    )).toBe(false);
   });
 });

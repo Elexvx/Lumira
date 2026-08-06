@@ -31,6 +31,7 @@ import {
   inactiveSlot,
   normalizeReleaseManifest,
   normalizeSlot,
+  parseRuntimeVersionIdentity,
   phaseProgress,
   renderActiveUpstreams,
 } from './lib/platform-update-contract.mjs';
@@ -494,14 +495,22 @@ async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {
   const address = await containerAddress(task, serverContainer(slot));
   const baseUrl = slotBaseUrl(address, slot);
   const startedAt = Date.now();
+  let lastIdentity = null;
   while (Date.now() - startedAt < timeoutMs) {
     if (await slotHealthy(address, slot)) {
       const version = await probeHttp(`${baseUrl}/api/v2/runtime/version`, { timeoutMs: 5_000 });
-      if (!expectedCommit || (version.ok && version.text.includes(expectedCommit.slice(0, 12)))) return;
+      lastIdentity = version.ok ? parseRuntimeVersionIdentity(version.text) : null;
+      const commitMatches = !expectedCommit
+        || (lastIdentity?.commitId
+          && (lastIdentity.commitId.startsWith(expectedCommit) || expectedCommit.startsWith(lastIdentity.commitId)));
+      if (version.ok && lastIdentity?.serviceName === 'lumira-server' && commitMatches) return;
     }
     await sleep(2_000);
   }
-  throw new Error(`lumira-server-${slot} did not become ready with commit ${expectedCommit}.`);
+  const observed = lastIdentity
+    ? `${lastIdentity.serviceName || 'unknown-service'}@${lastIdentity.commitId || 'unknown-commit'}`
+    : 'no valid runtime identity';
+  throw new Error(`lumira-server-${slot} did not become ready as lumira-server@${expectedCommit}; observed ${observed}.`);
 }
 
 function writeActiveUpstreams(slot) {

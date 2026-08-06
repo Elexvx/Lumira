@@ -20,13 +20,18 @@ import type {
   ServiceMonitorSnapshot,
 } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
-import { message, modal } from '@/theme/antdFeedbackBridge';
+import { message, modal, notification } from '@/theme/antdFeedbackBridge';
 import { request } from '@/services/common/request';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { canSubmitPlatformUpdate, resolvePlatformUpdateConfirmationDetails } from './platformUpdateState';
+import {
+  canSubmitPlatformUpdate,
+  didPlatformUpdateBecomeFailed,
+  isPlatformUpdateFailure,
+  resolvePlatformUpdateConfirmationDetails,
+} from './platformUpdateState';
 import { databaseMessage } from '@/i18n/databaseMessage';
 import { resolveRuntimeLocale } from '@/i18n/locale';
 
@@ -281,7 +286,31 @@ const usePlatformUpdateMonitor = () => {
         method: 'GET',
         ...API_OPTS.NO_REDIRECT,
       }),
+    refetchInterval: 2000,
   });
+
+  const latestTask = tasksQuery.data?.[0];
+  const latestFailedTask = isPlatformUpdateFailure(latestTask) ? latestTask : undefined;
+  const lastObservedUpdateTaskRef = useRef<Pick<PlatformUpdateTask, 'id' | 'status'> | null>(null);
+
+  useEffect(() => {
+    if (!latestTask) {
+      return;
+    }
+    const previous = lastObservedUpdateTaskRef.current;
+    lastObservedUpdateTaskRef.current = { id: latestTask.id, status: latestTask.status };
+    if (!didPlatformUpdateBecomeFailed(previous, latestTask)) {
+      return;
+    }
+    notification.error({
+      key: `platform-update-failed-${latestTask.id}`,
+      message: t('ui.settings.monitoring.monitoring.platformUpdateFailedAndRolledBack'),
+      description: latestTask.errorMessage
+        || latestTask.logSummary
+        || t('ui.settings.monitoring.monitoring.platformUpdateFailedDescription'),
+      duration: 0,
+    });
+  }, [latestTask]);
 
   const updateStatus = query.data;
   const statusKey = resolveStatusKey(updateStatus);
@@ -517,7 +546,13 @@ const usePlatformUpdateMonitor = () => {
         width: 'var(--saas-spacing-120)',
         render: (_: unknown, record) => {
           const status = record.status || '-';
-          const color = status === 'SUCCEEDED' || status === 'ROLLED_BACK' ? 'green' : status === 'FAILED' ? 'red' : 'blue';
+          const color = isPlatformUpdateFailure(record)
+            ? 'red'
+            : status === 'SUCCEEDED' || status === 'ROLLED_BACK'
+              ? 'green'
+              : status === 'FAILED'
+                ? 'red'
+                : 'blue';
           return <Tag color={color}>{status}</Tag>;
         },
       },
@@ -535,6 +570,7 @@ const usePlatformUpdateMonitor = () => {
   return {
     query,
     tasksQuery,
+    latestFailedTask,
     updateStatus,
     statusKey,
     currentStatusMeta,
@@ -989,6 +1025,7 @@ const PlatformUpdateContent = () => {
   const {
     query,
     tasksQuery,
+    latestFailedTask,
     updateStatus,
     statusKey,
     currentStatusMeta,
@@ -1071,6 +1108,16 @@ const PlatformUpdateContent = () => {
           </Col>
         </Row>
       </Card>
+      {latestFailedTask ? (
+        <Alert
+          type="error"
+          showIcon
+          message={t('ui.settings.monitoring.monitoring.platformUpdateFailedAndRolledBack')}
+          description={latestFailedTask.errorMessage
+            || latestFailedTask.logSummary
+            || t('ui.settings.monitoring.monitoring.platformUpdateFailedDescription')}
+        />
+      ) : null}
       {statusKey === 'UNKNOWN' ? (
         <Alert
           type="warning"

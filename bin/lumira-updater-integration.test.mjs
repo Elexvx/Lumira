@@ -6,8 +6,16 @@ import path from 'node:path';
 import test from 'node:test';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
-const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${'b'.repeat(64)}`;
-const domesticDigest = (name) => `swr.cn-east-3.myhuaweicloud.com/aiadc/${name}@sha256:${'c'.repeat(64)}`;
+const runtimeDigestCharacters = { server: 'a', frontend: 'b', async: 'c', job: 'd', migrator: 'e' };
+const domesticDigestCharacters = {
+  'lumira-server': '1',
+  'lumira-ui': '2',
+  'lumira-async': '3',
+  'lumira-job-executor': '4',
+  'lumira-migrator': '5',
+};
+const digest = (name) => `ghcr.io/elexvx/lumira/${name}@sha256:${(runtimeDigestCharacters[name] || 'f').repeat(64)}`;
+const domesticDigest = (name) => `swr.cn-east-3.myhuaweicloud.com/aiadc/${name}@sha256:${(domesticDigestCharacters[name] || '6').repeat(64)}`;
 
 test('updater v2 exposes capabilities, preflight, and persistent task state', { timeout: 20_000 }, async (context) => {
   const deployDir = mkdtempSync(path.join(os.tmpdir(), 'lumira-updater-test-'));
@@ -78,7 +86,7 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
     body: JSON.stringify({
       manifest: {
         ...manifest,
-        images: { ...manifest.images, server: `untrusted.example/lumira-server@sha256:${'d'.repeat(64)}` },
+        images: { ...manifest.images, server: `untrusted.example/lumira-server@sha256:${'7'.repeat(64)}` },
       },
     }),
   });

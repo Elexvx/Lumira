@@ -16359,6 +16359,28 @@
       }
     },
     {
+      "messageKey": "ui.settings.monitoring.monitoring.platformUpdateFailedAndRolledBack",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/monitoring/MonitoringPage.tsx",
+      "translations": {
+        "zh-CN": "平台更新失败，已自动保留原运行版本",
+        "en-US": "Platform update failed; the previous version is still running"
+      }
+    },
+    {
+      "messageKey": "ui.settings.monitoring.monitoring.platformUpdateFailedDescription",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/monitoring/MonitoringPage.tsx",
+      "translations": {
+        "zh-CN": "更新任务未成功完成，请检查任务详情后再重试。",
+        "en-US": "The update did not complete. Review the task details before trying again."
+      }
+    },
+    {
       "messageKey": "ui.settings.monitoring.monitoring.platformUpdates",
       "namespaceCode": "ui",
       "sourceLocale": "zh-CN",

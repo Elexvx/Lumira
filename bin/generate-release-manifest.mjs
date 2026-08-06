@@ -21,6 +21,11 @@ assertDigestPinned(frontendImage, 'LUMIRA_FRONTEND_IMAGE');
 assertDigestPinned(asyncImage, 'LUMIRA_ASYNC_IMAGE');
 assertDigestPinned(jobExecutorImage, 'LUMIRA_JOB_EXECUTOR_IMAGE');
 assertDigestPinned(migratorImage, 'LUMIRA_MIGRATOR_IMAGE');
+assertDistinctRuntimeDigests({
+  LUMIRA_SERVER_IMAGE: serverImage,
+  LUMIRA_ASYNC_IMAGE: asyncImage,
+  LUMIRA_JOB_EXECUTOR_IMAGE: jobExecutorImage,
+});
 
 const manifest = {
   schemaVersion: 2,
@@ -66,5 +71,17 @@ function first(...values) {
 function assertDigestPinned(image, name) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._/:@-]+@sha256:[0-9a-f]{64}$/i.test(image)) {
     throw new Error(`${name} must be pinned to a sha256 digest`);
+  }
+}
+
+function assertDistinctRuntimeDigests(images) {
+  const namesByDigest = new Map();
+  for (const [name, image] of Object.entries(images)) {
+    const digest = image.slice(image.lastIndexOf('@sha256:') + 1).toLowerCase();
+    const previousName = namesByDigest.get(digest);
+    if (previousName) {
+      throw new Error(`${previousName} and ${name} must use distinct image digests`);
+    }
+    namesByDigest.set(digest, name);
   }
 }

@@ -71,6 +71,20 @@ test('service images carry immutable release identity independent of stale host 
   assert.match(updater, /BACKEND_VERSION: targetBackendVersion/);
 });
 
+test('CI builds each service image from its matching Docker target', () => {
+  const expectedTargets = new Map([
+    ['lumira-server', 'lumira-server-image'],
+    ['lumira-async', 'lumira-async-image'],
+    ['lumira-job-executor', 'lumira-job-executor-image'],
+  ]);
+  for (const [buildName, target] of expectedTargets) {
+    const start = ciWorkflow.indexOf(`- name: Build ${buildName} image`);
+    const end = ciWorkflow.indexOf('- name: Build ', start + 1);
+    const buildStep = ciWorkflow.slice(start, end < 0 ? ciWorkflow.length : end);
+    assert.match(buildStep, new RegExp(`^\\s+target: ${target}\\r?$`, 'm'));
+  }
+});
+
 test('frontend and edge nginx enforce browser security headers', () => {
   for (const [name, config] of [['frontend', uiNginx], ['edge', edgeNginx]]) {
     assert.match(config, /Content-Security-Policy/ , `${name} nginx must emit a CSP`);
@@ -472,6 +486,7 @@ test('platform updater is reachable from the backend container and installed as 
 test('continuous release manifest uses digest-pinned images and a stable GitHub release', () => {
   assert.match(releaseManifestGenerator, /assertDigestPinned\(serverImage/);
   assert.match(releaseManifestGenerator, /assertDigestPinned\(frontendImage/);
+  assert.match(releaseManifestGenerator, /assertDistinctRuntimeDigests\(/);
   assert.match(ciWorkflow, /concurrency:\r?\n\s+group: ci-\$\{\{ github\.ref \}\}\r?\n\s+cancel-in-progress: true/);
   assert.match(ciWorkflow, /steps\.build_server\.outputs\.digest/);
   assert.match(ciWorkflow, /steps\.build_ui\.outputs\.digest/);

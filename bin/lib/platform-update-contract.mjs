@@ -39,6 +39,36 @@ export function assertDigestPinnedImage(value, fieldName, { optional = false } =
   return image;
 }
 
+export function parseRuntimeVersionIdentity(value) {
+  try {
+    const root = typeof value === 'string' ? JSON.parse(value) : value;
+    const data = root?.data && typeof root.data === 'object' ? root.data : root;
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
+    return {
+      serviceName: String(data.serviceName || '').trim(),
+      artifact: String(data.artifact || '').trim(),
+      commitId: String(data.commitId || '').trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function assertDistinctRuntimeImageDigests(images) {
+  const rolesByDigest = new Map();
+  for (const [role, image] of Object.entries(images)) {
+    if (!image) continue;
+    const digest = image.slice(image.lastIndexOf('@sha256:') + 1).toLowerCase();
+    const previousRole = rolesByDigest.get(digest);
+    if (previousRole) {
+      throw new Error(`images.${previousRole} and images.${role} must use distinct image digests`);
+    }
+    rolesByDigest.set(digest, role);
+  }
+}
+
 export function normalizeReleaseManifest(rawManifest) {
   const raw = rawManifest && typeof rawManifest === 'object' ? rawManifest : {};
   const images = raw.images && typeof raw.images === 'object' ? raw.images : {};
@@ -59,6 +89,9 @@ export function normalizeReleaseManifest(rawManifest) {
   const asyncImage = assertDigestPinnedImage(images.async || raw.asyncImage, 'images.async', { optional: schemaVersion < 2 });
   const jobExecutorImage = assertDigestPinnedImage(images.jobExecutor || raw.jobExecutorImage, 'images.jobExecutor', { optional: schemaVersion < 2 });
   const migratorImage = assertDigestPinnedImage(images.migrator || raw.migratorImage, 'images.migrator', { optional: schemaVersion < 2 });
+  if (schemaVersion >= 2) {
+    assertDistinctRuntimeImageDigests({ server: serverImage, async: asyncImage, jobExecutor: jobExecutorImage });
+  }
 
   return {
     schemaVersion,

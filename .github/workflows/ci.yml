@@ -122,9 +122,8 @@ jobs:
         with:
           context: .
           file: deploy/docker/service.Dockerfile
+          target: lumira-server-image
           build-args: |
-            SERVICE_DIR=services/lumira-admin
-            SERVICE_MODULE=services/lumira-admin
             APP_VERSION=main
             BUILD_VERSION=main+${{ github.sha }}
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
@@ -166,9 +165,8 @@ jobs:
         with:
           context: .
           file: deploy/docker/service.Dockerfile
+          target: lumira-async-image
           build-args: |
-            SERVICE_DIR=services/lumira-async
-            SERVICE_MODULE=services/lumira-async
             APP_VERSION=main
             BUILD_VERSION=main+${{ github.sha }}
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
@@ -191,9 +189,8 @@ jobs:
         with:
           context: .
           file: deploy/docker/service.Dockerfile
+          target: lumira-job-executor-image
           build-args: |
-            SERVICE_DIR=services/lumira-quartz
-            SERVICE_MODULE=services/lumira-quartz
             APP_VERSION=main
             BUILD_VERSION=main+${{ github.sha }}
             FRONTEND_VERSION=main+${{ steps.images.outputs.short_sha }}
