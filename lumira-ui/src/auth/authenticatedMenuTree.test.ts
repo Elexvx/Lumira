@@ -94,4 +94,36 @@ describe('normalizeAuthenticatedMenuTree', () => {
     expect(all.map((menu) => menu.path)).toContain('/certificates/templates');
     expect(all.map((menu) => menu.path)).toContain('/certificates/mine');
   });
+
+  it('deduplicates canonical menu paths and preserves unique descendants', () => {
+    const currentUser = buildCurrentUser([
+      'dashboard:view',
+      'profile:view',
+      'system:file:view',
+      'aiadc:certificate-template:view',
+    ]);
+    const normalized = normalizeAuthenticatedMenuTree([
+      {
+        id: 10,
+        menuCode: 'certificate.root.primary',
+        name: '证书',
+        path: '/certificates',
+        children: [{ id: 11, menuCode: 'certificate.templates', name: '模板', path: '/certificates/templates' }],
+      },
+      {
+        id: 12,
+        menuCode: 'certificate.root.duplicate',
+        name: '重复证书',
+        path: '/certificates',
+        children: [{ id: 13, menuCode: 'certificate.mine', name: '我的证书', path: '/certificates/mine' }],
+      },
+    ], currentUser);
+    const flatten = (menus: MenuNode[]): MenuNode[] =>
+      menus.flatMap((menu) => [menu, ...flatten(menu.children || [])]);
+    const all = flatten(normalized);
+
+    expect(all.filter((menu) => menu.path === '/certificates')).toHaveLength(1);
+    expect(all.map((menu) => menu.path)).toContain('/certificates/templates');
+    expect(all.map((menu) => menu.path)).toContain('/certificates/mine');
+  });
 });

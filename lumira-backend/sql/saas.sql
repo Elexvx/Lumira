@@ -2080,6 +2080,9 @@ CREATE TABLE `certificate_record` (
   KEY `idx_certificate_record_template` (`template_id`,`template_version_id`,`deleted`),
   KEY `idx_certificate_record_status` (`status`,`deleted`,`created_at`),
   KEY `idx_certificate_record_recipient` (`recipient_name`,`deleted`),
+  KEY `idx_certificate_record_registration` (`registration_id`,`deleted`),
+  KEY `idx_certificate_record_user` (`user_id`,`deleted`,`issue_date`),
+  KEY `idx_certificate_record_team` (`team_id`,`deleted`,`issue_date`),
   KEY `idx_certificate_record_owner` (`created_by`,`created_by_uuid`,`deleted`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

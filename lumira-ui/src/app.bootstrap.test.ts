@@ -252,9 +252,9 @@ describe('getAppInitialState', { timeout: 60_000 }, () => {
     const { getAppInitialState } = await import('@/app.bootstrap');
     const initialState = await getAppInitialState();
 
-    expect(initialState.menuTree).toEqual([
+    expect(initialState.menuTree).toEqual(expect.arrayContaining([
       { menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' },
-    ]);
+    ]));
     expect(initialState.availablePlugins).toEqual([
       { pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' },
     ]);

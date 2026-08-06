@@ -112,6 +112,17 @@ test('embedded API docs initialize through a same-origin CSP-compatible bootstra
   assert.doesNotMatch(monitoringPage, /postMessage\([\s\S]*['"]\*['"]/);
 });
 
+test('frontend and edge nginx enforce browser security headers', () => {
+  for (const [name, config] of [['frontend', uiNginx], ['edge', edgeNginx]]) {
+    assert.match(config, /Content-Security-Policy/ , `${name} nginx must emit a CSP`);
+    assert.match(config, /X-Content-Type-Options\s+"nosniff"/, `${name} nginx must prevent MIME sniffing`);
+    assert.match(config, /X-Frame-Options\s+"DENY"/, `${name} nginx must prevent framing`);
+    assert.match(config, /Referrer-Policy\s+"strict-origin-when-cross-origin"/, `${name} nginx must set a referrer policy`);
+    assert.match(config, /Permissions-Policy/, `${name} nginx must restrict browser capabilities`);
+    assert.match(config, /add_header_inherit merge/, `${name} nginx must retain headers in locations with cache headers`);
+  }
+});
+
 test('production disables the Hikari periodic JDBC keepalive explicitly', () => {
   assert.match(
     composeProd,
