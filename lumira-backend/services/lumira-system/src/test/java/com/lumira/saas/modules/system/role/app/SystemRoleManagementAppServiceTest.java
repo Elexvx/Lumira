@@ -54,6 +54,7 @@ class SystemRoleManagementAppServiceTest {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/role/app/SystemRoleManagementAppService.java"));
 
         assertTrue(source.contains("created_by, created_by_uuid, updated_by, updated_by_uuid"));
+        assertTrue(source.contains("values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)"));
         assertTrue(source.contains("updated_by = ?, updated_by_uuid = ?"));
         assertTrue(source.contains("currentUser.getUserUuid()"));
         assertTrue(source.contains("and config_key = ?"));

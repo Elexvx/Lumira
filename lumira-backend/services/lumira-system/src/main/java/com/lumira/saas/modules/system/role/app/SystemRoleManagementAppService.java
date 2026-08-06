@@ -1228,7 +1228,7 @@ public class SystemRoleManagementAppService {
                             insert into sys_config (
                                 config_key, config_name, config_value, config_scope, is_system, remark,
                                 created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)
                             """,
                     configKey,
                     configName,
