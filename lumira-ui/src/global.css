@@ -178,7 +178,7 @@ body.ant-scrolling-effect {
 
 .saas-platform-update-confirm__title {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--ant-margin-sm);
 }
 
@@ -187,6 +187,129 @@ body.ant-scrolling-effect {
   margin-top: 1px;
   color: var(--ant-color-warning);
   font-size: var(--ant-font-height, 22px);
+}
+
+.saas-platform-update-confirm {
+  max-width: calc(100vw - 32px);
+}
+
+.saas-platform-update-confirm .ant-modal-confirm-paragraph,
+.saas-platform-update-confirm .ant-modal-confirm-content {
+  max-width: 100%;
+  margin-inline-start: 0;
+}
+
+.saas-platform-update-confirm__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ant-margin-md);
+  width: 100%;
+}
+
+.saas-platform-update-confirm__review {
+  padding-block: var(--ant-padding-sm);
+}
+
+.saas-platform-update-confirm__versions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--ant-margin-sm);
+}
+
+.saas-platform-update-confirm__version {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: var(--ant-padding-md);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.saas-platform-update-confirm__version--target {
+  border-color: var(--ant-color-primary-border);
+  background: var(--ant-color-primary-bg);
+}
+
+.saas-platform-update-confirm__label {
+  display: block;
+  margin-bottom: var(--ant-margin-xxs);
+  font-size: var(--ant-font-size-sm);
+}
+
+.saas-platform-update-confirm__version-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: var(--ant-font-size-heading-4);
+  line-height: var(--ant-line-height-heading-4);
+}
+
+.saas-platform-update-confirm__commit {
+  max-width: 100%;
+  margin-top: var(--ant-margin-xs);
+}
+
+.saas-platform-update-confirm__version-arrow {
+  align-self: center;
+  justify-self: center;
+  color: var(--ant-color-primary);
+  font-size: var(--ant-font-size-lg);
+}
+
+.saas-platform-update-confirm__details {
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--ant-border-radius-lg);
+}
+
+.saas-platform-update-confirm__release-notes {
+  padding: var(--ant-padding-md);
+}
+
+.saas-platform-update-confirm__release-notes-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.saas-platform-update-confirm__metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.saas-platform-update-confirm__metadata-item {
+  min-width: 0;
+  padding: var(--ant-padding-sm) var(--ant-padding-md);
+}
+
+.saas-platform-update-confirm__metadata-item + .saas-platform-update-confirm__metadata-item {
+  border-inline-start: 1px solid var(--ant-color-border-secondary);
+}
+
+.saas-platform-update-confirm__note {
+  line-height: var(--ant-line-height);
+}
+
+@media (max-width: 575px) {
+  .saas-platform-update-confirm__versions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .saas-platform-update-confirm__version-arrow {
+    transform: rotate(90deg);
+  }
+
+  .saas-platform-update-confirm__metadata {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .saas-platform-update-confirm__metadata-item + .saas-platform-update-confirm__metadata-item {
+    border-top: 1px solid var(--ant-color-border-secondary);
+    border-inline-start: 0;
+  }
 }
 
 body,

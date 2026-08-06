@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { history, useAccess, useLocation } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Progress, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
-import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleFilled, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
+import { ApiOutlined, ArrowRightOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleFilled, ExclamationCircleOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
 import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -373,6 +373,8 @@ const usePlatformUpdateMonitor = () => {
       ? t('ui.settings.monitoring.monitoring.confirmUpdateToVersion', { targetVersion: confirmationDetails.targetVersion })
       : t('ui.settings.monitoring.monitoring.preflightBlocked');
     modal.confirm({
+      className: 'saas-platform-update-confirm',
+      width: 680,
       icon: null,
       title: (
         <span className="saas-platform-update-confirm__title">
@@ -381,39 +383,75 @@ const usePlatformUpdateMonitor = () => {
         </span>
       ),
       content: (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <div className="saas-platform-update-confirm__content">
           {preflight.ready ? (
             <Alert
+              className="saas-platform-update-confirm__review"
               type="info"
               showIcon
               message={t('ui.settings.monitoring.monitoring.reviewTheVersionAndReleaseNotesBeforeStarting')}
             />
           ) : null}
-          <Descriptions size="small" column={1} bordered>
-            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.currentVersion')}>
-              {confirmationDetails.currentVersion}
-              {confirmationDetails.currentCommit !== '-' ? ` (${shortCommit(confirmationDetails.currentCommit)})` : ''}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.targetVersion')}>
-              {confirmationDetails.targetVersion}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.targetCommit')}>
-              <Typography.Text code copyable={confirmationDetails.targetCommit !== '-' ? { text: confirmationDetails.targetCommit } : false}>
+          <div className="saas-platform-update-confirm__versions">
+            <div className="saas-platform-update-confirm__version">
+              <Typography.Text type="secondary" className="saas-platform-update-confirm__label">
+                {t('ui.settings.monitoring.monitoring.currentVersion')}
+              </Typography.Text>
+              <Typography.Text strong className="saas-platform-update-confirm__version-name">
+                {confirmationDetails.currentVersion}
+              </Typography.Text>
+              {confirmationDetails.currentCommit !== '-' ? (
+                <Typography.Text type="secondary" code className="saas-platform-update-confirm__commit">
+                  {shortCommit(confirmationDetails.currentCommit)}
+                </Typography.Text>
+              ) : null}
+            </div>
+            <ArrowRightOutlined className="saas-platform-update-confirm__version-arrow" aria-hidden />
+            <div className="saas-platform-update-confirm__version saas-platform-update-confirm__version--target">
+              <Typography.Text type="secondary" className="saas-platform-update-confirm__label">
+                {t('ui.settings.monitoring.monitoring.targetVersion')}
+              </Typography.Text>
+              <Typography.Text strong className="saas-platform-update-confirm__version-name">
+                {confirmationDetails.targetVersion}
+              </Typography.Text>
+              <Typography.Text
+                type="secondary"
+                code
+                copyable={confirmationDetails.targetCommit !== '-' ? { text: confirmationDetails.targetCommit } : false}
+                className="saas-platform-update-confirm__commit"
+              >
                 {shortCommit(confirmationDetails.targetCommit)}
               </Typography.Text>
-            </Descriptions.Item>
-            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.releaseNotes')}>
-              <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
+            </div>
+          </div>
+          <div className="saas-platform-update-confirm__details">
+            <div className="saas-platform-update-confirm__release-notes">
+              <Typography.Text type="secondary" className="saas-platform-update-confirm__label">
+                {t('ui.settings.monitoring.monitoring.releaseNotes')}
+              </Typography.Text>
+              <Typography.Paragraph className="saas-platform-update-confirm__release-notes-text">
                 {confirmationDetails.releaseNotes || t('ui.settings.monitoring.monitoring.noReleaseNotesWereProvidedForThisUpdate')}
               </Typography.Paragraph>
-            </Descriptions.Item>
-            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.trafficSwitch')}>{preflight.activeSlot || '-'} → {preflight.targetSlot || '-'}</Descriptions.Item>
-            <Descriptions.Item label={t('ui.settings.monitoring.monitoring.databaseMigration')}>{preflight.migrationMode || '-'}</Descriptions.Item>
-          </Descriptions>
+            </div>
+            <div className="saas-platform-update-confirm__metadata">
+              <div className="saas-platform-update-confirm__metadata-item">
+                <Typography.Text type="secondary" className="saas-platform-update-confirm__label">
+                  {t('ui.settings.monitoring.monitoring.trafficSwitch')}
+                </Typography.Text>
+                <Typography.Text strong>{preflight.activeSlot || '-'} → {preflight.targetSlot || '-'}</Typography.Text>
+              </div>
+              <div className="saas-platform-update-confirm__metadata-item">
+                <Typography.Text type="secondary" className="saas-platform-update-confirm__label">
+                  {t('ui.settings.monitoring.monitoring.databaseMigration')}
+                </Typography.Text>
+                <Typography.Text strong>{preflight.migrationMode || '-'}</Typography.Text>
+              </div>
+            </div>
+          </div>
           {(preflight.blockers || []).map((item) => <Alert key={item} type="error" showIcon message={item} />)}
           {(preflight.warnings || []).map((item) => <Alert key={item} type="warning" showIcon message={item} />)}
-          {preflight.ready ? <Typography.Text type="secondary">{t('ui.settings.monitoring.monitoring.trafficHotSwitchesOnlyAfterTheNewSlot')}</Typography.Text> : null}
-        </Space>
+          {preflight.ready ? <Typography.Text type="secondary" className="saas-platform-update-confirm__note">{t('ui.settings.monitoring.monitoring.trafficHotSwitchesOnlyAfterTheNewSlot')}</Typography.Text> : null}
+        </div>
       ),
       okText: t('ui.settings.monitoring.monitoring.confirmAndStartUpdate'),
       cancelText: t('ui.settings.monitoring.monitoring.cancel'),
