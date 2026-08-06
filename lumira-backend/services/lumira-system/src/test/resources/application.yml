@@ -1,23 +1,10 @@
 spring:
   application:
     name: system-service
-  config:
-    import:
-      - optional:nacos:system-service.yaml?refreshEnabled=true&group=DEFAULT_GROUP
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
-  cloud:
-    nacos:
-      config:
-        server-addr: localhost:8848
-        file-extension: yaml
-        namespace: ""
-      discovery:
-        server-addr: localhost:8848
-        namespace: ""
-        enabled: false
   datasource:
     url: jdbc:mysql://localhost:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
     username: root

@@ -8,6 +8,8 @@ public class VerificationSettingsRequest {
     private Boolean emailLoginEnabled;
     private Boolean passwordLoginEnabled;
     private List<String> loginModeOrder;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Boolean getEnabled() {
         return enabled;
@@ -40,4 +42,9 @@ public class VerificationSettingsRequest {
     public void setLoginModeOrder(List<String> loginModeOrder) {
         this.loginModeOrder = loginModeOrder;
     }
+
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

@@ -18,6 +18,8 @@ public class BrandingSettingsRequest {
     private Boolean maintenanceModeEnabled;
     private String maintenanceTitle;
     private String maintenanceMessage;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public String getWebsiteName() {
         return websiteName;
@@ -146,4 +148,9 @@ public class BrandingSettingsRequest {
     public void setMaintenanceMessage(String maintenanceMessage) {
         this.maintenanceMessage = maintenanceMessage;
     }
+
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

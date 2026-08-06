@@ -9,6 +9,7 @@ import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -70,6 +71,7 @@ public class SecuritySettingsService {
     private final ReadModelVersionService readModelVersionService;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
+    private SystemConfigVersioningService configVersioningService;
     private volatile CachedSecuritySettings cachedSettings;
     private volatile CachedReadModelVersion cachedReadModelVersion;
     private final ThreadLocal<CurrentUser> currentUpdateOperator = new ThreadLocal<>();
@@ -108,6 +110,11 @@ public class SecuritySettingsService {
             ReadModelVersionService readModelVersionService
     ) {
         this(sysConfigMapper, securityProperties, readModelVersionService, null, false);
+    }
+
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
     }
 
     public long getIdleTimeoutSeconds() {
@@ -224,6 +231,16 @@ public class SecuritySettingsService {
 
     @Transactional
     public SecuritySettingsSnapshot updateSettings(SecuritySettingsSnapshot request, CurrentUser operator) {
+        return updateSettings(request, operator, null, null);
+    }
+
+    @Transactional
+    public SecuritySettingsSnapshot updateSettings(
+            SecuritySettingsSnapshot request,
+            CurrentUser operator,
+            Long expectedConfigVersion,
+            String changeReason
+    ) {
         CurrentUser trustedOperator = requireTrustedConfigOperator(operator);
         currentUpdateOperator.set(trustedOperator);
         try {
@@ -237,6 +254,16 @@ public class SecuritySettingsService {
         validatePositive(request.getVerificationCodeCooldownSeconds(), "验证码重发冷却");
         validatePositive(request.getPasswordMinLength(), "最短长度");
         String captchaType = normalizeCaptchaType(request.getCaptchaType());
+        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        "SECURITY",
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        expectedConfigVersion,
+                        changeReason,
+                        trustedOperator
+                ),
+                SETTINGS_KEYS
+        );
 
         upsertConfig(
                 IDLE_TIMEOUT_KEY,
@@ -342,6 +369,9 @@ public class SecuritySettingsService {
                     READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
                     ReadModelEventKey.unique("security-update")
             );
+        }
+        if (configVersioningService != null) {
+            configVersioningService.finish(configVersion);
         }
         return loadSettings();
         } finally {

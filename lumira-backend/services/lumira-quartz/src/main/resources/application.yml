@@ -26,8 +26,6 @@ lumira:
   runtime:
     async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:true}
 
-spring.cloud.nacos.discovery.enabled: false
-spring.cloud.nacos.config.enabled: false
 spring.cloud.sentinel.enabled: false
 
 management:

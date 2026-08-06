@@ -71,6 +71,21 @@ test('service images carry immutable release identity independent of stale host 
   assert.match(updater, /BACKEND_VERSION: targetBackendVersion/);
 });
 
+test('service images do not advertise an unavailable Nacos or JM logging integration', () => {
+  assert.doesNotMatch(serviceDockerfile, /NACOS|nacos|JM\.LOG\.PATH|\/tmp\/nacos/);
+  assert.match(serviceDockerfile, /csp\.sentinel\.log\.dir=\/tmp\/sentinel/);
+});
+
+test('deployment configuration does not expose an unavailable Nacos capability', () => {
+  for (const [name, content] of [
+    ['production compose', composeProd],
+    ['environment example', envExample],
+    ['service image', serviceDockerfile],
+  ]) {
+    assert.doesNotMatch(content, /NACOS|nacos|JM\.LOG\.PATH|\/tmp\/nacos/, `${name} must not advertise Nacos`);
+  }
+});
+
 test('CI builds each service image from its matching Docker target', () => {
   const expectedTargets = new Map([
     ['lumira-server', 'lumira-server-image'],
@@ -278,7 +293,7 @@ test('install-platform keeps generated secrets and required env checks aligned w
   assert.ok(occurrences >= 2, 'install-platform must both generate and require SAAS_INTERNAL_TEAM_TOKEN');
 });
 
-test('install-platform starts async and job runtime services and does not promise an unsupported bundled Nacos path', () => {
+test('install-platform starts the supported async and job runtime topology', () => {
   assert.match(
     installScript,
     /composeUp\(options, 'owner async runtime', \['lumira-async'\]\);/,
@@ -289,16 +304,7 @@ test('install-platform starts async and job runtime services and does not promis
     /composeUp\(options, 'job executor', \['lumira-job-executor'\]\);/,
     'install-platform must start the job executor as part of the default platform topology'
   );
-  assert.match(
-    installScript,
-    /assertNoUnsupportedNacosRequest/,
-    'install-platform must fail fast when callers request the unsupported bundled Nacos path'
-  );
-  assert.doesNotMatch(
-    installScript,
-    /options\.useNacos \? \['nacos'\]/,
-    'install-platform must not try to start a nonexistent nacos compose service'
-  );
+  assert.doesNotMatch(installScript, /NACOS|nacos|useNacos|--nacos/, 'install-platform must not expose an unsupported config/discovery toggle');
   assert.match(
     installScript,
     /waitForComposeServicesRunning\(\s*options,\s*\[\s*'redis',\s*'xxl-job-admin',\s*'lumira-server-blue',\s*'lumira-async',\s*'lumira-job-executor',/m,
@@ -376,17 +382,13 @@ test('deploy-container allows selected deploys for every compose runtime service
   }
 });
 
-test('deploy-container shares deployment verification with the standalone checker and rejects unsupported bundled Nacos toggles', () => {
+test('deploy-container shares deployment verification and exposes only supported topology controls', () => {
   assert.match(
     deployScript,
     /run\('node', \['bin\/check-deployment\.mjs'\]/,
     'deploy-container must delegate deployment verification to bin/check-deployment.mjs'
   );
-  assert.match(
-    deployScript,
-    /assertNoUnsupportedNacosSelection/,
-    'deploy-container must fail fast when bundled Nacos is requested in the unsupported topology'
-  );
+  assert.doesNotMatch(deployScript, /NACOS|nacos|--nacos/, 'deploy-container must not expose an unsupported config/discovery toggle');
   assert.doesNotMatch(
     deployScript,
     /Start the bundled Nacos container/,

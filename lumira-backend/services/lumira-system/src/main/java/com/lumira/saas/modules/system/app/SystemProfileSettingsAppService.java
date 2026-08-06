@@ -15,6 +15,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.profile.dto.ProfileFieldSettingItem;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionGroupVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileCompletionItemVO;
@@ -60,6 +61,7 @@ public class SystemProfileSettingsAppService {
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
+    private SystemConfigVersioningService configVersioningService;
 
     public SystemProfileSettingsAppService(
             SystemProfileSettingsRepository repository,
@@ -109,6 +111,11 @@ public class SystemProfileSettingsAppService {
         this(repository, operationAuditService, null, null, null, false);
     }
 
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
+    }
+
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
         requireAuthenticated(currentUser);
         return loadProfileFieldSettings(normalizePageKey(PROFILE_PAGE_KEY));
@@ -132,6 +139,16 @@ public class SystemProfileSettingsAppService {
         String operatorUuid = currentUser.getUserUuid();
         String normalizedPageKey = normalizePageKey(pageKey);
         List<ProfileFieldDefinition> builtInDefinitions = builtInDefinitions(normalizedPageKey);
+        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        "PROFILE",
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        request.getExpectedConfigVersion(),
+                        request.getChangeReason(),
+                        currentUser
+                ),
+                fieldConfigKeys(normalizedPageKey, builtInDefinitions)
+        );
         Map<String, ProfileFieldSettingItem> requestedSettings = new LinkedHashMap<>();
         request.getItems().forEach(item -> requestedSettings.put(item.getFieldKey(), item));
         List<ProfileFieldMetadataOverride> systemOverrides = normalizeSystemFieldOverrides(request.getItems(), builtInDefinitions);
@@ -185,6 +202,9 @@ public class SystemProfileSettingsAppService {
                 operatorUuid
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
+        if (configVersioningService != null) {
+            configVersioningService.finish(configVersion);
+        }
         return loadProfileFieldSettings(normalizedPageKey);
     }
 

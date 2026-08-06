@@ -14,6 +14,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +119,7 @@ public class SystemPlatformSettingsAppService {
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
+    private SystemConfigVersioningService configVersioningService;
 
     @Autowired
     public SystemPlatformSettingsAppService(
@@ -178,6 +180,39 @@ public class SystemPlatformSettingsAppService {
                 false);
     }
 
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
+    }
+
+    private SystemConfigVersioningService.GovernanceSession beginGovernance(
+            String group,
+            Long expectedVersion,
+            String reason,
+            CurrentUser operator,
+            List<String> keys
+    ) {
+        if (configVersioningService == null) {
+            return null;
+        }
+        return configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        group,
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        expectedVersion,
+                        reason,
+                        operator
+                ),
+                keys
+        );
+    }
+
+    private void finishGovernance(SystemConfigVersioningService.GovernanceSession session) {
+        if (configVersioningService != null) {
+            configVersioningService.finish(session);
+        }
+    }
+
     public SystemPlatformSettingsAppService(
             SystemPlatformSettingsRepository repository,
             OperationAuditService operationAuditService,
@@ -223,6 +258,14 @@ public class SystemPlatformSettingsAppService {
         String websiteName = sanitizeBrandingText(request.getWebsiteName(), "Website name");
         String companyName = sanitizeBrandingText(request.getCompanyName(), websiteName);
         Integer copyrightStartYear = request.getCopyrightStartYear() == null ? LocalDate.now().getYear() : request.getCopyrightStartYear();
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_BRANDING, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
+                BRANDING_WEBSITE_NAME_KEY, BRANDING_WEBSITE_FAVICON_URL_KEY, BRANDING_WEBSITE_LOGO_URL_KEY,
+                BRANDING_LOGIN_BACKGROUND_URL_KEY, BRANDING_GITHUB_LINK_ENABLED_KEY, BRANDING_GITHUB_LINK_URL_KEY,
+                BRANDING_HELP_LINK_ENABLED_KEY, BRANDING_HELP_LINK_URL_KEY, BRANDING_COMPANY_NAME_KEY,
+                BRANDING_COPYRIGHT_START_YEAR_KEY, BRANDING_FOOTER_ICP_KEY, BRANDING_FOOTER_POLICE_BEIAN_KEY,
+                BRANDING_FOOTER_COPYRIGHT_KEY, BRANDING_MAINTENANCE_MODE_ENABLED_KEY, BRANDING_MAINTENANCE_TITLE_KEY,
+                BRANDING_MAINTENANCE_MESSAGE_KEY
+        ));
         upsertConfigValue(BRANDING_WEBSITE_NAME_KEY, websiteName, operatorId);
         upsertConfigValue(BRANDING_WEBSITE_FAVICON_URL_KEY, sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), operatorId);
         upsertConfigValue(BRANDING_WEBSITE_LOGO_URL_KEY, sanitizeBrandingText(request.getWebsiteLogoUrl(), ""), operatorId);
@@ -256,6 +299,7 @@ public class SystemPlatformSettingsAppService {
         String settingsEventKey = settingsEventKey("branding-update");
         markRuntimeAppearanceChanged(settingsEventKey);
         markPublicBootstrapChanged(settingsEventKey);
+        finishGovernance(configVersion);
         return loadBrandingSettings();
     }
 
@@ -263,6 +307,9 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.AgreementSettingsVO updateAgreementSettings(CurrentUser currentUser, SystemDTO.AgreementSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Agreement settings request is required");
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_AGREEMENT, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
+                AGREEMENT_USER_MARKDOWN_KEY, AGREEMENT_PRIVACY_MARKDOWN_KEY
+        ));
         upsertConfigValue(AGREEMENT_USER_MARKDOWN_KEY, normalizeMarkdownText(request.getUserAgreementMarkdown()), operatorId);
         upsertConfigValue(AGREEMENT_PRIVACY_MARKDOWN_KEY, normalizeMarkdownText(request.getPrivacyAgreementMarkdown()), operatorId);
         operationAuditService.log(
@@ -278,6 +325,7 @@ public class SystemPlatformSettingsAppService {
         String settingsEventKey = settingsEventKey("agreement-update");
         markRuntimeAppearanceChanged(settingsEventKey);
         markPublicBootstrapChanged(settingsEventKey);
+        finishGovernance(configVersion);
         return loadAgreementSettings();
     }
 
@@ -303,6 +351,12 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.WatermarkSettingsVO updateWatermarkSettings(CurrentUser currentUser, SystemDTO.WatermarkSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Watermark settings request is required");
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_WATERMARK, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
+                WATERMARK_ENABLED_KEY, WATERMARK_MODE_KEY, WATERMARK_TEXT_LINES_KEY, WATERMARK_IMAGE_URL_KEY,
+                WATERMARK_FONT_COLOR_KEY, WATERMARK_FONT_SIZE_KEY, WATERMARK_FONT_WEIGHT_KEY, WATERMARK_ROTATE_KEY,
+                WATERMARK_GAP_X_KEY, WATERMARK_GAP_Y_KEY, WATERMARK_OFFSET_X_KEY, WATERMARK_OFFSET_Y_KEY,
+                WATERMARK_Z_INDEX_KEY, WATERMARK_OPACITY_KEY
+        ));
         Map<String, String> current = loadConfigValuesByGroup(GROUP_WATERMARK, true);
         upsertConfigValue(WATERMARK_ENABLED_KEY, request.getEnabled() == null ? settingValue(current, WATERMARK_ENABLED_KEY) : String.valueOf(request.getEnabled()), operatorId);
         upsertConfigValue(WATERMARK_MODE_KEY, defaultIfBlank(request.getMode(), settingValue(current, WATERMARK_MODE_KEY)), operatorId);
@@ -319,6 +373,7 @@ public class SystemPlatformSettingsAppService {
         upsertConfigValue(WATERMARK_Z_INDEX_KEY, request.getZIndex() == null ? settingValue(current, WATERMARK_Z_INDEX_KEY) : String.valueOf(request.getZIndex()), operatorId);
         upsertConfigValue(WATERMARK_OPACITY_KEY, request.getOpacity() == null ? settingValue(current, WATERMARK_OPACITY_KEY) : String.valueOf(request.getOpacity()), operatorId);
         markRuntimeAppearanceChanged("watermark-update");
+        finishGovernance(configVersion);
         return loadWatermarkSettings();
     }
 
@@ -326,6 +381,9 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Floating window settings request is required");
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_FLOATING_WINDOW, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
+                FLOATING_API_DOCS_QR_ENABLED_KEY, FLOATING_API_DOCS_QR_TITLE_KEY, FLOATING_API_DOCS_QR_IMAGE_URL_KEY
+        ));
         Map<String, String> current = loadConfigValuesByGroup(GROUP_FLOATING_WINDOW, true);
         upsertConfigValue(FLOATING_API_DOCS_QR_ENABLED_KEY, request.getApiDocsQrEnabled() == null ? settingValue(current, FLOATING_API_DOCS_QR_ENABLED_KEY) : String.valueOf(request.getApiDocsQrEnabled()), operatorId);
         upsertConfigValue(FLOATING_API_DOCS_QR_TITLE_KEY, request.getApiDocsQrTitle() == null ? settingValue(current, FLOATING_API_DOCS_QR_TITLE_KEY) : request.getApiDocsQrTitle(), operatorId);
@@ -341,6 +399,7 @@ public class SystemPlatformSettingsAppService {
                 "Update floating window settings"
         );
         markRuntimeAppearanceChanged("floating-window-update");
+        finishGovernance(configVersion);
         return loadFloatingWindowSettings();
     }
 
@@ -358,6 +417,11 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.SmtpSettingsVO updateSmtpSettings(CurrentUser currentUser, SystemDTO.SmtpSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "SMTP settings request is required");
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_SMTP, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
+                SMTP_ENABLED_KEY, SMTP_HOST_KEY, SMTP_PORT_KEY, SMTP_USERNAME_KEY, SMTP_PASSWORD_KEY, SMTP_FROM_KEY,
+                SMTP_AUTH_ENABLED_KEY, SMTP_STARTTLS_ENABLED_KEY, SMTP_SSL_ENABLED_KEY, SMTP_TEST_SUBJECT_KEY,
+                SMTP_TEST_CONTENT_KEY, SMTP_CONNECTION_TIMEOUT_KEY, SMTP_READ_TIMEOUT_KEY, SMTP_WRITE_TIMEOUT_KEY
+        ));
         Map<String, String> currentValues = loadConfigValuesByGroup(GROUP_SMTP, true);
         SystemVO.SmtpSettingsVO current = buildSmtpSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? !Boolean.FALSE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
@@ -392,12 +456,18 @@ public class SystemPlatformSettingsAppService {
         currentValues.put(SMTP_STARTTLS_ENABLED_KEY, String.valueOf(startTlsEnabled));
         currentValues.put(SMTP_SSL_ENABLED_KEY, String.valueOf(sslEnabled));
         markRuntimeAppearanceChanged("smtp-update");
+        finishGovernance(configVersion);
         return buildSmtpSettings(currentValues);
     }
 
     @Transactional
     public SystemVO.SmtpSettingsVO resetSmtpSettings(CurrentUser currentUser) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_SMTP, null, null, currentUser, List.of(
+                SMTP_ENABLED_KEY, SMTP_HOST_KEY, SMTP_PORT_KEY, SMTP_USERNAME_KEY, SMTP_PASSWORD_KEY, SMTP_FROM_KEY,
+                SMTP_AUTH_ENABLED_KEY, SMTP_STARTTLS_ENABLED_KEY, SMTP_SSL_ENABLED_KEY, SMTP_TEST_SUBJECT_KEY,
+                SMTP_TEST_CONTENT_KEY, SMTP_CONNECTION_TIMEOUT_KEY, SMTP_READ_TIMEOUT_KEY, SMTP_WRITE_TIMEOUT_KEY
+        ));
         Map<String, String> resetValues = repository.findSettingResetValues(GROUP_SMTP);
         upsertConfigValue(SMTP_ENABLED_KEY, settingValue(resetValues, SMTP_ENABLED_KEY), operatorId);
         upsertConfigValue(SMTP_HOST_KEY, settingValue(resetValues, SMTP_HOST_KEY), operatorId);
@@ -411,6 +481,7 @@ public class SystemPlatformSettingsAppService {
         smtpMailService.invalidate();
         operationAuditService.log(operatorId, currentUser.getUserUuid(), currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "Reset SMTP settings");
         markRuntimeAppearanceChanged("smtp-reset");
+        finishGovernance(configVersion);
         return buildSmtpSettings(resetValues);
     }
 
@@ -418,6 +489,10 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.WechatOfficialAccountSettingsVO updateWechatOfficialAccountSettings(CurrentUser currentUser, SystemDTO.WechatOfficialAccountSettingsRequest request) {
         Long operatorId = requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Wechat official account settings request is required");
+        SystemConfigVersioningService.GovernanceSession configVersion = beginGovernance(GROUP_WECHAT_OFFICIAL, request.getExpectedConfigVersion(), request.getChangeReason(), currentUser, List.of(
+                WECHAT_OFFICIAL_ENABLED_KEY, WECHAT_OFFICIAL_APP_ID_KEY, WECHAT_OFFICIAL_APP_SECRET_KEY,
+                WECHAT_OFFICIAL_TEMPLATE_ID_KEY, WECHAT_OFFICIAL_DETAIL_URL_KEY
+        ));
         Map<String, String> currentValues = loadConfigValuesByGroup(GROUP_WECHAT_OFFICIAL, true);
         SystemVO.WechatOfficialAccountSettingsVO current = buildWechatOfficialAccountSettings(currentValues);
         boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : Boolean.TRUE.equals(request.getEnabled());
@@ -439,6 +514,7 @@ public class SystemPlatformSettingsAppService {
         currentValues.put(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, templateId);
         currentValues.put(WECHAT_OFFICIAL_DETAIL_URL_KEY, detailUrl);
         markRuntimeAppearanceChanged("wechat-official-update");
+        finishGovernance(configVersion);
         return buildWechatOfficialAccountSettings(currentValues);
     }
 

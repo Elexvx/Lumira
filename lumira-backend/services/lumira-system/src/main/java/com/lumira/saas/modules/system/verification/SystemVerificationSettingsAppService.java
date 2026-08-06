@@ -17,6 +17,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,6 +105,7 @@ public class SystemVerificationSettingsAppService {
     private final Cache<String, Map<String, String>> configSnapshotCache;
     private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
     private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
+    private SystemConfigVersioningService configVersioningService;
 
     public SystemVerificationSettingsAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -185,6 +187,11 @@ public class SystemVerificationSettingsAppService {
                 .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
                 .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
                 .build();
+    }
+
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
     }
 
     public SystemVerificationSettingsAppService(
@@ -317,6 +324,12 @@ public class SystemVerificationSettingsAppService {
         boolean enabled = request.getEnabled() == null ? isTotpEnabled() : request.getEnabled();
         boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled() : request.getEmailLoginEnabled();
         boolean passwordLoginEnabled = request.getPasswordLoginEnabled() == null ? isPasswordLoginEnabled() : request.getPasswordLoginEnabled();
+        SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                request.getExpectedConfigVersion(),
+                request.getChangeReason(),
+                currentUser,
+                List.of(TOTP_CONFIG_ENABLED_KEY, EMAIL_LOGIN_ENABLED_KEY, PASSWORD_LOGIN_ENABLED_KEY, LOGIN_MODE_ORDER_KEY)
+        );
         upsertPlatformConfigValue(TOTP_CONFIG_ENABLED_KEY, "2FA enabled", String.valueOf(enabled), "Whether 2FA login is enabled", operatorId, operatorUuid);
         upsertPlatformConfigValue(EMAIL_LOGIN_ENABLED_KEY, "Email code login", String.valueOf(emailLoginEnabled), "Whether email code login is enabled", operatorId, operatorUuid);
         upsertPlatformConfigValue(PASSWORD_LOGIN_ENABLED_KEY, "Password login", String.valueOf(passwordLoginEnabled), "Whether password login is enabled", operatorId, operatorUuid);
@@ -324,6 +337,7 @@ public class SystemVerificationSettingsAppService {
             upsertPlatformConfigValue(LOGIN_MODE_ORDER_KEY, "Login mode order", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "Display order of login modes", operatorId, operatorUuid);
         }
         markPublicBootstrapChanged("verification-settings-update");
+        finishGovernance(governance);
         return getVerificationSettings();
     }
 
@@ -342,6 +356,12 @@ public class SystemVerificationSettingsAppService {
         String accessKeySecret = StringUtils.hasText(request.getAccessKeySecret()) ? request.getAccessKeySecret() : existingSecret;
         String endpoint = sanitizeText(request.getEndpoint(), current.endpoint());
         String region = sanitizeText(request.getRegion(), current.region());
+        SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                request.getExpectedConfigVersion(),
+                request.getChangeReason(),
+                currentUser,
+                smsConfigKeys()
+        );
 
         upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "SMS verification enabled", String.valueOf(Boolean.TRUE.equals(enabled)), "Whether SMS verification service is enabled", operatorId, operatorUuid);
         upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "SMS provider", provider, "SMS verification provider", operatorId, operatorUuid);
@@ -353,6 +373,7 @@ public class SystemVerificationSettingsAppService {
         upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "SMS region", region, "SMS verification region", operatorId, operatorUuid);
 
         markPublicBootstrapChanged("sms-settings-update");
+        finishGovernance(governance);
         return getSmsSettings();
     }
 
@@ -360,6 +381,12 @@ public class SystemVerificationSettingsAppService {
     public SystemVO.SmsVerificationSettingsVO resetSmsSettings(CurrentUser currentUser) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
+        SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                null,
+                "reset SMS verification settings",
+                currentUser,
+                smsConfigKeys()
+        );
         upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "SMS verification enabled", "false", "Whether SMS verification service is enabled", operatorId, operatorUuid);
         upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "SMS provider", "aliyun", "SMS verification provider", operatorId, operatorUuid);
         upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "SMS sign name", "", "SMS verification sign name", operatorId, operatorUuid);
@@ -369,6 +396,7 @@ public class SystemVerificationSettingsAppService {
         upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "SMS endpoint", "", "SMS verification endpoint", operatorId, operatorUuid);
         upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "SMS region", "", "SMS verification region", operatorId, operatorUuid);
         markPublicBootstrapChanged("sms-settings-reset");
+        finishGovernance(governance);
         return getSmsSettings();
     }
 
@@ -400,6 +428,12 @@ public class SystemVerificationSettingsAppService {
                 .distinct()
                 .toList();
         int ttl = request.getChallengeTtlSeconds() == null ? current.getChallengeTtlSeconds() : request.getChallengeTtlSeconds();
+        SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                request.getExpectedConfigVersion(),
+                request.getChangeReason(),
+                currentUser,
+                passkeyConfigKeys()
+        );
 
         upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "Passkey enabled", String.valueOf(enabled), "Whether passkey login is enabled", operatorId, operatorUuid);
         upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "Passkey passwordless login", String.valueOf(passwordless), "Whether discoverable credentials may log in without account input", operatorId, operatorUuid);
@@ -409,6 +443,7 @@ public class SystemVerificationSettingsAppService {
         upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "Passkey allowed origins", String.join("\\n", origins), "Allowed frontend origins for WebAuthn", operatorId, operatorUuid);
         upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "Passkey challenge TTL", String.valueOf(ttl), "WebAuthn challenge lifetime in seconds", operatorId, operatorUuid);
         markPublicBootstrapChanged("passkey-settings-update");
+        finishGovernance(governance);
         return getPasskeySettings();
     }
 
@@ -416,6 +451,12 @@ public class SystemVerificationSettingsAppService {
     public SystemVO.PasskeySettingsVO resetPasskeySettings(CurrentUser currentUser) {
         Long operatorId = requireConfigManagePermission(currentUser);
         String operatorUuid = currentUser.getUserUuid();
+        SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                null,
+                "reset passkey settings",
+                currentUser,
+                passkeyConfigKeys()
+        );
         upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "Passkey enabled", "false", "Whether passkey login is enabled", operatorId, operatorUuid);
         upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "Passkey passwordless login", "false", "Whether discoverable credentials may log in without account input", operatorId, operatorUuid);
         upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "Passkey self binding", "true", "Whether users may self-bind passkeys in personal settings", operatorId, operatorUuid);
@@ -424,7 +465,35 @@ public class SystemVerificationSettingsAppService {
         upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "Passkey allowed origins", "", "Allowed frontend origins for WebAuthn", operatorId, operatorUuid);
         upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "Passkey challenge TTL", "120", "WebAuthn challenge lifetime in seconds", operatorId, operatorUuid);
         markPublicBootstrapChanged("passkey-settings-reset");
+        finishGovernance(governance);
         return getPasskeySettings();
+    }
+
+    private SystemConfigVersioningService.GovernanceSession beginGovernance(
+            Long expectedConfigVersion,
+            String changeReason,
+            CurrentUser currentUser,
+            List<String> keys
+    ) {
+        if (configVersioningService == null) {
+            return null;
+        }
+        return configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        SystemConfigVersioningService.GROUP_VERIFICATION,
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        expectedConfigVersion,
+                        changeReason,
+                        currentUser
+                ),
+                keys
+        );
+    }
+
+    private void finishGovernance(SystemConfigVersioningService.GovernanceSession governance) {
+        if (governance != null) {
+            configVersioningService.finish(governance);
+        }
     }
 
     private SmsVerificationSettingsRecord loadSmsSettingsRecord() {
@@ -464,7 +533,7 @@ public class SystemVerificationSettingsAppService {
                             insert into sys_config (
                                 config_key, config_name, config_value, config_scope, is_system, remark,
                                 created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)
                             """,
                     configKey,
                     configName,

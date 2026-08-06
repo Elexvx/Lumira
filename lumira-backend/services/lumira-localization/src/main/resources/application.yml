@@ -25,8 +25,6 @@ lumira:
   runtime:
     control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:true}
 
-spring.cloud.nacos.discovery.enabled: false
-spring.cloud.nacos.config.enabled: false
 spring.cloud.sentinel.enabled: false
 
 management:

@@ -17,6 +17,7 @@ public final class PlatformEventTypes {
     public static final String FILE_OBJECT_DELETED = "FILE_OBJECT_DELETED";
     public static final String MESSAGE_NOTICE_CREATED = "MESSAGE_NOTICE_CREATED";
     public static final String MESSAGE_NOTICE_RETRACTED = "MESSAGE_NOTICE_RETRACTED";
+    public static final String SYSTEM_CONFIG_VERSION_PUBLISHED = "SYSTEM_CONFIG_VERSION_PUBLISHED";
 
     private PlatformEventTypes() {
     }

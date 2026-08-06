@@ -43,6 +43,7 @@ class SystemVerificationSettingsAppServiceTest {
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/verification/SystemVerificationSettingsAppService.java"));
 
         assertThat(source).contains("created_by, created_by_uuid, updated_by, updated_by_uuid");
+        assertThat(source).contains("values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)");
         assertThat(source).contains("updated_by = ?, updated_by_uuid = ?");
         assertThat(source).contains("operatorUuid = currentUser.getUserUuid()");
         assertThat(source).contains("and config_key = ?");

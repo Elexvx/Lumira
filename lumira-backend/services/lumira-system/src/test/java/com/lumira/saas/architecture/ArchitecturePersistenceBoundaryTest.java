@@ -48,6 +48,14 @@ class ArchitecturePersistenceBoundaryTest {
             "CompetitionRegistrationAppService",
             "WorkflowAppService"
     );
+    /**
+     * This is the deliberate current persistence boundary for configuration
+     * governance.  It owns only sys_config plus its immutable version tables;
+     * feature application services still route through this boundary.
+     */
+    private static final Set<String> APPROVED_CURRENT_PERSISTENCE_BOUNDARIES = Set.of(
+            "SystemConfigVersioningService"
+    );
 
     @Test
     void controllersMustNotDependOnPersistenceImplementations() throws IOException {
@@ -81,7 +89,8 @@ class ArchitecturePersistenceBoundaryTest {
         List<String> violations = new ArrayList<>();
         for (Path file : serviceMainAppJavaFiles(root).toList()) {
             String className = simpleClassName(file);
-            if (allowedHistoricalDebt.contains(className)) {
+            if (allowedHistoricalDebt.contains(className)
+                    || APPROVED_CURRENT_PERSISTENCE_BOUNDARIES.contains(className)) {
                 continue;
             }
             String source = Files.readString(file);

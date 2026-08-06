@@ -14,6 +14,14 @@ class SystemManagementAppServiceSensitiveConfigTest {
     }
 
     @Test
+    void treatsTokenAndCredentialConfigKeysAsSensitive() {
+        assertThat(SystemManagementAppService.isSensitiveConfigKey("integration.access-token"))
+                .isTrue();
+        assertThat(SystemManagementAppService.isSensitiveConfigKey("integration.service.credential"))
+                .isTrue();
+    }
+
+    @Test
     void masksSensitiveConfigValue() {
         SystemVO.ConfigVO config = new SystemVO.ConfigVO();
         config.setConfigKey("notification.wechat-official.app-secret");

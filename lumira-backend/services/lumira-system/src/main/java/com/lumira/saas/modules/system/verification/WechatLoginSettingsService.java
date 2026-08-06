@@ -10,6 +10,7 @@ import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.readmodel.ReadModelEventKey;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -57,6 +58,7 @@ public class WechatLoginSettingsService {
     private final Cache<String, CompletableFuture<WechatLoginSettingsRecord>> settingsLoadInFlight;
     private final ThreadLocal<CurrentUser> currentUpdateOperator = new ThreadLocal<>();
     private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
+    private SystemConfigVersioningService configVersioningService;
 
     @Autowired
     public WechatLoginSettingsService(
@@ -98,6 +100,11 @@ public class WechatLoginSettingsService {
                 .maximumSize(2048)
                 .expireAfterWrite(SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
                 .build();
+    }
+
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
     }
 
     public WechatLoginSettingsService(
@@ -219,6 +226,12 @@ public class WechatLoginSettingsService {
                 throw new BizException(ErrorCode.BAD_REQUEST, "微信登录启用前必须完整配置 AppID、AppSecret 和回调地址");
             }
 
+            SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                    request.getExpectedConfigVersion(),
+                    request.getChangeReason(),
+                    trustedOperator
+            );
+
             upsertConfigValue(ENABLED_KEY, "微信登录启用", String.valueOf(enabled), "是否启用微信扫码登录", operatorId);
             upsertConfigValue(APP_ID_KEY, "微信 AppID", appId, "微信开放平台网站应用 AppID", operatorId);
             upsertConfigValue(APP_SECRET_KEY, "微信 AppSecret", appSecret, "微信开放平台网站应用 AppSecret", operatorId);
@@ -226,6 +239,7 @@ public class WechatLoginSettingsService {
             upsertConfigValue(STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(stateExpireMinutes), "微信登录 state 缓存有效期，单位分钟", operatorId);
             invalidateSettingsCache();
             markPublicBootstrapChanged("wechat-settings-update");
+            finishGovernance(governance);
             return getSettings();
         } finally {
             currentUpdateOperator.remove();
@@ -238,6 +252,11 @@ public class WechatLoginSettingsService {
         Long operatorId = trustedOperator.getUserId();
         currentUpdateOperator.set(trustedOperator);
         try {
+            SystemConfigVersioningService.GovernanceSession governance = beginGovernance(
+                    null,
+                    "reset Wechat login settings",
+                    trustedOperator
+            );
             upsertConfigValue(ENABLED_KEY, "微信登录启用", "false", "是否启用微信扫码登录", operatorId);
             upsertConfigValue(APP_ID_KEY, "微信 AppID", "", "微信开放平台网站应用 AppID", operatorId);
             upsertConfigValue(APP_SECRET_KEY, "微信 AppSecret", "", "微信开放平台网站应用 AppSecret", operatorId);
@@ -245,6 +264,7 @@ public class WechatLoginSettingsService {
             upsertConfigValue(STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(Math.max(1, properties.getStateExpireMinutes())), "微信登录 state 缓存有效期，单位分钟", operatorId);
             invalidateSettingsCache();
             markPublicBootstrapChanged("wechat-settings-reset");
+            finishGovernance(governance);
             return getSettings();
         } finally {
             currentUpdateOperator.remove();
@@ -341,6 +361,32 @@ public class WechatLoginSettingsService {
 
     private List<String> keys() {
         return List.of(ENABLED_KEY, APP_ID_KEY, APP_SECRET_KEY, REDIRECT_URI_KEY, STATE_EXPIRE_MINUTES_KEY);
+    }
+
+    private SystemConfigVersioningService.GovernanceSession beginGovernance(
+            Long expectedConfigVersion,
+            String changeReason,
+            CurrentUser operator
+    ) {
+        if (configVersioningService == null) {
+            return null;
+        }
+        return configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        SystemConfigVersioningService.GROUP_VERIFICATION,
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        expectedConfigVersion,
+                        changeReason,
+                        operator
+                ),
+                keys()
+        );
+    }
+
+    private void finishGovernance(SystemConfigVersioningService.GovernanceSession governance) {
+        if (governance != null) {
+            configVersioningService.finish(governance);
+        }
     }
 
     private String sanitizeText(String value, String fallback) {

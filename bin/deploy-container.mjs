@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import readline from 'node:readline';
 
-import { parseEnvFile, randomSecret, randomBase64Secret } from './lib/env-utils.mjs';
+import { parseEnvFile, randomSecret } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, optionalOutput as execOptionalOutput, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
 import { normalizeSlot, renderActiveUpstreams } from './lib/platform-update-contract.mjs';
@@ -401,21 +401,8 @@ Options:
   --allow-dirty-build-identity Allow deployment from a dirty Git working tree.
   --observability Start Prometheus, Grafana, Loki, Tempo, and Alloy.
   --local-mysql Start bundled MySQL and use local-friendly defaults.
-  --nacos     Unsupported in the current topology. Leave Nacos config and discovery disabled.
   -h, --help  Show this help message.
 `);
-}
-
-function assertNoUnsupportedNacosSelection() {
-  const env = parseEnvFile(envPath);
-  const nacosRequested = args.has('--nacos') || isEnabled(env.NACOS_CONFIG_ENABLED) || isEnabled(env.NACOS_DISCOVERY_ENABLED);
-  if (!nacosRequested) {
-    return;
-  }
-
-  console.error('[deploy] Bundled Nacos is not defined in deploy/docker-compose.prod.yml, and the current runtime apps pin Nacos integration off.');
-  console.error('[deploy] Leave NACOS_CONFIG_ENABLED=false and NACOS_DISCOVERY_ENABLED=false, and remove --nacos before deploying.');
-  process.exit(1);
 }
 
 async function confirmReset() {
@@ -515,9 +502,6 @@ function maybePruneDockerBuildCache(stage) {
 function generatedEnvDefaults() {
   return {
     DB_PASSWORD: randomSecret('mysql'),
-    NACOS_AUTH_TOKEN: randomBase64Secret(),
-    NACOS_AUTH_IDENTITY_KEY: randomSecret('nacos-key'),
-    NACOS_AUTH_IDENTITY_VALUE: randomSecret('nacos-value'),
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
@@ -1168,7 +1152,6 @@ if (help) {
 }
 
 ensureEnvFile();
-assertNoUnsupportedNacosSelection();
 configureBuildIdentity();
 configureLocalDeploymentDefaults();
 await confirmReset();

@@ -10,6 +10,8 @@ public class SmsVerificationSettingsRequest {
     private String accessKeySecret;
     private String endpoint;
     private String region;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -27,4 +29,8 @@ public class SmsVerificationSettingsRequest {
     public void setEndpoint(String endpoint) { this.endpoint = endpoint; }
     public String getRegion() { return region; }
     public void setRegion(String region) { this.region = region; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

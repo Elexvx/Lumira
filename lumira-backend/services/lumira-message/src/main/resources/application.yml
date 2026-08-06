@@ -31,8 +31,6 @@ lumira:
       group-name: ${LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_GROUP_NAME:message-review-result-v1}
       consumer-name: ${LUMIRA_EVENT_REVIEW_RESULT_CONSUMER_NAME:}
 
-spring.cloud.nacos.discovery.enabled: false
-spring.cloud.nacos.config.enabled: false
 spring.cloud.sentinel.enabled: false
 
 management:

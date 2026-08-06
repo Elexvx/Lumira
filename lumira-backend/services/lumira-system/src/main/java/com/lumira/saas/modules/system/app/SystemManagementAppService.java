@@ -29,6 +29,7 @@ import com.lumira.saas.modules.system.permission.SystemPermissionTreeAssembler;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.ProfileDTO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.audit.vo.AuditLogVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
@@ -194,7 +195,11 @@ public class SystemManagementAppService {
             ".password",
             ".secret",
             ".access-key-secret",
-            ".private-key"
+            ".private-key",
+            ".credential",
+            ".token",
+            "-credential",
+            "-token"
     );
     private static final List<SystemVO.ShortcutVO> DASHBOARD_SHORTCUTS = List.of(
             shortcut("Menu settings", "Manage menus and route permissions", "/settings/menus", "system:menu:view"),
@@ -228,12 +233,18 @@ public class SystemManagementAppService {
     private final FieldCryptoService fieldCryptoService;
     private final ReadModelVersionService readModelVersionService;
     private boolean enforceTrustedUserResolution;
+    private SystemConfigVersioningService configVersioningService;
     private final Cache<String, Integer> menuCountCache;
     private final Cache<String, List<SystemVO.PermissionVO>> permissionCatalogCache;
     private final Cache<Long, List<SystemVO.MenuVO>> menuTreeCache;
     private final Cache<String, List<SystemVO.PermissionTreeVO>> permissionTreeCache;
     private final Cache<String, CachedReadModelVersion> readModelVersionCache;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
+
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
+    }
 
     @Autowired
     public SystemManagementAppService(
@@ -1781,6 +1792,22 @@ public class SystemManagementAppService {
         requirePositiveId(id, "Config id is required");
         requireRequest(request, "Config request is required");
         SystemVO.ConfigVO currentConfig = loadConfig(id);
+        if (configVersioningService != null) {
+            configVersioningService.validateGovernedKey(request.getConfigKey());
+            if (!governanceGroup(currentConfig.getConfigKey()).equals(governanceGroup(request.getConfigKey()))) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Config key cannot move between governance groups");
+            }
+        }
+        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        governanceGroup(request.getConfigKey()),
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        request.getExpectedConfigVersion(),
+                        request.getChangeReason(),
+                        currentUser
+                ),
+                List.of(currentConfig.getConfigKey(), request.getConfigKey())
+        );
         int updated = jdbcTemplate.update(
                 """
                         update sys_config
@@ -1804,6 +1831,9 @@ public class SystemManagementAppService {
         );
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Config changed, please retry");
+        }
+        if (configVersioningService != null) {
+            configVersioningService.finish(configVersion);
         }
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
         SystemVO.ConfigVO config = loadConfig(id);
@@ -1842,6 +1872,19 @@ public class SystemManagementAppService {
     public SystemVO.ConfigVO createConfig(CurrentUser currentUser, SystemDTO.ConfigUpsertRequest request) {
         requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Config request is required");
+        if (configVersioningService != null) {
+            configVersioningService.validateGovernedKey(request.getConfigKey());
+        }
+        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        governanceGroup(request.getConfigKey()),
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        request.getExpectedConfigVersion(),
+                        request.getChangeReason(),
+                        currentUser
+                ),
+                List.of(request.getConfigKey())
+        );
         int inserted = jdbcTemplate.update(
                 """
                         insert into sys_config (
@@ -1859,6 +1902,9 @@ public class SystemManagementAppService {
                 currentUser.getUserUuid()
         );
         requireSystemWrite(inserted, "Config changed, please retry");
+        if (configVersioningService != null) {
+            configVersioningService.finish(configVersion);
+        }
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
         SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
                 """
@@ -1906,6 +1952,21 @@ public class SystemManagementAppService {
         return fieldCryptoService.encrypt(configValue);
     }
 
+    private String governanceGroup(String configKey) {
+        String key = configKey == null ? "" : configKey.trim().toLowerCase(Locale.ROOT);
+        if (key.startsWith("branding.")) return "BRANDING";
+        if (key.startsWith("agreement.")) return "AGREEMENT";
+        if (key.startsWith("smtp.")) return "SMTP";
+        if (key.startsWith("notification.wechat-official.")) return "WECHAT_OFFICIAL";
+        if (key.startsWith("watermark.")) return "WATERMARK";
+        if (key.startsWith("floating-window.")) return "FLOATING_WINDOW";
+        if (key.startsWith("profile.")) return "PROFILE";
+        if (key.startsWith("verification.")) return "VERIFICATION";
+        if (key.startsWith("security.")) return "SECURITY";
+        if (key.startsWith("certificate.")) return "CERTIFICATE";
+        return "SYSTEM_CONFIG";
+    }
+
     public SystemVO.SecuritySettingsVO getSecuritySettings() {
         return toSecuritySettingsVO(securitySettingsService.loadSettings());
     }
@@ -1921,7 +1982,9 @@ public class SystemManagementAppService {
         requireRequest(request, "Security settings request is required");
         SecuritySettingsService.SecuritySettingsSnapshot updated = securitySettingsService.updateSettings(
                 toSnapshot(securitySettingsService.loadSettings(), request),
-                currentUser
+                currentUser,
+                request.getExpectedConfigVersion(),
+                request.getChangeReason()
         );
         if (!updated.isAllowMultiDeviceLogin()) {
             onlineSessionManagementAppService.retainLatestSessionForEachUser();

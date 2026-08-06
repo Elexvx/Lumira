@@ -14,6 +14,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.role.dto.RoleDataScopeRequest;
 import com.lumira.saas.modules.system.role.vo.RoleDataScopeVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
@@ -81,6 +82,12 @@ public class SystemRoleManagementAppService {
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
+    private SystemConfigVersioningService configVersioningService;
+
+    @Autowired
+    public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
+        this.configVersioningService = configVersioningService;
+    }
 
     @Autowired
     public SystemRoleManagementAppService(
@@ -279,6 +286,16 @@ public class SystemRoleManagementAppService {
             throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
         requireSafeDefaultRegistrationRole(role);
+        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+                new SystemConfigVersioningService.ChangeRequest(
+                        "SYSTEM_CONFIG",
+                        SystemConfigVersioningService.DOMAIN_PLATFORM,
+                        null,
+                        "update default registration role",
+                        currentUser
+                ),
+                List.of(DEFAULT_REGISTRATION_ROLE_CODE_KEY)
+        );
         upsertConfigValue(
                 DEFAULT_REGISTRATION_ROLE_CODE_KEY,
                 "默认注册角色",
@@ -288,6 +305,9 @@ public class SystemRoleManagementAppService {
                 currentUser.getUserUuid()
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
+        if (configVersioningService != null) {
+            configVersioningService.finish(configVersion);
+        }
         return toDefaultRegistrationRole(role);
     }
 

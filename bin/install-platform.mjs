@@ -10,7 +10,7 @@ import readline from 'node:readline/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { parseEnvFile, setEnvValue, randomSecret, randomBase64Secret, defaultCapacityProfiles } from './lib/env-utils.mjs';
+import { parseEnvFile, setEnvValue, randomSecret, defaultCapacityProfiles } from './lib/env-utils.mjs';
 import { run as execRun, output as execOutput, commandExists, createLogger, resolveRepoRoot } from './lib/exec-utils.mjs';
 import { waitForHttp, probeHttp } from './lib/http-utils.mjs';
 import { renderActiveUpstreams } from './lib/platform-update-contract.mjs';
@@ -79,9 +79,6 @@ function output(command, commandArgs, options = {}) {
 function generatedSecrets() {
   return {
     DB_PASSWORD: randomSecret('mysql'),
-    NACOS_AUTH_TOKEN: randomBase64Secret(),
-    NACOS_AUTH_IDENTITY_KEY: randomSecret('nacos-key'),
-    NACOS_AUTH_IDENTITY_VALUE: randomSecret('nacos-value'),
     JWT_SECRET: randomSecret('jwt'),
     FIELD_SECRET: randomSecret('field'),
     PLUGIN_SIGNATURE_SECRET: randomSecret('plugin-signature'),
@@ -100,13 +97,6 @@ function generatedSecrets() {
     XXL_JOB_LOGIN_PASSWORD: randomSecret('xxl-password'),
     GRAFANA_ADMIN_PASSWORD: randomSecret('grafana'),
   };
-}
-
-function assertNoUnsupportedNacosRequest() {
-  if (!argMap.has('nacos')) {
-    return;
-  }
-  throw new Error('The current install topology does not provide a bundled Nacos container. Remove --nacos and keep Nacos config/discovery disabled.');
 }
 
 function detectCapacity() {
@@ -256,16 +246,6 @@ async function buildEnvironmentReport({ expectedProfile = '', installMode = fals
     addEnvironmentCheck(checks, envSource.API_DOMAIN.includes('.') ? 'pass' : 'warn', 'API domain', envSource.API_DOMAIN);
   }
 
-  const nacosEnabled = envSource.NACOS_CONFIG_ENABLED === 'true' || envSource.NACOS_DISCOVERY_ENABLED === 'true';
-  addEnvironmentCheck(
-    checks,
-    nacosEnabled ? 'fail' : 'pass',
-    'Nacos topology',
-    nacosEnabled
-      ? 'current compose/install topology does not provide a bundled Nacos runtime; disable NACOS_CONFIG_ENABLED and NACOS_DISCOVERY_ENABLED'
-      : 'disabled'
-  );
-
   const dockerExists = commandExists('docker');
   addEnvironmentCheck(checks, dockerExists ? 'pass' : installMode ? 'warn' : 'fail', 'Docker CLI', dockerExists ? 'available' : 'missing');
   if (dockerExists) {
@@ -403,7 +383,6 @@ async function collectInstallOptions(existingEnv, capacity) {
       apiDomain,
       frontendOrigin,
       useLocalMysql,
-      useNacos: false,
       useFrontendContainer,
       useObservability,
       profileName: defaultCapacityProfiles[profileName] ? profileName : capacity.profileName,
@@ -454,8 +433,6 @@ function ensureEnvFile(options, profile) {
     SPRING_THREADS_VIRTUAL_ENABLED: tunable('SPRING_THREADS_VIRTUAL_ENABLED', 'true'),
     SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: tunable('SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE', profile.hikariMaxPoolSize),
     SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: tunable('SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE', '1'),
-    NACOS_CONFIG_ENABLED: 'false',
-    NACOS_DISCOVERY_ENABLED: 'false',
     ...profile.serviceLimits,
     ...profile.gatewayQps,
     SAAS_TRAFFIC_AUTH_LOGIN_QPS: existingEnv.SAAS_TRAFFIC_AUTH_LOGIN_QPS || '20',
@@ -705,7 +682,6 @@ async function runVerification(options, profile) {
 }
 
 async function main() {
-  assertNoUnsupportedNacosRequest();
   const capacity = detectCapacity();
   if (!(checkOnly && jsonOutput)) {
     log(`Server: ${capacity.cpuCount} CPU, ${capacity.memoryGb.toFixed(1)} GiB RAM, ${capacity.diskGb.toFixed(1)} GiB free, ${capacity.platform}/${capacity.arch}`);

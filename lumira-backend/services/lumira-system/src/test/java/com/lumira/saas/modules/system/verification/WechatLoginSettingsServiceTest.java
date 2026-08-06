@@ -6,6 +6,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -167,6 +168,78 @@ class WechatLoginSettingsServiceTest {
                 eq("public-bootstrap"),
                 argThat(eventKey -> eventKey.startsWith("wechat-settings-update:"))
         );
+    }
+
+    @Test
+    void updateSettingsShouldGovernVerificationWechatConfigInsideTheServiceBoundary() {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        SystemConfigVersioningService configVersioningService = Mockito.mock(SystemConfigVersioningService.class);
+        CurrentUser operator = trustedOperator(9L);
+        List<String> expectedKeys = List.of(
+                "verification.wechat-login.enabled",
+                "verification.wechat-login.app-id",
+                "verification.wechat-login.app-secret",
+                "verification.wechat-login.redirect-uri",
+                "verification.wechat-login.state-expire-minutes"
+        );
+        SystemConfigVersioningService.GovernanceSession governance = new SystemConfigVersioningService.GovernanceSession(
+                new SystemConfigVersioningService.ChangeRequest(
+                        "VERIFICATION",
+                        "PLATFORM",
+                        4L,
+                        "rotate wechat settings",
+                        operator
+                ),
+                4L,
+                List.of(),
+                Set.copyOf(expectedKeys)
+        );
+        when(configVersioningService.begin(any(SystemConfigVersioningService.ChangeRequest.class), any()))
+                .thenReturn(governance);
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
+                .thenReturn(List.of(
+                        config("verification.wechat-login.enabled", "true"),
+                        config("verification.wechat-login.app-id", "appid-1"),
+                        config("verification.wechat-login.app-secret", "secret-1"),
+                        config("verification.wechat-login.redirect-uri", "https://example.com/callback"),
+                        config("verification.wechat-login.state-expire-minutes", "15")
+                ))
+                .thenReturn(List.of(
+                        config("verification.wechat-login.enabled", "false"),
+                        config("verification.wechat-login.app-id", "appid-2"),
+                        config("verification.wechat-login.app-secret", "secret-2"),
+                        config("verification.wechat-login.redirect-uri", "https://example.com/new-callback"),
+                        config("verification.wechat-login.state-expire-minutes", "20")
+                ));
+
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService
+        );
+        service.setConfigVersioningService(configVersioningService);
+        service.loadSettings();
+        SystemDTO.WechatLoginSettingsRequest request = new SystemDTO.WechatLoginSettingsRequest();
+        request.setEnabled(Boolean.FALSE);
+        request.setAppId("appid-2");
+        request.setAppSecret("secret-2");
+        request.setRedirectUri("https://example.com/new-callback");
+        request.setStateExpireMinutes(20);
+        request.setExpectedConfigVersion(4L);
+        request.setChangeReason("rotate wechat settings");
+
+        service.updateSettings(operator, request);
+
+        verify(configVersioningService).begin(
+                argThat(change -> "VERIFICATION".equals(change.groupCode())
+                        && "PLATFORM".equals(change.domainCode())
+                        && Long.valueOf(4L).equals(change.expectedVersion())
+                        && "rotate wechat settings".equals(change.reason())),
+                eq(expectedKeys)
+        );
+        verify(configVersioningService).finish(governance);
     }
 
     @Test

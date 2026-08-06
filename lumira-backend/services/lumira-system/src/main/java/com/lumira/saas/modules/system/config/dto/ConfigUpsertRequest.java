@@ -11,6 +11,8 @@ public class ConfigUpsertRequest {
     @NotBlank
     private String configValue;
     private String remark;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public String getConfigKey() { return configKey; }
     public void setConfigKey(String configKey) { this.configKey = configKey; }
@@ -20,4 +22,8 @@ public class ConfigUpsertRequest {
     public void setConfigValue(String configValue) { this.configValue = configValue; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

@@ -18,6 +18,8 @@ public class PasskeySettingsRequest {
     @Min(30)
     @Max(600)
     private Integer challengeTtlSeconds;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -33,4 +35,8 @@ public class PasskeySettingsRequest {
     public void setAllowedOrigins(List<String> allowedOrigins) { this.allowedOrigins = allowedOrigins; }
     public Integer getChallengeTtlSeconds() { return challengeTtlSeconds; }
     public void setChallengeTtlSeconds(Integer challengeTtlSeconds) { this.challengeTtlSeconds = challengeTtlSeconds; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

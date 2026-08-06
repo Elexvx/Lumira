@@ -7,6 +7,8 @@ public class WechatLoginSettingsRequest {
     private String appSecret;
     private String redirectUri;
     private Integer stateExpireMinutes;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -18,4 +20,8 @@ public class WechatLoginSettingsRequest {
     public void setRedirectUri(String redirectUri) { this.redirectUri = redirectUri; }
     public Integer getStateExpireMinutes() { return stateExpireMinutes; }
     public void setStateExpireMinutes(Integer stateExpireMinutes) { this.stateExpireMinutes = stateExpireMinutes; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

@@ -18,6 +18,8 @@ public class WatermarkSettingsRequest {
     private Integer offsetY;
     private Integer zIndex;
     private Double opacity;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -47,4 +49,8 @@ public class WatermarkSettingsRequest {
     public void setZIndex(Integer zIndex) { this.zIndex = zIndex; }
     public Double getOpacity() { return opacity; }
     public void setOpacity(Double opacity) { this.opacity = opacity; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

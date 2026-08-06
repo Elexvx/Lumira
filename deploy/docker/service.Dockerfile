@@ -72,8 +72,8 @@ WORKDIR /app
 
 RUN addgroup --system app \
     && adduser --system --ingroup app app \
-    && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging \
-    && chown -R app:app /tmp/nacos /tmp/sentinel /data
+    && mkdir -p /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging \
+    && chown -R app:app /tmp/sentinel /data
 
 COPY --from=builder /workspace/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
 
@@ -81,7 +81,7 @@ USER app
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"true\" ]; then if [ ! -s \"$OTEL_JAVAAGENT_PATH\" ]; then echo \"OTEL_JAVAAGENT_ENABLED=true but $OTEL_JAVAAGENT_PATH is missing or empty; rebuild with OTEL_JAVAAGENT_URL\" >&2; exit 64; fi; AGENT_OPTS=\"-javaagent:$OTEL_JAVAAGENT_PATH\"; fi; exec java -DJM.LOG.PATH=/tmp/nacos -Dcsp.sentinel.log.dir=/tmp/sentinel $AGENT_OPTS $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "AGENT_OPTS=''; if [ \"$OTEL_JAVAAGENT_ENABLED\" = \"true\" ]; then if [ ! -s \"$OTEL_JAVAAGENT_PATH\" ]; then echo \"OTEL_JAVAAGENT_ENABLED=true but $OTEL_JAVAAGENT_PATH is missing or empty; rebuild with OTEL_JAVAAGENT_URL\" >&2; exit 64; fi; AGENT_OPTS=\"-javaagent:$OTEL_JAVAAGENT_PATH\"; fi; exec java -Dcsp.sentinel.log.dir=/tmp/sentinel $AGENT_OPTS $JAVA_OPTS -jar /app/app.jar"]
 
 FROM runtime AS lumira-server-image
 COPY --from=builder /workspace/services/lumira-admin/target/lumira-server-*.jar /app/app.jar

@@ -47,6 +47,8 @@ public class SecuritySettingsRequest {
     private Boolean passwordRequireSpecialCharacter;
     @NotNull
     private Boolean passwordAllowConsecutiveCharacters;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Long getIdleTimeoutSeconds() { return idleTimeoutSeconds; }
     public void setIdleTimeoutSeconds(Long idleTimeoutSeconds) { this.idleTimeoutSeconds = idleTimeoutSeconds; }
@@ -80,4 +82,8 @@ public class SecuritySettingsRequest {
     public void setPasswordRequireSpecialCharacter(Boolean passwordRequireSpecialCharacter) { this.passwordRequireSpecialCharacter = passwordRequireSpecialCharacter; }
     public Boolean getPasswordAllowConsecutiveCharacters() { return passwordAllowConsecutiveCharacters; }
     public void setPasswordAllowConsecutiveCharacters(Boolean passwordAllowConsecutiveCharacters) { this.passwordAllowConsecutiveCharacters = passwordAllowConsecutiveCharacters; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

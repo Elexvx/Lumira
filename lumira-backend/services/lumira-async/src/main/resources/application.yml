@@ -52,9 +52,7 @@ lumira:
 server:
   port: 8080
 
-# Disable Nacos / Sentinel
-spring.cloud.nacos.discovery.enabled: false
-spring.cloud.nacos.config.enabled: false
+# Keep optional Sentinel integration disabled in the default runtime.
 spring.cloud.sentinel.enabled: false
 
 # Fallback basic DB config (will be overridden by env vars or system-service config)

@@ -29,8 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.cloud.nacos.config.import-check.enabled=false"
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 @Disabled("Requires a seeded local MySQL schema; move to an isolated integration-test profile before enabling in default mvn test.")
 class AgreementSettingsIntegrationTest {

@@ -36,6 +36,15 @@ class SaasSqlBootstrapCompletenessTest {
                 .contains("CREATE TABLE `sys_user_role`")
                 .contains("CREATE TABLE `ddd_read_model_version`")
                 .contains("CREATE TABLE `aiadc_activity_registration`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_metadata`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_version_head`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_version`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_version_item`")
+                .contains("`config_key` varchar(128) NOT NULL")
+                .contains("`group_code` varchar(64) NOT NULL")
+                .contains("`value_type` varchar(32) NOT NULL")
+                .contains("`sensitivity` varchar(32) NOT NULL")
+                .contains("`refresh_policy` varchar(32) NOT NULL")
                 .contains("'aiadc_activity_locale'")
                 .contains("'aiadc_activity_status'")
                 .contains("'aiadc_activity_public_status'");
@@ -162,7 +171,9 @@ class SaasSqlBootstrapCompletenessTest {
         assertThat(normalizedSql)
                 .contains("INSERT INTO `ddd_read_model_version`")
                 .contains("('IAM', 'permission-snapshot', 1, 'sql-bootstrap', NOW())")
-                .contains("('platform', 'runtime-appearance', 1, 'sql-bootstrap', NOW())");
+                .contains("('platform', 'runtime-appearance', 1, 'sql-bootstrap', NOW())")
+                .contains("INSERT INTO `sys_config_metadata`")
+                .contains("ON DUPLICATE KEY UPDATE");
     }
 
     @Test
@@ -182,6 +193,34 @@ class SaasSqlBootstrapCompletenessTest {
                 .contains("SELECT `id`, 'excellent', '优秀', 20, 'ENABLED', '项目评级'")
                 .contains("SELECT `id`, 'new', '最新', 30, 'ENABLED', '项目评级'")
                 .contains("SELECT `id`, 'all', '全部', 10, 'ENABLED', '项目查询全部筛选标记'");
+    }
+
+    @Test
+    void manualConfigGovernanceUpgradeMatchesFreshBootstrapSchema() throws IOException {
+        String bootstrap = readSaasSql();
+        String upgrade = readUpgradeSql();
+        String executableUpgrade = upgrade.replaceAll("(?m)^\\s*--.*(?:\\R|$)", "");
+
+        assertThat(executableUpgrade)
+                .as("existing production databases need a manual, non-Flyway upgrade before config writes")
+                .doesNotContainIgnoringCase("flyway")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_metadata`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_version_head`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_version`")
+                .contains("CREATE TABLE IF NOT EXISTS `sys_config_version_item`")
+                .contains("INSERT INTO `sys_config_metadata`")
+                .contains("FROM `sys_config` c")
+                .contains("ON DUPLICATE KEY UPDATE");
+
+        for (String tableName : Set.of(
+                "sys_config_metadata",
+                "sys_config_version_head",
+                "sys_config_version",
+                "sys_config_version_item")) {
+            assertThat(normalizeWhitespace(extractCreateTableBlock(upgrade, tableName)))
+                    .as("manual upgrade DDL for %s must match fresh bootstrap DDL", tableName)
+                    .isEqualTo(normalizeWhitespace(extractCreateTableBlock(bootstrap, tableName)));
+        }
     }
 
     private static Set<String> permissionKeys(String valuesBlock) {
@@ -238,6 +277,25 @@ class SaasSqlBootstrapCompletenessTest {
 
     private static String readSaasSql() throws IOException {
         return Files.readString(resolvePath("../../sql/saas.sql", "sql/saas.sql"), StandardCharsets.UTF_8);
+    }
+
+    private static String readUpgradeSql() throws IOException {
+        return Files.readString(
+                resolvePath("../../sql/upgrade-config-governance-v1.sql", "sql/upgrade-config-governance-v1.sql"),
+                StandardCharsets.UTF_8
+        );
+    }
+
+    private static String extractCreateTableBlock(String sql, String tableName) {
+        Pattern pattern = Pattern.compile(
+                "(?is)CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+`" + Pattern.quote(tableName)
+                        + "`\\s*\\([\\s\\S]*?\\)\\s*ENGINE=[^;]+;"
+        );
+        Matcher matcher = pattern.matcher(sql);
+        assertThat(matcher.find())
+                .as("expected CREATE TABLE block for %s", tableName)
+                .isTrue();
+        return matcher.group();
     }
 
     private static Path resolvePath(String... candidates) {

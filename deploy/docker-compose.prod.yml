@@ -3,11 +3,6 @@ x-service-build:
   dockerfile: deploy/docker/service.Dockerfile
 x-common-env: &common-env
   TZ: Asia/Shanghai
-  NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
-  NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
-  NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
-  SPRING_CLOUD_NACOS_CONFIG_ENABLED: ${NACOS_CONFIG_ENABLED:-false}
-  SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
   SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-}
   DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
   DB_USERNAME: ${DB_USERNAME:-root}
@@ -364,11 +359,6 @@ services:
     cpus: ${SYSTEM_SERVICE_CPUS:-1.0}
     environment: &lumira-server-env
       TZ: Asia/Shanghai
-      NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
-      NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
-      SPRING_CLOUD_NACOS_CONFIG_ENABLED: ${NACOS_CONFIG_ENABLED:-false}
-      SPRING_CLOUD_NACOS_DISCOVERY_ENABLED: ${NACOS_DISCOVERY_ENABLED:-false}
       SPRING_APPLICATION_JSON: ${SPRING_APPLICATION_JSON:-{"saas":{"system":{"service-base-url":"http://localhost:8080"},"auth":{"service-base-url":"http://localhost:8080"},"file":{"service-base-url":"http://localhost:8080"},"payment":{"service-base-url":"http://localhost:8080"},"team":{"service-base-url":"http://localhost:8080"}}}}
       DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/saas?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
       DB_USERNAME: ${DB_USERNAME:-root}

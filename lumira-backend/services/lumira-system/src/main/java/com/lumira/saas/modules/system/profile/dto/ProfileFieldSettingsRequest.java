@@ -12,6 +12,8 @@ public class ProfileFieldSettingsRequest {
     @Valid
     @NotEmpty
     private List<ProfileFieldSettingItem> items;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public String getPageKey() {
         return pageKey;
@@ -28,4 +30,9 @@ public class ProfileFieldSettingsRequest {
     public void setItems(List<ProfileFieldSettingItem> items) {
         this.items = items;
     }
+
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }

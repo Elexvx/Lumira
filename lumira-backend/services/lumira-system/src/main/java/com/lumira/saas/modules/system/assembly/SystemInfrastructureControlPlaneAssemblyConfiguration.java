@@ -31,6 +31,7 @@ import com.lumira.saas.infrastructure.security.service.LoginProtectionService;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -79,6 +80,7 @@ import org.springframework.context.annotation.Import;
         SecurityConfig.class,
         SecuritySettingsService.class,
         SessionAuthenticationService.class,
+        SystemConfigVersioningService.class,
         SystemDomainEventPublisher.class
 })
 public class SystemInfrastructureControlPlaneAssemblyConfiguration {

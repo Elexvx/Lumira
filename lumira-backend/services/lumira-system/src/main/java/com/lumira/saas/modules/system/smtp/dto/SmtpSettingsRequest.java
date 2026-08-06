@@ -11,6 +11,8 @@ public class SmtpSettingsRequest {
     private Boolean authEnabled;
     private Boolean startTlsEnabled;
     private Boolean sslEnabled;
+    private Long expectedConfigVersion;
+    private String changeReason;
 
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
@@ -30,4 +32,8 @@ public class SmtpSettingsRequest {
     public void setStartTlsEnabled(Boolean startTlsEnabled) { this.startTlsEnabled = startTlsEnabled; }
     public Boolean getSslEnabled() { return sslEnabled; }
     public void setSslEnabled(Boolean sslEnabled) { this.sslEnabled = sslEnabled; }
+    public Long getExpectedConfigVersion() { return expectedConfigVersion; }
+    public void setExpectedConfigVersion(Long expectedConfigVersion) { this.expectedConfigVersion = expectedConfigVersion; }
+    public String getChangeReason() { return changeReason; }
+    public void setChangeReason(String changeReason) { this.changeReason = changeReason; }
 }
