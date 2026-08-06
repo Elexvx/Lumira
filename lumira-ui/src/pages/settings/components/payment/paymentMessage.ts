@@ -32,22 +32,25 @@ export const localizePaymentMessage = (value: string | null | undefined) => {
   return databaseMessage(prefixKey, { reason: value.slice(prefix.length) });
 };
 
-export const paymentConnectivityStatusDisplayName = (lastTestSuccess: boolean | null | undefined) => {
-  if (lastTestSuccess === true) {
-    return databaseMessage('payment.connectivity.available');
+export const paymentConnectivityStatusDisplayName = (
+  lastTestSuccess: boolean | null | undefined,
+  english = false,
+) => {
+  if (!english) {
+    if (lastTestSuccess === true) {
+      return databaseMessage('payment.connectivity.available');
+    }
+    if (lastTestSuccess === false) {
+      return databaseMessage('payment.connectivity.unavailable');
+    }
+    return databaseMessage('payment.connectivity.notTested');
   }
-  if (lastTestSuccess === false) {
-    return databaseMessage('payment.connectivity.unavailable');
-  }
-  return databaseMessage('payment.connectivity.notTested');
-};
 
-export const paymentConnectivityStatusDisplayName = (lastTestSuccess: boolean | null | undefined, english: boolean) => {
   if (lastTestSuccess === true) {
-    return english ? 'Available' : '可用';
+    return 'Available';
   }
   if (lastTestSuccess === false) {
-    return english ? 'Unavailable' : '不可用';
+    return 'Unavailable';
   }
-  return english ? 'Not tested' : '未测试';
+  return 'Not tested';
 };
