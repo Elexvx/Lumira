@@ -2,6 +2,11 @@ import type { CurrentUser, LoginResponse } from '@/types/api';
 
 let currentUserSnapshot: CurrentUser | null = null;
 let sessionMetaSnapshot: SessionMetaState | null = null;
+const sessionStateListeners = new Set<() => void>();
+
+const notifySessionStateListeners = () => {
+  sessionStateListeners.forEach((listener) => listener());
+};
 
 export interface SessionMetaState {
   sessionId?: string;
@@ -16,6 +21,14 @@ export const getStoredSessionMeta = (): SessionMetaState | null => sessionMetaSn
 export const clearStoredSessionState = () => {
   currentUserSnapshot = null;
   sessionMetaSnapshot = null;
+  notifySessionStateListeners();
+};
+
+export const subscribeSessionState = (listener: () => void) => {
+  sessionStateListeners.add(listener);
+  return () => {
+    sessionStateListeners.delete(listener);
+  };
 };
 
 export const persistSessionMeta = (meta: SessionMetaState) => {
@@ -51,6 +64,7 @@ export const persistCurrentUser = (currentUser: CurrentUser): CurrentUser => {
     sessionVersion: normalizedCurrentUser.sessionVersion,
     permissionsVersion: normalizedCurrentUser.permissionsVersion,
   });
+  notifySessionStateListeners();
   return normalizedCurrentUser;
 };
 

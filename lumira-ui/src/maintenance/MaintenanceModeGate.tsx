@@ -7,7 +7,7 @@ import {
   getBrandingSettingsSnapshot,
   subscribeBrandingSettings,
 } from '@/branding/settings';
-import { getStoredCurrentUser } from '@/auth/sessionState';
+import { getStoredCurrentUser, subscribeSessionState } from '@/auth/sessionState';
 import { isLoggedIn, performLogout } from '@/auth/sessionLifecycle';
 import {
   MAINTENANCE_ADMIN_TARGET,
@@ -37,7 +37,11 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
     () => '/',
   );
   const pathname = locationSnapshot.split(/[?#]/, 1)[0] || '/';
-  const currentUser = getStoredCurrentUser();
+  const currentUser = useSyncExternalStore(
+    subscribeSessionState,
+    getStoredCurrentUser,
+    () => null,
+  );
   const maintenanceRemainingSeconds = useMaintenanceCountdown(brandingSettings.maintenanceEndAt);
 
   if (

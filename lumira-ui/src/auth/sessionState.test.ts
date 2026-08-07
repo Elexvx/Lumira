@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentUser, LoginResponse } from '@/types/api';
 
 const trustedUser = (): CurrentUser => ({
@@ -47,6 +47,22 @@ describe('sessionState', () => {
       sessionVersion: 1,
       permissionsVersion: 'permissions-1',
     });
+  });
+
+  it('notifies consumers when the trusted session changes', async () => {
+    const { clearStoredSessionState, persistCurrentUser, subscribeSessionState } = await import('@/auth/sessionState');
+    const listener = vi.fn();
+    const unsubscribe = subscribeSessionState(listener);
+
+    persistCurrentUser(trustedUser());
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    clearStoredSessionState();
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    unsubscribe();
+    persistCurrentUser(trustedUser());
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 
   it('rejects current users missing server-proven identity fields', async () => {
