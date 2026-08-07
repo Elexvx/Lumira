@@ -415,6 +415,7 @@ jobs:
         run: |
           if gh release view continuous >/dev/null 2>&1; then
             gh release edit continuous \
+              --target "$GITHUB_SHA" \
               --title "Lumira continuous release" \
               --notes-file tmp/release/lumira-release-manifest.json \
               --prerelease

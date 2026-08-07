@@ -507,6 +507,7 @@ test('continuous release manifest uses digest-pinned images and a stable GitHub 
   assert.match(ciWorkflow, /concurrency:\r?\n\s+group: ci-\$\{\{ github\.ref \}\}\r?\n\s+cancel-in-progress: true/);
   assert.match(ciWorkflow, /steps\.build_server\.outputs\.digest/);
   assert.match(ciWorkflow, /steps\.build_ui\.outputs\.digest/);
+  assert.match(ciWorkflow, /gh release edit continuous[\s\S]*?--target "\$GITHUB_SHA"/);
   assert.match(ciWorkflow, /gh release (?:view|create) continuous/);
   assert.match(ciWorkflow, /gh release upload continuous/);
   assert.match(envExample, /PLATFORM_UPDATE_MANIFEST_URL=https:\/\/api\.github\.com\/repos\/Elexvx\/Lumira\/releases\/tags\/continuous/);
