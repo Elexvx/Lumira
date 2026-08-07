@@ -11,6 +11,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.profile.dto.ProfileFieldSettingItem;
 import com.lumira.saas.modules.system.profile.infrastructure.JdbcSystemProfileSettingsRepository;
 import com.lumira.saas.modules.system.profile.repository.SystemProfileSettingsRepository;
@@ -408,6 +409,7 @@ class SystemProfileSettingsAppServiceTest {
                 systemInternalApi,
                 auditService
         );
+        service.setConfigVersioningService(org.mockito.Mockito.mock(SystemConfigVersioningService.class));
         CurrentUser currentUser = buildCurrentUser();
         currentUser.setUsername("admin-stale");
 

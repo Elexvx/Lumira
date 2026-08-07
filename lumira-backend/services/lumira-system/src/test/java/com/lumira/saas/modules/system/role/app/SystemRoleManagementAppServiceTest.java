@@ -13,6 +13,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.role.dto.RoleDataScopeRequest;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;
@@ -525,6 +526,7 @@ class SystemRoleManagementAppServiceTest {
                 systemInternalApi,
                 null
         );
+        service.setConfigVersioningService(mock(SystemConfigVersioningService.class));
         CurrentUser currentUser = currentUser();
         currentUser.setUsername("stale-admin");
 
