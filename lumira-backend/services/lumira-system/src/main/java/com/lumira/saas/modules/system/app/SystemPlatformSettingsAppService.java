@@ -196,10 +196,11 @@ public class SystemPlatformSettingsAppService {
             CurrentUser operator,
             List<String> keys
     ) {
-        if (configVersioningService == null) {
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        if (governanceService == null) {
             return null;
         }
-        return configVersioningService.begin(
+        return governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         group,
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -212,9 +213,21 @@ public class SystemPlatformSettingsAppService {
     }
 
     private void finishGovernance(SystemConfigVersioningService.GovernanceSession session) {
-        if (configVersioningService != null) {
-            configVersioningService.finish(session);
+        if (session != null) {
+            governanceServiceForWrite().finish(session);
         }
+    }
+
+    /**
+     * Production writes must never silently bypass the immutable configuration
+     * history boundary. Legacy constructors intentionally keep a null service
+     * for isolated unit tests, hence the strict production flag.
+     */
+    private SystemConfigVersioningService governanceServiceForWrite() {
+        if (configVersioningService == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Configuration governance is unavailable; configuration was not changed");
+        }
+        return configVersioningService;
     }
 
     public SystemPlatformSettingsAppService(

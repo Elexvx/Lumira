@@ -286,7 +286,8 @@ public class SystemRoleManagementAppService {
             throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
         requireSafeDefaultRegistrationRole(role);
-        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        SystemConfigVersioningService.GovernanceSession configVersion = governanceService == null ? null : governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         "SYSTEM_CONFIG",
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -305,10 +306,17 @@ public class SystemRoleManagementAppService {
                 currentUser.getUserUuid()
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
-        if (configVersioningService != null) {
-            configVersioningService.finish(configVersion);
+        if (governanceService != null) {
+            governanceService.finish(configVersion);
         }
         return toDefaultRegistrationRole(role);
+    }
+
+    private SystemConfigVersioningService governanceServiceForWrite() {
+        if (configVersioningService == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Configuration governance is unavailable; configuration was not changed");
+        }
+        return configVersioningService;
     }
 
     @Transactional

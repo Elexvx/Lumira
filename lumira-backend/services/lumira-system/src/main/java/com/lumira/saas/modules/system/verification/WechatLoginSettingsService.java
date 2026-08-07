@@ -368,10 +368,11 @@ public class WechatLoginSettingsService {
             String changeReason,
             CurrentUser operator
     ) {
-        if (configVersioningService == null) {
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        if (governanceService == null) {
             return null;
         }
-        return configVersioningService.begin(
+        return governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         SystemConfigVersioningService.GROUP_VERIFICATION,
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -385,8 +386,15 @@ public class WechatLoginSettingsService {
 
     private void finishGovernance(SystemConfigVersioningService.GovernanceSession governance) {
         if (governance != null) {
-            configVersioningService.finish(governance);
+            governanceServiceForWrite().finish(governance);
         }
+    }
+
+    private SystemConfigVersioningService governanceServiceForWrite() {
+        if (configVersioningService == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Configuration governance is unavailable; configuration was not changed");
+        }
+        return configVersioningService;
     }
 
     private String sanitizeText(String value, String fallback) {

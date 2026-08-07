@@ -13,6 +13,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatformSettingsRepository;
@@ -693,6 +694,7 @@ class SystemPlatformSettingsAppServiceTest {
                 systemInternalApi,
                 auditLog
         );
+        service.setConfigVersioningService(mock(SystemConfigVersioningService.class));
 
         SystemDTO.SmtpSettingsRequest request = new SystemDTO.SmtpSettingsRequest();
         request.setEnabled(Boolean.TRUE);

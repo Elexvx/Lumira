@@ -139,7 +139,8 @@ public class SystemProfileSettingsAppService {
         String operatorUuid = currentUser.getUserUuid();
         String normalizedPageKey = normalizePageKey(pageKey);
         List<ProfileFieldDefinition> builtInDefinitions = builtInDefinitions(normalizedPageKey);
-        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        SystemConfigVersioningService.GovernanceSession configVersion = governanceService == null ? null : governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         "PROFILE",
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -202,10 +203,17 @@ public class SystemProfileSettingsAppService {
                 operatorUuid
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
-        if (configVersioningService != null) {
-            configVersioningService.finish(configVersion);
+        if (governanceService != null) {
+            governanceService.finish(configVersion);
         }
         return loadProfileFieldSettings(normalizedPageKey);
+    }
+
+    private SystemConfigVersioningService governanceServiceForWrite() {
+        if (configVersioningService == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Configuration governance is unavailable; configuration was not changed");
+        }
+        return configVersioningService;
     }
 
     private Long requireAuthenticated(CurrentUser currentUser) {

@@ -1792,13 +1792,14 @@ public class SystemManagementAppService {
         requirePositiveId(id, "Config id is required");
         requireRequest(request, "Config request is required");
         SystemVO.ConfigVO currentConfig = loadConfig(id);
-        if (configVersioningService != null) {
-            configVersioningService.validateGovernedKey(request.getConfigKey());
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        if (governanceService != null) {
+            governanceService.validateGovernedKey(request.getConfigKey());
             if (!governanceGroup(currentConfig.getConfigKey()).equals(governanceGroup(request.getConfigKey()))) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "Config key cannot move between governance groups");
             }
         }
-        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+        SystemConfigVersioningService.GovernanceSession configVersion = governanceService == null ? null : governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         governanceGroup(request.getConfigKey()),
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -1832,8 +1833,8 @@ public class SystemManagementAppService {
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Config changed, please retry");
         }
-        if (configVersioningService != null) {
-            configVersioningService.finish(configVersion);
+        if (governanceService != null) {
+            governanceService.finish(configVersion);
         }
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
         SystemVO.ConfigVO config = loadConfig(id);
@@ -1872,10 +1873,11 @@ public class SystemManagementAppService {
     public SystemVO.ConfigVO createConfig(CurrentUser currentUser, SystemDTO.ConfigUpsertRequest request) {
         requirePermission(currentUser, "system:config:update");
         requireRequest(request, "Config request is required");
-        if (configVersioningService != null) {
-            configVersioningService.validateGovernedKey(request.getConfigKey());
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        if (governanceService != null) {
+            governanceService.validateGovernedKey(request.getConfigKey());
         }
-        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+        SystemConfigVersioningService.GovernanceSession configVersion = governanceService == null ? null : governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         governanceGroup(request.getConfigKey()),
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -1902,8 +1904,8 @@ public class SystemManagementAppService {
                 currentUser.getUserUuid()
         );
         requireSystemWrite(inserted, "Config changed, please retry");
-        if (configVersioningService != null) {
-            configVersioningService.finish(configVersion);
+        if (governanceService != null) {
+            governanceService.finish(configVersion);
         }
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
         SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
@@ -1965,6 +1967,13 @@ public class SystemManagementAppService {
         if (key.startsWith("security.")) return "SECURITY";
         if (key.startsWith("certificate.")) return "CERTIFICATE";
         return "SYSTEM_CONFIG";
+    }
+
+    private SystemConfigVersioningService governanceServiceForWrite() {
+        if (configVersioningService == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Configuration governance is unavailable; configuration was not changed");
+        }
+        return configVersioningService;
     }
 
     public SystemVO.SecuritySettingsVO getSecuritySettings() {

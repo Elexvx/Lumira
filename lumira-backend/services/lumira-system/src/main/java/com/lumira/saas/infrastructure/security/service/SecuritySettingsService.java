@@ -254,7 +254,8 @@ public class SecuritySettingsService {
         validatePositive(request.getVerificationCodeCooldownSeconds(), "验证码重发冷却");
         validatePositive(request.getPasswordMinLength(), "最短长度");
         String captchaType = normalizeCaptchaType(request.getCaptchaType());
-        SystemConfigVersioningService.GovernanceSession configVersion = configVersioningService == null ? null : configVersioningService.begin(
+        SystemConfigVersioningService governanceService = governanceServiceForWrite();
+        SystemConfigVersioningService.GovernanceSession configVersion = governanceService == null ? null : governanceService.begin(
                 new SystemConfigVersioningService.ChangeRequest(
                         "SECURITY",
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
@@ -370,13 +371,20 @@ public class SecuritySettingsService {
                     ReadModelEventKey.unique("security-update")
             );
         }
-        if (configVersioningService != null) {
-            configVersioningService.finish(configVersion);
+        if (governanceService != null) {
+            governanceService.finish(configVersion);
         }
         return loadSettings();
         } finally {
             currentUpdateOperator.remove();
         }
+    }
+
+    private SystemConfigVersioningService governanceServiceForWrite() {
+        if (configVersioningService == null && enforceTrustedUserResolution) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Configuration governance is unavailable; configuration was not changed");
+        }
+        return configVersioningService;
     }
 
     private Map<String, String> loadConfigValues(List<String> keys) {
