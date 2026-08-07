@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, Space, Switch, Typography } from 'antd';
+import { Button, Form, Input, Space, Switch, Typography } from 'antd';
 import type { FormProps } from 'antd';
 import type { BrandingSettings } from '@/types/api';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -28,13 +28,6 @@ export const MaintenanceTab = ({
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-      <Alert
-        type="warning"
-        showIcon
-        message={t('ui.settings.personalization.maintenance.whenEnabledTheMaintenancePageReplacesTheEntire')}
-        description={t('ui.settings.personalization.maintenance.theChangeTakesEffectImmediatelyASubtleAdmin')}
-      />
-
       <Form {...formProps} disabled={!canUpdate}>
         <Form.Item
           name="maintenanceModeEnabled"
