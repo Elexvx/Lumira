@@ -667,7 +667,6 @@ const PersonalizationSettingsPage = () => {
                 children: (
                   <MaintenanceTab
                     formProps={maintenanceFormProps}
-                    preview={previewState}
                     saving={maintenanceSaving}
                     canUpdate={canUpdate}
                     onSave={() => void handleSaveMaintenance()}

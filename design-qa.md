@@ -349,6 +349,34 @@ final result: passed
 
 passed
 
+# Maintenance settings annotation QA — 2026-08-08
+
+## Visual truth and implementation evidence
+
+- Source visual truth: Browser Comment 1 on production `/settings/personalization?tab=maintenance`, authenticated dark-theme state at `1280 × 959`.
+- Requested region: the maintenance preview block and its red `保存维护模式设置` action.
+- Implementation evidence: the actual `MaintenanceTab` source plus a successful Umi production build.
+- Browser-rendered implementation screenshot: unavailable in this pass.
+
+## Findings
+
+- The maintenance preview block has been removed from the form.
+- The action now uses Ant Design `Button type="primary"`, preserving the product's standard blue primary treatment.
+- The action label now resolves through `common.save`, which is `保存` in the Chinese locale.
+- No preview-only countdown hook or formatter remains in `MaintenanceTab`.
+
+## Validation
+
+- Focused component test: passed (`1` file / `1` test) for the blue `保存` action and absence of preview-only markup.
+- TypeScript typecheck: passed.
+- Umi production build: passed (`123` assets).
+- Database-i18n strict check: blocked by pre-existing localization regressions outside the two modified files; neither modified file appears in the reported failure list.
+- Focused visual comparison: blocked because the isolated Vite QA harness cannot optimize the repository's pinned `esbuild` dependency, and an authenticated production screenshot would still render the currently deployed bundle rather than this local change.
+
+## Final result
+
+blocked — implementation and build validation passed; browser screenshot comparison awaits deployment or a working authenticated local runtime.
+
 ---
 
 # Design QA - Payment settings action style (2026-08-06)
