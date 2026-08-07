@@ -95,6 +95,18 @@ const taskPath = (taskId) => path.join(tasksDir, `${taskId}.json`);
 const preflightPath = (preflightId) => path.join(preflightDir, `${preflightId}.json`);
 const readJson = (file) => existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;
 const readTask = (taskId) => readJson(taskPath(taskId));
+const findTaskByPlatformTaskId = (platformTaskId, platformTaskCreatedAt) => {
+  const normalized = String(platformTaskId ?? '').trim();
+  const normalizedCreatedAt = String(platformTaskCreatedAt ?? '').trim();
+  if (!normalized) return null;
+  return readdirSync(tasksDir)
+    .filter((name) => name.endsWith('.json'))
+    .map((name) => readJson(path.join(tasksDir, name)))
+    .filter((task) => String(task?.platformTaskId ?? '').trim() === normalized)
+    .filter((task) => !normalizedCreatedAt
+      || String(task?.platformTaskCreatedAt ?? '').trim() === normalizedCreatedAt)
+    .sort((left, right) => Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0))[0] || null;
+};
 const containerName = (service) => `${containerPrefix}${String(service).replace(/^lumira-/, '')}`;
 const serverContainer = (slot) => containerName(`server-${normalizeSlot(slot)}`);
 
@@ -828,15 +840,30 @@ async function runRollback(task) {
 }
 
 function startTask(type, request) {
+  const existing = findTaskByPlatformTaskId(request.platformTaskId, request.platformTaskCreatedAt);
+  if (existing) {
+    if (existing.type !== type) {
+      throw new Error('Platform task id is already bound to a different update operation.');
+    }
+    const requestedTargetCommit = String(request.targetCommit || request.manifest?.commit || '').trim();
+    if (type === 'INSTALL' && requestedTargetCommit && existing.targetCommit
+      && requestedTargetCommit.toLowerCase() !== String(existing.targetCommit).trim().toLowerCase()) {
+      throw new Error('Platform task id is already bound to a different target commit.');
+    }
+    return existing;
+  }
   const task = {
     taskId: randomUUID(),
     platformTaskId: request.platformTaskId,
+    platformTaskCreatedAt: request.platformTaskCreatedAt,
     type,
     strategy: UPDATE_STRATEGY,
     status: 'RUNNING',
     phase: 'PREFLIGHT',
     progressPercent: phaseProgress('PREFLIGHT'),
     message: 'Task accepted',
+    targetCommit: request.targetCommit || request.manifest?.commit || null,
+    targetVersion: request.targetVersion || request.manifest?.version || null,
     log: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -897,11 +924,22 @@ const server = http.createServer(async (req, res) => {
       activeSlot: deploymentState().activeSlot,
       supportsPreflight: true,
       supportsCancel: true,
+      supportsPlatformTaskLookup: true,
       supportsExpandOnlyMigration: true,
     });
     if (req.method === 'POST' && req.url === '/v1/update/preflight') return json(res, 200, await createPreflight(await readBody(req)));
     if (req.method === 'POST' && req.url === '/v1/update/install') return json(res, 202, startTask('INSTALL', await readBody(req)));
     if (req.method === 'POST' && req.url === '/v1/update/rollback') return json(res, 202, startTask('ROLLBACK', await readBody(req)));
+    const requestUrl = new URL(req.url || '/', 'http://localhost');
+    const platformTaskMatch = requestUrl.pathname.match(/^\/v1\/update\/platform-tasks\/([1-9][0-9]*)$/);
+    if (req.method === 'GET' && platformTaskMatch) {
+      const platformTaskCreatedAt = requestUrl.searchParams.get('createdAt');
+      if (!platformTaskCreatedAt) {
+        return json(res, 400, { errorMessage: 'createdAt is required' });
+      }
+      const task = findTaskByPlatformTaskId(platformTaskMatch[1], platformTaskCreatedAt);
+      return task ? json(res, 200, task) : json(res, 404, { errorMessage: 'Task not found' });
+    }
     const cancelMatch = req.url?.match(/^\/v1\/update\/tasks\/([^/]+)\/cancel$/);
     if (req.method === 'POST' && cancelMatch) {
       const task = cancelTask(cancelMatch[1]);

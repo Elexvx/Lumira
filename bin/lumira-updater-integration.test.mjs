@@ -50,6 +50,7 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   const capabilities = await call('/v1/capabilities');
   assert.equal(capabilities.body.protocolVersion, 2);
   assert.equal(capabilities.body.activeSlot, 'blue');
+  assert.equal(capabilities.body.supportsPlatformTaskLookup, true);
 
   const manifest = {
     schemaVersion: 2,
@@ -93,8 +94,23 @@ test('updater v2 exposes capabilities, preflight, and persistent task state', { 
   assert.equal(untrustedPreflight.body.ready, false);
   assert.match(untrustedPreflight.body.blockers.join(' '), /Image registry is not allowed/);
 
-  const install = await call('/v1/update/install', { method: 'POST', body: JSON.stringify({ preflightId: preflight.body.preflightId }) });
+  const platformTaskCreatedAt = '2026-08-08T00:00:00';
+  const installRequest = {
+    preflightId: preflight.body.preflightId,
+    platformTaskId: 4242,
+    platformTaskCreatedAt,
+    targetCommit: manifest.commit,
+  };
+  const install = await call('/v1/update/install', { method: 'POST', body: JSON.stringify(installRequest) });
   assert.equal(install.response.status, 202);
+  const taskByPlatformId = await call(`/v1/update/platform-tasks/4242?createdAt=${encodeURIComponent(platformTaskCreatedAt)}`);
+  assert.equal(taskByPlatformId.response.status, 200);
+  assert.equal(taskByPlatformId.body.taskId, install.body.taskId);
+  const replay = await call('/v1/update/install', { method: 'POST', body: JSON.stringify(installRequest) });
+  assert.equal(replay.response.status, 202);
+  assert.equal(replay.body.taskId, install.body.taskId);
+  const staleLookup = await call('/v1/update/platform-tasks/4242?createdAt=2026-08-07T23%3A59%3A59');
+  assert.equal(staleLookup.response.status, 404);
   let task;
   for (let attempt = 0; attempt < 50; attempt += 1) {
     task = (await call(`/v1/update/tasks/${install.body.taskId}`)).body;
