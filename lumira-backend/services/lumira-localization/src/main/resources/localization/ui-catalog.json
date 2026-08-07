@@ -21606,6 +21606,28 @@
       }
     },
     {
+      "messageKey": "ui.settings.personalization.maintenance.maintenanceEndAt",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "维护结束时间",
+        "en-US": "Maintenance end time"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.maintenanceEndAtHint",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "可选；留空不显示倒计时，填写后维护页显示剩余时间",
+        "en-US": "Optional; leave empty to hide the countdown, or set a time to show the remaining duration"
+      }
+    },
+    {
       "messageKey": "ui.settings.personalization.maintenance.off",
       "namespaceCode": "ui",
       "sourceLocale": "zh-CN",
@@ -21628,6 +21650,17 @@
       }
     },
     {
+      "messageKey": "ui.settings.personalization.maintenance.pageMessageHint",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "后台编辑后保存即可生效；可以写得轻松、俏皮，也可以保持正式",
+        "en-US": "Edit and save from the console; use a playful or formal tone as needed"
+      }
+    },
+    {
       "messageKey": "ui.settings.personalization.maintenance.pageMessage",
       "namespaceCode": "ui",
       "sourceLocale": "zh-CN",
@@ -21636,6 +21669,17 @@
       "translations": {
         "zh-CN": "页面说明",
         "en-US": "Page message"
+      }
+    },
+    {
+      "messageKey": "ui.settings.personalization.maintenance.pageTitleHint",
+      "namespaceCode": "ui",
+      "sourceLocale": "zh-CN",
+      "sourceType": "UI",
+      "sourceRef": "src/pages/settings/personalization/components/MaintenanceTab.tsx",
+      "translations": {
+        "zh-CN": "支持自定义风格，例如“马上回来，精彩不掉线”",
+        "en-US": "Use a custom tone, for example “Back soon, the excitement stays on”"
       }
     },
     {

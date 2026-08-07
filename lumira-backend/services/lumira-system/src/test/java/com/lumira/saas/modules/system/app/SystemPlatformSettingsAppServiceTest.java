@@ -25,6 +25,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.EmptyResultDataAccessException;
 
 import java.lang.reflect.Method;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -616,6 +617,30 @@ class SystemPlatformSettingsAppServiceTest {
     }
 
     @Test
+    void maintenanceCountdownEndAtIsOptionalAndValidatedAsIsoTimestamp() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of());
+        SystemPlatformSettingsAppService service = newService(
+                queryOperations,
+                mock(ReadModelVersionService.class),
+                null,
+                mock(SmtpMailService.class)
+        );
+        String endAt = Instant.now().plusSeconds(3600).toString();
+        SystemDTO.BrandingSettingsRequest request = new SystemDTO.BrandingSettingsRequest();
+        request.setMaintenanceModeEnabled(Boolean.TRUE);
+        request.setMaintenanceEndAt(endAt);
+
+        SystemVO.BrandingSettingsVO updated = service.updateBrandingSettings(currentUser(), request);
+
+        assertThat(updated.getMaintenanceEndAt()).isEqualTo(endAt);
+
+        request.setMaintenanceEndAt("not-a-timestamp");
+        assertThatThrownBy(() -> service.updateBrandingSettings(currentUser(), request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
     void updateBrandingSettingsRejectsWhenConfigInsertMisses() {
         CurrentUser currentUser = currentUser();
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of());
@@ -731,8 +756,9 @@ class SystemPlatformSettingsAppServiceTest {
                     Map.entry("branding.footer-icp", ""), Map.entry("branding.footer-police-beian", ""),
                     Map.entry("branding.footer-copyright", ""),
                     Map.entry("branding.maintenance-mode-enabled", "false"),
-                    Map.entry("branding.maintenance-title", "系统维护中"),
-                    Map.entry("branding.maintenance-message", "服务正在升级优化，请稍后再试。"));
+                    Map.entry("branding.maintenance-title", "马上回来，精彩不掉线"),
+                    Map.entry("branding.maintenance-message", "我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。"),
+                    Map.entry("branding.maintenance-end-at", ""));
             case "AGREEMENT" -> Map.of("agreement.user-agreement-markdown", "", "agreement.privacy-agreement-markdown", "");
             case "SMTP" -> Map.ofEntries(
                     Map.entry("smtp.enabled", "true"), Map.entry("smtp.host", ""), Map.entry("smtp.port", "25"),

@@ -1,4 +1,4 @@
-import { MoreOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, MoreOutlined } from '@ant-design/icons';
 import { Button, Result } from 'antd';
 import { history } from '@umijs/max';
 import type { ReactNode } from 'react';
@@ -14,6 +14,7 @@ import {
   MAINTENANCE_LOGIN_PATH,
   shouldShowMaintenancePage,
 } from './maintenanceMode';
+import { formatMaintenanceCountdown, useMaintenanceCountdown } from './maintenanceCountdown';
 import './MaintenanceModeGate.css';
 
 const subscribeLocation = (listener: () => void) => history.listen(listener);
@@ -37,6 +38,7 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
   );
   const pathname = locationSnapshot.split(/[?#]/, 1)[0] || '/';
   const currentUser = getStoredCurrentUser();
+  const maintenanceRemainingSeconds = useMaintenanceCountdown(brandingSettings.maintenanceEndAt);
 
   if (
     !shouldShowMaintenancePage({
@@ -79,7 +81,22 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
           className="maintenance-mode__result"
           status="info"
           title={<span id="maintenance-mode-title">{brandingSettings.maintenanceTitle}</span>}
-          subTitle={brandingSettings.maintenanceMessage}
+          subTitle={
+            <div className="maintenance-mode__subtitle">
+              <span>{brandingSettings.maintenanceMessage}</span>
+              {maintenanceRemainingSeconds !== null ? (
+                <span
+                  className="maintenance-mode__countdown"
+                  role="timer"
+                  aria-live="polite"
+                  aria-label={brandingSettings.maintenanceTitle}
+                >
+                  <ClockCircleOutlined aria-hidden="true" />
+                  <span>{formatMaintenanceCountdown(maintenanceRemainingSeconds)}</span>
+                </span>
+              ) : null}
+            </div>
+          }
         />
       </section>
       <Button

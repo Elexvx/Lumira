@@ -18,6 +18,7 @@ public class BrandingSettingsRequest {
     private Boolean maintenanceModeEnabled;
     private String maintenanceTitle;
     private String maintenanceMessage;
+    private String maintenanceEndAt;
     private Long expectedConfigVersion;
     private String changeReason;
 
@@ -147,6 +148,14 @@ public class BrandingSettingsRequest {
 
     public void setMaintenanceMessage(String maintenanceMessage) {
         this.maintenanceMessage = maintenanceMessage;
+    }
+
+    public String getMaintenanceEndAt() {
+        return maintenanceEndAt;
+    }
+
+    public void setMaintenanceEndAt(String maintenanceEndAt) {
+        this.maintenanceEndAt = maintenanceEndAt;
     }
 
     public Long getExpectedConfigVersion() { return expectedConfigVersion; }

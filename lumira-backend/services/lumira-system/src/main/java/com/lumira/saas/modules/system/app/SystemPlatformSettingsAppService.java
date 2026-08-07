@@ -27,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +62,7 @@ public class SystemPlatformSettingsAppService {
     private static final String BRANDING_MAINTENANCE_MODE_ENABLED_KEY = "branding.maintenance-mode-enabled";
     private static final String BRANDING_MAINTENANCE_TITLE_KEY = "branding.maintenance-title";
     private static final String BRANDING_MAINTENANCE_MESSAGE_KEY = "branding.maintenance-message";
+    private static final String BRANDING_MAINTENANCE_END_AT_KEY = "branding.maintenance-end-at";
     private static final String GROUP_BRANDING = "BRANDING";
 
     private static final String AGREEMENT_USER_MARKDOWN_KEY = "agreement.user-agreement-markdown";
@@ -264,7 +268,7 @@ public class SystemPlatformSettingsAppService {
                 BRANDING_HELP_LINK_ENABLED_KEY, BRANDING_HELP_LINK_URL_KEY, BRANDING_COMPANY_NAME_KEY,
                 BRANDING_COPYRIGHT_START_YEAR_KEY, BRANDING_FOOTER_ICP_KEY, BRANDING_FOOTER_POLICE_BEIAN_KEY,
                 BRANDING_FOOTER_COPYRIGHT_KEY, BRANDING_MAINTENANCE_MODE_ENABLED_KEY, BRANDING_MAINTENANCE_TITLE_KEY,
-                BRANDING_MAINTENANCE_MESSAGE_KEY
+                BRANDING_MAINTENANCE_MESSAGE_KEY, BRANDING_MAINTENANCE_END_AT_KEY
         ));
         upsertConfigValue(BRANDING_WEBSITE_NAME_KEY, websiteName, operatorId);
         upsertConfigValue(BRANDING_WEBSITE_FAVICON_URL_KEY, sanitizeBrandingText(request.getWebsiteFaviconUrl(), ""), operatorId);
@@ -284,8 +288,9 @@ public class SystemPlatformSettingsAppService {
         );
         upsertConfigValue(BRANDING_FOOTER_COPYRIGHT_KEY, footerCopyright, operatorId);
         upsertConfigValue(BRANDING_MAINTENANCE_MODE_ENABLED_KEY, String.valueOf(Boolean.TRUE.equals(request.getMaintenanceModeEnabled())), operatorId);
-        upsertConfigValue(BRANDING_MAINTENANCE_TITLE_KEY, sanitizeBrandingText(request.getMaintenanceTitle(), "系统维护中"), operatorId);
-        upsertConfigValue(BRANDING_MAINTENANCE_MESSAGE_KEY, sanitizeBrandingText(request.getMaintenanceMessage(), "服务正在升级优化，请稍后再试。"), operatorId);
+        upsertConfigValue(BRANDING_MAINTENANCE_TITLE_KEY, sanitizeBrandingText(request.getMaintenanceTitle(), "马上回来，精彩不掉线"), operatorId);
+        upsertConfigValue(BRANDING_MAINTENANCE_MESSAGE_KEY, sanitizeBrandingText(request.getMaintenanceMessage(), "我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。"), operatorId);
+        upsertConfigValue(BRANDING_MAINTENANCE_END_AT_KEY, normalizeMaintenanceEndAt(request.getMaintenanceEndAt()), operatorId);
         operationAuditService.log(
                 operatorId,
                 currentUser.getUserUuid(),
@@ -566,8 +571,9 @@ public class SystemPlatformSettingsAppService {
                 buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())
         ));
         settings.setMaintenanceModeEnabled(Boolean.parseBoolean(settingValue(valueByKey, BRANDING_MAINTENANCE_MODE_ENABLED_KEY)));
-        settings.setMaintenanceTitle(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_TITLE_KEY), "系统维护中"));
-        settings.setMaintenanceMessage(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_MESSAGE_KEY), "服务正在升级优化，请稍后再试。"));
+        settings.setMaintenanceTitle(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_TITLE_KEY), "马上回来，精彩不掉线"));
+        settings.setMaintenanceMessage(defaultIfBlank(valueByKey.get(BRANDING_MAINTENANCE_MESSAGE_KEY), "我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。"));
+        settings.setMaintenanceEndAt(normalizeMaintenanceEndAt(valueByKey.get(BRANDING_MAINTENANCE_END_AT_KEY)));
         return settings;
     }
 
@@ -752,6 +758,22 @@ public class SystemPlatformSettingsAppService {
     private String sanitizeBrandingText(String value, String fallback) {
         String normalized = normalizeConfigText(value);
         return StringUtils.hasText(normalized) ? normalized : fallback;
+    }
+
+    private String normalizeMaintenanceEndAt(String value) {
+        String normalized = normalizeConfigText(value);
+        if (!StringUtils.hasText(normalized)) {
+            return "";
+        }
+        try {
+            return Instant.parse(normalized).toString();
+        } catch (DateTimeParseException ignored) {
+            try {
+                return OffsetDateTime.parse(normalized).toInstant().toString();
+            } catch (DateTimeParseException invalid) {
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Maintenance end time must be a valid ISO-8601 timestamp");
+            }
+        }
     }
 
     private String sanitizeText(String value, String fallback) {

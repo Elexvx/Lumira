@@ -27,3 +27,35 @@ test('maintenance-mode settings are available to fresh and upgraded databases', 
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
   assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
+
+test('maintenance countdown setting has an explicit existing-database upgrade', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const upgrade = read('lumira-backend/sql/upgrade-maintenance-countdown-v1.sql');
+  const key = 'branding.maintenance-end-at';
+
+  assert.match(baseline, new RegExp(key));
+  assert.match(upgrade, new RegExp(key));
+  assert.match(upgrade, /INSERT INTO `sys_platform_setting_definition`/);
+  assert.match(upgrade, /INSERT INTO `sys_config`/);
+  assert.match(upgrade, /ON DUPLICATE KEY UPDATE/g);
+  assert.doesNotMatch(upgrade, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(upgrade, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
+test('creative maintenance copy upgrade preserves customized existing values', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const upgrade = read('lumira-backend/sql/upgrade-maintenance-copy-v1.sql');
+  const creativeTitle = '马上回来，精彩不掉线';
+  const creativeMessage = '我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。';
+
+  assert.match(baseline, new RegExp(creativeTitle));
+  assert.match(baseline, new RegExp(creativeMessage));
+  assert.match(upgrade, /UPDATE `sys_platform_setting_definition`/g);
+  assert.match(upgrade, /UPDATE `sys_config`/g);
+  assert.match(upgrade, new RegExp(creativeTitle));
+  assert.match(upgrade, new RegExp(creativeMessage));
+  assert.match(upgrade, /`config_value`\s*=\s*'系统维护中'/);
+  assert.match(upgrade, /`config_value`\s*=\s*'服务正在升级优化，请稍后再试。'/);
+  assert.doesNotMatch(upgrade, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(upgrade, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});

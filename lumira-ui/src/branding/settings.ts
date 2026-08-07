@@ -20,8 +20,9 @@ export const DEFAULT_BRANDING_SETTINGS: BrandingSettings = {
   footerPoliceBeian: '',
   footerCopyright: '',
   maintenanceModeEnabled: false,
-  maintenanceTitle: '系统维护中',
-  maintenanceMessage: '服务正在升级优化，请稍后再试。',
+  maintenanceTitle: '马上回来，精彩不掉线',
+  maintenanceMessage: '我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。',
+  maintenanceEndAt: '',
 };
 
 export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> | null): BrandingSettings => {
@@ -41,11 +42,12 @@ export const normalizeBrandingSettings = (settings?: Partial<BrandingSettings> |
     footerPoliceBeian: normalizeText(settings?.footerPoliceBeian, ''),
     footerCopyright: normalizeText(settings?.footerCopyright, ''),
     maintenanceModeEnabled: normalizeBoolean(settings?.maintenanceModeEnabled, false),
-    maintenanceTitle: normalizeText(settings?.maintenanceTitle, DEFAULT_BRANDING_SETTINGS.maintenanceTitle || '系统维护中'),
+    maintenanceTitle: normalizeText(settings?.maintenanceTitle, DEFAULT_BRANDING_SETTINGS.maintenanceTitle || '马上回来，精彩不掉线'),
     maintenanceMessage: normalizeText(
       settings?.maintenanceMessage,
-      DEFAULT_BRANDING_SETTINGS.maintenanceMessage || '服务正在升级优化，请稍后再试。',
+      DEFAULT_BRANDING_SETTINGS.maintenanceMessage || '我们正在给系统做个小升级，报名入口很快就回来。请稍等片刻，精彩不会缺席。',
     ),
+    maintenanceEndAt: normalizeDateTime(settings?.maintenanceEndAt),
   };
 };
 
@@ -134,6 +136,14 @@ const normalizeYear = (value: unknown, fallback: number) => {
     }
   }
   return fallback;
+};
+
+const normalizeDateTime = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) {
+    return '';
+  }
+  const timestamp = Date.parse(value.trim());
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : '';
 };
 
 const normalizeLink = (value?: string | null) => {

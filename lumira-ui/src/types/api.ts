@@ -295,6 +295,7 @@ export interface BrandingSettings {
   maintenanceModeEnabled?: boolean;
   maintenanceTitle?: string;
   maintenanceMessage?: string;
+  maintenanceEndAt?: string;
 }
 
 export interface HealthResponse {

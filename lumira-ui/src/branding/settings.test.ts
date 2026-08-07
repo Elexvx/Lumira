@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyBrandingRuntime, buildCopyrightText, DEFAULT_BRANDING_SETTINGS } from './settings';
+import {
+  applyBrandingRuntime,
+  buildCopyrightText,
+  DEFAULT_BRANDING_SETTINGS,
+  normalizeBrandingSettings,
+} from './settings';
 
 class FakeHead {
   iconLink: { rel: string; href: string } | null = null;
@@ -49,5 +54,18 @@ describe('applyBrandingRuntime', () => {
     expect(DEFAULT_BRANDING_SETTINGS.websiteName).toBe('Lumira');
     expect(DEFAULT_BRANDING_SETTINGS.companyName).toBe('Lumira');
     expect(buildCopyrightText()).toContain('Lumira All Rights Reserved');
+  });
+
+  it('uses a creative but editable maintenance copy by default', () => {
+    expect(DEFAULT_BRANDING_SETTINGS.maintenanceTitle).toBe('马上回来，精彩不掉线');
+    expect(DEFAULT_BRANDING_SETTINGS.maintenanceMessage).toContain('精彩不会缺席');
+  });
+
+  it('normalizes the optional maintenance end time without enabling it by default', () => {
+    expect(DEFAULT_BRANDING_SETTINGS.maintenanceEndAt).toBe('');
+    expect(normalizeBrandingSettings({ maintenanceEndAt: 'invalid' }).maintenanceEndAt).toBe('');
+    expect(
+      normalizeBrandingSettings({ maintenanceEndAt: '2026-08-07T12:00:00+08:00' }).maintenanceEndAt,
+    ).toBe('2026-08-07T04:00:00.000Z');
   });
 });

@@ -18,6 +18,7 @@ public class BrandingSettingsVO {
     private Boolean maintenanceModeEnabled;
     private String maintenanceTitle;
     private String maintenanceMessage;
+    private String maintenanceEndAt;
 
     public String getWebsiteName() { return websiteName; }
     public void setWebsiteName(String websiteName) { this.websiteName = websiteName; }
@@ -51,4 +52,6 @@ public class BrandingSettingsVO {
     public void setMaintenanceTitle(String maintenanceTitle) { this.maintenanceTitle = maintenanceTitle; }
     public String getMaintenanceMessage() { return maintenanceMessage; }
     public void setMaintenanceMessage(String maintenanceMessage) { this.maintenanceMessage = maintenanceMessage; }
+    public String getMaintenanceEndAt() { return maintenanceEndAt; }
+    public void setMaintenanceEndAt(String maintenanceEndAt) { this.maintenanceEndAt = maintenanceEndAt; }
 }
