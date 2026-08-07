@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { BrandingSettings, CurrentUser } from '@/types/api';
-import { shouldShowMaintenancePage } from './maintenanceMode';
+import {
+  MAINTENANCE_ADMIN_TARGET,
+  shouldShowMaintenancePage,
+} from './maintenanceMode';
 
 const enabledSettings = { maintenanceModeEnabled: true } as BrandingSettings;
 const operator = {
@@ -27,13 +30,30 @@ describe('maintenance mode route gate', () => {
     ).toBe(true);
   });
 
-  it('keeps the login page reachable', () => {
+  it('blocks the ordinary login page before authentication', () => {
     expect(
       shouldShowMaintenancePage({
         brandingSettings: enabledSettings,
         pathname: '/user/login',
       }),
+    ).toBe(true);
+  });
+
+  it('allows only the explicit maintenance operator login target', () => {
+    expect(
+      shouldShowMaintenancePage({
+        brandingSettings: enabledSettings,
+        pathname: '/user/login',
+        search: `?redirect=${encodeURIComponent(MAINTENANCE_ADMIN_TARGET)}`,
+      }),
     ).toBe(false);
+    expect(
+      shouldShowMaintenancePage({
+        brandingSettings: enabledSettings,
+        pathname: '/user/login',
+        search: '?redirect=%2Fdashboard%2Fhome',
+      }),
+    ).toBe(true);
   });
 
   it('allows only configuration operators to reach personalization settings', () => {

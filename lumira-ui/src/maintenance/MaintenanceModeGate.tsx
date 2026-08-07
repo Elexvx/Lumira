@@ -41,6 +41,7 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
     !shouldShowMaintenancePage({
       brandingSettings,
       pathname,
+      search: history.location.search || '',
       currentUser,
     })
   ) {
