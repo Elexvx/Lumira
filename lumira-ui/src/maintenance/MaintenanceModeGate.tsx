@@ -1,4 +1,5 @@
-import { ToolOutlined } from '@ant-design/icons';
+import { MoreOutlined } from '@ant-design/icons';
+import { Button, Result } from 'antd';
 import { history } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { useSyncExternalStore } from 'react';
@@ -62,40 +63,34 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
 
   return (
     <main className="maintenance-mode" role="main">
-      <div className="maintenance-mode__ambient maintenance-mode__ambient--one" aria-hidden="true" />
-      <div className="maintenance-mode__ambient maintenance-mode__ambient--two" aria-hidden="true" />
-      <section className="maintenance-mode__content" aria-labelledby="maintenance-mode-title">
-        {brandingSettings.websiteLogoUrl ? (
-          <img
-            className="maintenance-mode__logo"
-            src={brandingSettings.websiteLogoUrl}
-            alt={brandingSettings.websiteName}
-          />
-        ) : (
-          <div className="maintenance-mode__brand">{brandingSettings.websiteName}</div>
-        )}
-        <div className="maintenance-mode__icon" aria-hidden="true">
-          <ToolOutlined />
+      <section className="maintenance-mode__panel" aria-labelledby="maintenance-mode-title">
+        <div className="maintenance-mode__brand">
+          {brandingSettings.websiteLogoUrl ? (
+            <img
+              className="maintenance-mode__logo"
+              src={brandingSettings.websiteLogoUrl}
+              alt={brandingSettings.websiteName}
+            />
+          ) : (
+            <span>{brandingSettings.websiteName}</span>
+          )}
         </div>
-        <h1 id="maintenance-mode-title">
-          {brandingSettings.maintenanceTitle}
-        </h1>
-        <p>{brandingSettings.maintenanceMessage}</p>
-        <div className="maintenance-mode__pulse" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
+        <Result
+          className="maintenance-mode__result"
+          status="info"
+          title={<span id="maintenance-mode-title">{brandingSettings.maintenanceTitle}</span>}
+          subTitle={brandingSettings.maintenanceMessage}
+        />
       </section>
-      <button
+      <Button
         className="maintenance-mode__admin-entry"
-        type="button"
+        type="text"
+        shape="circle"
+        icon={<MoreOutlined />}
         aria-label="管理员登录"
         title="管理员登录"
         onClick={openAdminLogin}
-      >
-        <span aria-hidden="true" />
-      </button>
+      />
     </main>
   );
 };
