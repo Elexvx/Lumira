@@ -31,5 +31,8 @@ export const shouldShowMaintenancePage = ({
     return !isMaintenanceAdminLoginTarget(search);
   }
 
-  return !(pathname === MAINTENANCE_ADMIN_PATH && canManageMaintenanceMode(currentUser));
+  // Once a configuration operator has authenticated, keep the management
+  // surface navigable so they can inspect and disable maintenance mode from
+  // any settings page. Public and non-operator sessions remain gated.
+  return !canManageMaintenanceMode(currentUser);
 };

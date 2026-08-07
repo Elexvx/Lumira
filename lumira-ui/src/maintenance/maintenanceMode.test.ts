@@ -20,12 +20,26 @@ describe('maintenance mode route gate', () => {
     ).toBe(false);
   });
 
-  it('blocks public and authenticated application routes while enabled', () => {
+  it('allows configuration operators to navigate application routes while enabled', () => {
     expect(
       shouldShowMaintenancePage({
         brandingSettings: enabledSettings,
         pathname: '/dashboard/home',
         currentUser: operator,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowMaintenancePage({
+        brandingSettings: enabledSettings,
+        pathname: '/settings/monitoring',
+        currentUser: operator,
+      }),
+    ).toBe(false);
+    expect(
+      shouldShowMaintenancePage({
+        brandingSettings: enabledSettings,
+        pathname: '/dashboard/home',
+        currentUser: { permissions: ['system:config:view'] } as CurrentUser,
       }),
     ).toBe(true);
   });
@@ -56,7 +70,7 @@ describe('maintenance mode route gate', () => {
     ).toBe(true);
   });
 
-  it('allows only configuration operators to reach personalization settings', () => {
+  it('allows configuration operators to reach personalization settings', () => {
     expect(
       shouldShowMaintenancePage({
         brandingSettings: enabledSettings,
