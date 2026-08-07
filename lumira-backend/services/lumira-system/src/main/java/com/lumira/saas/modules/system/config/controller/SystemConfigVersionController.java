@@ -12,7 +12,6 @@ import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import jakarta.validation.Valid;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -81,7 +80,6 @@ public class SystemConfigVersionController {
     }
 
     @PostMapping("/{versionNo}/rollback")
-    @Transactional
     public ApiResponse<SystemConfigVersioningService.VersionDetail> rollback(
             @PathVariable long versionNo,
             @RequestParam(name = "groupCode", defaultValue = "SYSTEM_CONFIG") String groupCode,

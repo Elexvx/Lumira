@@ -18,6 +18,7 @@ import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
 import com.lumira.saas.modules.system.SystemAsyncAssemblyConfiguration;
+import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.controller.InternalSystemController;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
@@ -166,6 +167,11 @@ class SystemInternalAssemblyTest {
         @Bean
         ReadModelVersionService readModelVersionService() {
             return mock(ReadModelVersionService.class);
+        }
+
+        @Bean
+        SystemConfigVersioningService systemConfigVersioningService() {
+            return mock(SystemConfigVersioningService.class);
         }
     }
 }
