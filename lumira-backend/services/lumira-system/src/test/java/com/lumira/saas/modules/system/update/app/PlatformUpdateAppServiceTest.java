@@ -20,6 +20,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.http.HttpRequest;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +33,89 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PlatformUpdateAppServiceTest {
+
+    @Test
+    void scheduledReconcilerRunsWithoutAnOpenMonitoringPage() {
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        when(taskMapper.selectOne(any())).thenReturn(null);
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper
+        );
+
+        service.scheduledReconcileActiveTask();
+
+        verify(taskMapper).selectOne(any());
+    }
+
+    @Test
+    void allUpdaterTerminalStatesReleaseTheGlobalTaskLock() throws Exception {
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                mock(PlatformUpdateTaskMapper.class)
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod(
+                "finishTerminalTask",
+                PlatformUpdateTaskEntity.class
+        );
+        method.setAccessible(true);
+
+        for (String status : Set.of("SUCCEEDED", "FAILED", "ROLLED_BACK", "CANCELLED")) {
+            PlatformUpdateTaskEntity task = new PlatformUpdateTaskEntity();
+            task.setStatus(status);
+            task.setActiveKey("GLOBAL");
+
+            assertThat(method.invoke(service, task)).isEqualTo(true);
+            assertThat(task.getActiveKey()).isNull();
+            assertThat(task.getFinishedAt()).isNotNull();
+        }
+    }
+
+    @Test
+    void unlinkedTaskExpiresAndReleasesTheUpdateLock() throws Exception {
+        Environment environment = mock(Environment.class);
+        when(environment.getProperty("platform.update.unlinked-task-timeout-ms", Long.class)).thenReturn(30_000L);
+        PlatformUpdateTaskMapper taskMapper = mock(PlatformUpdateTaskMapper.class);
+        when(taskMapper.update(any(PlatformUpdateTaskEntity.class), any())).thenReturn(1);
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                environment,
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                taskMapper
+        );
+        PlatformUpdateTaskEntity task = new PlatformUpdateTaskEntity();
+        task.setId(42L);
+        task.setTaskType("INSTALL");
+        task.setStatus("PENDING");
+        task.setActiveKey("GLOBAL");
+        task.setCreatedAt(LocalDateTime.now().minusMinutes(1));
+        task.setCreatedBy(1001L);
+        task.setCreatedByUuid("user-uuid-1001");
+        PlatformUpdateTaskEntity expected = new PlatformUpdateTaskEntity();
+        expected.setId(task.getId());
+        expected.setTaskType(task.getTaskType());
+        expected.setStatus(task.getStatus());
+        expected.setActiveKey(task.getActiveKey());
+        expected.setCreatedBy(task.getCreatedBy());
+        expected.setCreatedByUuid(task.getCreatedByUuid());
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod(
+                "expireUnlinkedTaskIfNecessary",
+                PlatformUpdateTaskEntity.class,
+                PlatformUpdateTaskEntity.class
+        );
+        method.setAccessible(true);
+
+        method.invoke(service, task, expected);
+
+        assertThat(task.getStatus()).isEqualTo("FAILED");
+        assertThat(task.getActiveKey()).isNull();
+        assertThat(task.getFinishedAt()).isNotNull();
+        verify(taskMapper).update(any(PlatformUpdateTaskEntity.class), any());
+    }
 
     @Test
     void requireUpdateAvailableShouldRejectRedeployingTheCurrentRelease() throws Exception {
@@ -254,9 +338,40 @@ class PlatformUpdateAppServiceTest {
                 .contains("updateTaskIfUnchanged(task, expected)")
                 .contains(".eq(PlatformUpdateTaskEntity::getTaskType, expected.getTaskType())")
                 .contains(".eq(PlatformUpdateTaskEntity::getStatus, expected.getStatus())")
+                .contains(".eq(PlatformUpdateTaskEntity::getPhase, expected.getPhase())")
+                .contains(".eq(PlatformUpdateTaskEntity::getProgressPercent, expected.getProgressPercent())")
+                .contains(".eq(PlatformUpdateTaskEntity::getActiveKey, expected.getActiveKey())")
+                .contains("wrapper.setSql(\"active_key = NULL\")")
+                .contains("wrapper.setSql(\"error_message = NULL\")")
                 .contains(".eq(PlatformUpdateTaskEntity::getCreatedByUuid, expected.getCreatedByUuid())")
                 .contains("wrapper.eq(PlatformUpdateTaskEntity::getUpdaterTaskId, expected.getUpdaterTaskId())")
                 .doesNotContain("taskMapper.updateById(task);");
+    }
+
+    @Test
+    void ambiguousUpdaterSubmissionUsesCapabilityGatedIdempotentReconciliation() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/lumira/saas/modules/system/update/app/PlatformUpdateAppService.java"
+        ));
+
+        assertThat(source)
+                .contains("if (supportsPlatformTaskLookup())")
+                .contains("getUpdaterIfFound(platformTaskLookupPath(task))")
+                .contains("return persistAcceptedUpdaterTask(task, expected, postUpdater(path, request))")
+                .contains("Do not renew updatedAt")
+                .contains("expireUnlinkedTaskIfNecessary(task, expected)");
+    }
+
+    @Test
+    void platformTaskIdentityUsesDatabaseStableTimestampPrecision() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/lumira/saas/modules/system/update/app/PlatformUpdateAppService.java"
+        ));
+
+        assertThat(source)
+                .contains("LocalDateTime now = LocalDateTime.now().withNano(0)")
+                .contains("task.getCreatedAt().toString()")
+                .contains("platformTaskCreatedAt");
     }
 
     @Test

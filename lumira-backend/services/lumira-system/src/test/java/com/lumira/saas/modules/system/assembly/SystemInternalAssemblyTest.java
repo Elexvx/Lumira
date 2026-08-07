@@ -22,6 +22,7 @@ import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.controller.InternalSystemController;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
@@ -173,5 +174,13 @@ class SystemInternalAssemblyTest {
         SystemConfigVersioningService systemConfigVersioningService() {
             return mock(SystemConfigVersioningService.class);
         }
+    }
+
+    @Test
+    void controlPlaneAssemblyOwnsPlatformUpdateMaintenance() {
+        Import imports = SystemOperationsControlPlaneAssemblyConfiguration.class.getAnnotation(Import.class);
+
+        assertThat(imports).isNotNull();
+        assertThat(imports.value()).contains(PlatformUpdateMaintenanceService.class);
     }
 }

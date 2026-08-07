@@ -49,6 +49,7 @@ import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatform
 import com.lumira.saas.modules.system.support.SmsVerificationSender;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.modules.system.update.app.PlatformUpdateAppService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
 import com.lumira.saas.modules.system.update.controller.PlatformUpdateController;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
@@ -105,6 +106,7 @@ import org.springframework.context.annotation.Import;
         OnlineSessionStreamService.class,
         PasskeyCredentialAppService.class,
         PlatformUpdateAppService.class,
+        PlatformUpdateMaintenanceService.class,
         PlatformUpdateController.class,
         ProfileController.class,
         JdbcSystemProfileSettingsRepository.class,

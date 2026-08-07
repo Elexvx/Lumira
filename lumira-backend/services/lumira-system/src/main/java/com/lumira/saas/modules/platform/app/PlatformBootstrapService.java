@@ -6,6 +6,7 @@ import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import java.time.Duration;
@@ -41,6 +42,7 @@ public class PlatformBootstrapService {
     private final SystemVerificationAppService systemVerificationAppService;
     private final ReadModelVersionService readModelVersionService;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
+    private final PlatformUpdateMaintenanceService platformUpdateMaintenanceService;
     private volatile PublicBootstrapCache publicBootstrapCache;
     private final Cache<String, CompletableFuture<SystemVO.PublicBootstrapVO>> publicBootstrapLoadInFlight;
 
@@ -49,7 +51,16 @@ public class PlatformBootstrapService {
             SystemVerificationAppService systemVerificationAppService,
             ReadModelVersionService readModelVersionService
     ) {
-        this(systemManagementAppService, systemVerificationAppService, readModelVersionService, null);
+        this(systemManagementAppService, systemVerificationAppService, readModelVersionService, null, null);
+    }
+
+    public PlatformBootstrapService(
+            SystemManagementAppService systemManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            ReadModelVersionService readModelVersionService,
+            OwnerRuntimeMetrics ownerRuntimeMetrics
+    ) {
+        this(systemManagementAppService, systemVerificationAppService, readModelVersionService, ownerRuntimeMetrics, null);
     }
 
     @Autowired
@@ -57,12 +68,14 @@ public class PlatformBootstrapService {
             SystemManagementAppService systemManagementAppService,
             SystemVerificationAppService systemVerificationAppService,
             ReadModelVersionService readModelVersionService,
-            OwnerRuntimeMetrics ownerRuntimeMetrics
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            PlatformUpdateMaintenanceService platformUpdateMaintenanceService
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.systemVerificationAppService = systemVerificationAppService;
         this.readModelVersionService = readModelVersionService;
         this.ownerRuntimeMetrics = ownerRuntimeMetrics;
+        this.platformUpdateMaintenanceService = platformUpdateMaintenanceService;
         this.publicBootstrapLoadInFlight = CacheBuilder.newBuilder()
                 .maximumSize(PUBLIC_BOOTSTRAP_IN_FLIGHT_MAX_ENTRIES)
                 .expireAfterWrite(PUBLIC_BOOTSTRAP_IN_FLIGHT_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -141,7 +154,8 @@ public class PlatformBootstrapService {
         SystemVO.PublicBootstrapVO stalePayload = staleCache == null ? null : staleCache.payload;
         boolean runtimeAppearanceUnchanged = staleCache != null
                 && stalePayload != null
-                && staleCache.version.runtimeAppearanceVersion == targetVersion.runtimeAppearanceVersion;
+                && staleCache.version.runtimeAppearanceVersion == targetVersion.runtimeAppearanceVersion
+                && staleCache.version.automaticMaintenanceActive == targetVersion.automaticMaintenanceActive;
         boolean publicBootstrapUnchanged = staleCache != null
                 && stalePayload != null
                 && staleCache.version.publicBootstrapVersion == targetVersion.publicBootstrapVersion;
@@ -190,7 +204,8 @@ public class PlatformBootstrapService {
             );
             return new PublicBootstrapVersion(
                     versionOf(versions, RUNTIME_APPEARANCE_VERSION_KEY, fallback.runtimeAppearanceVersion),
-                    versionOf(versions, PUBLIC_BOOTSTRAP_VERSION_KEY, fallback.publicBootstrapVersion)
+                    versionOf(versions, PUBLIC_BOOTSTRAP_VERSION_KEY, fallback.publicBootstrapVersion),
+                    automaticMaintenanceActive()
             );
         } catch (Throwable throwable) {
             log.debug("Failed to load platform public bootstrap read-model versions", throwable);
@@ -208,6 +223,11 @@ public class PlatformBootstrapService {
         }
         Long version = versions.get(scopeKey);
         return version == null ? fallback : version;
+    }
+
+    private boolean automaticMaintenanceActive() {
+        return platformUpdateMaintenanceService != null
+                && platformUpdateMaintenanceService.isAutomaticMaintenanceActive();
     }
 
     private SystemVO.PublicBootstrapVO fallbackPublicBootstrap(PublicBootstrapCache staleCache) {
@@ -228,11 +248,15 @@ public class PlatformBootstrapService {
         }
     }
 
-    private record PublicBootstrapVersion(long runtimeAppearanceVersion, long publicBootstrapVersion) {
-        private static final PublicBootstrapVersion ZERO = new PublicBootstrapVersion(0L, 0L);
+    private record PublicBootstrapVersion(
+            long runtimeAppearanceVersion,
+            long publicBootstrapVersion,
+            boolean automaticMaintenanceActive
+    ) {
+        private static final PublicBootstrapVersion ZERO = new PublicBootstrapVersion(0L, 0L, false);
 
         private String cacheKey() {
-            return runtimeAppearanceVersion + ":" + publicBootstrapVersion;
+            return runtimeAppearanceVersion + ":" + publicBootstrapVersion + ":" + automaticMaintenanceActive;
         }
     }
 }

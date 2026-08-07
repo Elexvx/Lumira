@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import io.micrometer.core.instrument.Counter;
@@ -24,6 +25,41 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class PlatformBootstrapServiceTest {
+
+    @Test
+    void automaticMaintenanceLeaseChangeInvalidatesCachedRuntimeAppearance() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SystemVerificationAppService systemVerificationAppService = mock(SystemVerificationAppService.class);
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        PlatformUpdateMaintenanceService updateMaintenanceService = mock(PlatformUpdateMaintenanceService.class);
+        SystemVO.BrandingSettingsVO normalBranding = new SystemVO.BrandingSettingsVO();
+        normalBranding.setMaintenanceModeEnabled(false);
+        SystemVO.BrandingSettingsVO maintenanceBranding = new SystemVO.BrandingSettingsVO();
+        maintenanceBranding.setMaintenanceModeEnabled(true);
+        when(systemManagementAppService.getPublicBrandingSettings())
+                .thenReturn(normalBranding, maintenanceBranding);
+        when(systemManagementAppService.getPublicAgreementSettings())
+                .thenReturn(new SystemVO.AgreementSettingsVO(), new SystemVO.AgreementSettingsVO());
+        when(systemManagementAppService.getPublicSecuritySettings()).thenReturn(new SystemVO.SecuritySettingsVO());
+        when(systemVerificationAppService.loadLoginCapabilitiesFresh()).thenReturn(new SystemVO.LoginCapabilitiesVO());
+        when(readModelVersionService.currentVersions(any())).thenReturn(versions(10L, 20L));
+        when(updateMaintenanceService.isAutomaticMaintenanceActive()).thenReturn(false, true);
+        PlatformBootstrapService service = new PlatformBootstrapService(
+                systemManagementAppService,
+                systemVerificationAppService,
+                readModelVersionService,
+                null,
+                updateMaintenanceService
+        );
+
+        SystemVO.PublicBootstrapVO normal = service.getPublicBootstrap();
+        SystemVO.PublicBootstrapVO maintenance = service.getPublicBootstrap();
+
+        assertThat(normal.getBrandingSettings().getMaintenanceModeEnabled()).isFalse();
+        assertThat(maintenance.getBrandingSettings().getMaintenanceModeEnabled()).isTrue();
+        assertThat(maintenance).isNotSameAs(normal);
+        verify(systemManagementAppService, times(2)).getPublicBrandingSettings();
+    }
 
     @Test
     void publicBootstrapReusesPayloadWhileVersionSignatureStable() {

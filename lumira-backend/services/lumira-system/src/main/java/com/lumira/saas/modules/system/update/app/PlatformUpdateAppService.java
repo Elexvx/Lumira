@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.update.app;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,6 +21,7 @@ import com.lumira.saas.modules.system.update.mapper.PlatformUpdateTaskMapper;
 import com.lumira.saas.modules.system.update.vo.PlatformUpdateVO;
 import io.micrometer.core.instrument.Metrics;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -54,6 +56,7 @@ public class PlatformUpdateAppService {
     private static final String STATUS_UPDATE_AVAILABLE = "UPDATE_AVAILABLE";
     private static final String STATUS_UNKNOWN = "UNKNOWN";
     private static final String STATUS_CHECK_FAILED = "CHECK_FAILED";
+    private static final String TASK_PENDING = "PENDING";
     private static final String TASK_RUNNING = "RUNNING";
     private static final String TASK_INSTALL = "INSTALL";
     private static final String TASK_ROLLBACK = "ROLLBACK";
@@ -76,6 +79,9 @@ public class PlatformUpdateAppService {
     private static final Pattern DIGEST_PINNED_IMAGE_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,446}@sha256:[0-9a-fA-F]{64}$");
     private static final Set<String> UPDATER_STATUSES = Set.of("PENDING", TASK_RUNNING, "SUCCEEDED", "FAILED", "ROLLED_BACK", "CANCELLED");
     private static final String ACTIVE_TASK_KEY = "GLOBAL";
+    private static final Duration DEFAULT_UNLINKED_TASK_TIMEOUT = Duration.ofMinutes(30);
+    private static final Duration MIN_UNLINKED_TASK_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration MAX_UNLINKED_TASK_TIMEOUT = Duration.ofHours(2);
 
     private final Environment environment;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
@@ -330,7 +336,7 @@ public class PlatformUpdateAppService {
         task.setPreflightId(request == null ? null : boundedText(request.getPreflightId(), 128, "preflightId"));
         return startUpdaterTask(task, "/v1/update/install", new UpdaterRequest(
                 task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(),
-                task.getPreflightId(), manifestPayload(latest)
+                task.getCreatedAt().toString(), task.getPreflightId(), manifestPayload(latest)
         ));
     }
 
@@ -342,7 +348,8 @@ public class PlatformUpdateAppService {
         PlatformUpdateVO.LatestVersionVO latest = getStatusInternal().getLatest();
         PlatformUpdateTaskEntity task = createTask(TASK_ROLLBACK, latest, currentUser);
         return startUpdaterTask(task, "/v1/update/rollback", new UpdaterRequest(
-                task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(), null, null
+                task.getTargetVersion(), task.getTargetCommit(), task.getServerImage(), task.getFrontendImage(), task.getId(),
+                task.getCreatedAt().toString(), null, null
         ));
     }
 
@@ -358,6 +365,7 @@ public class PlatformUpdateAppService {
         try {
             JsonNode response = postUpdater("/v1/update/tasks/" + task.getUpdaterTaskId() + "/cancel", Map.of());
             applyUpdaterState(task, response);
+            finishTerminalTask(task);
             task.setUpdatedAt(LocalDateTime.now());
             updateTaskIfUnchanged(task, expected);
             Metrics.counter("lumira.platform.update.cancel.requested", "phase", firstText(task.getPhase(), "unknown")).increment();
@@ -398,30 +406,122 @@ public class PlatformUpdateAppService {
         }
     }
 
+    @Scheduled(
+            initialDelayString = "${platform.update.task-reconcile-initial-delay-ms:2000}",
+            fixedDelayString = "${platform.update.task-reconcile-interval-ms:2000}"
+    )
+    public void scheduledReconcileActiveTask() {
+        try {
+            PlatformUpdateTaskEntity task = selectActiveTask();
+            if (task != null) {
+                syncUpdaterTask(task);
+            }
+        } catch (Exception exception) {
+            log.warn("Platform update task reconciliation failed", exception);
+        }
+    }
+
     private PlatformUpdateVO.TaskVO startUpdaterTask(PlatformUpdateTaskEntity task, String path, Object request) {
         PlatformUpdateTaskEntity expected = snapshotTask(task);
         try {
-            JsonNode response = postUpdater(path, request);
-            task.setUpdaterTaskId(normalizeUpdaterTaskId(firstText(response.path("taskId").asText(null), response.path("id").asText(null))));
-            task.setStatus(normalizeUpdaterStatus(firstText(response.path("status").asText(null), TASK_RUNNING), TASK_RUNNING));
-            task.setLogSummary(boundedText(response.path("message").asText(null), MAX_UPDATER_TEXT_LENGTH, "updater message"));
-            task.setBackupPath(boundedText(response.path("backupPath").asText(null), MAX_URL_LENGTH, "updater backupPath"));
-            applyUpdaterState(task, response);
-            task.setUpdatedAt(LocalDateTime.now());
-            updateTaskIfUnchanged(task, expected);
-        } catch (Exception ex) {
-            task.setStatus("FAILED");
-            task.setErrorMessage(ex.getMessage());
-            task.setFinishedAt(LocalDateTime.now());
-            task.setActiveKey(null);
-            task.setUpdatedAt(LocalDateTime.now());
+            return persistAcceptedUpdaterTask(task, expected, postUpdater(path, request));
+        } catch (UpdaterRequestRejectedException exception) {
+            failRejectedUpdaterTask(task, expected, exception);
+            return toTaskVO(task);
+        } catch (Exception firstFailure) {
+            log.warn("Updater task submission has an ambiguous outcome taskId={}; reconciling by platform task id",
+                    task.getId(), firstFailure);
+            if (supportsPlatformTaskLookup()) {
+                try {
+                    JsonNode accepted = getUpdaterIfFound(platformTaskLookupPath(task));
+                    if (accepted != null) {
+                        return persistAcceptedUpdaterTask(task, expected, accepted);
+                    }
+                    try {
+                        return persistAcceptedUpdaterTask(task, expected, postUpdater(path, request));
+                    } catch (UpdaterRequestRejectedException rejectedRetry) {
+                        failRejectedUpdaterTask(task, expected, rejectedRetry);
+                        return toTaskVO(task);
+                    } catch (Exception retryFailure) {
+                        log.warn("Updater task retry also has an ambiguous outcome taskId={}", task.getId(), retryFailure);
+                    }
+                } catch (Exception lookupFailure) {
+                    log.warn("Unable to reconcile updater task submission taskId={}", task.getId(), lookupFailure);
+                }
+            }
+            // Preserve the GLOBAL lock because a legacy updater may already be
+            // running the task. Do not renew updatedAt: public maintenance will
+            // fail open at the lease TTL while the reconciler keeps looking.
+            task.setErrorMessage(boundedText(
+                    "Updater acceptance is being reconciled after a transport failure: " + firstFailure.getMessage(),
+                    MAX_UPDATER_TEXT_LENGTH,
+                    "updater reconciliation error"
+            ));
             updateTaskIfUnchanged(task, expected);
         }
         return toTaskVO(task);
     }
 
+    private PlatformUpdateVO.TaskVO persistAcceptedUpdaterTask(
+            PlatformUpdateTaskEntity task,
+            PlatformUpdateTaskEntity expected,
+            JsonNode response
+    ) {
+        validateUpdaterTaskIdentity(task, response);
+        task.setUpdaterTaskId(normalizeUpdaterTaskId(firstText(
+                response.path("taskId").asText(null),
+                response.path("id").asText(null)
+        )));
+        task.setStatus(normalizeUpdaterStatus(
+                firstText(response.path("status").asText(null), TASK_RUNNING),
+                TASK_RUNNING
+        ));
+        task.setLogSummary(boundedText(response.path("message").asText(null), MAX_UPDATER_TEXT_LENGTH, "updater message"));
+        task.setBackupPath(boundedText(response.path("backupPath").asText(null), MAX_URL_LENGTH, "updater backupPath"));
+        task.setErrorMessage(null);
+        applyUpdaterState(task, response);
+        boolean completed = finishTerminalTask(task);
+        task.setUpdatedAt(LocalDateTime.now());
+        boolean persisted = updateTaskIfUnchanged(task, expected);
+        if (completed && persisted) {
+            recordTaskCompletion(task);
+        }
+        return toTaskVO(task);
+    }
+
+    private void failRejectedUpdaterTask(
+            PlatformUpdateTaskEntity task,
+            PlatformUpdateTaskEntity expected,
+            UpdaterRequestRejectedException exception
+    ) {
+        task.setStatus("FAILED");
+        task.setErrorMessage(boundedText(exception.getMessage(), MAX_UPDATER_TEXT_LENGTH, "updater error"));
+        task.setFinishedAt(LocalDateTime.now());
+        task.setActiveKey(null);
+        task.setUpdatedAt(LocalDateTime.now());
+        if (updateTaskIfUnchanged(task, expected)) {
+            recordTaskCompletion(task);
+        }
+    }
+
     private void syncUpdaterTask(PlatformUpdateTaskEntity task) {
-        if (!StringUtils.hasText(task.getUpdaterTaskId()) || isTerminal(task.getStatus())) {
+        if (isTerminal(task.getStatus())) {
+            return;
+        }
+        if (!StringUtils.hasText(task.getUpdaterTaskId())) {
+            PlatformUpdateTaskEntity expected = snapshotTask(task);
+            if (supportsPlatformTaskLookup()) {
+                try {
+                    JsonNode accepted = getUpdaterIfFound(platformTaskLookupPath(task));
+                    if (accepted != null) {
+                        persistAcceptedUpdaterTask(task, expected, accepted);
+                        return;
+                    }
+                } catch (Exception exception) {
+                    log.warn("Failed to reconcile unlinked platform update task {}", task.getId(), exception);
+                }
+            }
+            expireUnlinkedTaskIfNecessary(task, expected);
             return;
         }
         PlatformUpdateTaskEntity expected = snapshotTask(task);
@@ -431,33 +531,118 @@ public class PlatformUpdateAppService {
             task.setBackupPath(boundedText(firstText(response.path("backupPath").asText(null), task.getBackupPath()), MAX_URL_LENGTH, "updater backupPath"));
             task.setLogSummary(boundedText(firstText(response.path("message").asText(null), response.path("logSummary").asText(null), task.getLogSummary()), MAX_UPDATER_TEXT_LENGTH, "updater logSummary"));
             task.setErrorMessage(boundedText(firstText(response.path("errorMessage").asText(null), task.getErrorMessage()), MAX_UPDATER_TEXT_LENGTH, "updater errorMessage"));
-            if (isTerminal(task.getStatus()) && task.getFinishedAt() == null) {
-                task.setFinishedAt(LocalDateTime.now());
-                task.setActiveKey(null);
-                Metrics.counter("lumira.platform.update.completed", "type", task.getTaskType(), "status", task.getStatus()).increment();
-                if (task.getStartedAt() != null) {
-                    Metrics.timer("lumira.platform.update.duration", "type", task.getTaskType(), "status", task.getStatus())
-                            .record(Duration.between(task.getStartedAt(), task.getFinishedAt()));
-                }
-                log.info("platform_update_completed taskId={} updaterTaskId={} status={} phase={} activeSlot={} targetSlot={}", task.getId(), task.getUpdaterTaskId(), task.getStatus(), task.getPhase(), task.getActiveSlot(), task.getTargetSlot());
-            }
+            boolean completed = finishTerminalTask(task);
             task.setUpdatedAt(LocalDateTime.now());
-            updateTaskIfUnchanged(task, expected);
+            boolean persisted = updateTaskIfUnchanged(task, expected);
+            if (completed && persisted) {
+                recordTaskCompletion(task);
+            }
         } catch (Exception ex) {
             log.warn("Failed to sync updater task {}", task.getUpdaterTaskId(), ex);
         }
     }
 
+    private void expireUnlinkedTaskIfNecessary(
+            PlatformUpdateTaskEntity task,
+            PlatformUpdateTaskEntity expected
+    ) {
+        LocalDateTime createdAt = task.getCreatedAt() == null ? task.getStartedAt() : task.getCreatedAt();
+        if (createdAt == null || createdAt.plus(unlinkedTaskTimeout()).isAfter(LocalDateTime.now())) {
+            return;
+        }
+        task.setStatus("FAILED");
+        task.setErrorMessage("Updater did not expose an accepted task before the reconciliation timeout.");
+        task.setFinishedAt(LocalDateTime.now());
+        task.setActiveKey(null);
+        task.setUpdatedAt(LocalDateTime.now());
+        if (updateTaskIfUnchanged(task, expected)) {
+            recordTaskCompletion(task);
+            log.warn("platform_update_unlinked_task_expired taskId={} type={}", task.getId(), task.getTaskType());
+        }
+    }
+
+    private Duration unlinkedTaskTimeout() {
+        Long configured = environment.getProperty("platform.update.unlinked-task-timeout-ms", Long.class);
+        Duration timeout = configured == null || configured <= 0
+                ? DEFAULT_UNLINKED_TASK_TIMEOUT
+                : Duration.ofMillis(configured);
+        if (timeout.compareTo(MIN_UNLINKED_TASK_TIMEOUT) < 0) {
+            return MIN_UNLINKED_TASK_TIMEOUT;
+        }
+        if (timeout.compareTo(MAX_UNLINKED_TASK_TIMEOUT) > 0) {
+            return MAX_UNLINKED_TASK_TIMEOUT;
+        }
+        return timeout;
+    }
+
+    private String platformTaskLookupPath(PlatformUpdateTaskEntity task) {
+        String createdAt = task.getCreatedAt() == null ? "" : task.getCreatedAt().toString();
+        return "/v1/update/platform-tasks/" + task.getId()
+                + "?createdAt=" + URLEncoder.encode(createdAt, StandardCharsets.UTF_8);
+    }
+
+    private void validateUpdaterTaskIdentity(PlatformUpdateTaskEntity task, JsonNode response) {
+        if (response == null || response.isMissingNode() || response.isNull()) {
+            throw new IllegalStateException("Updater returned an empty task response");
+        }
+        String platformTaskId = response.path("platformTaskId").asText(null);
+        if (StringUtils.hasText(platformTaskId) && !String.valueOf(task.getId()).equals(platformTaskId.trim())) {
+            throw new IllegalStateException("Updater returned a task for a different platform task id");
+        }
+        String taskType = response.path("type").asText(null);
+        if (StringUtils.hasText(taskType) && !task.getTaskType().equalsIgnoreCase(taskType.trim())) {
+            throw new IllegalStateException("Updater returned a task for a different update operation");
+        }
+        String platformTaskCreatedAt = response.path("platformTaskCreatedAt").asText(null);
+        if (StringUtils.hasText(platformTaskCreatedAt) && task.getCreatedAt() != null
+                && !task.getCreatedAt().toString().equals(platformTaskCreatedAt.trim())) {
+            throw new IllegalStateException("Updater returned a stale task identity");
+        }
+        String targetCommit = response.path("targetCommit").asText(null);
+        if (TASK_INSTALL.equals(task.getTaskType()) && StringUtils.hasText(targetCommit)
+                && StringUtils.hasText(task.getTargetCommit())
+                && !task.getTargetCommit().equalsIgnoreCase(targetCommit.trim())) {
+            throw new IllegalStateException("Updater returned a task for a different target commit");
+        }
+    }
+
+    private boolean finishTerminalTask(PlatformUpdateTaskEntity task) {
+        if (!isTerminal(task.getStatus())) {
+            return false;
+        }
+        boolean newlyCompleted = task.getFinishedAt() == null;
+        if (newlyCompleted) {
+            task.setFinishedAt(LocalDateTime.now());
+        }
+        task.setActiveKey(null);
+        return newlyCompleted;
+    }
+
+    private void recordTaskCompletion(PlatformUpdateTaskEntity task) {
+        Metrics.counter("lumira.platform.update.completed", "type", task.getTaskType(), "status", task.getStatus()).increment();
+        if (task.getStartedAt() != null && task.getFinishedAt() != null) {
+            Metrics.timer("lumira.platform.update.duration", "type", task.getTaskType(), "status", task.getStatus())
+                    .record(Duration.between(task.getStartedAt(), task.getFinishedAt()));
+        }
+        log.info("platform_update_completed taskId={} updaterTaskId={} status={} phase={} activeSlot={} targetSlot={}",
+                task.getId(), task.getUpdaterTaskId(), task.getStatus(), task.getPhase(), task.getActiveSlot(), task.getTargetSlot());
+    }
+
     private PlatformUpdateVO.TaskVO findActiveTask() {
-        PlatformUpdateTaskEntity task = taskMapper.selectOne(new LambdaQueryWrapper<PlatformUpdateTaskEntity>()
-                .in(PlatformUpdateTaskEntity::getStatus, "PENDING", TASK_RUNNING)
-                .orderByDesc(PlatformUpdateTaskEntity::getCreatedAt)
-                .last("LIMIT 1"));
+        PlatformUpdateTaskEntity task = selectActiveTask();
         if (task == null) {
             return null;
         }
         syncUpdaterTask(task);
         return toTaskVO(taskMapper.selectById(task.getId()));
+    }
+
+    private PlatformUpdateTaskEntity selectActiveTask() {
+        return taskMapper.selectOne(new QueryWrapper<PlatformUpdateTaskEntity>()
+                .eq("active_key", ACTIVE_TASK_KEY)
+                .in("status", TASK_PENDING, TASK_RUNNING)
+                .orderByDesc("created_at")
+                .last("LIMIT 1"));
     }
 
     private PlatformUpdateTaskEntity createTask(String taskType, PlatformUpdateVO.LatestVersionVO latest, CurrentUser currentUser) {
@@ -467,9 +652,12 @@ public class PlatformUpdateAppService {
         releaseStaleTerminalTaskLock();
 
         PlatformUpdateTaskEntity task = new PlatformUpdateTaskEntity();
-        LocalDateTime now = LocalDateTime.now();
+        // platform_update_task uses MySQL DATETIME without fractional seconds.
+        // Normalize before persisting because this value is also part of the
+        // cross-process updater idempotency identity.
+        LocalDateTime now = LocalDateTime.now().withNano(0);
         task.setTaskType(taskType);
-        task.setStatus("PENDING");
+        task.setStatus(TASK_PENDING);
         task.setStrategy(firstText(latest == null ? null : latest.getStrategy(), "single-host-blue-green"));
         task.setPhase("PREFLIGHT");
         task.setProgressPercent(0);
@@ -510,6 +698,8 @@ public class PlatformUpdateAppService {
         snapshot.setId(task.getId());
         snapshot.setTaskType(task.getTaskType());
         snapshot.setStatus(task.getStatus());
+        snapshot.setPhase(task.getPhase());
+        snapshot.setProgressPercent(task.getProgressPercent());
         snapshot.setUpdaterTaskId(task.getUpdaterTaskId());
         snapshot.setActiveKey(task.getActiveKey());
         snapshot.setCreatedBy(task.getCreatedBy());
@@ -517,9 +707,9 @@ public class PlatformUpdateAppService {
         return snapshot;
     }
 
-    private void updateTaskIfUnchanged(PlatformUpdateTaskEntity task, PlatformUpdateTaskEntity expected) {
+    private boolean updateTaskIfUnchanged(PlatformUpdateTaskEntity task, PlatformUpdateTaskEntity expected) {
         if (task == null || expected == null || expected.getId() == null) {
-            return;
+            return false;
         }
         LambdaUpdateWrapper<PlatformUpdateTaskEntity> wrapper = new LambdaUpdateWrapper<PlatformUpdateTaskEntity>()
                 .eq(PlatformUpdateTaskEntity::getId, expected.getId())
@@ -532,10 +722,36 @@ public class PlatformUpdateAppService {
         } else {
             wrapper.isNull(PlatformUpdateTaskEntity::getUpdaterTaskId);
         }
+        if (StringUtils.hasText(expected.getPhase())) {
+            wrapper.eq(PlatformUpdateTaskEntity::getPhase, expected.getPhase());
+        } else {
+            wrapper.isNull(PlatformUpdateTaskEntity::getPhase);
+        }
+        if (expected.getProgressPercent() != null) {
+            wrapper.eq(PlatformUpdateTaskEntity::getProgressPercent, expected.getProgressPercent());
+        } else {
+            wrapper.isNull(PlatformUpdateTaskEntity::getProgressPercent);
+        }
+        if (StringUtils.hasText(expected.getActiveKey())) {
+            wrapper.eq(PlatformUpdateTaskEntity::getActiveKey, expected.getActiveKey());
+        } else {
+            wrapper.isNull(PlatformUpdateTaskEntity::getActiveKey);
+        }
+        // Entity updates omit nulls by default. These two fields deliberately
+        // transition to null when a task finishes or an ambiguous submission
+        // is recovered, so bind them explicitly in the guarded update.
+        if (task.getActiveKey() == null) {
+            wrapper.setSql("active_key = NULL");
+        }
+        if (task.getErrorMessage() == null) {
+            wrapper.setSql("error_message = NULL");
+        }
         int updated = taskMapper.update(task, wrapper);
         if (updated <= 0) {
             log.warn("Platform update task changed before state write taskId={} taskType={}", expected.getId(), expected.getTaskType());
+            return false;
         }
+        return true;
     }
 
     private Long requireTrustedUserId(CurrentUser currentUser) {
@@ -675,18 +891,31 @@ public class PlatformUpdateAppService {
         addUpdaterToken(builder);
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("updater 请求失败: HTTP " + response.statusCode() + " " + response.body());
+            throw new UpdaterRequestRejectedException(
+                    "updater request failed: HTTP " + response.statusCode() + " " + response.body()
+            );
         }
         return objectMapper.readTree(response.body());
     }
 
     private JsonNode getUpdater(String path) throws Exception {
+        JsonNode response = getUpdaterIfFound(path);
+        if (response == null) {
+            throw new IllegalStateException("Updater task was not found");
+        }
+        return response;
+    }
+
+    private JsonNode getUpdaterIfFound(String path) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder(updaterUri(path))
                 .timeout(Duration.ofSeconds(5))
                 .header("User-Agent", "lumira-update-center")
                 .GET();
         addUpdaterToken(builder);
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() == 404) {
+            return null;
+        }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IllegalStateException("updater 查询失败: HTTP " + response.statusCode());
         }
@@ -1118,6 +1347,7 @@ public class PlatformUpdateAppService {
             capabilities.setActiveSlot(response.path("activeSlot").asText(null));
             capabilities.setSupportsPreflight(response.path("supportsPreflight").asBoolean(false));
             capabilities.setSupportsCancel(response.path("supportsCancel").asBoolean(false));
+            capabilities.setSupportsPlatformTaskLookup(response.path("supportsPlatformTaskLookup").asBoolean(false));
             capabilities.setSupportsExpandOnlyMigration(response.path("supportsExpandOnlyMigration").asBoolean(false));
             return capabilities;
         } catch (Exception ex) {
@@ -1169,6 +1399,11 @@ public class PlatformUpdateAppService {
                 && capabilities.getProtocolVersion() < latest.getMinUpdaterProtocol()) {
             throw new IllegalStateException("lumira-updater protocol is too old for this release. Upgrade the host agent first.");
         }
+    }
+
+    private boolean supportsPlatformTaskLookup() {
+        PlatformUpdateVO.UpdaterCapabilitiesVO capabilities = updaterCapabilities();
+        return capabilities != null && Boolean.TRUE.equals(capabilities.getSupportsPlatformTaskLookup());
     }
 
     private void requireUpdateAvailable(PlatformUpdateVO.StatusVO status) {
@@ -1365,7 +1600,14 @@ public class PlatformUpdateAppService {
         }
     }
 
+    private static final class UpdaterRequestRejectedException extends IllegalStateException {
+        private UpdaterRequestRejectedException(String message) {
+            super(message);
+        }
+    }
+
     private record UpdaterRequest(String targetVersion, String targetCommit, String serverImage, String frontendImage,
-                                  Long platformTaskId, String preflightId, Map<String, Object> manifest) {
+                                  Long platformTaskId, String platformTaskCreatedAt, String preflightId,
+                                  Map<String, Object> manifest) {
     }
 }

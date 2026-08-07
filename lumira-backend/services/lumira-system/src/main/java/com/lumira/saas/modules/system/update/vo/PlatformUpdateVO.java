@@ -280,6 +280,7 @@ public final class PlatformUpdateVO {
         private String activeSlot;
         private Boolean supportsPreflight;
         private Boolean supportsCancel;
+        private Boolean supportsPlatformTaskLookup;
         private Boolean supportsExpandOnlyMigration;
 
         public Integer getProtocolVersion() { return protocolVersion; }
@@ -292,6 +293,8 @@ public final class PlatformUpdateVO {
         public void setSupportsPreflight(Boolean supportsPreflight) { this.supportsPreflight = supportsPreflight; }
         public Boolean getSupportsCancel() { return supportsCancel; }
         public void setSupportsCancel(Boolean supportsCancel) { this.supportsCancel = supportsCancel; }
+        public Boolean getSupportsPlatformTaskLookup() { return supportsPlatformTaskLookup; }
+        public void setSupportsPlatformTaskLookup(Boolean supportsPlatformTaskLookup) { this.supportsPlatformTaskLookup = supportsPlatformTaskLookup; }
         public Boolean getSupportsExpandOnlyMigration() { return supportsExpandOnlyMigration; }
         public void setSupportsExpandOnlyMigration(Boolean supportsExpandOnlyMigration) { this.supportsExpandOnlyMigration = supportsExpandOnlyMigration; }
     }

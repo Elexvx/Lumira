@@ -17,6 +17,7 @@ import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.lumira.saas.modules.system.settings.repository.SystemPlatformSettingsRepository;
 import org.springframework.mail.MailException;
@@ -124,6 +125,7 @@ public class SystemPlatformSettingsAppService {
     private final SessionAuthenticationService sessionAuthenticationService;
     private final boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
+    private PlatformUpdateMaintenanceService platformUpdateMaintenanceService;
 
     @Autowired
     public SystemPlatformSettingsAppService(
@@ -187,6 +189,13 @@ public class SystemPlatformSettingsAppService {
     @Autowired
     public void setConfigVersioningService(SystemConfigVersioningService configVersioningService) {
         this.configVersioningService = configVersioningService;
+    }
+
+    @Autowired
+    public void setPlatformUpdateMaintenanceService(
+            PlatformUpdateMaintenanceService platformUpdateMaintenanceService
+    ) {
+        this.platformUpdateMaintenanceService = platformUpdateMaintenanceService;
     }
 
     private SystemConfigVersioningService.GovernanceSession beginGovernance(
@@ -257,7 +266,12 @@ public class SystemPlatformSettingsAppService {
     }
 
     public SystemVO.BrandingSettingsVO getPublicBrandingSettings() {
-        return loadBrandingSettings();
+        SystemVO.BrandingSettingsVO settings = loadBrandingSettings();
+        if (platformUpdateMaintenanceService != null
+                && platformUpdateMaintenanceService.isAutomaticMaintenanceActive()) {
+            settings.setMaintenanceModeEnabled(Boolean.TRUE);
+        }
+        return settings;
     }
 
     public SystemVO.AgreementSettingsVO getAgreementSettings() {

@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Import;
 @Configuration(proxyBeanMethods = false)
 @Import({
         LumiraCommonRuntimeAssemblyConfiguration.class,
+        LumiraAdminControlPlaneSchedulingConfiguration.class,
         SystemInfrastructureControlPlaneAssemblyConfiguration.class,
         SystemBusinessControlPlaneAssemblyConfiguration.class,
         SystemAuditControlPlaneAssemblyConfiguration.class,

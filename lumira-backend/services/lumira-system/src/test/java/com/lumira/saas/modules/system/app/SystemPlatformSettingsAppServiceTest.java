@@ -16,6 +16,7 @@ import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
+import com.lumira.saas.modules.system.update.app.PlatformUpdateMaintenanceService;
 import com.lumira.saas.modules.system.settings.infrastructure.JdbcSystemPlatformSettingsRepository;
 import com.lumira.saas.modules.system.settings.repository.SystemPlatformSettingsRepository;
 import io.micrometer.core.instrument.Counter;
@@ -109,6 +110,60 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_MISS)).isZero();
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_HIT)).isZero();
         assertThat(first.getCopyrightStartYear()).isEqualTo(2020);
+    }
+
+    @Test
+    void automaticUpdateMaintenanceOnlyChangesThePublicEffectiveSwitch() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.ofEntries(
+                Map.entry("branding.website-name", "Lumira"),
+                Map.entry("branding.company-name", "Acme Corp"),
+                Map.entry("branding.copyright-start-year", "2020"),
+                Map.entry("branding.maintenance-mode-enabled", "false"),
+                Map.entry("branding.maintenance-title", "Planned update"),
+                Map.entry("branding.maintenance-message", "Please retry shortly"),
+                Map.entry("branding.maintenance-end-at", "2026-08-08T01:00:00Z")
+        ));
+        PlatformUpdateMaintenanceService updateMaintenanceService = mock(PlatformUpdateMaintenanceService.class);
+        when(updateMaintenanceService.isAutomaticMaintenanceActive()).thenReturn(true);
+        SystemPlatformSettingsAppService service = newService(
+                queryOperations,
+                mock(ReadModelVersionService.class),
+                null,
+                mock(SmtpMailService.class)
+        );
+        service.setPlatformUpdateMaintenanceService(updateMaintenanceService);
+
+        SystemVO.BrandingSettingsVO adminSettings = service.getBrandingSettings(currentUser());
+        SystemVO.BrandingSettingsVO publicSettings = service.getPublicBrandingSettings();
+
+        assertThat(adminSettings.getMaintenanceModeEnabled()).isFalse();
+        assertThat(publicSettings.getMaintenanceModeEnabled()).isTrue();
+        assertThat(publicSettings.getMaintenanceTitle()).isEqualTo(adminSettings.getMaintenanceTitle());
+        assertThat(publicSettings.getMaintenanceMessage()).isEqualTo(adminSettings.getMaintenanceMessage());
+        assertThat(publicSettings.getMaintenanceEndAt()).isEqualTo(adminSettings.getMaintenanceEndAt());
+        assertThat(publicSettings.getWebsiteName()).isEqualTo(adminSettings.getWebsiteName());
+    }
+
+    @Test
+    void administratorMaintenanceIntentSurvivesWhenAutomaticLeaseIsInactive() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.ofEntries(
+                Map.entry("branding.website-name", "Lumira"),
+                Map.entry("branding.company-name", "Acme Corp"),
+                Map.entry("branding.copyright-start-year", "2020"),
+                Map.entry("branding.maintenance-mode-enabled", "true")
+        ));
+        PlatformUpdateMaintenanceService updateMaintenanceService = mock(PlatformUpdateMaintenanceService.class);
+        when(updateMaintenanceService.isAutomaticMaintenanceActive()).thenReturn(false);
+        SystemPlatformSettingsAppService service = newService(
+                queryOperations,
+                mock(ReadModelVersionService.class),
+                null,
+                mock(SmtpMailService.class)
+        );
+        service.setPlatformUpdateMaintenanceService(updateMaintenanceService);
+
+        assertThat(service.getBrandingSettings(currentUser()).getMaintenanceModeEnabled()).isTrue();
+        assertThat(service.getPublicBrandingSettings().getMaintenanceModeEnabled()).isTrue();
     }
 
     @Test
