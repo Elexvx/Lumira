@@ -512,6 +512,7 @@ public class SystemConfigVersioningService {
                 request.domainCode()
         );
         Map<String, Object> event = new LinkedHashMap<>();
+        event.put("userUuid", operatorUuid(operator));
         event.put("groupCode", request.groupCode());
         event.put("domainCode", request.domainCode());
         event.put("versionNo", versionNo);

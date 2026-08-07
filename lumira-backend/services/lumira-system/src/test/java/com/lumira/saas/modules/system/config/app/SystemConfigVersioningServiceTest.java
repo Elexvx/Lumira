@@ -3,6 +3,8 @@ package com.lumira.saas.modules.system.config.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.infrastructure.event.PlatformEventOutboxEntity;
+import com.lumira.saas.infrastructure.event.PlatformEventOutboxMapper;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxService;
 import com.lumira.saas.infrastructure.event.PlatformEventTypes;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -10,6 +12,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -30,6 +33,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SystemConfigVersioningServiceTest {
 
@@ -63,6 +67,58 @@ class SystemConfigVersioningServiceTest {
                 any()
         );
         verify(fixture.readModel).bump("platform", "configuration", "config-version:BRANDING:PLATFORM:1");
+    }
+
+    @Test
+    void publishWritesOutboxPayloadThatMatchesTrustedOperator() throws Exception {
+        MyBatisQueryOperations configOperations = mock(MyBatisQueryOperations.class);
+        doAnswer(invocation -> 1)
+                .when(configOperations)
+                .update(anyString(), any(Object[].class));
+        doAnswer(invocation -> {
+            String sql = invocation.getArgument(0, String.class).toLowerCase();
+            return sql.contains("current_version_no") ? 0L : 42L;
+        }).when(configOperations).queryForObject(anyString(), eq(Long.class), any(Object[].class));
+        AtomicInteger snapshotReads = new AtomicInteger();
+        doAnswer(invocation -> snapshotReads.getAndIncrement() == 0
+                ? List.of(config(KEY, "Lumira", SystemConfigVersioningService.SENSITIVITY_NONE))
+                : List.of(config(KEY, "Lumira Cloud", SystemConfigVersioningService.SENSITIVITY_NONE)))
+                .when(configOperations)
+                .query(anyString(), any(RowMapper.class), any(Object[].class));
+
+        MyBatisQueryOperations identityOperations = mock(MyBatisQueryOperations.class);
+        doAnswer(invocation -> operator().getUserUuid())
+                .when(identityOperations)
+                .queryForObject(anyString(), eq(String.class), any(Object[].class));
+        PlatformEventOutboxMapper outboxMapper = mock(PlatformEventOutboxMapper.class);
+        when(outboxMapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
+        ObjectMapper objectMapper = new ObjectMapper();
+        PlatformEventOutboxService realOutbox = new PlatformEventOutboxService(
+                objectMapper,
+                outboxMapper,
+                identityOperations
+        );
+        SystemConfigVersioningService service = new SystemConfigVersioningService(
+                configOperations,
+                objectMapper,
+                realOutbox,
+                mock(ReadModelVersionService.class)
+        );
+
+        service.publish(
+                change("BRANDING", 0L, "update site name"),
+                List.of(KEY),
+                () -> null
+        );
+
+        ArgumentCaptor<PlatformEventOutboxEntity> eventCaptor =
+                ArgumentCaptor.forClass(PlatformEventOutboxEntity.class);
+        verify(outboxMapper).insert(eventCaptor.capture());
+        PlatformEventOutboxEntity event = eventCaptor.getValue();
+        assertThat(event.getUserId()).isEqualTo(operator().getUserId());
+        assertThat(event.getUserUuid()).isEqualTo(operator().getUserUuid());
+        assertThat(objectMapper.readTree(event.getPayloadJson()).path("userUuid").asText())
+                .isEqualTo(operator().getUserUuid());
     }
 
     @Test
