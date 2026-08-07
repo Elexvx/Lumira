@@ -28,9 +28,9 @@ test('maintenance-mode settings are available to fresh and upgraded databases', 
   assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
 });
 
-test('maintenance countdown setting has an explicit existing-database upgrade', () => {
+test('maintenance countdown setting is included in the versioned online migration chain', () => {
   const baseline = read('lumira-backend/sql/saas.sql');
-  const upgrade = read('lumira-backend/sql/upgrade-maintenance-countdown-v1.sql');
+  const upgrade = read('deploy/migrations/V202608080001__repair_platform_configuration_schema.sql');
   const key = 'branding.maintenance-end-at';
 
   assert.match(baseline, new RegExp(key));

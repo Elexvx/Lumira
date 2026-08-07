@@ -27,11 +27,16 @@ const bootstrapSql = readFileSync(path.join(repoRoot, 'lumira-backend', 'sql', '
 const migrationChain = migrations.map((migration) => migration.source).join('\n');
 const requiredDatabaseContracts = [
   'CREATE TABLE `aiadc_activity_registration`',
+  'CREATE TABLE `sys_config_metadata`',
+  'CREATE TABLE `sys_config_version_head`',
+  'CREATE TABLE `sys_config_version`',
+  'CREATE TABLE `sys_config_version_item`',
   "'aiadc_activity_locale'",
   "'aiadc_activity_status'",
   "'aiadc_activity_public_status'",
   'CREATE TABLE `sys_profile_field_definition`',
   "'profile_settings_page_key'",
+  "'branding.maintenance-end-at'",
 ];
 
 for (const contract of requiredDatabaseContracts) {

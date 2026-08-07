@@ -239,7 +239,7 @@ const PersonalizationSettingsPage = () => {
       const updatedBranding = await request<BrandingSettings>('/v1/system/branding-settings', {
         method: 'PUT',
         data: normalizeBrandingSettings(brandingValues),
-        ...API_OPTS.NO_REDIRECT,
+        ...API_OPTS.SILENT_NO_REDIRECT,
       });
       const normalizedBranding = normalizeBrandingSettings(updatedBranding);
       brandingForm.setFieldsValue(normalizedBranding);

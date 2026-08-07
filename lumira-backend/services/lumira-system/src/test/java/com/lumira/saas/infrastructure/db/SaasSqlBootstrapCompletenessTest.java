@@ -196,14 +196,13 @@ class SaasSqlBootstrapCompletenessTest {
     }
 
     @Test
-    void manualConfigGovernanceUpgradeMatchesFreshBootstrapSchema() throws IOException {
+    void onlineConfigGovernanceMigrationMatchesFreshBootstrapSchema() throws IOException {
         String bootstrap = readSaasSql();
-        String upgrade = readUpgradeSql();
+        String upgrade = readConfigGovernanceMigrationSql();
         String executableUpgrade = upgrade.replaceAll("(?m)^\\s*--.*(?:\\R|$)", "");
 
         assertThat(executableUpgrade)
-                .as("existing production databases need a manual, non-Flyway upgrade before config writes")
-                .doesNotContainIgnoringCase("flyway")
+                .as("existing production databases receive config governance before config writes")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_config_metadata`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_config_version_head`")
                 .contains("CREATE TABLE IF NOT EXISTS `sys_config_version`")
@@ -279,9 +278,9 @@ class SaasSqlBootstrapCompletenessTest {
         return Files.readString(resolvePath("../../sql/saas.sql", "sql/saas.sql"), StandardCharsets.UTF_8);
     }
 
-    private static String readUpgradeSql() throws IOException {
+    private static String readConfigGovernanceMigrationSql() throws IOException {
         return Files.readString(
-                resolvePath("../../sql/upgrade-config-governance-v1.sql", "sql/upgrade-config-governance-v1.sql"),
+                resolvePath("deploy/migrations/V202608080001__repair_platform_configuration_schema.sql"),
                 StandardCharsets.UTF_8
         );
     }
