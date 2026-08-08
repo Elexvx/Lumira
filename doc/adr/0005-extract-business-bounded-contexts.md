@@ -2,22 +2,22 @@
 
 ## 状态
 
-Proposed
+Accepted — 已实施，并于 2026-08-09 完成全仓串行验证。
 
 ## 背景
 
-当前运行时以 `lumira-admin` 聚合模块为同步入口，这一部署方式适合当前团队和规模。但 Activity、Competition、Registration、Project、Expert、Certificate、Workflow 等业务代码和表仍暂归 `lumira-system` 的 PLATFORM 上下文，部分应用服务直接持有低层数据库依赖并被登记为历史债务。
+`lumira-admin` 仍是同步聚合入口，生产仍只部署 `lumira-server`、`lumira-async` 和 `lumira-job-executor` 三个运行时。此前 Activity、Competition、Registration、Project、Expert、Certificate、Workflow、Export 和 AI 等业务代码长期堆在 `lumira-system`，使平台治理、业务 owner 与持久化边界混杂。
 
-继续把新增赛事能力堆入 system-service 会扩大变更半径，并削弱 owner、权限和未来物理拆分边界。
+这份 ADR 的目标不是把每个 Maven 模块误表述成已独立部署的微服务，而是在共享数据底座上先建立可验证的业务 owner、契约与持久化边界。
 
 ## 决策
 
 - 继续采用 DDD 模块化单体和单同步运行时，不立即拆物理微服务。
-- 第一批新建 `lumira-activity`、`lumira-competition` 和 `lumira-export` Maven 模块。
-- 第二批评估迁移 Project、Expert、Certificate、Workflow。
+- 业务 owner 分别落在 `lumira-activity`、`lumira-competition`、`lumira-project`、`lumira-expert`、`lumira-workflow`、`lumira-export` 和 `lumira-ai`；Competition 同时拥有 Registration、Review 与 Certificate。
+- `lumira-system` 保留 IAM、平台配置、审计、共享事件桥与受控的内部适配器，不再承载上述业务上下文的实现或运行期表写入。
 - 每个模块拥有自己的 Controller/Application/Domain/Repository/Infrastructure、表 owner、权限和事件。
 - 跨模块协作使用 API 契约、Internal API、Outbox 或明确的只读投影，禁止依赖其他模块的 Mapper/Entity/Service 实现。
-- 迁移期间旧 Controller 只做兼容 facade，不复制新旧业务逻辑。
+- 兼容 Controller 只能委托 owner 的应用端口，不复制新旧业务逻辑；迁移完成以旧源码清零、POM/装配边界、跨 owner SQL 守卫和回归测试共同证明。
 
 ## 影响
 
@@ -29,8 +29,8 @@ Proposed
 
 ### 负面
 
-- Maven 装配、owner manifest、迁移目录和架构测试需要同步修改。
-- 迁移期新旧包结构并存，需要清晰的截止条件。
+- Maven 装配、owner manifest、迁移目录、SQL bootstrap 和架构测试必须同步修改。
+- 模块边界是逻辑和契约边界，不等于数据库已物理拆库；跨 owner 读取需要经最小契约、投影或 owner API 完成。
 
 ### 中性
 

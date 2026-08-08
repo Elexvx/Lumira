@@ -23,6 +23,8 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
+import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationService;
+import com.lumira.saas.modules.system.internal.infrastructure.JdbcInternalSystemRepository;
 import com.lumira.saas.modules.auth.vo.LoginCodeChallengeVO;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
@@ -67,6 +69,10 @@ import static org.mockito.Mockito.when;
 
 class InternalSystemControllerTest {
 
+    private static InternalSystemApplicationService applicationService(MyBatisQueryOperations database) {
+        return new InternalSystemApplicationService(new JdbcInternalSystemRepository(database));
+    }
+
     private final UserDomainService userDomainService = mock(UserDomainService.class);
     private final MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
     private final IamUserService iamUserService = mock(IamUserService.class);
@@ -85,7 +91,7 @@ class InternalSystemControllerTest {
             verificationAppService,
             mock(WechatLoginSettingsService.class),
             passkeyCredentialAppService,
-            jdbcTemplate,
+            applicationService(jdbcTemplate),
             passwordEncoder,
             loginAuditService,
             operationAuditService,
@@ -97,30 +103,40 @@ class InternalSystemControllerTest {
 
     @Test
     void wechatAndDefaultRoleUpsertsShouldNotRewriteUserIdentity() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"));
+        String controllerSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"));
+        String repositorySource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/internal/infrastructure/JdbcInternalSystemRepository.java"));
 
-        assertThat(source).doesNotContain("on duplicate key update user_id = values(user_id)");
-        assertThat(source).doesNotContain("user_uuid = values(user_uuid),");
-        assertThat(source).contains("unionid = case when user_id = values(user_id) and user_uuid = values(user_uuid)");
-        assertThat(source).contains("updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id)");
-        assertThat(source).contains("requireWechatBindingOwnedByUser(user.getId(), userUuid, request)");
-        assertThat(source).contains("requireWechatBindingAvailableForRegistration(normalizedRequest.unionid(), normalizedRequest.openid())");
-        assertThat(source).contains("Wechat user changed, please retry");
-        assertThat(source).contains("Wechat account is unavailable");
-        assertThat(source).contains("Login code user changed, please retry");
-        assertThat(source).contains("Wechat profile changed, please retry");
-        assertThat(source).contains("requireDefaultRoleGranted(user.getId(), userUuid, roleId)");
-        assertThat(source).contains("Default role binding changed, please retry");
-        assertThat(source).contains("and u.status = 'ENABLED'");
-        assertThat(source).contains("and b.user_uuid = ?");
-        assertThat(source).contains("where ur.user_id = ?");
-        assertThat(source).contains("and ur.user_uuid = ?");
-        assertThat(source).contains("and ur.role_id = ?");
+        assertThat(controllerSource)
+                .doesNotContain("MyBatisQueryOperations")
+                .doesNotContain("SqlRow")
+                .doesNotContain("BeanPropertyRowMapper")
+                .doesNotContain("jdbcTemplate")
+                .doesNotContain("select ")
+                .doesNotContain("insert ")
+                .doesNotContain("update sys_")
+                .doesNotContain("from sys_")
+                .contains("requireWechatBindingOwnedByUser(user.getId(), userUuid, request)")
+                .contains("requireWechatBindingAvailableForRegistration(normalizedRequest.unionid(), normalizedRequest.openid())")
+                .contains("Wechat user changed, please retry")
+                .contains("Wechat account is unavailable")
+                .contains("Login code user changed, please retry")
+                .contains("Wechat profile changed, please retry")
+                .contains("requireDefaultRoleGranted(user.getId(), userUuid, roleId)")
+                .contains("Default role binding changed, please retry");
+        assertThat(repositorySource).doesNotContain("on duplicate key update user_id = values(user_id)");
+        assertThat(repositorySource).doesNotContain("user_uuid = values(user_uuid),");
+        assertThat(repositorySource).contains("unionid = case when user_id = values(user_id) and user_uuid = values(user_uuid)");
+        assertThat(repositorySource).contains("updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id)");
+        assertThat(repositorySource).contains("and u.status = 'ENABLED'");
+        assertThat(repositorySource).contains("and b.user_uuid = ?");
+        assertThat(repositorySource).contains("where ur.user_id = ?");
+        assertThat(repositorySource).contains("and ur.user_uuid = ?");
+        assertThat(repositorySource).contains("and ur.role_id = ?");
     }
 
     @Test
     void pluginPermissionUpsertsShouldBindPluginAndServicePrincipalContext() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/internal/infrastructure/JdbcInternalSystemRepository.java"));
 
         assertThat(source)
                 .doesNotContain("plugin_code = values(plugin_code),")
@@ -178,7 +194,7 @@ class InternalSystemControllerTest {
                 mock(SystemVerificationAppService.class),
                 mock(WechatLoginSettingsService.class),
                 mock(PasskeyCredentialAppService.class),
-                localJdbcTemplate,
+                applicationService(localJdbcTemplate),
                 mock(PasswordEncoder.class),
                 mock(LoginAuditService.class),
                 mock(OperationAuditService.class),
@@ -225,7 +241,7 @@ class InternalSystemControllerTest {
                 mock(SystemVerificationAppService.class),
                 mock(WechatLoginSettingsService.class),
                 mock(PasskeyCredentialAppService.class),
-                localJdbcTemplate,
+                applicationService(localJdbcTemplate),
                 mock(PasswordEncoder.class),
                 mock(LoginAuditService.class),
                 mock(OperationAuditService.class),
@@ -269,7 +285,7 @@ class InternalSystemControllerTest {
                 mock(SystemVerificationAppService.class),
                 mock(WechatLoginSettingsService.class),
                 mock(PasskeyCredentialAppService.class),
-                localJdbcTemplate,
+                applicationService(localJdbcTemplate),
                 mock(PasswordEncoder.class),
                 mock(LoginAuditService.class),
                 mock(OperationAuditService.class),
@@ -787,7 +803,7 @@ class InternalSystemControllerTest {
                 verificationAppService,
                 mock(WechatLoginSettingsService.class),
                 passkeyCredentialAppService,
-                failingJdbcTemplate,
+                applicationService(failingJdbcTemplate),
                 passwordEncoder,
                 loginAuditService,
                 operationAuditService,
@@ -1187,7 +1203,7 @@ class InternalSystemControllerTest {
                 verificationAppService,
                 mock(WechatLoginSettingsService.class),
                 passkeyCredentialAppService,
-                localJdbcTemplate,
+                applicationService(localJdbcTemplate),
                 passwordEncoder,
                 loginAuditService,
                 operationAuditService,

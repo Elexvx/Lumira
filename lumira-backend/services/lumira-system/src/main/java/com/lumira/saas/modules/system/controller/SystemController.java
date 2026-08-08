@@ -5,6 +5,10 @@ import com.lumira.saas.common.annotation.RepeatSubmit;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.export.ExportDTO;
+import com.lumira.api.export.ExportFieldVO;
+import com.lumira.api.export.ExportTaskPort;
+import com.lumira.api.export.ExportVO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.enums.ErrorCode;
@@ -17,10 +21,6 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
-import com.lumira.saas.modules.system.export.ExportDTO;
-import com.lumira.saas.modules.system.export.ExportFieldVO;
-import com.lumira.saas.modules.system.export.ExportTaskService;
-import com.lumira.saas.modules.system.export.ExportVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
@@ -57,7 +57,7 @@ public class SystemController {
     private final PermissionGuard permissionGuard;
     private final FileInternalApi fileInternalApi;
     private final UserExportAppService userExportAppService;
-    private final ExportTaskService exportTaskService;
+    private final ExportTaskPort exportTaskService;
     private final DictRuntimeService dictRuntimeService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
@@ -70,7 +70,7 @@ public class SystemController {
             PermissionGuard permissionGuard,
             FileInternalApi fileInternalApi,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService
     ) {
         this(
@@ -94,7 +94,7 @@ public class SystemController {
             PermissionGuard permissionGuard,
             FileInternalApi fileInternalApi,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService
     ) {
@@ -119,7 +119,7 @@ public class SystemController {
             PermissionGuard permissionGuard,
             FileInternalApi fileInternalApi,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService
@@ -146,7 +146,7 @@ public class SystemController {
             PermissionGuard permissionGuard,
             FileInternalApi fileInternalApi,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
@@ -173,7 +173,7 @@ public class SystemController {
             PermissionGuard permissionGuard,
             FileInternalApi fileInternalApi,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             DictRuntimeService dictRuntimeService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
@@ -270,7 +270,10 @@ public class SystemController {
     @GetMapping("/export-tasks/{taskId}")
     public ApiResponse<ExportVO.ExportTaskVO> exportTask(@PathVariable("taskId") Long taskId) {
         CurrentUser currentUser = require("system:user:export");
-        return ApiResponse.success(exportTaskService.getTask(currentUser, taskId), TraceContext.getRequestId());
+        return ApiResponse.success(
+                exportTaskService.getTaskVo(currentUser, taskId, "system:user:export"),
+                TraceContext.getRequestId()
+        );
     }
 
     @PostMapping("/users")

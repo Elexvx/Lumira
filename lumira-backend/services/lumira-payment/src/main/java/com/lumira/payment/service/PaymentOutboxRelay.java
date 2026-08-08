@@ -1,12 +1,12 @@
 package com.lumira.payment.service;
 
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnLumiraAsyncEnabled
+@ConditionalOnLumiraControlPlaneEnabled
 public class PaymentOutboxRelay {
 
     private final PaymentOutboxService paymentOutboxService;

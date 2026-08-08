@@ -5,6 +5,7 @@ import com.lumira.saas.modules.platform.app.PlatformBootstrapService;
 import com.lumira.saas.modules.platform.controller.PlatformReadinessV2Controller;
 import com.lumira.saas.modules.platform.controller.PlatformV2Controller;
 import com.lumira.saas.modules.system.config.controller.SystemConfigVersionController;
+import com.lumira.saas.modules.system.integration.PlatformSettingDefaultsPortAdapter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Import;
         PlatformBootstrapService.class,
         PlatformReadinessV2Controller.class,
         PlatformV2Controller.class,
+        PlatformSettingDefaultsPortAdapter.class,
         SystemConfigVersionController.class
 })
 public class SystemPlatformControlPlaneAssemblyConfiguration {

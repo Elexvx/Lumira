@@ -47,6 +47,7 @@ class ArchitectureBoundaryTest {
             "payment-service",
             "ai-service",
             "team-service",
+            "event-catalog-service",
             "job-executor",
             "lumira-admin");
 

@@ -28,16 +28,35 @@ public class FileTextExtractionProcessor {
     private final JdbcTemplate jdbcTemplate;
     private final UploadProperties uploadProperties;
     private final Tika tika;
+    private final FileOwnerIdentityVerifier ownerIdentityVerifier;
 
     @Autowired
+    public FileTextExtractionProcessor(
+            JdbcTemplate jdbcTemplate,
+            UploadProperties uploadProperties,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
+        this(jdbcTemplate, uploadProperties, new Tika(), ownerIdentityVerifier);
+    }
+
     public FileTextExtractionProcessor(JdbcTemplate jdbcTemplate, UploadProperties uploadProperties) {
-        this(jdbcTemplate, uploadProperties, new Tika());
+        this(jdbcTemplate, uploadProperties, new Tika(), null);
     }
 
     FileTextExtractionProcessor(JdbcTemplate jdbcTemplate, UploadProperties uploadProperties, Tika tika) {
+        this(jdbcTemplate, uploadProperties, tika, null);
+    }
+
+    FileTextExtractionProcessor(
+            JdbcTemplate jdbcTemplate,
+            UploadProperties uploadProperties,
+            Tika tika,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.uploadProperties = uploadProperties;
         this.tika = tika;
+        this.ownerIdentityVerifier = ownerIdentityVerifier;
     }
 
     public TextExtractionResult extractText(Long fileId, Long userId) {
@@ -97,16 +116,9 @@ public class FileTextExtractionProcessor {
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
                                fo.content_type as contentType, fo.file_extension as fileExtension,
-                               fo.uploaded_by as uploadedBy, u.uuid as uploadedByUserUuid,
+                               fo.uploaded_by as uploadedBy, fo.uploaded_by_uuid as uploadedByUserUuid,
                                coalesce(fs.root_path, '') as rootPath
                         from file_object fo
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                         and u.uuid is not null
-                         and u.uuid <> ''
                         left join file_storage_space fs
                           on fs.storage_key = fo.bucket
                          and fs.deleted = 0
@@ -194,11 +206,6 @@ public class FileTextExtractionProcessor {
                         )
                         select ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
                         from file_object fo
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
                         where fo.id = ?
                           and fo.uploaded_by = ?
                           and fo.uploaded_by_uuid = ?
@@ -254,6 +261,10 @@ public class FileTextExtractionProcessor {
                 || !location.uploadedByUserUuid().trim().equals(userUuid.trim())) {
             throw new IllegalStateException("File processing task owner does not match file owner");
         }
+        if (ownerIdentityVerifier == null) {
+            throw new IllegalStateException("File owner identity resolver is unavailable");
+        }
+        ownerIdentityVerifier.requireEnabledOwner(ownerId, location.uploadedByUserUuid());
         return ownerId;
     }
 

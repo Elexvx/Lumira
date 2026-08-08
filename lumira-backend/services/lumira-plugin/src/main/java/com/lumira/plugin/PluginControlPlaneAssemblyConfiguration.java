@@ -22,7 +22,8 @@ import org.springframework.context.annotation.Import;
         PluginJwtAuthFilter.class,
         PluginManagementController.class,
         PluginReadinessV2Controller.class,
-        PluginV2Controller.class
+        PluginV2Controller.class,
+        PluginOwnerAsyncAdapterControlPlaneAssemblyConfiguration.class
 })
 public class PluginControlPlaneAssemblyConfiguration {
 }

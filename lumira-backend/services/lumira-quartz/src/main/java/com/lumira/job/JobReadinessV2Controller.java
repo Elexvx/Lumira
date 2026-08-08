@@ -45,6 +45,7 @@ public class JobReadinessV2Controller {
                         "aiKnowledgeIndexJob",
                         "messageHeartbeatJob",
                         "onlineSessionHeartbeatJob",
+                        "eventCatalogRebuildJob (parameter: ACTIVITY or COMPETITION)",
                         "BackendJobClient owner internal APIs"
                 ),
                 List.of(
@@ -122,7 +123,7 @@ public class JobReadinessV2Controller {
                 metric("job.lumira-backend_target.configured_count", "gauge", "targets", "Configured BackendJobClient target URLs.", configuredTargetCount()),
                 metric("job.internal_token.configured", "gauge", "boolean", "1 when the scoped job token is configured.", internalJobTokenConfigured() ? 1L : 0L),
                 metric("job.scoped_internal_tokens.configured", "gauge", "boolean", "1 when all owner-scoped internal tokens are configured.", scopedInternalTokensConfigured() ? 1L : 0L),
-                metric("job.owner_handler.declared_count", "gauge", "handlers", "Declared owner relay/processing/heartbeat handlers.", 9L)
+                metric("job.owner_handler.declared_count", "gauge", "handlers", "Declared owner relay/processing/rebuild handlers.", 10L)
         );
     }
 

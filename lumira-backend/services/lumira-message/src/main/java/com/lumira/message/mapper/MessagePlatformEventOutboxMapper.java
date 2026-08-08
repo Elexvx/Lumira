@@ -41,22 +41,4 @@ public interface MessagePlatformEventOutboxMapper extends BaseMapper<PlatformEve
             @Param("limit") int limit
     );
 
-    @Select("""
-            select uuid
-            from sys_user
-            where id = #{userId}
-              and deleted = 0
-            limit 1
-            """)
-    String resolveUserUuid(@Param("userId") Long userId);
-
-    @Select("""
-            select uuid
-            from sys_user
-            where id = #{userId}
-              and deleted = 0
-              and status = 'ENABLED'
-            limit 1
-            """)
-    String resolveActiveUserUuid(@Param("userId") Long userId);
 }

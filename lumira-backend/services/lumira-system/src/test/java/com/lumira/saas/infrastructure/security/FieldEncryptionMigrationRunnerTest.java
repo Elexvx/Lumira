@@ -24,8 +24,7 @@ class FieldEncryptionMigrationRunnerTest {
     @Test
     void rejectsLegacyPlaintextSensitiveFields() {
         RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations()
-                .withCount("from sys_config", 2L)
-                .withCount("from ai_llm_service", 1L);
+                .withCount("from sys_config", 2L);
         FieldEncryptionMigrationRunner runner = new FieldEncryptionMigrationRunner(jdbcTemplate);
 
         IllegalStateException exception = assertThrows(
@@ -34,7 +33,6 @@ class FieldEncryptionMigrationRunnerTest {
         );
 
         assertTrue(exception.getMessage().contains("sys_config.config_value=2"));
-        assertTrue(exception.getMessage().contains("ai_llm_service.api_key_encrypted=1"));
     }
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {

@@ -16,6 +16,7 @@ import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.user.repository.SystemUserManagementRepository;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
@@ -53,12 +54,17 @@ class SystemUserManagementAppServiceTest {
 
     @Test
     void userManagementWritesShouldPersistOperatorUuidSeparatelyFromTargetUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/user/app/SystemUserManagementAppService.java"));
+        String application = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/user/app/SystemUserManagementAppService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/user/infrastructure/JdbcSystemUserManagementRepository.java"));
 
+        assertTrue(application.contains("SystemUserManagementRepository"));
+        assertFalse(application.contains("MyBatisQueryOperations"));
+        assertFalse(application.contains("BeanPropertyRowMapper"));
+        assertFalse(application.contains("jdbcTemplate"));
         assertTrue(source.contains("created_by, created_by_uuid, updated_by, updated_by_uuid"));
         assertTrue(source.contains("updated_by = ?, updated_by_uuid = ?"));
-        assertTrue(source.contains("replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid())"));
-        assertTrue(source.contains("replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid()"));
+        assertTrue(application.contains("replaceUserRoles(userId, userUuid, request.getRoleIds(), currentUser.getUserId(), currentUser.getUserUuid())"));
+        assertTrue(application.contains("replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid()"));
         assertFalse(source.contains("delete from sys_user_role where user_id = ? and user_uuid = ?"));
         assertFalse(source.contains("delete from sys_user_department where user_id = ? and user_uuid = ?"));
         assertTrue(source.contains("update sys_user_role"));
@@ -75,13 +81,11 @@ class SystemUserManagementAppServiceTest {
         assertTrue(source.contains("else sys_user_department.primary_flag end"));
         assertTrue(source.contains("deleted = case when sys_user_department.user_id = values(user_id)"));
         assertTrue(source.contains("else sys_user_department.deleted end"));
-        assertTrue(source.contains("requireRelationshipWrite(inserted, \"Role changed, please retry\")"));
-        assertTrue(source.contains("requireRelationshipWrite(inserted, \"Department changed, please retry\")"));
-        assertFalse(source.contains("CompletableFuture.supplyAsync"));
-        assertFalse(source.contains("BLOCKING_IO_EXECUTOR"));
-        assertTrue(source.contains("int updated = jdbcTemplate.update("));
-        assertTrue(source.contains("int deleted = jdbcTemplate.update("));
-        assertTrue(source.contains("User changed, please retry"));
+        assertTrue(application.contains("requireRelationshipWrite(inserted, \"Role changed, please retry\")"));
+        assertTrue(application.contains("requireRelationshipWrite(inserted, \"Department changed, please retry\")"));
+        assertFalse(application.contains("CompletableFuture.supplyAsync"));
+        assertFalse(application.contains("BLOCKING_IO_EXECUTOR"));
+        assertTrue(application.contains("User changed, please retry"));
     }
 
     @Test
@@ -286,20 +290,14 @@ class SystemUserManagementAppServiceTest {
         currentUser.setDescendantDeptIds(Set.of(10L, 11L));
         currentUser.setDataScopes(List.of(new DataPermissionRule("system:user", DataScopeType.ALL, List.of(), List.of())));
 
-        Method method = SystemUserManagementAppService.class.getDeclaredMethod("userDataPermissionClause", CurrentUser.class, String.class);
+        Method method = SystemUserManagementAppService.class.getDeclaredMethod("userDataVisibility", CurrentUser.class);
         method.setAccessible(true);
-        Object dataPermissionSql = method.invoke(service, currentUser, "u");
-        Method sqlMethod = dataPermissionSql.getClass().getDeclaredMethod("sql");
-        Method paramsMethod = dataPermissionSql.getClass().getDeclaredMethod("params");
-        sqlMethod.setAccessible(true);
-        paramsMethod.setAccessible(true);
+        SystemUserManagementRepository.DataVisibility visibility =
+                (SystemUserManagementRepository.DataVisibility) method.invoke(service, currentUser);
 
-        String sql = (String) sqlMethod.invoke(dataPermissionSql);
-        @SuppressWarnings("unchecked")
-        List<Object> params = (List<Object>) paramsMethod.invoke(dataPermissionSql);
-
-        assertTrue(sql.contains("u.id in (?)"));
-        assertEquals(List.of(1001L), params);
+        assertFalse(visibility.all());
+        assertTrue(visibility.departmentIds().isEmpty());
+        assertEquals(Set.of(1001L), visibility.userIds());
         verify(permissionSnapshotService, never()).loadSnapshot(anyLong(), org.mockito.ArgumentMatchers.anyString());
         verify(permissionSnapshotService, never()).loadRoleSnapshot(anyLong());
     }

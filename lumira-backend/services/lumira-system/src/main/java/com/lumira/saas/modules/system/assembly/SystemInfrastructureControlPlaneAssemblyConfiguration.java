@@ -1,6 +1,12 @@
 package com.lumira.saas.modules.system.assembly;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
+import com.lumira.saas.infrastructure.adapter.SystemEventConsumptionPort;
+import com.lumira.saas.infrastructure.adapter.SystemEventCatalogWatermarkPort;
+import com.lumira.saas.infrastructure.adapter.SystemEventCatalogProjectionBridgeConfiguration;
+import com.lumira.saas.infrastructure.adapter.SystemExpertApprovalEventBridgeConfiguration;
+import com.lumira.saas.infrastructure.adapter.SystemPlatformEventPort;
+import com.lumira.saas.infrastructure.adapter.SystemTransactionalEventOutboxPort;
 import com.lumira.saas.infrastructure.config.JacksonCompatibilityConfig;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxService;
 import com.lumira.saas.infrastructure.event.PlatformEventProperties;
@@ -31,6 +37,8 @@ import com.lumira.saas.infrastructure.security.service.LoginProtectionService;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
+import com.lumira.saas.infrastructure.security.service.SessionTrustedCurrentUserResolver;
+import com.lumira.saas.infrastructure.security.service.SessionTrustedUserSnapshotResolver;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;
@@ -59,6 +67,10 @@ import org.springframework.context.annotation.Import;
         CaptchaService.class,
         FieldEncryptionMigrationRunner.class,
         EventConsumptionGuard.class,
+        SystemEventConsumptionPort.class,
+        SystemEventCatalogWatermarkPort.class,
+        SystemEventCatalogProjectionBridgeConfiguration.class,
+        SystemExpertApprovalEventBridgeConfiguration.class,
         InitialPasswordChangeGuard.class,
         com.lumira.saas.infrastructure.job.InternalJobController.class,
         JacksonCompatibilityConfig.class,
@@ -72,6 +84,8 @@ import org.springframework.context.annotation.Import;
         PlatformEventOutboxService.class,
         PlatformEventOutboxRelay.class,
         PlatformEventPublisher.class,
+        SystemPlatformEventPort.class,
+        SystemTransactionalEventOutboxPort.class,
         ReadModelVersionService.class,
         RedisConfig.class,
         RedisStreamPlatformEventDispatcher.class,
@@ -80,6 +94,8 @@ import org.springframework.context.annotation.Import;
         SecurityConfig.class,
         SecuritySettingsService.class,
         SessionAuthenticationService.class,
+        SessionTrustedCurrentUserResolver.class,
+        SessionTrustedUserSnapshotResolver.class,
         SystemConfigVersioningService.class,
         SystemDomainEventPublisher.class
 })

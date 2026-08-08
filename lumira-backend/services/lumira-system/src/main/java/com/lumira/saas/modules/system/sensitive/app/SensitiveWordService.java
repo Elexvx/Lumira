@@ -2,13 +2,13 @@ package com.lumira.saas.modules.system.sensitive.app;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.api.text.TextModerationPort;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
-import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.sensitive.dto.SensitiveWordDTO;
 import com.lumira.saas.modules.system.sensitive.repository.SensitiveWordManagementRepository;
@@ -66,7 +66,7 @@ public class SensitiveWordService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final SensitiveWordManagementRepository wordRepository;
-    private final AiKnowledgeTextExtractor textExtractor;
+    private final TextModerationPort textExtractor;
     private final SensitiveWordPluginStateService pluginStateService;
     private final SensitiveWordDictionaryCache dictionaryCache;
     private final SensitiveWordMetrics metrics;
@@ -78,7 +78,7 @@ public class SensitiveWordService {
 
     public SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService,
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics
@@ -88,7 +88,7 @@ public class SensitiveWordService {
 
     public SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService,
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics,
@@ -100,7 +100,7 @@ public class SensitiveWordService {
     @Autowired
     public SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService,
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics,
@@ -124,7 +124,7 @@ public class SensitiveWordService {
 
     private SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService,
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics,
@@ -146,7 +146,7 @@ public class SensitiveWordService {
 
     public SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService,
             SensitiveWordDictionaryCache dictionaryCache,
             SensitiveWordMetrics metrics,
@@ -158,7 +158,7 @@ public class SensitiveWordService {
 
     public SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService
     ) {
         this(wordRepository, textExtractor, pluginStateService, null);
@@ -166,7 +166,7 @@ public class SensitiveWordService {
 
     public SensitiveWordService(
             SensitiveWordManagementRepository wordRepository,
-            AiKnowledgeTextExtractor textExtractor,
+            TextModerationPort textExtractor,
             SensitiveWordPluginStateService pluginStateService,
             PermissionSnapshotService permissionSnapshotService
     ) {
@@ -604,7 +604,7 @@ public class SensitiveWordService {
                 throw new BizException(ErrorCode.BAD_REQUEST, "Failed to read sensitive word file");
             }
         }
-        return textExtractor.extract(file).text();
+        return textExtractor.extractText(file);
     }
 
     private NormalizedWord validateAndNormalize(SensitiveWordDTO.UpsertRequest request) {

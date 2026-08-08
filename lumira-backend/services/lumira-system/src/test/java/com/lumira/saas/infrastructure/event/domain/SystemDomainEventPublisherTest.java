@@ -31,7 +31,7 @@ class SystemDomainEventPublisherTest {
 
         publisher.publish(event);
 
-        verify(platformEventPublisher).publishAfterCommit(
+        verify(platformEventPublisher).record(
                 eq(PlatformEventTypes.SOURCE_SYSTEM),
                 eq("PLATFORM_CONFIG_CHANGED"),
                 eq(2001L),
@@ -57,7 +57,7 @@ class SystemDomainEventPublisherTest {
 
         publisher.publish(event);
 
-        verify(platformEventPublisher).publishAfterCommit(
+        verify(platformEventPublisher).record(
                 eq(PlatformEventTypes.SOURCE_SYSTEM),
                 eq("PLATFORM_CONFIG_CHANGED"),
                 eq(null),

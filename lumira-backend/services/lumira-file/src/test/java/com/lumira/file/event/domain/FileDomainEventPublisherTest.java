@@ -31,7 +31,7 @@ class FileDomainEventPublisherTest {
 
         publisher.publish(event);
 
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq("FILE_OBJECT_UPLOADED"),
                 eq(2001L),

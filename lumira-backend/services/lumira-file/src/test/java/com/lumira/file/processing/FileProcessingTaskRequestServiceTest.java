@@ -28,6 +28,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -57,6 +58,17 @@ class FileProcessingTaskRequestServiceTest {
     }
 
     @Test
+    void requestTasksForUploadShouldBeTransactionalWithItsTaskAndOutboxWrites() throws Exception {
+        Method method = FileProcessingTaskRequestService.class.getMethod(
+                "requestTasksForUpload",
+                FileObjectDTO.class,
+                CurrentUser.class
+        );
+
+        assertThat(method.getAnnotation(Transactional.class)).isNotNull();
+    }
+
+    @Test
     void requestTasksForUploadShouldIncludeTrustedUserUuidInOutboxPayload() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
@@ -70,7 +82,7 @@ class FileProcessingTaskRequestServiceTest {
         int requested = service.requestTasksForUpload(file("pdf", "application/pdf"), currentUser());
 
         assertThat(requested).isEqualTo(3);
-        verify(outboxService, times(3)).recordAfterCommit(
+        verify(outboxService, times(3)).record(
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq(FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED),
                 eq(2001L),
@@ -96,8 +108,7 @@ class FileProcessingTaskRequestServiceTest {
                 .requestTasksForUpload(file(2001L, "pdf", "application/pdf", "CLEAN"), currentUser());
 
         assertThat(requested).isEqualTo(2);
-        verify(outboxService, never()).recordAfterCommit(
-                anyString(), anyString(), anyLong(), contains("SECURITY_SCAN"), any());
+        verify(outboxService, never()).record(anyString(), anyString(), anyLong(), contains("SECURITY_SCAN"), any());
     }
 
     @Test
@@ -119,7 +130,7 @@ class FileProcessingTaskRequestServiceTest {
         assertThat(requested).isEqualTo(3);
         verify(systemInternalApi).simulatedRolePermissionSnapshot(2001L, "user-uuid-2001", 9L);
         verify(systemInternalApi, org.mockito.Mockito.never()).permissionSnapshot(2001L, "user-uuid-2001");
-        verify(outboxService, times(3)).recordAfterCommit(
+        verify(outboxService, times(3)).record(
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq(FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED),
                 eq(2001L),
@@ -185,7 +196,7 @@ class FileProcessingTaskRequestServiceTest {
 
         assertThat(requested).isZero();
         verify(jdbcTemplate).queryForObject(anyString(), eq(Long.class), eq(3001L), eq(2001L), eq("user-uuid-2001"));
-        verify(outboxService, times(0)).recordAfterCommit(anyString(), anyString(), anyLong(), anyString(), any());
+        verify(outboxService, times(0)).record(anyString(), anyString(), anyLong(), anyString(), any());
     }
 
     @Test

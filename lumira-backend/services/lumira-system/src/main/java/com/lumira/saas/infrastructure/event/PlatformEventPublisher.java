@@ -18,7 +18,7 @@ public class PlatformEventPublisher {
         this.platformEventOutboxService = platformEventOutboxService;
     }
 
-    public void publishAfterCommit(
+    public void record(
             String sourceType,
             String eventType,
             Long userId,
@@ -26,8 +26,29 @@ public class PlatformEventPublisher {
             Long aggregateId,
             Map<String, Object> attributes
     ) {
-        platformEventOutboxService.recordAfterCommit(
+        platformEventOutboxService.record(
                 normalize(sourceType, PlatformEventTypes.SOURCE_SYSTEM),
+                normalize(eventType, "UNKNOWN"),
+                userId,
+                buildEventKey(eventType, aggregateType, aggregateId),
+                buildPayload(userId, aggregateType, aggregateId, attributes)
+        );
+    }
+
+    /**
+     * Persists a platform outbox row inside the caller's active transaction.
+     * The method name intentionally distinguishes durable recording from the
+     * later asynchronous relay/delivery phase.
+     */
+    public void recordInCurrentTransaction(
+            String eventType,
+            Long userId,
+            String aggregateType,
+            Long aggregateId,
+            Map<String, Object> attributes
+    ) {
+        platformEventOutboxService.record(
+                PlatformEventTypes.SOURCE_SYSTEM,
                 normalize(eventType, "UNKNOWN"),
                 userId,
                 buildEventKey(eventType, aggregateType, aggregateId),

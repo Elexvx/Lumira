@@ -86,7 +86,6 @@ public class PlatformReadinessV2Controller {
                         "sys_dict_*",
                         "audit_*",
                         "ddd_read_model_version",
-                        "sys_export_task",
                         "sys_sensitive_word"
                 ),
                 List.of(

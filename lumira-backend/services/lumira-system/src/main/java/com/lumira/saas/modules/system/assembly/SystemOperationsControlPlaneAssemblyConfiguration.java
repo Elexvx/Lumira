@@ -1,8 +1,11 @@
 package com.lumira.saas.modules.system.assembly;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
-import com.lumira.saas.infrastructure.job.InternalUserExportJobController;
-import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
+import com.lumira.saas.infrastructure.adapter.SystemDictionaryValueNormalizer;
+import com.lumira.saas.infrastructure.adapter.SystemDictionaryItemLookupAdapter;
+import com.lumira.saas.infrastructure.adapter.SystemAiSystemManagementToolPort;
+import com.lumira.saas.infrastructure.adapter.SystemAiSystemReadPort;
+import com.lumira.saas.infrastructure.adapter.SystemExpertAccountProvisioningPort;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.app.SystemInternalApiService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
@@ -10,6 +13,8 @@ import com.lumira.saas.modules.system.app.SystemPlatformSettingsAppService;
 import com.lumira.saas.modules.system.app.SystemProfileSettingsAppService;
 import com.lumira.saas.modules.system.controller.DashboardController;
 import com.lumira.saas.modules.system.controller.InternalSystemController;
+import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationService;
+import com.lumira.saas.modules.system.internal.infrastructure.JdbcInternalSystemRepository;
 import com.lumira.saas.modules.system.controller.OnlineSessionController;
 import com.lumira.saas.modules.system.controller.ProfileController;
 import com.lumira.saas.modules.system.controller.PublicCaptchaController;
@@ -18,10 +23,9 @@ import com.lumira.saas.modules.system.controller.SystemController;
 import com.lumira.saas.modules.system.controller.SystemDepartmentController;
 import com.lumira.saas.modules.system.controller.SystemVerificationController;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
+import com.lumira.saas.modules.system.department.infrastructure.JdbcSystemDepartmentRepository;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
 import com.lumira.saas.modules.system.dict.infrastructure.JdbcDictRuntimeRepository;
-import com.lumira.saas.modules.system.export.ExcelExportService;
-import com.lumira.saas.modules.system.export.ExportTaskService;
 import com.lumira.saas.modules.system.monitor.app.SystemMonitorAppService;
 import com.lumira.saas.modules.system.monitor.controller.SystemMonitorController;
 import com.lumira.saas.modules.system.online.OnlineSessionEventPublisher;
@@ -34,6 +38,7 @@ import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.profile.infrastructure.JdbcSystemProfileSettingsRepository;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
+import com.lumira.saas.modules.system.role.infrastructure.JdbcSystemRoleManagementRepository;
 import com.lumira.saas.modules.system.sensitive.app.SensitiveWordDictionaryCache;
 import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordDictionaryRepository;
 import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordManagementRepository;
@@ -54,7 +59,7 @@ import com.lumira.saas.modules.system.update.controller.PlatformUpdateController
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
-import com.lumira.saas.modules.system.user.infrastructure.JdbcUserExportTaskWorkerRepository;
+import com.lumira.saas.modules.system.user.infrastructure.JdbcSystemUserManagementRepository;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationProperties;
 import com.lumira.saas.modules.system.verification.SystemVerificationSettingsAppService;
@@ -81,20 +86,22 @@ import org.springframework.context.annotation.Import;
 @MapperScan(
         basePackages = {
                 "com.lumira.saas.modules.system.config.mapper",
-                "com.lumira.saas.modules.system.export",
                 "com.lumira.saas.modules.system.passkey",
                 "com.lumira.saas.modules.system.update.mapper"
         },
         annotationClass = Mapper.class
 )
 @Import({
-        AiKnowledgeTextExtractor.class,
         DashboardController.class,
         DictRuntimeService.class,
+        SystemDictionaryItemLookupAdapter.class,
+        SystemDictionaryValueNormalizer.class,
+        SystemAiSystemManagementToolPort.class,
+        SystemAiSystemReadPort.class,
+        SystemExpertAccountProvisioningPort.class,
         JdbcDictRuntimeRepository.class,
-        ExcelExportService.class,
-        ExportTaskService.class,
-        InternalUserExportJobController.class,
+        JdbcInternalSystemRepository.class,
+        InternalSystemApplicationService.class,
         InternalSystemController.class,
         OnlineSessionController.class,
         JdbcOnlineSessionUserRepository.class,
@@ -128,6 +135,7 @@ import org.springframework.context.annotation.Import;
         SystemController.class,
         JdbcSystemPlatformSettingsRepository.class,
         SystemDepartmentAppService.class,
+        JdbcSystemDepartmentRepository.class,
         SystemDepartmentController.class,
         SystemInternalApiService.class,
         SystemManagementAppService.class,
@@ -137,8 +145,9 @@ import org.springframework.context.annotation.Import;
         SystemPluginViewService.class,
         SystemProfileSettingsAppService.class,
         SystemRoleManagementAppService.class,
+        JdbcSystemRoleManagementRepository.class,
         SystemUserManagementAppService.class,
-        JdbcUserExportTaskWorkerRepository.class,
+        JdbcSystemUserManagementRepository.class,
         SystemVerificationAppService.class,
         SystemVerificationController.class,
         SystemVerificationSettingsAppService.class,

@@ -25,6 +25,7 @@ class JobReadinessV2ControllerTest {
                 "/api/v2/job/readiness",
                 "fileProcessingTaskJob",
                 "aiKnowledgeIndexJob",
+                "eventCatalogRebuildJob (parameter: ACTIVITY or COMPETITION)",
                 "BackendJobClient owner internal APIs"
         );
         assertThat(readiness.eventContracts()).contains("no business events");
@@ -53,7 +54,7 @@ class JobReadinessV2ControllerTest {
         });
         assertThat(metrics.metrics()).anySatisfy(metric -> {
             assertThat(metric.name()).isEqualTo("job.owner_handler.declared_count");
-            assertThat(metric.value()).isEqualTo(9.0);
+            assertThat(metric.value()).isEqualTo(10.0);
         });
     }
 

@@ -1,6 +1,8 @@
 package com.lumira.file.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.file.mapper.FilePlatformEventOutboxMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -381,8 +383,14 @@ class PlatformEventOutboxRelayServiceTest {
 
 
     private PlatformEventOutboxService service(JdbcTemplate jdbcTemplate) {
-        when(jdbcTemplate.queryForObject(contains("select uuid"), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
-        return new PlatformEventOutboxService(new ObjectMapper(), mock(FilePlatformEventOutboxMapper.class), jdbcTemplate);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findUserIdentityById(9L)).thenReturn(new SystemUserSnapshotDTO(
+                9L, "user-uuid-9", "relay-user", null, "ENABLED", null, null, null,
+                null, null, null, null, null, null, null, null
+        ));
+        return new PlatformEventOutboxService(
+                new ObjectMapper(), mock(FilePlatformEventOutboxMapper.class), jdbcTemplate, systemInternalApi
+        );
     }
 
     private PlatformEventOutboxEntity outboxRow(Long id, String status, int retryCount) {

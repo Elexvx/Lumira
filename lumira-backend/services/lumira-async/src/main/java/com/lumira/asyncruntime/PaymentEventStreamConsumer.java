@@ -2,7 +2,8 @@ package com.lumira.asyncruntime;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.saas.modules.competition.event.CompetitionPaymentEventHandler;
+import com.lumira.api.competition.CompetitionPaymentEventHandler;
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
@@ -43,6 +44,7 @@ import java.util.concurrent.TimeUnit;
  * their original stream record is acknowledged.</p>
  */
 @Component
+@ConditionalOnLumiraAsyncEnabled
 @ConditionalOnProperty(prefix = "lumira.event.payment-consumer", name = "enabled", havingValue = "true")
 public class PaymentEventStreamConsumer {
     private static final Logger log = LoggerFactory.getLogger(PaymentEventStreamConsumer.class);

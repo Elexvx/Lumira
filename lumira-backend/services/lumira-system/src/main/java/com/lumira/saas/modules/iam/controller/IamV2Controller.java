@@ -1,6 +1,10 @@
 package com.lumira.saas.modules.iam.controller;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.export.ExportDTO;
+import com.lumira.api.export.ExportFieldVO;
+import com.lumira.api.export.ExportTaskPort;
+import com.lumira.api.export.ExportVO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
@@ -18,10 +22,6 @@ import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
 import com.lumira.saas.modules.system.department.vo.DepartmentVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
-import com.lumira.saas.modules.system.export.ExportDTO;
-import com.lumira.saas.modules.system.export.ExportFieldVO;
-import com.lumira.saas.modules.system.export.ExportTaskService;
-import com.lumira.saas.modules.system.export.ExportVO;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import jakarta.validation.Valid;
@@ -50,7 +50,7 @@ public class IamV2Controller {
     private final SystemManagementAppService systemManagementAppService;
     private final SystemDepartmentAppService departmentAppService;
     private final UserExportAppService userExportAppService;
-    private final ExportTaskService exportTaskService;
+    private final ExportTaskPort exportTaskService;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final PermissionSnapshotService permissionSnapshotService;
@@ -62,7 +62,7 @@ public class IamV2Controller {
             SystemManagementAppService systemManagementAppService,
             SystemDepartmentAppService departmentAppService,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
@@ -84,7 +84,7 @@ public class IamV2Controller {
             SystemManagementAppService systemManagementAppService,
             SystemDepartmentAppService departmentAppService,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService
@@ -107,7 +107,7 @@ public class IamV2Controller {
             SystemManagementAppService systemManagementAppService,
             SystemDepartmentAppService departmentAppService,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
@@ -132,7 +132,7 @@ public class IamV2Controller {
             SystemManagementAppService systemManagementAppService,
             SystemDepartmentAppService departmentAppService,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
@@ -146,7 +146,7 @@ public class IamV2Controller {
             SystemManagementAppService systemManagementAppService,
             SystemDepartmentAppService departmentAppService,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService,
+            ExportTaskPort exportTaskService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PermissionSnapshotService permissionSnapshotService,
@@ -277,7 +277,10 @@ public class IamV2Controller {
     @GetMapping("/export-tasks/{taskId}")
     public ApiResponse<ExportVO.ExportTaskVO> exportTask(@PathVariable("taskId") Long taskId) {
         CurrentUser currentUser = require("system:user:export");
-        return ApiResponse.success(exportTaskService.getTask(currentUser, taskId), TraceContext.getRequestId());
+        return ApiResponse.success(
+                exportTaskService.getTaskVo(currentUser, taskId, "system:user:export"),
+                TraceContext.getRequestId()
+        );
     }
 
     @GetMapping("/roles")

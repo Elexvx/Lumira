@@ -30,23 +30,26 @@ import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.ProfileDTO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
+import com.lumira.saas.modules.system.config.repository.SystemConfigurationManagementRepository;
+import com.lumira.saas.modules.system.dict.repository.SystemDictionaryManagementRepository;
+import com.lumira.saas.modules.system.infrastructure.SystemManagementPersistenceAdapters;
+import com.lumira.saas.modules.system.infrastructure.SystemManagementPersistenceDependencies;
+import com.lumira.saas.modules.system.menu.repository.SystemMenuManagementRepository;
+import com.lumira.saas.modules.system.profile.repository.SystemCurrentUserProfileRepository;
+import com.lumira.saas.modules.system.audit.repository.SystemAuditQueryRepository;
 import com.lumira.saas.modules.system.audit.vo.AuditLogVO;
 import com.lumira.saas.modules.system.profile.vo.ProfileFieldSettingVO;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
-import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,9 +58,6 @@ import org.springframework.util.StringUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -69,8 +69,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
-import java.util.StringJoiner;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -80,8 +78,6 @@ import java.util.concurrent.TimeUnit;
 @ConditionalOnLumiraControlPlaneEnabled
 public class SystemManagementAppService {
 
-    private static final long MAX_PAGE_SIZE = 100L;
-    private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String STATUS_ENABLED = "ENABLED";
     private static final String BRANDING_WEBSITE_NAME_KEY = "branding.website-name";
     private static final String BRANDING_WEBSITE_FAVICON_URL_KEY = "branding.website-favicon-url";
@@ -211,7 +207,6 @@ public class SystemManagementAppService {
             shortcut("Notifications", "Configure notification channels and delivery rules", "/settings/notifications", "system:notification:view"),
             shortcut("Plugin settings", "Manage installed plugins and runtime access", "/settings/plugins", "plugin:management:view")
     );
-    private final MyBatisQueryOperations jdbcTemplate;
     private final UserDomainService userDomainService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
@@ -231,6 +226,11 @@ public class SystemManagementAppService {
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
     private final FieldCryptoService fieldCryptoService;
+    private final SystemCurrentUserProfileRepository currentUserProfileRepository;
+    private final SystemMenuManagementRepository menuRepository;
+    private final SystemDictionaryManagementRepository dictionaryRepository;
+    private final SystemConfigurationManagementRepository configurationRepository;
+    private final SystemAuditQueryRepository auditQueryRepository;
     private final ReadModelVersionService readModelVersionService;
     private boolean enforceTrustedUserResolution;
     private SystemConfigVersioningService configVersioningService;
@@ -248,7 +248,7 @@ public class SystemManagementAppService {
 
     @Autowired
     public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemManagementPersistenceDependencies persistence,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
@@ -269,7 +269,6 @@ public class SystemManagementAppService {
             SystemRoleManagementAppService systemRoleManagementAppService,
             FieldCryptoService fieldCryptoService
     ) {
-        this.jdbcTemplate = jdbcTemplate;
         this.userDomainService = userDomainService;
         this.permissionSnapshotService = permissionSnapshotService;
         this.systemInternalApi = systemInternalApi;
@@ -289,7 +288,12 @@ public class SystemManagementAppService {
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.systemRoleManagementAppService = systemRoleManagementAppService;
         this.fieldCryptoService = fieldCryptoService;
-        this.readModelVersionService = new ReadModelVersionService(jdbcTemplate);
+        this.currentUserProfileRepository = persistence.currentUserProfiles();
+        this.menuRepository = persistence.menus();
+        this.dictionaryRepository = persistence.dictionaries();
+        this.configurationRepository = persistence.configurations();
+        this.auditQueryRepository = persistence.auditQueries();
+        this.readModelVersionService = persistence.readModelVersions();
         this.enforceTrustedUserResolution = true;
         this.menuCountCache = CacheBuilder.newBuilder()
                 .maximumSize(MENU_COUNT_CACHE_MAX_ENTRIES)
@@ -313,8 +317,59 @@ public class SystemManagementAppService {
                 .build();
     }
 
+    /**
+     * Source-compatible test constructor. Production wiring always uses the
+     * typed persistence bundle above; isolated tests can still provide their
+     * recording MyBatis operations through the infrastructure adapter.
+     */
     public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
+            UserDomainService userDomainService,
+            PermissionSnapshotService permissionSnapshotService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService,
+            SystemPluginViewService systemPluginViewService,
+            OnlineSessionManagementAppService onlineSessionManagementAppService,
+            SystemVerificationAppService systemVerificationAppService,
+            SystemPlatformSettingsAppService systemPlatformSettingsAppService,
+            SystemProfileSettingsAppService systemProfileSettingsAppService,
+            PasswordEncoder passwordEncoder,
+            AuthSessionStore authSessionStore,
+            LoginAuditService loginAuditService,
+            OperationAuditService operationAuditService,
+            SecuritySettingsService securitySettingsService,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SystemUserManagementAppService systemUserManagementAppService,
+            SystemRoleManagementAppService systemRoleManagementAppService,
+            FieldCryptoService fieldCryptoService
+    ) {
+        this(
+                SystemManagementPersistenceAdapters.from(persistence),
+                userDomainService,
+                permissionSnapshotService,
+                systemInternalApi,
+                sessionAuthenticationService,
+                systemPluginViewService,
+                onlineSessionManagementAppService,
+                systemVerificationAppService,
+                systemPlatformSettingsAppService,
+                systemProfileSettingsAppService,
+                passwordEncoder,
+                authSessionStore,
+                loginAuditService,
+                operationAuditService,
+                securitySettingsService,
+                passwordPolicyService,
+                iamUserService,
+                systemUserManagementAppService,
+                systemRoleManagementAppService,
+                fieldCryptoService
+        );
+    }
+
+    public SystemManagementAppService(
+            Object persistence,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService,
@@ -335,7 +390,7 @@ public class SystemManagementAppService {
             FieldCryptoService fieldCryptoService
     ) {
         this(
-                jdbcTemplate,
+                SystemManagementPersistenceAdapters.from(persistence),
                 userDomainService,
                 permissionSnapshotService,
                 null,
@@ -360,7 +415,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
@@ -380,7 +435,7 @@ public class SystemManagementAppService {
             FieldCryptoService fieldCryptoService
     ) {
         this(
-                jdbcTemplate,
+                SystemManagementPersistenceAdapters.from(persistence),
                 userDomainService,
                 permissionSnapshotService,
                 null,
@@ -404,7 +459,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
@@ -422,7 +477,7 @@ public class SystemManagementAppService {
             SystemUserManagementAppService systemUserManagementAppService
     ) {
         this(
-                jdbcTemplate,
+                SystemManagementPersistenceAdapters.from(persistence),
                 userDomainService,
                 permissionSnapshotService,
                 null,
@@ -439,14 +494,14 @@ public class SystemManagementAppService {
                 passwordPolicyService,
                 iamUserService,
                 systemUserManagementAppService,
-                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
+                defaultRoleManagementAppService(persistence, permissionSnapshotService, operationAuditService),
                 null
         );
         this.enforceTrustedUserResolution = false;
     }
 
     public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
@@ -465,7 +520,7 @@ public class SystemManagementAppService {
             SystemRoleManagementAppService systemRoleManagementAppService
     ) {
         this(
-                jdbcTemplate,
+                SystemManagementPersistenceAdapters.from(persistence),
                 userDomainService,
                 permissionSnapshotService,
                 null,
@@ -489,7 +544,7 @@ public class SystemManagementAppService {
     }
 
     public SystemManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
             UserDomainService userDomainService,
             PermissionSnapshotService permissionSnapshotService,
             SystemPluginViewService systemPluginViewService,
@@ -506,7 +561,7 @@ public class SystemManagementAppService {
             IamUserService iamUserService
     ) {
         this(
-                jdbcTemplate,
+                SystemManagementPersistenceAdapters.from(persistence),
                 userDomainService,
                 permissionSnapshotService,
                 null,
@@ -522,15 +577,15 @@ public class SystemManagementAppService {
                 securitySettingsService,
                 passwordPolicyService,
                 iamUserService,
-                defaultUserManagementAppService(jdbcTemplate, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
-                defaultRoleManagementAppService(jdbcTemplate, permissionSnapshotService, operationAuditService),
+                defaultUserManagementAppService(persistence, userDomainService, iamUserService, permissionSnapshotService, onlineSessionManagementAppService, operationAuditService, passwordEncoder, passwordPolicyService),
+                defaultRoleManagementAppService(persistence, permissionSnapshotService, operationAuditService),
                 null
         );
         this.enforceTrustedUserResolution = false;
     }
 
     private static SystemUserManagementAppService defaultUserManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
             UserDomainService userDomainService,
             IamUserService iamUserService,
             PermissionSnapshotService permissionSnapshotService,
@@ -540,7 +595,7 @@ public class SystemManagementAppService {
             PasswordPolicyService passwordPolicyService
     ) {
         return new SystemUserManagementAppService(
-                jdbcTemplate,
+                persistence,
                 userDomainService,
                 iamUserService,
                 permissionSnapshotService,
@@ -552,12 +607,12 @@ public class SystemManagementAppService {
     }
 
     private static SystemRoleManagementAppService defaultRoleManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            Object persistence,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
         return new SystemRoleManagementAppService(
-                jdbcTemplate,
+                persistence,
                 permissionSnapshotService,
                 operationAuditService,
                 NOOP_DOMAIN_EVENT_PUBLISHER
@@ -598,7 +653,7 @@ public class SystemManagementAppService {
         PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
         CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(
-                () -> listCurrentRoleNames(currentUser.getUserId()),
+                () -> listCurrentRoleNames(currentUser.getUserId(), currentUser.getUserUuid()),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<List<AuditLogVO>> recentLoginLogsFuture = CompletableFuture.supplyAsync(
@@ -662,13 +717,9 @@ public class SystemManagementAppService {
         }
         String persistedMobile = normalizeNullableText(user.getMobile());
         String persistedEmail = normalizeNullableText(user.getEmail());
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_user
-                        set avatar_url = ?, nickname = ?, real_name = ?, mobile = ?, email = ?, birth_month = ?, gender = ?, region = ?,
-                            available_time = ?, id_card_number = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and uuid = ? and deleted = 0
-                        """,
+        int updated = currentUserProfileRepository.updateBasicProfile(new SystemCurrentUserProfileRepository.BasicProfile(
+                user.getId(),
+                currentUser.getUserUuid(),
                 normalizeOptionalProfileUrl(request.getAvatarUrl(), "Avatar URL"),
                 normalizeNullableText(request.getNickname()),
                 normalizeNullableText(request.getRealName()),
@@ -679,12 +730,9 @@ public class SystemManagementAppService {
                 normalizeNullableText(request.getRegion()),
                 normalizeNullableText(request.getAvailableTime()),
                 normalizeNullableText(request.getIdCardNumber()),
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                user.getId(),
-                currentUser.getUserUuid()
-        );
+                currentUserProfileActor(currentUser),
+                LocalDateTime.now()
+        ));
         requireSystemWrite(updated, "User profile changed, please retry");
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         if (request.getExtraProfileValues() != null) {
@@ -701,18 +749,8 @@ public class SystemManagementAppService {
         }
         SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
         String normalizedAvatarUrl = normalizeOptionalProfileUrl(avatarUrl, "Avatar URL");
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_user
-                        set avatar_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and uuid = ? and deleted = 0
-                        """,
-                normalizedAvatarUrl,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                user.getId(),
-                currentUser.getUserUuid()
+        int updated = currentUserProfileRepository.updateAvatar(
+                user.getId(), currentUser.getUserUuid(), normalizedAvatarUrl, currentUserProfileActor(currentUser), LocalDateTime.now()
         );
         requireSystemWrite(updated, "User profile changed, please retry");
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
@@ -810,20 +848,7 @@ public class SystemManagementAppService {
                 || StringUtils.hasText(user.getEmail())) {
             return false;
         }
-        Long wechatBindingMarker = jdbcTemplate.queryForObject(
-                """
-                        select 1
-                        from sys_user_wechat_binding
-                        where user_id = ?
-                          and user_uuid = ?
-                          and deleted = 0
-                        limit 1
-                        """,
-                Long.class,
-                user.getId(),
-                currentUser.getUserUuid()
-        );
-        return wechatBindingMarker != null;
+        return currentUserProfileRepository.hasActiveWechatBinding(user.getId(), currentUser.getUserUuid());
     }
 
     @Transactional
@@ -848,39 +873,13 @@ public class SystemManagementAppService {
                 value
         );
 
-        if ("mobile".equals(contactType)) {
-            int updated = jdbcTemplate.update(
-                    """
-                            update sys_user
-                            set mobile = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                            where id = ? and uuid = ? and deleted = 0
-                            """,
-                    value,
-                    currentUser.getUserId(),
-                    currentUser.getUserUuid(),
-                    LocalDateTime.now(),
-                    user.getId(),
-                    currentUser.getUserUuid()
-            );
-            requireSystemWrite(updated, "User profile changed, please retry");
-        } else if ("email".equals(contactType)) {
-            int updated = jdbcTemplate.update(
-                    """
-                            update sys_user
-                            set email = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                            where id = ? and uuid = ? and deleted = 0
-                            """,
-                    value,
-                    currentUser.getUserId(),
-                    currentUser.getUserUuid(),
-                    LocalDateTime.now(),
-                    user.getId(),
-                    currentUser.getUserUuid()
-            );
-            requireSystemWrite(updated, "User profile changed, please retry");
-        } else {
+        if (!"mobile".equals(contactType) && !"email".equals(contactType)) {
             throw new BizException(ErrorCode.NOT_FOUND, "Contact binding record does not exist");
         }
+        int updated = currentUserProfileRepository.updateContact(
+                user.getId(), currentUser.getUserUuid(), contactType, value, currentUserProfileActor(currentUser), LocalDateTime.now()
+        );
+        requireSystemWrite(updated, "User profile changed, please retry");
 
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "Update contact binding");
@@ -892,25 +891,10 @@ public class SystemManagementAppService {
         SysUserEntity user = requireAuthenticatedUserEntity(currentUser);
         requireRequest(request, "Locale update request is required");
         String locale = normalizeLocale(request.getLocale());
-        jdbcTemplate.update(
-                """
-                        insert into iam_user_profile (
-                            user_id, user_uuid, nickname, real_name, gender, birth_month, region, locale, timezone, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 'Asia/Shanghai', 0)
-                        on duplicate key update
-                            locale = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(locale) else locale end,
-                            deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end,
-                            updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end
-                        """,
-                user.getId(),
-                currentUser.getUserUuid(),
-                user.getNickname(),
-                user.getRealName(),
-                user.getGender(),
-                user.getBirthMonth(),
-                user.getRegion(),
-                locale
-        );
+        currentUserProfileRepository.upsertLocale(new SystemCurrentUserProfileRepository.LocaleProfile(
+                user.getId(), currentUser.getUserUuid(), user.getNickname(), user.getRealName(), user.getGender(), user.getBirthMonth(),
+                user.getRegion(), locale
+        ));
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "Update locale settings");
         return buildCurrentUser(currentUser);
     }
@@ -949,14 +933,8 @@ public class SystemManagementAppService {
 
         passwordPolicyService.validatePassword(newPassword);
         String encodedPassword = passwordEncoder.encode(newPassword);
-        int updated = jdbcTemplate.update(
-                "update sys_user set password_hash = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
-                encodedPassword,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                user.getId(),
-                currentUser.getUserUuid()
+        int updated = currentUserProfileRepository.updatePasswordHash(
+                user.getId(), currentUser.getUserUuid(), encodedPassword, currentUserProfileActor(currentUser), LocalDateTime.now()
         );
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "User password changed, please retry");
@@ -1094,16 +1072,7 @@ public class SystemManagementAppService {
     }
 
     private List<SystemVO.PermissionVO> loadPermissionCatalog() {
-        List<SystemVO.PermissionVO> permissions = new ArrayList<>(jdbcTemplate.query(
-                """
-                        select permission_key as permissionKey, permission_name as permissionName,
-                               permission_group as permissionGroup, source_type as sourceType, plugin_code as pluginCode
-                        from sys_permission
-                        where deleted = 0
-                        order by permission_group asc, permission_key asc
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class)
-        ).stream()
+        List<SystemVO.PermissionVO> permissions = new ArrayList<>(menuRepository.findPermissions().stream()
                 .filter(permission -> !isAiPermission(permission))
                 .toList());
         permissions.sort(Comparator.comparing(SystemVO.PermissionVO::getPermissionGroup, Comparator.nullsLast(String::compareTo))
@@ -1137,17 +1106,7 @@ public class SystemManagementAppService {
     }
 
     private List<SystemVO.MenuVO> listPersistedMenus(CurrentUser currentUser) {
-        List<SystemVO.MenuVO> menus = jdbcTemplate.query(
-                """
-                        select id, parent_id as parentId, menu_code as menuCode,
-                               menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
-                               permission_key as permissionKey, status
-                        from sys_menu
-                        where deleted = 0
-                        order by sort_no asc, id asc
-                """,
-                new BeanPropertyRowMapper<>(SystemVO.MenuVO.class)
-        ).stream()
+        List<SystemVO.MenuVO> menus = menuRepository.findMenus().stream()
                 .filter(menu -> !isAiMenu(menu))
                 .toList();
         normalizeBuiltinRootMenuParents(menus);
@@ -1229,54 +1188,31 @@ public class SystemManagementAppService {
 
     private List<SystemVO.MenuVO> loadPermissionMenusByVersion(CurrentUser currentUser, long menuTreeVersion) {
         List<SystemVO.MenuVO> menus = new ArrayList<>(loadMenusByVersion(currentUser, menuTreeVersion));
-        List<Map<String, Object>> pluginMenus = jdbcTemplate.queryForList(
-                """
-                        select relation.menu_code as menuCode,
-                               relation.menu_name as menuName,
-                               relation.route_path as path,
-                               relation.icon,
-                               relation.permission_key as permissionKey,
-                               relation.parent_menu_code as parentMenuCode,
-                               relation.sort_no as sortNo,
-                               relation.plugin_code as pluginCode
-                        from sys_plugin_menu_rel relation
-                        join sys_plugin_version version
-                          on version.plugin_code = relation.plugin_code
-                         and version.version = relation.plugin_version
-                         and version.is_active = 1
-                         and version.deleted = 0
-                        join sys_plugin_definition definition
-                          on definition.plugin_code = relation.plugin_code
-                         and definition.status = 'ENABLED'
-                         and definition.deleted = 0
-                        where relation.deleted = 0
-                        order by relation.sort_no asc, relation.id asc
-                        """
-        );
+        List<SystemMenuManagementRepository.PluginMenu> pluginMenus = menuRepository.findActivePluginMenus();
         if (pluginMenus.isEmpty()) {
             return menus;
         }
 
         Map<String, SystemVO.MenuVO> byMenuCode = new LinkedHashMap<>();
         indexMenusByCode(menus, byMenuCode);
-        for (Map<String, Object> pluginMenu : pluginMenus) {
-            String menuCode = stringValue(pluginMenu.get("menuCode"));
+        for (SystemMenuManagementRepository.PluginMenu pluginMenu : pluginMenus) {
+            String menuCode = pluginMenu.menuCode();
             if (!StringUtils.hasText(menuCode) || byMenuCode.containsKey(menuCode)) {
                 continue;
             }
             SystemVO.MenuVO node = new SystemVO.MenuVO();
             node.setMenuCode(menuCode);
-            node.setMenuName(stringValue(pluginMenu.get("menuName")));
+            node.setMenuName(pluginMenu.menuName());
             node.setMenuType("MENU");
-            node.setPath(stringValue(pluginMenu.get("path")));
-            node.setComponent("plugin:" + stringValue(pluginMenu.get("pluginCode")));
-            node.setIcon(stringValue(pluginMenu.get("icon")));
-            node.setPermissionKey(stringValue(pluginMenu.get("permissionKey")));
-            node.setSortNo(intValue(pluginMenu.get("sortNo")));
+            node.setPath(pluginMenu.path());
+            node.setComponent("plugin:" + pluginMenu.pluginCode());
+            node.setIcon(pluginMenu.icon());
+            node.setPermissionKey(pluginMenu.permissionKey());
+            node.setSortNo(pluginMenu.sortNo() == null ? 0 : pluginMenu.sortNo());
             node.setStatus("ENABLED");
             node.setChildren(new ArrayList<>());
 
-            String parentMenuCode = stringValue(pluginMenu.get("parentMenuCode"));
+            String parentMenuCode = pluginMenu.parentMenuCode();
             SystemVO.MenuVO parent = StringUtils.hasText(parentMenuCode) ? byMenuCode.get(parentMenuCode) : null;
             if (parent == null) {
                 menus.add(node);
@@ -1393,21 +1329,9 @@ public class SystemManagementAppService {
             }
             SystemVO.MenuVO menu = ensureEditableMenu(item.getId());
             ensureEditableParentMenu(item.getParentId());
-            int updated = jdbcTemplate.update(
-                    """
-                            update sys_menu
-                            set parent_id = ?, sort_no = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                            where id = ? and menu_code = ? and menu_type = ? and deleted = 0
-                            """,
-                    item.getParentId() == null ? 0L : item.getParentId(),
-                    item.getSortNo(),
-                    operatorId,
-                    operatorUuid,
-                    now,
-                    item.getId(),
-                    menu.getMenuCode(),
-                    menu.getMenuType()
-            );
+            int updated = menuRepository.reorder(new SystemMenuManagementRepository.MenuOrder(
+                    menuVersion(menu), item.getParentId(), item.getSortNo(), menuActor(operatorId, operatorUuid), now
+            ));
             requireSystemWrite(updated, "Menu changed, please retry");
         }
 
@@ -1465,19 +1389,8 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:menu:status");
         requirePositiveId(menuId, "Menu id is required");
         SystemVO.MenuVO menu = ensureEditableMenu(menuId);
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_menu
-                        set status = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and menu_code = ? and menu_type = ? and deleted = 0
-                        """,
-                status,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                menuId,
-                menu.getMenuCode(),
-                menu.getMenuType()
+        int updated = menuRepository.updateStatus(
+                menuVersion(menu), status, menuActor(currentUser.getUserId(), currentUser.getUserUuid()), LocalDateTime.now()
         );
         requireSystemWrite(updated, "Menu changed, please retry");
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
@@ -1491,35 +1404,19 @@ public class SystemManagementAppService {
         requirePermission(currentUser, "system:menu:delete");
         requirePositiveId(menuId, "Menu id is required");
         SystemVO.MenuVO editableMenu = ensureEditableMenu(menuId);
-        boolean hasChildMenu = jdbcTemplate.exists(
-                "select 1 from sys_menu where parent_id = ? and deleted = 0 limit 1",
-                menuId
-        );
+        boolean hasChildMenu = menuRepository.hasActiveChild(menuId);
         if (hasChildMenu) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "The menu has child menus and cannot be deleted");
         }
         SystemVO.MenuVO menu = editableMenu;
         if (StringUtils.hasText(menu.getPermissionKey())) {
-            boolean permissionReferenced = jdbcTemplate.exists(
-                    "select 1 from sys_role_permission where permission_key = ? and deleted = 0 limit 1",
-                    menu.getPermissionKey()
-            );
+            boolean permissionReferenced = menuRepository.hasActivePermissionReference(menu.getPermissionKey());
             if (permissionReferenced) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "The menu permission is referenced by roles and cannot be deleted");
             }
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_menu
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and menu_code = ? and menu_type = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                menuId,
-                editableMenu.getMenuCode(),
-                editableMenu.getMenuType()
+        int updated = menuRepository.softDelete(
+                menuVersion(editableMenu), menuActor(currentUser.getUserId(), currentUser.getUserUuid()), LocalDateTime.now()
         );
         requireSystemWrite(updated, "Menu changed, please retry");
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
@@ -1531,29 +1428,7 @@ public class SystemManagementAppService {
 
     public PageResponse<SystemVO.DictTypeVO> listDictTypes(CurrentUser currentUser, String dictCode, String dictName, String status, long pageNo, long pageSize) {
         requirePermission(currentUser, "system:dict:view");
-        String baseSql = """
-                from sys_dict_type t
-                where t.deleted = 0
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(dictCode)) {
-            baseSql += " and t.dict_code like ?";
-            params.add(like(dictCode));
-        }
-        if (StringUtils.hasText(dictName)) {
-            baseSql += " and t.dict_name like ?";
-            params.add(like(dictName));
-        }
-        if (StringUtils.hasText(status)) {
-            baseSql += " and t.status = ?";
-            params.add(status);
-        }
-        String selectSql = """
-                select t.id, t.dict_code as dictCode, t.dict_name as dictName,
-                       t.status, t.is_system as isSystem, t.remark
-                """ + baseSql + " order by t.is_system desc, t.id desc";
-        PageResponse<SystemVO.DictTypeVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.DictTypeVO.class, pageNo, pageSize, params);
-        return page;
+        return dictionaryRepository.findTypes(new SystemDictionaryManagementRepository.TypeSearch(dictCode, dictName, status, pageNo, pageSize));
     }
 
     public SystemVO.DictTypeVO getDictType(CurrentUser currentUser, Long id) {
@@ -1589,39 +1464,11 @@ public class SystemManagementAppService {
         if (isSystemDictType(type)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Built-in dictionary types cannot be deleted");
         }
-        int typeDeleted = jdbcTemplate.update(
-                """
-                        update sys_dict_type
-                        set deleted = 1,
-                            dict_code = concat(left(dict_code, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
-                            updated_by = ?,
-                            updated_by_uuid = ?,
-                            updated_at = ?
-                        where id = ? and dict_code = ? and is_system = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                id,
-                type.getDictCode(),
-                type.getIsSystem()
-        );
+        SystemDictionaryManagementRepository.Actor actor = dictionaryActor(currentUser);
+        LocalDateTime now = LocalDateTime.now();
+        int typeDeleted = dictionaryRepository.softDeleteType(dictionaryTypeVersion(type), actor, now);
         requireSystemWrite(typeDeleted, "Dict type changed, please retry");
-        jdbcTemplate.update(
-                """
-                        update sys_dict_item
-                        set deleted = 1,
-                            item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
-                            updated_by = ?,
-                            updated_by_uuid = ?,
-                            updated_at = ?
-                        where dict_type_id = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                id
-        );
+        dictionaryRepository.retireItemsForType(id, actor, now);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
         return true;
     }
@@ -1629,17 +1476,7 @@ public class SystemManagementAppService {
     public List<SystemVO.DictItemVO> listDictItems(CurrentUser currentUser, Long dictTypeId) {
         requirePermission(currentUser, "system:dict:view");
         loadDictType(dictTypeId);
-        return jdbcTemplate.query(
-                """
-                        select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
-                               sort_no as sortNo, status, remark
-                        from sys_dict_item
-                        where dict_type_id = ? and deleted = 0
-                        order by sort_no asc, id asc
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.DictItemVO.class),
-                dictTypeId
-        );
+        return dictionaryRepository.findActiveItems(dictTypeId);
     }
 
     public List<SystemVO.DictItemVO> listEnabledDictItemsByCode(CurrentUser currentUser, String dictCode) {
@@ -1648,23 +1485,7 @@ public class SystemManagementAppService {
             return List.of();
         }
         String normalizedCode = dictCode.trim();
-        return jdbcTemplate.query(
-                """
-                        select i.id, i.dict_type_id as dictTypeId, i.item_label as itemLabel, i.item_value as itemValue,
-                               i.sort_no as sortNo, i.status, i.remark
-                        from sys_dict_type t
-                        join sys_dict_item i
-                          on i.dict_type_id = t.id
-                         and i.deleted = 0
-                        where t.dict_code = ?
-                          and t.deleted = 0
-                          and t.status = 'ENABLED'
-                          and i.status = 'ENABLED'
-                        order by i.sort_no asc, i.id asc
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.DictItemVO.class),
-                normalizedCode
-        );
+        return dictionaryRepository.findEnabledItemsByCode(normalizedCode);
     }
 
     public SystemVO.DictItemVO getDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
@@ -1704,23 +1525,8 @@ public class SystemManagementAppService {
         requirePositiveId(itemId, "Dict item id is required");
         loadDictType(dictTypeId);
         SystemVO.DictItemVO item = loadDictItem(dictTypeId, itemId);
-        int deleted = jdbcTemplate.update(
-                """
-                        update sys_dict_item
-                        set deleted = 1,
-                            item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
-                            updated_by = ?,
-                            updated_by_uuid = ?,
-                            updated_at = ?
-                        where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                itemId,
-                dictTypeId,
-                item.getItemValue(),
-                item.getStatus()
+        int deleted = dictionaryRepository.softDeleteItem(
+                dictionaryItemVersion(item), dictionaryActor(currentUser), LocalDateTime.now()
         );
         requireSystemWrite(deleted, "Dict item changed, please retry");
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
@@ -1729,24 +1535,9 @@ public class SystemManagementAppService {
 
     public PageResponse<SystemVO.ConfigVO> listConfigs(CurrentUser currentUser, String configKey, String configName, long pageNo, long pageSize) {
         requirePermission(currentUser, "system:config:view");
-        String baseSql = """
-                from sys_config c
-                where c.deleted = 0
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(configKey)) {
-            baseSql += " and c.config_key like ?";
-            params.add(like(configKey));
-        }
-        if (StringUtils.hasText(configName)) {
-            baseSql += " and c.config_name like ?";
-            params.add(like(configName));
-        }
-        String selectSql = """
-                select c.id, c.config_key as configKey, c.config_name as configName,
-                       c.config_value as configValue, c.is_system as isSystem, c.remark
-                """ + baseSql + " order by c.is_system desc, c.id desc";
-        PageResponse<SystemVO.ConfigVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
+        PageResponse<SystemVO.ConfigVO> page = configurationRepository.findConfigs(
+                new SystemConfigurationManagementRepository.ConfigSearch(configKey, configName, pageNo, pageSize)
+        );
         maskSensitiveConfigValues(page.getRecords());
         return page;
     }
@@ -1809,27 +1600,15 @@ public class SystemManagementAppService {
                 ),
                 List.of(currentConfig.getConfigKey(), request.getConfigKey())
         );
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_config
-                        set config_key = ?, config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ?
-                          and config_key = ?
-                          and config_scope = 'PLATFORM'
-                          and is_system = 0
-                          and deleted = 0
-                        """,
+        int updated = configurationRepository.updateEditablePlatformConfig(new SystemConfigurationManagementRepository.ConfigWrite(
+                configurationVersion(currentConfig),
                 request.getConfigKey(),
                 request.getConfigName(),
                 resolveStoredConfigValue(id, currentConfig.getConfigKey(), request.getConfigKey(), request.getConfigValue()),
                 request.getRemark(),
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                id,
-                currentConfig.getConfigKey()
-        );
+                configurationActor(currentUser),
+                LocalDateTime.now()
+        ));
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Config changed, please retry");
         }
@@ -1887,39 +1666,18 @@ public class SystemManagementAppService {
                 ),
                 List.of(request.getConfigKey())
         );
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into sys_config (
-                            config_key, config_name, config_value, config_scope, is_system, remark,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)
-                        """,
-                request.getConfigKey(),
-                request.getConfigName(),
-                encryptConfigValue(request.getConfigKey(), request.getConfigValue()),
-                request.getRemark(),
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                currentUser.getUserId(),
-                currentUser.getUserUuid()
+        SystemConfigurationManagementRepository.ConfigWriteResult created = configurationRepository.createPlatformConfig(
+                new SystemConfigurationManagementRepository.ConfigCreate(
+                        request.getConfigKey(), request.getConfigName(), encryptConfigValue(request.getConfigKey(), request.getConfigValue()),
+                        request.getRemark(), configurationActor(currentUser)
+                )
         );
-        requireSystemWrite(inserted, "Config changed, please retry");
+        requireSystemWrite(created.writeCount(), "Config changed, please retry");
         if (governanceService != null) {
             governanceService.finish(configVersion);
         }
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
-        SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
-                """
-                        select id, config_key as configKey, config_name as configName,
-                               config_value as configValue, is_system as isSystem, remark
-                        from sys_config
-                        where config_key = ? and deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.ConfigVO.class),
-                request.getConfigKey()
-        );
+        SystemVO.ConfigVO config = configurationRepository.findLatestActiveConfigByKey(request.getConfigKey());
         maskSensitiveConfigValue(config);
         return config;
     }
@@ -1928,21 +1686,7 @@ public class SystemManagementAppService {
         if (isSensitiveConfigKey(currentConfigKey)
                 && currentConfigKey.equals(requestedConfigKey)
                 && MASKED_CONFIG_VALUE.equals(requestedValue)) {
-            String currentValue = jdbcTemplate.queryForObject(
-                    """
-                            select config_value
-                            from sys_config
-                            where id = ?
-                              and config_key = ?
-                              and config_scope = 'PLATFORM'
-                              and is_system = 0
-                              and deleted = 0
-                            """,
-                    String.class,
-                    id,
-                    currentConfigKey
-            );
-            return currentValue;
+            return configurationRepository.findEditablePlatformValue(id, currentConfigKey);
         }
         return encryptConfigValue(requestedConfigKey, requestedValue);
     }
@@ -2103,72 +1847,22 @@ public class SystemManagementAppService {
             long pageSize
     ) {
         requireAnyPermission(currentUser, "audit:view", "audit:login:view");
-        String baseSql = """
-                from audit_login_log l
-                where 1 = 1
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(username)) {
-            baseSql += " and l.username like ?";
-            params.add(like(username));
-        }
-        if (StringUtils.hasText(loginType)) {
-            baseSql += " and l.login_type = ?";
-            params.add(loginType);
-        }
-        if (StringUtils.hasText(startTime)) {
-            baseSql += " and l.created_at >= ?";
-            params.add(parseDateTime(startTime));
-        }
-        if (StringUtils.hasText(endTime)) {
-            baseSql += " and l.created_at <= ?";
-            params.add(parseDateTime(endTime));
-        }
-        String selectSql = """
-                select l.id, l.user_id as userId, l.username, l.login_type as logType,
-                       l.login_result as logResult, l.fail_reason as failReason, l.login_ip as loginIp,
-                       l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
-                """ + baseSql + " order by l.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+        return auditQueryRepository.findLoginLogs(new SystemAuditQueryRepository.LoginSearch(
+                username,
+                loginType,
+                StringUtils.hasText(startTime) ? parseDateTime(startTime) : null,
+                StringUtils.hasText(endTime) ? parseDateTime(endTime) : null,
+                pageNo,
+                pageSize
+        ));
     }
 
     private List<AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
-        String selectSql = """
-                select l.id, l.user_id as userId, l.username, l.login_type as logType,
-                       l.login_result as logResult, l.fail_reason as failReason, l.login_ip as loginIp,
-                       l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
-                from audit_login_log l
-                where l.user_id = ?
-                  and l.login_result = 'SUCCESS'
-                  and l.login_type <> 'LOGOUT'
-                order by l.created_at desc, l.id desc
-                """;
-        return jdbcTemplate.query(
-                selectSql + " limit ?",
-                new BeanPropertyRowMapper<>(AuditLogVO.class),
-                currentUser.getUserId(),
-                Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE))
-        );
+        return auditQueryRepository.findSuccessfulLoginLogs(currentUser.getUserId(), pageSize);
     }
 
     private List<AuditLogVO> listRecentOperationLogs(CurrentUser currentUser, String username, long pageSize) {
-        String baseSql = """
-                from audit_operation_log l
-                where 1 = 1
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(username)) {
-            baseSql += " and l.username like ?";
-            params.add(like(username));
-        }
-        String selectSql = """
-                select l.id, l.user_id as userId, l.username, l.module_name as moduleName,
-                       l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
-                       l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
-                       l.created_at as createdAt
-                """ + baseSql + " order by l.created_at desc, l.id desc limit ?";
-        params.add(Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE)));
-        return jdbcTemplate.query(selectSql, new BeanPropertyRowMapper<>(AuditLogVO.class), params.toArray());
+        return auditQueryRepository.findRecentOperationLogs(username, pageSize);
     }
 
     public PageResponse<SystemVO.AuditLogVO> listOperationLogs(CurrentUser currentUser, String username, long pageNo, long pageSize) {
@@ -2184,30 +1878,13 @@ public class SystemManagementAppService {
             long pageSize
     ) {
         requireAnyPermission(currentUser, "audit:view", "audit:operation:view");
-        String baseSql = """
-                from audit_operation_log l
-                where 1 = 1
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(username)) {
-            baseSql += " and l.username like ?";
-            params.add(like(username));
-        }
-        if (StringUtils.hasText(startTime)) {
-            baseSql += " and l.created_at >= ?";
-            params.add(parseDateTime(startTime));
-        }
-        if (StringUtils.hasText(endTime)) {
-            baseSql += " and l.created_at <= ?";
-            params.add(parseDateTime(endTime));
-        }
-        String selectSql = """
-                select l.id, l.user_id as userId, l.username, l.module_name as moduleName,
-                       l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
-                       l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
-                       l.created_at as createdAt
-                """ + baseSql + " order by l.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+        return auditQueryRepository.findOperationLogs(new SystemAuditQueryRepository.OperationSearch(
+                username,
+                StringUtils.hasText(startTime) ? parseDateTime(startTime) : null,
+                StringUtils.hasText(endTime) ? parseDateTime(endTime) : null,
+                pageNo,
+                pageSize
+        ));
     }
 
     public PageResponse<SystemVO.AuditLogVO> listVerificationLogs(
@@ -2221,39 +1898,15 @@ public class SystemManagementAppService {
             long pageSize
     ) {
         requireAnyPermission(currentUser, "audit:view", "audit:operation:view");
-        String baseSql = """
-                from audit_operation_log l
-                where l.deleted = 0
-                  and l.module_name = 'verification'
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(channel)) {
-            baseSql += " and l.operation_type = ?";
-            params.add(channel.trim().toUpperCase(Locale.ROOT));
-        }
-        if (StringUtils.hasText(scene)) {
-            baseSql += " and l.action_name = ?";
-            params.add(scene.trim().toUpperCase(Locale.ROOT));
-        }
-        if (StringUtils.hasText(resultStatus)) {
-            baseSql += " and l.result_status = ?";
-            params.add(resultStatus.trim().toUpperCase(Locale.ROOT));
-        }
-        if (StringUtils.hasText(startTime)) {
-            baseSql += " and l.created_at >= ?";
-            params.add(parseDateTime(startTime));
-        }
-        if (StringUtils.hasText(endTime)) {
-            baseSql += " and l.created_at <= ?";
-            params.add(parseDateTime(endTime));
-        }
-        String selectSql = """
-                select l.id, l.user_id as userId, l.username, l.module_name as moduleName,
-                       l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
-                       l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
-                       l.created_at as createdAt
-                """ + baseSql + " order by l.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+        return auditQueryRepository.findVerificationLogs(new SystemAuditQueryRepository.VerificationSearch(
+                StringUtils.hasText(channel) ? channel.trim().toUpperCase(Locale.ROOT) : null,
+                StringUtils.hasText(scene) ? scene.trim().toUpperCase(Locale.ROOT) : null,
+                StringUtils.hasText(resultStatus) ? resultStatus.trim().toUpperCase(Locale.ROOT) : null,
+                StringUtils.hasText(startTime) ? parseDateTime(startTime) : null,
+                StringUtils.hasText(endTime) ? parseDateTime(endTime) : null,
+                pageNo,
+                pageSize
+        ));
     }
 
     public PageResponse<SystemVO.AuditLogVO> listAiCallLogs(
@@ -2267,41 +1920,15 @@ public class SystemManagementAppService {
             long pageSize
     ) {
         requireAnyPermission(currentUser, "audit:view", "audit:operation:view");
-        String baseSql = """
-                from ai_tool_audit_log l
-                where l.is_deleted = 0
-                """;
-        List<Object> params = new ArrayList<>();
-        if (employeeId != null) {
-            baseSql += " and l.employee_id = ?";
-            params.add(employeeId);
-        }
-        if (StringUtils.hasText(skillCode)) {
-            baseSql += " and l.skill_code like ?";
-            params.add(like(skillCode));
-        }
-        if (StringUtils.hasText(resultStatus)) {
-            baseSql += " and l.result_status = ?";
-            params.add(resultStatus);
-        }
-        if (StringUtils.hasText(startTime)) {
-            baseSql += " and l.create_time >= ?";
-            params.add(parseDateTime(startTime));
-        }
-        if (StringUtils.hasText(endTime)) {
-            baseSql += " and l.create_time <= ?";
-            params.add(parseDateTime(endTime));
-        }
-        String selectSql = """
-                select l.id, l.conversation_id as conversationId,
-                       l.employee_id as employeeId, l.skill_code as skillCode, l.tool_name as toolName,
-                       l.permission_mode as permissionMode, l.confirm_required as confirmRequired,
-                       l.confirm_result as confirmResult, l.result_status as logResult,
-                       l.detail_message as detailMessage, l.request_payload_json as requestPayloadJson,
-                       l.response_payload_json as responsePayloadJson, l.create_time as createdAt,
-                       'AI' as moduleName, l.tool_name as actionName, 'CALL' as operationType
-                """ + baseSql + " order by l.id desc";
-        return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
+        return auditQueryRepository.findAiCallLogs(new SystemAuditQueryRepository.AiCallSearch(
+                employeeId,
+                skillCode,
+                resultStatus,
+                StringUtils.hasText(startTime) ? parseDateTime(startTime) : null,
+                StringUtils.hasText(endTime) ? parseDateTime(endTime) : null,
+                pageNo,
+                pageSize
+        ));
     }
 
     public Integer countMenus() {
@@ -2309,14 +1936,7 @@ public class SystemManagementAppService {
         if (cached != null) {
             return cached;
         }
-        int result = (int) jdbcTemplate.query(
-                """
-                        select menu_code as menuCode, path, component, permission_key as permissionKey
-                        from sys_menu
-                        where deleted = 0 and status = 'ENABLED'
-                        """,
-                new BeanPropertyRowMapper<>(SystemVO.MenuVO.class)
-        ).stream()
+        int result = (int) menuRepository.findEnabledMenus().stream()
                 .filter(menu -> !isAiMenu(menu))
                 .count();
         menuCountCache.put(MENU_COUNT_CACHE_KEY, result);
@@ -2373,19 +1993,6 @@ public class SystemManagementAppService {
         user.setMobile(maskMobile(user.getMobile()));
         user.setEmail(maskEmail(user.getEmail()));
         user.setIdCardNumber(maskIdCard(user.getIdCardNumber()));
-    }
-
-    private void decorateIamUserDetail(SystemVO.UserDetailVO detail, Long userId, boolean canViewSensitive) {
-        String userUuid = requireUserUuid(userId);
-        detail.setIdentities(iamUserService.listIdentities(userId, userUuid).stream()
-                .map(identity -> toUserIdentityVO(identity, canViewSensitive))
-                .toList());
-        detail.setRecentDevices(iamUserService.listRecentDevices(userId, userUuid, 10).stream()
-                .map(device -> toUserDeviceVO(device, canViewSensitive))
-                .toList());
-        detail.setSecuritySetting(iamUserService.findSecuritySetting(userId, userUuid)
-                .map(this::toUserSecuritySettingVO)
-                .orElse(null));
     }
 
     private UserDetailVO.UserIdentityVO toUserIdentityVO(IamUserAccount.IdentityView identity, boolean canViewSensitive) {
@@ -2657,7 +2264,7 @@ public class SystemManagementAppService {
         CompletableFuture<Map<String, String>> extraProfileValuesFuture = CompletableFuture.supplyAsync(() -> loadExtraProfileValues(user.getId(), userUuid), BLOCKING_IO_EXECUTOR);
         CompletableFuture<String> localeFuture = CompletableFuture.supplyAsync(() -> resolveLocale(user.getId(), userUuid), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<CurrentUserVO.RoleOptionVO>> availableRolesFuture = CompletableFuture.supplyAsync(
-                () -> listAvailableRoles(currentUser.getUserId()),
+                () -> listAvailableRoles(currentUser.getUserId(), userUuid),
                 BLOCKING_IO_EXECUTOR
         );
         CurrentUserVO response = new CurrentUserVO();
@@ -2689,18 +2296,7 @@ public class SystemManagementAppService {
         Map<String, String> sanitizedValues = sanitizeExtraProfileValues(currentUser, requestedValues);
         try {
             String extraJson = OBJECT_MAPPER.writeValueAsString(Map.of(EXTRA_PROFILE_VALUES_KEY, sanitizedValues));
-            int updated = jdbcTemplate.update(
-                    """
-                            insert into iam_user_profile (user_id, user_uuid, extra_json, deleted)
-                            values (?, ?, ?, 0)
-                            on duplicate key update extra_json = case when user_id = values(user_id) and user_uuid = values(user_uuid) then json_merge_patch(coalesce(extra_json, json_object()), values(extra_json)) else extra_json end,
-                                                    deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end,
-                                                    updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end
-                            """,
-                    userId,
-                    userUuid,
-                    extraJson
-            );
+            currentUserProfileRepository.mergeExtraProfileJson(userId, userUuid, extraJson);
         } catch (JsonProcessingException ex) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "Failed to serialize extra profile values");
         }
@@ -2729,22 +2325,7 @@ public class SystemManagementAppService {
     }
 
     private Map<String, String> loadExtraProfileValues(Long userId, String userUuid) {
-        String extraJson;
-        try {
-            extraJson = jdbcTemplate.queryForObject(
-                    """
-                            select extra_json
-                            from iam_user_profile
-                            where user_id = ? and user_uuid = ? and deleted = 0
-                            limit 1
-                            """,
-                    String.class,
-                    userId,
-                    userUuid
-            );
-        } catch (EmptyResultDataAccessException ignored) {
-            return Map.of();
-        }
+        String extraJson = currentUserProfileRepository.findExtraProfileJson(userId, userUuid);
         if (!StringUtils.hasText(extraJson)) {
             return Map.of();
         }
@@ -2834,6 +2415,44 @@ public class SystemManagementAppService {
         if (updated <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, message);
         }
+    }
+
+    private SystemCurrentUserProfileRepository.Actor currentUserProfileActor(CurrentUser currentUser) {
+        return new SystemCurrentUserProfileRepository.Actor(currentUser.getUserId(), currentUser.getUserUuid());
+    }
+
+    private SystemMenuManagementRepository.Actor menuActor(Long userId, String userUuid) {
+        return new SystemMenuManagementRepository.Actor(userId, userUuid);
+    }
+
+    private SystemMenuManagementRepository.MenuVersion menuVersion(SystemVO.MenuVO menu) {
+        return new SystemMenuManagementRepository.MenuVersion(menu.getId(), menu.getMenuCode(), menu.getMenuType());
+    }
+
+    private SystemDictionaryManagementRepository.Actor dictionaryActor(CurrentUser currentUser) {
+        return dictionaryActor(currentUser.getUserId(), currentUser.getUserUuid());
+    }
+
+    private SystemDictionaryManagementRepository.Actor dictionaryActor(Long userId, String userUuid) {
+        return new SystemDictionaryManagementRepository.Actor(userId, userUuid);
+    }
+
+    private SystemDictionaryManagementRepository.TypeVersion dictionaryTypeVersion(SystemVO.DictTypeVO type) {
+        return new SystemDictionaryManagementRepository.TypeVersion(type.getId(), type.getDictCode(), type.getIsSystem());
+    }
+
+    private SystemDictionaryManagementRepository.ItemVersion dictionaryItemVersion(SystemVO.DictItemVO item) {
+        return new SystemDictionaryManagementRepository.ItemVersion(
+                item.getId(), item.getDictTypeId(), item.getItemValue(), item.getStatus()
+        );
+    }
+
+    private SystemConfigurationManagementRepository.Actor configurationActor(CurrentUser currentUser) {
+        return new SystemConfigurationManagementRepository.Actor(currentUser.getUserId(), currentUser.getUserUuid());
+    }
+
+    private SystemConfigurationManagementRepository.ConfigVersion configurationVersion(SystemVO.ConfigVO config) {
+        return new SystemConfigurationManagementRepository.ConfigVersion(config.getId(), config.getConfigKey());
     }
 
     private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long userId, Long simulatedRoleId, CurrentUser currentUser) {
@@ -2999,363 +2618,22 @@ public class SystemManagementAppService {
         );
     }
 
-    private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId) {
+    private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId, String userUuid) {
         if (userId == null) {
             return List.of();
         }
-        String userUuid = requireUserUuid(userId);
-        return jdbcTemplate.query(
-                """
-                        select r.id as id,
-                               r.role_code as roleCode,
-                               r.role_name as roleName,
-                               r.role_type as roleType,
-                               count(rp.permission_key) as permissionCount
-                        from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        left join sys_role_permission rp on rp.role_id = r.id and rp.deleted = 0
-                        where ur.user_id = ?
-                          and ur.user_uuid = ?
-                          and ur.deleted = 0
-                        group by r.id, r.role_code, r.role_name, r.role_type
-                        order by r.id desc
-                        """,
-                (rs, rowNum) -> {
-                    CurrentUserVO.RoleOptionVO role = new CurrentUserVO.RoleOptionVO();
-                    role.setId(rs.getLong("id"));
-                    role.setRoleCode(rs.getString("roleCode"));
-                    role.setRoleName(rs.getString("roleName"));
-                    role.setRoleType(rs.getString("roleType"));
-                    role.setPermissionCount(rs.getInt("permissionCount"));
-                    return role;
-                },
-                userId,
-                userUuid
-        );
+        return currentUserProfileRepository.findAvailableRoles(userId, userUuid);
     }
 
     private String resolveLocale(Long userId, String userUuid) {
         if (userId == null || !StringUtils.hasText(userUuid)) {
             return DEFAULT_LOCALE;
         }
-        try {
-            String locale = jdbcTemplate.queryForObject(
-                    """
-                            select locale
-                            from iam_user_profile
-                            where user_id = ? and user_uuid = ? and deleted = 0
-                            limit 1
-                            """,
-                    String.class,
-                    userId,
-                    userUuid
-            );
-            return normalizeLocale(locale);
-        } catch (EmptyResultDataAccessException ex) {
-            return DEFAULT_LOCALE;
-        }
+        return normalizeLocale(currentUserProfileRepository.findLocale(userId, userUuid));
     }
 
-    private LocalDateTime toLocalDateTime(Timestamp timestamp) {
-        return timestamp == null ? null : timestamp.toLocalDateTime();
-    }
-
-    private List<String> listCurrentRoleNames(Long userId) {
-        String userUuid = requireUserUuid(userId);
-        return jdbcTemplate.queryForList(
-                """
-                        select r.role_name
-                        from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id = ?
-                          and ur.user_uuid = ?
-                          and ur.deleted = 0
-                        order by r.id asc
-                        """,
-                String.class,
-                userId,
-                userUuid
-        );
-    }
-
-    private void decorateUsers(List<SystemVO.UserVO> users) {
-        List<Long> userIds = users.stream()
-                .map(SystemVO.UserVO::getId)
-                .filter(id -> id != null)
-                .distinct()
-                .toList();
-        if (userIds.isEmpty()) {
-            return;
-        }
-
-        Map<Long, List<String>> roleNames = listUserRoleNames(userIds);
-        users.forEach(user -> {
-            user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
-        });
-    }
-
-    private List<Long> listUserRoleIds(Long userId) {
-        String userUuid = requireUserUuid(userId);
-        return jdbcTemplate.queryForList(
-                """
-                        select ur.role_id
-                        from sys_user_role ur
-                        where ur.user_id = ?
-                          and ur.user_uuid = ?
-                          and ur.deleted = 0
-                        order by ur.role_id asc
-                        """,
-                Long.class,
-                userId,
-                userUuid
-        );
-    }
-
-    private List<String> listUserRoleNames(Long userId) {
-        String userUuid = requireUserUuid(userId);
-        return jdbcTemplate.queryForList(
-                """
-                        select r.role_name
-                        from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id = ?
-                          and ur.user_uuid = ?
-                          and ur.deleted = 0
-                        order by r.id asc
-                        """,
-                String.class,
-                userId,
-                userUuid
-        );
-    }
-
-    private Map<Long, List<String>> listUserRoleNames(List<Long> userIds) {
-        String placeholders = placeholders(userIds.size());
-        List<Object> params = new ArrayList<>();
-        params.addAll(userIds);
-        return jdbcTemplate.query(
-                """
-                        select ur.user_id as userId, r.role_name as roleName
-                        from sys_user_role ur
-                        join sys_user u
-                          on u.id = ur.user_id
-                         and u.uuid = ur.user_uuid
-                         and u.deleted = 0
-                        join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        where ur.user_id in (%s)
-                          and ur.user_uuid is not null
-                          and trim(ur.user_uuid) <> ''
-                          and ur.deleted = 0
-                        order by ur.user_id asc, r.id asc
-                        """.formatted(placeholders),
-                rs -> {
-                    Map<Long, List<String>> result = new LinkedHashMap<>();
-                    while (rs.next()) {
-                        result.computeIfAbsent(rs.getLong("userId"), ignored -> new ArrayList<>())
-                                .add(rs.getString("roleName"));
-                    }
-                    return result;
-                },
-                params.toArray()
-        );
-    }
-
-    private String placeholders(int count) {
-        return String.join(", ", java.util.Collections.nCopies(count, "?"));
-    }
-
-    private SystemVO.UserVO queryUser(Long userId) {
-        SystemVO.UserVO user = queryOne(
-                """
-                        select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
-                               u.email, u.birth_month as birthMonth, u.gender, u.region, u.available_time as availableTime,
-                               u.status, iu.user_no as userNo, iu.source,
-                               coalesce(iu.registered_at, u.created_at) as registeredAt,
-                               iu.last_login_at as lastLoginAt,
-                               u.created_at as createdAt, u.updated_at as updatedAt
-                        from sys_user u
-                        left join iam_user iu on iu.id = u.id and iu.deleted = 0
-                        where u.id = ? and u.deleted = 0
-                        """,
-                SystemVO.UserVO.class,
-                userId
-        );
-        if (user == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "User does not exist");
-        }
-        user.setRoleNames(listUserRoleNames(user.getId()));
-        return user;
-    }
-
-    private Long insertOrUpdateUser(Long userId, SystemDTO.UserUpsertRequest request, Long operatorId, String operatorUuid) {
-        String normalizedStatus = normalizeUserStatus(request.getStatus());
-        if (userId != null && isProtectedAdminAccount(userId, request.getUsername()) && "DISABLED".equals(normalizedStatus)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Protected admin account cannot be disabled");
-        }
-        if (userId == null) {
-            if (!StringUtils.hasText(request.getPassword())) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "Password is required when creating a user");
-            }
-            String password = request.getPassword();
-            passwordPolicyService.validatePassword(password);
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_user (
-                                uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
-                                available_time, id_card_number, status,
-                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    UserUidGenerator.nextNumericUid(),
-                    request.getUsername(),
-                    passwordEncoder.encode(password),
-                    normalizeNullableText(request.getMobile()),
-                    normalizeNullableText(request.getNickname()),
-                    normalizeNullableText(request.getRealName()),
-                    normalizeNullableText(request.getAvatarUrl()),
-                    normalizeNullableText(request.getEmail()),
-                    normalizeNullableText(request.getBirthMonth()),
-                    normalizeNullableText(request.getGender()),
-                    normalizeNullableText(request.getRegion()),
-                    normalizeNullableText(request.getAvailableTime()),
-                    normalizeNullableText(request.getIdCardNumber()),
-                    normalizedStatus,
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            requireSystemWrite(inserted, "User changed, please retry");
-            Long createdUserId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-            userDomainService.findById(createdUserId).ifPresent(user -> {
-                iamUserService.createUserWithIdentity(user, request.getUsername(), "ADMIN_CREATE");
-                iamUserService.recordUserRegistered(user.getId(), user.getUuid(), "ADMIN_CREATE", null, null);
-            });
-            return createdUserId;
-        }
-        String userUuid = requireUserUuid(userId);
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_user
-                        set username = ?, mobile = ?, nickname = ?, real_name = ?, avatar_url = ?, email = ?,
-                            birth_month = ?, gender = ?, region = ?, available_time = ?, id_card_number = ?, status = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and uuid = ? and deleted = 0
-                        """,
-                request.getUsername(),
-                normalizeNullableText(request.getMobile()),
-                normalizeNullableText(request.getNickname()),
-                normalizeNullableText(request.getRealName()),
-                normalizeNullableText(request.getAvatarUrl()),
-                normalizeNullableText(request.getEmail()),
-                normalizeNullableText(request.getBirthMonth()),
-                normalizeNullableText(request.getGender()),
-                normalizeNullableText(request.getRegion()),
-                normalizeNullableText(request.getAvailableTime()),
-                normalizeNullableText(request.getIdCardNumber()),
-                normalizedStatus,
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                userId,
-                userUuid
-        );
-        requireSystemWrite(updated, "User changed, please retry");
-        if (StringUtils.hasText(request.getPassword())) {
-            passwordPolicyService.validatePassword(request.getPassword());
-            String encodedPassword = passwordEncoder.encode(request.getPassword());
-            int passwordUpdated = jdbcTemplate.update(
-                    "update sys_user set password_hash = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ? where id = ? and uuid = ? and deleted = 0",
-                    encodedPassword,
-                    operatorId,
-                    operatorUuid,
-                    LocalDateTime.now(),
-                    userId,
-                    userUuid
-            );
-            requireSystemWrite(passwordUpdated, "User changed, please retry");
-            iamUserService.upsertPasswordCredential(userId, userUuid, encodedPassword);
-        }
-        userDomainService.findById(userId).ifPresent(iamUserService::updateProfile);
-        return userId;
-    }
-
-    private boolean isProtectedAdminAccount(Long userId, String username) {
-        return DEFAULT_ADMIN_USER_ID.equals(userId);
-    }
-
-    private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId, String operatorUuid) {
-        if (CollectionUtils.isEmpty(roleIds)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "User role list is required");
-        }
-        String userUuid = requireUserUuid(userId);
-        List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
-        Long existingRoleCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
-                Long.class,
-                distinctRoleIds.toArray()
-        );
-        if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
-        }
-        jdbcTemplate.update(
-                """
-                        update sys_user_role
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where user_id = ? and user_uuid = ? and deleted = 0
-                        """,
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                userId,
-                userUuid
-        );
-        for (Long roleId : distinctRoleIds) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_user_role (user_id, user_uuid, role_id, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-                            select ?, ?, r.id, ?, ?, ?, ?, 0
-                            from sys_role r
-                            where r.id = ? and r.deleted = 0
-                            """,
-                    userId,
-                    userUuid,
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid,
-                    roleId
-            );
-            requireSystemWrite(inserted, "Role changed, please retry");
-        }
-    }
-
-    private String requireUserUuid(Long userId) {
-        String userUuid;
-        try {
-            userUuid = jdbcTemplate.queryForObject(
-                    "select uuid from sys_user where id = ? and deleted = 0 limit 1",
-                    String.class,
-                    userId
-            );
-        } catch (EmptyResultDataAccessException exception) {
-            userUuid = null;
-        }
-        if (!StringUtils.hasText(userUuid)) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "User UUID is required");
-        }
-        return userUuid.trim();
-    }
-
-    private String normalizeUserStatus(String status) {
-        if (!StringUtils.hasText(status)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "User status is required");
-        }
-        String normalized = status.trim().toUpperCase(Locale.ROOT);
-        if (!Set.of("ENABLED", "DISABLED").contains(normalized)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "User status must be ENABLED or DISABLED");
-        }
-        return normalized;
+    private List<String> listCurrentRoleNames(Long userId, String userUuid) {
+        return currentUserProfileRepository.findRoleNames(userId, userUuid);
     }
 
     private Long insertMenu(Long menuId, SystemDTO.MenuUpsertRequest request, Long operatorId, String operatorUuid) {
@@ -3363,73 +2641,31 @@ public class SystemManagementAppService {
     }
 
     private Long insertMenu(Long menuId, SystemVO.MenuVO existingMenu, SystemDTO.MenuUpsertRequest request, Long operatorId, String operatorUuid) {
-        if (menuId == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_menu (
-                                parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no,
-                                permission_key, status, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    request.getParentId() == null ? 0L : request.getParentId(),
-                    request.getMenuCode(),
-                    request.getMenuName(),
-                    request.getMenuType(),
-                    request.getPath(),
-                    request.getComponent(),
-                    request.getIcon(),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
-                    request.getPermissionKey(),
-                    request.getStatus(),
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            requireSystemWrite(inserted, "Menu changed, please retry");
-            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_menu
-                        set parent_id = ?, menu_code = ?, menu_name = ?, menu_type = ?, path = ?, component = ?,
-                            icon = ?, sort_no = ?, permission_key = ?, status = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and menu_code = ? and menu_type = ? and deleted = 0
-                        """,
-                request.getParentId() == null ? 0L : request.getParentId(),
+        SystemMenuManagementRepository.MenuSaveResult saved = menuRepository.save(new SystemMenuManagementRepository.MenuSave(
+                existingMenu == null ? null : menuVersion(existingMenu),
+                request.getParentId(),
                 request.getMenuCode(),
                 request.getMenuName(),
                 request.getMenuType(),
                 request.getPath(),
                 request.getComponent(),
                 request.getIcon(),
-                request.getSortNo() == null ? 0 : request.getSortNo(),
+                request.getSortNo(),
                 request.getPermissionKey(),
                 request.getStatus(),
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                menuId,
-                existingMenu == null ? null : existingMenu.getMenuCode(),
-                existingMenu == null ? null : existingMenu.getMenuType()
-        );
-        requireSystemWrite(updated, "Menu changed, please retry");
-        return menuId;
+                menuActor(operatorId, operatorUuid),
+                LocalDateTime.now()
+        ));
+        requireSystemWrite(saved.writeCount(), "Menu changed, please retry");
+        if (saved.menuId() == null) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Menu changed, please retry");
+        }
+        return saved.menuId();
     }
 
     private SystemVO.MenuVO loadMenu(Long menuId) {
         requirePositiveId(menuId, "Menu id is required");
-        SystemVO.MenuVO menu = queryOne(
-                """
-                        select id, parent_id as parentId, menu_code as menuCode,
-                               menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
-                               permission_key as permissionKey, status
-                        from sys_menu
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.MenuVO.class,
-                menuId
-        );
+        SystemVO.MenuVO menu = menuRepository.findActiveMenu(menuId);
         if (menu == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Menu does not exist");
         }
@@ -3472,16 +2708,7 @@ public class SystemManagementAppService {
 
     private SystemVO.DictTypeVO loadDictType(Long id) {
         requirePositiveId(id, "Dict type id is required");
-        SystemVO.DictTypeVO type = queryOne(
-                """
-                        select id, dict_code as dictCode, dict_name as dictName,
-                               status, is_system as isSystem, remark
-                        from sys_dict_type
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.DictTypeVO.class,
-                id
-        );
+        SystemVO.DictTypeVO type = dictionaryRepository.findActiveType(id);
         if (type == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Dictionary type does not exist");
         }
@@ -3490,17 +2717,7 @@ public class SystemManagementAppService {
 
     private SystemVO.DictItemVO loadDictItem(Long dictTypeId, Long itemId) {
         requirePositiveId(itemId, "Dict item id is required");
-        SystemVO.DictItemVO item = queryOne(
-                """
-                        select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
-                               sort_no as sortNo, status, remark
-                        from sys_dict_item
-                        where id = ? and dict_type_id = ? and deleted = 0
-                        """,
-                SystemVO.DictItemVO.class,
-                itemId,
-                dictTypeId
-        );
+        SystemVO.DictItemVO item = dictionaryRepository.findActiveItem(dictTypeId, itemId);
         if (item == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Dictionary item does not exist");
         }
@@ -3509,16 +2726,7 @@ public class SystemManagementAppService {
 
     private SystemVO.ConfigVO loadConfig(Long id) {
         requirePositiveId(id, "Config id is required");
-        SystemVO.ConfigVO config = queryOne(
-                """
-                        select id, config_key as configKey, config_name as configName,
-                               config_value as configValue, is_system as isSystem, remark
-                        from sys_config
-                        where id = ? and deleted = 0
-                        """,
-                SystemVO.ConfigVO.class,
-                id
-        );
+        SystemVO.ConfigVO config = configurationRepository.findActiveConfig(id);
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Config does not exist");
         }
@@ -3530,43 +2738,23 @@ public class SystemManagementAppService {
     }
 
     private Long upsertDictType(Long id, SystemVO.DictTypeVO existingType, SystemDTO.DictTypeUpsertRequest request, Long operatorId, String operatorUuid) {
-        if (id == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_dict_type (dict_code, dict_name, status, is_system, remark, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-                            values (?, ?, ?, 0, ?, ?, ?, ?, ?, 0)
-                            """,
-                    request.getDictCode(),
-                    request.getDictName(),
-                    request.getStatus(),
-                    request.getRemark(),
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            requireSystemWrite(inserted, "Dict type changed, please retry");
-            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_dict_type
-                        set dict_code = ?, dict_name = ?, status = ?, remark = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and dict_code = ? and is_system = ? and deleted = 0
-                        """,
-                request.getDictCode(),
-                request.getDictName(),
-                request.getStatus(),
-                request.getRemark(),
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                id,
-                existingType == null ? null : existingType.getDictCode(),
-                existingType == null ? null : existingType.getIsSystem()
+        SystemDictionaryManagementRepository.DictionaryWriteResult saved = dictionaryRepository.saveType(
+                new SystemDictionaryManagementRepository.TypeWrite(
+                        existingType == null ? null : dictionaryTypeVersion(existingType),
+                        request.getDictCode(),
+                        request.getDictName(),
+                        request.getStatus(),
+                        existingType == null ? 0 : existingType.getIsSystem(),
+                        request.getRemark(),
+                        dictionaryActor(operatorId, operatorUuid),
+                        LocalDateTime.now()
+                )
         );
-        requireSystemWrite(updated, "Dict type changed, please retry");
-        return id;
+        requireSystemWrite(saved.writeCount(), "Dict type changed, please retry");
+        if (saved.id() == null) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Dict type changed, please retry");
+        }
+        return saved.id();
     }
 
     private Long upsertDictItem(Long id, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId, String operatorUuid) {
@@ -3574,97 +2762,28 @@ public class SystemManagementAppService {
     }
 
     private Long upsertDictItem(Long id, Long dictTypeId, SystemVO.DictItemVO existingItem, SystemDTO.DictItemUpsertRequest request, Long operatorId, String operatorUuid) {
-        if (id == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    dictTypeId,
-                    request.getItemLabel(),
-                    request.getItemValue(),
-                    request.getSortNo(),
-                    request.getStatus(),
-                    request.getRemark(),
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            requireSystemWrite(inserted, "Dict item changed, please retry");
-            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_dict_item
-                        set item_label = ?, item_value = ?, sort_no = ?, status = ?, remark = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0
-                        """,
-                request.getItemLabel(),
-                request.getItemValue(),
-                request.getSortNo(),
-                request.getStatus(),
-                request.getRemark(),
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                id,
-                dictTypeId,
-                existingItem == null ? null : existingItem.getItemValue(),
-                existingItem == null ? null : existingItem.getStatus()
+        SystemDictionaryManagementRepository.DictionaryWriteResult saved = dictionaryRepository.saveItem(
+                new SystemDictionaryManagementRepository.ItemWrite(
+                        existingItem == null ? null : dictionaryItemVersion(existingItem),
+                        dictTypeId,
+                        request.getItemLabel(),
+                        request.getItemValue(),
+                        request.getSortNo(),
+                        request.getStatus(),
+                        request.getRemark(),
+                        dictionaryActor(operatorId, operatorUuid),
+                        LocalDateTime.now()
+                )
         );
-        requireSystemWrite(updated, "Dict item changed, please retry");
-        return id;
+        requireSystemWrite(saved.writeCount(), "Dict item changed, please retry");
+        if (saved.id() == null) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Dict item changed, please retry");
+        }
+        return saved.id();
     }
 
     private boolean isSystemDictType(SystemVO.DictTypeVO type) {
         return type != null && type.getIsSystem() != null && type.getIsSystem() != 0;
-    }
-
-    private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
-        long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        long offset = (safePageNo - 1) * safePageSize;
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add(safePageSize);
-        queryParams.add(offset);
-        String pagedSql = selectSql + " limit ? offset ?";
-        List<T> records = jdbcTemplate.query(pagedSql, new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        long total = safePageNo == 1 && records.size() < safePageSize
-                ? records.size()
-                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
-        PageResponse<T> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total);
-        response.setPageNo(safePageNo);
-        response.setPageSize(safePageSize);
-        return response;
-    }
-
-    private long nullToZero(Long value) {
-        return value == null ? 0 : value;
-    }
-
-    private <T> PageResponse<T> cursorQuery(String selectSql, Class<T> voClass, long pageSize, List<Object> params) {
-        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add(safePageSize + 1);
-        List<T> records = jdbcTemplate.query(selectSql + " limit ?", new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        boolean hasMore = records.size() > safePageSize;
-        if (hasMore) {
-            records = new ArrayList<>(records.subList(0, (int) safePageSize));
-        }
-        PageResponse<T> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(-1);
-        response.setPageNo(1);
-        response.setPageSize(safePageSize);
-        response.setHasMore(hasMore);
-        if (!records.isEmpty() && records.get(records.size() - 1) instanceof SystemVO.UserVO user) {
-            response.setNextCursorId(user.getId());
-            response.setNextCursorCreatedAt(user.getRegisteredAt() == null ? null : user.getRegisteredAt().toString());
-        }
-        return response;
     }
 
     private List<SystemVO.MenuVO> buildMenuTree(List<SystemVO.MenuVO> flatMenus) {
@@ -3802,36 +2921,6 @@ public class SystemManagementAppService {
         return copied;
     }
 
-    private List<String> splitCsv(String csv) {
-        if (!StringUtils.hasText(csv)) {
-            return List.of();
-        }
-        return List.of(csv.split(","));
-    }
-
-    private void copyUser(SystemVO.UserDetailVO target, SystemVO.UserVO source) {
-        target.setId(source.getId());
-        target.setUserNo(source.getUserNo());
-        target.setUsername(source.getUsername());
-        target.setMobile(source.getMobile());
-        target.setIdCardNumber(source.getIdCardNumber());
-        target.setNickname(source.getNickname());
-        target.setRealName(source.getRealName());
-        target.setAvatarUrl(source.getAvatarUrl());
-        target.setEmail(source.getEmail());
-        target.setBirthMonth(source.getBirthMonth());
-        target.setGender(source.getGender());
-        target.setRegion(source.getRegion());
-        target.setAvailableTime(source.getAvailableTime());
-        target.setStatus(source.getStatus());
-        target.setSource(source.getSource());
-        target.setRegisteredAt(source.getRegisteredAt());
-        target.setLastLoginAt(source.getLastLoginAt());
-        target.setRoleNames(source.getRoleNames());
-        target.setCreatedAt(source.getCreatedAt());
-        target.setUpdatedAt(source.getUpdatedAt());
-    }
-
     private static SystemVO.ShortcutVO shortcut(String title, String description, String path, String permission) {
         SystemVO.ShortcutVO shortcut = new SystemVO.ShortcutVO();
         shortcut.setTitle(title);
@@ -3841,20 +2930,8 @@ public class SystemManagementAppService {
         return shortcut;
     }
 
-    private String like(String value) {
-        return "%" + value.trim() + "%";
-    }
-
     private LocalDateTime parseDateTime(String value) {
         return LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-    }
-
-    private <T> T queryOne(String sql, Class<T> voClass, Object... params) {
-        try {
-            return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(voClass), params);
-        } catch (EmptyResultDataAccessException exception) {
-            return null;
-        }
     }
 
     private String normalizeContactType(String contactType) {

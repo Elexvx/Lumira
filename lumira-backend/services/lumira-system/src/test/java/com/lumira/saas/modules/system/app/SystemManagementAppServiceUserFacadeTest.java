@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.app;
 
 import com.lumira.common.security.CurrentUser;
+import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ class SystemManagementAppServiceUserFacadeTest {
     @Test
     void shouldDelegateGetUserToUserManagementService() {
         SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
+        SystemRoleManagementAppService roleManagementAppService = mock(SystemRoleManagementAppService.class);
         SystemManagementAppService service = new SystemManagementAppService(
                 null,
                 null,
@@ -31,7 +33,8 @@ class SystemManagementAppServiceUserFacadeTest {
                 null,
                 null,
                 null,
-                userManagementAppService
+                userManagementAppService,
+                roleManagementAppService
         );
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);

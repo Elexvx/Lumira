@@ -20,7 +20,7 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
-import com.lumira.saas.modules.system.export.ExportTaskService;
+import com.lumira.saas.testfixture.ExportTaskService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import java.lang.reflect.Method;
 import java.util.Arrays;

@@ -1,6 +1,12 @@
 package com.lumira.saas.modules.system.user.app;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.export.ExcelExportPort;
+import com.lumira.api.export.ExportColumn;
+import com.lumira.api.export.ExportDTO;
+import com.lumira.api.export.ExportFieldVO;
+import com.lumira.api.export.ExportTaskPort;
+import com.lumira.api.export.ExportVO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -10,13 +16,6 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
-import com.lumira.saas.modules.system.export.ExcelExportService;
-import com.lumira.saas.modules.system.export.ExportColumn;
-import com.lumira.saas.modules.system.export.ExportDTO;
-import com.lumira.saas.modules.system.export.ExportFieldVO;
-import com.lumira.saas.modules.system.export.ExportTaskEntity;
-import com.lumira.saas.modules.system.export.ExportTaskService;
-import com.lumira.saas.modules.system.export.ExportVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -58,8 +57,8 @@ public class UserExportAppService {
     private static final String ASYNC_EXPORT_SESSION_PREFIX = "internal-export-task-";
 
     private final SystemUserManagementAppService systemUserManagementAppService;
-    private final ExcelExportService excelExportService;
-    private final ExportTaskService exportTaskService;
+    private final ExcelExportPort excelExportService;
+    private final ExportTaskPort exportTaskService;
     private final PermissionSnapshotService permissionSnapshotService;
     private final SystemInternalApi systemInternalApi;
     private final SessionAuthenticationService sessionAuthenticationService;
@@ -69,8 +68,8 @@ public class UserExportAppService {
 
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
-            ExcelExportService excelExportService,
-            ExportTaskService exportTaskService,
+            ExcelExportPort excelExportService,
+            ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
             ObjectProvider<ExecutorService> executorServiceProvider
     ) {
@@ -89,8 +88,8 @@ public class UserExportAppService {
 
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
-            ExcelExportService excelExportService,
-            ExportTaskService exportTaskService,
+            ExcelExportPort excelExportService,
+            ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
             SessionAuthenticationService sessionAuthenticationService,
             ObjectProvider<ExecutorService> executorServiceProvider
@@ -108,8 +107,8 @@ public class UserExportAppService {
 
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
-            ExcelExportService excelExportService,
-            ExportTaskService exportTaskService,
+            ExcelExportPort excelExportService,
+            ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -131,8 +130,8 @@ public class UserExportAppService {
     @Autowired
     public UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
-            ExcelExportService excelExportService,
-            ExportTaskService exportTaskService,
+            ExcelExportPort excelExportService,
+            ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -154,8 +153,8 @@ public class UserExportAppService {
 
     private UserExportAppService(
             SystemUserManagementAppService systemUserManagementAppService,
-            ExcelExportService excelExportService,
-            ExportTaskService exportTaskService,
+            ExcelExportPort excelExportService,
+            ExportTaskPort exportTaskService,
             PermissionSnapshotService permissionSnapshotService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
@@ -203,7 +202,7 @@ public class UserExportAppService {
             return response;
         }
 
-        ExportTaskEntity task = exportTaskService.createTask(
+        ExportTaskPort.ExportTask task = exportTaskService.createTask(
                 trustedUser,
                 MODULE_KEY,
                 asyncTaskPayload(normalizedRequest, fileName, trustedUser.getSimulatedRoleId()),
@@ -211,11 +210,11 @@ public class UserExportAppService {
                 total
         );
         CurrentUser asyncUser = trustedCurrentUserSnapshot(trustedUser);
-        asyncUser.setSessionId(asyncExportSessionId(task.getId()));
-        submitAsyncExport(task.getId(), asyncUser, normalizedRequest, selectedColumns, fileName);
+        asyncUser.setSessionId(asyncExportSessionId(task.id()));
+        submitAsyncExport(task.id(), asyncUser, normalizedRequest, selectedColumns, fileName);
         ExportVO.ExportStartVO response = new ExportVO.ExportStartVO();
         response.setMode("ASYNC");
-        response.setTaskId(task.getId());
+        response.setTaskId(task.id());
         response.setFileName(fileName);
         response.setTotalCount(total);
         return response;
@@ -268,12 +267,23 @@ public class UserExportAppService {
             exportTaskService.markRunningFromTrustedSnapshot(refreshedUser, taskId);
             byte[] content = excelExportService.export("user management", selectedColumns, loadAllUsers(refreshedUser, request));
             refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser, true);
-            FileObjectDTO uploaded = exportTaskService.uploadExportFile(refreshedUser, content, fileName, "user export", "export,user", "user async export");
+            FileObjectDTO uploaded = exportTaskService.uploadExportFileFromTrustedSnapshot(
+                    refreshedUser,
+                    content,
+                    fileName,
+                    "user export",
+                    "export,user",
+                    "user async export"
+            );
             refreshedUser = refreshTrustedCurrentUserSnapshot(currentUser, true);
             exportTaskService.markSuccessFromTrustedSnapshot(refreshedUser, taskId, uploaded, fileName);
         } catch (Exception exception) {
             try {
-                exportTaskService.markFailedFromTrustedSnapshot(refreshTrustedCurrentUserSnapshot(currentUser, true), taskId, exception);
+                exportTaskService.markFailedFromTrustedSnapshot(
+                        refreshTrustedCurrentUserSnapshot(currentUser, true),
+                        taskId,
+                        exception
+                );
             } catch (RuntimeException ignored) {
                 // A revoked or expired session must not keep mutating async export state.
             }

@@ -38,25 +38,25 @@ public class FilePlatformEventPublisher {
         this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
-    public void publishUploadedAfterCommit(CurrentUser currentUser, FileObjectDTO file) {
-        publishAfterCommit(FilePlatformEventTypes.FILE_OBJECT_UPLOADED, currentUser, file);
+    public void publishUploaded(CurrentUser currentUser, FileObjectDTO file) {
+        publish(FilePlatformEventTypes.FILE_OBJECT_UPLOADED, currentUser, file);
     }
 
-    public void publishDeletedAfterCommit(CurrentUser currentUser, FileObjectDTO file) {
-        publishAfterCommit(FilePlatformEventTypes.FILE_OBJECT_DELETED, currentUser, file);
+    public void publishDeleted(CurrentUser currentUser, FileObjectDTO file) {
+        publish(FilePlatformEventTypes.FILE_OBJECT_DELETED, currentUser, file);
     }
 
     String buildEventKey(String eventType, Long fileId) {
         return eventType + ":" + FilePlatformEventTypes.AGGREGATE_FILE_OBJECT + ":" + (fileId == null ? "none" : fileId);
     }
 
-    private void publishAfterCommit(String eventType, CurrentUser currentUser, FileObjectDTO file) {
+    private void publish(String eventType, CurrentUser currentUser, FileObjectDTO file) {
         TrustedActor actor = trustedActor(currentUser);
         Long userId = actor.userId();
         String userUuid = actor.userUuid();
         Long simulatedRoleId = actor.simulatedRoleId();
         Long fileId = file == null ? null : file.id();
-        platformEventOutboxService.recordAfterCommit(
+        platformEventOutboxService.record(
                 FilePlatformEventTypes.SOURCE_FILE,
                 eventType,
                 userId,

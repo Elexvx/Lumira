@@ -3,7 +3,7 @@ package com.lumira.payment.controller;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.web.InternalJobTokenValidator;
 import com.lumira.payment.service.PaymentOutboxRelay;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController("paymentInternalJobController")
 @RequestMapping("/payment/internal/jobs")
-@ConditionalOnLumiraAsyncEnabled
+@ConditionalOnLumiraControlPlaneEnabled
 public class InternalJobController {
 
     private final PaymentOutboxRelay paymentOutboxRelay;

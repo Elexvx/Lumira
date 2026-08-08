@@ -166,16 +166,6 @@ public class PlatformEventOutboxService {
         this(objectMapper, platformEventOutboxMapper, null);
     }
 
-    public void recordAfterCommit(
-            String sourceType,
-            String eventType,
-            Long userId,
-            String eventKey,
-            Object payload
-    ) {
-        record(sourceType, eventType, userId, eventKey, payload);
-    }
-
     public PlatformEventOutboxEntity record(
             String sourceType,
             String eventType,
@@ -271,6 +261,24 @@ public class PlatformEventOutboxService {
 
     public long dispatchableBacklog() {
         return snapshot().dispatchableBacklog();
+    }
+
+    /** Durable global outbox high-water mark used by rebuildable read models. */
+    public long currentWatermark() {
+        if (queryOperations != null) {
+            Long value = queryOperations.queryForObject(
+                    "select coalesce(max(id), 0) from platform_event_outbox where deleted = 0",
+                    Long.class
+            );
+            return value == null ? 0L : Math.max(0L, value);
+        }
+        List<PlatformEventOutboxEntity> latest = platformEventOutboxMapper.selectList(
+                new QueryWrapper<PlatformEventOutboxEntity>()
+                        .eq("deleted", 0)
+                        .orderByDesc("id")
+                        .last("limit 1")
+        );
+        return latest.isEmpty() || latest.getFirst().getId() == null ? 0L : latest.getFirst().getId();
     }
 
     public OutboxMetricsSnapshot snapshot() {

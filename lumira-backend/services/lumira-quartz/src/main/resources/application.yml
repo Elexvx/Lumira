@@ -7,17 +7,6 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:prod}
   main:
     keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
-  datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      database: ${REDIS_DATABASE:0}
 
 server:
   port: ${SERVER_PORT:8080}
@@ -26,9 +15,11 @@ lumira:
   runtime:
     async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:true}
 
-spring.cloud.sentinel.enabled: false
-
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:true}
   endpoints:
     web:
       exposure:
@@ -39,16 +30,16 @@ management:
       service: ${spring.application.name}
 
 saas:
-  security:
-    jwt-secret: ${JWT_SECRET:}
-    field-secret: ${FIELD_SECRET:}
   job:
-    backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}
-    system-service-base-url: ${SAAS_JOB_SYSTEM_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
-    message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
-    file-service-base-url: ${SAAS_JOB_FILE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
-    payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
-    plugin-service-base-url: ${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
+    # Production has two remote runtime targets: Async owner-job handlers and
+    # the active control-plane slot. Per-service names remain only as legacy
+    # local/split-deployment fallbacks and are not part of the deploy contract.
+    backend-base-url: ${SAAS_JOB_ASYNC_RUNTIME_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
+    system-service-base-url: ${SAAS_JOB_CONTROL_PLANE_BASE_URL:${SAAS_JOB_SYSTEM_SERVICE_BASE_URL:${SAAS_JOB_ASYNC_RUNTIME_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}}}
+    message-service-base-url: ${SAAS_JOB_ASYNC_RUNTIME_BASE_URL:${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}}
+    file-service-base-url: ${SAAS_JOB_ASYNC_RUNTIME_BASE_URL:${SAAS_JOB_FILE_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}}
+    payment-service-base-url: ${SAAS_JOB_ASYNC_RUNTIME_BASE_URL:${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}}
+    plugin-service-base-url: ${SAAS_JOB_ASYNC_RUNTIME_BASE_URL:${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}}
     internal:
       file-token: ${SAAS_INTERNAL_FILE_TOKEN:}
       message-token: ${SAAS_INTERNAL_MESSAGE_TOKEN:}
@@ -66,11 +57,6 @@ saas:
       file-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_FILE_ENABLED:true}
       payment-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_PAYMENT_ENABLED:true}
       plugin-enabled: ${SAAS_JOB_ADAPTIVE_RELAY_PLUGIN_ENABLED:true}
-  plugin:
-    signature-secret: ${PLUGIN_SIGNATURE_SECRET:}
-  web:
-    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
-
 xxl:
   job:
     accessToken: ${XXL_JOB_ACCESS_TOKEN:${XXL_JOB_ADMIN_ACCESS_TOKEN:}}

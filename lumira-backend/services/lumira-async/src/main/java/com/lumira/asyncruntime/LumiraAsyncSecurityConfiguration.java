@@ -41,6 +41,9 @@ public class LumiraAsyncSecurityConfiguration {
                                 "/api/version",
                                 "/api/v1/version",
                                 "/api/v1/*/version",
+                                "/api/v2/async/readiness",
+                                "/api/v2/async/health",
+                                "/api/v2/async/metrics",
                                 "/error"
                         ).permitAll()
                         .requestMatchers(new RegexRequestMatcher(".*/internal/.*", null)).authenticated()

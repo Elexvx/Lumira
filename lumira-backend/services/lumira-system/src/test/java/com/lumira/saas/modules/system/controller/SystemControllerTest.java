@@ -12,7 +12,7 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
-import com.lumira.saas.modules.system.export.ExportTaskService;
+import com.lumira.saas.testfixture.ExportTaskService;
 import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import org.junit.jupiter.api.Test;
 

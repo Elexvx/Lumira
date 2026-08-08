@@ -2,7 +2,6 @@ package com.lumira.saas.infrastructure.job;
 
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
-import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.common.exception.BizException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
@@ -23,7 +22,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -41,7 +39,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -57,7 +54,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -74,7 +70,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -91,7 +86,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 ""
         );
 
@@ -108,7 +102,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 TOKEN
         );
 
@@ -125,7 +118,6 @@ class InternalJobControllerTest {
         InternalJobController controller = new InternalJobController(
                 outboxRelay,
                 beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
                 ""
         );
 
@@ -135,39 +127,4 @@ class InternalJobControllerTest {
         verifyNoInteractions(outboxRelay);
     }
 
-    @Test
-    void processExportTasksShouldRejectWhenWorkerIsNotAvailable() {
-        PlatformEventOutboxRelay outboxRelay = mock(PlatformEventOutboxRelay.class);
-        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
-        InternalJobController controller = new InternalJobController(
-                outboxRelay,
-                beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
-                TOKEN
-        );
-
-        assertThatThrownBy(() -> controller.processExportTasks(20, TOKEN))
-                .isInstanceOf(BizException.class);
-
-        verifyNoInteractions(outboxRelay);
-    }
-
-    @Test
-    void processExportTasksShouldCallWorkerWhenAvailable() {
-        PlatformEventOutboxRelay outboxRelay = mock(PlatformEventOutboxRelay.class);
-        UserExportTaskWorkerService userExportTaskWorkerService = mock(UserExportTaskWorkerService.class);
-        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
-        beanFactory.addBean("userExportTaskWorkerService", userExportTaskWorkerService);
-        InternalJobController controller = new InternalJobController(
-                outboxRelay,
-                beanFactory.getBeanProvider(OnlineSessionStreamService.class),
-                beanFactory.getBeanProvider(UserExportTaskWorkerService.class),
-                TOKEN
-        );
-
-        controller.processExportTasks(5, TOKEN);
-
-        verify(userExportTaskWorkerService).processPendingTasks(5);
-        verifyNoInteractions(outboxRelay);
-    }
 }

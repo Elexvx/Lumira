@@ -1,6 +1,7 @@
 package com.lumira.message.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.event.EventConsumptionPort;
 import com.lumira.message.app.MessageAppService;
 import com.lumira.message.app.SystemEventMessageCommand;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -35,7 +36,7 @@ class ReviewResultEventStreamConsumerTest {
 
     private StringRedisTemplate redis;
     private StreamOperations<String, String, String> streamOperations;
-    private MessageEventConsumptionGuard guard;
+    private EventConsumptionPort consumptionPort;
     private MessageAppService messageAppService;
     private ReviewResultEventStreamConsumer consumer;
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
@@ -46,14 +47,14 @@ class ReviewResultEventStreamConsumerTest {
         RedisConnectionFactory connectionFactory = mock(RedisConnectionFactory.class);
         redis = mock(StringRedisTemplate.class);
         streamOperations = mock(StreamOperations.class);
-        guard = mock(MessageEventConsumptionGuard.class);
+        consumptionPort = mock(EventConsumptionPort.class);
         messageAppService = mock(MessageAppService.class);
         when(redis.<String, String>opsForStream()).thenReturn(streamOperations);
         consumer = new ReviewResultEventStreamConsumer(
                 connectionFactory,
                 redis,
                 objectMapper,
-                guard,
+                consumptionPort,
                 messageAppService,
                 new SimpleMeterRegistry(),
                 "saas:platform-events",
@@ -68,7 +69,7 @@ class ReviewResultEventStreamConsumerTest {
             Runnable sideEffect = invocation.getArgument(1);
             sideEffect.run();
             return true;
-        }).when(guard).executeOnce(any(), any());
+        }).when(consumptionPort).executeOnce(any(), any());
         MapRecord<String, String, String> message = validMessage();
 
         consumer.onMessage(message);
@@ -95,7 +96,7 @@ class ReviewResultEventStreamConsumerTest {
 
         consumer.onMessage(message);
 
-        verify(guard, never()).executeOnce(any(), any());
+        verify(consumptionPort, never()).executeOnce(any(), any());
         verify(messageAppService, never()).createSystemEventMessage(any());
         verify(streamOperations).add(argThat(record ->
                 "saas:platform-events:dead-letter".equals(record.getStream())
@@ -117,7 +118,7 @@ class ReviewResultEventStreamConsumerTest {
 
         consumer.onMessage(message);
 
-        verify(guard, never()).executeOnce(any(), any());
+        verify(consumptionPort, never()).executeOnce(any(), any());
         verify(streamOperations).acknowledge(
                 eq("saas:platform-events"),
                 eq("message-review-result-v1"),
@@ -129,7 +130,7 @@ class ReviewResultEventStreamConsumerTest {
     void leavesTransientFailurePendingForScheduledRecovery() throws Exception {
         doAnswer(invocation -> {
             throw new IllegalStateException("database temporarily unavailable");
-        }).when(guard).executeOnce(any(), any());
+        }).when(consumptionPort).executeOnce(any(), any());
 
         consumer.onMessage(validMessage());
 

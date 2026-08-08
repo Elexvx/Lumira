@@ -1,6 +1,5 @@
 package com.lumira.file.processing;
 
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import java.time.Duration;
@@ -11,13 +10,13 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 @Service
-@ConditionalOnLumiraAsyncEnabled
 public class FileProcessingTaskService {
     private static final Logger log = LoggerFactory.getLogger(FileProcessingTaskService.class);
 
@@ -49,7 +48,9 @@ public class FileProcessingTaskService {
     private final FileAiParseProcessor aiParseProcessor;
     @Nullable
     private final FileProcessingMetrics processingMetrics;
+    private final FileOwnerIdentityVerifier ownerIdentityVerifier;
 
+    @Autowired
     public FileProcessingTaskService(
             JdbcTemplate jdbcTemplate,
             @Nullable
@@ -68,7 +69,8 @@ public class FileProcessingTaskService {
             @Lazy
             FileAiParseProcessor aiParseProcessor,
             @Nullable
-            FileProcessingMetrics processingMetrics
+            FileProcessingMetrics processingMetrics,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.securityScanProcessor = securityScanProcessor;
@@ -77,6 +79,28 @@ public class FileProcessingTaskService {
         this.textExtractionProcessor = textExtractionProcessor;
         this.aiParseProcessor = aiParseProcessor;
         this.processingMetrics = processingMetrics;
+        this.ownerIdentityVerifier = ownerIdentityVerifier;
+    }
+
+    public FileProcessingTaskService(
+            JdbcTemplate jdbcTemplate,
+            @Nullable @Lazy FileSecurityScanProcessor securityScanProcessor,
+            @Nullable @Lazy FileThumbnailProcessor thumbnailProcessor,
+            @Nullable @Lazy FileOcrProcessor ocrProcessor,
+            @Nullable @Lazy FileTextExtractionProcessor textExtractionProcessor,
+            @Nullable @Lazy FileAiParseProcessor aiParseProcessor,
+            @Nullable FileProcessingMetrics processingMetrics
+    ) {
+        this(
+                jdbcTemplate,
+                securityScanProcessor,
+                thumbnailProcessor,
+                ocrProcessor,
+                textExtractionProcessor,
+                aiParseProcessor,
+                processingMetrics,
+                null
+        );
     }
 
     public int processPendingTasks(int limit) {
@@ -119,14 +143,6 @@ public class FileProcessingTaskService {
                              and fo.uploaded_by > 0
                              and t.created_by = fo.uploaded_by
                              and t.created_by_uuid = fo.uploaded_by_uuid
-                            join sys_user u
-                              on u.id = fo.uploaded_by
-                             and u.uuid = fo.uploaded_by_uuid
-                             and u.deleted = 0
-                             and u.status = 'ENABLED'
-                             and u.uuid is not null
-                             and u.uuid <> ''
-                             and t.created_by_uuid = u.uuid
                             where t.deleted = 0
                               and (
                                     t.status = ?
@@ -177,14 +193,6 @@ public class FileProcessingTaskService {
                              and fo.uploaded_by > 0
                              and t.created_by = fo.uploaded_by
                              and t.created_by_uuid = fo.uploaded_by_uuid
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                         and u.uuid is not null
-                         and u.uuid <> ''
-                         and t.created_by_uuid = u.uuid
                         where t.deleted = 0 and t.claim_token = ?
                         order by t.priority desc, t.created_at asc, t.id asc
                 """,
@@ -349,6 +357,10 @@ public class FileProcessingTaskService {
                 || !isKnownTaskType(task.taskType())) {
             throw new IllegalStateException("File processing task row is invalid");
         }
+        if (ownerIdentityVerifier == null) {
+            throw new IllegalStateException("File owner identity resolver is unavailable");
+        }
+        ownerIdentityVerifier.requireEnabledOwner(task.createdBy(), task.createdByUserUuid());
     }
 
     private boolean isKnownTaskType(String taskType) {

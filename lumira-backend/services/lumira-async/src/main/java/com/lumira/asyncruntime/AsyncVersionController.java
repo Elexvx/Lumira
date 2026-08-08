@@ -1,0 +1,75 @@
+package com.lumira.asyncruntime;
+
+import com.lumira.common.api.ApiResponse;
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ServiceVersionInfo;
+import com.lumira.common.runtime.ServiceVersionInfoFactory;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.core.env.Environment;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** Version identity for the independently deployed async runtime. */
+@RestController
+@ConditionalOnLumiraAsyncEnabled
+public class AsyncVersionController {
+
+    private final Environment environment;
+    private final ObjectProvider<BuildProperties> buildPropertiesProvider;
+
+    public AsyncVersionController(Environment environment, ObjectProvider<BuildProperties> buildPropertiesProvider) {
+        this.environment = environment;
+        this.buildPropertiesProvider = buildPropertiesProvider;
+    }
+
+    @GetMapping("/api/v1/async/version")
+    public ApiResponse<ServiceVersionInfo> version(HttpServletRequest request) {
+        return ApiResponse.success(current(), null, request.getRequestURI());
+    }
+
+    private ServiceVersionInfo current() {
+        BuildProperties buildProperties = buildPropertiesProvider.getIfAvailable();
+        return ServiceVersionInfoFactory.create(
+                environment.getProperty("spring.application.name"),
+                buildProperties == null ? null : buildProperties.getArtifact(),
+                ServiceVersionInfoFactory.firstText(
+                        environment.getProperty("LUMIRA_IMAGE_APP_VERSION"),
+                        environment.getProperty("LUMIRA_IMAGE_BUILD_VERSION"),
+                        environment.getProperty("APP_VERSION"),
+                        environment.getProperty("BUILD_VERSION"),
+                        buildProperties == null ? null : buildProperties.getVersion()
+                ),
+                ServiceVersionInfoFactory.firstText(
+                        environment.getProperty("LUMIRA_IMAGE_BUILD_TIME"),
+                        environment.getProperty("BUILD_TIME"),
+                        formatBuildTime(buildProperties)
+                ),
+                ServiceVersionInfoFactory.firstText(
+                        environment.getProperty("LUMIRA_IMAGE_GIT_COMMIT"),
+                        environment.getProperty("GIT_COMMIT"),
+                        environment.getProperty("COMMIT_SHA"),
+                        environment.getProperty("VERCEL_GIT_COMMIT_SHA")
+                ),
+                ServiceVersionInfoFactory.firstText(
+                        environment.getProperty("LUMIRA_IMAGE_GIT_BRANCH"),
+                        environment.getProperty("GIT_BRANCH"),
+                        environment.getProperty("VERCEL_GIT_COMMIT_REF")
+                ),
+                String.join(",", environment.getActiveProfiles()),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("LUMIRA_IMAGE_FRONTEND_VERSION"), environment.getProperty("FRONTEND_VERSION")),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("LUMIRA_IMAGE_BACKEND_VERSION"), environment.getProperty("LUMIRA_IMAGE_BUILD_VERSION"), environment.getProperty("BACKEND_VERSION"), environment.getProperty("BUILD_VERSION")),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("DATABASE_VERSION"), environment.getProperty("LUMIRA_IMAGE_DATABASE_VERSION"))
+        );
+    }
+
+    private String formatBuildTime(BuildProperties buildProperties) {
+        if (buildProperties == null) {
+            return null;
+        }
+        Instant time = buildProperties.getTime();
+        return time == null ? null : time.toString();
+    }
+}

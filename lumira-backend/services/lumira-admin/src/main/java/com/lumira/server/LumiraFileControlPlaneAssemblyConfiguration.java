@@ -2,6 +2,7 @@ package com.lumira.server;
 
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.file.FileRuntimeAssemblyConfiguration;
+import com.lumira.file.FileOwnerAsyncAdapterControlPlaneAssemblyConfiguration;
 import com.lumira.file.controller.FileController;
 import com.lumira.file.controller.FileReadinessV2Controller;
 import com.lumira.file.controller.FileUploadMetrics;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Import;
 @ConditionalOnLumiraControlPlaneEnabled
 @Import({
         FileRuntimeAssemblyConfiguration.class,
+        FileOwnerAsyncAdapterControlPlaneAssemblyConfiguration.class,
         FileController.class,
         FileReadinessV2Controller.class,
         FileUploadMetrics.class,

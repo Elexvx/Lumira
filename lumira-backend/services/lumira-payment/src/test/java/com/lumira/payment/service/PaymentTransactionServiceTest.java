@@ -234,45 +234,30 @@ class PaymentTransactionServiceTest {
     @Test
     void getOrderForUserShouldRejectUserUuidMismatchBeforeOrderLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(
-                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
-                eq(String.class),
-                eq(1001L)
-        )).thenReturn("user-uuid-1001");
-        PaymentTransactionService service = service(jdbcTemplate);
+        SystemInternalApi systemInternalApi = enabledSystemInternalApi();
+        PaymentTransactionService service = service(jdbcTemplate, systemInternalApi);
 
         assertThatThrownBy(() -> service.getOrderForUser(1001L, "other-uuid", "ORD-1"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
 
-        verify(jdbcTemplate).queryForObject(
-                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
-                eq(String.class),
-                eq(1001L)
-        );
+        verify(systemInternalApi).findTargetUserUuidById(1001L);
+        verifyNoInteractions(jdbcTemplate);
     }
 
     @Test
     void getOrderForUserShouldRejectDisabledLookupUserBeforeOrderQuery() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(
-                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
-                eq(String.class),
-                eq(1001L)
-        )).thenThrow(new EmptyResultDataAccessException(1));
-        PaymentTransactionService service = service(jdbcTemplate);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PaymentTransactionService service = service(jdbcTemplate, systemInternalApi);
 
         assertThatThrownBy(() -> service.getOrderForUser(1001L, "user-uuid-1001", "ORD-1"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
 
-        verify(jdbcTemplate).queryForObject(
-                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
-                eq(String.class),
-                eq(1001L)
-        );
+        verify(systemInternalApi).findTargetUserUuidById(1001L);
         verify(jdbcTemplate, never()).queryForObject(any(String.class), anyOrderRowMapper(), eq("ORD-1"), eq(1001L), eq("user-uuid-1001"));
     }
 
@@ -688,23 +673,15 @@ class PaymentTransactionServiceTest {
     @Test
     void getRefundForUserShouldRejectDisabledLookupUserBeforeRefundQuery() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(
-                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
-                eq(String.class),
-                eq(1001L)
-        )).thenThrow(new EmptyResultDataAccessException(1));
-        PaymentTransactionService service = service(jdbcTemplate);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PaymentTransactionService service = service(jdbcTemplate, systemInternalApi);
 
         assertThatThrownBy(() -> service.getRefundForUser(1001L, "user-uuid-1001", "REF-1"))
                 .isInstanceOf(BizException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNAUTHORIZED);
 
-        verify(jdbcTemplate).queryForObject(
-                eq("select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1"),
-                eq(String.class),
-                eq(1001L)
-        );
+        verify(systemInternalApi).findTargetUserUuidById(1001L);
         verify(jdbcTemplate, never()).queryForObject(any(String.class), anyRefundRowMapper(), eq("REF-1"), eq(1001L), eq("user-uuid-1001"));
     }
 
@@ -791,7 +768,7 @@ class PaymentTransactionServiceTest {
         );
 
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(1001L),
                 eq("payment"),
                 eq("payment.refund.created"),
@@ -805,6 +782,16 @@ class PaymentTransactionServiceTest {
 
     private PaymentTransactionService service(JdbcTemplate jdbcTemplate) {
         return service(jdbcTemplate, mock(PaymentManagementAppService.class));
+    }
+
+    private PaymentTransactionService service(JdbcTemplate jdbcTemplate, SystemInternalApi systemInternalApi) {
+        return service(
+                jdbcTemplate,
+                mock(PaymentManagementAppService.class),
+                mock(PaymentOutboxService.class),
+                mock(DomainEventPublisher.class),
+                provider(systemInternalApi)
+        );
     }
 
     private PaymentTransactionService service(JdbcTemplate jdbcTemplate, PaymentManagementAppService managementAppService) {
@@ -859,6 +846,7 @@ class PaymentTransactionServiceTest {
     private SystemInternalApi enabledSystemInternalApi() {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         when(systemInternalApi.findUserIdentityById(1001L)).thenReturn(userSnapshot(1001L, "tester", "ENABLED"));
+        when(systemInternalApi.findTargetUserUuidById(1001L)).thenReturn("user-uuid-1001");
         return systemInternalApi;
     }
 

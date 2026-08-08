@@ -1,15 +1,16 @@
 package com.lumira.saas.modules.system.user.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.export.ExportDTO;
+import com.lumira.api.export.ExportTaskQueuePort;
+import com.lumira.api.export.ExportTaskQueuePort.ExportTaskClaim;
+import com.lumira.api.export.ExportTaskPort;
+import com.lumira.api.export.UserExportTaskWorkerPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.saas.modules.system.export.ExportDTO;
-import com.lumira.saas.modules.system.export.ExportTaskService;
-import com.lumira.saas.modules.system.user.repository.UserExportTaskWorkerRepository;
-import com.lumira.saas.modules.system.user.repository.UserExportTaskWorkerRepository.TaskClaim;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,34 +22,35 @@ import java.util.UUID;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
-public class UserExportTaskWorkerService {
+public class UserExportTaskWorkerService implements UserExportTaskWorkerPort {
     private static final Logger log = LoggerFactory.getLogger(UserExportTaskWorkerService.class);
 
-    public static final int MAX_CLAIM_LIMIT = 100;
+    public static final int MAX_CLAIM_LIMIT = UserExportTaskWorkerPort.MAX_CLAIM_LIMIT;
     private static final String MODULE_KEY = "system:user";
     private static final String STATUS_RUNNING = "RUNNING";
     private static final int MAX_ERROR_LENGTH = 512;
 
-    private final UserExportTaskWorkerRepository taskRepository;
+    private final ExportTaskQueuePort taskQueue;
     private final ObjectMapper objectMapper;
     private final UserExportAppService userExportAppService;
-    private final ExportTaskService exportTaskService;
+    private final ExportTaskPort exportTaskService;
 
     public UserExportTaskWorkerService(
-            UserExportTaskWorkerRepository taskRepository,
+            ExportTaskQueuePort taskQueue,
             ObjectMapper objectMapper,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService
+            ExportTaskPort exportTaskService
     ) {
-        this.taskRepository = taskRepository;
+        this.taskQueue = taskQueue;
         this.objectMapper = objectMapper;
         this.userExportAppService = userExportAppService;
         this.exportTaskService = exportTaskService;
     }
 
+    @Override
     public int processPendingTasks(int limit) {
         int processed = 0;
-        for (TaskClaim task : claimPendingTasks(limit)) {
+        for (ExportTaskClaim task : claimPendingTasks(limit)) {
             try {
                 processClaimedTask(task);
                 processed++;
@@ -59,15 +61,15 @@ public class UserExportTaskWorkerService {
         return processed;
     }
 
-    List<TaskClaim> claimPendingTasks(int limit) {
+    List<ExportTaskClaim> claimPendingTasks(int limit) {
         int normalizedLimit = requireClaimLimit(limit);
         LocalDateTime now = LocalDateTime.now();
         String claimToken = UUID.randomUUID().toString();
         LocalDateTime claimExpiresAt = now.plusMinutes(15);
-        return taskRepository.claim(normalizedLimit, workerId(), claimToken, now, claimExpiresAt);
+        return taskQueue.claim(MODULE_KEY, normalizedLimit, workerId(), claimToken, now, claimExpiresAt);
     }
 
-    private void processClaimedTask(TaskClaim task) {
+    private void processClaimedTask(ExportTaskClaim task) {
         requireClaimedTask(task);
         UserExportAppService.AsyncTaskPayload payload = parsePayload(task.requestPayload());
         ExportDTO.UserExportRequest request = payload.getRequest();
@@ -106,20 +108,20 @@ public class UserExportTaskWorkerService {
         }
     }
 
-    private void markSucceeded(TaskClaim task, FileObjectDTO uploaded, String fileName) {
+    private void markSucceeded(ExportTaskClaim task, FileObjectDTO uploaded, String fileName) {
         Long fileId = uploaded == null ? null : uploaded.id();
         if (fileId == null || fileId <= 0) {
             throw new IllegalStateException("Export file upload did not return a trusted file id");
         }
-        int updated = taskRepository.markSucceeded(task, fileId, fileName, LocalDateTime.now());
+        int updated = taskQueue.markSucceeded(task, fileId, fileName, LocalDateTime.now());
         recordClaimMismatchIfNeeded(updated, task, "markSucceeded");
     }
 
-    private void markFailed(TaskClaim task, RuntimeException exception) {
+    private void markFailed(ExportTaskClaim task, RuntimeException exception) {
         if (task == null || task.id() == null || task.id() <= 0 || !StringUtils.hasText(task.claimToken())) {
             return;
         }
-        int updated = taskRepository.markFailed(task, truncate(resolveErrorMessage(exception)), LocalDateTime.now());
+        int updated = taskQueue.markFailed(task, truncate(resolveErrorMessage(exception)), LocalDateTime.now());
         if (updated <= 0) {
             log.warn("user export task claim mismatch operation=markFailed taskId={}", task.id());
             return;
@@ -127,7 +129,7 @@ public class UserExportTaskWorkerService {
         log.warn("user export task failed taskId={} message={}", task.id(), resolveErrorMessage(exception));
     }
 
-    private void requireClaimedTask(TaskClaim task) {
+    private void requireClaimedTask(ExportTaskClaim task) {
         if (task == null
                 || task.id() == null
                 || task.id() <= 0
@@ -148,7 +150,7 @@ public class UserExportTaskWorkerService {
         return limit;
     }
 
-    private void recordClaimMismatchIfNeeded(int updated, TaskClaim task, String operation) {
+    private void recordClaimMismatchIfNeeded(int updated, ExportTaskClaim task, String operation) {
         if (updated > 0) {
             return;
         }

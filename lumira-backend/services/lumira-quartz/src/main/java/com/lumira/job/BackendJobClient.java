@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClient;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Locale;
+import java.util.Set;
 
 @Component
 @ConditionalOnLumiraAsyncEnabled
@@ -109,6 +111,19 @@ public class BackendJobClient {
 
     public int expireReviewAssignments() {
         return postForInt(systemRestClient, "/internal/jobs/reviews/assignments/expire");
+    }
+
+    /** Invokes the control-plane catalog owner; this runtime never reads catalog or source tables. */
+    public int rebuildEventCatalogSource(String sourceType) {
+        return postForInt(systemRestClient, eventCatalogRebuildPath(sourceType));
+    }
+
+    static String eventCatalogRebuildPath(String sourceType) {
+        String normalized = StringUtils.hasText(sourceType) ? sourceType.trim().toUpperCase(Locale.ROOT) : "";
+        if (!Set.of("ACTIVITY", "COMPETITION").contains(normalized)) {
+            throw new IllegalArgumentException("Unsupported event catalog source: " + sourceType);
+        }
+        return "/internal/jobs/event-catalog/rebuild/" + normalized;
     }
 
     private void post(String path) {

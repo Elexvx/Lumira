@@ -1,6 +1,7 @@
 package com.lumira.message.service;
 
 import com.lumira.api.message.MessageEventDTO;
+import com.lumira.message.app.PlatformEventOutboxEntity;
 import com.lumira.message.app.PlatformEventOutboxService;
 import com.lumira.message.vo.MessageVO;
 import org.slf4j.Logger;
@@ -30,51 +31,44 @@ public class MessagePushService {
 
     public void publishCreated(MessageVO.NoticeVO notice) {
         MessageEventDTO event = messageEventFactory.createCreatedEvent(notice);
-        dispatchAfterCommit(() -> {
-            platformEventOutboxService.recordAfterCommit(event);
-            messageEventDeliveryService.deliver(event);
-        });
+        recordThenDispatchAfterCommit(event);
     }
 
     public void publishRetracted(MessageVO.NoticeVO notice) {
         MessageEventDTO event = messageEventFactory.createRetractedEvent(notice);
-        dispatchAfterCommit(() -> {
-            platformEventOutboxService.recordAfterCommit(event);
-            messageEventDeliveryService.deliver(event);
-        });
+        recordThenDispatchAfterCommit(event);
     }
 
     public void publishRead(Long userId, String userUuid, MessageVO.NoticeVO notice, Integer unreadCount) {
         MessageEventDTO event = messageEventFactory.createReadEvent(userId, userUuid, notice, unreadCount);
-        dispatchAfterCommit(() -> {
-            platformEventOutboxService.recordAfterCommit(event);
-            messageEventDeliveryService.deliver(event);
-        });
+        recordThenDispatchAfterCommit(event);
     }
 
     public void publishUnreadCount(Long userId, String userUuid, Integer unreadCount) {
         MessageEventDTO event = messageEventFactory.createUnreadCountEvent(userId, userUuid, unreadCount);
-        dispatchAfterCommit(() -> {
-            platformEventOutboxService.recordAfterCommit(event);
-            messageEventDeliveryService.deliver(event);
-        });
+        recordThenDispatchAfterCommit(event);
     }
 
-    private void dispatchAfterCommit(Runnable dispatchAction) {
+    private void recordThenDispatchAfterCommit(MessageEventDTO event) {
+        var outboxEvent = platformEventOutboxService.record(event);
         if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
-            dispatchAction.run();
+            dispatchImmediately(outboxEvent);
             return;
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                try {
-                    dispatchAction.run();
-                } catch (RuntimeException exception) {
-                    logger.warn("消息提交后发送失败: {}", exception.getMessage(), exception);
-                }
+                dispatchImmediately(outboxEvent);
             }
         });
+    }
+
+    private void dispatchImmediately(PlatformEventOutboxEntity outboxEvent) {
+        try {
+            platformEventOutboxService.dispatchImmediately(outboxEvent, messageEventDeliveryService);
+        } catch (RuntimeException exception) {
+            logger.warn("消息即时投递失败，保留 outbox 供 relay 重试: {}", exception.getMessage(), exception);
+        }
     }
 }

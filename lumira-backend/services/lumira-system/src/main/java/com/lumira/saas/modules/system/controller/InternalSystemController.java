@@ -48,15 +48,13 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
+import com.lumira.saas.modules.system.internal.app.InternalSystemApplicationService;
 import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
 import com.lumira.saas.modules.auth.vo.LoginCodeChallengeVO;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import jakarta.validation.Valid;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -91,8 +89,6 @@ public class InternalSystemController {
 
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
-    private static final Long SERVICE_PRINCIPAL_ID = 0L;
-    private static final String SERVICE_PRINCIPAL_UUID = "00000000-0000-0000-0000-000000000000";
     private static final Set<String> DEFAULT_REGISTRATION_FORBIDDEN_ROLE_TYPES = Set.of("SYSTEM");
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
             "ai:",
@@ -156,7 +152,7 @@ public class InternalSystemController {
     private final SystemVerificationAppService verificationAppService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
     private final PasskeyCredentialAppService passkeyCredentialAppService;
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final InternalSystemApplicationService internalSystemApplicationService;
     private final PasswordEncoder passwordEncoder;
     private final LoginAuditService loginAuditService;
     private final OperationAuditService operationAuditService;
@@ -173,7 +169,7 @@ public class InternalSystemController {
             SystemVerificationAppService verificationAppService,
             WechatLoginSettingsService wechatLoginSettingsService,
             PasskeyCredentialAppService passkeyCredentialAppService,
-            MyBatisQueryOperations jdbcTemplate,
+            InternalSystemApplicationService internalSystemApplicationService,
             PasswordEncoder passwordEncoder,
             LoginAuditService loginAuditService,
             OperationAuditService operationAuditService,
@@ -189,7 +185,7 @@ public class InternalSystemController {
         this.verificationAppService = verificationAppService;
         this.wechatLoginSettingsService = wechatLoginSettingsService;
         this.passkeyCredentialAppService = passkeyCredentialAppService;
-        this.jdbcTemplate = jdbcTemplate;
+        this.internalSystemApplicationService = internalSystemApplicationService;
         this.passwordEncoder = passwordEncoder;
         this.loginAuditService = loginAuditService;
         this.operationAuditService = operationAuditService;
@@ -302,43 +298,7 @@ public class InternalSystemController {
         if (normalizedIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
-        List<Object> params = new java.util.ArrayList<>();
-        params.addAll(normalizedIds);
-        return jdbcTemplate.query(
-                """
-                        select u.id,
-                               u.uuid,
-                               u.username,
-                               u.status
-                        from sys_user u
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                          and u.id in (
-                        """ + placeholders + """
-                          )
-                        order by u.id asc
-                        """,
-                (rs, rowNum) -> new SystemUserSnapshotDTO(
-                        rs.getLong("id"),
-                        rs.getString("uuid"),
-                        rs.getString("username"),
-                        null,
-                        rs.getString("status"),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
-                ),
-                params.toArray()
-        );
+        return internalSystemApplicationService.findEnabledUserIdentities(normalizedIds);
     }
 
     @GetMapping("/users/{id}/role-options")
@@ -360,67 +320,13 @@ public class InternalSystemController {
         if (normalizedIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
-        List<Object> params = new java.util.ArrayList<>();
-        params.addAll(normalizedIds);
-        return jdbcTemplate.query(
-                """
-                        select id, role_code, role_name
-                        from sys_role
-                        where deleted = 0
-                          and id in (
-                        """ + placeholders + """
-                          )
-                        order by id asc
-                        """,
-                (rs, rowNum) -> new SystemRoleSnapshotDTO(
-                        rs.getLong("id"),
-                        null,
-                        rs.getString("role_name")
-                ),
-                params.toArray()
-        );
+        return internalSystemApplicationService.findRoleNames(normalizedIds);
     }
 
     @GetMapping("/roles/{roleId}/identities")
     public List<SystemUserSnapshotDTO> roleUserIdentities(@PathVariable("roleId") Long roleId) {
         requireInternalServicePrincipal();
-        requirePositiveId(roleId, "roleId");
-        return jdbcTemplate.query(
-                """
-                        select distinct u.id,
-                               u.uuid,
-                               u.username,
-                               u.status
-                        from sys_user_role ur
-                        join sys_user u on u.id = ur.user_id
-                         and u.uuid = ur.user_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                        where ur.role_id = ?
-                          and ur.deleted = 0
-                        order by u.id asc
-                        """,
-                (rs, rowNum) -> new SystemUserSnapshotDTO(
-                        rs.getLong("id"),
-                        rs.getString("uuid"),
-                        rs.getString("username"),
-                        null,
-                        rs.getString("status"),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
-                ),
-                roleId
-        );
+        return internalSystemApplicationService.findEnabledRoleUserIdentities(requirePositiveId(roleId, "roleId"));
     }
 
     @GetMapping("/users/email-recipients")
@@ -432,23 +338,7 @@ public class InternalSystemController {
         if (normalizedIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
-        List<Object> params = new java.util.ArrayList<>();
-        params.addAll(normalizedIds);
-        return jdbcTemplate.query(
-                """
-                        select u.id as user_id, u.uuid as user_uuid, u.username, u.email
-                        from sys_user u
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                          and u.id in (
-                        """ + placeholders + """
-                          )
-                        order by u.id asc
-                        """,
-                this::toEmailRecipient,
-                params.toArray()
-        );
+        return internalSystemApplicationService.findEmailRecipientsByUserIds(normalizedIds);
     }
 
     @GetMapping("/users/wechat-recipients")
@@ -460,27 +350,7 @@ public class InternalSystemController {
         if (normalizedIds.isEmpty()) {
             return List.of();
         }
-        String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
-        List<Object> params = new java.util.ArrayList<>();
-        params.addAll(normalizedIds);
-        return jdbcTemplate.query(
-                """
-                        select u.id as user_id, u.uuid as user_uuid, u.username, wb.openid as wechat_openid
-                        from sys_user u
-                        left join sys_user_wechat_binding wb
-                          on wb.user_id = u.id
-                         and wb.user_uuid = u.uuid
-                         and wb.deleted = 0
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                          and u.id in (
-                        """ + placeholders + """
-                          )
-                        order by u.id asc
-                        """,
-                this::toWechatRecipient,
-                params.toArray()
-        );
+        return internalSystemApplicationService.findWechatRecipientsByUserIds(normalizedIds);
     }
 
     @GetMapping("/roles/{roleId}/email-recipients")
@@ -488,23 +358,7 @@ public class InternalSystemController {
             @PathVariable("roleId") Long roleId
     ) {
         requireInternalServicePrincipal();
-        requirePositiveId(roleId, "roleId");
-        return jdbcTemplate.query(
-                """
-                        select distinct u.id as user_id, u.uuid as user_uuid, u.username, u.email
-                        from sys_user u
-                        join sys_user_role ur
-                          on ur.user_id = u.id
-                         and ur.user_uuid = u.uuid
-                         and ur.role_id = ?
-                         and ur.deleted = 0
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                        order by u.id asc
-                        """,
-                this::toEmailRecipient,
-                roleId
-        );
+        return internalSystemApplicationService.findEmailRecipientsByRoleId(requirePositiveId(roleId, "roleId"));
     }
 
     @GetMapping("/roles/{roleId}/wechat-recipients")
@@ -512,61 +366,19 @@ public class InternalSystemController {
             @PathVariable("roleId") Long roleId
     ) {
         requireInternalServicePrincipal();
-        requirePositiveId(roleId, "roleId");
-        return jdbcTemplate.query(
-                """
-                        select distinct u.id as user_id, u.uuid as user_uuid, u.username, wb.openid as wechat_openid
-                        from sys_user u
-                        join sys_user_role ur
-                          on ur.user_id = u.id
-                         and ur.user_uuid = u.uuid
-                         and ur.role_id = ?
-                         and ur.deleted = 0
-                        left join sys_user_wechat_binding wb
-                          on wb.user_id = u.id
-                         and wb.user_uuid = u.uuid
-                         and wb.deleted = 0
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                        order by u.id asc
-                        """,
-                this::toWechatRecipient,
-                roleId
-        );
+        return internalSystemApplicationService.findWechatRecipientsByRoleId(requirePositiveId(roleId, "roleId"));
     }
 
     @GetMapping("/platform/email-recipients")
     public List<SystemUserEmailRecipientDTO> platformUserEmailRecipients() {
         requireInternalServicePrincipal();
-        return jdbcTemplate.query(
-                """
-                        select distinct u.id as user_id, u.uuid as user_uuid, u.username, u.email
-                        from sys_user u
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                        order by u.id asc
-                        """,
-                this::toEmailRecipient
-        );
+        return internalSystemApplicationService.findPlatformEmailRecipients();
     }
 
     @GetMapping("/platform/wechat-recipients")
     public List<SystemUserWechatRecipientDTO> platformUserWechatRecipients() {
         requireInternalServicePrincipal();
-        return jdbcTemplate.query(
-                """
-                        select distinct u.id as user_id, u.uuid as user_uuid, u.username, wb.openid as wechat_openid
-                        from sys_user u
-                        left join sys_user_wechat_binding wb
-                          on wb.user_id = u.id
-                         and wb.user_uuid = u.uuid
-                         and wb.deleted = 0
-                        where u.deleted = 0
-                          and u.status = 'ENABLED'
-                        order by u.id asc
-                        """,
-                this::toWechatRecipient
-        );
+        return internalSystemApplicationService.findPlatformWechatRecipients();
     }
 
     @PostMapping("/users/wechat-login")
@@ -672,125 +484,9 @@ public class InternalSystemController {
         if (request.permissions() == null || request.permissions().isEmpty()) {
             return Boolean.TRUE;
         }
-        for (PluginPermissionRegistrationRequestDTO.Permission permission : request.permissions()) {
-            if (permission == null || !StringUtils.hasText(permission.permissionKey())) {
-                continue;
-            }
-            int permissionUpdated = jdbcTemplate.update(
-                    """
-                            insert into sys_permission (
-                                permission_key, permission_name, permission_group, source_type,
-                                plugin_code, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, 'PLUGIN', ?, ?, ?, ?, ?, 0)
-                            on duplicate key update
-                                permission_name = case when source_type = 'PLUGIN' and plugin_code = values(plugin_code) and updated_by_uuid = values(updated_by_uuid) then values(permission_name) else permission_name end,
-                                permission_group = case when source_type = 'PLUGIN' and plugin_code = values(plugin_code) and updated_by_uuid = values(updated_by_uuid) then values(permission_group) else permission_group end,
-                                updated_by = case when source_type = 'PLUGIN' and plugin_code = values(plugin_code) and updated_by_uuid = values(updated_by_uuid) then values(updated_by) else updated_by end,
-                                updated_by_uuid = case when source_type = 'PLUGIN' and plugin_code = values(plugin_code) and updated_by_uuid = values(updated_by_uuid) then values(updated_by_uuid) else updated_by_uuid end,
-                                updated_at = case when source_type = 'PLUGIN' and plugin_code = values(plugin_code) and updated_by_uuid = values(updated_by_uuid) then current_timestamp else updated_at end,
-                                deleted = case when source_type = 'PLUGIN' and plugin_code = values(plugin_code) and updated_by_uuid = values(updated_by_uuid) then 0 else deleted end
-                            """,
-                    permission.permissionKey(),
-                    StringUtils.hasText(permission.permissionName()) ? permission.permissionName() : permission.permissionKey(),
-                    StringUtils.hasText(permission.permissionGroup()) ? permission.permissionGroup() : request.pluginCode(),
-                    request.pluginCode(),
-                    SERVICE_PRINCIPAL_ID,
-                    SERVICE_PRINCIPAL_UUID,
-                    SERVICE_PRINCIPAL_ID,
-                    SERVICE_PRINCIPAL_UUID
-            );
-            requirePluginPermissionRegistered(permissionUpdated, request.pluginCode(), permission.permissionKey());
-        }
-        List<Long> adminRoleIds = jdbcTemplate.queryForList(
-                """
-                        select id
-                        from sys_role
-                        where role_code = 'ADMIN'
-                          and deleted = 0
-                        """,
-                Long.class
-        );
-        for (Long roleId : adminRoleIds) {
-            for (PluginPermissionRegistrationRequestDTO.Permission permission : request.permissions()) {
-                if (permission == null || !StringUtils.hasText(permission.permissionKey())) {
-                    continue;
-                }
-                int rolePermissionUpdated = jdbcTemplate.update(
-                        """
-                                insert into sys_role_permission (
-                                    role_id, permission_key, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                                ) values (?, ?, ?, ?, ?, ?, 0)
-                                on duplicate key update
-                                    updated_by = case when role_id = values(role_id) and permission_key = values(permission_key) and updated_by_uuid = values(updated_by_uuid) then values(updated_by) else updated_by end,
-                                    updated_by_uuid = case when role_id = values(role_id) and permission_key = values(permission_key) and updated_by_uuid = values(updated_by_uuid) then values(updated_by_uuid) else updated_by_uuid end,
-                                    updated_at = case when role_id = values(role_id) and permission_key = values(permission_key) and updated_by_uuid = values(updated_by_uuid) then current_timestamp else updated_at end,
-                                    deleted = case when role_id = values(role_id) and permission_key = values(permission_key) and updated_by_uuid = values(updated_by_uuid) then 0 else deleted end
-                                """,
-                        roleId,
-                        permission.permissionKey(),
-                        SERVICE_PRINCIPAL_ID,
-                        SERVICE_PRINCIPAL_UUID,
-                        SERVICE_PRINCIPAL_ID,
-                        SERVICE_PRINCIPAL_UUID
-                );
-                requirePluginPermissionGranted(rolePermissionUpdated, roleId, request.pluginCode(), permission.permissionKey());
-            }
-        }
+        internalSystemApplicationService.registerPluginPermissions(request);
         permissionSnapshotService.invalidatePermissions();
         return Boolean.TRUE;
-    }
-
-    private void requirePluginPermissionRegistered(int updated, String pluginCode, String permissionKey) {
-        if (updated > 0) {
-            return;
-        }
-        boolean registered = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_permission
-                        where permission_key = ?
-                          and source_type = 'PLUGIN'
-                          and plugin_code = ?
-                          and updated_by_uuid = ?
-                          and deleted = 0
-                        limit 1
-                        """,
-                permissionKey,
-                pluginCode,
-                SERVICE_PRINCIPAL_UUID
-        );
-        if (!registered) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Plugin permission changed, please retry");
-        }
-    }
-
-    private void requirePluginPermissionGranted(int updated, Long roleId, String pluginCode, String permissionKey) {
-        if (updated > 0) {
-            return;
-        }
-        boolean granted = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_role_permission rp
-                        join sys_permission p
-                          on p.permission_key = rp.permission_key
-                         and p.source_type = 'PLUGIN'
-                         and p.plugin_code = ?
-                         and p.deleted = 0
-                        where rp.role_id = ?
-                          and rp.permission_key = ?
-                          and rp.updated_by_uuid = ?
-                          and rp.deleted = 0
-                        limit 1
-                        """,
-                pluginCode,
-                requirePositiveId(roleId, "roleId"),
-                permissionKey,
-                SERVICE_PRINCIPAL_UUID
-        );
-        if (!granted) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "Plugin role permission changed, please retry");
-        }
     }
 
     @PostMapping("/read-model-version/bump")
@@ -919,31 +615,7 @@ public class InternalSystemController {
     }
 
     private Map<String, String> queryPlatformConfigValues(List<String> normalizedKeys) {
-        String placeholders = String.join(",", normalizedKeys.stream().map(ignored -> "?").toList());
-        List<Object> params = new java.util.ArrayList<>();
-        params.addAll(normalizedKeys);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                """
-                        select config_key, config_value
-                        from sys_config
-                        where config_scope = 'PLATFORM'
-                          and deleted = 0
-                          and config_key in (
-                        """ + placeholders + """
-                          )
-                        order by id desc
-                        """,
-                params.toArray()
-        );
-        Map<String, String> values = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = row.get("config_key") == null ? null : String.valueOf(row.get("config_key"));
-            String value = row.get("config_value") == null ? null : String.valueOf(row.get("config_value"));
-            if (StringUtils.hasText(key) && value != null && !values.containsKey(key)) {
-                values.put(key, value);
-            }
-        }
-        return values;
+        return internalSystemApplicationService.platformConfigValues(normalizedKeys);
     }
 
     private List<String> normalizeAiConfigKeys(List<String> keys) {
@@ -1294,21 +966,8 @@ public class InternalSystemController {
         }
         passwordPolicyService.validatePassword(request.newPassword());
         String encodedPassword = passwordEncoder.encode(request.newPassword());
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_user
-                        set password_hash = ?,
-                            updated_by = ?,
-                            updated_by_uuid = ?,
-                            updated_at = current_timestamp
-                        where id = ?
-                          and uuid = ?
-                          and deleted = 0
-                          and status = 'ENABLED'
-                        """,
+        int updated = internalSystemApplicationService.updatePassword(
                 encodedPassword,
-                SERVICE_PRINCIPAL_ID,
-                SERVICE_PRINCIPAL_UUID,
                 verification.userId(),
                 verification.userUuid()
         );
@@ -1370,17 +1029,8 @@ public class InternalSystemController {
     }
 
     private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> listSystemMenusFromDatabase() {
-        List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> menus = jdbcTemplate.query(
-                """
-                        select id, parent_id as parentId, menu_code as menuCode,
-                               menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
-                               permission_key as permissionKey, status
-                        from sys_menu
-                        where deleted = 0 and status = 'ENABLED'
-                        order by sort_no asc, id asc
-                        """,
-                new BeanPropertyRowMapper<>(com.lumira.saas.modules.system.vo.SystemVO.MenuVO.class)
-        ).stream()
+        List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> menus = internalSystemApplicationService
+                .findEnabledSystemMenus().stream()
                 .filter(menu -> !isAiMenu(menu))
                 .toList();
         return buildSystemMenuTree(menus);
@@ -1548,24 +1198,6 @@ public class InternalSystemController {
         );
     }
 
-    private SystemUserEmailRecipientDTO toEmailRecipient(SqlRow row, int rowNum) {
-        return new SystemUserEmailRecipientDTO(
-                row.getLong("user_id"),
-                row.getString("user_uuid"),
-                row.getString("username"),
-                row.getString("email")
-        );
-    }
-
-    private SystemUserWechatRecipientDTO toWechatRecipient(SqlRow row, int rowNum) {
-        return new SystemUserWechatRecipientDTO(
-                row.getLong("user_id"),
-                row.getString("user_uuid"),
-                row.getString("username"),
-                row.getString("wechat_openid")
-        );
-    }
-
     private void requireTrustedSnapshotUser(SysUserEntity user) {
         if (user == null || user.getId() == null || user.getId() <= 0) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "user id is required");
@@ -1601,34 +1233,7 @@ public class InternalSystemController {
         if (userId == null || !StringUtils.hasText(userUuid)) {
             return List.of();
         }
-        return jdbcTemplate.query(
-                """
-                        select r.id as id,
-                               r.role_code as roleCode,
-                               r.role_name as roleName,
-                               r.role_type as roleType,
-                               r.default_home_path as defaultHomePath,
-                               count(rp.permission_key) as permissionCount
-                        from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.deleted = 0
-                        left join sys_role_permission rp on rp.role_id = r.id and rp.deleted = 0
-                        where ur.user_id = ?
-                          and ur.user_uuid = ?
-                          and ur.deleted = 0
-                        group by r.id, r.role_code, r.role_name, r.role_type, r.default_home_path
-                        order by r.id desc
-                        """,
-                (rs, rowNum) -> new CurrentUserRoleOptionDTO(
-                        rs.getLong("id"),
-                        rs.getString("roleCode"),
-                        rs.getString("roleName"),
-                        rs.getString("roleType"),
-                        rs.getInt("permissionCount"),
-                        rs.getString("defaultHomePath")
-                ),
-                userId,
-                userUuid
-        );
+        return internalSystemApplicationService.findRoleOptions(userId, userUuid);
     }
 
     private Long requireTrustedInternalUser(Long userId, String userUuid) {
@@ -1745,46 +1350,16 @@ public class InternalSystemController {
             throw new IllegalArgumentException("微信 openid 不能为空");
         }
         String normalizedUnionid = StringUtils.hasText(unionid) ? unionid.trim() : "";
-        List<Long> userIds = jdbcTemplate.query(
-                """
-                        select u.id
-                        from sys_user_wechat_binding b
-                        join sys_user u
-                          on u.id = b.user_id
-                         and u.uuid = b.user_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                         and u.uuid is not null
-                         and u.uuid <> ''
-                        where b.deleted = 0
-                          and ((? <> '' and b.unionid = ?) or b.openid = ?)
-                        order by case when ? <> '' and b.unionid = ? then 0 else 1 end, b.id desc
-                        limit 1
-                        """,
-                (rs, rowNum) -> rs.getLong("id"),
+        Long userId = internalSystemApplicationService.findEnabledUserIdByWechatBinding(
                 normalizedUnionid,
-                normalizedUnionid,
-                openid,
-                normalizedUnionid,
-                normalizedUnionid
+                openid
         );
-        return userIds.isEmpty() ? null : userDomainService.findById(userIds.get(0)).orElse(null);
+        return userId == null ? null : userDomainService.findById(userId).orElse(null);
     }
 
     private void requireWechatBindingAvailableForRegistration(String unionid, String openid) {
         String normalizedUnionid = StringUtils.hasText(unionid) ? unionid.trim() : "";
-        boolean bindingExists = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_user_wechat_binding b
-                        where b.deleted = 0
-                          and ((? <> '' and b.unionid = ?) or b.openid = ?)
-                        limit 1
-                        """,
-                normalizedUnionid,
-                normalizedUnionid,
-                openid
-        );
+        boolean bindingExists = internalSystemApplicationService.hasActiveWechatBinding(normalizedUnionid, openid);
         if (bindingExists) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Wechat account is unavailable");
         }
@@ -1792,32 +1367,10 @@ public class InternalSystemController {
 
     private SysUserEntity registerWechatUser(WechatLoginUserRequestDTO request) {
         String username = nextWechatUsername(request);
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into sys_user (
-                            uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
-                            available_time, id_card_number, status,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
+        int inserted = internalSystemApplicationService.insertWechatUser(
                 UserUidGenerator.nextNumericUid(),
                 username,
-                passwordEncoder.encode(UUID.randomUUID().toString()),
-                null,
-                "微信用户",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                "ENABLED",
-                SERVICE_PRINCIPAL_ID,
-                SERVICE_PRINCIPAL_UUID,
-                SERVICE_PRINCIPAL_ID,
-                SERVICE_PRINCIPAL_UUID
+                passwordEncoder.encode(UUID.randomUUID().toString())
         );
         if (inserted != 1) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Wechat user changed, please retry");
@@ -1845,40 +1398,18 @@ public class InternalSystemController {
         String username = nextLoginCodeUsername(normalizedLoginType, normalizedAccount);
         String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
         String nickname = FACTOR_SMS.equals(normalizedLoginType) ? "短信注册用户" : "邮箱注册用户";
-        int inserted = jdbcTemplate.update(
-                """
-                        insert into sys_user (
-                            uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
-                            available_time, id_card_number, status,
-                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENABLED', ?, ?, ?, ?, 0)
-                        """,
+        int inserted = internalSystemApplicationService.insertLoginCodeUser(
                 UserUidGenerator.nextNumericUid(),
                 username,
                 randomPassword,
                 FACTOR_SMS.equals(normalizedLoginType) ? normalizedAccount : null,
                 nickname,
-                null,
-                null,
-                FACTOR_EMAIL.equals(normalizedLoginType) ? normalizedAccount : null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                SERVICE_PRINCIPAL_ID,
-                SERVICE_PRINCIPAL_UUID,
-                SERVICE_PRINCIPAL_ID,
-                SERVICE_PRINCIPAL_UUID
+                FACTOR_EMAIL.equals(normalizedLoginType) ? normalizedAccount : null
         );
         if (inserted != 1) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Login code user changed, please retry");
         }
-        Long createdUserId = jdbcTemplate.queryForObject(
-                "select id from sys_user where username = ? and deleted = 0 order by id desc limit 1",
-                Long.class,
-                username
-        );
+        Long createdUserId = internalSystemApplicationService.findActiveUserIdByUsername(username);
         SysUserEntity user = userDomainService.findById(createdUserId)
                 .orElseThrow(() -> new IllegalStateException("验证码登录自动注册用户失败"));
         iamUserService.createUserWithIdentity(user, normalizedAccount, "LOGIN_CODE_REGISTER");
@@ -1958,27 +1489,12 @@ public class InternalSystemController {
 
     private void upsertWechatBinding(SysUserEntity user, WechatLoginUserRequestDTO request) {
         String userUuid = requireUserUuid(user);
-        jdbcTemplate.update(
-                """
-                        insert into sys_user_wechat_binding (
-                            user_id, user_uuid, openid, unionid, scope, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        on duplicate key update unionid = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(unionid) else unionid end,
-                                                scope = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(scope) else scope end,
-                                                updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(updated_by) else updated_by end,
-                                                updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) then values(updated_by_uuid) else updated_by_uuid end,
-                                                updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) then current_timestamp else updated_at end,
-                                                deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) then 0 else deleted end
-                        """,
+        internalSystemApplicationService.upsertWechatBinding(
                 user.getId(),
                 userUuid,
                 request.openid(),
                 StringUtils.hasText(request.unionid()) ? request.unionid() : null,
-                request.scope(),
-                user.getId(),
-                userUuid,
-                user.getId(),
-                userUuid
+                request.scope()
         );
         requireWechatBindingOwnedByUser(user.getId(), userUuid, request);
     }
@@ -1986,27 +1502,12 @@ public class InternalSystemController {
     private void requireWechatBindingOwnedByUser(Long userId, String userUuid, WechatLoginUserRequestDTO request) {
         Long ownerId = requirePositiveId(userId, "userId");
         String ownerUuid = requireUserUuidText(userUuid);
-        boolean linked = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_user_wechat_binding b
-                        join sys_user u
-                          on u.id = b.user_id
-                         and u.uuid = b.user_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                        where b.user_id = ?
-                          and b.user_uuid = ?
-                          and b.openid = ?
-                          and (? is null or b.unionid = ?)
-                          and b.deleted = 0
-                        limit 1
-                        """,
+        String unionid = StringUtils.hasText(request.unionid()) ? request.unionid() : null;
+        boolean linked = internalSystemApplicationService.hasActiveWechatBindingOwnedByUser(
                 ownerId,
                 ownerUuid,
                 request.openid(),
-                StringUtils.hasText(request.unionid()) ? request.unionid() : null,
-                StringUtils.hasText(request.unionid()) ? request.unionid() : null
+                unionid
         );
         if (!linked) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Wechat binding changed, please retry");
@@ -2025,32 +1526,11 @@ public class InternalSystemController {
             return;
         }
         String userUuid = requireUserUuid(user);
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_user
-                        set nickname = case
-                                when ? is not null then ?
-                                else nickname
-                            end,
-                            avatar_url = case
-                                when ? is not null then ?
-                                else avatar_url
-                            end,
-                            updated_by = ?,
-                            updated_by_uuid = ?,
-                            updated_at = current_timestamp
-                        where id = ?
-                          and uuid = ?
-                          and deleted = 0
-                        """,
-                request.nickname(),
-                request.nickname(),
-                request.avatarUrl(),
-                request.avatarUrl(),
+        int updated = internalSystemApplicationService.updateWechatProfile(
                 user.getId(),
                 userUuid,
-                user.getId(),
-                userUuid
+                request.nickname(),
+                request.avatarUrl()
         );
         if (updated != 1) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Wechat profile changed, please retry");
@@ -2081,45 +1561,12 @@ public class InternalSystemController {
         if (roleId == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
         }
-        jdbcTemplate.update(
-                """
-                        insert into sys_user_role (user_id, user_uuid, role_id, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-                        values (?, ?, ?, ?, ?, ?, ?, 0)
-                        on duplicate key update updated_by = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then values(updated_by) else updated_by end,
-                                                updated_by_uuid = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then values(updated_by_uuid) else updated_by_uuid end,
-                                                updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then current_timestamp else updated_at end,
-                                                deleted = case when user_id = values(user_id) and user_uuid = values(user_uuid) and role_id = values(role_id) then 0 else deleted end
-                        """,
-                user.getId(),
-                userUuid,
-                roleId,
-                user.getId(),
-                userUuid,
-                user.getId(),
-                userUuid
-        );
+        internalSystemApplicationService.upsertUserRole(user.getId(), userUuid, roleId);
         requireDefaultRoleGranted(user.getId(), userUuid, roleId);
     }
 
     private void requireDefaultRoleGranted(Long userId, String userUuid, Long roleId) {
-        boolean granted = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_user_role ur
-                        join sys_user u
-                          on u.id = ur.user_id
-                         and u.uuid = ur.user_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                        join sys_role r
-                          on r.id = ur.role_id
-                         and r.deleted = 0
-                        where ur.user_id = ?
-                          and ur.user_uuid = ?
-                          and ur.role_id = ?
-                          and ur.deleted = 0
-                        limit 1
-                        """,
+        boolean granted = internalSystemApplicationService.hasActiveUserRole(
                 requirePositiveId(userId, "userId"),
                 requireUserUuidText(userUuid),
                 requirePositiveId(roleId, "roleId")
@@ -2140,41 +1587,21 @@ public class InternalSystemController {
         if (!StringUtils.hasText(roleCode)) {
             return null;
         }
-        RoleSafetyCandidate candidate = jdbcTemplate.query(
-                """
-                        select id, role_code, role_type
-                        from sys_role
-                        where role_code = ? and deleted = 0
-                        order by id desc
-                        limit 1
-                        """,
-                rs -> rs.next()
-                        ? new RoleSafetyCandidate(rs.getLong("id"), rs.getString("role_code"), rs.getString("role_type"))
-                        : null,
-                roleCode.trim()
-        );
+        InternalSystemApplicationService.RegistrationRole candidate = internalSystemApplicationService
+                .findActiveRoleByCode(roleCode.trim());
         if (candidate == null || !isSafeDefaultRegistrationRole(candidate)) {
             return null;
         }
         return candidate.id();
     }
 
-    private boolean isSafeDefaultRegistrationRole(RoleSafetyCandidate role) {
+    private boolean isSafeDefaultRegistrationRole(InternalSystemApplicationService.RegistrationRole role) {
         String roleCode = role.roleCode() == null ? "" : role.roleCode().trim();
         String roleType = role.roleType() == null ? "" : role.roleType().trim().toUpperCase(Locale.ROOT);
         if ("ADMIN".equalsIgnoreCase(roleCode) || DEFAULT_REGISTRATION_FORBIDDEN_ROLE_TYPES.contains(roleType)) {
             return false;
         }
-        List<String> permissionKeys = jdbcTemplate.queryForList(
-                """
-                        select permission_key
-                        from sys_role_permission
-                        where role_id = ? and deleted = 0
-                        order by permission_key asc
-                        """,
-                String.class,
-                role.id()
-        );
+        List<String> permissionKeys = internalSystemApplicationService.findActiveRolePermissionKeys(role.id());
         return permissionKeys.stream()
                 .filter(StringUtils::hasText)
                 .map(String::trim)
@@ -2213,21 +1640,8 @@ public class InternalSystemController {
         return true;
     }
 
-    private record RoleSafetyCandidate(Long id, String roleCode, String roleType) {
-    }
-
     private String resolveDefaultRegistrationRoleCode() {
-        String roleCode = jdbcTemplate.query(
-                """
-                        select config_value
-                        from sys_config
-                        where deleted = 0
-                          and config_scope = 'PLATFORM'
-                          and config_key = ?
-                        order by id desc
-                        limit 1
-                        """,
-                rs -> rs.next() ? rs.getString("config_value") : null,
+        String roleCode = internalSystemApplicationService.findLatestPlatformConfigValue(
                 DEFAULT_REGISTRATION_ROLE_CODE_KEY
         );
         return StringUtils.hasText(roleCode) ? roleCode.trim() : DEFAULT_REGISTRATION_ROLE_CODE;

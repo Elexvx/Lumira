@@ -21,32 +21,11 @@ class ArchitecturePersistenceBoundaryTest {
             "(?is)\\b(?:JdbcTemplate|MyBatisQueryOperations)\\b|\\bjdbcTemplate\\s*\\.\\s*(?:update|batchUpdate)\\s*\\(|\\bMyBatisQueryOperations\\s*\\.\\s*update\\s*\\(|\\bmyBatisQueryOperations\\s*\\.\\s*update\\s*\\(|\\b(?:insert\\s+into|delete\\s+from|update\\s+(?!requires\\b))\\s+`?[a-zA-Z0-9_]+`?"
     );
     private static final Pattern DIRECT_SQL_DEBT_ROW_PATTERN = Pattern.compile("(?m)^\\| `([^`]+)` \\| (?:direct SQL(?: / direct persistence dependency)?|direct persistence dependency) \\|");
-    private static final Set<String> NON_APP_DIRECT_SQL_DEBT = Set.of(
-            "InternalSystemController"
-    );
-    private static final Set<String> CONTROLLER_PERSISTENCE_DEBT = Set.of(
-            "services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"
-    );
+    private static final String OBSOLETE_OUTBOX_RECORDING_NAME = "record" + "AfterCommit";
+    private static final String OBSOLETE_OUTBOX_PUBLISHING_NAME = "publish" + "AfterCommit";
     private static final Set<String> TEAM_APP_SERVICES = Set.of(
             "services/lumira-team/src/main/java/com/lumira/team/app/TeamAppService.java",
             "services/lumira-team/src/main/java/com/lumira/team/app/TeamInviteService.java"
-    );
-    private static final Set<String> HISTORICAL_DIRECT_SQL_DEBT = Set.of(
-            "SystemManagementAppService",
-            "SystemUserManagementAppService",
-            "SystemRoleManagementAppService",
-            "SystemDepartmentAppService",
-            "IamUserService",
-            "AiToolPolicyService",
-            "AiConversationService",
-            "AiToolOrchestrationService",
-            "AiKnowledgeBaseAppService",
-            "AiNativeToolRuntimeService",
-            "AiEmployeeRuntimeService",
-            "AiManagementAppService",
-            "CompetitionManagementAppService",
-            "CompetitionRegistrationAppService",
-            "WorkflowAppService"
     );
     /**
      * This is the deliberate current persistence boundary for configuration
@@ -62,9 +41,6 @@ class ArchitecturePersistenceBoundaryTest {
         Path root = repositoryRoot();
         List<String> violations = new ArrayList<>();
         for (Path file : mainJavaFiles(root).filter(path -> normalized(path).contains("/controller/")).toList()) {
-            if (CONTROLLER_PERSISTENCE_DEBT.contains(normalized(root.relativize(file)))) {
-                continue;
-            }
             String source = Files.readString(file);
             Matcher matcher = IMPORT_PATTERN.matcher(source);
             while (matcher.find()) {
@@ -137,19 +113,26 @@ class ArchitecturePersistenceBoundaryTest {
     }
 
     @Test
-    void historicalDirectSqlDebtMustStayDocumentedAndTeamMustNotBeListed() throws IOException {
+    void persistenceDebtRegisterMustBeEmptyAfterHistoricalMigration() throws IOException {
         Set<String> documentedDirectSqlDebt = documentedDirectSqlDebt();
-        for (String debtName : HISTORICAL_DIRECT_SQL_DEBT) {
-            assertThat(documentedDirectSqlDebt)
-                    .as("%s must stay documented until migrated", debtName)
-                    .contains(debtName);
+        assertThat(documentedDirectSqlDebt)
+                .as("historical direct SQL debt must be fully migrated instead of becoming a permanent allowlist")
+                .isEmpty();
+    }
+
+    @Test
+    void durableOutboxApisMustNameTransactionRecordingExplicitly() throws IOException {
+        Path root = repositoryRoot();
+        List<String> violations = new ArrayList<>();
+        for (Path file : mainJavaFiles(root).toList()) {
+            String source = Files.readString(file);
+            if (source.contains(OBSOLETE_OUTBOX_RECORDING_NAME) || source.contains(OBSOLETE_OUTBOX_PUBLISHING_NAME)) {
+                violations.add(root.relativize(file).toString());
+            }
         }
-        assertThat(documentedDirectSqlDebt)
-                .as("Team must not be temporarily allowed back into app direct SQL debt")
-                .doesNotContain("TeamAppService", "TeamInviteService");
-        assertThat(documentedDirectSqlDebt)
-                .as("direct SQL debt list may only contain the known historical app debt plus explicitly tracked non-app debt")
-                .isSubsetOf(union(HISTORICAL_DIRECT_SQL_DEBT, NON_APP_DIRECT_SQL_DEBT));
+        assertThat(violations)
+                .as("durable Outbox rows must be recorded in the current transaction, not advertised as post-commit work")
+                .isEmpty();
     }
 
     @Test
@@ -189,10 +172,7 @@ class ArchitecturePersistenceBoundaryTest {
     }
 
     private static Set<String> allowedHistoricalAppDirectSqlDebt() throws IOException {
-        Set<String> documentedDebt = documentedDirectSqlDebt();
-        Set<String> allowedDebt = new java.util.LinkedHashSet<>(documentedDebt);
-        allowedDebt.retainAll(HISTORICAL_DIRECT_SQL_DEBT);
-        return allowedDebt;
+        return documentedDirectSqlDebt();
     }
 
     private static Stream<Path> serviceMainAppJavaFiles(Path root) throws IOException {
@@ -202,12 +182,6 @@ class ArchitecturePersistenceBoundaryTest {
                 .filter(path -> normalized(path).contains("/app/"))
                 .filter(path -> path.toString().endsWith(".java"))
                 .filter(path -> !normalized(path).contains("/target/"));
-    }
-
-    private static Set<String> union(Set<String> first, Set<String> second) {
-        Set<String> result = new java.util.LinkedHashSet<>(first);
-        result.addAll(second);
-        return result;
     }
 
     private static String simpleClassName(Path path) {

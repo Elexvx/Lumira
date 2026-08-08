@@ -10,6 +10,13 @@
 
     <modules>
         <module>services/lumira-system</module>
+        <module>services/lumira-activity</module>
+        <module>services/lumira-project</module>
+        <module>services/lumira-expert</module>
+        <module>services/lumira-workflow</module>
+        <module>services/lumira-export</module>
+        <module>services/lumira-event-catalog</module>
+        <module>services/lumira-competition</module>
         <module>services/lumira-admin</module>
         <module>services/lumira-async</module>
         <module>libs/lumira-common-core</module>

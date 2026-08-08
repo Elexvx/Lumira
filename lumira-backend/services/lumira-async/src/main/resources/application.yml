@@ -2,33 +2,31 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 55s
   application:
-    name: lumira-async
+    name: ${SPRING_APPLICATION_NAME:lumira-async}
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
-  servlet:
-    multipart:
-      max-file-size: ${UPLOAD_MAX_FILE_SIZE:50MB}
-      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:50MB}
+    active: ${SPRING_PROFILES_ACTIVE:prod}
   main:
     allow-bean-definition-overriding: true
     keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
-  cache:
-    type: caffeine
-  flyway:
-    enabled: ${FLYWAY_ENABLED:false}
-    baseline-on-migrate: true
-    validate-on-migrate: false
-    locations:
-      - classpath:db/migration
-    ignore-migration-patterns:
-      - "*:missing"
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
 
-# Monolith mode flag - disables sub-module security configs that would conflict.
+server:
+  port: ${SERVER_PORT:8080}
+
 lumira:
-  monolith: ${LUMIRA_MONOLITH:${LEGENDARY_MONOLITH:true}}
   runtime:
+    # The worker owns no business tables or control-plane bean graph.
     control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:false}
     async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:true}
+  async:
+    owner-relay:
+      # Always use api-proxy so the worker follows the active blue/green server slot.
+      control-plane-base-url: ${LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:http://api-proxy:80}
   event:
     relay-loop:
       enabled: ${LUMIRA_EVENT_RELAY_LOOP_ENABLED:true}
@@ -43,56 +41,12 @@ lumira:
       pending-recovery-minimum-idle: ${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}
       pending-recovery-interval: ${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}
       max-delivery-count: ${LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}
-  file:
-    security-scan:
-      mode: ${LUMIRA_FILE_SECURITY_SCAN_MODE:INLINE}
-      clamav-host: ${LUMIRA_FILE_SECURITY_SCAN_CLAMAV_HOST:127.0.0.1}
-      clamav-port: ${LUMIRA_FILE_SECURITY_SCAN_CLAMAV_PORT:3310}
-      timeout-millis: ${LUMIRA_FILE_SECURITY_SCAN_TIMEOUT_MILLIS:3000}
-    ocr:
-      mode: ${LUMIRA_FILE_OCR_MODE:DISABLED}
-      tesseract-command: ${LUMIRA_FILE_OCR_TESSERACT_COMMAND:tesseract}
-      languages: ${LUMIRA_FILE_OCR_LANGUAGES:eng+chi_sim}
-      timeout-millis: ${LUMIRA_FILE_OCR_TIMEOUT_MILLIS:5000}
-
-server:
-  port: 8080
-
-# Keep optional Sentinel integration disabled in the default runtime.
-spring.cloud.sentinel.enabled: false
-
-# Fallback basic DB config (will be overridden by env vars or system-service config)
-spring.datasource.url: ${DB_URL:jdbc:mysql://localhost:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
-spring.datasource.username: ${DB_USERNAME:root}
-spring.datasource.password: ${DB_PASSWORD:root}
-spring.datasource.driver-class-name: com.mysql.cj.jdbc.Driver
-
-spring.data.redis.host: ${REDIS_HOST:localhost}
-spring.data.redis.port: ${REDIS_PORT:6379}
-spring.data.redis.password: ${REDIS_PASSWORD:}
-spring.data.redis.database: ${REDIS_DATABASE:0}
-
-mybatis-plus:
-  mapper-locations:
-    - classpath*:/mapper/FileStorageSpaceMapper.xml
-    - classpath*:/mapper/LocalizationManagementMapper.xml
-    - classpath*:/mapper/MessageDeliveryLogMapper.xml
-    - classpath*:/mapper/MessageNoticeMapper.xml
-    - classpath*:/mapper/PasskeyCredentialMapper.xml
-    - classpath*:/mapper/PluginPersistenceMapper.xml
-    - classpath*:/mapper/SysConfigMapper.xml
-  configuration:
-    map-underscore-to-camel-case: true
-
-springdoc:
-  api-docs:
-    path: /api-docs
-    enabled: ${SPRINGDOC_API_DOCS_ENABLED:true}
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:true}
 
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:true}
   endpoints:
     web:
       exposure:
@@ -102,203 +56,11 @@ management:
       application: ${spring.application.name}
       service: ${spring.application.name}
 
-# Security settings - forward environment variables to saas.security config
+# These are the only cross-runtime credentials accepted by the stateless relay.
 saas:
-  security:
-    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
-    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
-    issuer: saas-foundation
-    idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
-    access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
-    refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
-    auth-bootstrap-cache-ttl-seconds: ${AUTH_BOOTSTRAP_CACHE_TTL_SECONDS:300}
-    login-capabilities-cache-ttl-seconds: ${LOGIN_CAPABILITIES_CACHE_TTL_SECONDS:300}
-    captcha-enabled: ${CAPTCHA_ENABLED:false}
-    captcha-type: ${CAPTCHA_TYPE:IMAGE}
-    allow-plaintext-login-password: ${ALLOW_PLAINTEXT_LOGIN_PASSWORD:false}
-    register-ip-max-count: ${REGISTER_IP_MAX_COUNT:20}
-    register-ip-window-minutes: ${REGISTER_IP_WINDOW_MINUTES:10}
-  web:
-    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.16.*:*,http://172.17.*:*,http://172.18.*:*,http://172.19.*:*,http://172.20.*:*,http://172.21.*:*,http://172.22.*:*,http://172.23.*:*,http://172.24.*:*,http://172.25.*:*,http://172.26.*:*,http://172.27.*:*,http://172.28.*:*,http://172.29.*:*,http://172.30.*:*,http://172.31.*:*,https://localhost:*,https://127.0.0.1:*,https://192.168.*:*,https://10.*:*,https://172.16.*:*,https://172.17.*:*,https://172.18.*:*,https://172.19.*:*,https://172.20.*:*,https://172.21.*:*,https://172.22.*:*,https://172.23.*:*,https://172.24.*:*,https://172.25.*:*,https://172.26.*:*,https://172.27.*:*,https://172.28.*:*,https://172.29.*:*,https://172.30.*:*,https://172.31.*:*}
-    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
-    trusted-proxy-cidrs:
-      - 127.0.0.1/32
-      - ::1/128
-  plugin:
-    platform-version: ${PLUGIN_PLATFORM_VERSION:0.1.0}
-    api-version: ${PLUGIN_API_VERSION:1.0.0}
-    storage-root: ${PLUGIN_STORAGE_ROOT:storage/plugins}
-    staging-root: ${PLUGIN_STAGING_ROOT:storage/plugin-staging}
-    signature-secret: ${PLUGIN_SIGNATURE_SECRET:}
-    shared-deps-version: ${PLUGIN_SHARED_DEPS_VERSION:1}
-    max-gateway-body-bytes: ${PLUGIN_MAX_GATEWAY_BODY_BYTES:1048576}
-    require-http-permission: ${PLUGIN_REQUIRE_HTTP_PERMISSION:true}
-  upload:
-    storage-root: ${UPLOAD_STORAGE_ROOT:storage/uploads}
-    public-path: /api/uploads
-    max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
-    max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}
-  job:
   internal:
     file-token: ${SAAS_INTERNAL_FILE_TOKEN:}
     message-token: ${SAAS_INTERNAL_MESSAGE_TOKEN:}
     payment-token: ${SAAS_INTERNAL_PAYMENT_TOKEN:}
     plugin-token: ${SAAS_INTERNAL_PLUGIN_TOKEN:}
     job-token: ${SAAS_INTERNAL_JOB_TOKEN:}
-  event:
-    outbox:
-      relay-enabled: ${SAAS_EVENT_OUTBOX_RELAY_ENABLED:true}
-      batch-size: ${SAAS_EVENT_OUTBOX_BATCH_SIZE:100}
-      max-drain-rounds: ${SAAS_EVENT_OUTBOX_MAX_DRAIN_ROUNDS:4}
-      max-burst-rounds: ${SAAS_EVENT_OUTBOX_MAX_BURST_ROUNDS:12}
-      dispatcher: ${SAAS_EVENT_OUTBOX_DISPATCHER:redis-stream}
-      redis-stream-key: ${SAAS_EVENT_REDIS_STREAM_KEY:saas:platform-events}
-  redis:
-    enabled: ${ELEXVX_REDIS_ENABLED:true}
-    clear-on-startup: ${ELEXVX_REDIS_CLEAR_ON_STARTUP:false}
-    allow-clear-on-startup-in-prod: ${ELEXVX_REDIS_ALLOW_CLEAR_ON_STARTUP_IN_PROD:false}
-  auth:
-    wechat:
-      enabled: ${WECHAT_LOGIN_ENABLED:false}
-      app-id: ${WECHAT_APP_ID:}
-      app-secret: ${WECHAT_APP_SECRET:}
-      redirect-uri: ${WECHAT_REDIRECT_URI:}
-      state-expire-minutes: ${WECHAT_STATE_EXPIRE_MINUTES:10}
-  message:
-    ws-ticket-expires-in-seconds: ${MESSAGE_WS_TICKET_EXPIRES_IN_SECONDS:30}
-    outbox-relay-batch-size: ${MESSAGE_OUTBOX_RELAY_BATCH_SIZE:100}
-  verification:
-    issuer: ${VERIFICATION_ISSUER:lumira}
-    totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
-    totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
-    bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
-    login-challenge-expire-minutes: ${VERIFICATION_LOGIN_CHALLENGE_EXPIRE_MINUTES:5}
-    recovery-code-count: ${VERIFICATION_RECOVERY_CODE_COUNT:8}
-    recovery-code-length: ${VERIFICATION_RECOVERY_CODE_LENGTH:8}
-    expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
-    email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
-
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-  flyway:
-    out-of-order: true
-  security:
-    user:
-      name: ${SPRING_SECURITY_USER_NAME:dev-only}
-      password: ${SPRING_SECURITY_USER_PASSWORD:dev-only-password}
-saas:
-  web:
-    cors-allowed-origin-patterns:
-      - http://localhost:*
-      - http://127.0.0.1:*
-      - http://192.168.*:*
-      - http://10.*:*
-      - http://172.16.*:*
-      - http://172.17.*:*
-      - http://172.18.*:*
-      - http://172.19.*:*
-      - http://172.20.*:*
-      - http://172.21.*:*
-      - http://172.22.*:*
-      - http://172.23.*:*
-      - http://172.24.*:*
-      - http://172.25.*:*
-      - http://172.26.*:*
-      - http://172.27.*:*
-      - http://172.28.*:*
-      - http://172.29.*:*
-      - http://172.30.*:*
-      - http://172.31.*:*
-      - https://localhost:*
-      - https://127.0.0.1:*
-      - https://192.168.*:*
-      - https://10.*:*
-      - https://172.16.*:*
-      - https://172.17.*:*
-      - https://172.18.*:*
-      - https://172.19.*:*
-      - https://172.20.*:*
-      - https://172.21.*:*
-      - https://172.22.*:*
-      - https://172.23.*:*
-      - https://172.24.*:*
-      - https://172.25.*:*
-      - https://172.26.*:*
-      - https://172.27.*:*
-      - https://172.28.*:*
-      - https://172.29.*:*
-      - https://172.30.*:*
-      - https://172.31.*:*
-    trust-forwarded-headers: false
-    trusted-proxy-cidrs:
-      - 127.0.0.1/32
-      - ::1/128
-  security:
-    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
----
-spring:
-  config:
-    activate:
-      on-profile: docker-local
-
-lumira:
-  runtime:
-    control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:false}
-    async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:true}
-
-saas:
-  web:
-    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
-    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
-    trusted-proxy-cidrs:
-      - 127.0.0.1/32
-      - ::1/128
-
-springdoc:
-  api-docs:
-    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
-  swagger-ui:
-    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
-
-management:
-  endpoint:
-    startup:
-      enabled: ${MANAGEMENT_ENDPOINT_STARTUP_ENABLED:${LUMIRA_STARTUP_PROFILING_ENABLED:false}}
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus,startup
----
-spring:
-  config:
-    activate:
-      on-profile: test
-
-saas:
-  web:
-    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000}
-    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
-    trusted-proxy-cidrs: ${TRUSTED_PROXY_CIDRS:127.0.0.1/32}
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-
-saas:
-  web:
-    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS}
-    trust-forwarded-headers: ${TRUST_FORWARD_HEADERS:${TRUST_FORWARDED_HEADERS:true}}
-    trusted-proxy-cidrs: ${TRUSTED_PROXY_CIDRS}
-  redis:
-    clear-on-startup: false
-    allow-clear-on-startup-in-prod: ${ELEXVX_REDIS_ALLOW_CLEAR_ON_STARTUP_IN_PROD:false}
-
-springdoc:
-  api-docs:
-    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
-  swagger-ui:
-    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}

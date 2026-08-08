@@ -10,7 +10,6 @@ public interface AccountActivationRepository {
     Optional<TokenRecord> findValidToken(String tokenHash, LocalDateTime now);
     int consumeToken(TokenRecord token, LocalDateTime now);
     int activateUser(TokenRecord token, String passwordHash, LocalDateTime now);
-    int activateExpert(TokenRecord token, LocalDateTime now);
     Optional<String> findPlatformConfig(String configKey);
 
     record UserIdentity(String uuid, String status) {}

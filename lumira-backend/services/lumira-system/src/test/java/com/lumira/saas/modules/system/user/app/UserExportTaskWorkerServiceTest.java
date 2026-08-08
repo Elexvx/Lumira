@@ -1,12 +1,12 @@
 package com.lumira.saas.modules.system.user.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.export.ExportDTO;
+import com.lumira.api.export.ExportTaskQueuePort;
+import com.lumira.api.export.ExportTaskQueuePort.ExportTaskClaim;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.saas.modules.system.export.ExportDTO;
-import com.lumira.saas.modules.system.export.ExportTaskService;
-import com.lumira.saas.modules.system.user.repository.UserExportTaskWorkerRepository;
-import com.lumira.saas.modules.system.user.repository.UserExportTaskWorkerRepository.TaskClaim;
+import com.lumira.saas.testfixture.ExportTaskService;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -28,12 +28,12 @@ class UserExportTaskWorkerServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void processPendingTasksShouldUploadAndCompleteClaimedTask() throws Exception {
-        UserExportTaskWorkerRepository taskRepository = mock(UserExportTaskWorkerRepository.class);
+        ExportTaskQueuePort taskQueue = mock(ExportTaskQueuePort.class);
         ObjectMapper objectMapper = new ObjectMapper();
         UserExportAppService userExportAppService = mock(UserExportAppService.class);
         ExportTaskService exportTaskService = mock(ExportTaskService.class);
         UserExportTaskWorkerService service = new UserExportTaskWorkerService(
-                taskRepository,
+                taskQueue,
                 objectMapper,
                 userExportAppService,
                 exportTaskService
@@ -42,8 +42,8 @@ class UserExportTaskWorkerServiceTest {
         payload.setRequest(request(List.of("id", "username")));
         payload.setFileName("users.xlsx");
         String requestPayload = objectMapper.writeValueAsString(payload);
-        when(taskRepository.claim(any(Integer.class), anyString(), anyString(), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of(new TaskClaim(
+        when(taskQueue.claim(anyString(), any(Integer.class), anyString(), anyString(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(new ExportTaskClaim(
                 9001L,
                 "system:user",
                 "RUNNING",
@@ -52,7 +52,7 @@ class UserExportTaskWorkerServiceTest {
                 "user-uuid-1001",
                 "claim-token-1"
         )));
-        when(taskRepository.markSucceeded(any(), any(), anyString(), any(LocalDateTime.class))).thenReturn(1);
+        when(taskQueue.markSucceeded(any(), any(), anyString(), any(LocalDateTime.class))).thenReturn(1);
         CurrentUser currentUser = trustedUser();
         when(userExportAppService.buildQueuedAsyncUser(1001L, "user-uuid-1001", null, 9001L)).thenReturn(currentUser);
         when(userExportAppService.exportUsersFromTrustedSnapshot(eq(currentUser), any(ExportDTO.UserExportRequest.class)))
@@ -84,17 +84,17 @@ class UserExportTaskWorkerServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void processPendingTasksShouldFailClaimedTaskWhenPayloadIsInvalid() {
-        UserExportTaskWorkerRepository taskRepository = mock(UserExportTaskWorkerRepository.class);
+        ExportTaskQueuePort taskQueue = mock(ExportTaskQueuePort.class);
         UserExportAppService userExportAppService = mock(UserExportAppService.class);
         ExportTaskService exportTaskService = mock(ExportTaskService.class);
         UserExportTaskWorkerService service = new UserExportTaskWorkerService(
-                taskRepository,
+                taskQueue,
                 new ObjectMapper(),
                 userExportAppService,
                 exportTaskService
         );
-        when(taskRepository.claim(any(Integer.class), anyString(), anyString(), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of(new TaskClaim(
+        when(taskQueue.claim(anyString(), any(Integer.class), anyString(), anyString(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(new ExportTaskClaim(
                 9002L,
                 "system:user",
                 "RUNNING",
@@ -103,7 +103,7 @@ class UserExportTaskWorkerServiceTest {
                 "user-uuid-1001",
                 "claim-token-2"
         )));
-        when(taskRepository.markFailed(any(), anyString(), any(LocalDateTime.class))).thenReturn(1);
+        when(taskQueue.markFailed(any(), anyString(), any(LocalDateTime.class))).thenReturn(1);
 
         int processed = service.processPendingTasks(10);
 

@@ -86,14 +86,6 @@ public class FieldEncryptionMigrationRunner implements ApplicationRunner {
                   and trim(recovery_codes_json) not like ?
                   and trim(recovery_codes_json) not like ?
                 """, quotedEncryptedPrefixPattern(), encryptedPrefixPattern());
-        check(legacyPlaintextTargets, "ai_llm_service.api_key_encrypted", """
-                select count(1)
-                from ai_llm_service
-                where is_deleted = 0
-                  and api_key_encrypted is not null
-                  and api_key_encrypted <> ''
-                  and api_key_encrypted not like ?
-                """, encryptedPrefixPattern());
         check(legacyPlaintextTargets, "payment_provider_config.encrypted_config_json", """
                 select count(1)
                 from payment_provider_config

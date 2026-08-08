@@ -3,6 +3,7 @@ package com.lumira.message.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.message.MessageEventDTO;
 import com.lumira.api.message.MessageNoticeDTO;
 import com.lumira.message.mapper.MessagePlatformEventOutboxMapper;
@@ -42,18 +43,20 @@ class PlatformEventOutboxServiceTest {
     @Mock
     private MessageEventDeliveryService deliveryService;
 
+    @Mock
+    private SystemInternalApi systemInternalApi;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUpTrustedUsers() {
-        lenient().when(outboxMapper.resolveUserUuid(2001L)).thenReturn("user-uuid-2001");
-        lenient().when(outboxMapper.resolveActiveUserUuid(2001L)).thenReturn("user-uuid-2001");
+        lenient().when(systemInternalApi.findTargetUserUuidById(2001L)).thenReturn("user-uuid-2001");
     }
 
     @Test
     void recordShouldPersistUnifiedEventPayload() {
         when(outboxMapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         MessageEventDTO event = buildEvent();
         PlatformEventOutboxEntity entity = service.record(event);
@@ -72,14 +75,14 @@ class PlatformEventOutboxServiceTest {
     @Test
     void recordShouldRejectWhenInsertMisses() {
         when(outboxMapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(0);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         assertThrows(IllegalStateException.class, () -> service.record(buildEvent()));
     }
 
     @Test
     void recordShouldRejectNonMessageSourceType() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setSourceType("PLUGIN");
 
@@ -88,7 +91,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectInvalidUserIdBeforeInsert() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setUserId(0L);
 
@@ -99,7 +102,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectOversizedEventTypeBeforeInsert() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setEventType("E".repeat(129));
 
@@ -110,7 +113,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectOversizedEventKeyBeforeInsert() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setEventKey("k".repeat(257));
 
@@ -121,7 +124,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectUntrustedEventKeyBeforeInsert() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setEventKey("../NOTICE_CREATED");
 
@@ -132,7 +135,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectOversizedPayloadBeforeInsert() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setPayload(Map.of("body", "x".repeat(256 * 1024)));
 
@@ -143,7 +146,7 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectMissingUserUuidWhenUserIdIsPresent() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setUserUuid(null);
 
@@ -154,8 +157,8 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectUserUuidMismatchBeforeInsert() {
-        when(outboxMapper.resolveActiveUserUuid(2001L)).thenReturn("user-uuid-actual");
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        when(systemInternalApi.findTargetUserUuidById(2001L)).thenReturn("user-uuid-actual");
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setUserUuid("user-uuid-forged");
 
@@ -166,8 +169,8 @@ class PlatformEventOutboxServiceTest {
 
     @Test
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
-        when(outboxMapper.resolveActiveUserUuid(2001L)).thenReturn(null);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        when(systemInternalApi.findTargetUserUuidById(2001L)).thenReturn(null);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () -> service.record(buildEvent()));
 
@@ -177,7 +180,7 @@ class PlatformEventOutboxServiceTest {
     @Test
     void recordShouldNotInventAuditUserForAnonymousMessageEvent() {
         when(outboxMapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
         MessageEventDTO event = buildEvent();
         event.setUserId(null);
         event.setEventKey("NOTICE_CREATED:9001:all:9001");
@@ -199,7 +202,7 @@ class PlatformEventOutboxServiceTest {
         when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
                 eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
         when(outboxMapper.update(any(), anyWrapper())).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         int delivered = service.dispatchPending(deliveryService, 100);
 
@@ -230,7 +233,7 @@ class PlatformEventOutboxServiceTest {
         when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
                 eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
         when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1, 0, 1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         int delivered = service.dispatchPending(deliveryService, 100);
 
@@ -243,8 +246,8 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void listDispatchableShouldRejectInvalidLimitBeforeMapperAccess() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void listDispatchableShouldRejectInvalidLimitBeforeMapperAccess() {
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () -> service.listDispatchable(0));
         assertThrows(IllegalArgumentException.class, () -> service.listDispatchable(PlatformEventOutboxService.MAX_DISPATCH_LIMIT + 1));
@@ -253,8 +256,8 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void dispatchPendingShouldRejectInvalidLimitBeforeDelivery() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void dispatchPendingShouldRejectInvalidLimitBeforeDelivery() {
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () -> service.dispatchPending(deliveryService, 0));
 
@@ -263,12 +266,30 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void replayByIdShouldResetAndRedispatch() throws Exception {
-        MessageEventDTO event = buildEvent();
-        PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        when(outboxMapper.selectOne(anyWrapper())).thenReturn(stored);
-        when(outboxMapper.update(any(), anyWrapper())).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void immediateDispatchFailureShouldLeaveOutboxAvailableForRelayRetry() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
+       doThrow(new RuntimeException("websocket unavailable")).when(deliveryService).deliver(any(MessageEventDTO.class));
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
+
+        boolean delivered = service.dispatchImmediately(stored, deliveryService);
+
+        assertThat(delivered).isFalse();
+        verify(deliveryService).deliver(any(MessageEventDTO.class));
+        ArgumentCaptor<UpdateWrapper<PlatformEventOutboxEntity>> wrapperCaptor = updateWrapperCaptor();
+        verify(outboxMapper, times(2)).update(isNull(), wrapperCaptor.capture());
+        assertThat(new ArrayList<>(wrapperCaptor.getAllValues().get(1).getParamNameValuePairs().values()))
+                .contains(PlatformEventOutboxService.STATUS_FAILED, 1, "websocket unavailable");
+    }
+
+    @Test
+   void replayByIdShouldResetAndRedispatch() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       when(outboxMapper.selectOne(anyWrapper())).thenReturn(stored);
+       when(outboxMapper.update(any(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         boolean replayed = service.replayById(1L, deliveryService);
 
@@ -302,13 +323,13 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void replayByIdShouldNotDeliverWhenResetBoundaryMisses() throws Exception {
-        MessageEventDTO event = buildEvent();
-        PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        stored.setDispatchStatus(PlatformEventOutboxService.STATUS_FAILED);
-        when(outboxMapper.selectOne(anyWrapper())).thenReturn(stored);
-        when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(0);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void replayByIdShouldNotDeliverWhenResetBoundaryMisses() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       stored.setDispatchStatus(PlatformEventOutboxService.STATUS_FAILED);
+       when(outboxMapper.selectOne(anyWrapper())).thenReturn(stored);
+       when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(0);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         boolean replayed = service.replayById(1L, deliveryService);
 
@@ -317,8 +338,8 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void replayByIdShouldRejectInvalidIdBeforeMapperAccess() {
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void replayByIdShouldRejectInvalidIdBeforeMapperAccess() {
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         boolean replayed = service.replayById(0L, deliveryService);
 
@@ -350,9 +371,9 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void countDispatchableShouldOnlyCountMessageOwnerEvents() {
-        when(outboxMapper.selectCount(anyWrapper())).thenReturn(3L);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void countDispatchableShouldOnlyCountMessageOwnerEvents() {
+       when(outboxMapper.selectCount(anyWrapper())).thenReturn(3L);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         long count = service.countDispatchable();
         long cached = service.countDispatchable();
@@ -365,16 +386,16 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void failedDispatchAfterMaxRetriesMovesToDeadLetter() throws Exception {
-        MessageEventDTO event = buildEvent();
-        PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        stored.setDispatchStatus(PlatformEventOutboxService.STATUS_FAILED);
-        stored.setRetryCount(7);
-        when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
-                eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
-        when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
-        doThrow(new RuntimeException("broker unavailable")).when(deliveryService).deliver(any(MessageEventDTO.class));
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void failedDispatchAfterMaxRetriesMovesToDeadLetter() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       stored.setDispatchStatus(PlatformEventOutboxService.STATUS_FAILED);
+       stored.setRetryCount(7);
+       when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
+               eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
+       when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
+       doThrow(new RuntimeException("broker unavailable")).when(deliveryService).deliver(any(MessageEventDTO.class));
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         int delivered = service.dispatchPending(deliveryService, 100);
 
@@ -393,14 +414,14 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void dispatchPendingShouldRejectUntrustedClaimedRowBeforeDelivery() throws Exception {
-        MessageEventDTO event = buildEvent();
-        PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        stored.setSourceType("PLUGIN");
-        when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
-                eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
-        when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void dispatchPendingShouldRejectUntrustedClaimedRowBeforeDelivery() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       stored.setSourceType("PLUGIN");
+       when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
+               eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
+       when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         int delivered = service.dispatchPending(deliveryService, 100);
 
@@ -413,14 +434,14 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void dispatchPendingShouldRejectHumanRowMissingUserUuidBeforeDelivery() throws Exception {
-        MessageEventDTO event = buildEvent();
-        PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        stored.setUserUuid(null);
-        when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
-                eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
-        when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void dispatchPendingShouldRejectHumanRowMissingUserUuidBeforeDelivery() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       stored.setUserUuid(null);
+       when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
+               eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
+       when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         int delivered = service.dispatchPending(deliveryService, 100);
 
@@ -433,14 +454,14 @@ class PlatformEventOutboxServiceTest {
     }
 
     @Test
-    void dispatchPendingShouldRejectPayloadUserUuidMismatchBeforeDelivery() throws Exception {
-        MessageEventDTO event = buildEvent();
-        PlatformEventOutboxEntity stored = buildStoredEntity(event);
-        stored.setUserUuid("user-uuid-other");
-        when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
-                eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
-        when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry());
+   void dispatchPendingShouldRejectPayloadUserUuidMismatchBeforeDelivery() throws Exception {
+       MessageEventDTO event = buildEvent();
+       PlatformEventOutboxEntity stored = buildStoredEntity(event);
+       stored.setUserUuid("user-uuid-other");
+       when(outboxMapper.listDispatchable(eq(MessageEventFactory.SOURCE_MESSAGE), eq(PlatformEventOutboxService.STATUS_RECORDED),
+               eq(PlatformEventOutboxService.STATUS_FAILED), any(), anyInt())).thenReturn(List.of(stored));
+       when(outboxMapper.update(isNull(), anyWrapper())).thenReturn(1);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(outboxMapper, objectMapper, new SimpleMeterRegistry(), systemInternalApi);
 
         int delivered = service.dispatchPending(deliveryService, 100);
 

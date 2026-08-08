@@ -56,6 +56,15 @@ public class InternalTeamController {
         return teamInternalApiService.requireActiveMember(teamId, userId, userUuid);
     }
 
+    @GetMapping("/users/{userId}/active-team-ids")
+    public List<Long> listActiveTeamIdsForUser(
+            @PathVariable("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    ) {
+        requireInternalServicePrincipal();
+        return teamInternalApiService.listActiveTeamIdsForUser(userId, userUuid);
+    }
+
     @GetMapping("/teams/{teamId}/members/{userId}/owner")
     public boolean isTeamOwner(
             @PathVariable("teamId") Long teamId,

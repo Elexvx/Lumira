@@ -59,7 +59,8 @@ class FileThumbnailProcessorTest {
                 });
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileThumbnailProcessor(jdbcTemplate, uploadProperties);
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        var processor = processor(jdbcTemplate, uploadProperties, ownerIdentityVerifier);
 
         FileThumbnailProcessor.ThumbnailResult result = processor.generateThumbnail(3001L, 2001L, "user-uuid-2001");
 
@@ -70,6 +71,7 @@ class FileThumbnailProcessorTest {
         assertThat(thumbnail.getHeight()).isEqualTo(160);
         verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, "\"status\":\"GENERATED\"");
+        verify(ownerIdentityVerifier).requireEnabledOwner(2001L, "user-uuid-2001");
     }
 
     @Test
@@ -91,7 +93,7 @@ class FileThumbnailProcessorTest {
                 });
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileThumbnailProcessor(jdbcTemplate, uploadProperties);
+        var processor = processor(jdbcTemplate, uploadProperties);
 
         FileThumbnailProcessor.ThumbnailResult result = processor.generateThumbnail(3001L, 2001L, "user-uuid-2001");
 
@@ -106,7 +108,7 @@ class FileThumbnailProcessorTest {
     void generateThumbnail_shouldRejectImplicitOwner() {
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileThumbnailProcessor(mock(JdbcTemplate.class), uploadProperties);
+        var processor = processor(mock(JdbcTemplate.class), uploadProperties);
 
         assertThatThrownBy(() -> processor.generateThumbnail(3001L))
                 .isInstanceOf(IllegalStateException.class)
@@ -117,7 +119,7 @@ class FileThumbnailProcessorTest {
     void generateThumbnail_shouldRejectMissingOwnerUuid() {
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileThumbnailProcessor(mock(JdbcTemplate.class), uploadProperties);
+        var processor = processor(mock(JdbcTemplate.class), uploadProperties);
 
         assertThatThrownBy(() -> processor.generateThumbnail(3001L, 2001L))
                 .isInstanceOf(IllegalStateException.class)
@@ -143,7 +145,8 @@ class FileThumbnailProcessorTest {
                 });
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileThumbnailProcessor(jdbcTemplate, uploadProperties);
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        var processor = processor(jdbcTemplate, uploadProperties, ownerIdentityVerifier);
 
         assertThatThrownBy(() -> processor.generateThumbnail(3001L, 2001L, "user-uuid-2001"))
                 .isInstanceOf(IllegalStateException.class)
@@ -172,7 +175,7 @@ class FileThumbnailProcessorTest {
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
                 .contains("fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
         assertThat(payloadCaptor.getValue()).asString().contains(expectedPayloadSnippet);
     }
 
@@ -181,6 +184,18 @@ class FileThumbnailProcessorTest {
         verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
         assertThat(sqlCaptor.getValue())
                 .contains("where fo.id = ? and fo.deleted = 0 and fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
+    }
+
+    private FileThumbnailProcessor processor(JdbcTemplate jdbcTemplate, UploadProperties uploadProperties) {
+        return processor(jdbcTemplate, uploadProperties, mock(FileOwnerIdentityVerifier.class));
+    }
+
+    private FileThumbnailProcessor processor(
+            JdbcTemplate jdbcTemplate,
+            UploadProperties uploadProperties,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
+        return new FileThumbnailProcessor(jdbcTemplate, uploadProperties, ownerIdentityVerifier);
     }
 }

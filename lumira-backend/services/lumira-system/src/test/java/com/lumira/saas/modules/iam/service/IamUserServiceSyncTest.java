@@ -359,16 +359,22 @@ class IamUserServiceSyncTest {
 
     @Test
     void iamUpsertsShouldNotRewriteTrustedUserIdentityOnDuplicateKeys() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/iam/service/IamUserService.java"))
+        String application = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/iam/service/IamUserService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/iam/infrastructure/JdbcIamUserRepository.java"))
                 .replace("\r\n", "\n");
+        String normalizedSource = source.replaceAll("\\s+", " ");
 
-        assertTrue(source.contains("and identity_type = ?\n                              and identifier_normalized = ?\n                              and ((deleted = 1) or (user_id = ? and user_uuid = ?))"));
-        assertTrue(source.contains("where id = ?\n                              and identity_type = ?\n                              and identifier_normalized = ?\n                              and user_id = ?\n                              and user_uuid = ?\n                              and deleted = ?"));
-        assertTrue(source.contains("if (updated <= 0)"));
-        assertTrue(source.contains("credential_secret = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
-        assertTrue(source.contains("device_name = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
-        assertTrue(source.contains("nickname = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
-        assertTrue(source.contains("on duplicate key update updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(application.contains("IamUserRepository"));
+        assertTrue(!application.contains("MyBatisQueryOperations"));
+        assertTrue(!application.contains("BeanPropertyRowMapper"));
+        assertTrue(!application.contains("jdbcTemplate"));
+        assertTrue(normalizedSource.contains("and identity_type = ? and identifier_normalized = ? and ((deleted = 1) or (user_id = ? and user_uuid = ?))"));
+        assertTrue(normalizedSource.contains("where id = ? and identity_type = ? and identifier_normalized = ? and user_id = ? and user_uuid = ? and deleted = ?"));
+        assertTrue(application.contains("if (updated <= 0)"));
+        assertTrue(normalizedSource.contains("credential_secret = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(normalizedSource.contains("device_name = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(normalizedSource.contains("nickname = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
+        assertTrue(normalizedSource.contains("on duplicate key update updated_at = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
         assertTrue(!source.contains("user_uuid = values(user_uuid),"));
     }
 

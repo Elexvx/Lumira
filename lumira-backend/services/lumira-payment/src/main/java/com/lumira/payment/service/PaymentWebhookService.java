@@ -222,7 +222,7 @@ public class PaymentWebhookService {
         row.setProcessMessage(processMessage);
         row.setProcessedAt(LocalDateTime.now());
 
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 null,
                 "payment",
                 "payment.webhook.received",

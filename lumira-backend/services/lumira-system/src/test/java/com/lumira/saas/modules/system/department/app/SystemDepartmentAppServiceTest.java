@@ -35,26 +35,30 @@ class SystemDepartmentAppServiceTest {
 
     @Test
     void departmentWritesShouldPersistTrustedUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/department/app/SystemDepartmentAppService.java"));
+        String appSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/department/app/SystemDepartmentAppService.java"));
+        String adapterSource = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/department/infrastructure/JdbcSystemDepartmentRepository.java"));
 
-        assertThat(source).contains("created_by, created_by_uuid, updated_by, updated_by_uuid");
-        assertThat(source).contains("updated_by_uuid = ?");
-        assertThat(source).contains("AuthenticationTrustSupport.isTrustedCurrentUser");
-        assertThat(source).contains("join sys_user u");
-        assertThat(source).contains("u.uuid = ud.user_uuid");
-        assertThat(source).contains("trim(ud.user_uuid) <> ''");
-        assertThat(source).contains("and dept_code = ?");
-        assertThat(source).contains("and status = ?");
-        assertThat(source).contains("existing.getDeptCode()");
-        assertThat(source).contains("existing.getStatus()");
-        assertThat(source).contains("rebuildClosureForSubtree(id)");
-        assertThat(source).contains("update sys_department_closure set deleted = 1 where descendant_id in");
-        assertThat(source).contains("update sys_department_closure");
-        assertThat(source).doesNotContain("delete from sys_department_closure");
-        assertThat(source).doesNotContain("on duplicate key update deleted = 0");
-        assertThat(source).contains("exists (select 1 from sys_department a where a.id = values(ancestor_id) and a.deleted = 0)");
-        assertThat(source).contains("exists (select 1 from sys_department d where d.id = values(descendant_id) and d.deleted = 0)");
-        assertThat(source).contains("Department changed, please retry");
+        assertThat(appSource).contains("AuthenticationTrustSupport.isTrustedCurrentUser");
+        assertThat(appSource).contains("rebuildClosureForSubtree(id)");
+        assertThat(appSource).contains("existing.getDeptCode()");
+        assertThat(appSource).contains("existing.getStatus()");
+        assertThat(appSource).doesNotContain("MyBatisQueryOperations");
+        assertThat(appSource).doesNotContain("jdbcTemplate");
+        assertThat(appSource).doesNotContain("insert into sys_department");
+        assertThat(adapterSource).contains("created_by, created_by_uuid, updated_by, updated_by_uuid");
+        assertThat(adapterSource).contains("updated_by_uuid = ?");
+        assertThat(adapterSource).contains("join sys_user u");
+        assertThat(adapterSource).contains("u.uuid = ud.user_uuid");
+        assertThat(adapterSource).contains("trim(ud.user_uuid) <> ''");
+        assertThat(adapterSource).contains("and dept_code = ?");
+        assertThat(adapterSource).contains("and status = ?");
+        assertThat(adapterSource).contains("update sys_department_closure set deleted = 1 where descendant_id in");
+        assertThat(adapterSource).contains("update sys_department_closure");
+        assertThat(adapterSource).doesNotContain("delete from sys_department_closure");
+        assertThat(adapterSource).doesNotContain("on duplicate key update deleted = 0");
+        assertThat(adapterSource).contains("exists (select 1 from sys_department a where a.id = values(ancestor_id) and a.deleted = 0)");
+        assertThat(adapterSource).contains("exists (select 1 from sys_department d where d.id = values(descendant_id) and d.deleted = 0)");
+        assertThat(appSource).contains("Department changed, please retry");
     }
 
     @Test

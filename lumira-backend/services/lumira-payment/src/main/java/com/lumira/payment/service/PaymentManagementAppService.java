@@ -131,7 +131,7 @@ public class PaymentManagementAppService {
         LocalDateTime eventVersion = LocalDateTime.now();
         upsertProviderConfig(actor, definition, merged, current);
         providerListCache = null;
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 outboxUserId(actor),
                 "payment",
                 "payment.provider.updated",
@@ -177,7 +177,7 @@ public class PaymentManagementAppService {
 
         updateProviderTestResult(actor, providerCode, success, message, checkedAt, settings.isPersisted());
         providerListCache = null;
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 outboxUserId(actor),
                 "payment",
                 "payment.provider.tested",

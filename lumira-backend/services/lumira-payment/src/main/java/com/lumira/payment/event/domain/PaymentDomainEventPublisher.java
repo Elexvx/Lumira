@@ -22,7 +22,7 @@ public class PaymentDomainEventPublisher implements DomainEventPublisher {
         if (event == null) {
             return;
         }
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 resolveUserId(event.attributes()),
                 "payment",
                 event.eventType(),
