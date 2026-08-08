@@ -45,7 +45,7 @@ class FileSecurityScanProcessorTest {
         verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, "\"engine\":\"LUMIRA_INLINE_RULES\"");
         verifyArtifact(jdbcTemplate, "\"verdict\":\"CLEAN\"");
-        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
+        verify(jdbcTemplate).update(contains("update file_object"), eq("CLEAN"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
     }
 
     @Test
@@ -57,7 +57,7 @@ class FileSecurityScanProcessorTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
         mockLocation(jdbcTemplate, "LOCAL", source, "txt");
-        when(jdbcTemplate.update(contains("update file_object"), eq("QUARANTINED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001")))
+        when(jdbcTemplate.update(contains("update file_object"), eq("REJECTED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001")))
                 .thenReturn(1);
         FileSecurityScanProcessor processor = processor(jdbcTemplate);
 
@@ -68,11 +68,11 @@ class FileSecurityScanProcessorTest {
         verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, "\"verdict\":\"THREAT_DETECTED\"");
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).update(sqlCaptor.capture(), eq("QUARANTINED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
+        verify(jdbcTemplate).update(sqlCaptor.capture(), eq("REJECTED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
         assertThat(sqlCaptor.getValue())
                 .contains("uploaded_by = ?")
                 .contains("uploaded_by_uuid = ?")
-                .contains("status = 'ENABLED'");
+                .contains("status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')");
     }
 
     @Test
@@ -84,13 +84,13 @@ class FileSecurityScanProcessorTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
         mockLocation(jdbcTemplate, "LOCAL", source, "txt");
-        when(jdbcTemplate.update(contains("update file_object"), eq("QUARANTINED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001")))
+        when(jdbcTemplate.update(contains("update file_object"), eq("REJECTED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001")))
                 .thenReturn(0);
         FileSecurityScanProcessor processor = processor(jdbcTemplate);
 
         assertThatThrownBy(() -> processor.scan(3001L, 2001L, "user-uuid-2001"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("File security quarantine state changed, please retry");
+                .hasMessageContaining("File security state changed, please retry");
     }
 
     @Test
@@ -107,7 +107,7 @@ class FileSecurityScanProcessorTest {
         assertThat(result.reason()).isEqualTo("HIGH_RISK_EXTENSION");
         verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, "\"verdict\":\"REVIEW_REQUIRED\"");
-        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
+        verify(jdbcTemplate).update(contains("update file_object"), eq("REJECTED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
     }
 
     @Test
@@ -123,7 +123,7 @@ class FileSecurityScanProcessorTest {
         assertThat(result.reason()).isEqualTo("REMOTE_STORAGE_NOT_SCANNED");
         verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, "\"verdict\":\"UNSUPPORTED_STORAGE\"");
-        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
+        verify(jdbcTemplate).update(contains("update file_object"), eq("REJECTED"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
     }
 
     @Test
@@ -234,7 +234,7 @@ class FileSecurityScanProcessorTest {
         assertThat(sqlCaptor.getValue())
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
-                .contains("fo.status = 'ENABLED'")
+                .contains("fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')")
                 .contains("u.status = 'ENABLED'");
         assertThat(payloadCaptor.getValue()).asString().contains(expectedPayloadSnippet);
     }
@@ -243,7 +243,7 @@ class FileSecurityScanProcessorTest {
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(jdbcTemplate).query(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
         assertThat(sqlCaptor.getValue())
-                .contains("where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'")
+                .contains("fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')")
                 .contains("u.status = 'ENABLED'");
     }
 }

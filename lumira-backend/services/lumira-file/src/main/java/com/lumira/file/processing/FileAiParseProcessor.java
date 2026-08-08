@@ -48,7 +48,7 @@ public class FileAiParseProcessor {
                         join file_object fo
                           on fo.id = fpa.file_id
                          and fo.deleted = 0
-                         and fo.status = 'ENABLED'
+                         and fo.status in ('ENABLED', 'CLEAN')
                          and fo.uploaded_by = ?
                          and fo.uploaded_by_uuid = ?
                          and fpa.created_by = fo.uploaded_by
@@ -106,7 +106,7 @@ public class FileAiParseProcessor {
                           and fo.uploaded_by = ?
                           and fo.uploaded_by_uuid = ?
                           and fo.deleted = 0
-                          and fo.status = 'ENABLED'
+                          and fo.status in ('ENABLED', 'CLEAN')
                         on duplicate key update
                             task_type = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(task_type) else task_type end,
                             content_text = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_text) else content_text end,

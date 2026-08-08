@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -80,6 +82,22 @@ class FileProcessingTaskRequestServiceTest {
                         .isInstanceOfSatisfying(Map.class, item ->
                                 assertThat(item).containsEntry("userId", 2001L)
                                         .containsEntry("userUuid", "user-uuid-2001")));
+    }
+
+    @Test
+    void requestTasksForCleanUploadShouldSkipDuplicateSecurityScanTask() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), eq(3001L), eq(2001L), eq("user-uuid-2001")))
+                .thenReturn(2001L);
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+
+        int requested = service(jdbcTemplate, outboxService)
+                .requestTasksForUpload(file(2001L, "pdf", "application/pdf", "CLEAN"), currentUser());
+
+        assertThat(requested).isEqualTo(2);
+        verify(outboxService, never()).recordAfterCommit(
+                anyString(), anyString(), anyLong(), contains("SECURITY_SCAN"), any());
     }
 
     @Test
@@ -171,13 +189,13 @@ class FileProcessingTaskRequestServiceTest {
     }
 
     @Test
-    void requestTasksForUploadShouldBindEnabledFileStatusBeforeQueueWrite() throws Exception {
+    void requestTasksForUploadShouldAllowPendingScanFileBeforeQueueWrite() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/lumira/file/processing/FileProcessingTaskRequestService.java"));
 
         assertThat(source)
                 .contains("where fo.id = ?")
                 .contains("and fo.deleted = 0")
-                .contains("and fo.status = 'ENABLED'")
+                .contains("and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')")
                 .contains("and fo.uploaded_by = ?")
                 .contains("and fo.uploaded_by_uuid = ?");
     }
@@ -211,6 +229,10 @@ class FileProcessingTaskRequestServiceTest {
     }
 
     private FileObjectDTO file(Long uploadedBy, String extension, String mimeType) {
+        return file(uploadedBy, extension, mimeType, "UPLOADED");
+    }
+
+    private FileObjectDTO file(Long uploadedBy, String extension, String mimeType, String status) {
         return new FileObjectDTO(
                 3001L,
                 uploadedBy,
@@ -233,7 +255,7 @@ class FileProcessingTaskRequestServiceTest {
                 "GENERAL",
                 null,
                 null,
-                "UPLOADED",
+                status,
                 null,
                 null
         );

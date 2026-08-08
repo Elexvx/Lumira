@@ -55,7 +55,7 @@ class FileAiParseProcessorTest {
         assertThat(sqlCaptor.getValue())
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
-                .contains("fo.status = 'ENABLED'")
+                .contains("fo.status in ('ENABLED', 'CLEAN')")
                 .contains("u.status = 'ENABLED'");
         assertThat(String.valueOf(payloadCaptor.getValue()))
                 .contains("\"sourceArtifactType\":\"TEXT_CONTENT\"")

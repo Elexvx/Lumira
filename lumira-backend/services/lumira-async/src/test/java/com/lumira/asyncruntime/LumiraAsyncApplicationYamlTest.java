@@ -45,6 +45,24 @@ class LumiraAsyncApplicationYamlTest {
                 "lumira.ai.login-challenge-expire-minutes");
     }
 
+    @Test
+    void paymentConsumerHasBoundedRecoveryAndDeadLetterDefaults() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.event.payment-consumer.enabled"))
+                .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_ENABLED:true}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.stream-key"))
+                .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_STREAM_KEY:lumira.events.payment.v1}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.group-name"))
+                .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_GROUP_NAME:competition-payment-v1}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.pending-recovery-minimum-idle"))
+                .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_MINIMUM_IDLE:30s}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.pending-recovery-interval"))
+                .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_PENDING_RECOVERY_INTERVAL:30s}");
+        assertThat(properties.getProperty("lumira.event.payment-consumer.max-delivery-count"))
+                .isEqualTo("${LUMIRA_PAYMENT_EVENT_CONSUMER_MAX_DELIVERY_COUNT:8}");
+    }
+
     private Properties loadApplicationProperties() {
         YamlPropertiesFactoryBean factory = new YamlPropertiesFactoryBean();
         factory.setResources(new ClassPathResource("application.yml"));

@@ -88,7 +88,7 @@ public class FileThumbnailProcessor {
                         left join file_storage_space fs
                           on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'
+                        where fo.id = ? and fo.deleted = 0 and fo.status in ('ENABLED', 'CLEAN')
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -186,7 +186,7 @@ public class FileThumbnailProcessor {
                           and fo.uploaded_by = ?
                           and fo.uploaded_by_uuid = ?
                           and fo.deleted = 0
-                          and fo.status = 'ENABLED'
+                          and fo.status in ('ENABLED', 'CLEAN')
                         on duplicate key update
                             task_type = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(task_type) else task_type end,
                             content_text = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_text) else content_text end,

@@ -126,7 +126,7 @@ public class FileProcessingTaskRequestService {
                              and u.status = 'ENABLED'
                             where fo.id = ?
                               and fo.deleted = 0
-                              and fo.status = 'ENABLED'
+                              and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')
                               and fo.uploaded_by = ?
                               and fo.uploaded_by_uuid = ?
                             limit 1
@@ -223,7 +223,9 @@ public class FileProcessingTaskRequestService {
 
     private List<String> resolveTaskTypes(FileObjectDTO file) {
         List<String> taskTypes = new ArrayList<>();
-        taskTypes.add(FileProcessingTaskService.TASK_SECURITY_SCAN);
+        if (!"CLEAN".equalsIgnoreCase(file.status())) {
+            taskTypes.add(FileProcessingTaskService.TASK_SECURITY_SCAN);
+        }
         if (isImage(file)) {
             taskTypes.add(FileProcessingTaskService.TASK_THUMBNAIL);
             taskTypes.add(FileProcessingTaskService.TASK_OCR);

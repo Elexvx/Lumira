@@ -26,8 +26,10 @@ import com.lumira.file.config.UploadProperties;
 import com.lumira.file.dto.FileStorageSpaceRequest;
 import com.lumira.file.domain.model.FileDomainModels.FileObjectAggregate;
 import com.lumira.file.entity.FileObjectEntity;
+import com.lumira.file.domain.FileObjectSecurityStatus;
 import com.lumira.file.entity.FileStorageSpaceEntity;
 import com.lumira.file.processing.FileProcessingTaskRequestService;
+import com.lumira.file.processing.FileSecurityScanProcessor;
 import com.lumira.file.repository.FileProcessingArtifactRepository;
 import com.lumira.file.repository.FileBusinessPolicyRepository;
 import com.lumira.file.repository.FileObjectRepository;
@@ -99,6 +101,7 @@ public class FileManagementAppService {
     private final ImageUploadService imageUploadService;
     private final DomainEventPublisher domainEventPublisher;
     private final FileProcessingTaskRequestService fileProcessingTaskRequestService;
+    private final ObjectProvider<FileSecurityScanProcessor> securityScanProcessorProvider;
     private final FieldCryptoService fieldCryptoService;
     private final FileStorageMetrics storageMetrics;
     private final SafeUrlValidator safeUrlValidator;
@@ -121,7 +124,28 @@ public class FileManagementAppService {
     ) {
         this(fileObjectRepository, businessPolicyRepository, storageSpaceRepository, artifactRepository, uploadProperties, documentUploadService,
                 imageUploadService, domainEventPublisher, fileProcessingTaskRequestService, fieldCryptoService,
-                storageMetrics, safeUrlValidator, null, null);
+                storageMetrics, safeUrlValidator, null, null, null);
+    }
+
+    public FileManagementAppService(
+            FileObjectRepository fileObjectRepository,
+            FileBusinessPolicyRepository businessPolicyRepository,
+            FileStorageSpaceRepository storageSpaceRepository,
+            FileProcessingArtifactRepository artifactRepository,
+            UploadProperties uploadProperties,
+            DocumentUploadService documentUploadService,
+            ImageUploadService imageUploadService,
+            @Qualifier("fileDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            FileProcessingTaskRequestService fileProcessingTaskRequestService,
+            FieldCryptoService fieldCryptoService,
+            FileStorageMetrics storageMetrics,
+            SafeUrlValidator safeUrlValidator,
+            SecurityAuditEventService securityAuditEventService,
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+    ) {
+        this(fileObjectRepository, businessPolicyRepository, storageSpaceRepository, artifactRepository, uploadProperties, documentUploadService,
+                imageUploadService, domainEventPublisher, fileProcessingTaskRequestService, fieldCryptoService,
+                storageMetrics, safeUrlValidator, securityAuditEventService, systemInternalApiProvider, null);
     }
 
     @Autowired
@@ -139,7 +163,8 @@ public class FileManagementAppService {
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator,
             SecurityAuditEventService securityAuditEventService,
-            ObjectProvider<SystemInternalApi> systemInternalApiProvider
+            ObjectProvider<SystemInternalApi> systemInternalApiProvider,
+            ObjectProvider<FileSecurityScanProcessor> securityScanProcessorProvider
     ) {
         this.fileObjectRepository = fileObjectRepository;
         this.businessPolicyRepository = businessPolicyRepository;
@@ -150,6 +175,7 @@ public class FileManagementAppService {
         this.imageUploadService = imageUploadService;
         this.domainEventPublisher = domainEventPublisher;
         this.fileProcessingTaskRequestService = fileProcessingTaskRequestService;
+        this.securityScanProcessorProvider = securityScanProcessorProvider;
         this.fieldCryptoService = fieldCryptoService;
         this.storageMetrics = storageMetrics;
         this.safeUrlValidator = safeUrlValidator;
@@ -221,6 +247,7 @@ public class FileManagementAppService {
 
     public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
         FileObjectDTO file = getFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        requireContentAccessible(file);
         if (!Boolean.TRUE.equals(file.previewable()) || "UNSUPPORTED".equalsIgnoreCase(file.previewMode())) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前文件不支持在线预览");
         }
@@ -408,9 +435,32 @@ public class FileManagementAppService {
                 remark
         );
         FileObjectDTO uploaded = getInsertedFile(insertedId);
+        if (VISIBILITY_SCOPE_PUBLIC.equals(visibilityScope)) {
+            uploaded = synchronouslyScanPublicImage(uploaded, currentUser);
+        }
         publishFileUploaded(uploaded, currentUser);
         fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser);
         return uploaded;
+    }
+
+    private FileObjectDTO synchronouslyScanPublicImage(FileObjectDTO uploaded, CurrentUser currentUser) {
+        FileSecurityScanProcessor processor = securityScanProcessorProvider == null
+                ? null
+                : securityScanProcessorProvider.getIfAvailable();
+        if (processor == null) {
+            throw visibleBizException(ErrorCode.SYSTEM_ERROR, "Public image security scanner is unavailable");
+        }
+        try {
+            processor.scan(uploaded.id(), trustedUserId(currentUser), trustedUserUuid(currentUser));
+        } catch (RuntimeException exception) {
+            log.warn("Synchronous public image security scan failed fileId={}", uploaded.id(), exception);
+            throw visibleBizException(ErrorCode.FORBIDDEN, "Public image failed its security scan");
+        }
+        FileObjectDTO scanned = getInsertedFile(uploaded.id());
+        if (!FileObjectSecurityStatus.CLEAN.equalsIgnoreCase(scanned.status())) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "Public image did not pass its security scan");
+        }
+        return scanned;
     }
 
     @Transactional
@@ -640,6 +690,7 @@ public class FileManagementAppService {
                 sharedScope,
                 downloadCenterScope
         );
+        requireContentAccessible(file);
         Path target = resolveFilePath(file);
         if (target == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件路径无效");
@@ -654,6 +705,7 @@ public class FileManagementAppService {
                 sharedScope,
                 downloadCenterScope
         );
+        requireContentAccessible(file);
         return readFileContent(file);
     }
 
@@ -674,7 +726,7 @@ public class FileManagementAppService {
         FileObjectEntity entity = fileObjectRepository.findById(fileId);
         if (entity == null
                 || Integer.valueOf(1).equals(entity.getDeleted())
-                || !"ENABLED".equalsIgnoreCase(entity.getStatus())) {
+                || !FileObjectSecurityStatus.isContentAccessible(entity.getStatus())) {
             throw new BizException(ErrorCode.NOT_FOUND, "File not found");
         }
         return readFileContent(mapFileObject(entity));
@@ -758,6 +810,7 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO enrich(FileObjectDTO file) {
+        boolean contentAccessible = FileObjectSecurityStatus.isContentAccessible(file.status());
         return new FileObjectDTO(
                 file.id(),
                 file.uploadedBy(),
@@ -772,9 +825,9 @@ public class FileManagementAppService {
                 file.fileSizeBytes(),
                 readableSize(file.fileSizeBytes()),
                 file.storagePath(),
-                file.publicUrl(),
-                StringUtils.hasText(file.previewUrl()) ? file.previewUrl() : file.publicUrl(),
-                StringUtils.hasText(file.downloadUrl()) ? file.downloadUrl() : file.publicUrl(),
+                contentAccessible ? file.publicUrl() : null,
+                contentAccessible ? (StringUtils.hasText(file.previewUrl()) ? file.previewUrl() : file.publicUrl()) : null,
+                contentAccessible ? (StringUtils.hasText(file.downloadUrl()) ? file.downloadUrl() : file.publicUrl()) : null,
                 file.previewMode(),
                 file.previewable(),
                 file.category(),
@@ -952,7 +1005,7 @@ public class FileManagementAppService {
         entity.setCategory(normalizeText(category));
         entity.setTags(normalizeText(normalizeTags(tags)));
         entity.setRemark(normalizeText(remark));
-        entity.setStatus("ENABLED");
+        entity.setStatus(FileObjectSecurityStatus.PENDING_SCAN);
         entity.setCreatedBy(actorUserId);
         entity.setCreatedByUuid(actorUserUuid);
         entity.setCreatedAt(now);
@@ -973,6 +1026,12 @@ public class FileManagementAppService {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传记录读取失败");
         }
         return enrich(mapFileObject(inserted));
+    }
+
+    private void requireContentAccessible(FileObjectDTO file) {
+        if (file == null || !FileObjectSecurityStatus.isContentAccessible(file.status())) {
+            throw visibleBizException(ErrorCode.FORBIDDEN, "File content is unavailable until its security scan passes");
+        }
     }
 
     private FileObjectRepository.Access resolveFileAccess(TrustedCurrentUser actor, boolean sharedScopeRequested, boolean downloadCenterScope) {

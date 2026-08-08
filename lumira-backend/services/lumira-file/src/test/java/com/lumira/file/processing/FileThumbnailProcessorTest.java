@@ -171,7 +171,7 @@ class FileThumbnailProcessorTest {
         assertThat(sqlCaptor.getValue())
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
-                .contains("fo.status = 'ENABLED'")
+                .contains("fo.status in ('ENABLED', 'CLEAN')")
                 .contains("u.status = 'ENABLED'");
         assertThat(payloadCaptor.getValue()).asString().contains(expectedPayloadSnippet);
     }
@@ -180,7 +180,7 @@ class FileThumbnailProcessorTest {
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
         assertThat(sqlCaptor.getValue())
-                .contains("where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'")
+                .contains("where fo.id = ? and fo.deleted = 0 and fo.status in ('ENABLED', 'CLEAN')")
                 .contains("u.status = 'ENABLED'");
     }
 }

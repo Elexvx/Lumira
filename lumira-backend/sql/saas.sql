@@ -435,7 +435,7 @@ CREATE TABLE `file_object` (
   `category` varchar(128) DEFAULT NULL,
   `tags` varchar(512) DEFAULT NULL,
   `remark` varchar(512) DEFAULT NULL,
-  `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING_SCAN',
   `created_by` bigint DEFAULT '0',
   `created_by_uuid` char(36) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -3,10 +3,13 @@ package com.lumira.file;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.domain.event.DomainEventPublisher;
@@ -20,6 +23,7 @@ import com.lumira.file.infrastructure.JdbcFileProcessingArtifactRepository;
 import com.lumira.file.infrastructure.MyBatisFileStorageSpaceRepository;
 import com.lumira.file.infrastructure.MyBatisFileObjectRepository;
 import com.lumira.file.processing.FileProcessingTaskRequestService;
+import com.lumira.file.processing.FileSecurityScanProcessor;
 import com.lumira.file.repository.FileProcessingArtifactRepository;
 import com.lumira.file.repository.FileBusinessPolicyRepository;
 import com.lumira.file.repository.FileStorageSpaceRepository;
@@ -52,6 +56,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -100,6 +105,9 @@ class FileManagementAppServiceTest {
     private FileProcessingTaskRequestService fileProcessingTaskRequestService;
 
     @Mock
+    private FileSecurityScanProcessor fileSecurityScanProcessor;
+
+    @Mock
     private FieldCryptoService fieldCryptoService;
 
     @Mock
@@ -132,7 +140,8 @@ class FileManagementAppServiceTest {
                 storageMetrics,
                 new SafeUrlValidator(),
                 null,
-                provider(systemInternalApi)
+                provider(systemInternalApi),
+                scanProvider(fileSecurityScanProcessor)
         );
         org.mockito.Mockito.lenient().when(systemInternalApi.findUserIdentityById(11L)).thenReturn(userSnapshot(11L, "alice", "ENABLED"));
         org.mockito.Mockito.lenient().when(businessPolicyRepository.findEnabledItems("file_storage_provider")).thenReturn(List.of(
@@ -535,6 +544,21 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void resolveFilePath_shouldRejectPendingScanContent() {
+        FileObjectEntity pending = fileObjectEntity(88L, "pending.pdf", "2026/08/pending.pdf");
+        pending.setStatus("PENDING_SCAN");
+        when(fileObjectMapper.selectOne(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any()))
+                .thenReturn(pending);
+
+        assertThatThrownBy(() -> service.resolveFilePath(currentUser(), 88L, false, false))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+        assertThatThrownBy(() -> service.readFileContent(currentUser(), 88L, false, false))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+    }
+
+    @Test
     void listStorageSpaceOptions_shouldAllowCompetitionEditorsWithoutFileManagementPermission() {
         CurrentUser currentUser = currentUser("aiadc:competition:update");
         when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
@@ -655,14 +679,91 @@ class FileManagementAppServiceTest {
         inserted.setPublicUrl("/api/uploads/2026/06/23/report.pdf");
         inserted.setPreviewMode("PDF");
         inserted.setPreviewableFlag(1);
+        inserted.setStatus("PENDING_SCAN");
         when(fileObjectMapper.selectById(99L)).thenReturn(inserted);
 
-        service.uploadDocument(currentUser(), multipartFile, "资料", null, null, "missing_bucket");
+        FileObjectDTO uploaded = service.uploadDocument(currentUser(), multipartFile, "资料", null, null, "missing_bucket");
 
         ArgumentCaptor<FileObjectEntity> captor = ArgumentCaptor.forClass(FileObjectEntity.class);
         verify(fileObjectMapper).insert(captor.capture());
         assertThat(captor.getValue().getBucket()).isEqualTo("local");
         assertThat(captor.getValue().getUploadedByUuid()).isEqualTo("user-uuid-11");
+        assertThat(captor.getValue().getStatus()).isEqualTo("PENDING_SCAN");
+        assertThat(uploaded.status()).isEqualTo("PENDING_SCAN");
+        assertThat(uploaded.publicUrl()).isNull();
+        assertThat(uploaded.previewUrl()).isNull();
+        assertThat(uploaded.downloadUrl()).isNull();
+    }
+
+    @Test
+    void uploadPublicImage_shouldSynchronouslyScanCleanBeforeReturningUrl() {
+        java.util.concurrent.atomic.AtomicReference<FileObjectEntity> stored = preparePublicImageUpload();
+        when(fileSecurityScanProcessor.scan(99L, 11L, "user-uuid-11")).thenAnswer(invocation -> {
+            stored.get().setStatus("CLEAN");
+            return new FileSecurityScanProcessor.SecurityScanResult(99L, "TEST", "CLEAN", "", 64L);
+        });
+
+        FileObjectDTO uploaded = service.uploadPublicImage(currentUser(), multipartFile, "avatar", "profile", "local");
+
+        assertThat(uploaded.status()).isEqualTo("CLEAN");
+        assertThat(uploaded.publicUrl()).isEqualTo("/api/uploads/2026/08/avatar.png");
+        verify(fileProcessingTaskRequestService).requestTasksForUpload(eq(uploaded), any(CurrentUser.class));
+    }
+
+    @Test
+    void uploadPublicImage_shouldRejectThreatWithoutPublishingOrQueueing() {
+        java.util.concurrent.atomic.AtomicReference<FileObjectEntity> stored = preparePublicImageUpload();
+        when(fileSecurityScanProcessor.scan(99L, 11L, "user-uuid-11")).thenAnswer(invocation -> {
+            stored.get().setStatus("REJECTED");
+            return new FileSecurityScanProcessor.SecurityScanResult(99L, "TEST", "THREAT_DETECTED", "TEST", 64L);
+        });
+
+        assertThatThrownBy(() -> service.uploadPublicImage(currentUser(), multipartFile, "avatar", "profile", "local"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(domainEventPublisher, fileProcessingTaskRequestService);
+    }
+
+    @Test
+    void uploadPublicImage_shouldFailClosedWhenSynchronousScanFails() {
+        preparePublicImageUpload();
+        when(fileSecurityScanProcessor.scan(99L, 11L, "user-uuid-11"))
+                .thenThrow(new IllegalStateException("scanner unavailable"));
+
+        assertThatThrownBy(() -> service.uploadPublicImage(currentUser(), multipartFile, "avatar", "profile", "local"))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+
+        verifyNoInteractions(domainEventPublisher, fileProcessingTaskRequestService);
+    }
+
+    private java.util.concurrent.atomic.AtomicReference<FileObjectEntity> preparePublicImageUpload() {
+        FileStorageSpaceEntity localStorage = storageSpaceEntities(1).getFirst();
+        localStorage.setStorageKey("local");
+        localStorage.setProvider("LOCAL");
+        localStorage.setRootPath("storage/uploads/");
+        localStorage.setDefaultFlag(1);
+        localStorage.setAnonymousAccessAllowed(1);
+        localStorage.setAllowedMimeTypes("*");
+        localStorage.setMaxFileSizeMb(20);
+        localStorage.setStatus("ENABLED");
+        when(fileStorageSpaceMapper.findByStorageKey("local")).thenReturn(localStorage);
+        when(uploadProperties.getStorageRoot()).thenReturn(tempDir.resolve("uploads").toString());
+        when(uploadProperties.getPublicPath()).thenReturn("/api/uploads");
+        when(imageUploadService.upload(any(MultipartFile.class), any(Path.class), any(String.class), any(Long.class), any(String.class), any(String.class)))
+                .thenReturn(new ImageUploadService.StoredImage(
+                        "avatar.png", "avatar.png", ".png", "image/png", 64L,
+                        "2026/08/avatar.png", "/api/uploads/2026/08/avatar.png"));
+        java.util.concurrent.atomic.AtomicReference<FileObjectEntity> stored = new java.util.concurrent.atomic.AtomicReference<>();
+        when(fileObjectMapper.insert(any(FileObjectEntity.class))).thenAnswer(invocation -> {
+            FileObjectEntity entity = invocation.getArgument(0);
+            entity.setId(99L);
+            stored.set(entity);
+            return 1;
+        });
+        when(fileObjectMapper.selectById(99L)).thenAnswer(invocation -> stored.get());
+        return stored;
     }
 
     @Test
@@ -863,6 +964,13 @@ class FileManagementAppServiceTest {
     private ObjectProvider<SystemInternalApi> provider(SystemInternalApi internalApi) {
         ObjectProvider<SystemInternalApi> provider = org.mockito.Mockito.mock(ObjectProvider.class);
         org.mockito.Mockito.lenient().when(provider.getIfAvailable()).thenReturn(internalApi);
+        return provider;
+    }
+
+    @SuppressWarnings("unchecked")
+    private ObjectProvider<FileSecurityScanProcessor> scanProvider(FileSecurityScanProcessor processor) {
+        ObjectProvider<FileSecurityScanProcessor> provider = org.mockito.Mockito.mock(ObjectProvider.class);
+        org.mockito.Mockito.lenient().when(provider.getIfAvailable()).thenReturn(processor);
         return provider;
     }
 

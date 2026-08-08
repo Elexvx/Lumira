@@ -64,6 +64,23 @@ class UploadResourceSecurityInterceptorTest {
     }
 
     @Test
+    void rejectsPublicUploadUntilSecurityScanPasses() throws Exception {
+        FileObjectMapper mapper = mock(FileObjectMapper.class);
+        FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
+        FileObjectEntity pendingFile = publicFile();
+        pendingFile.setStatus("PENDING_SCAN");
+        when(mapper.selectOne(anyWrapper())).thenReturn(pendingFile);
+        when(storageSpaceMapper.findByStorageKey("local")).thenReturn(storageSpace(true, "ENABLED"));
+        UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean allowed = interceptor.preHandle(request("/api/uploads/2026/06/pending.png"), response, new Object());
+
+        assertFalse(allowed);
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, response.getStatus());
+    }
+
+    @Test
     void rejectsEncodedPathTraversalBeforeDatabaseLookup() throws Exception {
         FileObjectMapper mapper = mock(FileObjectMapper.class);
         FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
@@ -148,6 +165,7 @@ class UploadResourceSecurityInterceptorTest {
     private static FileObjectEntity publicFile() {
         FileObjectEntity entity = new FileObjectEntity();
         entity.setBucket("local");
+        entity.setStatus("CLEAN");
         return entity;
     }
 

@@ -111,7 +111,10 @@ public class FileProcessingTaskService {
                             join file_object fo
                               on fo.id = t.file_id
                              and fo.deleted = 0
-                             and fo.status = 'ENABLED'
+                             and (
+                                   (t.task_type = 'SECURITY_SCAN' and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN'))
+                                   or (t.task_type <> 'SECURITY_SCAN' and fo.status in ('ENABLED', 'CLEAN'))
+                             )
                              and fo.uploaded_by is not null
                              and fo.uploaded_by > 0
                              and t.created_by = fo.uploaded_by
@@ -166,7 +169,10 @@ public class FileProcessingTaskService {
                         join file_object fo
                           on fo.id = t.file_id
                          and fo.deleted = 0
-                         and fo.status = 'ENABLED'
+                         and (
+                               (t.task_type = 'SECURITY_SCAN' and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN'))
+                               or (t.task_type <> 'SECURITY_SCAN' and fo.status in ('ENABLED', 'CLEAN'))
+                         )
                              and fo.uploaded_by is not null
                              and fo.uploaded_by > 0
                              and t.created_by = fo.uploaded_by

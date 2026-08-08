@@ -3,6 +3,7 @@ package com.lumira.file.config;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lumira.file.entity.FileObjectEntity;
 import com.lumira.file.entity.FileStorageSpaceEntity;
+import com.lumira.file.domain.FileObjectSecurityStatus;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -78,6 +79,9 @@ public class UploadResourceSecurityInterceptor implements HandlerInterceptor {
                 .eq(FileObjectEntity::getDeleted, 0)
                 .last("limit 1"));
         if (file == null || !StringUtils.hasText(file.getBucket())) {
+            return false;
+        }
+        if (!FileObjectSecurityStatus.isContentAccessible(file.getStatus())) {
             return false;
         }
         FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.getBucket());

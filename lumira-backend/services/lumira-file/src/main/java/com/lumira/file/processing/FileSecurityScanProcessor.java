@@ -1,6 +1,7 @@
 package com.lumira.file.processing;
 
 import com.lumira.file.config.UploadProperties;
+import com.lumira.file.domain.FileObjectSecurityStatus;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -60,12 +61,15 @@ public class FileSecurityScanProcessor {
             }
             String ownerUuid = requireUserUuid(userUuid);
             upsertArtifact(fileId, result, ownerId, ownerUuid);
-            if (VERDICT_THREAT_DETECTED.equals(result.verdict())) {
-                quarantineFile(fileId, ownerId, ownerUuid);
-            }
+            transitionFileAfterScan(fileId, ownerId, ownerUuid, result.verdict());
             securityScanMetrics.recordVerdict(result.engine(), result.verdict(), Duration.between(startedAt, Instant.now()));
             return result;
         } catch (RuntimeException exception) {
+            try {
+                markScanFailed(fileId, userId, userUuid);
+            } catch (RuntimeException ignored) {
+                // Preserve the original scan failure; the task retry/dead-letter state remains authoritative.
+            }
             securityScanMetrics.recordFailure(engine.engineName(), exception, Duration.between(startedAt, Instant.now()));
             throw exception;
         }
@@ -97,7 +101,9 @@ public class FileSecurityScanProcessor {
                         left join file_storage_space fs
                           on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.id = ? and fo.deleted = 0 and fo.status = 'ENABLED'
+                        where fo.id = ?
+                          and fo.deleted = 0
+                          and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -174,7 +180,7 @@ public class FileSecurityScanProcessor {
                           and fo.uploaded_by = ?
                           and fo.uploaded_by_uuid = ?
                           and fo.deleted = 0
-                          and fo.status = 'ENABLED'
+                          and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')
                         on duplicate key update
                             task_type = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(task_type) else task_type end,
                             content_text = case when created_by = values(created_by) and created_by_uuid = values(created_by_uuid) then values(content_text) else content_text end,
@@ -202,9 +208,12 @@ public class FileSecurityScanProcessor {
         }
     }
 
-    private void quarantineFile(Long fileId, Long userId, String userUuid) {
+    private void transitionFileAfterScan(Long fileId, Long userId, String userUuid, String verdict) {
         Long ownerId = requireUserId(userId);
         String ownerUuid = requireUserUuid(userUuid);
+        String targetStatus = VERDICT_CLEAN.equals(verdict)
+                ? FileObjectSecurityStatus.CLEAN
+                : FileObjectSecurityStatus.REJECTED;
         int updated = jdbcTemplate.update(
                 """
                         update file_object
@@ -213,9 +222,9 @@ public class FileSecurityScanProcessor {
                           and uploaded_by = ?
                           and uploaded_by_uuid = ?
                           and deleted = 0
-                          and status = 'ENABLED'
+                          and status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')
                         """,
-                "QUARANTINED",
+                targetStatus,
                 ownerId,
                 ownerUuid,
                 fileId,
@@ -223,8 +232,31 @@ public class FileSecurityScanProcessor {
                 ownerUuid
         );
         if (updated != 1) {
-            throw new IllegalStateException("File security quarantine state changed, please retry");
+            throw new IllegalStateException("File security state changed, please retry");
         }
+    }
+
+    private void markScanFailed(Long fileId, Long userId, String userUuid) {
+        if (fileId == null || fileId <= 0 || userId == null || userId <= 0 || !StringUtils.hasText(userUuid)) {
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        update file_object
+                        set status = ?, updated_at = current_timestamp, updated_by = ?, updated_by_uuid = ?
+                        where id = ?
+                          and uploaded_by = ?
+                          and uploaded_by_uuid = ?
+                          and deleted = 0
+                          and status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')
+                        """,
+                FileObjectSecurityStatus.FAILED,
+                userId,
+                userUuid.trim(),
+                fileId,
+                userId,
+                userUuid.trim()
+        );
     }
 
     private Long requireUserId(Long userId) {
