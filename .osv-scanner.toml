@@ -17,3 +17,13 @@ reason = "Lumira is a declarative static SPA served by Nginx and does not use Re
 id = "GHSA-wrjc-x8rr-h8h6"
 ignoreUntil = 2026-10-31
 reason = "Attacker-controlled login and activity destinations are normalized to local forward-slash paths; protocol-relative and backslash targets are rejected by regression tests."
+
+[[IgnoredVulns]]
+id = "GHSA-5p2g-fcmc-qvqq"
+ignoreUntil = 2026-09-30
+reason = "image-size is only pulled by the Less/Umi build toolchain; production is a static Nginx bundle and does not parse attacker-controlled images with this Node package. No fixed image-size release exists yet."
+
+[[IgnoredVulns]]
+id = "GHSA-w3rx-r6r6-pgpr"
+ignoreUntil = 2026-09-30
+reason = "image-size is only pulled by the Less/Umi build toolchain; production is a static Nginx bundle and does not parse attacker-controlled images with this Node package. No fixed image-size release exists yet."

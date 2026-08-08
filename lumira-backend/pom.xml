@@ -42,9 +42,14 @@
         <springdoc.version>3.0.3</springdoc.version>
         <tika.version>3.2.3</tika.version>
         <jackson2.version>2.22.0</jackson2.version>
+        <jackson2-core.version>2.21.4</jackson2-core.version>
         <jackson3.version>3.1.4</jackson3.version>
+        <spring-framework.version>7.0.8</spring-framework.version>
+        <spring-data-commons.version>4.0.6</spring-data-commons.version>
+        <micrometer.version>1.16.6</micrometer.version>
+        <bouncycastle.version>1.84</bouncycastle.version>
         <tomcat-embed.version>11.0.22</tomcat-embed.version>
-        <netty.version>4.2.15.Final</netty.version>
+        <netty.version>4.2.16.Final</netty.version>
         <opentelemetry-api.version>1.62.0</opentelemetry-api.version>
         <owasp-html-sanitizer.version>20260313.1</owasp-html-sanitizer.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -77,6 +82,11 @@
                 <version>${jackson2.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson2-core.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
                 <version>${jackson2.version}</version>
@@ -90,6 +100,36 @@
                 <groupId>tools.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
                 <version>${jackson3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-expression</artifactId>
+                <version>${spring-framework.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-webmvc</artifactId>
+                <version>${spring-framework.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.data</groupId>
+                <artifactId>spring-data-commons</artifactId>
+                <version>${spring-data-commons.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-core</artifactId>
+                <version>${micrometer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.tomcat.embed</groupId>
