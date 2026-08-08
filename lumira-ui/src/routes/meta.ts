@@ -115,6 +115,9 @@ export const systemRouteMeta: BackendRouteMeta[] = [
 
 export const systemRoutes: BackendRouteRecord[] = [
   { path: '/audit/overview', redirect: '/settings/audit' },
+  { path: '/localization', redirect: '/settings/localization' },
+  { path: '/settings/monitoring/api-docs', redirect: '/settings/api-docs' },
+  { path: '/settings/monitoring/audit', redirect: '/settings/audit' },
   { path: '/system', redirect: '/settings' },
   { path: '/system/overview', redirect: '/settings' },
   { path: '/system/files', redirect: '/user-center/personal-center/files' },
@@ -295,7 +298,7 @@ const competitionRouteMeta: BackendRouteMeta[] = [
   { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
   { path: '/competitions/register/payment-result', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
   { path: '/competitions/activity-register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
-  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin', hideInMenu: true },
+  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
   { path: '/competitions/create', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
   { path: '/competitions/:competitionUuid/settings', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
 ];
@@ -334,7 +337,7 @@ const competitionRoutes: BackendRouteRecord[] = [
       { path: '/competitions/register/payment-result', component: '@/pages/competition', name: 'nav.competitions.paymentResult', access: 'canVisitCompetitionRegister', hideInMenu: true },
       { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
       { path: '/competitions/activity-register', redirect: '/activities/register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
-      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin', hideInMenu: true },
+      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
       { path: '/competitions/create', component: '@/pages/competition', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
       { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
     ],
@@ -447,6 +450,7 @@ const workflowRoutes: BackendRouteRecord[] = [
 
 const dataManagementRouteMeta: BackendRouteMeta[] = [
   { path: '/data-management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
+  { path: '/registration', name: 'nav.registration.root', icon: 'FormOutlined', access: 'isLogin' },
   ...competitionRouteMeta,
   ...activityRouteMeta.map((item) => item.path === '/activities' ? { ...item, hideInMenu: true } : item),
   ...projectRouteMeta,
@@ -464,9 +468,9 @@ const dataSourceRoutes = [
 ];
 
 const dataManagementRoutes: BackendRouteRecord[] = [
-  { path: '/registration', redirect: '/competitions/register', name: 'nav.registration.root', icon: 'FormOutlined', hideInMenu: true },
+  { path: '/registration', redirect: '/competitions/register', name: 'nav.registration.root', icon: 'FormOutlined', access: 'isLogin' },
   ...dataSourceRoutes,
-  { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
+  { path: '/data-management', component: '@/pages/DataManagementLandingPage', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   { path: '/data-management/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
   { path: '/data-management/query-center', redirect: '/dashboard/home', hideInMenu: true },
 ];

@@ -32,7 +32,7 @@ import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPat
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
 import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from '@/navigation/mainMenuFilter';
 import { dedupeRuntimeMenuItems } from '@/navigation/runtimeMenuDedupe';
-import { resolveRuntimeMenuIdentity } from '@/navigation/runtimeMenuIdentity';
+import { resolveRuntimeMenuIdentity, resolveRuntimeMenuPath } from '@/navigation/runtimeMenuIdentity';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, isCanonicalRealPageRoutePath, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -55,6 +55,7 @@ const resolveIsMobileViewport = () =>
 const STABLE_MAIN_ROUTE_PATHS = [
   '/dashboard/home',
   '/data-management',
+  '/registration',
   '/certificates',
   '/experts',
   '/expert-review',
@@ -84,6 +85,7 @@ const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
   [/^\/team\/create$/, '/data-management'],
 ];
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
+  '/registration': 'main:registration',
   '/certificates': 'main:certificates',
   '/experts': 'main:experts',
   '/expert-review': 'main:expert-review',
@@ -1318,7 +1320,6 @@ const composeMenuItemForLayout = (
   const { children: _localChildren, routes: _localRoutes, ...localItemMeta } =
     (localMeta || {}) as RuntimeMenuDataItem & { routes?: RuntimeMenuDataItem[] };
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
-  const isRedirectGroup = children.length > 0 && Boolean(backendNode.component?.startsWith('redirect:'));
   const isUserCenterMenuGroup = normalizedPath === USER_CENTER_GROUP_PATH && children.length > 0;
   const menuLabelId = backendNode.name && !looksLikeRoutePath(backendNode.name)
     ? backendNode.name
@@ -1327,7 +1328,14 @@ const composeMenuItemForLayout = (
   return {
     ...localItemMeta,
     key: menuIdentity.key,
-    path: isRedirectGroup || isUserCenterMenuGroup ? undefined : normalizedPath || localMeta?.path,
+    path: resolveRuntimeMenuPath({
+      backendPath,
+      canonicalPath: normalizedPath || localMeta?.path || '',
+      component: backendNode.component,
+      hasChildren: children.length > 0,
+      stableKeyByPath: MAIN_MENU_KEY_BY_PATH,
+      keepPathlessGroup: isUserCenterMenuGroup,
+    }),
     name: resolveNavigationMenuName(menuLabelId, mergedMeta?.name || backendNode.name),
     locale: false as const,
     icon,
@@ -1395,12 +1403,21 @@ const buildMainMenuDataForLayout = (
     ? removeMenuPathsForLayout(menuData as RuntimeMenuDataItem[], pathsToRemove)
     : ([...menuData] as RuntimeMenuDataItem[]);
   const existingPaths = collectMenuPaths(visibleMenus);
+  const existingKeys = new Set(
+    Array.from(flattenLocalMenuMap(visibleMenus).values())
+      .map((item) => item.key)
+      .filter((key): key is string => key !== undefined)
+      .map(String),
+  );
 
   const fallbackMenus = allowMissingStableMenus
     ? STABLE_MAIN_ROUTE_PATHS
       .filter((path) => path !== DASHBOARD_HOME_PATH)
       .filter((path) => path !== DATA_MANAGEMENT_GROUP_PATH)
-      .filter((path) => !hasMenuPathOrChild(existingPaths, path))
+      .filter((path) => {
+        const stableKey = MAIN_MENU_KEY_BY_PATH[path];
+        return stableKey ? !existingKeys.has(stableKey) : !hasMenuPathOrChild(existingPaths, path);
+      })
       .map((path) => {
         const localMenu = fallbackByPath.get(path);
         if (localMenu) {

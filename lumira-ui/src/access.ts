@@ -107,13 +107,13 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     isLogin && hasPermission(permissions, 'review:appeal:manage');
   const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
+  const canVisitSensitiveWordsPlugin =
+    isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view'));
   const canVisitDataManagement =
     [
       canVisitCompetitions,
       canVisitCompetitionRegistrations,
       canVisitActivities,
-      canVisitProjects,
-      canVisitTeam,
       canVisitPaymentOrders,
       canVisitDownloadCenter,
     ].some(Boolean);
@@ -137,6 +137,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
         canVisitSystemPlugins,
         canVisitAudit,
         canVisitLocalization,
+        canVisitSensitiveWordsPlugin,
       ].some(Boolean));
   const canVisitAnyUserCenter =
     isLogin &&
@@ -200,7 +201,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitReviewWorkbench,
     canVisitCompetitionReviewResults,
     canManageReviewAppeals,
-    canVisitWorkflow: isLogin && hasAnyPermission(permissions, ['workflow:view', 'workflow:config', 'workflow:approve']),
+    canVisitWorkflow: isLogin && hasAnyPermission(permissions, ['workflow:config', 'workflow:approve']),
     canVisitWorkflowConfig: isLogin && hasPermission(permissions, 'workflow:config'),
     canVisitWorkflowTasks: isLogin && hasPermission(permissions, 'workflow:approve'),
     canVisitSystemAllFiles,
@@ -209,7 +210,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemSettings,
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins,
-    canVisitSensitiveWordsPlugin: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view')),
+    canVisitSensitiveWordsPlugin,
     canVisitWorkOrderFeedbackPlugin: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:work-order-feedback:view')),
     canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitAiEmployees: isLogin && isSettingsAdmin,

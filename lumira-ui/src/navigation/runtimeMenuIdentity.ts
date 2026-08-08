@@ -14,6 +14,44 @@ const normalizeIdentityPath = (path: string) => {
   return pathname.replace(/\/+$/, '') || '/';
 };
 
+interface ResolveRuntimeMenuPathOptions {
+  backendPath: string;
+  canonicalPath: string;
+  component?: string;
+  hasChildren: boolean;
+  stableKeyByPath?: Record<string, string>;
+  keepPathlessGroup?: boolean;
+}
+
+/**
+ * Redirect catalogs still need their own path when they are stable navigation
+ * groups. Otherwise the parent becomes pathless and can disappear when a menu
+ * renderer deduplicates it against its canonical child.
+ */
+export const resolveRuntimeMenuPath = ({
+  backendPath,
+  canonicalPath,
+  component,
+  hasChildren,
+  stableKeyByPath = {},
+  keepPathlessGroup = false,
+}: ResolveRuntimeMenuPathOptions) => {
+  const normalizedBackendPath = normalizeIdentityPath(backendPath);
+  const isRedirectGroup = hasChildren && Boolean(component?.startsWith('redirect:'));
+  const isStableCatalog = Boolean(
+    stableKeyByPath[backendPath]
+    || stableKeyByPath[normalizedBackendPath],
+  );
+
+  if (isRedirectGroup && isStableCatalog) {
+    return normalizedBackendPath;
+  }
+  if (isRedirectGroup || (keepPathlessGroup && hasChildren)) {
+    return undefined;
+  }
+  return canonicalPath || normalizedBackendPath;
+};
+
 /**
  * Route aliases describe navigation targets, not menu identity. A catalog such
  * as `/certificates` may redirect to `/certificates/mine`, but it must still

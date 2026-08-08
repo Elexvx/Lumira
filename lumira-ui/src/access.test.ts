@@ -149,7 +149,7 @@ describe('access', () => {
         'team:view',
         'aiadc:project:view',
         'expert:view',
-        'workflow:view',
+        'workflow:config',
         'plugin:sensitive-words:view',
         'aiadc:activity:view',
         'aiadc:competition:view',
@@ -178,6 +178,21 @@ describe('access', () => {
 
     expect(result.canVisitCompetitionRegister).toBe(true);
     expect(result.canVisitActivityRegister).toBe(false);
+  });
+
+  it('shows the settings entry to sensitive-words-only plugin administrators', () => {
+    const result = access({ currentUser: userWithPermissions(['plugin:sensitive-words:view']) });
+
+    expect(result.canVisitSensitiveWordsPlugin).toBe(true);
+    expect(result.canVisitSystemSettings).toBe(true);
+  });
+
+  it('does not expose data management for permissions whose pages were retired', () => {
+    const projectOnly = access({ currentUser: userWithPermissions(['aiadc:project:view']) });
+    const teamOnly = access({ currentUser: userWithPermissions(['team:view']) });
+
+    expect(projectOnly.canVisitDataManagement).toBe(false);
+    expect(teamOnly.canVisitDataManagement).toBe(false);
   });
 
   it('allows activity registration with create permission without exposing activity management', () => {
@@ -333,6 +348,14 @@ describe('access', () => {
     const result = access({ currentUser: userWithPermissions([]) });
 
     expect(result.canVisitPluginRuntime).toBe(false);
+  });
+
+  it('does not expose a workflow catalog when the role cannot access any workflow page', () => {
+    const result = access({ currentUser: userWithPermissions(['workflow:view']) });
+
+    expect(result.canVisitWorkflow).toBe(false);
+    expect(result.canVisitWorkflowTasks).toBe(false);
+    expect(result.canVisitWorkflowConfig).toBe(false);
   });
 
   it('does not trust token-only state without a complete current user tuple', async () => {

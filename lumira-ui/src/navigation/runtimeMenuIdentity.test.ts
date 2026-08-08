@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { resolveRuntimeMenuIdentity } from './runtimeMenuIdentity';
+import { resolveRuntimeMenuIdentity, resolveRuntimeMenuPath } from './runtimeMenuIdentity';
 import { resolveCanonicalRoutePath } from '@/routes/meta';
 
 describe('resolveRuntimeMenuIdentity', () => {
   it.each([
+    ['/registration', '/competitions/register'],
     ['/activities', '/activities/register'],
     ['/competitions', '/competitions/register'],
     ['/expert-review', '/expert-review/reviews'],
@@ -27,6 +28,22 @@ describe('resolveRuntimeMenuIdentity', () => {
     expect(resolveCanonicalRoutePath(catalogPath)).toBe(leafPath);
     expect(identity.localItem).toBe(catalog);
     expect(identity.key).toBe(catalog.key);
+  });
+
+  it.each([
+    ['/registration', '/competitions/register'],
+    ['/certificates', '/certificates/mine'],
+    ['/experts', '/experts/management'],
+    ['/expert-review', '/expert-review/reviews'],
+    ['/workflows', '/workflows/tasks'],
+  ])('keeps the stable redirect catalog path %s instead of making it pathless', (catalogPath, leafPath) => {
+    expect(resolveRuntimeMenuPath({
+      backendPath: catalogPath,
+      canonicalPath: leafPath,
+      component: `redirect:${leafPath}`,
+      hasChildren: true,
+      stableKeyByPath: { [catalogPath]: `main:${catalogPath.slice(1)}` },
+    })).toBe(catalogPath);
   });
 
   it('falls back to canonical metadata for a legacy alias without a direct route', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCanonicalRealPageRoutePath, realPageRouteMetaMap, resolveCanonicalRoutePath } from './meta';
+import { isCanonicalRealPageRoutePath, realPageRouteMetaMap, resolveCanonicalRoutePath, systemRoutes } from './meta';
 
 describe('route meta', () => {
   it('keeps personal file center under the personal center route group', () => {
@@ -47,5 +47,14 @@ describe('route meta', () => {
   it('registers the review workbench independently from workflow approvals', () => {
     expect(realPageRouteMetaMap.get('/expert-review/reviews')?.access)
       .toBe('canVisitReviewWorkbench');
+  });
+
+  it.each([
+    ['/localization', '/settings/localization'],
+    ['/settings/monitoring/api-docs', '/settings/api-docs'],
+    ['/settings/monitoring/audit', '/settings/audit'],
+  ])('keeps legacy route %s as a real redirect to %s', (legacyPath, targetPath) => {
+    const route = systemRoutes.find((item) => item.path === legacyPath);
+    expect(route?.redirect).toBe(targetPath);
   });
 });

@@ -3,22 +3,15 @@ import { DEFAULT_HOME_PATH } from '@/app.constants';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { PROFILE_PATH } from '@/navigation/settingsNavigationConfig';
 import { resolveFirstSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
+import {
+  resolveExpertReviewLandingPath,
+  resolvePersonalCenterLandingPath,
+  resolveUserCenterLandingPath,
+  resolveWorkflowLandingPath,
+} from '@/navigation/routeLanding';
 
 const accessValue = (access: unknown, accessKey: string) =>
   Boolean((access as Record<string, unknown>)[accessKey]);
-
-const resolveUserCenterLandingPath = (access: unknown) => {
-  if (accessValue(access, 'canVisitSystemUsers')) {
-    return '/user-center/users';
-  }
-  if (accessValue(access, 'canVisitSystemOnlineUsers')) {
-    return '/user-center/online-users';
-  }
-  if (accessValue(access, 'canVisitSystemRoles')) {
-    return '/user-center/roles';
-  }
-  return DEFAULT_HOME_PATH;
-};
 
 const resolveFileCenterLandingPath = (access: unknown) => {
   if (accessValue(access, 'canVisitSystemAllFiles')) {
@@ -51,7 +44,15 @@ const SettingsLayout = () => {
   }
 
   if (pathname === '/user-center/personal-center') {
-    return <Navigate to={PROFILE_PATH} replace />;
+    return <Navigate to={resolvePersonalCenterLandingPath(access)} replace />;
+  }
+
+  if (pathname === '/expert-review') {
+    return <Navigate to={resolveExpertReviewLandingPath(access)} replace />;
+  }
+
+  if (pathname === '/workflows') {
+    return <Navigate to={resolveWorkflowLandingPath(access)} replace />;
   }
 
   if (pathname === '/files') {
