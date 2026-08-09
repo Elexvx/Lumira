@@ -8,7 +8,6 @@ import com.lumira.message.config.MessageWebSocketConfig;
 import com.lumira.message.controller.MessageController;
 import com.lumira.message.controller.MessageReadinessV2Controller;
 import com.lumira.message.controller.MessageV2Controller;
-import com.lumira.message.event.MessageEventConsumptionGuard;
 import com.lumira.message.event.ReviewResultEventStreamConsumer;
 import com.lumira.message.infrastructure.redis.CacheTemplate;
 import com.lumira.message.infrastructure.security.MessageJwtAuthFilter;
@@ -65,8 +64,8 @@ import org.springframework.context.annotation.Import;
         MessageEventFactory.class,
         MessageEventDeliveryService.class,
         MessageConnectionSnapshotService.class,
-        MessageEventConsumptionGuard.class,
-        ReviewResultEventStreamConsumer.class
+        ReviewResultEventStreamConsumer.class,
+        MessageOwnerAsyncAdapterControlPlaneAssemblyConfiguration.class
 })
 public class MessageControlPlaneAssemblyConfiguration {
 }

@@ -3,7 +3,7 @@ package com.lumira.file.controller;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.web.InternalJobTokenValidator;
 import com.lumira.file.event.FileOutboxRelay;
 import com.lumira.file.processing.FileProcessingTaskService;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController("fileInternalJobController")
 @RequestMapping("/file/internal/jobs")
-@ConditionalOnLumiraAsyncEnabled
+@ConditionalOnLumiraControlPlaneEnabled
 public class InternalJobController {
 
     private final FileOutboxRelay fileOutboxRelay;

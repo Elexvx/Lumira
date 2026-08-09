@@ -15,14 +15,13 @@ import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.config.app.SystemConfigVersioningService;
+import com.lumira.saas.modules.system.role.infrastructure.SystemRoleManagementPersistenceAdapters;
 import com.lumira.saas.modules.system.role.dto.RoleDataScopeRequest;
+import com.lumira.saas.modules.system.role.repository.SystemRoleManagementRepository;
 import com.lumira.saas.modules.system.role.vo.RoleDataScopeVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -75,7 +74,7 @@ public class SystemRoleManagementAppService {
             "system:monitor:view"
     );
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final SystemRoleManagementRepository roleRepository;
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
     private final DomainEventPublisher domainEventPublisher;
@@ -91,12 +90,12 @@ public class SystemRoleManagementAppService {
 
     @Autowired
     public SystemRoleManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemRoleManagementRepository roleRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
         this(
-                jdbcTemplate,
+                roleRepository,
                 permissionSnapshotService,
                 operationAuditService,
                 event -> {
@@ -108,13 +107,13 @@ public class SystemRoleManagementAppService {
     }
 
     public SystemRoleManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemRoleManagementRepository roleRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
         this(
-                jdbcTemplate,
+                roleRepository,
                 permissionSnapshotService,
                 operationAuditService,
                 domainEventPublisher,
@@ -125,7 +124,7 @@ public class SystemRoleManagementAppService {
     }
 
     public SystemRoleManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemRoleManagementRepository roleRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
@@ -133,7 +132,7 @@ public class SystemRoleManagementAppService {
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                roleRepository,
                 permissionSnapshotService,
                 operationAuditService,
                 domainEventPublisher,
@@ -144,7 +143,7 @@ public class SystemRoleManagementAppService {
     }
 
     private SystemRoleManagementAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemRoleManagementRepository roleRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             @Qualifier("systemDomainEventPublisher") DomainEventPublisher domainEventPublisher,
@@ -152,7 +151,7 @@ public class SystemRoleManagementAppService {
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.roleRepository = roleRepository;
         this.permissionSnapshotService = permissionSnapshotService;
         this.operationAuditService = operationAuditService;
         this.domainEventPublisher = domainEventPublisher;
@@ -161,30 +160,41 @@ public class SystemRoleManagementAppService {
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
     }
 
+    /** Compatibility constructors for legacy tests; production injects the typed role repository. */
+    public SystemRoleManagementAppService(
+            Object persistence,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService
+    ) {
+        this(SystemRoleManagementPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService);
+    }
+
+    public SystemRoleManagementAppService(
+            Object persistence,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            DomainEventPublisher domainEventPublisher
+    ) {
+        this(SystemRoleManagementPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService, domainEventPublisher);
+    }
+
+    public SystemRoleManagementAppService(
+            Object persistence,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            DomainEventPublisher domainEventPublisher,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(SystemRoleManagementPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService,
+                domainEventPublisher, systemInternalApi, sessionAuthenticationService);
+    }
+
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
         requirePermission(currentUser, "system:role:view");
-        String baseSql = """
-                from sys_role r
-                where r.deleted = 0
-                """;
-        List<Object> params = new ArrayList<>();
-        if (StringUtils.hasText(roleCode)) {
-            baseSql += " and r.role_code like ?";
-            params.add(like(roleCode));
-        }
-        if (StringUtils.hasText(roleName)) {
-            baseSql += " and r.role_name like ?";
-            params.add(like(roleName));
-        }
-        if (StringUtils.hasText(roleType)) {
-            baseSql += " and r.role_type = ?";
-            params.add(roleType);
-        }
-        String selectSql = """
-                select r.id, r.role_code as roleCode, r.role_name as roleName,
-                       r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
-                """ + baseSql + " order by r.id desc";
-        PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
+        PageResponse<SystemVO.RoleVO> page = roleRepository.findRoles(
+                new SystemRoleManagementRepository.RoleSearch(roleCode, roleName, roleType, pageNo, pageSize)
+        );
         String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode();
         CompletableFuture<Map<Long, Integer>> permissionCountsFuture = CompletableFuture.supplyAsync(
                 () -> countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList()),
@@ -208,16 +218,7 @@ public class SystemRoleManagementAppService {
     public SystemVO.RoleDetailVO getRole(CurrentUser currentUser, Long roleId) {
         requirePermission(currentUser, "system:role:view");
         requirePositiveId(roleId, "Role id is required");
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.id = ? and r.deleted = 0
-                        """,
-                SystemVO.RoleVO.class,
-                roleId
-        );
+        SystemVO.RoleVO role = roleRepository.findActiveRoleById(roleId);
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
@@ -236,31 +237,9 @@ public class SystemRoleManagementAppService {
     public SystemVO.DefaultRegistrationRoleVO getDefaultRegistrationRole(CurrentUser currentUser) {
         requirePermission(currentUser, "system:role:view");
         String roleCode = resolveDefaultRegistrationRoleCode();
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.role_code = ? and r.deleted = 0
-                        order by r.id desc
-                        limit 1
-                        """,
-                SystemVO.RoleVO.class,
-                roleCode
-        );
+        SystemVO.RoleVO role = roleRepository.findLatestActiveRoleByCode(roleCode);
         if (role == null) {
-            role = queryOne(
-                    """
-                            select r.id, r.role_code as roleCode, r.role_name as roleName,
-                                   r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
-                            from sys_role r
-                            where r.role_code = ? and r.deleted = 0
-                            order by r.id desc
-                            limit 1
-                            """,
-                    SystemVO.RoleVO.class,
-                    DEFAULT_REGISTRATION_ROLE_CODE
-            );
+            role = roleRepository.findLatestActiveRoleByCode(DEFAULT_REGISTRATION_ROLE_CODE);
         }
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
@@ -272,16 +251,7 @@ public class SystemRoleManagementAppService {
     public SystemVO.DefaultRegistrationRoleVO updateDefaultRegistrationRole(CurrentUser currentUser, Long roleId) {
         requirePermission(currentUser, "system:role:update");
         requirePositiveId(roleId, "Role id is required");
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.id = ? and r.deleted = 0
-                        """,
-                SystemVO.RoleVO.class,
-                roleId
-        );
+        SystemVO.RoleVO role = roleRepository.findActiveRoleById(roleId);
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Role does not exist");
         }
@@ -292,7 +262,7 @@ public class SystemRoleManagementAppService {
                         "SYSTEM_CONFIG",
                         SystemConfigVersioningService.DOMAIN_PLATFORM,
                         null,
-                        "update default registration role",
+                        "set default registration role",
                         currentUser
                 ),
                 List.of(DEFAULT_REGISTRATION_ROLE_CODE_KEY)
@@ -374,81 +344,23 @@ public class SystemRoleManagementAppService {
         RoleAggregate roleAggregate = new RoleAggregate(roleId, new LinkedHashSet<>(role.getPermissionKeys()));
         roleAggregate.replacePermissions(Set.of(), currentUser.getUserId(), currentUser.getUserUuid());
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
-        int deleted = jdbcTemplate.update(
-                """
-                        update sys_role
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ?
-                          and role_code = ?
-                          and role_type = ?
-                          and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                roleId,
-                role.getRoleCode(),
-                role.getRoleType()
+        SystemRoleManagementRepository.Actor actor = new SystemRoleManagementRepository.Actor(
+                currentUser.getUserId(), currentUser.getUserUuid()
+        );
+        int deleted = roleRepository.softDeleteRole(
+                new SystemRoleManagementRepository.RoleVersion(roleId, role.getRoleCode(), role.getRoleType()),
+                actor,
+                LocalDateTime.now()
         );
         requireRoleWrite(deleted, "Role changed, please retry");
-        jdbcTemplate.update(
-                """
-                        update sys_role_permission
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where role_id = ?
-                          and deleted = 0
-                          and exists (
-                              select 1 from sys_role r
-                              where r.id = sys_role_permission.role_id
-                                and r.deleted = 1
-                                and r.updated_by = ?
-                                and r.updated_by_uuid = ?
-                          )
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                roleId,
-                currentUser.getUserId(),
-                currentUser.getUserUuid()
-        );
-        jdbcTemplate.update(
-                """
-                        update sys_role_data_scope
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where role_id = ?
-                          and deleted = 0
-                          and exists (
-                              select 1 from sys_role r
-                              where r.id = sys_role_data_scope.role_id
-                                and r.deleted = 1
-                                and r.updated_by = ?
-                                and r.updated_by_uuid = ?
-                          )
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                roleId,
-                currentUser.getUserId(),
-                currentUser.getUserUuid()
-        );
+        roleRepository.retireDeletedRoleRelations(roleId, actor, LocalDateTime.now());
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
         return true;
     }
 
     private SystemVO.RoleDetailVO queryRoleDetail(Long roleId) {
-        SystemVO.RoleVO role = queryOne(
-                """
-                        select r.id, r.role_code as roleCode, r.role_name as roleName,
-                               r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
-                        from sys_role r
-                        where r.id = ? and r.deleted = 0
-                        """,
-                SystemVO.RoleVO.class,
-                roleId
-        );
+        SystemVO.RoleVO role = roleRepository.findActiveRoleById(roleId);
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Role not found");
         }
@@ -666,16 +578,7 @@ public class SystemRoleManagementAppService {
     }
 
     private List<String> listRawRolePermissionKeys(Long roleId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select permission_key
-                        from sys_role_permission
-                        where role_id = ? and deleted = 0
-                        order by permission_key asc
-                        """,
-                String.class,
-                roleId
-        );
+        return roleRepository.findActivePermissionKeys(roleId);
     }
 
     private String resolveDefaultRegistrationRoleCode() {
@@ -700,43 +603,21 @@ public class SystemRoleManagementAppService {
     }
 
     private Long upsertRole(Long roleId, SystemVO.RoleDetailVO existingRole, SystemDTO.RoleUpsertRequest request, Long operatorId, String operatorUuid) {
-        if (roleId == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_role (role_code, role_name, role_type, default_home_path, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-                            values (?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    request.getRoleCode(),
-                    request.getRoleName(),
-                    request.getRoleType(),
-                    normalizeDefaultHomePath(request.getDefaultHomePath()),
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            requireRoleWrite(inserted, "Role changed, please retry");
-            return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_role
-                        set role_code = ?, role_name = ?, role_type = ?, default_home_path = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and role_code = ? and role_type = ? and deleted = 0
-                        """,
-                request.getRoleCode(),
-                request.getRoleName(),
-                request.getRoleType(),
-                normalizeDefaultHomePath(request.getDefaultHomePath()),
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                roleId,
-                existingRole == null ? null : existingRole.getRoleCode(),
-                existingRole == null ? null : existingRole.getRoleType()
+        SystemRoleManagementRepository.RoleVersion existing = roleId == null ? null
+                : new SystemRoleManagementRepository.RoleVersion(roleId, existingRole == null ? null : existingRole.getRoleCode(), existingRole == null ? null : existingRole.getRoleType());
+        SystemRoleManagementRepository.RoleSaveResult result = roleRepository.saveRole(
+                new SystemRoleManagementRepository.RoleSave(
+                        existing,
+                        request.getRoleCode(),
+                        request.getRoleName(),
+                        request.getRoleType(),
+                        normalizeDefaultHomePath(request.getDefaultHomePath()),
+                        new SystemRoleManagementRepository.Actor(operatorId, operatorUuid),
+                        LocalDateTime.now()
+                )
         );
-        requireRoleWrite(updated, "Role changed, please retry");
-        return roleId;
+        requireRoleWrite(result.writeCount(), "Role changed, please retry");
+        return result.roleId();
     }
 
     private String normalizeDefaultHomePath(String defaultHomePath) {
@@ -766,27 +647,10 @@ public class SystemRoleManagementAppService {
     }
 
     private void replaceRolePermissions(Long roleId, SystemVO.RoleDetailVO existingRole, Set<String> permissionKeys, Long operatorId, String operatorUuid) {
-        jdbcTemplate.update(
-                """
-                        update sys_role_permission
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where role_id = ?
-                          and deleted = 0
-                          and exists (
-                              select 1 from sys_role r
-                              where r.id = sys_role_permission.role_id
-                                and r.role_code = ?
-                                and r.role_type = ?
-                                and r.deleted = 0
-                          )
-                        """,
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                roleId,
-                existingRole == null ? null : existingRole.getRoleCode(),
-                existingRole == null ? null : existingRole.getRoleType()
-        );
+        SystemRoleManagementRepository.RoleVersion existing = existingRole == null ? null
+                : new SystemRoleManagementRepository.RoleVersion(roleId, existingRole.getRoleCode(), existingRole.getRoleType());
+        SystemRoleManagementRepository.Actor actor = new SystemRoleManagementRepository.Actor(operatorId, operatorUuid);
+        roleRepository.retireRolePermissions(roleId, existing, actor, LocalDateTime.now());
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
         }
@@ -806,55 +670,11 @@ public class SystemRoleManagementAppService {
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
         }
-        StringBuilder sql = new StringBuilder("""
-                insert into sys_role_permission (role_id, permission_key, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted)
-                """);
-        List<Object> params = new ArrayList<>(permissionKeys.size() * 8);
-        if (existingRole == null) {
-            sql.append("values ");
-            for (int index = 0; index < permissionKeys.size(); index += 1) {
-                if (index > 0) {
-                    sql.append(", ");
-                }
-                sql.append("(?, ?, ?, ?, ?, ?, 0)");
-                params.add(roleId);
-                params.add(permissionKeys.get(index));
-                params.add(operatorId);
-                params.add(operatorUuid);
-                params.add(operatorId);
-                params.add(operatorUuid);
-            }
-        } else {
-            for (int index = 0; index < permissionKeys.size(); index += 1) {
-                if (index > 0) {
-                    sql.append(" union all ");
-                }
-                sql.append("""
-                        select r.id, ?, ?, ?, ?, ?, 0
-                        from sys_role r
-                        where r.id = ?
-                          and r.role_code = ?
-                          and r.role_type = ?
-                          and r.deleted = 0
-                        """);
-                params.add(permissionKeys.get(index));
-                params.add(operatorId);
-                params.add(operatorUuid);
-                params.add(operatorId);
-                params.add(operatorUuid);
-                params.add(roleId);
-                params.add(existingRole.getRoleCode());
-                params.add(existingRole.getRoleType());
-            }
-        }
-        sql.append("""
-                 on duplicate key update
-                    updated_by = values(updated_by),
-                    updated_by_uuid = values(updated_by_uuid),
-                    updated_at = current_timestamp,
-                    deleted = 0
-                """);
-        int inserted = jdbcTemplate.update(sql.toString(), params.toArray());
+        SystemRoleManagementRepository.RoleVersion existing = existingRole == null ? null
+                : new SystemRoleManagementRepository.RoleVersion(roleId, existingRole.getRoleCode(), existingRole.getRoleType());
+        int inserted = roleRepository.upsertRolePermissions(
+                roleId, existing, permissionKeys, new SystemRoleManagementRepository.Actor(operatorId, operatorUuid)
+        );
         requireCompleteUpsert(inserted, permissionKeys.size(), "Role changed, please retry");
     }
 
@@ -871,16 +691,7 @@ public class SystemRoleManagementAppService {
     }
 
     private List<String> listRolePermissionKeys(Long roleId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select permission_key
-                        from sys_role_permission
-                        where role_id = ? and deleted = 0
-                        order by permission_key asc
-                        """,
-                String.class,
-                roleId
-        ).stream().filter(this::isRoleAssignablePermissionKey).toList();
+        return roleRepository.findActivePermissionKeys(roleId).stream().filter(this::isRoleAssignablePermissionKey).toList();
     }
 
     private LinkedHashSet<String> filterRoleAssignablePermissionKeys(List<String> permissionKeys) {
@@ -916,24 +727,7 @@ public class SystemRoleManagementAppService {
     }
 
     private List<RoleDataScopeVO> listRoleDataScopes(Long roleId) {
-        return jdbcTemplate.query(
-                """
-                        select resource_code as resourceCode, scope_type as scopeType,
-                               custom_dept_ids as customDeptIds, custom_user_ids as customUserIds
-                        from sys_role_data_scope
-                        where role_id = ? and deleted = 0
-                        order by case when resource_code = '*' then 0 else 1 end, resource_code asc
-                        """,
-                (rs, rowNum) -> {
-                    RoleDataScopeVO scope = new RoleDataScopeVO();
-                    scope.setResourceCode(rs.getString("resourceCode"));
-                    scope.setScopeType(rs.getString("scopeType"));
-                    scope.setCustomDeptIds(parseIdList(rs.getString("customDeptIds")));
-                    scope.setCustomUserIds(parseIdList(rs.getString("customUserIds")));
-                    return scope;
-                },
-                roleId
-        );
+        return roleRepository.findActiveDataScopes(roleId);
     }
 
     private void replaceRoleDataScopes(
@@ -948,41 +742,10 @@ public class SystemRoleManagementAppService {
         if (dataScopes == null && !createMode) {
             return;
         }
-        if (existingRole == null) {
-            jdbcTemplate.update(
-                    """
-                            update sys_role_data_scope
-                            set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                            where role_id = ? and deleted = 0
-                            """,
-                    operatorId,
-                    operatorUuid,
-                    LocalDateTime.now(),
-                    roleId
-            );
-        } else {
-            jdbcTemplate.update(
-                    """
-                            update sys_role_data_scope
-                            set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                            where role_id = ?
-                              and deleted = 0
-                              and exists (
-                                  select 1 from sys_role r
-                                  where r.id = sys_role_data_scope.role_id
-                                    and r.role_code = ?
-                                    and r.role_type = ?
-                                    and r.deleted = 0
-                              )
-                            """,
-                    operatorId,
-                    operatorUuid,
-                    LocalDateTime.now(),
-                    roleId,
-                    existingRole.getRoleCode(),
-                    existingRole.getRoleType()
-            );
-        }
+        SystemRoleManagementRepository.RoleVersion existing = existingRole == null ? null
+                : new SystemRoleManagementRepository.RoleVersion(roleId, existingRole.getRoleCode(), existingRole.getRoleType());
+        SystemRoleManagementRepository.Actor actor = new SystemRoleManagementRepository.Actor(operatorId, operatorUuid);
+        roleRepository.retireRoleDataScopes(roleId, existing, actor, LocalDateTime.now());
         List<RoleDataScopeRequest> effectiveScopes = CollectionUtils.isEmpty(dataScopes)
                 ? List.of(defaultDataScope(roleCode))
                 : dataScopes;
@@ -1015,40 +778,14 @@ public class SystemRoleManagementAppService {
         if (CollectionUtils.isEmpty(scopes)) {
             return;
         }
-        StringBuilder sql = new StringBuilder("""
-                insert into sys_role_data_scope (
-                    role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
-                    created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                ) values
-                """);
-        List<Object> params = new ArrayList<>(scopes.size() * 9);
-        for (int index = 0; index < scopes.size(); index += 1) {
-            if (index > 0) {
-                sql.append(", ");
-            }
-            sql.append("(?, ?, ?, ?, ?, ?, ?, ?, ?, 0)");
-            NormalizedRoleDataScope scope = scopes.get(index);
-            params.add(roleId);
-            params.add(scope.resourceCode());
-            params.add(scope.scopeType());
-            params.add(scope.customDeptIds());
-            params.add(scope.customUserIds());
-            params.add(operatorId);
-            params.add(operatorUuid);
-            params.add(operatorId);
-            params.add(operatorUuid);
-        }
-        sql.append("""
-                 on duplicate key update
-                    scope_type = values(scope_type),
-                    custom_dept_ids = values(custom_dept_ids),
-                    custom_user_ids = values(custom_user_ids),
-                    updated_by = values(updated_by),
-                    updated_by_uuid = values(updated_by_uuid),
-                    updated_at = current_timestamp,
-                    deleted = 0
-                """);
-        int inserted = jdbcTemplate.update(sql.toString(), params.toArray());
+        List<SystemRoleManagementRepository.RoleDataScopeValue> values = scopes.stream()
+                .map(scope -> new SystemRoleManagementRepository.RoleDataScopeValue(
+                        scope.resourceCode(), scope.scopeType(), scope.customDeptIds(), scope.customUserIds()
+                ))
+                .toList();
+        int inserted = roleRepository.upsertRoleDataScopes(
+                roleId, values, new SystemRoleManagementRepository.Actor(operatorId, operatorUuid)
+        );
         requireCompleteUpsert(inserted, scopes.size(), "Role data scope changed, please retry");
     }
 
@@ -1089,136 +826,24 @@ public class SystemRoleManagementAppService {
                 .collect(Collectors.joining(","));
     }
 
-    private List<Long> parseIdList(String value) {
-        if (!StringUtils.hasText(value)) {
-            return List.of();
-        }
-        List<Long> ids = new ArrayList<>();
-        for (String part : value.split(",")) {
-            try {
-                long id = Long.parseLong(part.trim());
-                if (id > 0) {
-                    ids.add(id);
-                }
-            } catch (NumberFormatException ignored) {
-                // Ignore malformed legacy values.
-            }
-        }
-        return ids;
-    }
-
     private Integer countRolePermissions(Long roleId) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_role_permission
-                        where role_id = ? and deleted = 0
-                        """,
-                Long.class,
-                roleId
-        );
-        return count == null ? 0 : count.intValue();
+        return roleRepository.countActiveRolePermissions(roleId);
     }
 
     private Integer countRoleUsers(Long roleId) {
-        Long count = jdbcTemplate.queryForObject(
-                """
-                        select count(1)
-                        from sys_user_role ur
-                        join sys_user u
-                          on u.id = ur.user_id
-                         and u.uuid = ur.user_uuid
-                         and u.deleted = 0
-                        where ur.role_id = ?
-                          and ur.user_uuid is not null
-                          and trim(ur.user_uuid) <> ''
-                          and ur.deleted = 0
-                        """,
-                Long.class,
-                roleId
-        );
-        return count == null ? 0 : count.intValue();
+        return roleRepository.countActiveRoleUsers(roleId);
     }
 
     private Map<Long, Integer> countRolePermissions(List<Long> roleIds) {
-        List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
-        if (distinctRoleIds.isEmpty()) {
-            return Map.of();
-        }
-        String placeholders = placeholders(distinctRoleIds.size());
-        List<Object> params = new ArrayList<>();
-        params.addAll(distinctRoleIds);
-        return jdbcTemplate.query(
-                """
-                        select role_id as roleId, count(1) as total
-                        from sys_role_permission
-                        where role_id in (%s) and deleted = 0
-                        group by role_id
-                        """.formatted(placeholders),
-                rs -> {
-                    Map<Long, Integer> result = new LinkedHashMap<>();
-                    while (rs.next()) {
-                        result.put(rs.getLong("roleId"), rs.getInt("total"));
-                    }
-                    return result;
-                },
-                params.toArray()
-        );
+        return roleRepository.countActiveRolePermissions(roleIds);
     }
 
     private Map<Long, Integer> countRoleUsers(List<Long> roleIds) {
-        List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
-        if (distinctRoleIds.isEmpty()) {
-            return Map.of();
-        }
-        String placeholders = placeholders(distinctRoleIds.size());
-        List<Object> params = new ArrayList<>();
-        params.addAll(distinctRoleIds);
-        return jdbcTemplate.query(
-                """
-                        select ur.role_id as roleId, count(1) as total
-                        from sys_user_role ur
-                        join sys_user u
-                          on u.id = ur.user_id
-                         and u.uuid = ur.user_uuid
-                         and u.deleted = 0
-                        where ur.role_id in (%s)
-                          and ur.user_uuid is not null
-                          and trim(ur.user_uuid) <> ''
-                          and ur.deleted = 0
-                        group by ur.role_id
-                        """.formatted(placeholders),
-                rs -> {
-                    Map<Long, Integer> result = new LinkedHashMap<>();
-                    while (rs.next()) {
-                        result.put(rs.getLong("roleId"), rs.getInt("total"));
-                    }
-                    return result;
-                },
-                params.toArray()
-        );
+        return roleRepository.countActiveRoleUsers(roleIds);
     }
 
     private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
-        String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
-        String sql = """
-                select config_key as configKey, config_value as configValue
-                from sys_config
-                where deleted = 0
-                  and config_scope = 'PLATFORM'
-                  and config_key in (%s)
-                order by id desc
-                """.formatted(placeholders);
-        List<Object> params = new ArrayList<>(keys);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
-        Map<String, String> valueByKey = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String configKey = String.valueOf(row.get("configKey"));
-            if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(configKey, normalizeConfigText(row.get("configValue")));
-            }
-        }
-        return valueByKey;
+        return roleRepository.findPlatformConfigValues(keys);
     }
 
     private void upsertConfigValue(
@@ -1229,102 +854,15 @@ public class SystemRoleManagementAppService {
             Long operatorId,
             String operatorUuid
     ) {
-        Long existingId = queryConfigId(configKey);
-        if (existingId == null) {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_config (
-                                config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)
-                            """,
-                    configKey,
-                    configName,
-                    configValue,
-                    remark,
-                    operatorId,
-                    operatorUuid,
-                    operatorId,
-                    operatorUuid
-            );
-            requireRoleWrite(inserted, "Role config changed, please retry");
-            return;
-        }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_config
-                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ?
-                          and config_key = ?
-                          and config_scope = 'PLATFORM'
-                          and is_system = 0
-                          and deleted = 0
-                        """,
-                configName,
-                configValue,
-                remark,
-                operatorId,
-                operatorUuid,
-                LocalDateTime.now(),
-                existingId,
-                configKey
+        SystemRoleManagementRepository.ConfigSaveResult result = roleRepository.savePlatformConfig(
+                new SystemRoleManagementRepository.ConfigSave(
+                        configKey, configName, configValue, remark,
+                        new SystemRoleManagementRepository.Actor(operatorId, operatorUuid),
+                        LocalDateTime.now()
+                )
         );
-        if (updated <= 0) {
+        if (result.writeCount() <= 0) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Role config changed, please retry");
-        }
-    }
-
-    private Long queryConfigId(String configKey) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select id
-                            from sys_config
-                            where config_key = ?
-                              and config_scope = 'PLATFORM'
-                              and is_system = 0
-                              and deleted = 0
-                            order by id desc
-                            limit 1
-                            """,
-                    Long.class,
-                    configKey
-            );
-        } catch (EmptyResultDataAccessException exception) {
-            return null;
-        }
-    }
-
-    private <T> PageResponse<T> pageQuery(String selectSql, String countSql, Class<T> voClass, long pageNo, long pageSize, List<Object> params) {
-        long safePageNo = pageNo <= 0 ? 1 : pageNo;
-        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        long offset = (safePageNo - 1) * safePageSize;
-        List<Object> queryParams = new ArrayList<>(params);
-        queryParams.add(safePageSize);
-        queryParams.add(offset);
-        String pagedSql = selectSql + " limit ? offset ?";
-        List<T> records = jdbcTemplate.query(pagedSql, new BeanPropertyRowMapper<>(voClass), queryParams.toArray());
-        long total = safePageNo == 1 && records.size() < safePageSize
-                ? records.size()
-                : nullToZero(jdbcTemplate.queryForObject(countSql, Long.class, params.toArray()));
-        PageResponse<T> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total);
-        response.setPageNo(safePageNo);
-        response.setPageSize(safePageSize);
-        return response;
-    }
-
-    private long nullToZero(Long value) {
-        return value == null ? 0 : value;
-    }
-
-    private <T> T queryOne(String sql, Class<T> voClass, Object... params) {
-        try {
-            return jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(voClass), params);
-        } catch (EmptyResultDataAccessException exception) {
-            return null;
         }
     }
 
@@ -1338,18 +876,6 @@ public class SystemRoleManagementAppService {
         target.setDefaultRegistrationRole(source.getDefaultRegistrationRole());
         target.setCreatedAt(source.getCreatedAt());
         target.setUpdatedAt(source.getUpdatedAt());
-    }
-
-    private String like(String value) {
-        return "%" + value.trim() + "%";
-    }
-
-    private String placeholders(int count) {
-        return String.join(", ", java.util.Collections.nCopies(count, "?"));
-    }
-
-    private String normalizeConfigText(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
     }
 
     private record NormalizedRoleDataScope(

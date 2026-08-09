@@ -22,7 +22,7 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
         if (event == null) {
             return;
         }
-        platformEventPublisher.publishAfterCommit(
+        platformEventPublisher.record(
                 resolveSourceType(event),
                 event.eventType(),
                 resolveUserId(event.attributes()),

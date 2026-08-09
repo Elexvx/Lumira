@@ -520,7 +520,7 @@ public class PaymentTransactionService {
         );
         requireSinglePaymentUpdate(orderUpdated, "Payment order state changed, please retry");
 
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 outboxUserId(actor),
                 "payment",
                 "payment.refund.created",
@@ -550,12 +550,15 @@ public class PaymentTransactionService {
 
     private String resolveUserUuid(Long userId) {
         try {
-            return jdbcTemplate.queryForObject(
-                    "select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1",
-                    String.class,
-                    userId
-            );
-        } catch (EmptyResultDataAccessException ignored) {
+            SystemInternalApi systemInternalApi = systemInternalApiProvider == null
+                    ? null
+                    : systemInternalApiProvider.getIfAvailable();
+            if (systemInternalApi == null) {
+                return null;
+            }
+            String userUuid = systemInternalApi.findTargetUserUuidById(userId);
+            return StringUtils.hasText(userUuid) ? userUuid.trim() : null;
+        } catch (RuntimeException ignored) {
             return null;
         }
     }

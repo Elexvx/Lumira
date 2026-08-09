@@ -42,6 +42,13 @@
   object-fit: contain;
 }
 
+.maintenance-mode__brand-name {
+  color: var(--ant-color-text);
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}
+
 .maintenance-mode__result.ant-result {
   padding: 28px 24px 36px;
 }
@@ -79,26 +86,18 @@
   letter-spacing: 0.04em;
 }
 
-.maintenance-mode__admin-entry {
+.maintenance-mode__admin-entry.ant-float-btn {
   position: fixed;
-  right: 12px;
-  bottom: 12px;
-  box-sizing: border-box;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  padding: 0;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ant-color-text-tertiary);
+  right: 32px;
+  bottom: 40px;
+  z-index: 980;
   opacity: 0.28;
   touch-action: manipulation;
+  transition: opacity var(--ant-motion-duration-mid) var(--ant-motion-ease-in-out);
 }
 
-.maintenance-mode__admin-entry:hover,
-.maintenance-mode__admin-entry:focus-visible {
+.maintenance-mode__admin-entry.ant-float-btn:hover,
+.maintenance-mode__admin-entry.ant-float-btn:focus-visible {
   opacity: 1;
 }
 
@@ -128,9 +127,11 @@
     font-size: var(--ant-font-size-base);
   }
 
-  .maintenance-mode__admin-entry {
-    right: max(12px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
+  .maintenance-mode__admin-entry.ant-float-btn {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: var(--saas-spacing-40);
+    height: var(--saas-spacing-40);
   }
 }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.message.MessageEventDTO;
 import com.lumira.common.web.TraceContext;
 import com.lumira.message.mapper.MessagePlatformEventOutboxMapper;
@@ -14,8 +15,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -46,6 +47,7 @@ public class PlatformEventOutboxService {
 
     private final MessagePlatformEventOutboxMapper outboxMapper;
     private final ObjectMapper objectMapper;
+    private final SystemInternalApi systemInternalApi;
     private final Counter recordedCounter;
     private final Counter deliveredCounter;
     private final Counter failedCounter;
@@ -53,17 +55,19 @@ public class PlatformEventOutboxService {
     private volatile Long cachedDispatchableCount;
     private volatile long cachedDispatchableCountUntilMillis;
 
-    public PlatformEventOutboxService(MessagePlatformEventOutboxMapper outboxMapper, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
+    public PlatformEventOutboxService(
+            MessagePlatformEventOutboxMapper outboxMapper,
+            ObjectMapper objectMapper,
+            MeterRegistry meterRegistry,
+            SystemInternalApi systemInternalApi
+    ) {
         this.outboxMapper = outboxMapper;
         this.objectMapper = objectMapper;
+        this.systemInternalApi = systemInternalApi;
         this.recordedCounter = Counter.builder("message.outbox.record.total").register(meterRegistry);
         this.deliveredCounter = Counter.builder("message.outbox.delivered.total").register(meterRegistry);
         this.failedCounter = Counter.builder("message.outbox.failed.total").register(meterRegistry);
         this.replayCounter = Counter.builder("message.outbox.replay.total").register(meterRegistry);
-    }
-
-    public void recordAfterCommit(MessageEventDTO event) {
-        record(event);
     }
 
     public PlatformEventOutboxEntity record(MessageEventDTO event) {
@@ -122,7 +126,7 @@ public class PlatformEventOutboxService {
         if (event == null || !StringUtils.hasText(event.getUserUuid())) {
             throw new IllegalArgumentException("userUuid must be present when userId is present");
         }
-        String resolvedUserUuid = outboxMapper.resolveActiveUserUuid(userId);
+        String resolvedUserUuid = systemInternalApi.findTargetUserUuidById(userId);
         if (!StringUtils.hasText(resolvedUserUuid)) {
             throw new IllegalArgumentException("Message outbox userUuid cannot be verified");
         }
@@ -344,6 +348,19 @@ public class PlatformEventOutboxService {
             delivered += 1;
         }
         return delivered;
+    }
+
+    /**
+     * Attempts the low-latency delivery for a row that was already persisted by
+     * the caller. Failed rows remain durable and are retried by the normal
+     * relay path.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean dispatchImmediately(PlatformEventOutboxEntity event, MessageEventDeliveryService deliveryService) {
+        if (event == null || deliveryService == null) {
+            return false;
+        }
+        return dispatchSingle(event, deliveryService);
     }
 
     public boolean replayById(Long eventId, MessageEventDeliveryService deliveryService) {

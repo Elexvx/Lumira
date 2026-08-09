@@ -26,7 +26,8 @@ import org.springframework.context.annotation.Import;
         PaymentJwtAuthFilter.class,
         PaymentReadinessV2Controller.class,
         PaymentSecurityConfig.class,
-        PaymentV2Controller.class
+        PaymentV2Controller.class,
+        PaymentOwnerAsyncAdapterControlPlaneAssemblyConfiguration.class
 })
 public class PaymentControlPlaneAssemblyConfiguration {
 }

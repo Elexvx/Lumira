@@ -37,7 +37,7 @@
   place-items: center;
   overflow: hidden;
   border: 1px dashed var(--ant-color-border);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-fill-quaternary);
   color: var(--ant-color-text-secondary);
   cursor: pointer;
@@ -90,7 +90,7 @@
 .activity-search-filter-card,
 .activity-search-results {
   margin-top: 24px;
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
 }
 
 .activity-search-results {
@@ -113,7 +113,7 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-bg-container);
   box-shadow: var(--ant-box-shadow-tertiary);
   transition:

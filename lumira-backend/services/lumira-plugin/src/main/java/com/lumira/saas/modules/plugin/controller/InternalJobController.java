@@ -3,7 +3,7 @@ package com.lumira.saas.modules.plugin.controller;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.web.InternalJobTokenValidator;
 import com.lumira.saas.modules.plugin.event.PluginOutboxRelay;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController("pluginInternalJobController")
 @RequestMapping("/plugin/internal/jobs")
-@ConditionalOnLumiraAsyncEnabled
+@ConditionalOnLumiraControlPlaneEnabled
 public class InternalJobController {
 
     private final PluginOutboxRelay pluginOutboxRelay;

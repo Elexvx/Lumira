@@ -1,6 +1,8 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,7 +31,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectNonPaymentSourceType() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "plugin", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
@@ -39,7 +41,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectInvalidUserIdBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(0L, "payment", "payment.order.created", "order:ORD-1", List.of())
@@ -51,7 +53,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectBlankEventTypeBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", " ", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
@@ -63,7 +65,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectOversizedEventKeyBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created", "k".repeat(129), Map.of("userUuid", "user-uuid-9"))
@@ -75,7 +77,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectUntrustedEventTypeBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created\nspoofed", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
@@ -87,7 +89,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectOversizedPayloadBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("body", "x".repeat(256 * 1024)))
@@ -100,7 +102,7 @@ class PaymentOutboxServiceTest {
     void recordShouldNotInventAuditUserForAnonymousPaymentEvent() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         service.record(null, "payment", "payment.order.created", "order:ORD-1", List.of());
 
@@ -124,7 +126,7 @@ class PaymentOutboxServiceTest {
     void recordShouldRejectWhenInsertMisses() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalStateException.class, () ->
                 service.record(null, "payment", "payment.order.created", "order:ORD-1", List.of())
@@ -134,7 +136,7 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectMissingUserUuidWhenUserIdIsPresent() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created", "order:ORD-1", List.of())
@@ -146,38 +148,42 @@ class PaymentOutboxServiceTest {
     @Test
     void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        SystemInternalApi systemInternalApi = trustedSystemApi();
+        PaymentOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-other"))
         );
 
+        verify(systemInternalApi).findTargetUserUuidById(9L);
         verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
     }
 
     @Test
     void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PaymentOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
         );
 
+        verify(systemInternalApi).findTargetUserUuidById(9L);
         verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
     }
 
     @Test
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PaymentOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "payment", "payment.order.created", "order:ORD-1", Map.of("userUuid", "user-uuid-9"))
         );
 
-        verify(jdbcTemplate).queryForObject(contains("status = 'ENABLED'"), eq(String.class), eq(9L));
+        verify(systemInternalApi).findTargetUserUuidById(9L);
         verify(jdbcTemplate, never()).update(anyString(), any(Object[].class));
     }
 
@@ -193,10 +199,9 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -220,10 +225,9 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1, 0, 1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -256,7 +260,7 @@ class PaymentOutboxServiceTest {
     void dispatchPendingShouldRejectInvalidLimitBeforeClaiming() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () -> service.dispatchPending(dispatcher, 201));
 
@@ -276,9 +280,8 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(rowToFail -> {
             throw new RuntimeException("boom");
@@ -322,7 +325,7 @@ class PaymentOutboxServiceTest {
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -365,7 +368,7 @@ class PaymentOutboxServiceTest {
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -406,10 +409,9 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -450,10 +452,9 @@ class PaymentOutboxServiceTest {
                 eq("payment"),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -504,10 +505,9 @@ class PaymentOutboxServiceTest {
                 eq(12L),
                 eq("payment")
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         boolean replayed = service.replay(12L, dispatcher);
 
@@ -544,10 +544,9 @@ class PaymentOutboxServiceTest {
                 eq(12L),
                 eq("payment")
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         boolean replayed = service.replay(12L, dispatcher);
 
@@ -559,7 +558,7 @@ class PaymentOutboxServiceTest {
     void replayShouldRejectInvalidIdBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentOutboxDispatcher dispatcher = mock(PaymentOutboxDispatcher.class);
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         boolean replayed = service.replay(0L, dispatcher);
 
@@ -579,7 +578,7 @@ class PaymentOutboxServiceTest {
                         "dead_letter_count", 1L,
                         "dispatchable_backlog", 4L
                 )));
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         assertThat(service.pendingBacklog()).isEqualTo(3L);
         assertThat(service.failedBacklog()).isEqualTo(2L);
@@ -599,7 +598,7 @@ class PaymentOutboxServiceTest {
                         "dead_letter_count", 1L,
                         "dispatchable_backlog", 4L
                 )));
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         PaymentOutboxService.OutboxMetricsSnapshot snapshot = service.snapshot();
 
@@ -619,7 +618,7 @@ class PaymentOutboxServiceTest {
                         "dead_letter_count", 1L,
                         "dispatchable_backlog", 4L
                 )));
-        PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
+        PaymentOutboxService service = service(jdbcTemplate);
 
         var first = service.snapshot();
         var second = service.snapshot();
@@ -644,5 +643,37 @@ class PaymentOutboxServiceTest {
         row.setUpdatedAt(LocalDateTime.now().minusMinutes(1));
         row.setDeleted(0);
         return row;
+    }
+
+    private PaymentOutboxService service(JdbcTemplate jdbcTemplate) {
+        return service(jdbcTemplate, trustedSystemApi());
+    }
+
+    private PaymentOutboxService service(JdbcTemplate jdbcTemplate, SystemInternalApi systemInternalApi) {
+        return new PaymentOutboxService(jdbcTemplate, new ObjectMapper(), systemInternalApi);
+    }
+
+    private SystemInternalApi trustedSystemApi() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findTargetUserUuidById(9L)).thenReturn("user-uuid-9");
+        when(systemInternalApi.findUserIdentityById(9L)).thenReturn(new SystemUserSnapshotDTO(
+                9L,
+                "user-uuid-9",
+                "payment-test-user",
+                null,
+                "ENABLED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        return systemInternalApi;
     }
 }

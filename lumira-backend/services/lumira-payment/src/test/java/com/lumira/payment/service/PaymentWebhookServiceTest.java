@@ -156,7 +156,7 @@ class PaymentWebhookServiceTest {
         assertThat(webhookInsertParams.getValue()[11]).isNull();
         assertThat(webhookInsertParams.getValue()[12]).isNull();
         assertThat(webhookInsertParams.getValue()[13]).isNull();
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 isNull(),
                 eq("payment"),
                 eq("payment.webhook.received"),
@@ -384,7 +384,7 @@ class PaymentWebhookServiceTest {
                 isNull(),
                 isNull()
         );
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 isNull(),
                 eq("payment"),
                 eq("payment.webhook.received"),

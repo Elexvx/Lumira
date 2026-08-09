@@ -29,7 +29,8 @@ class FileAiParseProcessorTest {
                     return mapper.mapRow(resultSet, 0);
                 });
         when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
-        var processor = new FileAiParseProcessor(jdbcTemplate);
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        var processor = processor(jdbcTemplate, ownerIdentityVerifier);
 
         FileAiParseProcessor.AiParseResult result = processor.prepareForAiParse(3001L, 2001L, "user-uuid-2001");
 
@@ -56,10 +57,11 @@ class FileAiParseProcessorTest {
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
                 .contains("fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
         assertThat(String.valueOf(payloadCaptor.getValue()))
                 .contains("\"sourceArtifactType\":\"TEXT_CONTENT\"")
                 .contains("\"summary\":\"hello Lumira DDD\"");
+        verify(ownerIdentityVerifier).requireEnabledOwner(2001L, "user-uuid-2001");
     }
 
     @Test
@@ -73,7 +75,7 @@ class FileAiParseProcessorTest {
                     when(resultSet.getInt("contentLength")).thenReturn(12);
                     return mapper.mapRow(resultSet, 0);
                 });
-        var processor = new FileAiParseProcessor(jdbcTemplate);
+        var processor = processor(jdbcTemplate);
 
         assertThatThrownBy(() -> processor.prepareForAiParse(3001L, null))
                 .isInstanceOf(IllegalStateException.class)
@@ -92,7 +94,7 @@ class FileAiParseProcessorTest {
                     return mapper.mapRow(resultSet, 0);
                 });
         when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(0);
-        var processor = new FileAiParseProcessor(jdbcTemplate);
+        var processor = processor(jdbcTemplate);
 
         assertThatThrownBy(() -> processor.prepareForAiParse(3001L, 2001L, "user-uuid-2001"))
                 .isInstanceOf(IllegalStateException.class)
@@ -101,10 +103,21 @@ class FileAiParseProcessorTest {
 
     @Test
     void prepareForAiParse_shouldRejectMissingOwnerUuid() {
-        var processor = new FileAiParseProcessor(mock(JdbcTemplate.class));
+        var processor = processor(mock(JdbcTemplate.class));
 
         assertThatThrownBy(() -> processor.prepareForAiParse(3001L, 2001L))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("owner UUID is required");
+    }
+
+    private FileAiParseProcessor processor(JdbcTemplate jdbcTemplate) {
+        return processor(jdbcTemplate, mock(FileOwnerIdentityVerifier.class));
+    }
+
+    private FileAiParseProcessor processor(
+            JdbcTemplate jdbcTemplate,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
+        return new FileAiParseProcessor(jdbcTemplate, ownerIdentityVerifier);
     }
 }

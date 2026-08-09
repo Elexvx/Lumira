@@ -187,7 +187,7 @@ class FileManagementAppServiceTest {
     }
 
     @Test
-    void listFiles_shouldReportCappedTotalForLargePageWindow() {
+    void listFiles_shouldReportExactStableTotalBelowCap() {
         AtomicInteger listInvocation = new AtomicInteger();
         when(fileObjectMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any())).thenAnswer(
                 invocation -> {
@@ -208,8 +208,27 @@ class FileManagementAppServiceTest {
         assertThat(response.getPageNo()).isEqualTo(1L);
         assertThat(response.getPageSize()).isEqualTo(100L);
         assertThat(response.getRecords()).hasSize(0);
-        assertThat(((FileVO.FileObjectPageResponse) response).getHasMore()).isTrue();
-        assertThat(((FileVO.FileObjectPageResponse) response).getTotalCapped()).isTrue();
+        assertThat(((FileVO.FileObjectPageResponse) response).getHasMore()).isFalse();
+        assertThat(((FileVO.FileObjectPageResponse) response).getTotalCapped()).isFalse();
+    }
+
+    @Test
+    void listFiles_shouldKeepCappedTotalStableAcrossPages() {
+        AtomicInteger listInvocation = new AtomicInteger();
+        when(fileObjectMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any())).thenAnswer(
+                invocation -> listInvocation.getAndIncrement() % 2 == 0
+                        ? fileObjectEntities(1001)
+                        : List.<FileObjectEntity>of()
+        );
+
+        CurrentUser currentUser = currentUser();
+        PageResponse<?> firstPage = service.listFiles(currentUser, null, null, null, null, null, null, 1, 10, null, null);
+        PageResponse<?> secondPage = service.listFiles(currentUser, null, null, null, null, null, null, 2, 10, null, null);
+
+        assertThat(firstPage.getTotal()).isEqualTo(1000L);
+        assertThat(secondPage.getTotal()).isEqualTo(1000L);
+        assertThat(((FileVO.FileObjectPageResponse) firstPage).getTotalCapped()).isTrue();
+        assertThat(((FileVO.FileObjectPageResponse) secondPage).getTotalCapped()).isTrue();
     }
 
     @Test
@@ -471,7 +490,7 @@ class FileManagementAppServiceTest {
     }
 
     @Test
-    void listStorageSpaces_shouldReportCappedTotalForLargePageWindow() {
+    void listStorageSpaces_shouldReportExactStableTotalBelowCap() {
         AtomicInteger countInvocation = new AtomicInteger();
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
                 .thenAnswer(invocation -> countInvocation.getAndIncrement() == 0 ? storageSpaceEntities(1000) : List.<FileStorageSpaceEntity>of());
@@ -482,9 +501,9 @@ class FileManagementAppServiceTest {
 
         assertThat(response).isInstanceOf(FileVO.StorageSpacePageResponse.class);
         FileVO.StorageSpacePageResponse typed = (FileVO.StorageSpacePageResponse) response;
-        assertThat(typed.getTotal()).isEqualTo(3L);
-        assertThat(typed.getHasMore()).isTrue();
-        assertThat(typed.getTotalCapped()).isTrue();
+        assertThat(typed.getTotal()).isEqualTo(1000L);
+        assertThat(typed.getHasMore()).isFalse();
+        assertThat(typed.getTotalCapped()).isFalse();
         assertThat(typed.getRecords()).hasSize(2);
     }
 

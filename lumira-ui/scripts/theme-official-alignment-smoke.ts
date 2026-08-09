@@ -13,7 +13,7 @@ const sourceFiles = [
   'src/theme/apply.ts',
   'src/theme/settings.ts',
   'src/global.css',
-  'src/pages/ai/Assistant.css',
+  'src/pages/account/ActivationPage.css',
   'src/pages/user/Login.css',
   'src/pages/settings/menus/components/MenuIconPicker.css',
   'src/pages/settings/personalization/components/AgreementMarkdownEditor.css',

@@ -262,6 +262,25 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
+    public List<Long> listActiveTeamIdsForUser(Long userId, String userUuid) {
+        return jdbcTemplate.queryForList(
+                """
+                        select distinct team_id
+                        from team_member
+                        where user_id = ? and user_uuid = ?
+                          and status = 'ACTIVE' and deleted = 0
+                        order by team_id asc
+                        """,
+                userId,
+                userUuid
+        ).stream().map(row -> row.get("team_id"))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .map(Number::longValue)
+                .toList();
+    }
+
+    @Override
     public void refreshMemberCount(Long teamId, TeamVO.Team expectedTeam) {
         requireExpectedTeam(expectedTeam);
         jdbcTemplate.update(

@@ -3,8 +3,11 @@ package com.lumira.saas.modules.system.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.api.ai.AiAuditReadPort;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
+import com.lumira.saas.modules.system.audit.infrastructure.JdbcSystemAuditQueryRepository;
+import com.lumira.saas.modules.system.infrastructure.SystemManagementPersistenceDependencies;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -54,12 +57,13 @@ class SystemManagementAppServiceAuditRoleOnlyTest {
     @Test
     void aiCallLogsDoNotExposeTenantPredicate() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        SystemManagementAppService service = buildService(queryOperations);
+        RecordingAiAuditReadPort aiAuditReadPort = new RecordingAiAuditReadPort();
+        SystemManagementAppService service = buildService(queryOperations, aiAuditReadPort);
 
         service.listAiCallLogs(currentUser(), 42L, "skill", "SUCCESS", null, null, 1, 20);
 
-        assertNoTenantSurface(queryOperations.lastSql);
-        assertArrayEquals(new Object[]{42L, "%skill%", "SUCCESS", 20L, 0L}, queryOperations.lastArgs);
+        assertEquals(new AiAuditReadPort.AiToolAuditSearch(42L, "skill", "SUCCESS", null, null, 1, 20), aiAuditReadPort.lastSearch);
+        assertEquals(0, queryOperations.queryCallCount);
     }
 
     @Test
@@ -112,12 +116,13 @@ class SystemManagementAppServiceAuditRoleOnlyTest {
     @Test
     void aiCallLogsShouldAllowDedicatedOperationAuditPermission() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
-        SystemManagementAppService service = buildService(queryOperations);
+        RecordingAiAuditReadPort aiAuditReadPort = new RecordingAiAuditReadPort();
+        SystemManagementAppService service = buildService(queryOperations, aiAuditReadPort);
 
         service.listAiCallLogs(currentUser("audit:operation:view"), 42L, "skill", "SUCCESS", null, null, 1, 20);
 
-        assertNoTenantSurface(queryOperations.lastSql);
-        assertArrayEquals(new Object[]{42L, "%skill%", "SUCCESS", 20L, 0L}, queryOperations.lastArgs);
+        assertEquals(new AiAuditReadPort.AiToolAuditSearch(42L, "skill", "SUCCESS", null, null, 1, 20), aiAuditReadPort.lastSearch);
+        assertEquals(0, queryOperations.queryCallCount);
     }
 
     @Test
@@ -159,8 +164,23 @@ class SystemManagementAppServiceAuditRoleOnlyTest {
     }
 
     private static SystemManagementAppService buildService(MyBatisQueryOperations queryOperations) {
+        return buildService(queryOperations, new RecordingAiAuditReadPort());
+    }
+
+    private static SystemManagementAppService buildService(
+            MyBatisQueryOperations queryOperations,
+            AiAuditReadPort aiAuditReadPort
+    ) {
+        SystemManagementPersistenceDependencies persistence = new SystemManagementPersistenceDependencies(
+                null,
+                null,
+                null,
+                null,
+                new JdbcSystemAuditQueryRepository(queryOperations, aiAuditReadPort),
+                null
+        );
         return new SystemManagementAppService(
-                queryOperations,
+                persistence,
                 null,
                 null,
                 null,
@@ -208,6 +228,16 @@ class SystemManagementAppServiceAuditRoleOnlyTest {
             this.lastSql = sql;
             this.lastArgs = args;
             return List.of();
+        }
+    }
+
+    private static final class RecordingAiAuditReadPort implements AiAuditReadPort {
+        private AiToolAuditSearch lastSearch;
+
+        @Override
+        public AiToolAuditPage findToolAudits(AiToolAuditSearch search) {
+            this.lastSearch = search;
+            return new AiToolAuditPage(List.of(), 0L, search.pageNo(), search.pageSize());
         }
     }
 }

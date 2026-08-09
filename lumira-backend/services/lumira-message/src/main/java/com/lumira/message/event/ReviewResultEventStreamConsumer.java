@@ -2,6 +2,7 @@ package com.lumira.message.event;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.event.EventConsumptionPort;
 import com.lumira.message.app.MessageAppService;
 import com.lumira.message.app.SystemEventMessageCommand;
 import com.lumira.review.api.ReviewIntegrationEvents;
@@ -55,7 +56,7 @@ public class ReviewResultEventStreamConsumer {
     private final RedisConnectionFactory connectionFactory;
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
-    private final MessageEventConsumptionGuard consumptionGuard;
+    private final EventConsumptionPort consumptionPort;
     private final MessageAppService messageAppService;
     private final String streamKey;
     private final String deadLetterStreamKey;
@@ -72,7 +73,7 @@ public class ReviewResultEventStreamConsumer {
             RedisConnectionFactory connectionFactory,
             StringRedisTemplate redis,
             ObjectMapper objectMapper,
-            MessageEventConsumptionGuard consumptionGuard,
+            EventConsumptionPort consumptionPort,
             MessageAppService messageAppService,
             MeterRegistry meterRegistry,
             @Value("${lumira.event.review-result-consumer.stream-key:${SAAS_EVENT_REDIS_STREAM_KEY:saas:platform-events}}")
@@ -85,7 +86,7 @@ public class ReviewResultEventStreamConsumer {
         this.connectionFactory = connectionFactory;
         this.redis = redis;
         this.objectMapper = objectMapper;
-        this.consumptionGuard = consumptionGuard;
+        this.consumptionPort = consumptionPort;
         this.messageAppService = messageAppService;
         this.streamKey = boundedText(configuredStreamKey, DEFAULT_STREAM, 128, "stream key");
         this.deadLetterStreamKey = this.streamKey + ":dead-letter";
@@ -152,14 +153,8 @@ public class ReviewResultEventStreamConsumer {
                 return;
             }
             ReviewResultEvent event = parse(values);
-            boolean consumed = consumptionGuard.executeOnce(
-                    new MessageEventConsumptionGuard.EventIdentity(
-                            groupName,
-                            event.eventId(),
-                            EVENT_TYPE,
-                            "review",
-                            event.publicationId() + ":" + event.registrationId() + ":" + event.publicationVersion()
-                    ),
+            boolean consumed = consumptionPort.executeOnce(
+                    consumptionIdentity(event),
                     () -> messageAppService.createSystemEventMessage(new SystemEventMessageCommand(
                             event.operatorUserId(),
                             event.operatorUserUuid(),
@@ -239,6 +234,20 @@ public class ReviewResultEventStreamConsumer {
         } catch (Exception exception) {
             throw new IllegalArgumentException("review result event payload is invalid", exception);
         }
+    }
+
+    private EventConsumptionPort.EventIdentity consumptionIdentity(ReviewResultEvent event) {
+        return new EventConsumptionPort.EventIdentity(
+                boundedText(groupName, DEFAULT_GROUP, 128, "consumer group"),
+                requireText(event.eventId(), "event id", 64),
+                requireText(EVENT_TYPE, "event type", 128),
+                requireText("review", "source module", 64),
+                requireText(
+                        event.publicationId() + ":" + event.registrationId() + ":" + event.publicationVersion(),
+                        "aggregate id",
+                        191
+                )
+        );
     }
 
     private String title(ReviewResultEvent event) {

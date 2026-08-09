@@ -169,7 +169,7 @@ const sampleTree: PermissionTreeRecord[] = [
             nodeType: 'PAGE',
             pageKey: 'personal-files',
             pageName: '我的文件',
-            routePath: '/user-center/files',
+            routePath: '/user-center/personal-center/files',
             permissionKey: 'system:file:view',
             selectable: true,
           },
@@ -182,14 +182,14 @@ const sampleTree: PermissionTreeRecord[] = [
 const normalized: NormalizedPermissionTreeRecord[] = normalizePermissionTree(sampleTree);
 const root = normalized[0];
 
-assert.equal(normalized.length, 1, 'catalog root should be preserved');
+assert.equal(normalized.length, 2, 'catalog root and synthetic registration catalog should be preserved');
 assert.equal(root?.nodeType, 'CATALOG', 'root should remain a catalog node');
-assert.equal(root?.children?.length, 4, 'alias nodes should flatten into valid children and invalid routes should be removed');
+assert.equal(root?.children?.length, 3, 'alias nodes should flatten into valid children and retired routes should be removed');
 
 const childNames = root?.children?.map((item) => item.pageName) || [];
 assert.ok(childNames.includes('用户管理'), 'valid assignable page should remain');
 assert.ok(childNames.includes('在线用户'), 'alias child should be promoted');
-assert.ok(childNames.includes('AI'), 'AI catalog should remain');
+assert.ok(!childNames.includes('AI'), 'retired AI routes should not remain assignable');
 assert.ok(childNames.includes('个人中心'), 'personal center catalog should remain');
 
 const matchedPage = root?.children?.find((item) => item.pageName === '用户管理');
@@ -201,20 +201,24 @@ const mismatchedPage = root?.children?.find((item) => item.pageName === '缺失�
 assert.equal(mismatchedPage, undefined, 'mismatched route should be removed from selectable permission tree');
 
 const selectablePages = collectSelectablePages(normalized);
-assert.equal(selectablePages.length, 6, 'only valid PAGE nodes should be selectable');
+assert.equal(selectablePages.length, 6, 'valid and synthetic registration PAGE nodes should be selectable');
 const treeData = buildPermissionTreeData(normalized);
 assert.equal(treeData[0]?.disableCheckbox, false, 'catalog nodes with children should not be forced disabled');
-assert.deepEqual(collectExpandableKeys(normalized), ['system', 'ai', 'personal-center'], 'catalog roots with valid children should still be expandable');
+assert.deepEqual(
+  collectExpandableKeys(normalized),
+  ['system', 'personal-center', 'competition.synthetic.catalog'],
+  'catalog roots with valid children should still be expandable',
+);
 assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:user:view')?.length, 1, 'duplicate route path should be deduplicated');
-assert.equal(collectActionPermissionPageMap(normalized).size, 0, 'no action permissions are present in the smoke tree');
+assert.equal(collectActionPermissionPageMap(normalized).size, 5, 'synthetic competition registration actions should remain assignable');
 assert.ok(realPageRoutePaths.has('/user-center/users'), 'user management route should be registered');
 assert.ok(realPageRoutePaths.has('/user-center/personal-center/profile'), 'personal profile route should be registered');
-assert.ok(realPageRoutePaths.has('/user-center/files'), 'personal files route should be registered');
-assert.ok(realPageRoutePaths.has('/ai/assistant'), 'AI assistant route should be registered');
-assert.ok(realPageRoutePaths.has('/ai/knowledge'), 'AI knowledge route should be registered');
+assert.ok(realPageRoutePaths.has('/user-center/personal-center/files'), 'personal files route should be registered');
+assert.ok(!realPageRoutePaths.has('/ai/assistant'), 'retired AI assistant route should not be registered');
+assert.ok(!realPageRoutePaths.has('/ai/knowledge'), 'retired AI knowledge route should not be registered');
 assert.ok(realPageRoutePaths.has('/settings/security'), 'system security route should be registered');
-assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('ai:chat:send')?.length, 1, 'AI assistant should be assignable once');
-assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('ai:knowledge:view')?.length, 1, 'AI knowledge should be assignable once');
+assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('ai:chat:send'), undefined, 'retired AI assistant should not be assignable');
+assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('ai:knowledge:view'), undefined, 'retired AI knowledge should not be assignable');
 assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('profile:view')?.length, 1, 'personal profile should be assignable once');
 assert.equal(collectPermissionKeyToPageKeyMap(normalized).get('system:file:view')?.length, 1, 'personal files should be assignable once');
 assert.equal(realPageRouteMetaMap.get('/settings/security')?.name, 'nav.system.security', 'system security route should be named correctly');

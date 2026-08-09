@@ -1,6 +1,7 @@
 ﻿-- Lumira consolidated database initialization script.
 -- Generated from all service migration modules while Flyway is disabled before first production launch.
 -- Includes minimum bootstrap data required by infrastructure components such as XXL-JOB Admin.
+-- All ai_* tables below are runtime-owned only by services/lumira-ai; lumira-admin aggregates that control plane.
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -1835,6 +1836,40 @@ CREATE TABLE `aiadc_competition` (
   KEY `idx_aiadc_competition_status` (`status`,`deleted`,`sort`),
   KEY `idx_aiadc_competition_creator_uuid` (`created_by`,`created_by_uuid`,`created_at`),
   KEY `idx_aiadc_competition_featured` (`featured`,`deleted`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `event_catalog_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `source_type` varchar(16) NOT NULL,
+  `source_id` bigint NOT NULL,
+  `source_uuid` varchar(64) DEFAULT NULL,
+  `locale` varchar(64) DEFAULT NULL,
+  `title` varchar(128) NOT NULL,
+  `subtitle` varchar(128) DEFAULT NULL,
+  `summary` varchar(1000) DEFAULT NULL,
+  `status` varchar(32) NOT NULL,
+  `registration_start` varchar(64) DEFAULT NULL,
+  `registration_end` varchar(64) DEFAULT NULL,
+  `event_start` varchar(64) DEFAULT NULL,
+  `event_end` varchar(64) DEFAULT NULL,
+  `event_time` varchar(64) DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
+  `image_url` varchar(512) DEFAULT NULL,
+  `tags` varchar(1000) DEFAULT NULL,
+  `cta_label` varchar(64) DEFAULT NULL,
+  `cta_href` varchar(512) DEFAULT NULL,
+  `featured` tinyint NOT NULL DEFAULT '0',
+  `sort` int NOT NULL DEFAULT '100',
+  `version` bigint NOT NULL DEFAULT '0',
+  `last_event_id` bigint NOT NULL DEFAULT '0',
+  `source_updated_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_event_catalog_item_source` (`source_type`,`source_id`),
+  KEY `idx_event_catalog_item_public` (`status`,`featured`,`event_start`,`id`),
+  KEY `idx_event_catalog_item_source_uuid` (`source_type`,`source_uuid`),
+  KEY `idx_event_catalog_item_updated` (`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `platform_bootstrap_credential` (
@@ -3781,8 +3816,8 @@ VALUES
     (-1012, -1000, 'settings.files', '全站文件管理', 'MENU', '/settings/files/all', '@/pages/files/Center', 'FolderOpenOutlined', 9, 'system:file:manage', 'ENABLED', 0, 0, 0),
     (-1008, -1000, 'settings.notifications', '通知中心', 'MENU', '/settings/notifications', '@/pages/settings/notifications/NotificationsPage', 'NotificationOutlined', 9, 'system:notification:view', 'ENABLED', 0, 0, 0),
     (-1015, -1000, 'settings.monitoring', '系统监控', 'MENU', '/settings/monitoring', '@/pages/settings/monitoring/MonitoringPage', 'FundOutlined', 10, 'system:monitor:view', 'ENABLED', 0, 0, 0),
-    (-1013, -1000, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/MonitoringPage', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
-    (-1014, -1000, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
+    (-1013, -1015, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/MonitoringPage', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
+    (-1014, -1015, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
     (-1009, -1000, 'settings.plugins', '插件管理中心', 'MENU', '/settings/plugins', '@/pages/settings/plugins/PluginsPage', 'ApiOutlined', 10, 'plugin:management:view', 'ENABLED', 0, 0, 0),
     (-1011, -1000, 'localization.root', 'Localization center', 'MENU', '/settings/localization', '@/pages/settings/localization/LocalizationPage', 'TranslationOutlined', 29, 'localization:view', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
@@ -4095,6 +4130,8 @@ UNION ALL
 SELECT `id`, 'draft', '草稿', 10, 'ENABLED', '活动默认状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_status' AND `deleted` = 0
 UNION ALL
 SELECT `id`, 'published', '已发布', 20, 'ENABLED', '活动状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_status' AND `deleted` = 0
+UNION ALL
+SELECT `id`, 'archived', '已归档', 30, 'ENABLED', '活动状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_status' AND `deleted` = 0
 UNION ALL
 SELECT `id`, 'published', '已发布', 10, 'ENABLED', '公开查询可见状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_public_status' AND `deleted` = 0
 UNION ALL

@@ -57,7 +57,7 @@ class PaymentManagementAppServiceTest {
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("second-secret"));
 
         ArgumentCaptor<String> eventKeyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(outboxService, times(2)).recordAfterCommit(
+        verify(outboxService, times(2)).record(
                 eq(1001L),
                 eq("payment"),
                 eq("payment.provider.updated"),
@@ -86,7 +86,7 @@ class PaymentManagementAppServiceTest {
         service.updatePaymentProviderSettings(currentUser(), "stripe", stripeSettings("secret"));
 
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(1001L),
                 eq("payment"),
                 eq("payment.provider.updated"),

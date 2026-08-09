@@ -47,7 +47,7 @@ import policeBeianIcon from '@/assets/police-beian.png';
 import { ICP_QUERY_URL, resolvePoliceBeianQueryUrl } from '@/branding/beian';
 import GlobalSensitiveWordGuard from '@/components/GlobalSensitiveWordGuard';
 import './layouts/components/GlobalFloatActions.css';
-import { buildBreadcrumbItems } from '@/features/management/ManagementPage';
+import { buildBreadcrumbItems } from '@/features/management/managementBreadcrumb';
 
 const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const resolveIsMobileViewport = () =>
@@ -1543,7 +1543,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
             const breadcrumbTitle = item.title || item.name || item.path || '';
             return {
               key: item.path || item.name || breadcrumbTitle,
-              path: item.path,
+              href: item.path,
               title:
                 typeof breadcrumbTitle === 'string'
                   ? resolveBuiltinMessage(breadcrumbTitle, breadcrumbTitle)

@@ -2,7 +2,7 @@
 
 ## 状态
 
-Proposed
+Accepted / Implemented
 
 ## 背景
 
@@ -50,3 +50,9 @@ Proposed
 
 - [完整架构设计](../../docs/plans/2026-07-20-lumira-platform-domain-architecture-design.md)
 - [事件与 Outbox](../16-event-outbox-architecture.md)
+
+## Implementation ordering contract
+
+- Projection ordering uses the positive, database-monotonic `platform_event_outbox.id` carried as `outboxSequence`; it never compares a DomainEvent UUID.
+- A source rebuild reads this high-water mark before its owner snapshot and writes it into every rebuilt row. Only a strictly greater outbox sequence may subsequently replace that row, so delayed and equal-sequence redelivery cannot overwrite the snapshot.
+- Operations trigger a source-scoped rebuild through the stateless `eventCatalogRebuildJob` XXL-JOB handler (parameter: `ACTIVITY` or `COMPETITION`), which calls the control-plane's token-protected `/internal/jobs/event-catalog/rebuild/{sourceType}` endpoint.

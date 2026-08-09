@@ -215,24 +215,20 @@ export function buildPreflightReport({ manifest, state, freeMemoryBytes, freeDis
   };
 }
 
-export function renderActiveUpstreams(activeSlot, env = {}) {
+export function renderActiveUpstreams(activeSlot) {
   const slot = normalizeSlot(activeSlot);
   const activeServer = `lumira-server-${slot}:8080`;
-  const value = (name) => {
-    const configured = String(env[name] || '').trim();
-    return !configured || configured === 'lumira-server:8080' ? activeServer : configured;
-  };
   return [
-    `set $gateway_upstream ${value('GATEWAY_UPSTREAM')};`,
-    `set $system_upstream ${value('SYSTEM_SERVICE_UPSTREAM')};`,
-    `set $auth_upstream ${value('AUTH_SERVICE_UPSTREAM')};`,
-    `set $file_upstream ${value('FILE_SERVICE_UPSTREAM')};`,
-    `set $message_upstream ${value('MESSAGE_SERVICE_UPSTREAM')};`,
-    `set $plugin_upstream ${value('PLUGIN_SERVICE_UPSTREAM')};`,
-    `set $payment_upstream ${value('PAYMENT_SERVICE_UPSTREAM')};`,
-    `set $localization_upstream ${value('LOCALIZATION_SERVICE_UPSTREAM')};`,
-    `set $team_upstream ${value('TEAM_SERVICE_UPSTREAM')};`,
-    `set $ai_upstream ${value('AI_SERVICE_UPSTREAM')};`,
+    `set $gateway_upstream ${activeServer};`,
+    `set $system_upstream ${activeServer};`,
+    `set $auth_upstream ${activeServer};`,
+    `set $file_upstream ${activeServer};`,
+    `set $message_upstream ${activeServer};`,
+    `set $plugin_upstream ${activeServer};`,
+    `set $payment_upstream ${activeServer};`,
+    `set $localization_upstream ${activeServer};`,
+    `set $team_upstream ${activeServer};`,
+    `set $ai_upstream ${activeServer};`,
     '',
   ].join('\n');
 }

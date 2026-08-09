@@ -23,6 +23,7 @@ import com.lumira.file.processing.DisabledFileOcrEngine;
 import com.lumira.file.processing.FileAiParseProcessor;
 import com.lumira.file.processing.FileOcrEngineSelector;
 import com.lumira.file.processing.FileOcrProcessor;
+import com.lumira.file.processing.FileOwnerIdentityVerifier;
 import com.lumira.file.processing.FileProcessingMetrics;
 import com.lumira.file.processing.FileProcessingTaskRequestService;
 import com.lumira.file.processing.FileProcessingTaskService;
@@ -77,6 +78,7 @@ import org.springframework.context.annotation.Import;
         FileAiParseProcessor.class,
         FileOcrEngineSelector.class,
         FileOcrProcessor.class,
+        FileOwnerIdentityVerifier.class,
         FileProcessingMetrics.class,
         FileProcessingTaskRequestService.class,
         FileProcessingTaskService.class,

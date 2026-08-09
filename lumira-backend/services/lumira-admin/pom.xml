@@ -22,6 +22,46 @@
         </dependency>
         <dependency>
             <groupId>com.lumira</groupId>
+            <artifactId>ai-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>activity-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>project-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>expert-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>workflow-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>export-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>event-catalog-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
+            <artifactId>competition-service</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
             <artifactId>auth-service</artifactId>
             <version>0.1.0</version>
         </dependency>

@@ -52,18 +52,23 @@ class SystemRoleManagementAppServiceTest {
 
     @Test
     void defaultRegistrationRoleConfigWritesShouldPersistTrustedUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/role/app/SystemRoleManagementAppService.java"));
+        String application = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/role/app/SystemRoleManagementAppService.java"));
+        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/role/infrastructure/JdbcSystemRoleManagementRepository.java"));
 
+        assertTrue(application.contains("SystemRoleManagementRepository"));
+        assertFalse(application.contains("MyBatisQueryOperations"));
+        assertFalse(application.contains("BeanPropertyRowMapper"));
+        assertFalse(application.contains("jdbcTemplate"));
         assertTrue(source.contains("created_by, created_by_uuid, updated_by, updated_by_uuid"));
         assertTrue(source.contains("values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, ?, ?, 0)"));
         assertTrue(source.contains("updated_by = ?, updated_by_uuid = ?"));
-        assertTrue(source.contains("currentUser.getUserUuid()"));
+        assertTrue(application.contains("currentUser.getUserUuid()"));
         assertTrue(source.contains("and config_key = ?"));
         assertTrue(source.contains("and config_scope = 'PLATFORM'"));
         assertTrue(source.contains("and is_system = 0"));
         assertTrue(source.contains("and deleted = 0"));
         assertFalse(source.contains("updated_at = ?, deleted = 0"));
-        assertTrue(source.contains("Role config changed, please retry"));
+        assertTrue(application.contains("Role config changed, please retry"));
         assertTrue(source.contains("join sys_user u"));
         assertTrue(source.contains("u.uuid = ur.user_uuid"));
     }

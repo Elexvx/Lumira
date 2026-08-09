@@ -10,6 +10,7 @@ const normalizeBaseUrl = (value?: string | null) => value?.trim().replace(/\/+$/
 
 const API_BASE_URL_FROM_ENV = normalizeBaseUrl(process.env.UMI_APP_API_BASE_URL);
 const API_PREFIX_FROM_ENV = process.env.UMI_APP_API_PREFIX || '/api';
+const LOCAL_NATIVE_MODE = process.env.UMI_APP_LOCAL_NATIVE_MODE === 'true';
 
 const readRuntimeApiBaseUrl = () => {
   if (typeof window === 'undefined') {
@@ -28,7 +29,9 @@ const readRuntimeApiBaseUrl = () => {
   }
 };
 
-export const getApiBaseUrl = () => readRuntimeApiBaseUrl() || API_BASE_URL_FROM_ENV;
+export const getApiBaseUrl = () => (
+  LOCAL_NATIVE_MODE ? API_BASE_URL_FROM_ENV : readRuntimeApiBaseUrl() || API_BASE_URL_FROM_ENV
+);
 
 export const getApiPrefix = () => {
   const apiBaseUrl = getApiBaseUrl();

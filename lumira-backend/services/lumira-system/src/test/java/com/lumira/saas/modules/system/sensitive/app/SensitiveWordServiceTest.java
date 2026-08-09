@@ -8,7 +8,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
-import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
+import com.lumira.api.text.TextModerationPort;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.sensitive.dto.SensitiveWordDTO;
 import com.lumira.saas.modules.system.sensitive.infrastructure.JdbcSensitiveWordDictionaryRepository;
@@ -47,7 +47,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
 
@@ -70,7 +70,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
 
@@ -93,7 +93,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
         CurrentUser currentUser = currentUser();
@@ -121,7 +121,7 @@ class SensitiveWordServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("plugin:sensitive-words:view")));
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 permissionSnapshotService
         );
@@ -149,7 +149,7 @@ class SensitiveWordServiceTest {
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "admin-live", "DISABLED"));
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -184,7 +184,7 @@ class SensitiveWordServiceTest {
                 .thenThrow(new BizException(ErrorCode.UNAUTHORIZED, "Login required"));
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -222,7 +222,7 @@ class SensitiveWordServiceTest {
                 .thenReturn(new PermissionSnapshotService.PermissionSnapshot("permissions-2", Set.of("*")));
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -252,7 +252,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -289,7 +289,7 @@ class SensitiveWordServiceTest {
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", " ", "ENABLED"));
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -320,7 +320,7 @@ class SensitiveWordServiceTest {
         when(permissionSnapshotService.loadSnapshot(2001L, "user-uuid-2001")).thenReturn(null);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -356,7 +356,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
         CurrentUser currentUser = currentUser();
@@ -376,7 +376,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
 
@@ -395,7 +395,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
         CurrentUser currentUser = currentUser();
@@ -414,7 +414,7 @@ class SensitiveWordServiceTest {
         SensitiveWordPluginStateService pluginStateService = mock(SensitiveWordPluginStateService.class);
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService
         );
 
@@ -442,7 +442,7 @@ class SensitiveWordServiceTest {
         queryOperations.wordExists = true;
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
 
@@ -466,7 +466,7 @@ class SensitiveWordServiceTest {
         queryOperations.updateResult = 0;
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
 
@@ -498,7 +498,7 @@ class SensitiveWordServiceTest {
                 .thenReturn(userSnapshot(2001L, "user-uuid-2001", "  admin-live  ", "ENABLED"));
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 pluginStateService,
                 new SensitiveWordDictionaryCache(
                         new JdbcSensitiveWordDictionaryRepository(queryOperations),
@@ -529,7 +529,7 @@ class SensitiveWordServiceTest {
         queryOperations.wordExists = true;
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
 
@@ -551,7 +551,7 @@ class SensitiveWordServiceTest {
         queryOperations.updateResult = 2;
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
         MultipartFile file = mock(MultipartFile.class);
@@ -572,7 +572,7 @@ class SensitiveWordServiceTest {
         queryOperations.updateResult = 1;
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
         MultipartFile file = mock(MultipartFile.class);
@@ -607,7 +607,7 @@ class SensitiveWordServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
         SensitiveWordDTO.UpsertRequest request = new SensitiveWordDTO.UpsertRequest();
@@ -627,7 +627,7 @@ class SensitiveWordServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
 
@@ -649,7 +649,7 @@ class SensitiveWordServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
         MultipartFile file = mock(MultipartFile.class);
@@ -671,7 +671,7 @@ class SensitiveWordServiceTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SensitiveWordService service = new SensitiveWordService(
                 repository(queryOperations),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class)
         );
 
@@ -692,7 +692,7 @@ class SensitiveWordServiceTest {
         )));
         SensitiveWordService service = new SensitiveWordService(
                 repository(new RecordingQueryOperations()),
-                mock(AiKnowledgeTextExtractor.class),
+                mock(TextModerationPort.class),
                 mock(SensitiveWordPluginStateService.class),
                 dictionaryCache,
                 new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry())

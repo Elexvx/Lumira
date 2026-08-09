@@ -2,10 +2,12 @@ package com.lumira.team.infrastructure.persistence;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.api.dictionary.DictionaryValueNormalizer;
 import com.lumira.team.dto.TeamDTO;
 import com.lumira.team.repository.TeamRepository;
 import com.lumira.team.vo.TeamVO;
 import org.springframework.stereotype.Repository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
@@ -23,9 +25,16 @@ public class JdbcTeamRepository implements TeamRepository {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private final DictionaryValueNormalizer dictionaryValueNormalizer;
+
+    @Autowired
+    public JdbcTeamRepository(MyBatisQueryOperations jdbcTemplate, DictionaryValueNormalizer dictionaryValueNormalizer) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.dictionaryValueNormalizer = dictionaryValueNormalizer;
+    }
 
     public JdbcTeamRepository(MyBatisQueryOperations jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this(jdbcTemplate, null);
     }
 
     @Override
@@ -222,22 +231,9 @@ public class JdbcTeamRepository implements TeamRepository {
     @Override
     public Set<String> loadEnabledDictValues(String dictCode) {
         try {
-            List<String> values = jdbcTemplate.queryForList(
-                    """
-                            select i.item_value
-                            from sys_dict_type t
-                            join sys_dict_item i
-                              on i.dict_type_id = t.id
-                             and i.deleted = 0
-                            where t.dict_code = ?
-                              and t.deleted = 0
-                              and t.status = 'ENABLED'
-                              and i.status = 'ENABLED'
-                            order by i.sort_no asc, i.id asc
-                    """,
-                    String.class,
-                    dictCode
-            );
+            List<String> values = dictionaryValueNormalizer == null
+                    ? List.of()
+                    : dictionaryValueNormalizer.enabledValues(dictCode);
             Set<String> normalizedValues = new LinkedHashSet<>();
             for (String itemValue : values) {
                 if (StringUtils.hasText(itemValue)) {

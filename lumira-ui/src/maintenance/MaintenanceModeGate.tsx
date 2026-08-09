@@ -1,5 +1,5 @@
 import { ClockCircleOutlined, MoreOutlined } from '@ant-design/icons';
-import { Button, Result } from 'antd';
+import { FloatButton, Result } from 'antd';
 import { history } from '@umijs/max';
 import type { ReactNode } from 'react';
 import { useSyncExternalStore } from 'react';
@@ -78,7 +78,7 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
               alt={brandingSettings.websiteName}
             />
           ) : (
-            <span>{brandingSettings.websiteName}</span>
+            <span className="maintenance-mode__brand-name">{brandingSettings.websiteName}</span>
           )}
         </div>
         <Result
@@ -103,13 +103,13 @@ export const MaintenanceModeGate = ({ children }: { children: ReactNode }) => {
           }
         />
       </section>
-      <Button
+      <FloatButton
         className="maintenance-mode__admin-entry"
-        type="text"
+        type="primary"
         shape="circle"
         icon={<MoreOutlined />}
         aria-label="管理员登录"
-        title="管理员登录"
+        tooltip="管理员登录"
         onClick={openAdminLogin}
       />
     </main>

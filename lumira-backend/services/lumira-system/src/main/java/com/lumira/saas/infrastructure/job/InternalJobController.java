@@ -3,9 +3,8 @@ package com.lumira.saas.infrastructure.job;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
-import com.lumira.saas.modules.system.user.app.UserExportTaskWorkerService;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
 import com.lumira.common.web.InternalJobTokenValidator;
 import org.springframework.beans.factory.ObjectProvider;
@@ -14,28 +13,24 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/internal/jobs")
-@ConditionalOnLumiraAsyncEnabled
+@ConditionalOnLumiraControlPlaneEnabled
 public class InternalJobController {
 
     private final PlatformEventOutboxRelay platformEventOutboxRelay;
     private final ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider;
-    private final ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider;
     private final String jobInternalToken;
 
     public InternalJobController(
             PlatformEventOutboxRelay platformEventOutboxRelay,
             ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider,
-            ObjectProvider<UserExportTaskWorkerService> userExportTaskWorkerServiceProvider,
             @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobInternalToken
     ) {
         this.platformEventOutboxRelay = platformEventOutboxRelay;
         this.onlineSessionStreamServiceProvider = onlineSessionStreamServiceProvider;
-        this.userExportTaskWorkerServiceProvider = userExportTaskWorkerServiceProvider;
         this.jobInternalToken = jobInternalToken;
     }
 
@@ -65,20 +60,6 @@ public class InternalJobController {
         return ApiResponse.success(Boolean.TRUE, null);
     }
 
-    @PostMapping("/export/run")
-    public ApiResponse<Integer> processExportTasks(
-            @RequestParam(name = "limit", defaultValue = "20") int limit,
-            @RequestHeader(name = "X-Job-Token", required = false) String token
-    ) {
-        ensureAuthorized(token);
-        requireExportLimit(limit);
-        UserExportTaskWorkerService userExportTaskWorkerService = userExportTaskWorkerServiceProvider.getIfAvailable();
-        if (userExportTaskWorkerService == null) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "User export task worker is unavailable");
-        }
-        return ApiResponse.success(userExportTaskWorkerService.processPendingTasks(limit), null);
-    }
-
     private void ensureAuthorized(String token) {
         if (!InternalJobTokenValidator.isConfigured(jobInternalToken)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Internal job token is not configured");
@@ -94,9 +75,4 @@ public class InternalJobController {
         }
     }
 
-    private void requireExportLimit(int limit) {
-        if (limit < 1 || limit > UserExportTaskWorkerService.MAX_CLAIM_LIMIT) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Invalid export task limit");
-        }
-    }
 }

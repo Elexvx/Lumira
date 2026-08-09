@@ -49,7 +49,8 @@ class FileTextExtractionProcessorTest {
                 });
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileTextExtractionProcessor(jdbcTemplate, uploadProperties);
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        var processor = processor(jdbcTemplate, uploadProperties, ownerIdentityVerifier);
 
         FileTextExtractionProcessor.TextExtractionResult result = processor.extractText(3001L, 2001L, "user-uuid-2001");
 
@@ -75,6 +76,7 @@ class FileTextExtractionProcessorTest {
         verifyLocationLookup(jdbcTemplate);
         assertArtifactWriteRevalidatesFileOwner(sqlCaptor.getValue());
         assertThat(contentCaptor.getValue()).isEqualTo("# Notes\nhello Lumira");
+        verify(ownerIdentityVerifier).requireEnabledOwner(2001L, "user-uuid-2001");
     }
 
     @Test
@@ -102,7 +104,7 @@ class FileTextExtractionProcessorTest {
         uploadProperties.setStorageRoot(tempDir.toString());
         Tika tika = mock(Tika.class);
         when(tika.parseToString(Mockito.any(java.io.InputStream.class))).thenReturn("PDF\tReport\n\n\nhello Lumira");
-        var processor = new FileTextExtractionProcessor(jdbcTemplate, uploadProperties, tika);
+        var processor = processor(jdbcTemplate, uploadProperties, tika);
 
         FileTextExtractionProcessor.TextExtractionResult result = processor.extractText(3001L, 2001L, "user-uuid-2001");
 
@@ -151,7 +153,7 @@ class FileTextExtractionProcessorTest {
                 });
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileTextExtractionProcessor(jdbcTemplate, uploadProperties);
+        var processor = processor(jdbcTemplate, uploadProperties);
 
         assertThatThrownBy(() -> processor.extractText(3001L, 9999L, "user-uuid-9999"))
                 .isInstanceOf(IllegalStateException.class)
@@ -172,7 +174,7 @@ class FileTextExtractionProcessorTest {
     void extractText_shouldRejectMissingOwnerUuid() {
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileTextExtractionProcessor(mock(JdbcTemplate.class), uploadProperties);
+        var processor = processor(mock(JdbcTemplate.class), uploadProperties);
 
         assertThatThrownBy(() -> processor.extractText(3001L, 2001L))
                 .isInstanceOf(IllegalStateException.class)
@@ -202,7 +204,7 @@ class FileTextExtractionProcessorTest {
                 });
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
-        var processor = new FileTextExtractionProcessor(jdbcTemplate, uploadProperties);
+        var processor = processor(jdbcTemplate, uploadProperties);
 
         assertThatThrownBy(() -> processor.extractText(3001L, 2001L, "user-uuid-2001"))
                 .isInstanceOf(IllegalStateException.class)
@@ -214,7 +216,7 @@ class FileTextExtractionProcessorTest {
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
                 .contains("fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
     }
 
     private void verifyLocationLookup(JdbcTemplate jdbcTemplate) {
@@ -222,6 +224,22 @@ class FileTextExtractionProcessorTest {
         verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
         assertThat(sqlCaptor.getValue())
                 .contains("where fo.id = ? and fo.deleted = 0 and fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
+    }
+
+    private FileTextExtractionProcessor processor(JdbcTemplate jdbcTemplate, UploadProperties uploadProperties) {
+        return processor(jdbcTemplate, uploadProperties, mock(FileOwnerIdentityVerifier.class));
+    }
+
+    private FileTextExtractionProcessor processor(
+            JdbcTemplate jdbcTemplate,
+            UploadProperties uploadProperties,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
+        return new FileTextExtractionProcessor(jdbcTemplate, uploadProperties, new Tika(), ownerIdentityVerifier);
+    }
+
+    private FileTextExtractionProcessor processor(JdbcTemplate jdbcTemplate, UploadProperties uploadProperties, Tika tika) {
+        return new FileTextExtractionProcessor(jdbcTemplate, uploadProperties, tika, mock(FileOwnerIdentityVerifier.class));
     }
 }

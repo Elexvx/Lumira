@@ -684,7 +684,7 @@ function ensureActiveUpstreams() {
   const env = mergedEnv();
   const slot = normalizeSlot(env.LUMIRA_ACTIVE_SLOT || configuredActiveSlot);
   mkdirSync(generatedApiProxyDir, { recursive: true });
-  writeFileSync(activeUpstreamsPath, renderActiveUpstreams(slot, env), { mode: 0o644 });
+  writeFileSync(activeUpstreamsPath, renderActiveUpstreams(slot), { mode: 0o644 });
   log(`API proxy upstream prepared for active slot=${slot}.`);
 }
 

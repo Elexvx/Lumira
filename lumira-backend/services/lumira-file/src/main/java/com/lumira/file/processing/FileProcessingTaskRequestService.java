@@ -20,6 +20,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
@@ -44,6 +45,7 @@ public class FileProcessingTaskRequestService {
         this.systemInternalApiProvider = systemInternalApiProvider;
     }
 
+    @Transactional
     public int requestTasksForUpload(FileObjectDTO file, CurrentUser currentUser) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "A trusted file owner is required");
@@ -119,11 +121,6 @@ public class FileProcessingTaskRequestService {
                     """
                             select fo.uploaded_by
                             from file_object fo
-                            join sys_user u
-                              on u.id = fo.uploaded_by
-                             and u.uuid = fo.uploaded_by_uuid
-                             and u.deleted = 0
-                             and u.status = 'ENABLED'
                             where fo.id = ?
                               and fo.deleted = 0
                               and fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')
@@ -178,7 +175,7 @@ public class FileProcessingTaskRequestService {
     }
 
     private void publishTaskRequested(FileObjectDTO file, String taskType, Actor actor) {
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 FilePlatformEventTypes.SOURCE_FILE,
                 FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED,
                 outboxUserId(actor),

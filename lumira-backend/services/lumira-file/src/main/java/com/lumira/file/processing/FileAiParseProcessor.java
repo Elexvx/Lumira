@@ -2,6 +2,7 @@ package com.lumira.file.processing;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,16 @@ public class FileAiParseProcessor {
     private static final int MAX_SUMMARY_CHARS = 1_000;
 
     private final JdbcTemplate jdbcTemplate;
+    private final FileOwnerIdentityVerifier ownerIdentityVerifier;
+
+    @Autowired
+    public FileAiParseProcessor(JdbcTemplate jdbcTemplate, FileOwnerIdentityVerifier ownerIdentityVerifier) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.ownerIdentityVerifier = ownerIdentityVerifier;
+    }
 
     public FileAiParseProcessor(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+        this(jdbcTemplate, null);
     }
 
     public AiParseResult prepareForAiParse(Long fileId, Long userId) {
@@ -27,6 +35,7 @@ public class FileAiParseProcessor {
     public AiParseResult prepareForAiParse(Long fileId, Long userId, String userUuid) {
         Long ownerId = requireUserId(userId);
         String ownerUuid = requireUserUuid(userUuid);
+        requireEnabledOwner(ownerId, ownerUuid);
         TextArtifact textArtifact = findTextArtifact(fileId, ownerId, ownerUuid);
         if (textArtifact == null || !StringUtils.hasText(textArtifact.contentText())) {
             throw new IllegalStateException("TEXT_CONTENT artifact is unavailable for AI parse: " + fileId);
@@ -52,11 +61,6 @@ public class FileAiParseProcessor {
                          and fo.uploaded_by = ?
                          and fo.uploaded_by_uuid = ?
                          and fpa.created_by = fo.uploaded_by
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
                         where fpa.file_id = ?
                           and fpa.artifact_type = ?
                           and fpa.deleted = 0
@@ -97,11 +101,6 @@ public class FileAiParseProcessor {
                         )
                         select ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
                         from file_object fo
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
                         where fo.id = ?
                           and fo.uploaded_by = ?
                           and fo.uploaded_by_uuid = ?
@@ -146,6 +145,13 @@ public class FileAiParseProcessor {
             throw new IllegalStateException("File processing artifact owner UUID is required");
         }
         return userUuid.trim();
+    }
+
+    private void requireEnabledOwner(Long userId, String userUuid) {
+        if (ownerIdentityVerifier == null) {
+            throw new IllegalStateException("File owner identity resolver is unavailable");
+        }
+        ownerIdentityVerifier.requireEnabledOwner(userId, userUuid);
     }
 
     private String normalizeWhitespace(String text) {

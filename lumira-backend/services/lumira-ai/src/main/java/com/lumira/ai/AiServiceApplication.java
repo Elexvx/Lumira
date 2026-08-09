@@ -1,20 +1,22 @@
 package com.lumira.ai;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+/**
+ * Compatibility marker retained for callers that referenced the former
+ * standalone launcher.
+ *
+ * <p>AI is assembled into {@code lumira-server} through
+ * {@code AiControlPlaneAssemblyConfiguration}.  It must not be launched as a
+ * fourth production runtime.</p>
+ */
+@Deprecated(since = "0.1.0", forRemoval = false)
+public final class AiServiceApplication {
 
-@SpringBootApplication(scanBasePackages = {
-        "com.lumira.ai",
-        "com.lumira.common"
-})
-@ConfigurationPropertiesScan(basePackages = {
-        "com.lumira.ai",
-        "com.lumira.common"
-})
-public class AiServiceApplication {
+    private AiServiceApplication() {
+    }
 
     public static void main(String[] args) {
-        SpringApplication.run(AiServiceApplication.class, args);
+        throw new IllegalStateException(
+                "ai-service is an Admin control-plane module; start lumira-server instead of a standalone AI runtime"
+        );
     }
 }

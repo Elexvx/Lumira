@@ -3,8 +3,7 @@ package com.lumira.ai.controller;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
-import com.lumira.ai.app.AiCommandService;
-import com.lumira.ai.app.AiReadQueryService;
+import com.lumira.ai.compat.AiV2CompatibilityFacade;
 import com.lumira.ai.dto.AiCommandModels.ChatRequest;
 import com.lumira.ai.dto.AiCommandModels.KnowledgeSearchRequest;
 import com.lumira.ai.dto.AiCommandModels.ToolConfirmRequest;
@@ -50,33 +49,29 @@ import java.util.Set;
 public class AiV2Controller {
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final AiReadQueryService aiReadQueryService;
-    private final AiCommandService aiCommandService;
+    private final AiV2CompatibilityFacade compatibilityFacade;
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final SystemInternalApi systemInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     public AiV2Controller(
-            AiReadQueryService aiReadQueryService,
-            AiCommandService aiCommandService,
+            AiV2CompatibilityFacade compatibilityFacade,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard
     ) {
-        this(aiReadQueryService, aiCommandService, securityContextFacade, permissionGuard, null, false);
+        this(compatibilityFacade, securityContextFacade, permissionGuard, null, false);
     }
 
     @Autowired
     public AiV2Controller(
-            AiReadQueryService aiReadQueryService,
-            AiCommandService aiCommandService,
+            AiV2CompatibilityFacade compatibilityFacade,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             SystemInternalApi systemInternalApi
     ) {
         this(
-                aiReadQueryService,
-                aiCommandService,
+                compatibilityFacade,
                 securityContextFacade,
                 permissionGuard,
                 systemInternalApi,
@@ -85,15 +80,13 @@ public class AiV2Controller {
     }
 
     private AiV2Controller(
-            AiReadQueryService aiReadQueryService,
-            AiCommandService aiCommandService,
+            AiV2CompatibilityFacade compatibilityFacade,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             SystemInternalApi systemInternalApi,
             boolean enforceTrustedUserResolution
     ) {
-        this.aiReadQueryService = aiReadQueryService;
-        this.aiCommandService = aiCommandService;
+        this.compatibilityFacade = compatibilityFacade;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.systemInternalApi = systemInternalApi;
@@ -106,13 +99,13 @@ public class AiV2Controller {
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         CurrentUser currentUser = requireAny("ai:view", "ai:chat:send");
-        return ApiResponse.success(aiReadQueryService.listEmployees(currentUser, pageNo, pageSize), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.listEmployees(currentUser, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/assistant")
     public ApiResponse<AiEmployeeVO> assistant() {
         CurrentUser currentUser = requireAny("ai:view", "ai:chat:send");
-        return ApiResponse.success(aiReadQueryService.getAssistantEmployee(currentUser), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.getAssistantEmployee(currentUser), TraceContext.getRequestId());
     }
 
     @GetMapping("/conversations")
@@ -122,19 +115,19 @@ public class AiV2Controller {
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         CurrentUser currentUser = require("ai:chat:send");
-        return ApiResponse.success(aiReadQueryService.listConversations(currentUser, employeeId, pageNo, pageSize), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.listConversations(currentUser, employeeId, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/conversations/{id}/messages")
     public ApiResponse<java.util.List<AiMessageVO>> conversationMessages(@PathVariable("id") Long id) {
         CurrentUser currentUser = require("ai:chat:send");
-        return ApiResponse.success(aiReadQueryService.listConversationMessages(currentUser, id), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.listConversationMessages(currentUser, id), TraceContext.getRequestId());
     }
 
     @PostMapping("/chat")
     public ApiResponse<AiChatResponseVO> chat(@Valid @RequestBody ChatRequest request) {
         CurrentUser currentUser = require("ai:chat:send");
-        return ApiResponse.success(aiCommandService.chat(currentUser, request), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.chat(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/knowledge-bases")
@@ -146,13 +139,13 @@ public class AiV2Controller {
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         CurrentUser currentUser = require("ai:knowledge:view");
-        return ApiResponse.success(aiReadQueryService.listKnowledgeBases(currentUser, keyword, status, scope, pageNo, pageSize), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.listKnowledgeBases(currentUser, keyword, status, scope, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @GetMapping("/knowledge-bases/{id}")
     public ApiResponse<AiKnowledgeBaseVO> knowledgeBase(@PathVariable("id") Long id) {
         CurrentUser currentUser = require("ai:knowledge:view");
-        return ApiResponse.success(aiReadQueryService.getKnowledgeBase(currentUser, id), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.getKnowledgeBase(currentUser, id), TraceContext.getRequestId());
     }
 
     @GetMapping("/knowledge-bases/{id}/documents")
@@ -162,7 +155,7 @@ public class AiV2Controller {
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         CurrentUser currentUser = require("ai:knowledge:view");
-        return ApiResponse.success(aiReadQueryService.listKnowledgeDocuments(currentUser, id, pageNo, pageSize), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.listKnowledgeDocuments(currentUser, id, pageNo, pageSize), TraceContext.getRequestId());
     }
 
     @PostMapping(value = "/knowledge-bases/{id}/documents/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -171,7 +164,7 @@ public class AiV2Controller {
             @RequestParam("file") MultipartFile file
     ) {
         CurrentUser currentUser = require("ai:knowledge:document:upload");
-        return ApiResponse.success(aiCommandService.uploadKnowledgeDocument(currentUser, id, file), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.uploadKnowledgeDocument(currentUser, id, file), TraceContext.getRequestId());
     }
 
     @PostMapping("/knowledge-bases/{id}/documents/{documentId}/reindex")
@@ -180,37 +173,37 @@ public class AiV2Controller {
             @PathVariable("documentId") Long documentId
     ) {
         CurrentUser currentUser = require("ai:knowledge:document:index");
-        return ApiResponse.success(aiCommandService.reindexKnowledgeDocument(currentUser, id, documentId), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.reindexKnowledgeDocument(currentUser, id, documentId), TraceContext.getRequestId());
     }
 
     @PostMapping("/knowledge-bases/search")
     public ApiResponse<List<AiKnowledgeReferenceVO>> searchKnowledge(@Valid @RequestBody KnowledgeSearchRequest request) {
         CurrentUser currentUser = require("ai:knowledge:query");
-        return ApiResponse.success(aiCommandService.searchKnowledge(currentUser, request), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.searchKnowledge(currentUser, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/tools")
     public ApiResponse<java.util.List<AiToolVO>> tools() {
         CurrentUser currentUser = require("ai:tool:view");
-        return ApiResponse.success(aiReadQueryService.listTools(currentUser), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.listTools(currentUser), TraceContext.getRequestId());
     }
 
     @PostMapping("/tools/execute")
     public ApiResponse<AiToolExecuteResultVO> executeTool(@Valid @RequestBody ToolExecuteRequest request) {
         CurrentUser currentUser = require("ai:tool:execute");
-        return ApiResponse.success(aiCommandService.executeTool(currentUser, request), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.executeTool(currentUser, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/tools/propose")
     public ApiResponse<AiToolPlanVO> proposeTool(@RequestBody ToolProposeRequest request) {
         CurrentUser currentUser = require("ai:tool:execute");
-        return ApiResponse.success(aiCommandService.proposeTool(currentUser, request), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.proposeTool(currentUser, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/tools/confirm")
     public ApiResponse<AiToolExecuteResultVO> confirmTool(@Valid @RequestBody ToolConfirmRequest request) {
         CurrentUser currentUser = require("ai:tool:execute");
-        return ApiResponse.success(aiCommandService.confirmTool(currentUser, request), TraceContext.getRequestId());
+        return ApiResponse.success(compatibilityFacade.confirmTool(currentUser, request), TraceContext.getRequestId());
     }
 
     private CurrentUser require(String permissionKey) {

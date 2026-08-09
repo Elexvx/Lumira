@@ -167,7 +167,7 @@
   justify-content: center;
   overflow: hidden;
   border: 1px dashed var(--ant-color-border);
-  border-radius: 4px;
+  border-radius: var(--ant-border-radius-sm);
   background: var(--ant-color-fill-quaternary);
   color: var(--ant-color-text-tertiary);
   font-size: 12px;
@@ -202,7 +202,7 @@
   margin-inline-start: 0 !important;
   padding: 0 10px;
   border: 1px solid var(--ant-color-border);
-  border-radius: 2px;
+  border-radius: var(--ant-border-radius-xs);
   background: var(--ant-color-bg-container);
   color: var(--ant-color-text);
   text-align: center;

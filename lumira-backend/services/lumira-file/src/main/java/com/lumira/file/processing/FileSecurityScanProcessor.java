@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,22 @@ public class FileSecurityScanProcessor {
     private final UploadProperties uploadProperties;
     private final FileSecurityScanMetrics securityScanMetrics;
     private final FileSecurityScanEngineSelector scanEngineSelector;
+    private final FileOwnerIdentityVerifier ownerIdentityVerifier;
+
+    @Autowired
+    public FileSecurityScanProcessor(
+            JdbcTemplate jdbcTemplate,
+            UploadProperties uploadProperties,
+            FileSecurityScanMetrics securityScanMetrics,
+            FileSecurityScanEngineSelector scanEngineSelector,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.uploadProperties = uploadProperties;
+        this.securityScanMetrics = securityScanMetrics;
+        this.scanEngineSelector = scanEngineSelector;
+        this.ownerIdentityVerifier = ownerIdentityVerifier;
+    }
 
     public FileSecurityScanProcessor(
             JdbcTemplate jdbcTemplate,
@@ -34,10 +51,7 @@ public class FileSecurityScanProcessor {
             FileSecurityScanMetrics securityScanMetrics,
             FileSecurityScanEngineSelector scanEngineSelector
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.uploadProperties = uploadProperties;
-        this.securityScanMetrics = securityScanMetrics;
-        this.scanEngineSelector = scanEngineSelector;
+        this(jdbcTemplate, uploadProperties, securityScanMetrics, scanEngineSelector, null);
     }
 
     public SecurityScanResult scan(Long fileId, Long userId) {
@@ -89,15 +103,8 @@ public class FileSecurityScanProcessor {
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
                                fo.file_extension as fileExtension, coalesce(fs.root_path, '') as rootPath,
-                               fo.uploaded_by as uploadedBy, u.uuid as uploadedByUserUuid
+                               fo.uploaded_by as uploadedBy, fo.uploaded_by_uuid as uploadedByUserUuid
                         from file_object fo
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
-                         and u.uuid is not null
-                         and u.uuid <> ''
                         left join file_storage_space fs
                           on fs.storage_key = fo.bucket
                          and fs.deleted = 0
@@ -171,11 +178,6 @@ public class FileSecurityScanProcessor {
                         )
                         select ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
                         from file_object fo
-                        join sys_user u
-                          on u.id = fo.uploaded_by
-                         and u.uuid = fo.uploaded_by_uuid
-                         and u.deleted = 0
-                         and u.status = 'ENABLED'
                         where fo.id = ?
                           and fo.uploaded_by = ?
                           and fo.uploaded_by_uuid = ?
@@ -282,6 +284,10 @@ public class FileSecurityScanProcessor {
                 || !location.uploadedByUserUuid().trim().equals(userUuid.trim())) {
             throw new IllegalStateException("File processing task owner does not match file owner");
         }
+        if (ownerIdentityVerifier == null) {
+            throw new IllegalStateException("File owner identity resolver is unavailable");
+        }
+        ownerIdentityVerifier.requireEnabledOwner(ownerId, location.uploadedByUserUuid());
         return ownerId;
     }
 

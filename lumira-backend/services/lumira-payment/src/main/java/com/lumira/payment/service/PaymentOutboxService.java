@@ -2,6 +2,8 @@ package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import java.lang.management.ManagementFactory;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,6 +12,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -42,16 +45,23 @@ public class PaymentOutboxService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final SystemInternalApi systemInternalApi;
     private volatile OutboxMetricsSnapshot cachedSnapshot;
     private volatile long cachedSnapshotUntilMillis;
 
-    public PaymentOutboxService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    @Autowired
+    public PaymentOutboxService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            SystemInternalApi systemInternalApi
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.systemInternalApi = systemInternalApi;
     }
 
-    public void recordAfterCommit(Long userId, String sourceType, String eventType, String eventKey, Object payload) {
-        record(userId, sourceType, eventType, eventKey, payload);
+    public PaymentOutboxService(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        this(jdbcTemplate, objectMapper, null);
     }
 
     public void record(Long userId, String sourceType, String eventType, String eventKey, Object payload) {
@@ -130,30 +140,27 @@ public class PaymentOutboxService {
     }
 
     private String resolveUserUuid(Long userId) {
-        if (userId == null || userId <= 0) {
+        if (userId == null || userId <= 0 || systemInternalApi == null) {
             return null;
         }
         try {
-            return jdbcTemplate.queryForObject(
-                    "select uuid from sys_user where id = ? and deleted = 0 limit 1",
-                    String.class,
-                    userId
-            );
+            SystemUserSnapshotDTO user = systemInternalApi.findUserIdentityById(userId);
+            if (user == null || !userId.equals(user.userId()) || !StringUtils.hasText(user.userUuid())) {
+                return null;
+            }
+            return user.userUuid().trim();
         } catch (RuntimeException exception) {
             return null;
         }
     }
 
     private String resolveActiveUserUuid(Long userId) {
-        if (userId == null || userId <= 0) {
+        if (userId == null || userId <= 0 || systemInternalApi == null) {
             return null;
         }
         try {
-            return jdbcTemplate.queryForObject(
-                    "select uuid from sys_user where id = ? and deleted = 0 and status = 'ENABLED' limit 1",
-                    String.class,
-                    userId
-            );
+            String userUuid = systemInternalApi.findTargetUserUuidById(userId);
+            return StringUtils.hasText(userUuid) ? userUuid.trim() : null;
         } catch (RuntimeException exception) {
             return null;
         }

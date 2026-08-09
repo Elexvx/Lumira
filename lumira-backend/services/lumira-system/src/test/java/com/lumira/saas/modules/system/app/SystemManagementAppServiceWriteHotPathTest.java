@@ -37,6 +37,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -44,55 +45,61 @@ import static org.mockito.Mockito.when;
 
 class SystemManagementAppServiceWriteHotPathTest {
 
+    private static final Path SYSTEM_APP = Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java");
+    private static final Path MENU_ADAPTER = Path.of("src/main/java/com/lumira/saas/modules/system/menu/infrastructure/JdbcSystemMenuManagementRepository.java");
+    private static final Path DICTIONARY_ADAPTER = Path.of("src/main/java/com/lumira/saas/modules/system/dict/infrastructure/JdbcSystemDictionaryManagementRepository.java");
+    private static final Path CONFIGURATION_ADAPTER = Path.of("src/main/java/com/lumira/saas/modules/system/config/infrastructure/JdbcSystemConfigurationManagementRepository.java");
+    private static final Path PROFILE_ADAPTER = Path.of("src/main/java/com/lumira/saas/modules/system/profile/infrastructure/JdbcSystemCurrentUserProfileRepository.java");
+    private static final Path USER_APP = Path.of("src/main/java/com/lumira/saas/modules/system/user/app/SystemUserManagementAppService.java");
+    private static final Path USER_ADAPTER = Path.of("src/main/java/com/lumira/saas/modules/system/user/infrastructure/JdbcSystemUserManagementRepository.java");
+
     @Test
     void dictWritesShouldPersistTrustedUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String source = Files.readString(DICTIONARY_ADAPTER);
 
         assertTrue(source.contains("insert into sys_dict_type (dict_code, dict_name, status, is_system, remark, created_by, created_by_uuid, updated_by, updated_by_uuid"));
         assertTrue(source.contains("insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, created_by_uuid, updated_by, updated_by_uuid"));
         assertTrue(source.contains("update sys_dict_type"));
         assertTrue(source.contains("updated_by_uuid = ?"));
-        assertTrue(source.contains("requireSystemWrite(updated, \"Dict type changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(updated, \"Dict item changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(inserted, \"Dict type changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(inserted, \"Dict item changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(typeDeleted, \"Dict type changed, please retry\")"));
+        assertTrue(app.contains("requireSystemWrite(saved.writeCount(), \"Dict type changed, please retry\")"));
+        assertTrue(app.contains("requireSystemWrite(saved.writeCount(), \"Dict item changed, please retry\")"));
     }
 
     @Test
     void configUpdateShouldBindOriginalConfigKeyAndScope() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String source = Files.readString(CONFIGURATION_ADAPTER);
 
-        assertTrue(source.contains("SystemVO.ConfigVO currentConfig = loadConfig(id)"));
+        assertTrue(app.contains("SystemVO.ConfigVO currentConfig = loadConfig(id)"));
         assertTrue(source.contains("and config_key = ?"));
         assertTrue(source.contains("and config_scope = 'PLATFORM'"));
         assertTrue(source.contains("and is_system = 0"));
         assertTrue(source.contains("and deleted = 0"));
-        assertTrue(source.contains("Config changed, please retry"));
-        assertTrue(source.contains("requireSystemWrite(inserted, \"Config changed, please retry\")"));
-        assertTrue(source.contains("resolveStoredConfigValue(id, currentConfig.getConfigKey(), request.getConfigKey(), request.getConfigValue())"));
+        assertTrue(app.contains("Config changed, please retry"));
+        assertTrue(app.contains("requireSystemWrite(created.writeCount(), \"Config changed, please retry\")"));
+        assertTrue(app.contains("resolveStoredConfigValue(id, currentConfig.getConfigKey(), request.getConfigKey(), request.getConfigValue())"));
     }
 
     @Test
     void menuWritesShouldPersistTrustedUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String source = Files.readString(MENU_ADAPTER);
 
         assertTrue(source.contains("permission_key, status, created_by, created_by_uuid, updated_by, updated_by_uuid"));
         assertTrue(source.contains("set parent_id = ?, sort_no = ?, updated_by = ?, updated_by_uuid = ?"));
         assertTrue(source.contains("where id = ? and menu_code = ? and menu_type = ? and deleted = 0"));
-        assertTrue(source.contains("menu.getMenuCode()"));
-        assertTrue(source.contains("editableMenu.getMenuCode()"));
-        assertTrue(source.contains("requireSystemWrite(updated, \"Menu changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(inserted, \"Menu changed, please retry\")"));
+        assertTrue(app.contains("menuVersion(menu)"));
+        assertTrue(app.contains("requireSystemWrite(saved.writeCount(), \"Menu changed, please retry\")"));
     }
 
     @Test
     void dictTypeWritesShouldBindOriginalCodeAndSystemFlag() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String source = Files.readString(DICTIONARY_ADAPTER);
 
-        assertTrue(source.contains("SystemVO.DictTypeVO existingType = loadDictType(id)"));
-        assertTrue(source.contains("int typeDeleted = jdbcTemplate.update("));
-        assertTrue(source.contains("requireSystemWrite(typeDeleted, \"Dict type changed, please retry\")"));
+        assertTrue(app.contains("SystemVO.DictTypeVO existingType = loadDictType(id)"));
+        assertTrue(app.contains("requireSystemWrite(typeDeleted, \"Dict type changed, please retry\")"));
         assertTrue(source.contains("where dict_type_id = ? and deleted = 0"));
         assertTrue(source.contains("where id = ? and dict_code = ? and is_system = ? and deleted = 0"));
         assertTrue(!source.contains("where t.id = sys_dict_item.dict_type_id"));
@@ -100,39 +107,56 @@ class SystemManagementAppServiceWriteHotPathTest {
 
     @Test
     void dictItemWritesShouldBindOriginalValueAndStatus() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String source = Files.readString(DICTIONARY_ADAPTER);
 
-        assertTrue(source.contains("SystemVO.DictItemVO existingItem = loadDictItem(dictTypeId, itemId)"));
-        assertTrue(source.contains("int deleted = jdbcTemplate.update("));
-        assertTrue(source.contains("requireSystemWrite(deleted, \"Dict item changed, please retry\")"));
+        assertTrue(app.contains("SystemVO.DictItemVO existingItem = loadDictItem(dictTypeId, itemId)"));
+        assertTrue(app.contains("requireSystemWrite(deleted, \"Dict item changed, please retry\")"));
         assertTrue(source.contains("where id = ? and dict_type_id = ? and item_value = ? and status = ? and deleted = 0"));
-        assertTrue(source.contains("existingItem == null ? null : existingItem.getItemValue()"));
-        assertTrue(source.contains("item.getItemValue()"));
+        assertTrue(app.contains("existingItem == null ? null : dictionaryItemVersion(existingItem)"));
+        assertTrue(source.contains("command.existing().itemValue()"));
     }
 
     @Test
     void currentUserProfileUpsertsShouldNotRewriteUserUuid() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String source = Files.readString(PROFILE_ADAPTER);
 
         assertTrue(source.contains("locale = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
         assertTrue(source.contains("extra_json = case when user_id = values(user_id) and user_uuid = values(user_uuid)"));
-        assertTrue(source.contains("requireSystemWrite(updated, \"User profile changed, please retry\")"));
+        assertTrue(app.contains("requireSystemWrite(updated, \"User profile changed, please retry\")"));
         assertTrue(!source.contains("user_uuid = values(user_uuid),"));
     }
 
     @Test
     void userRoleReplacementShouldSoftDeleteAndBindTargetRoleContext() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java"));
+        String app = applicationSource();
+        String userApp = Files.readString(USER_APP);
+        String source = Files.readString(USER_ADAPTER);
 
         assertTrue(!source.contains("delete from sys_user_role where user_id = ? and user_uuid = ?"));
         assertTrue(source.contains("update sys_user_role"));
         assertTrue(source.contains("updated_by_uuid = ?"));
         assertTrue(source.contains("from sys_role r"));
         assertTrue(source.contains("where r.id = ? and r.deleted = 0"));
-        assertTrue(source.contains("requireSystemWrite(inserted, \"Role changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(inserted, \"User changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(updated, \"User changed, please retry\")"));
-        assertTrue(source.contains("requireSystemWrite(passwordUpdated, \"User changed, please retry\")"));
+        assertTrue(app.contains("systemUserManagementAppService.updateUser"));
+        assertTrue(userApp.contains("requireRelationshipWrite(inserted, \"Role changed, please retry\")"));
+        assertTrue(userApp.contains("requireRelationshipWrite(result.writeCount(), \"User changed, please retry\")"));
+        assertTrue(userApp.contains("requireRelationshipWrite(passwordUpdated, \"User changed, please retry\")"));
+    }
+
+    @Test
+    void systemManagementApplicationMustNotRegressToPersistencePrimitives() throws Exception {
+        applicationSource();
+    }
+
+    private static String applicationSource() throws Exception {
+        String source = Files.readString(SYSTEM_APP);
+        assertFalse(source.contains("MyBatisQueryOperations"));
+        assertFalse(source.contains("BeanPropertyRowMapper"));
+        assertFalse(source.contains("jdbcTemplate"));
+        assertFalse(source.matches("(?s).*\\b(select|insert|update|delete)\\s+(from|into|sys_|iam_|audit_|ai_).*"));
+        return source;
     }
 
     @Test
@@ -799,7 +823,7 @@ class SystemManagementAppServiceWriteHotPathTest {
                 dictTypeCode = (String) args[0];
                 dictTypeName = (String) args[1];
                 dictTypeStatus = (String) args[2];
-                dictTypeRemark = (String) args[3];
+                dictTypeRemark = (String) args[4];
                 dictTypeId = 901L;
             }
             if (sql.contains("insert into sys_dict_item")) {

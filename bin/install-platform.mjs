@@ -601,7 +601,7 @@ function installContainers(options) {
   mkdirSync(upstreamDirectory, { recursive: true });
   writeFileSync(
     path.join(upstreamDirectory, 'active-upstreams.conf'),
-    renderActiveUpstreams(deployEnv.LUMIRA_ACTIVE_SLOT || 'blue', deployEnv),
+    renderActiveUpstreams(deployEnv.LUMIRA_ACTIVE_SLOT || 'blue'),
     { mode: 0o644 },
   );
   run('docker', composeArgs(options, 'config'), { stdio: 'ignore' });

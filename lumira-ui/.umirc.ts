@@ -6,6 +6,8 @@ import { createLocalePreferenceBootstrapScript } from './src/i18n/locale';
 import { createThemePreferenceBootstrapScript } from './src/theme/settings';
 
 const pnpmModulesPath = path.resolve(process.cwd(), 'node_modules/.pnpm');
+const devApiTarget = process.env.UMI_DEV_API_TARGET || 'http://127.0.0.1:8080';
+const devWebSocketTarget = process.env.UMI_DEV_WS_TARGET || 'ws://127.0.0.1:8080';
 const eventEmitterPackageDirectory = fs
   .readdirSync(pnpmModulesPath)
   .find((directory) => directory.startsWith('event-emitter@'));
@@ -85,6 +87,7 @@ export default defineConfig({
   define: {
     'process.env.UMI_APP_API_BASE_URL': process.env.UMI_APP_API_BASE_URL || '',
     'process.env.UMI_APP_API_PREFIX': process.env.UMI_APP_API_PREFIX || '',
+    'process.env.UMI_APP_LOCAL_NATIVE_MODE': process.env.UMI_APP_LOCAL_NATIVE_MODE || 'false',
     'process.env.UMI_APP_REQUEST_TIMEOUT': process.env.UMI_APP_REQUEST_TIMEOUT || '',
     'process.env.UMI_APP_FRONTEND_VERSION': process.env.UMI_APP_FRONTEND_VERSION || '',
     'process.env.UMI_APP_BUILD_TIME': process.env.UMI_APP_BUILD_TIME || '',
@@ -94,24 +97,24 @@ export default defineConfig({
   routes: backendRoutes,
   proxy: {
     '/api': {
-      target: process.env.UMI_DEV_API_TARGET || 'http://localhost:8080',
+      target: devApiTarget,
       changeOrigin: true,
     },
     '/ws': {
-      target: process.env.UMI_DEV_WS_TARGET || 'ws://localhost:8080',
+      target: devWebSocketTarget,
       changeOrigin: true,
       ws: true,
     },
     '/api-docs': {
-      target: 'http://localhost:8080',
+      target: devApiTarget,
       changeOrigin: true,
     },
     '/swagger-ui': {
-      target: 'http://localhost:8080',
+      target: devApiTarget,
       changeOrigin: true,
     },
     '/v3/api-docs': {
-      target: 'http://localhost:8080',
+      target: devApiTarget,
       changeOrigin: true,
     },
   },

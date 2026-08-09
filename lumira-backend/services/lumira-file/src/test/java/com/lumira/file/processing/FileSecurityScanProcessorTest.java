@@ -35,7 +35,8 @@ class FileSecurityScanProcessorTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
         mockLocation(jdbcTemplate, "LOCAL", source, "txt");
-        FileSecurityScanProcessor processor = processor(jdbcTemplate);
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        FileSecurityScanProcessor processor = processor(jdbcTemplate, ownerIdentityVerifier);
 
         FileSecurityScanProcessor.SecurityScanResult result = processor.scan(3001L, 2001L, "user-uuid-2001");
 
@@ -46,6 +47,7 @@ class FileSecurityScanProcessorTest {
         verifyArtifact(jdbcTemplate, "\"engine\":\"LUMIRA_INLINE_RULES\"");
         verifyArtifact(jdbcTemplate, "\"verdict\":\"CLEAN\"");
         verify(jdbcTemplate).update(contains("update file_object"), eq("CLEAN"), eq(2001L), eq("user-uuid-2001"), eq(3001L), eq(2001L), eq("user-uuid-2001"));
+        verify(ownerIdentityVerifier).requireEnabledOwner(2001L, "user-uuid-2001");
     }
 
     @Test
@@ -168,6 +170,13 @@ class FileSecurityScanProcessorTest {
     }
 
     private FileSecurityScanProcessor processor(JdbcTemplate jdbcTemplate) {
+        return processor(jdbcTemplate, mock(FileOwnerIdentityVerifier.class));
+    }
+
+    private FileSecurityScanProcessor processor(
+            JdbcTemplate jdbcTemplate,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
         FileSecurityScanProperties securityScanProperties = new FileSecurityScanProperties();
@@ -178,7 +187,8 @@ class FileSecurityScanProcessorTest {
                 jdbcTemplate,
                 uploadProperties,
                 new FileSecurityScanMetrics(new SimpleMeterRegistry()),
-                selector
+                selector,
+                ownerIdentityVerifier
         );
     }
 
@@ -235,7 +245,7 @@ class FileSecurityScanProcessorTest {
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
                 .contains("fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
         assertThat(payloadCaptor.getValue()).asString().contains(expectedPayloadSnippet);
     }
 
@@ -244,6 +254,6 @@ class FileSecurityScanProcessorTest {
         verify(jdbcTemplate).query(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
         assertThat(sqlCaptor.getValue())
                 .contains("fo.status in ('PENDING_SCAN', 'FAILED', 'ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
     }
 }

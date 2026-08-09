@@ -153,7 +153,7 @@ const repairedWorkers = repairDeploymentWorkerState(deploymentState, workerImage
 if (!existsSync(statePath) || repairedWorkers.changed) {
   writeFileSync(statePath, `${JSON.stringify(repairedWorkers.state, null, 2)}\n`, { mode: 0o600 });
 }
-writeFileSync(path.join(generatedDir, 'active-upstreams.conf'), renderActiveUpstreams(env.LUMIRA_ACTIVE_SLOT || 'blue', env), { mode: 0o644 });
+writeFileSync(path.join(generatedDir, 'active-upstreams.conf'), renderActiveUpstreams(env.LUMIRA_ACTIVE_SLOT || 'blue'), { mode: 0o644 });
 
 const containerRunning = (name) => output('docker', ['inspect', '-f', '{{.State.Running}}', name], { cwd: repoRoot, check: false }).trim() === 'true';
 const containerNetworks = (name) => JSON.parse(output('docker', ['inspect', '-f', '{{json .NetworkSettings.Networks}}', name], { cwd: repoRoot }));

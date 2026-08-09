@@ -1,6 +1,8 @@
 package com.lumira.file.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.file.mapper.FilePlatformEventOutboxMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -13,7 +15,6 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -139,8 +140,10 @@ class PlatformEventOutboxServiceTest {
         PlatformEventOutboxEntity row = outboxRow(3001L);
         row.setPayloadJson("{\"userUuid\":\"user-uuid-other\"}");
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(2001L))).thenReturn("user-uuid-2001");
-        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, jdbcTemplate);
+        SystemInternalApi systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
+        );
         Method trustCheck = PlatformEventOutboxService.class.getDeclaredMethod("isTrustedDispatchRow", PlatformEventOutboxEntity.class);
         trustCheck.setAccessible(true);
 
@@ -153,9 +156,11 @@ class PlatformEventOutboxServiceTest {
     void recordShouldPersistSerializedPayload() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(2001L))).thenReturn("user-uuid-2001");
+        SystemInternalApi systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
         when(mapper.insert(any(PlatformEventOutboxEntity.class))).thenReturn(1);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, jdbcTemplate);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
+        );
 
         service.record(
                 FilePlatformEventTypes.SOURCE_FILE,
@@ -217,8 +222,10 @@ class PlatformEventOutboxServiceTest {
     void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(2001L))).thenReturn("user-uuid-2001");
-        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, jdbcTemplate);
+        SystemInternalApi systemInternalApi = systemInternalApiWithUser(2001L, "user-uuid-2001");
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
+        );
 
         assertThrows(IllegalArgumentException.class, () -> service.record(
                 FilePlatformEventTypes.SOURCE_FILE,
@@ -235,7 +242,10 @@ class PlatformEventOutboxServiceTest {
     void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, jdbcTemplate);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
+        );
 
         assertThrows(IllegalArgumentException.class, () -> service.record(
                 FilePlatformEventTypes.SOURCE_FILE,
@@ -245,6 +255,7 @@ class PlatformEventOutboxServiceTest {
                 Map.of("aggregateId", 3001L, "userUuid", "user-uuid-2001")
         ));
 
+        verify(systemInternalApi).findTargetUserUuidById(2001L);
         verify(mapper, never()).insert(org.mockito.ArgumentMatchers.any(PlatformEventOutboxEntity.class));
     }
 
@@ -252,7 +263,10 @@ class PlatformEventOutboxServiceTest {
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
         FilePlatformEventOutboxMapper mapper = mock(FilePlatformEventOutboxMapper.class);
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper, jdbcTemplate);
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PlatformEventOutboxService service = new PlatformEventOutboxService(
+                new ObjectMapper(), mapper, jdbcTemplate, systemInternalApi
+        );
 
         assertThrows(IllegalArgumentException.class, () -> service.record(
                 FilePlatformEventTypes.SOURCE_FILE,
@@ -262,7 +276,7 @@ class PlatformEventOutboxServiceTest {
                 Map.of("aggregateId", 3001L, "userUuid", "user-uuid-2001")
         ));
 
-        verify(jdbcTemplate).queryForObject(contains("status = 'ENABLED'"), eq(String.class), eq(2001L));
+        verify(systemInternalApi).findTargetUserUuidById(2001L);
         verify(mapper, never()).insert(org.mockito.ArgumentMatchers.any(PlatformEventOutboxEntity.class));
     }
 
@@ -409,5 +423,15 @@ class PlatformEventOutboxServiceTest {
         row.setUpdatedAt(LocalDateTime.now().minusMinutes(1));
         row.setDeleted(0);
         return row;
+    }
+
+    private SystemInternalApi systemInternalApiWithUser(Long userId, String userUuid) {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findTargetUserUuidById(userId)).thenReturn(userUuid);
+        when(systemInternalApi.findUserIdentityById(userId)).thenReturn(new SystemUserSnapshotDTO(
+                userId, userUuid, "test-user", null, "ENABLED", null, null, null,
+                null, null, null, null, null, null, null, null
+        ));
+        return systemInternalApi;
     }
 }

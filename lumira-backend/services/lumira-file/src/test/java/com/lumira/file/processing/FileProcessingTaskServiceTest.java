@@ -72,7 +72,7 @@ class FileProcessingTaskServiceTest {
                     return mapSingleTask(mapper);
                 }
         );
-        FileProcessingTaskService service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        FileProcessingTaskService service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         List<FileProcessingTaskService.ProcessingTask> tasks = service.claimPendingTasks(FileProcessingTaskService.MAX_CLAIM_LIMIT);
 
@@ -92,26 +92,17 @@ class FileProcessingTaskServiceTest {
                 .contains("fo.uploaded_by is not null")
                 .contains("t.created_by = fo.uploaded_by")
                 .contains("t.created_by_uuid = fo.uploaded_by_uuid")
-                .contains("join sys_user u")
-                .contains("u.id = fo.uploaded_by")
-                .contains("u.uuid = fo.uploaded_by_uuid")
-                .contains("u.status = 'ENABLED'")
-                .contains("u.uuid is not null")
-                .contains("t.created_by_uuid = u.uuid")
                 .contains("deleted = 0")
-                .contains("order by t.priority desc, t.created_at asc, t.id asc");
+                .contains("order by t.priority desc, t.created_at asc, t.id asc")
+                .doesNotContain("sys_user");
         assertThat(querySql.getValue())
                 .contains("fo.uploaded_by as createdBy")
                 .contains("t.created_by_uuid as createdByUserUuid")
                 .contains("t.created_by = fo.uploaded_by")
                 .contains("t.created_by_uuid = fo.uploaded_by_uuid")
-                .contains("join sys_user u")
-                .contains("u.uuid = fo.uploaded_by_uuid")
-                .contains("u.status = 'ENABLED'")
-                .contains("u.uuid is not null")
-                .contains("t.created_by_uuid = u.uuid")
                 .contains("t.claim_token = ?")
-                .contains("from file_processing_task t");
+                .contains("from file_processing_task t")
+                .doesNotContain("sys_user");
     }
 
     @Test
@@ -212,7 +203,7 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileSecurityScanProcessor securityScanProcessor = mock(FileSecurityScanProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_SECURITY_SCAN, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -226,7 +217,7 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileThumbnailProcessor thumbnailProcessor = mock(FileThumbnailProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_THUMBNAIL, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), thumbnailProcessor, mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), thumbnailProcessor, mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -240,7 +231,7 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileOcrProcessor ocrProcessor = mock(FileOcrProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_OCR, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), ocrProcessor, mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), ocrProcessor, mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -283,7 +274,7 @@ class FileProcessingTaskServiceTest {
                 LocalDateTime.now(),
                 "claim-token"
         ));
-        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -297,7 +288,7 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileSecurityScanProcessor securityScanProcessor = mock(FileSecurityScanProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_SECURITY_SCAN, FileProcessingTaskService.STATUS_PENDING, 5);
-        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -328,7 +319,7 @@ class FileProcessingTaskServiceTest {
                 LocalDateTime.now(),
                 "claim-token"
         ));
-        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -338,11 +329,39 @@ class FileProcessingTaskServiceTest {
     }
 
     @Test
+    void processPendingTasks_shouldStopBeforeProcessorWhenOwnerVerifierRejectsIdentity() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        FileSecurityScanProcessor securityScanProcessor = mock(FileSecurityScanProcessor.class);
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_SECURITY_SCAN, FileProcessingTaskService.STATUS_PENDING, 0);
+        Mockito.doThrow(new IllegalStateException("owner is disabled"))
+                .when(ownerIdentityVerifier)
+                .requireEnabledOwner(2001L, "user-uuid-2001");
+        var service = new FileProcessingTaskService(
+                jdbcTemplate,
+                securityScanProcessor,
+                mock(FileThumbnailProcessor.class),
+                mock(FileOcrProcessor.class),
+                mock(FileTextExtractionProcessor.class),
+                mock(FileAiParseProcessor.class),
+                mock(FileProcessingMetrics.class),
+                ownerIdentityVerifier
+        );
+
+        int processed = service.processPendingTasks(10);
+
+        assertThat(processed).isZero();
+        verify(ownerIdentityVerifier).requireEnabledOwner(2001L, "user-uuid-2001");
+        verify(securityScanProcessor, never()).scan(any(), any(), any());
+        assertTaskFailureUpdate(jdbcTemplate, FileProcessingTaskService.STATUS_FAILED, FileProcessingTaskService.TASK_SECURITY_SCAN, 0);
+    }
+
+    @Test
     void processPendingTasks_shouldExtractTextAndMarkTaskSucceeded() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileTextExtractionProcessor textExtractionProcessor = mock(FileTextExtractionProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_TEXT_EXTRACT, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), textExtractionProcessor, mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), textExtractionProcessor, mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -356,7 +375,7 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileAiParseProcessor aiParseProcessor = mock(FileAiParseProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_AI_PARSE, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), aiParseProcessor, mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), aiParseProcessor, mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -370,7 +389,7 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         FileSecurityScanProcessor securityScanProcessor = mock(FileSecurityScanProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_SECURITY_SCAN, FileProcessingTaskService.STATUS_PENDING, 0, 0L);
-        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -449,7 +468,7 @@ class FileProcessingTaskServiceTest {
     }
 
     private FileProcessingTaskService service(JdbcTemplate jdbcTemplate) {
-        return new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        return new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class), mock(FileOwnerIdentityVerifier.class));
     }
 
     private List<FileProcessingTaskService.ProcessingTask> mapSingleTask(RowMapper<FileProcessingTaskService.ProcessingTask> mapper) throws Exception {

@@ -28,7 +28,7 @@ class PluginDomainEventPublisherTest {
 
         publisher.publish(event);
 
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(null),
                 eq("PLUGIN_ENABLED"),
                 anyString(),
@@ -50,7 +50,7 @@ class PluginDomainEventPublisherTest {
 
         publisher.publish(event);
 
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(1001L),
                 eq("PLUGIN_ENABLED"),
                 anyString(),

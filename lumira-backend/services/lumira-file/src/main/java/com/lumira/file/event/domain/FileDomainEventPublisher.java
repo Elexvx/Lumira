@@ -23,7 +23,7 @@ public class FileDomainEventPublisher implements DomainEventPublisher {
         if (event == null) {
             return;
         }
-        platformEventOutboxService.recordAfterCommit(
+        platformEventOutboxService.record(
                 FilePlatformEventTypes.SOURCE_FILE,
                 event.eventType(),
                 resolveUserId(event.attributes()),

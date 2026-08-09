@@ -30,6 +30,12 @@ public interface TeamInternalApi {
             @RequestParam("userUuid") String userUuid
     );
 
+    @GetExchange("/internal/team/users/{userId}/active-team-ids")
+    List<Long> listActiveTeamIdsForUser(
+            @PathVariable("userId") Long userId,
+            @RequestParam("userUuid") String userUuid
+    );
+
     @GetExchange("/internal/team/teams/{teamId}/members/{userId}/owner")
     boolean isTeamOwner(
             @PathVariable("teamId") Long teamId,

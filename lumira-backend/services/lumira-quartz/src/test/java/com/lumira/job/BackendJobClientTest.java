@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class BackendJobClientTest {
 
@@ -23,6 +24,15 @@ class BackendJobClientTest {
         assertThatThrownBy(client::relayOutbox)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Scoped internal job token is not configured");
+    }
+
+    @Test
+    void eventCatalogRebuildUsesScopedControlPlaneRouteAndRejectsUnknownSource() {
+        assertThat(BackendJobClient.eventCatalogRebuildPath(" competition "))
+                .isEqualTo("/internal/jobs/event-catalog/rebuild/COMPETITION");
+        assertThatThrownBy(() -> BackendJobClient.eventCatalogRebuildPath("PROJECT"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported event catalog source");
     }
 
     @Test

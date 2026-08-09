@@ -90,9 +90,13 @@ test('preflight preserves database migration fields after manifest normalization
   assert.equal(report.databaseTargetVersion, '202607140001');
 });
 
-test('upstream rendering points every monolith route at the active slot', () => {
-  const rendered = renderActiveUpstreams('green');
+test('upstream rendering pins every logical API route to the active control-plane slot', () => {
+  const rendered = renderActiveUpstreams('green', {
+    AUTH_SERVICE_UPSTREAM: 'auth-service:8080',
+    PAYMENT_SERVICE_UPSTREAM: 'payment-service:8080',
+  });
   assert.equal((rendered.match(/lumira-server-green:8080/g) || []).length, 10);
+  assert.doesNotMatch(rendered, /auth-service:8080|payment-service:8080/);
   assert.equal(inactiveSlot('green'), 'blue');
 });
 

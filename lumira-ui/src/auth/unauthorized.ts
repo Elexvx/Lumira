@@ -13,7 +13,11 @@ export const captureAuthRequestSnapshot = (skipAuth = false): AuthRequestSnapsho
   tokenGeneration: tokenManager.getTokenGeneration(),
 });
 
-export const buildUnauthorizedRuntimeState = (pathname = history.location.pathname): UnauthorizedRuntimeState => ({
+const currentPathname = () => history?.location?.pathname
+  || (typeof window !== 'undefined' ? window.location?.pathname : undefined)
+  || '/';
+
+export const buildUnauthorizedRuntimeState = (pathname = currentPathname()): UnauthorizedRuntimeState => ({
   pathname,
   currentAccessToken: tokenManager.getAccessToken(),
   currentAuthSessionEpoch: getAuthSessionEpoch(),

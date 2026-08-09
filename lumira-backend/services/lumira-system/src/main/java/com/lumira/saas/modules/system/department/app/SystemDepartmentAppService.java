@@ -10,9 +10,9 @@ import com.lumira.saas.infrastructure.security.service.SessionAuthenticationServ
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
+import com.lumira.saas.modules.system.department.infrastructure.SystemDepartmentPersistenceAdapters;
+import com.lumira.saas.modules.system.department.repository.SystemDepartmentRepository;
 import com.lumira.saas.modules.system.department.vo.DepartmentVO;
-import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
-import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -31,7 +31,7 @@ public class SystemDepartmentAppService {
 
     private static final String STATUS_ENABLED = "ENABLED";
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final SystemDepartmentRepository departmentRepository;
     private final PermissionSnapshotService permissionSnapshotService;
     private final OperationAuditService operationAuditService;
     private final SystemInternalApi systemInternalApi;
@@ -39,12 +39,12 @@ public class SystemDepartmentAppService {
     private final boolean enforceTrustedUserResolution;
 
     public SystemDepartmentAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemDepartmentRepository departmentRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService
     ) {
         this(
-                jdbcTemplate,
+                departmentRepository,
                 permissionSnapshotService,
                 operationAuditService,
                 null,
@@ -55,14 +55,14 @@ public class SystemDepartmentAppService {
 
     @Autowired
     public SystemDepartmentAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemDepartmentRepository departmentRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService
     ) {
         this(
-                jdbcTemplate,
+                departmentRepository,
                 permissionSnapshotService,
                 operationAuditService,
                 systemInternalApi,
@@ -72,14 +72,14 @@ public class SystemDepartmentAppService {
     }
 
     private SystemDepartmentAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemDepartmentRepository departmentRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             SystemInternalApi systemInternalApi,
             SessionAuthenticationService sessionAuthenticationService,
             boolean enforceTrustedUserResolution
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.departmentRepository = departmentRepository;
         this.permissionSnapshotService = permissionSnapshotService;
         this.operationAuditService = operationAuditService;
         this.systemInternalApi = systemInternalApi;
@@ -88,46 +88,50 @@ public class SystemDepartmentAppService {
     }
 
     public SystemDepartmentAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            SystemDepartmentRepository departmentRepository,
             PermissionSnapshotService permissionSnapshotService,
             OperationAuditService operationAuditService,
             SessionAuthenticationService sessionAuthenticationService
     ) {
-        this(jdbcTemplate, permissionSnapshotService, operationAuditService, null, sessionAuthenticationService, false);
+        this(departmentRepository, permissionSnapshotService, operationAuditService, null, sessionAuthenticationService, false);
+    }
+
+    /**
+     * Compatibility constructor for legacy tests that still pass the low-level
+     * query helper. Production wiring always injects {@link SystemDepartmentRepository}.
+     */
+    public SystemDepartmentAppService(
+            Object persistence,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService
+    ) {
+        this(SystemDepartmentPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService);
+    }
+
+    public SystemDepartmentAppService(
+            Object persistence,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            SystemInternalApi systemInternalApi,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(SystemDepartmentPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService,
+                systemInternalApi, sessionAuthenticationService);
+    }
+
+    public SystemDepartmentAppService(
+            Object persistence,
+            PermissionSnapshotService permissionSnapshotService,
+            OperationAuditService operationAuditService,
+            SessionAuthenticationService sessionAuthenticationService
+    ) {
+        this(SystemDepartmentPersistenceAdapters.from(persistence), permissionSnapshotService, operationAuditService,
+                sessionAuthenticationService);
     }
 
     public List<DepartmentVO> listDepartments(CurrentUser currentUser) {
         requirePermission(currentUser, "system:department:view");
-        List<DepartmentVO> rows = jdbcTemplate.query(
-                """
-                        select d.id,
-                               d.parent_id as parentId,
-                               d.dept_code as deptCode,
-                               d.dept_name as deptName,
-                               d.sort_no as sortNo,
-                               d.status,
-                               coalesce(uc.user_count, 0) as userCount,
-                               d.created_at as createdAt,
-                               d.updated_at as updatedAt
-                        from sys_department d
-                        left join (
-                            select ud.dept_id, count(distinct ud.user_id) as user_count
-                            from sys_user_department ud
-                            join sys_user u
-                              on u.id = ud.user_id
-                             and u.uuid = ud.user_uuid
-                             and u.deleted = 0
-                            where ud.user_uuid is not null
-                              and trim(ud.user_uuid) <> ''
-                              and ud.deleted = 0
-                            group by ud.dept_id
-                        ) uc on uc.dept_id = d.id
-                        where d.deleted = 0
-                        order by d.sort_no asc, d.id asc
-                        """,
-                new BeanPropertyRowMapper<>(DepartmentVO.class)
-        );
-        return buildTree(rows);
+        return buildTree(departmentRepository.findAllActive());
     }
 
     public DepartmentVO getDepartment(CurrentUser currentUser, Long id) {
@@ -146,31 +150,23 @@ public class SystemDepartmentAppService {
         requireRequest(request, "Department request is required");
         validateParent(null, request.getParentId());
         validateDeptCodeUnique(null, request.getDeptCode());
+        SystemDepartmentRepository.DepartmentCreateResult createResult;
         try {
-            int inserted = jdbcTemplate.update(
-                    """
-                            insert into sys_department (
-                                parent_id, dept_code, dept_name, sort_no, status,
-                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
+            createResult = departmentRepository.create(new SystemDepartmentRepository.DepartmentCreate(
                     normalizeParentId(request.getParentId()),
                     request.getDeptCode(),
                     request.getDeptName(),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
+                    request.getSortNo(),
                     normalizeStatus(request.getStatus()),
-                    currentUser.getUserId(),
-                    currentUser.getUserUuid(),
-                    currentUser.getUserId(),
-                    currentUser.getUserUuid()
-            );
-            if (inserted != 1) {
+                    new SystemDepartmentRepository.Actor(currentUser.getUserId(), currentUser.getUserUuid())
+            ));
+            if (createResult.writeCount() != 1 || createResult.departmentId() == null) {
                 throw visibleBizException(ErrorCode.BIZ_ERROR, "Department changed, please retry");
             }
         } catch (DuplicateKeyException exception) {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
-        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        Long id = createResult.departmentId();
         rebuildClosureForSubtree(id);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
@@ -187,34 +183,17 @@ public class SystemDepartmentAppService {
         validateDeptCodeUnique(id, request.getDeptCode());
         int updated;
         try {
-            updated = jdbcTemplate.update(
-                    """
-                            update sys_department
-                            set parent_id = ?,
-                                dept_code = ?,
-                                dept_name = ?,
-                                sort_no = ?,
-                                status = ?,
-                                updated_by = ?,
-                                updated_by_uuid = ?,
-                                updated_at = ?
-                            where id = ?
-                              and dept_code = ?
-                              and status = ?
-                              and deleted = 0
-                            """,
+            updated = departmentRepository.update(new SystemDepartmentRepository.DepartmentUpdate(
+                    id,
+                    existing.getDeptCode(),
+                    existing.getStatus(),
                     normalizeParentId(request.getParentId()),
                     request.getDeptCode(),
                     request.getDeptName(),
-                    request.getSortNo() == null ? 0 : request.getSortNo(),
+                    request.getSortNo(),
                     normalizeStatus(request.getStatus()),
-                    currentUser.getUserId(),
-                    currentUser.getUserUuid(),
-                    LocalDateTime.now(),
-                    id,
-                    existing.getDeptCode(),
-                    existing.getStatus()
-            );
+                    new SystemDepartmentRepository.Actor(currentUser.getUserId(), currentUser.getUserUuid())
+            ));
         } catch (DuplicateKeyException exception) {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
@@ -232,93 +211,30 @@ public class SystemDepartmentAppService {
         requirePermission(currentUser, "system:department:delete");
         requirePositiveId(id, "Department id is required");
         DepartmentVO existing = requireDepartment(id);
-        boolean hasChildDepartment = jdbcTemplate.exists(
-                "select 1 from sys_department where parent_id = ? and deleted = 0 limit 1",
-                id
-        );
+        boolean hasChildDepartment = departmentRepository.hasActiveChildren(id);
         if (hasChildDepartment) {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "Department has child departments and cannot be deleted");
         }
-        boolean hasAssignedUsers = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_user_department ud
-                        join sys_user u
-                          on u.id = ud.user_id
-                         and u.uuid = ud.user_uuid
-                         and u.deleted = 0
-                        where ud.dept_id = ?
-                          and ud.user_uuid is not null
-                          and trim(ud.user_uuid) <> ''
-                          and ud.deleted = 0
-                        limit 1
-                        """,
-                id
-        );
+        boolean hasAssignedUsers = departmentRepository.hasAssignedActiveUsers(id);
         if (hasAssignedUsers) {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "部门下仍有用户，不能删除");
         }
-        int updated = jdbcTemplate.update(
-                """
-                        update sys_department
-                        set deleted = 1, updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                        where id = ? and dept_code = ? and status = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                currentUser.getUserUuid(),
-                LocalDateTime.now(),
-                id,
-                existing.getDeptCode(),
-                existing.getStatus()
+        int updated = departmentRepository.softDelete(
+                new SystemDepartmentRepository.DepartmentVersion(id, existing.getDeptCode(), existing.getStatus()),
+                new SystemDepartmentRepository.Actor(currentUser.getUserId(), currentUser.getUserUuid()),
+                LocalDateTime.now()
         );
         if (updated == 0) {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "Department changed, please retry");
         }
-        jdbcTemplate.update(
-                """
-                        update sys_department_closure
-                        set deleted = 1
-                        where descendant_id = ?
-                        """,
-                id
-        );
+        departmentRepository.retireClosureForDescendant(id);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "department", "delete", "DELETE", "SUCCESS", "删除部门: " + existing.getDeptName());
         return true;
     }
 
     private DepartmentVO queryDepartment(Long id) {
-        List<DepartmentVO> list = jdbcTemplate.query(
-                """
-                        select d.id,
-                               d.parent_id as parentId,
-                               d.dept_code as deptCode,
-                               d.dept_name as deptName,
-                               d.sort_no as sortNo,
-                               d.status,
-                               coalesce(uc.user_count, 0) as userCount,
-                               d.created_at as createdAt,
-                               d.updated_at as updatedAt
-                        from sys_department d
-                        left join (
-                            select ud.dept_id, count(distinct ud.user_id) as user_count
-                            from sys_user_department ud
-                            join sys_user u
-                              on u.id = ud.user_id
-                             and u.uuid = ud.user_uuid
-                             and u.deleted = 0
-                            where ud.user_uuid is not null
-                              and trim(ud.user_uuid) <> ''
-                              and ud.deleted = 0
-                            group by ud.dept_id
-                        ) uc on uc.dept_id = d.id
-                        where d.id = ?
-                          and d.deleted = 0
-                        """,
-                new BeanPropertyRowMapper<>(DepartmentVO.class),
-                id
-        );
-        return list.isEmpty() ? null : list.get(0);
+        return departmentRepository.findActiveById(id);
     }
 
     private void validateParent(Long currentId, Long parentId) {
@@ -348,33 +264,11 @@ public class SystemDepartmentAppService {
         if (rootDepartmentId == null) {
             return;
         }
-        List<Long> subtreeIds = jdbcTemplate.queryForList(
-                """
-                        with recursive dept_tree as (
-                            select id
-                            from sys_department
-                            where id = ? and deleted = 0
-                            union all
-                            select child.id
-                            from sys_department child
-                            join dept_tree parent on parent.id = child.parent_id
-                            where child.deleted = 0
-                        )
-                        select id from dept_tree
-                        """,
-                Long.class,
-                rootDepartmentId
-        );
+        List<Long> subtreeIds = departmentRepository.findActiveSubtreeIds(rootDepartmentId);
         if (subtreeIds == null || subtreeIds.isEmpty()) {
             return;
         }
-        String placeholders = "?,".repeat(subtreeIds.size()).replaceFirst(",$", "");
-        List<Object> deleteArgs = new ArrayList<>();
-        deleteArgs.addAll(subtreeIds);
-        jdbcTemplate.update(
-                "update sys_department_closure set deleted = 1 where descendant_id in (" + placeholders + ")",
-                deleteArgs.toArray()
-        );
+        departmentRepository.retireClosureForDescendants(subtreeIds);
         for (Long descendantId : subtreeIds) {
             insertClosureForDepartment(descendantId);
         }
@@ -386,68 +280,19 @@ public class SystemDepartmentAppService {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
-                """
-                        insert into sys_department_closure (ancestor_id, descendant_id, depth, deleted, created_at)
-                        values (?, ?, 0, 0, ?)
-                        on duplicate key update
-                            deleted = case
-                                when exists (select 1 from sys_department a where a.id = values(ancestor_id) and a.deleted = 0)
-                                 and exists (select 1 from sys_department d where d.id = values(descendant_id) and d.deleted = 0)
-                                then 0 else deleted end,
-                            depth = case
-                                when exists (select 1 from sys_department a where a.id = values(ancestor_id) and a.deleted = 0)
-                                 and exists (select 1 from sys_department d where d.id = values(descendant_id) and d.deleted = 0)
-                                then values(depth) else depth end
-                        """,
-                departmentId,
-                departmentId,
-                now
-        );
+        departmentRepository.ensureSelfClosure(departmentId, now);
         Long parentId = normalizeParentId(department.getParentId());
         if (parentId == null) {
             return;
         }
-        jdbcTemplate.update(
-                """
-                        insert into sys_department_closure (ancestor_id, descendant_id, depth, deleted, created_at)
-                        select closure.ancestor_id, ?, closure.depth + 1, 0, ?
-                        from sys_department_closure closure
-                        join sys_department ancestor on ancestor.id = closure.ancestor_id and ancestor.deleted = 0
-                        where closure.descendant_id = ?
-                          and closure.deleted = 0
-                        on duplicate key update
-                            deleted = case
-                                when exists (select 1 from sys_department a where a.id = values(ancestor_id) and a.deleted = 0)
-                                 and exists (select 1 from sys_department d where d.id = values(descendant_id) and d.deleted = 0)
-                                then 0 else deleted end,
-                            depth = case
-                                when exists (select 1 from sys_department a where a.id = values(ancestor_id) and a.deleted = 0)
-                                 and exists (select 1 from sys_department d where d.id = values(descendant_id) and d.deleted = 0)
-                                then values(depth) else depth end
-                        """,
-                departmentId,
-                now,
-                parentId
-        );
+        departmentRepository.ensureInheritedClosure(departmentId, parentId, now);
     }
 
     private void validateDeptCodeUnique(Long currentId, String deptCode) {
         if (!StringUtils.hasText(deptCode)) {
             return;
         }
-        boolean exists = jdbcTemplate.exists(
-                """
-                        select 1
-                        from sys_department
-                        where dept_code = ?
-                          and (? is null or id <> ?)
-                        limit 1
-                        """,
-                deptCode.trim(),
-                currentId,
-                currentId
-        );
+        boolean exists = departmentRepository.existsActiveDeptCode(deptCode.trim(), currentId);
         if (exists) {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }

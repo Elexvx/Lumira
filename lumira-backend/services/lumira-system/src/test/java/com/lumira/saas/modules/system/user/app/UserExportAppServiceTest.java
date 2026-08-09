@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.system.user.app;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.export.ExportDTO;
+import com.lumira.api.export.ExportTaskPort;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
@@ -9,10 +11,8 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
-import com.lumira.saas.modules.system.export.ExcelExportService;
-import com.lumira.saas.modules.system.export.ExportDTO;
-import com.lumira.saas.modules.system.export.ExportTaskEntity;
-import com.lumira.saas.modules.system.export.ExportTaskService;
+import com.lumira.saas.testfixture.ExcelExportService;
+import com.lumira.saas.testfixture.ExportTaskService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -296,8 +296,7 @@ class UserExportAppServiceTest {
         when(userManagementAppService.listUsersFromTrustedSnapshot(
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(countPage);
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -347,8 +346,7 @@ class UserExportAppServiceTest {
         when(userManagementAppService.listUsersFromTrustedSnapshot(
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(countPage);
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
 
@@ -411,8 +409,7 @@ class UserExportAppServiceTest {
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(page);
         when(excelExportService.export(anyString(), anyList(), anyList())).thenReturn(new byte[]{1});
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         CurrentUser currentUser = trustedUser(Set.of("system:user:export"));
@@ -456,8 +453,7 @@ class UserExportAppServiceTest {
         when(userManagementAppService.listUsersFromTrustedSnapshot(
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(page);
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(false);
@@ -576,8 +572,7 @@ class UserExportAppServiceTest {
         when(userManagementAppService.listUsersFromTrustedSnapshot(
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(countPage);
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         when(systemInternalApi.findUserIdentityById(1001L))
@@ -615,8 +610,7 @@ class UserExportAppServiceTest {
         when(userManagementAppService.listUsersFromTrustedSnapshot(
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(page);
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
@@ -672,8 +666,7 @@ class UserExportAppServiceTest {
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(page);
         when(excelExportService.export(anyString(), anyList(), anyList())).thenReturn(new byte[]{1});
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         CurrentUser currentUser = trustedUser(Set.of("system:user:export"));
@@ -773,8 +766,7 @@ class UserExportAppServiceTest {
                 any(CurrentUser.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), anyLong(), anyLong()
         )).thenReturn(countPage, dataPage);
         when(excelExportService.export(anyString(), anyList(), anyList())).thenReturn(new byte[]{1});
-        ExportTaskEntity task = new ExportTaskEntity();
-        task.setId(9001L);
+        ExportTaskPort.ExportTask task = new ExportTaskPort.ExportTask(9001L);
         when(exportTaskService.createTask(any(CurrentUser.class), eq("system:user"), any(), anyList(), eq(5001L)))
                 .thenReturn(task);
         when(systemInternalApi.findUserIdentityById(1001L))
@@ -782,7 +774,7 @@ class UserExportAppServiceTest {
         when(permissionSnapshotService.isTrustedActiveUser(1001L, "user-uuid-1001")).thenReturn(true);
         when(permissionSnapshotService.loadSnapshot(1001L, "user-uuid-1001"))
                 .thenReturn(permissionSnapshot(Set.of("system:user:export")));
-        when(exportTaskService.uploadExportFile(any(CurrentUser.class), any(byte[].class), anyString(), anyString(), anyString(), anyString()))
+        when(exportTaskService.uploadExportFileFromTrustedSnapshot(any(CurrentUser.class), any(byte[].class), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(new FileObjectDTO(
                         501L,
                         1001L,
@@ -826,7 +818,7 @@ class UserExportAppServiceTest {
         executorService.runSubmitted();
 
         verify(exportTaskService).markRunningFromTrustedSnapshot(any(CurrentUser.class), eq(9001L));
-        verify(exportTaskService).uploadExportFile(any(CurrentUser.class), any(byte[].class), anyString(), anyString(), anyString(), anyString());
+        verify(exportTaskService).uploadExportFileFromTrustedSnapshot(any(CurrentUser.class), any(byte[].class), anyString(), anyString(), anyString(), anyString());
         verify(exportTaskService).markSuccessFromTrustedSnapshot(any(CurrentUser.class), eq(9001L), any(), anyString());
         verify(exportTaskService, never()).markFailedFromTrustedSnapshot(any(CurrentUser.class), eq(9001L), any(Exception.class));
         verify(sessionAuthenticationService, org.mockito.Mockito.times(2)).authenticateSessionTicket(

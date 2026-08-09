@@ -51,7 +51,7 @@ class SystemManagementAppServiceSummaryTest {
     @Test
     void defaultAdminProtectionShouldBindToFixedAdminUserId() throws Exception {
         String source = java.nio.file.Files.readString(
-                java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/system/app/SystemManagementAppService.java")
+                java.nio.file.Path.of("src/main/java/com/lumira/saas/modules/system/user/app/SystemUserManagementAppService.java")
         );
 
         assertThat(source).contains("return DEFAULT_ADMIN_USER_ID.equals(userId);");

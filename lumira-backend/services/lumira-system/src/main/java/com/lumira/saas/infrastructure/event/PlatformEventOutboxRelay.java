@@ -1,10 +1,10 @@
 package com.lumira.saas.infrastructure.event;
 
-import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnLumiraAsyncEnabled
+@ConditionalOnLumiraControlPlaneEnabled
 public class PlatformEventOutboxRelay {
 
     private final PlatformEventOutboxService platformEventOutboxService;

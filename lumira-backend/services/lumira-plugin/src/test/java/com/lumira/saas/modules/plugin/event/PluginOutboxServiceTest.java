@@ -15,6 +15,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -30,7 +32,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectInvalidUserIdBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(-1L, "PLUGIN_INSTALLED", "plugin:1", List.of())
@@ -42,7 +44,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectBlankEventTypeBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, " ", "plugin:1", Map.of("userUuid", "user-uuid-9"))
@@ -54,7 +56,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectOversizedEventKeyBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "k".repeat(129), Map.of("userUuid", "user-uuid-9"))
@@ -66,7 +68,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectUntrustedEventKeyBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "../plugin:1", Map.of("userUuid", "user-uuid-9"))
@@ -78,7 +80,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectOversizedPayloadBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "plugin:1", Map.of("body", "x".repeat(256 * 1024)))
@@ -91,7 +93,7 @@ class PluginOutboxServiceTest {
     void recordShouldNotInventAuditUserForAnonymousPluginEvent() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         service.record(null, "PLUGIN_INSTALLED", "plugin:1", List.of());
 
@@ -114,7 +116,7 @@ class PluginOutboxServiceTest {
     void recordShouldRejectWhenInsertMisses() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalStateException.class, () ->
                 service.record(null, "PLUGIN_INSTALLED", "plugin:1", List.of())
@@ -124,7 +126,7 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectMissingUserUuidWhenUserIdIsPresent() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "plugin:1", List.of())
@@ -136,38 +138,42 @@ class PluginOutboxServiceTest {
     @Test
     void recordShouldRejectUserUuidMismatchWhenDatabaseCanResolveUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        SystemInternalApi systemInternalApi = trustedSystemApi();
+        PluginOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "plugin:1", Map.of("userUuid", "user-uuid-other"))
         );
 
+        verify(systemInternalApi).findTargetUserUuidById(9L);
         verify(jdbcTemplate, never()).update(anyString(), org.mockito.ArgumentMatchers.<Object[]>any());
     }
 
     @Test
     void recordShouldRejectUserUuidWhenDatabaseCannotVerifyUser() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PluginOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "plugin:1", Map.of("userUuid", "user-uuid-9"))
         );
 
+        verify(systemInternalApi).findTargetUserUuidById(9L);
         verify(jdbcTemplate, never()).update(anyString(), org.mockito.ArgumentMatchers.<Object[]>any());
     }
 
     @Test
     void recordShouldRejectDisabledUserEvenWhenUserUuidMatches() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        PluginOutboxService service = service(jdbcTemplate, systemInternalApi);
 
         assertThrows(IllegalArgumentException.class, () ->
                 service.record(9L, "PLUGIN_INSTALLED", "plugin:1", Map.of("userUuid", "user-uuid-9"))
         );
 
-        verify(jdbcTemplate).queryForObject(contains("status = 'ENABLED'"), eq(String.class), eq(9L));
+        verify(systemInternalApi).findTargetUserUuidById(9L);
         verify(jdbcTemplate, never()).update(anyString(), org.mockito.ArgumentMatchers.<Object[]>any());
     }
 
@@ -182,10 +188,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -209,10 +214,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1, 0, 1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -244,7 +248,7 @@ class PluginOutboxServiceTest {
     void dispatchPendingShouldRejectInvalidLimitBeforeClaiming() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThrows(IllegalArgumentException.class, () -> service.dispatchPending(dispatcher, 0));
         assertThrows(IllegalArgumentException.class, () -> service.dispatchPending(dispatcher, 201));
@@ -264,10 +268,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = failedDispatcher();
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -307,7 +310,7 @@ class PluginOutboxServiceTest {
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -348,7 +351,7 @@ class PluginOutboxServiceTest {
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -387,10 +390,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -429,10 +431,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 anyString()
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 50);
 
@@ -470,10 +471,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 eq(12L)
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         boolean replayed = service.replay(12L, dispatcher);
 
@@ -515,10 +515,9 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 eq(12L)
         );
-        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(9L))).thenReturn("user-uuid-9");
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         boolean replayed = service.replay(12L, dispatcher);
 
@@ -530,7 +529,7 @@ class PluginOutboxServiceTest {
     void replayShouldRejectInvalidIdBeforeDatabaseAccess() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThat(service.replay(0L, dispatcher)).isFalse();
 
@@ -548,7 +547,7 @@ class PluginOutboxServiceTest {
                         "dead_letter_count", 1L,
                         "dispatchable_backlog", 4L
                 )));
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         assertThat(service.pendingBacklog()).isEqualTo(3L);
         assertThat(service.failedBacklog()).isEqualTo(2L);
@@ -568,7 +567,7 @@ class PluginOutboxServiceTest {
                         "dead_letter_count", 1L,
                         "dispatchable_backlog", 4L
                 )));
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         PluginOutboxService.OutboxMetricsSnapshot snapshot = service.snapshot();
 
@@ -588,7 +587,7 @@ class PluginOutboxServiceTest {
                         "dead_letter_count", 1L,
                         "dispatchable_backlog", 4L
                 )));
-        PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
+        PluginOutboxService service = service(jdbcTemplate);
 
         var first = service.snapshot();
         var second = service.snapshot();
@@ -618,5 +617,37 @@ class PluginOutboxServiceTest {
         return row -> {
             throw new RuntimeException("boom");
         };
+    }
+
+    private PluginOutboxService service(JdbcTemplate jdbcTemplate) {
+        return service(jdbcTemplate, trustedSystemApi());
+    }
+
+    private PluginOutboxService service(JdbcTemplate jdbcTemplate, SystemInternalApi systemInternalApi) {
+        return new PluginOutboxService(jdbcTemplate, new ObjectMapper(), systemInternalApi);
+    }
+
+    private SystemInternalApi trustedSystemApi() {
+        SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
+        when(systemInternalApi.findTargetUserUuidById(9L)).thenReturn("user-uuid-9");
+        when(systemInternalApi.findUserIdentityById(9L)).thenReturn(new SystemUserSnapshotDTO(
+                9L,
+                "user-uuid-9",
+                "plugin-test-user",
+                null,
+                "ENABLED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        return systemInternalApi;
     }
 }

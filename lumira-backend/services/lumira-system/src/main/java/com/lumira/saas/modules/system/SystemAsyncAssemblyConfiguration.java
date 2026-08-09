@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system;
 
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.saas.infrastructure.adapter.SystemEventConsumptionPort;
 import com.lumira.saas.infrastructure.config.JacksonCompatibilityConfig;
 import com.lumira.saas.infrastructure.event.LoggingPlatformEventDispatcher;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxMapper;
@@ -18,7 +19,6 @@ import com.lumira.saas.infrastructure.redis.RedisConfig;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupProperties;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunner;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
-import com.lumira.saas.modules.competition.event.CompetitionPaymentEventHandler;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
 import com.lumira.saas.modules.audit.infrastructure.MapperOperationAuditRepository;
@@ -58,7 +58,7 @@ import org.springframework.context.annotation.Import;
         RedisStreamPlatformEventDispatcher.class,
         SystemDomainEventPublisher.class,
         EventConsumptionGuard.class,
-        CompetitionPaymentEventHandler.class,
+        SystemEventConsumptionPort.class,
         com.lumira.saas.infrastructure.job.InternalJobController.class
 })
 public class SystemAsyncAssemblyConfiguration {

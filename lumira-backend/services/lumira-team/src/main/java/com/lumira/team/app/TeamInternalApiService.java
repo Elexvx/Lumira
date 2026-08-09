@@ -72,6 +72,13 @@ public class TeamInternalApiService implements TeamInternalApi {
     }
 
     @Override
+    public List<Long> listActiveTeamIdsForUser(Long userId, String userUuid) {
+        requireInternalServicePrincipal();
+        requireTrustedUser(userId, userUuid, "User");
+        return memberRepository.listActiveTeamIdsForUser(userId, userUuid);
+    }
+
+    @Override
     public boolean isTeamOwner(Long teamId, Long userId, String userUuid) {
         requireInternalServicePrincipal();
         requirePositiveId(teamId, "Team id is required");

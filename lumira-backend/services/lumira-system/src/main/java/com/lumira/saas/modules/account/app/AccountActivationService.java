@@ -3,6 +3,7 @@ package com.lumira.saas.modules.account.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
+import com.lumira.api.expert.ExpertAccountActivationPort;
 import com.lumira.saas.modules.account.repository.AccountActivationRepository;
 import com.lumira.saas.modules.account.repository.AccountActivationRepository.TokenRecord;
 import com.lumira.saas.modules.account.vo.AccountActivationVO;
@@ -10,6 +11,7 @@ import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.system.support.SmtpMailService;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -25,6 +27,7 @@ import java.util.regex.Pattern;
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
 public class AccountActivationService {
+    private static final String INVALID_TOKEN_MESSAGE = "激活链接无效、已过期或已使用";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final long TOKEN_EXPIRE_HOURS = 72L;
     private static final int TOKEN_LENGTH = 43;
@@ -35,7 +38,26 @@ public class AccountActivationService {
     private final PasswordPolicyService passwordPolicyService;
     private final IamUserService iamUserService;
     private final SmtpMailService smtpMailService;
+    private final ExpertAccountActivationPort expertAccountActivationPort;
 
+    @Autowired
+    public AccountActivationService(
+            AccountActivationRepository repository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyService passwordPolicyService,
+            IamUserService iamUserService,
+            SmtpMailService smtpMailService,
+            ExpertAccountActivationPort expertAccountActivationPort
+    ) {
+        this.repository = repository;
+        this.passwordEncoder = passwordEncoder;
+        this.passwordPolicyService = passwordPolicyService;
+        this.iamUserService = iamUserService;
+        this.smtpMailService = smtpMailService;
+        this.expertAccountActivationPort = expertAccountActivationPort;
+    }
+
+    /** Compatibility constructor for System-only tests without the Expert module. */
     public AccountActivationService(
             AccountActivationRepository repository,
             PasswordEncoder passwordEncoder,
@@ -43,11 +65,7 @@ public class AccountActivationService {
             IamUserService iamUserService,
             SmtpMailService smtpMailService
     ) {
-        this.repository = repository;
-        this.passwordEncoder = passwordEncoder;
-        this.passwordPolicyService = passwordPolicyService;
-        this.iamUserService = iamUserService;
-        this.smtpMailService = smtpMailService;
+        this(repository, passwordEncoder, passwordPolicyService, iamUserService, smtpMailService, null);
     }
 
     @Transactional
@@ -92,13 +110,13 @@ public class AccountActivationService {
         String normalizedToken = normalizePublicToken(token);
         if (normalizedToken == null) {
             info.setValid(false);
-            info.setReason("Token is invalid, expired, or already used");
+            info.setReason(INVALID_TOKEN_MESSAGE);
             return info;
         }
         TokenRecord row = findValidToken(normalizedToken);
         if (row == null) {
             info.setValid(false);
-            info.setReason("Token is invalid, expired, or already used");
+            info.setReason(INVALID_TOKEN_MESSAGE);
             return info;
         }
         info.setValid(true);
@@ -111,18 +129,18 @@ public class AccountActivationService {
     public boolean complete(String token, String password) {
         String normalizedToken = normalizePublicToken(token);
         if (normalizedToken == null) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Token is invalid, expired, or already used");
+            throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
         passwordPolicyService.validatePassword(password);
         TokenRecord row = findValidToken(normalizedToken);
         if (row == null) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Token is invalid, expired, or already used");
+            throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
         String passwordHash = passwordEncoder.encode(password);
         LocalDateTime now = LocalDateTime.now();
         int consumed = repository.consumeToken(row, now);
         if (consumed == 0) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Token is invalid, expired, or already used");
+            throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
         int userUpdated = repository.activateUser(row, passwordHash, now);
         if (userUpdated <= 0) {
@@ -130,7 +148,14 @@ public class AccountActivationService {
         }
         iamUserService.upsertPasswordCredential(row.userId(), row.userUuid(), passwordHash);
         if (row.expertId() != null) {
-            int expertUpdated = repository.activateExpert(row, now);
+            if (expertAccountActivationPort == null) {
+                throw biz(ErrorCode.DEPENDENCY_UNAVAILABLE, "Expert account activation handler is unavailable");
+            }
+            int expertUpdated = expertAccountActivationPort.activate(
+                    new ExpertAccountActivationPort.ExpertAccountActivation(
+                            row.expertId(), row.userId(), row.userUuid(), now
+                    )
+            );
             if (expertUpdated <= 0) {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Activation expert changed, please retry");
             }

@@ -1,24 +1,5 @@
 package com.lumira.ai.controller;
 
-import com.lumira.api.client.SystemInternalApi;
-import com.lumira.api.system.SystemUserSnapshotDTO;
-import com.lumira.ai.app.AiCommandService;
-import com.lumira.ai.app.AiReadQueryService;
-import com.lumira.ai.vo.AiEmployeeVO;
-import com.lumira.ai.vo.PageResponse;
-import com.lumira.common.enums.ErrorCode;
-import com.lumira.common.exception.BizException;
-import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PermissionGuard;
-import com.lumira.common.security.SecurityContextFacade;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Set;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,34 +9,47 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.lumira.ai.compat.AiV2CompatibilityFacade;
+import com.lumira.ai.vo.AiEmployeeVO;
+import com.lumira.ai.vo.PageResponse;
+import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.system.SystemUserSnapshotDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.SecurityContextFacade;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class AiV2ControllerTest {
 
     @Test
-    void employeesReturnsStandaloneBusinessReadModel() throws Exception {
-        AiReadQueryService aiReadQueryService = mock(AiReadQueryService.class);
-        AiCommandService aiCommandService = mock(AiCommandService.class);
-        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+    void employeesReturnsCanonicalCompatibilityReadModelWithHistoricalJsonShape() throws Exception {
+        AiV2CompatibilityFacade facade = mock(AiV2CompatibilityFacade.class);
+        SecurityContextFacade securityContextFacade = trustedSecurityContext(Set.of("ai:view"));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiV2Controller(
-                aiReadQueryService,
-                aiCommandService,
-                securityContextFacade,
-                permissionGuard
+                facade, securityContextFacade, new PermissionGuard()
         )).build();
-        CurrentUser user = new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of("ai:view"));
-        user.setUserUuid("user-uuid-7");
-        user.setPermissionsVersion("permissions-1");
-        when(securityContextFacade.getCurrentUser()).thenReturn(user);
         PageResponse<AiEmployeeVO> page = new PageResponse<>();
         page.setPageNo(1);
         page.setPageSize(10);
         page.setTotal(1);
         page.setHasMore(false);
         page.setRecords(List.of(employee()));
-        when(aiReadQueryService.listEmployees(any(CurrentUser.class), eq(1L), eq(10L))).thenReturn(page);
+        when(facade.listEmployees(any(CurrentUser.class), eq(1L), eq(10L))).thenReturn(page);
 
         mockMvc.perform(get("/api/v2/ai/employees"))
                 .andExpect(status().isOk())
@@ -65,17 +59,45 @@ class AiV2ControllerTest {
     }
 
     @Test
+    void allExistingV2BusinessRoutesRemainReachableThroughTheCompatibilityFacade() throws Exception {
+        AiV2CompatibilityFacade facade = mock(AiV2CompatibilityFacade.class);
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiV2Controller(
+                facade, trustedSecurityContext(Set.of("*")), new PermissionGuard()
+        )).build();
+
+        List<RequestBuilder> requests = List.of(
+                get("/api/v2/ai/employees"),
+                get("/api/v2/ai/assistant"),
+                get("/api/v2/ai/conversations"),
+                get("/api/v2/ai/conversations/8/messages"),
+                post("/api/v2/ai/chat").contentType(MediaType.APPLICATION_JSON).content("{\"message\":\"hello\"}"),
+                get("/api/v2/ai/knowledge-bases"),
+                get("/api/v2/ai/knowledge-bases/8"),
+                get("/api/v2/ai/knowledge-bases/8/documents"),
+                multipart("/api/v2/ai/knowledge-bases/8/documents/upload")
+                        .file(new MockMultipartFile("file", "guide.txt", "text/plain", "hello".getBytes())),
+                post("/api/v2/ai/knowledge-bases/8/documents/9/reindex"),
+                post("/api/v2/ai/knowledge-bases/search").contentType(MediaType.APPLICATION_JSON).content("{\"query\":\"hello\"}"),
+                get("/api/v2/ai/tools"),
+                post("/api/v2/ai/tools/execute").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"employeeId\":1,\"toolCode\":\"system.user.search\"}"),
+                post("/api/v2/ai/tools/propose").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"employeeId\":1,\"toolCode\":\"system.user.search\"}"),
+                post("/api/v2/ai/tools/confirm").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pendingToolCallId\":1}")
+        );
+
+        for (RequestBuilder request : requests) {
+            mockMvc.perform(request).andExpect(status().isOk());
+        }
+    }
+
+    @Test
     void employeesShouldRejectTrustedUserWhenNoTrustedResolverIsAvailableInStrictMode() {
-        AiReadQueryService aiReadQueryService = mock(AiReadQueryService.class);
-        AiCommandService aiCommandService = mock(AiCommandService.class);
-        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
-        CurrentUser user = new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of("ai:view"));
-        user.setUserUuid("user-uuid-7");
-        user.setPermissionsVersion("permissions-1");
-        when(securityContextFacade.getCurrentUser()).thenReturn(user);
+        AiV2CompatibilityFacade facade = mock(AiV2CompatibilityFacade.class);
+        SecurityContextFacade securityContextFacade = trustedSecurityContext(Set.of("ai:view"));
         AiV2Controller controller = new AiV2Controller(
-                aiReadQueryService,
-                aiCommandService,
+                facade,
                 securityContextFacade,
                 new PermissionGuard(),
                 null
@@ -85,24 +107,18 @@ class AiV2ControllerTest {
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
                 .hasMessageContaining("Trusted user resolver is unavailable");
-        verify(aiReadQueryService, never()).listEmployees(any(CurrentUser.class), eq(1L), eq(10L));
+        verify(facade, never()).listEmployees(any(CurrentUser.class), eq(1L), eq(10L));
     }
 
     @Test
     void employeesShouldRejectWhenLiveUsernameIsBlank() {
-        AiReadQueryService aiReadQueryService = mock(AiReadQueryService.class);
-        AiCommandService aiCommandService = mock(AiCommandService.class);
-        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        AiV2CompatibilityFacade facade = mock(AiV2CompatibilityFacade.class);
+        SecurityContextFacade securityContextFacade = trustedSecurityContext(Set.of("ai:view"));
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
-        CurrentUser user = new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of("ai:view"));
-        user.setUserUuid("user-uuid-7");
-        user.setPermissionsVersion("permissions-1");
-        when(securityContextFacade.getCurrentUser()).thenReturn(user);
         when(systemInternalApi.findUserIdentityById(7L))
                 .thenReturn(userSnapshot(7L, "user-uuid-7", " ", "ENABLED"));
         AiV2Controller controller = new AiV2Controller(
-                aiReadQueryService,
-                aiCommandService,
+                facade,
                 securityContextFacade,
                 new PermissionGuard(),
                 systemInternalApi
@@ -112,7 +128,16 @@ class AiV2ControllerTest {
                 .isInstanceOf(BizException.class)
                 .satisfies(error -> assertThat(((BizException) error).getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED))
                 .hasMessageContaining("Trusted user username is unavailable");
-        verify(aiReadQueryService, never()).listEmployees(any(CurrentUser.class), eq(1L), eq(10L));
+        verify(facade, never()).listEmployees(any(CurrentUser.class), eq(1L), eq(10L));
+    }
+
+    private SecurityContextFacade trustedSecurityContext(Set<String> permissions) {
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        CurrentUser user = new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, permissions);
+        user.setUserUuid("user-uuid-7");
+        user.setPermissionsVersion("permissions-1");
+        when(securityContextFacade.getCurrentUser()).thenReturn(user);
+        return securityContextFacade;
     }
 
     private AiEmployeeVO employee() {
@@ -130,22 +155,7 @@ class AiV2ControllerTest {
 
     private SystemUserSnapshotDTO userSnapshot(Long userId, String userUuid, String username, String status) {
         return new SystemUserSnapshotDTO(
-                userId,
-                userUuid,
-                username,
-                null,
-                status,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                userId, userUuid, username, null, status, null, null, null, null, null, null, null, null, null, null, null
         );
     }
 }

@@ -1,7 +1,7 @@
 package com.lumira.asyncruntime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.saas.modules.competition.event.CompetitionPaymentEventHandler;
+import com.lumira.api.competition.CompetitionPaymentEventHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.RedisSystemException;

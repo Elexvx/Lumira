@@ -16,11 +16,11 @@ import static org.mockito.Mockito.verify;
 class PlatformEventPublisherTest {
 
     @Test
-    void publishAfterCommitShouldUseStandardEventKeyAndPayload() {
+    void recordShouldUseStandardEventKeyAndPayload() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         PlatformEventPublisher publisher = new PlatformEventPublisher(outboxService);
 
-        publisher.publishAfterCommit(
+        publisher.record(
                 PlatformEventTypes.SOURCE_AI,
                 PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED,
                 2001L,
@@ -29,7 +29,7 @@ class PlatformEventPublisherTest {
                 Map.of("chunkCount", 8, "userUuid", "user-uuid-2001")
         );
 
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(PlatformEventTypes.SOURCE_AI),
                 eq(PlatformEventTypes.AI_KNOWLEDGE_DOCUMENT_INDEXED),
                 eq(2001L),
@@ -39,11 +39,11 @@ class PlatformEventPublisherTest {
     }
 
     @Test
-    void publishAfterCommitShouldRejectUserIdWithoutUserUuidBeforeOutbox() {
+    void recordShouldRejectUserIdWithoutUserUuidBeforeOutbox() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         PlatformEventPublisher publisher = new PlatformEventPublisher(outboxService);
 
-        assertThrows(IllegalArgumentException.class, () -> publisher.publishAfterCommit(
+        assertThrows(IllegalArgumentException.class, () -> publisher.record(
                 PlatformEventTypes.SOURCE_SYSTEM,
                 "PLATFORM_CONFIG_CHANGED",
                 2001L,
@@ -54,12 +54,12 @@ class PlatformEventPublisherTest {
     }
 
     @Test
-    void publishAfterCommitShouldCarryUserUuidFromAttributesIntoPayload() {
+    void recordShouldCarryUserUuidFromAttributesIntoPayload() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         PlatformEventPublisher publisher = new PlatformEventPublisher(outboxService);
         ArgumentCaptor<Object> payloadCaptor = forClass(Object.class);
 
-        publisher.publishAfterCommit(
+        publisher.record(
                 PlatformEventTypes.SOURCE_SYSTEM,
                 "PLATFORM_CONFIG_CHANGED",
                 2001L,
@@ -68,7 +68,7 @@ class PlatformEventPublisherTest {
                 Map.of("userUuid", " user-uuid-2001 ")
         );
 
-        verify(outboxService).recordAfterCommit(
+        verify(outboxService).record(
                 eq(PlatformEventTypes.SOURCE_SYSTEM),
                 eq("PLATFORM_CONFIG_CHANGED"),
                 eq(2001L),
@@ -79,6 +79,28 @@ class PlatformEventPublisherTest {
                 .isInstanceOfSatisfying(Map.class, payload ->
                         assertThat(payload).containsEntry("userId", 2001L)
                                 .containsEntry("userUuid", "user-uuid-2001"));
+    }
+
+    @Test
+    void recordInCurrentTransactionWritesOutboxImmediately() {
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        PlatformEventPublisher publisher = new PlatformEventPublisher(outboxService);
+
+        publisher.recordInCurrentTransaction(
+                "EVENT_CATALOG_ITEM_UPSERTED",
+                2001L,
+                "activity",
+                3001L,
+                Map.of("userUuid", "user-uuid-2001", "sourceType", "ACTIVITY")
+        );
+
+        verify(outboxService).record(
+                eq(PlatformEventTypes.SOURCE_SYSTEM),
+                eq("EVENT_CATALOG_ITEM_UPSERTED"),
+                eq(2001L),
+                eq("EVENT_CATALOG_ITEM_UPSERTED:activity:3001"),
+                org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test

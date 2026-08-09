@@ -21,7 +21,7 @@ public class PluginDomainEventPublisher implements DomainEventPublisher {
         if (event == null) {
             return;
         }
-        outboxService.recordAfterCommit(
+        outboxService.record(
                 resolveUserId(event.attributes()),
                 event.eventType(),
                 event.eventKey(),

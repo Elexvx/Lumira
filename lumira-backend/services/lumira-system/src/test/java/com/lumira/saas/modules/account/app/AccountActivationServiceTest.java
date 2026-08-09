@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.api.expert.ExpertAccountActivationPort;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
@@ -194,6 +195,7 @@ class AccountActivationServiceTest {
         AccountActivationVO.TokenInfo info = service.verify("A".repeat(43));
 
         assertThat(info.isValid()).isFalse();
+        assertThat(info.getReason()).isEqualTo("激活链接无效、已过期或已使用");
         verify(jdbcTemplate).query(
                 contains("u.uuid = t.user_uuid"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
@@ -210,7 +212,7 @@ class AccountActivationServiceTest {
         AccountActivationService service = service(jdbcTemplate, passwordPolicyService, iamUserService);
 
         assertThatThrownBy(() -> service.complete("x".repeat(1024), "Weak"))
-                .hasMessageContaining("Token is invalid");
+                .hasMessageContaining("激活链接无效");
 
         verifyNoInteractions(jdbcTemplate);
         verifyNoInteractions(passwordPolicyService);
@@ -223,6 +225,7 @@ class AccountActivationServiceTest {
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
         IamUserService iamUserService = mock(IamUserService.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        ExpertAccountActivationPort expertAccountActivationPort = mock(ExpertAccountActivationPort.class);
         when(passwordEncoder.encode("StrongerPassword1!")).thenReturn("encoded-password");
         when(jdbcTemplate.update(
                 contains("update sys_account_activation_token"),
@@ -232,10 +235,7 @@ class AccountActivationServiceTest {
                 contains("update sys_user"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(1);
-        when(jdbcTemplate.update(
-                contains("update aiadc_expert"),
-                org.mockito.ArgumentMatchers.any(Object[].class)
-        )).thenReturn(1);
+        when(expertAccountActivationPort.activate(org.mockito.ArgumentMatchers.any())).thenReturn(1);
         when(jdbcTemplate.query(
                 contains("t.token_hash = ?"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
@@ -260,13 +260,14 @@ class AccountActivationServiceTest {
                 passwordEncoder,
                 passwordPolicyService,
                 iamUserService,
-                mock(SmtpMailService.class)
+                mock(SmtpMailService.class),
+                expertAccountActivationPort
         );
 
         boolean completed = service.complete("A".repeat(43), "StrongerPassword1!");
 
         assertThat(completed).isTrue();
-        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(jdbcTemplate, iamUserService);
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(jdbcTemplate, iamUserService, expertAccountActivationPort);
         inOrder.verify(jdbcTemplate).update(
                 contains("update sys_account_activation_token"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
@@ -299,15 +300,10 @@ class AccountActivationServiceTest {
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.any(LocalDateTime.class)
         );
-        verify(jdbcTemplate).update(
-                contains("and user_id = ?"),
-                eq(9001L),
-                eq("user-uuid-9001"),
-                org.mockito.ArgumentMatchers.any(LocalDateTime.class),
-                eq(1001L),
-                eq(9001L),
-                eq("user-uuid-9001")
-        );
+        verify(expertAccountActivationPort).activate(org.mockito.ArgumentMatchers.argThat(activation ->
+                activation.expertId().equals(1001L)
+                        && activation.userId().equals(9001L)
+                        && activation.userUuid().equals("user-uuid-9001")));
         verify(iamUserService).upsertPasswordCredential(9001L, "user-uuid-9001", "encoded-password");
     }
 
@@ -350,7 +346,7 @@ class AccountActivationServiceTest {
         );
 
         assertThatThrownBy(() -> service.complete("A".repeat(43), "StrongerPassword1!"))
-                .hasMessageContaining("Token is invalid");
+                .hasMessageContaining("激活链接无效");
 
         verify(jdbcTemplate, never()).update(contains("update sys_user"), org.mockito.ArgumentMatchers.any(Object[].class));
         verifyNoInteractions(iamUserService);
@@ -410,6 +406,7 @@ class AccountActivationServiceTest {
         PasswordPolicyService passwordPolicyService = mock(PasswordPolicyService.class);
         IamUserService iamUserService = mock(IamUserService.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        ExpertAccountActivationPort expertAccountActivationPort = mock(ExpertAccountActivationPort.class);
         when(passwordEncoder.encode("StrongerPassword1!")).thenReturn("encoded-password");
         when(jdbcTemplate.query(
                 contains("t.token_hash = ?"),
@@ -438,16 +435,14 @@ class AccountActivationServiceTest {
                 contains("update sys_user"),
                 org.mockito.ArgumentMatchers.any(Object[].class)
         )).thenReturn(1);
-        when(jdbcTemplate.update(
-                contains("update aiadc_expert"),
-                org.mockito.ArgumentMatchers.any(Object[].class)
-        )).thenReturn(0);
+        when(expertAccountActivationPort.activate(org.mockito.ArgumentMatchers.any())).thenReturn(0);
         AccountActivationService service = new AccountActivationService(
                 new JdbcAccountActivationRepository(jdbcTemplate),
                 passwordEncoder,
                 passwordPolicyService,
                 iamUserService,
-                mock(SmtpMailService.class)
+                mock(SmtpMailService.class),
+                expertAccountActivationPort
         );
 
         assertThatThrownBy(() -> service.complete("A".repeat(43), "StrongerPassword1!"))

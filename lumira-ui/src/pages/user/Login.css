@@ -59,7 +59,7 @@
 }
 
 .saas-login-page__brand-title {
-  color: #1677ff;
+  color: var(--ant-color-primary);
   font-size: 42px;
   font-weight: 700;
   line-height: 1;
@@ -111,7 +111,7 @@
   justify-content: center;
   margin-top: 28px;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: var(--ant-border-radius);
   background: #fff;
   cursor: pointer;
   transition:
@@ -122,8 +122,8 @@
 
 .saas-login-page__qr-box:hover:not(:disabled),
 .saas-login-page__qr-box:focus-visible:not(:disabled) {
-  border-color: #1677ff;
-  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.16);
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ant-color-primary) 16%, transparent);
   outline: 0;
 }
 
@@ -231,7 +231,7 @@
 
 .saas-login-page__form .ant-input:focus,
 .saas-login-page__form .ant-input-affix-wrapper-focused {
-  border-color: #1677ff;
+  border-color: var(--ant-color-primary);
 }
 
 .saas-login-page__mode-header {
@@ -279,7 +279,7 @@
   left: 0;
   height: 4px;
   content: "";
-  background: #1677ff;
+  background: var(--ant-color-primary);
 }
 
 .saas-login-page__org-link.ant-btn {
@@ -310,7 +310,7 @@
   justify-content: center;
   padding: 10px;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: var(--ant-border-radius);
   background: #fff;
   cursor: pointer;
   transition:
@@ -351,7 +351,7 @@
 
 .saas-login-page__wechat-login-button.ant-btn {
   height: 40px;
-  border-radius: 3px;
+  border-radius: var(--ant-border-radius-sm);
   background: #10b95b;
   border-color: #10b95b;
   box-shadow: none;
@@ -364,7 +364,7 @@
   position: relative;
   display: block;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--ant-border-radius);
   background: #fff;
 }
 
@@ -459,7 +459,7 @@
 .saas-login-page__captcha-image-button:focus,
 .saas-login-page__captcha-image-button:focus-visible,
 .saas-login-page__captcha-image-button:active {
-  border-color: #1677ff;
+  border-color: var(--ant-color-primary);
   outline: 0;
   box-shadow: none;
 }
@@ -481,7 +481,7 @@
 .saas-login-page__slider-placeholder,
 .saas-login-page__slider-verified {
   height: 40px;
-  border-radius: 4px;
+  border-radius: var(--ant-border-radius-sm);
 }
 
 .saas-login-page__slider-placeholder {
@@ -504,7 +504,7 @@
 
 .saas-login-page__slider-modal .ant-modal-content {
   padding: 24px 24px 20px;
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
 }
 
 .saas-login-page__slider-modal .ant-modal-body {
@@ -579,7 +579,7 @@
   order: 4;
   height: 40px;
   margin-top: 22px;
-  border-radius: 3px;
+  border-radius: var(--ant-border-radius-sm);
   font-size: 14px;
   font-weight: 600;
   box-shadow: none;
@@ -975,7 +975,7 @@ body.saas-login-viewport {
   background:
     radial-gradient(
       circle at 96% 88%,
-      rgba(22, 119, 255, 0.08),
+      color-mix(in srgb, var(--ant-color-primary) 8%, transparent),
       transparent 30%
     ),
     #090b0f;
@@ -1002,7 +1002,7 @@ body.saas-login-viewport {
   height: 34px;
   padding-inline: 11px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
+  border-radius: var(--ant-border-radius-lg);
   color: rgba(255, 255, 255, 0.78);
   background: rgba(255, 255, 255, 0.02);
   box-shadow: none;
@@ -1018,8 +1018,8 @@ body.saas-login-viewport {
 .saas-login-page__theme-switch.ant-btn:hover,
 .saas-login-page__theme-switch.ant-btn:focus-visible {
   color: #fff;
-  border-color: rgba(22, 119, 255, 0.6);
-  background: rgba(22, 119, 255, 0.08);
+  border-color: color-mix(in srgb, var(--ant-color-primary) 60%, transparent);
+  background: color-mix(in srgb, var(--ant-color-primary) 8%, transparent);
 }
 
 .saas-login-page__stage {
@@ -1096,8 +1096,8 @@ html[data-theme="dark"] .saas-login-page__mode-tab[data-active="true"] {
 
 .saas-login-page__mode-tab[data-active="true"]::after {
   height: 2px;
-  border-radius: 2px;
-  background: #1677ff;
+  border-radius: var(--ant-border-radius-xs);
+  background: var(--ant-color-primary);
 }
 
 .saas-login-page__credentials-stack {
@@ -1111,7 +1111,7 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
   height: 44px;
   padding-inline: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   color: #eef1f5;
   background: rgba(255, 255, 255, 0.025) !important;
   font-size: 14px;
@@ -1138,8 +1138,8 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
 
 .saas-login-page__form .ant-input:focus,
 .saas-login-page__form .ant-input-affix-wrapper-focused {
-  border-color: #1677ff;
-  box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.14) !important;
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ant-color-primary) 14%, transparent) !important;
 }
 
 .saas-login-page__field-icon {
@@ -1152,7 +1152,7 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
   flex-basis: 118px;
   width: 118px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   color: #69a7ff;
   background: rgba(255, 255, 255, 0.025);
 }
@@ -1160,7 +1160,7 @@ html[data-theme="dark"] .saas-login-page__form .ant-input-affix-wrapper {
 .saas-login-page__slider-placeholder,
 .saas-login-page__slider-verified {
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
 }
 
 .saas-login-page__slider-placeholder {
@@ -1194,10 +1194,10 @@ html[data-theme="dark"] .saas-login-page__forgot-link.ant-btn {
 .saas-login-page__submit-button.ant-btn {
   height: 44px;
   margin-top: 22px;
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   font-size: 14px;
   font-weight: 650;
-  box-shadow: 0 10px 28px rgba(22, 119, 255, 0.18);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ant-color-primary) 18%, transparent);
 }
 
 .saas-login-page__join-button {
@@ -1311,7 +1311,7 @@ html[data-theme="light"] .saas-login-page {
 html[data-theme="light"] .saas-login-page__auth-shell {
   color: #172033;
   background:
-    radial-gradient(circle at 96% 88%, rgba(22, 119, 255, 0.08), transparent 30%),
+    radial-gradient(circle at 96% 88%, color-mix(in srgb, var(--ant-color-primary) 8%, transparent), transparent 30%),
     #f7f9fc;
 }
 
@@ -1371,7 +1371,7 @@ html[data-theme="light"] .saas-login-page__field-icon {
 html[data-theme="light"] .saas-login-page__send-code-button,
 html[data-theme="light"] .saas-login-page__captcha-image-button,
 html[data-theme="light"] .saas-login-page__slider-placeholder {
-  color: #1677ff;
+  color: var(--ant-color-primary);
   border-color: #cbd5e1;
   background: rgba(255, 255, 255, 0.92);
 }
@@ -1440,7 +1440,7 @@ html[data-theme="light"] .saas-login-page__footer {
   .saas-login-page__locale-switch.ant-btn,
   .saas-login-page__theme-switch.ant-btn {
     height: 42px;
-    border-radius: 10px;
+    border-radius: var(--ant-border-radius-lg);
     font-size: 16px;
   }
 
@@ -1493,7 +1493,7 @@ html[data-theme="light"] .saas-login-page__footer {
   html[data-theme="light"] .saas-login-page__form .ant-input-affix-wrapper {
     height: 52px;
     padding-inline: 15px;
-    border-radius: 10px;
+    border-radius: var(--ant-border-radius-lg);
     font-size: 16px;
   }
 
@@ -1512,14 +1512,14 @@ html[data-theme="light"] .saas-login-page__footer {
     width: 138px;
     height: 52px;
     flex-basis: 138px;
-    border-radius: 10px;
+    border-radius: var(--ant-border-radius-lg);
     font-size: 15px;
   }
 
   .saas-login-page__slider-placeholder,
   .saas-login-page__slider-verified {
     height: 52px;
-    border-radius: 10px;
+    border-radius: var(--ant-border-radius-lg);
   }
 
   .saas-login-page__actions,
@@ -1538,7 +1538,7 @@ html[data-theme="light"] .saas-login-page__footer {
   .saas-login-page__submit-button.ant-btn {
     height: 52px;
     margin-top: 28px;
-    border-radius: 10px;
+    border-radius: var(--ant-border-radius-lg);
     font-size: 16px;
   }
 

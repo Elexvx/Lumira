@@ -30,7 +30,8 @@ class FileOcrProcessorTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         mockLocation(jdbcTemplate, source, "image/png", "png");
         when(jdbcTemplate.update(anyString(), Mockito.any(Object[].class))).thenReturn(1);
-        FileOcrProcessor processor = processor(jdbcTemplate, new DisabledFileOcrEngine());
+        FileOwnerIdentityVerifier ownerIdentityVerifier = mock(FileOwnerIdentityVerifier.class);
+        FileOcrProcessor processor = processor(jdbcTemplate, new DisabledFileOcrEngine(), ownerIdentityVerifier);
 
         FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L, "user-uuid-2001");
 
@@ -38,6 +39,7 @@ class FileOcrProcessorTest {
         assertThat(result.status()).isEqualTo(FileOcrProcessor.STATUS_SKIPPED);
         verifyLocationLookup(jdbcTemplate);
         verifyArtifact(jdbcTemplate, FileOcrProcessor.ARTIFACT_OCR_RESULT, "\"status\":\"SKIPPED\"");
+        verify(ownerIdentityVerifier).requireEnabledOwner(2001L, "user-uuid-2001");
     }
 
     @Test
@@ -77,11 +79,19 @@ class FileOcrProcessorTest {
     }
 
     private FileOcrProcessor processor(JdbcTemplate jdbcTemplate, FileOcrEngine engine) {
+        return processor(jdbcTemplate, engine, mock(FileOwnerIdentityVerifier.class));
+    }
+
+    private FileOcrProcessor processor(
+            JdbcTemplate jdbcTemplate,
+            FileOcrEngine engine,
+            FileOwnerIdentityVerifier ownerIdentityVerifier
+    ) {
         UploadProperties uploadProperties = new UploadProperties();
         uploadProperties.setStorageRoot(tempDir.toString());
         FileOcrEngineSelector selector = mock(FileOcrEngineSelector.class);
         when(selector.select()).thenReturn(engine);
-        return new FileOcrProcessor(jdbcTemplate, uploadProperties, selector);
+        return new FileOcrProcessor(jdbcTemplate, uploadProperties, selector, ownerIdentityVerifier);
     }
 
     private void mockLocation(JdbcTemplate jdbcTemplate, Path source, String contentType, String extension) {
@@ -145,7 +155,7 @@ class FileOcrProcessorTest {
                 .contains("from file_object fo")
                 .contains("fo.uploaded_by_uuid = ?")
                 .contains("fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
         assertThat(contentCaptor.getValue()).asString().contains(expectedSnippet);
     }
 
@@ -154,6 +164,6 @@ class FileOcrProcessorTest {
         verify(jdbcTemplate).queryForObject(sqlCaptor.capture(), Mockito.<RowMapper<?>>any(), eq(3001L));
         assertThat(sqlCaptor.getValue())
                 .contains("where fo.id = ? and fo.deleted = 0 and fo.status in ('ENABLED', 'CLEAN')")
-                .contains("u.status = 'ENABLED'");
+                .doesNotContain("sys_user");
     }
 }

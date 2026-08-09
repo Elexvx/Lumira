@@ -71,15 +71,6 @@ public class JdbcAccountActivationRepository implements AccountActivationReposit
     }
 
     @Override
-    public int activateExpert(TokenRecord token, LocalDateTime now) {
-        return database.update("""
-                update aiadc_expert set initial_password_reset_required = 0, account_status = 'ENABLED',
-                  updated_by = ?, updated_by_uuid = ?, updated_at = ?
-                where id = ? and user_id = ? and user_uuid = ? and deleted = 0
-                """, token.userId(), token.userUuid(), now, token.expertId(), token.userId(), token.userUuid());
-    }
-
-    @Override
     public Optional<String> findPlatformConfig(String configKey) {
         return Optional.ofNullable(database.queryForObject("""
                 select config_value from sys_config where config_key = ? and config_scope = 'PLATFORM' and deleted = 0 limit 1

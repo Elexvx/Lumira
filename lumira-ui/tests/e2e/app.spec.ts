@@ -47,6 +47,17 @@ test.describe('authenticated application', () => {
     await expect(page.locator('body')).not.toContainText(/500|系统异常|System error/i);
   });
 
+  test('payment result breadcrumb returns to registration without a hash route @smoke', async ({ page }) => {
+    await page.goto('/competitions/register/payment-result?registrationId=999999999');
+
+    const registrationBreadcrumb = page.locator('.ant-breadcrumb a[href="/competitions/register"]').first();
+    await expect(registrationBreadcrumb).toBeVisible();
+    await registrationBreadcrumb.click();
+
+    await expect(page).toHaveURL(/\/competitions\/register$/);
+    await expect(page).not.toHaveURL(/#/);
+  });
+
   test('user can log out from the top menu @smoke', async ({ page }) => {
     await page.goto('/dashboard/home');
     await page.getByTestId('top-user-menu-button').click();
