@@ -7,6 +7,10 @@ const repoRoot = path.resolve(import.meta.dirname, '..');
 const deployScript = readFileSync(path.join(repoRoot, 'bin', 'deploy-container.mjs'), 'utf8');
 const installScript = readFileSync(path.join(repoRoot, 'bin', 'install-platform.mjs'), 'utf8');
 const startScript = readFileSync(path.join(repoRoot, 'bin', 'start-platform.mjs'), 'utf8');
+const localStartScript = readFileSync(path.join(repoRoot, 'bin', 'start-local.mjs'), 'utf8');
+const productionStartScript = readFileSync(path.join(repoRoot, 'bin', 'start-production.mjs'), 'utf8');
+const rootPackage = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+const dockerignore = readFileSync(path.join(repoRoot, '.dockerignore'), 'utf8');
 const envExample = readFileSync(path.join(repoRoot, 'deploy', '.env.example'), 'utf8');
 const composeProd = readFileSync(path.join(repoRoot, 'deploy', 'docker-compose.prod.yml'), 'utf8');
 const serviceDockerfile = readFileSync(path.join(repoRoot, 'deploy', 'docker', 'service.Dockerfile'), 'utf8');
@@ -21,6 +25,7 @@ const gitignore = readFileSync(path.join(repoRoot, '.gitignore'), 'utf8');
 const frontendAssetAdapter = readFileSync(path.join(repoRoot, 'lumira-ui', 'scripts', 'adapt-cdn-assets.mjs'), 'utf8');
 const swaggerBootstrap = readFileSync(path.join(repoRoot, 'lumira-ui', 'public', 'swagger-ui-bootstrap.js'), 'utf8');
 const monitoringPage = readFileSync(path.join(repoRoot, 'lumira-ui', 'src', 'pages', 'settings', 'monitoring', 'MonitoringPage.tsx'), 'utf8');
+const apiDocsShell = readFileSync(path.join(repoRoot, 'lumira-ui', 'src', 'pages', 'settings', 'monitoring', 'apiDocsShell.ts'), 'utf8');
 
 test('generated updater state stays local to the deployment host', () => {
   for (const entry of [
@@ -151,7 +156,9 @@ test('embedded API docs initialize through a same-origin CSP-compatible bootstra
   assert.match(swaggerBootstrap, /event\.data\.type !== 'lumira:swagger-spec'/);
   assert.match(swaggerBootstrap, /supportedSubmitMethods: \[\]/);
   assert.doesNotMatch(swaggerBootstrap, /\beval\s*\(|new Function\s*\(/);
-  assert.match(monitoringPage, /swagger-ui-bootstrap\.js\?v=[a-z0-9.-]+/i);
+  assert.match(apiDocsShell, /bootstrap:\s*`\$\{SWAGGER_UI_VENDOR_ROOT\}\/lumira-bootstrap\.js\?v=[a-z0-9.-]+`/i);
+  assert.match(monitoringPage, /SWAGGER_UI_SHELL_HTML/);
+  assert.match(monitoringPage, /srcDoc=\{SWAGGER_UI_SHELL_HTML\}/);
   assert.match(monitoringPage, /postMessage\([\s\S]*window\.location\.origin/);
   assert.doesNotMatch(monitoringPage, /postMessage\([\s\S]*['"]\*['"]/);
 });
@@ -294,13 +301,14 @@ test('production compose does not inject unused system or team tokens into async
   }
 });
 
-test('production compose does not inject unused owner service base URLs into async runtime', () => {
+test('production compose keeps the async runtime free of business service base URLs', () => {
   const asyncBlock = composeProd.match(/lumira-async:[\s\S]*?(?=\n  [a-z0-9-]+:|\nvolumes:|\nnetworks:|\n$)/i);
   assert.ok(asyncBlock, 'async runtime compose block must exist');
   assert.doesNotMatch(asyncBlock[0], /^\s+SYSTEM_SERVICE_BASE_URL:/m, 'async runtime must not receive SYSTEM_SERVICE_BASE_URL');
   assert.doesNotMatch(asyncBlock[0], /^\s+PAYMENT_SERVICE_BASE_URL:/m, 'async runtime must not receive PAYMENT_SERVICE_BASE_URL');
-  assert.match(asyncBlock[0], /^\s+AUTH_SERVICE_BASE_URL:/m, 'async runtime must keep AUTH_SERVICE_BASE_URL for remote auth lookups');
-  assert.match(asyncBlock[0], /^\s+TEAM_SERVICE_BASE_URL:/m, 'async runtime must keep TEAM_SERVICE_BASE_URL for remote team lookups');
+  assert.doesNotMatch(asyncBlock[0], /^\s+AUTH_SERVICE_BASE_URL:/m, 'async runtime must not receive AUTH_SERVICE_BASE_URL');
+  assert.doesNotMatch(asyncBlock[0], /^\s+TEAM_SERVICE_BASE_URL:/m, 'async runtime must not receive TEAM_SERVICE_BASE_URL');
+  assert.match(asyncBlock[0], /^\s+LUMIRA_ASYNC_CONTROL_PLANE_BASE_URL:/m, 'async runtime must use the active control-plane URL');
 });
 
 test('install-platform keeps generated secrets and required env checks aligned with scoped team token', () => {
@@ -347,32 +355,48 @@ test('install-platform starts the supported async and job runtime topology', () 
   );
 });
 
-test('start-platform rejects legacy skip flags instead of silently ignoring them', () => {
-  assert.match(
-    startScript,
-    /const unsupportedLegacyArgs = \['--skip-infra', '--skip-services', '--skip-lumira-ui'\];/,
-    'start-platform must explicitly recognize obsolete skip-* flags'
-  );
-  assert.match(
-    startScript,
-    /Unsupported legacy option\(s\)/,
-    'start-platform must fail loudly when callers pass obsolete skip-* flags'
-  );
-  assert.match(
-    startScript,
-    /Use --no-build to skip the rebuild step/,
-    'start-platform must point callers at the supported replacement behavior'
-  );
-  assert.match(
-    startScript,
-    /It defaults to --local-mysql/,
-    'start-platform help must explain the localhost-oriented default topology'
-  );
-  assert.match(
-    startScript,
-    /translatedArgs\.unshift\('--local-mysql'\)/,
-    'start-platform must default local startup to the local-mysql deployment path'
-  );
+test('startup exposes exactly the native local and container production modes', () => {
+  assert.match(startScript, /\['1', 'local', 'dev', 'development'\]/);
+  assert.match(startScript, /\['2', 'prod', 'production'\]/);
+  assert.match(startScript, /start-local\.mjs/);
+  assert.match(startScript, /start-production\.mjs/);
+  assert.doesNotMatch(startScript, /translatedArgs\.unshift\('--local-mysql'\)/);
+  assert.equal(rootPackage.scripts['start:local'], 'node bin/start-platform.mjs local');
+  assert.equal(rootPackage.scripts['start:production'], 'node bin/start-platform.mjs production');
+});
+
+test('local startup runs host toolchains and cannot inherit an online frontend target', () => {
+  assert.match(localStartScript, /Docker was not invoked/);
+  assert.match(localStartScript, /'services\/lumira-admin\/pom\.xml'/);
+  assert.match(localStartScript, /'services\/lumira-async\/pom\.xml'/);
+  assert.match(localStartScript, /'services\/lumira-quartz\/pom\.xml'/);
+  assert.match(localStartScript, /UMI_APP_API_BASE_URL: ''/);
+  assert.match(localStartScript, /UMI_APP_LOCAL_NATIVE_MODE: 'true'/);
+  assert.match(localStartScript, /UMI_DEV_API_TARGET: backendUrl/);
+  assert.match(localStartScript, /SPRING_PROFILES_ACTIVE: localProfile/);
+  assert.doesNotMatch(localStartScript, /deploy-container\.mjs|docker-compose/);
+});
+
+test('production startup delegates only to the production container path', () => {
+  assert.match(productionStartScript, /deploy-container\.mjs/);
+  assert.match(productionStartScript, /SPRING_PROFILES_ACTIVE: 'prod'/);
+  assert.match(productionStartScript, /--local-mysql belongs to a local container topology/);
+  assert.doesNotMatch(productionStartScript, /start-local\.mjs|spring-boot:run|pnpm.*dev/);
+});
+
+test('production image contexts exclude host secrets, state, backups, and image archives', () => {
+  for (const entry of [
+    'deploy/.env',
+    'deploy/.backup',
+    'deploy/.generated',
+    'deploy/.update-state.json',
+    'deploy/.update-tasks',
+    'deploy/data',
+    'deploy/secrets',
+    '*.tar',
+  ]) {
+    assert.match(dockerignore, new RegExp(`^${entry.replaceAll('.', '\\.').replaceAll('*', '\\*')}\\r?$`, 'm'));
+  }
 });
 
 test('deploy-container allows selected deploys for every compose runtime service', () => {
@@ -441,7 +465,15 @@ test('deploy-container shares deployment verification and exposes only supported
   );
 });
 
-test('deployment env example exposes async owner base URL overrides', () => {
+test('deployment env example exposes only real cross-runtime URLs', () => {
+  for (const key of [
+    'AUTH_SERVICE_BASE_URL',
+    'TEAM_SERVICE_BASE_URL',
+    'SAAS_JOB_ASYNC_RUNTIME_BASE_URL',
+    'SAAS_JOB_CONTROL_PLANE_BASE_URL',
+  ]) {
+    assert.match(envExample, new RegExp(`^${key}=`, 'm'), `${key} must be documented in deploy/.env.example`);
+  }
   for (const key of [
     'GATEWAY_UPSTREAM',
     'SYSTEM_SERVICE_UPSTREAM',
@@ -453,13 +485,14 @@ test('deployment env example exposes async owner base URL overrides', () => {
     'LOCALIZATION_SERVICE_UPSTREAM',
     'TEAM_SERVICE_UPSTREAM',
     'AI_SERVICE_UPSTREAM',
-    'SAAS_JOB_MESSAGE_SERVICE_BASE_URL',
+    'SAAS_JOB_BACKEND_BASE_URL',
     'SAAS_JOB_SYSTEM_SERVICE_BASE_URL',
+    'SAAS_JOB_MESSAGE_SERVICE_BASE_URL',
     'SAAS_JOB_FILE_SERVICE_BASE_URL',
     'SAAS_JOB_PAYMENT_SERVICE_BASE_URL',
     'SAAS_JOB_PLUGIN_SERVICE_BASE_URL',
   ]) {
-    assert.match(envExample, new RegExp(`^${key}=`, 'm'), `${key} must be documented in deploy/.env.example`);
+    assert.doesNotMatch(envExample, new RegExp(`^${key}=`, 'm'), `${key} must not reintroduce a split production topology`);
   }
 });
 
@@ -547,16 +580,13 @@ test('api proxy does not override backend CORS policy with a hard-coded origin a
   assert.doesNotMatch(apiNginx, /elexvx\.com|bm\.aiadc\.org\.cn|vercel\.app/, 'api proxy must not hard-code deployment-specific origin allowlists');
 });
 
-test('api proxy template keeps split-owner routes explicit while defaulting compose upstreams to the monolith entrypoint', () => {
-  assert.match(
-    composeProd,
-    /api-proxy:[\s\S]*AUTH_SERVICE_UPSTREAM: \$\{AUTH_SERVICE_UPSTREAM:-lumira-server:8080\}/,
-    'api-proxy must expose env-driven auth upstream overrides'
-  );
-  assert.match(
-    composeProd,
-    /api-proxy:[\s\S]*AI_SERVICE_UPSTREAM: \$\{AI_SERVICE_UPSTREAM:-lumira-server:8080\}/,
-    'api-proxy must expose env-driven AI upstream overrides'
+test('api proxy keeps logical routes but rejects independent owner upstreams in production', () => {
+  const apiProxyBlock = composeProd.match(/api-proxy:[\s\S]*?(?=\n  [a-z0-9-]+:|\nvolumes:|\nnetworks:|\n$)/i);
+  assert.ok(apiProxyBlock, 'api-proxy compose block must exist');
+  assert.doesNotMatch(
+    apiProxyBlock[0],
+    /(?:GATEWAY|SYSTEM_SERVICE|AUTH_SERVICE|FILE_SERVICE|MESSAGE_SERVICE|PLUGIN_SERVICE|PAYMENT_SERVICE|LOCALIZATION_SERVICE|TEAM_SERVICE|AI_SERVICE)_UPSTREAM:/,
+    'api-proxy must not expose un-deployed owner-service upstream overrides'
   );
   assert.match(
     composeProd,

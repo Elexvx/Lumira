@@ -1,5 +1,6 @@
 # Node
 node_modules/
+.pnpm-store/
 lumira-ui/dist/
 lumira-ui/.turbopack/
 lumira-ui/src/.umi/
@@ -7,6 +8,7 @@ lumira-ui/src/.umi-production/
 lumira-ui/.umi/
 lumira-ui/.umi-production/
 lumira-ui/.cache/
+lumira-ui/public/vendor/swagger-ui/
 lumira-ui/playwright-report/
 lumira-ui/test-results/
 .umi/

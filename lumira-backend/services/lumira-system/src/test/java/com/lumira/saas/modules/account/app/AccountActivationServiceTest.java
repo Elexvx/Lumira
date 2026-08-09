@@ -195,6 +195,7 @@ class AccountActivationServiceTest {
         AccountActivationVO.TokenInfo info = service.verify("A".repeat(43));
 
         assertThat(info.isValid()).isFalse();
+        assertThat(info.getReason()).isEqualTo("激活链接无效、已过期或已使用");
         verify(jdbcTemplate).query(
                 contains("u.uuid = t.user_uuid"),
                 org.mockito.ArgumentMatchers.<RowMapper<?>>any(),
@@ -211,7 +212,7 @@ class AccountActivationServiceTest {
         AccountActivationService service = service(jdbcTemplate, passwordPolicyService, iamUserService);
 
         assertThatThrownBy(() -> service.complete("x".repeat(1024), "Weak"))
-                .hasMessageContaining("Token is invalid");
+                .hasMessageContaining("激活链接无效");
 
         verifyNoInteractions(jdbcTemplate);
         verifyNoInteractions(passwordPolicyService);
@@ -345,7 +346,7 @@ class AccountActivationServiceTest {
         );
 
         assertThatThrownBy(() -> service.complete("A".repeat(43), "StrongerPassword1!"))
-                .hasMessageContaining("Token is invalid");
+                .hasMessageContaining("激活链接无效");
 
         verify(jdbcTemplate, never()).update(contains("update sys_user"), org.mockito.ArgumentMatchers.any(Object[].class));
         verifyNoInteractions(iamUserService);

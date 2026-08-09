@@ -109,6 +109,9 @@ class SaasSqlBootstrapCompletenessTest {
                 .hasSize(menuCodeById.size());
         assertThat(normalizedSql)
                 .as("management and query-center pages must not remain standalone menu pages")
+                .contains("(-1015, -1000, 'settings.monitoring', '系统监控', 'MENU', '/settings/monitoring'")
+                .contains("(-1013, -1015, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs'")
+                .contains("(-1014, -1015, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit'")
                 .contains("(-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/dashboard/home', 'SearchOutlined', 7, NULL, 'DISABLED', 0, 0, 1)")
                 .contains("(-1092, -1100, 'project.management', '项目管理', 'MENU', '/projects/management', 'redirect:/dashboard/home', 'ProjectOutlined', 3, 'aiadc:project:view', 'DISABLED', 0, 0, 1)")
                 .contains("(-1040, -1100, 'team.management', '团队管理', 'MENU', '/team/management', 'redirect:/dashboard/home', 'TeamOutlined', 4, 'team:view', 'DISABLED', 0, 0, 1)")

@@ -8,9 +8,23 @@
 .DS_Store
 
 artifacts
+backups
 doc
 proposal-render
 storage
+tmp
+
+# Host-only deployment state and secrets must never enter an image context.
+deploy/.env
+deploy/.env.*
+deploy/.backup
+deploy/.generated
+deploy/.update-state.json
+deploy/.update.lock
+deploy/.update-tasks
+deploy/.update-preflights
+deploy/data
+deploy/secrets
 
 **/target
 **/node_modules
@@ -30,3 +44,5 @@ output
 *.tmp
 *.pid
 *.cache
+*.tar
+*.tar.gz

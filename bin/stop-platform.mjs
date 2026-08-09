@@ -5,7 +5,7 @@ import process from 'node:process';
 
 const result = spawnSync(
   process.execPath,
-  ['bin\/deploy-container.mjs', '--stop', ...process.argv.slice(2)],
+  ['bin\/start-production.mjs', '--stop', ...process.argv.slice(2)],
   {
     cwd: new URL('..', import.meta.url),
     stdio: 'inherit',

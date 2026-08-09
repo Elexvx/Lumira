@@ -3816,8 +3816,8 @@ VALUES
     (-1012, -1000, 'settings.files', '全站文件管理', 'MENU', '/settings/files/all', '@/pages/files/Center', 'FolderOpenOutlined', 9, 'system:file:manage', 'ENABLED', 0, 0, 0),
     (-1008, -1000, 'settings.notifications', '通知中心', 'MENU', '/settings/notifications', '@/pages/settings/notifications/NotificationsPage', 'NotificationOutlined', 9, 'system:notification:view', 'ENABLED', 0, 0, 0),
     (-1015, -1000, 'settings.monitoring', '系统监控', 'MENU', '/settings/monitoring', '@/pages/settings/monitoring/MonitoringPage', 'FundOutlined', 10, 'system:monitor:view', 'ENABLED', 0, 0, 0),
-    (-1013, -1000, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/MonitoringPage', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
-    (-1014, -1000, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
+    (-1013, -1015, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/MonitoringPage', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
+    (-1014, -1015, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
     (-1009, -1000, 'settings.plugins', '插件管理中心', 'MENU', '/settings/plugins', '@/pages/settings/plugins/PluginsPage', 'ApiOutlined', 10, 'plugin:management:view', 'ENABLED', 0, 0, 0),
     (-1011, -1000, 'localization.root', 'Localization center', 'MENU', '/settings/localization', '@/pages/settings/localization/LocalizationPage', 'TranslationOutlined', 29, 'localization:view', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE

@@ -49,7 +49,7 @@
 
 .team-section-card {
   margin-bottom: 24px;
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
 }
 
 .team-section-card .ant-card-head {
@@ -128,7 +128,7 @@
 }
 
 .team-detail-card {
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
 }
 
 .team-detail-section {
@@ -241,7 +241,7 @@
 .team-search-filter-card,
 .team-search-results {
   margin-top: 0;
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
 }
 
 .team-search-filter-row {

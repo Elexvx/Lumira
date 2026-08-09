@@ -165,7 +165,7 @@ const WatermarkColorControl = ({
           ...paletteBackground,
           position: 'relative',
           height: 160,
-          borderRadius: 6,
+          borderRadius: 'var(--ant-border-radius)',
           cursor: disabled ? 'not-allowed' : 'crosshair',
           pointerEvents: disabled ? 'none' : undefined,
         }}
@@ -207,7 +207,7 @@ const WatermarkColorControl = ({
                 width: 22,
                 height: 22,
                 marginInlineEnd: 8,
-                borderRadius: 4,
+                borderRadius: 'var(--ant-border-radius-sm)',
                 border: '1px solid var(--ant-color-border)',
                 background: rgbaToHex(rgba),
               }}

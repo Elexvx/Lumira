@@ -111,6 +111,46 @@ class SystemPermissionTreeAssemblerTest {
     }
 
     @Test
+    void shouldExposeMonitoringPageAndItsReadOnlyChildrenInRolePermissionTree() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+        SystemVO.MenuVO settingsRoot = menu("系统设置", "/settings", "system:view");
+        settingsRoot.setMenuType("CATALOG");
+        SystemVO.MenuVO monitoring = menu("系统监控", "/settings/monitoring", "system:monitor:view");
+        monitoring.setChildren(List.of(
+                menu("接口文档", "/settings/api-docs", "system:monitor:docs:view"),
+                menu("审计中心", "/settings/audit", "audit:view")
+        ));
+        settingsRoot.setChildren(List.of(monitoring));
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(settingsRoot),
+                List.of(
+                        permission("system:view", "查看系统设置"),
+                        permission("system:monitor:view", "查看系统监控"),
+                        permission("system:monitor:service:view", "查看服务监控"),
+                        permission("system:monitor:redis:view", "查看 Redis 监控"),
+                        permission("system:monitor:docs:view", "查看接口文档"),
+                        permission("audit:view", "查看审计中心")
+                )
+        );
+
+        SystemVO.PermissionTreeVO monitoringNode = tree.getFirst().getChildren().getFirst();
+        assertTrue("/settings/monitoring".equals(monitoringNode.getRoutePath()));
+        assertTrue(monitoringNode.getChildren().stream()
+                .map(SystemVO.PermissionTreeVO::getRoutePath)
+                .collect(Collectors.toSet())
+                .containsAll(Set.of("/settings/api-docs", "/settings/audit")));
+        assertTrue(monitoringNode.getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet())
+                .containsAll(Set.of(
+                        "system:monitor:service:view",
+                        "system:monitor:redis:view",
+                        "system:monitor:docs:view"
+                )));
+    }
+
+    @Test
     void shouldExposePublicFilePublishAsPersonalFileAction() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
 

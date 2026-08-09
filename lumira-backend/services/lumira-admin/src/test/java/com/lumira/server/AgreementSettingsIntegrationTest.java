@@ -1,10 +1,11 @@
-package com.lumira.saas.modules.system.controller;
+package com.lumira.server;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -29,9 +30,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @SpringBootTest(
+        classes = LumiraServerApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@Disabled("Requires a seeded local MySQL schema; move to an isolated integration-test profile before enabling in default mvn test.")
+@EnabledIfEnvironmentVariable(named = "LUMIRA_SEEDED_MYSQL_TESTS", matches = "true")
 class AgreementSettingsIntegrationTest {
 
     private static final OAEPParameterSpec OAEP_SPEC = new OAEPParameterSpec(
@@ -51,6 +53,8 @@ class AgreementSettingsIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    private String originalCaptchaEnabled;
 
     private static RestTemplate createRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
@@ -90,7 +94,7 @@ class AgreementSettingsIntegrationTest {
     }
 
     private LoginResult loginAdmin(String baseUrl) throws Exception {
-        String encryptedPassword = encryptPassword(baseUrl, "123456");
+        String encryptedPassword = encryptPassword(baseUrl, seededAdminPassword());
         HttpHeaders loginHeaders = new HttpHeaders();
         loginHeaders.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<String> loginResponse = restTemplate.postForEntity(
@@ -138,6 +142,12 @@ class AgreementSettingsIntegrationTest {
     }
 
     private void disableCaptcha() {
+        if (originalCaptchaEnabled == null) {
+            originalCaptchaEnabled = jdbcTemplate.queryForObject(
+                    "select config_value from sys_config where config_key = 'security.captcha-enabled' and deleted = 0",
+                    String.class
+            );
+        }
         jdbcTemplate.update(
                 """
                         update sys_config
@@ -146,6 +156,22 @@ class AgreementSettingsIntegrationTest {
                           and deleted = 0
                         """
         );
+    }
+
+    @AfterEach
+    void restoreCaptcha() {
+        if (originalCaptchaEnabled == null) {
+            return;
+        }
+        jdbcTemplate.update(
+                "update sys_config set config_value = ? where config_key = 'security.captcha-enabled' and deleted = 0",
+                originalCaptchaEnabled
+        );
+        originalCaptchaEnabled = null;
+    }
+
+    private String seededAdminPassword() {
+        return System.getenv().getOrDefault("LUMIRA_SEEDED_MYSQL_ADMIN_PASSWORD", "123456");
     }
 
     private String encryptPassword(String baseUrl, String password) throws Exception {

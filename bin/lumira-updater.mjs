@@ -526,7 +526,7 @@ async function waitForSlot(task, slot, expectedCommit, timeoutMs = 240_000) {
 }
 
 function writeActiveUpstreams(slot) {
-  const content = renderActiveUpstreams(slot, parseEnvFile(envPath));
+  const content = renderActiveUpstreams(slot);
   if (!dryRun) atomicWrite(upstreamPath, content, 0o644);
 }
 

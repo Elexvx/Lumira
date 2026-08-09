@@ -62,6 +62,12 @@ public final class SystemPermissionTreeAssembler {
             "/user-center/permissions",
             "/iam/overview"
     );
+    private static final Set<String> ROLE_ASSIGNABLE_SETTINGS_PATHS = Set.of(
+            "/settings/payment",
+            "/settings/monitoring",
+            "/settings/api-docs",
+            "/settings/audit"
+    );
 
     public List<SystemVO.PermissionTreeVO> build(List<SystemVO.MenuVO> menus, List<SystemVO.PermissionVO> permissions) {
         if (CollectionUtils.isEmpty(menus)) {
@@ -153,7 +159,7 @@ public final class SystemPermissionTreeAssembler {
             return false;
         }
         String normalizedPath = path.trim();
-        if ("/settings/payment".equals(normalizedPath)) {
+        if (ROLE_ASSIGNABLE_SETTINGS_PATHS.contains(normalizedPath)) {
             return false;
         }
         return "/settings".equals(normalizedPath) || normalizedPath.startsWith("/settings/");

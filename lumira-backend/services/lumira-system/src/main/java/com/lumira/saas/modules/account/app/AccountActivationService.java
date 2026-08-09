@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
 public class AccountActivationService {
+    private static final String INVALID_TOKEN_MESSAGE = "激活链接无效、已过期或已使用";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final long TOKEN_EXPIRE_HOURS = 72L;
     private static final int TOKEN_LENGTH = 43;
@@ -109,13 +110,13 @@ public class AccountActivationService {
         String normalizedToken = normalizePublicToken(token);
         if (normalizedToken == null) {
             info.setValid(false);
-            info.setReason("Token is invalid, expired, or already used");
+            info.setReason(INVALID_TOKEN_MESSAGE);
             return info;
         }
         TokenRecord row = findValidToken(normalizedToken);
         if (row == null) {
             info.setValid(false);
-            info.setReason("Token is invalid, expired, or already used");
+            info.setReason(INVALID_TOKEN_MESSAGE);
             return info;
         }
         info.setValid(true);
@@ -128,18 +129,18 @@ public class AccountActivationService {
     public boolean complete(String token, String password) {
         String normalizedToken = normalizePublicToken(token);
         if (normalizedToken == null) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Token is invalid, expired, or already used");
+            throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
         passwordPolicyService.validatePassword(password);
         TokenRecord row = findValidToken(normalizedToken);
         if (row == null) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Token is invalid, expired, or already used");
+            throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
         String passwordHash = passwordEncoder.encode(password);
         LocalDateTime now = LocalDateTime.now();
         int consumed = repository.consumeToken(row, now);
         if (consumed == 0) {
-            throw biz(ErrorCode.VALIDATION_ERROR, "Token is invalid, expired, or already used");
+            throw biz(ErrorCode.VALIDATION_ERROR, INVALID_TOKEN_MESSAGE);
         }
         int userUpdated = repository.activateUser(row, passwordHash, now);
         if (userUpdated <= 0) {

@@ -2,6 +2,9 @@
   'use strict';
 
   var statusElement = document.getElementById('swagger-status');
+  var rendererTimeout = window.setTimeout(function () {
+    showError('接口文档组件加载超时，请刷新页面后重试。');
+  }, 10000);
 
   function showError(message) {
     if (!statusElement) {
@@ -17,9 +20,12 @@
     }
 
     if (typeof window.SwaggerUIBundle !== 'function' || typeof window.SwaggerUIStandalonePreset === 'undefined') {
+      window.clearTimeout(rendererTimeout);
       showError('接口文档组件加载失败，请刷新页面后重试。');
       return;
     }
+
+    window.clearTimeout(rendererTimeout);
 
     var padding = Number(event.data.schemeContainerVerticalPadding);
     if (Number.isFinite(padding) && padding >= 0) {
@@ -38,6 +44,12 @@
   });
 
   window.addEventListener('error', function () {
+    window.clearTimeout(rendererTimeout);
+    showError('接口文档组件加载失败，请刷新页面后重试。');
+  });
+
+  window.addEventListener('unhandledrejection', function () {
+    window.clearTimeout(rendererTimeout);
     showError('接口文档组件加载失败，请刷新页面后重试。');
   });
 })();

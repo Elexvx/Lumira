@@ -1,6 +1,85 @@
-# Lumira 部署指南
+# Lumira 启动与部署指南
 
-Lumira 是一套面向企业管理场景的 SaaS 平台。本指南说明如何在一台全新的 Linux 服务器上完成首次部署，以及部署完成后如何验证和更新系统。
+Lumira 是一套面向企业管理场景的 SaaS 平台。仓库只保留两种正式启动环境：本地调试使用宿主机原生进程，生产使用 Docker Compose 容器。
+
+## 启动环境
+
+| 环境 | 入口 | 应用运行方式 | 配置文件 |
+| --- | --- | --- | --- |
+| 本地调试 | `npm run start:local` | JDK 21 + Maven Wrapper + Node.js/pnpm 原生进程，不调用 Docker | `lumira-backend/.env` |
+| 生产 | `npm run start:production` | `deploy/docker-compose.prod.yml` 容器编排 | `deploy/.env` |
+
+也可以运行 `npm start`，然后在交互菜单中选择这两个环境之一。CI 或其他非交互环境必须显式传入 `local` 或 `production`。
+
+### 本地调试（原生启动）
+
+本机需要预先安装并启动：
+
+- JDK 21 或更高版本
+- Node.js 22 或更高版本，并启用 Corepack/pnpm
+- MySQL 8.4（默认 `127.0.0.1:3306`）
+- Redis 兼容服务（Windows 可使用 Memurai，默认 `127.0.0.1:6379`）
+
+首次准备：
+
+```powershell
+Copy-Item lumira-backend/.env.example lumira-backend/.env
+corepack pnpm --dir lumira-ui install
+```
+
+按本机实际凭据修改 `lumira-backend/.env`，在 MySQL 中创建 `lumira` 数据库，并导入 `lumira-backend/sql/saas.sql`。随后先运行只读预检，再启动：
+
+```powershell
+npm run start:local -- --check
+npm run start:local
+```
+
+需要在后台持续运行时：
+
+```powershell
+npm run start:local:daemon
+Get-Content runtime-logs/local-native.log -Wait
+npm run stop:local
+```
+
+后台入口记录精确的启动器 PID，停止时只终止该 PID 的进程树，不会停止本机 MySQL、Memurai 或其他 Node/Java 进程。
+
+默认启动 `lumira-server:8080` 和 Umi 开发服务器 `127.0.0.1:8000`。前端使用 Umi HMR；后端默认监听所有模块的 `src/main/java`、`src/main/resources` 和 `pom.xml`，保存后自动执行 Maven reactor 编译，成功后只重启 Java 进程，前端开发服务器会持续在线。编译失败时旧后端继续提供服务，修复并再次保存即可重试。
+
+需要联调 Outbox、异步文件任务或后台任务时，启动完整原生拓扑：
+
+```powershell
+npm run start:local:full
+```
+
+完整模式另外启动 `lumira-async:8081` 和 `lumira-job-executor:8082`。常用选项：
+
+```powershell
+npm run start:local -- --backend-only
+npm run start:local -- --frontend-only
+npm run start:local -- --skip-build
+npm run start:local -- --no-watch
+npm run start:local -- --frontend-port 8899
+```
+
+本地入口会强制前端 API/WS 指向 `127.0.0.1:8080`，并忽略浏览器中遗留的线上 API 地址，避免本地页面误操作生产数据。按 `Ctrl+C` 会停止该入口启动的全部原生进程。
+
+### 生产环境（容器启动）
+
+生产启动只复用已配置的镜像和容器，不会隐式执行 `pull` 或 `rebuild`：
+
+```bash
+npm run start:production -- --check
+npm run start:production
+```
+
+该入口要求已经准备好不含 `change-me` 占位符的 `deploy/.env`，强制三个 Java 运行时使用 `prod` profile，并继续复用现有蓝绿槽位、迁移和部署检查。停止容器拓扑：
+
+```bash
+npm run stop:production
+```
+
+首次安装仍应使用 `node bin/install-platform.mjs`；发布新版本应走平台更新器或显式的部署流程，不要把普通“启动”与“拉取新版本”混为同一操作。
 
 > 首次部署是完整初始化：安装运行环境、生成内部密钥、构建或拉取镜像、初始化数据库并启动全部服务。后续发布使用蓝绿更新和 Docker 分层复用，但容器仍会整体替换，并不是把差异文件覆盖进旧容器。
 
@@ -25,7 +104,7 @@ Lumira 是一套面向企业管理场景的 SaaS 平台。本指南说明如何�
 - 4 核 CPU
 - 3.5 GiB 内存，建议至少 4 GiB
 - 15 GiB 可用磁盘空间
-- Node.js 20 以上，建议使用 Node.js 22
+- Node.js 22 以上
 - Docker 24 以上及 Docker Compose v2
 - `curl`、`tar`、`gzip`、`sh`
 
@@ -33,7 +112,7 @@ Lumira 是一套面向企业管理场景的 SaaS 平台。本指南说明如何�
 
 - 域名已解析到服务器公网 IP
 - 对外开放 TCP 80、443
-- 本机 8080 端口未被其他程序占用
+- 本机 80、443，以及按 `API_PROXY_BIND`/`FRONTEND_BIND` 启用的 8000、8001 端口未被其他程序占用
 - 服务器可以访问代码仓库、Docker Registry 和 MySQL
 
 安装器可以在 Linux 上自动安装 Docker。正式服务器也可以提前安装 Docker，并确保执行部署的账户能够运行 `docker info`。
@@ -220,13 +299,15 @@ sudo node bin/install-platform.mjs \
 
 ## 10. 后续发行和更新
 
-首次部署完成后，不需要每次重新运行完整安装流程。后续版本可以通过系统后台的平台更新功能进行蓝绿发布，或者在维护窗口手动执行：
+首次部署完成后，不需要每次重新运行完整安装流程。推荐通过系统后台的平台更新功能消费固定到 digest 的发行清单并执行蓝绿发布。
+
+只有在 `deploy/.env` 中的业务镜像已经明确固定到目标 tag 或 digest 时，才在维护窗口手动执行：
 
 ```bash
 node bin/deploy-container.mjs --pull
 ```
 
-更新过程会拉取发行清单中固定到 digest 的镜像、运行数据库迁移、启动非活动槽、完成健康检查后切换流量。Docker 会复用本机已有镜像层以减少下载量，但新版本容器仍是不可变的完整容器。
+`deploy-container.mjs --pull` 会拉取 `deploy/.env` 当前配置的镜像引用；它本身不读取发行清单，也不会把浮动的 `main` 自动转换为 digest。平台更新器才负责读取发行清单、启动非活动槽、完成健康检查后切换流量。Docker 会复用本机已有镜像层以减少下载量，但新版本容器仍是不可变的完整容器。
 
 正式更新前应备份数据库，并在完成后同时核对：
 

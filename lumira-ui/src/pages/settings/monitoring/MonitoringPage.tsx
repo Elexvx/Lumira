@@ -32,6 +32,7 @@ import {
   isPlatformUpdateFailure,
   resolvePlatformUpdateConfirmationDetails,
 } from './platformUpdateState';
+import { SWAGGER_UI_SHELL_HTML } from './apiDocsShell';
 import { databaseMessage } from '@/i18n/databaseMessage';
 import { resolveRuntimeLocale } from '@/i18n/locale';
 
@@ -601,29 +602,6 @@ const UpdateSourceValue = ({ value, copyable = false }: { value?: string | null;
     </Typography.Text>
   );
 };
-
-const SWAGGER_UI_SHELL_HTML = `<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>接口文档</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css" integrity="sha384-wxLW6kwyHktdDGr6Pv1zgm/VGJh99lfUbzSn6HNHBENZlCN7W602k9VkGdxuFvPn" crossorigin="anonymous" />
-    <style>
-      html, body, #swagger-ui { min-height: 100%; margin: 0; background: #fff; }
-      #swagger-status { box-sizing: border-box; padding: 48px 24px; color: #667085; font: 14px/1.6 system-ui, sans-serif; text-align: center; }
-      #swagger-status.is-error { color: #d92d20; }
-      .swagger-ui .topbar { display: none; }
-      .swagger-ui .scheme-container { padding: var(--swagger-scheme-padding, 16px) 0; box-shadow: none; }
-    </style>
-  </head>
-  <body>
-    <div id="swagger-ui"><div id="swagger-status">正在加载接口文档…</div></div>
-    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" integrity="sha384-wmyclcVGX/WhUkdkATwhaK1X1JtiNrr2EoYJ+diV3vj4v6OC5yCeSu+yW13SYJep" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-standalone-preset.js" integrity="sha384-2YH8WDRaj7V2OqU/trsmzSagmk/E2SutiCsGkdgoQwC9pNUJV1u/141DHB6jgs8t" crossorigin="anonymous"></script>
-    <script src="/swagger-ui-bootstrap.js?v=2"></script>
-  </body>
-</html>`;
 
 const readApiDocsError = async (response: Response) => {
   const fallback = t('ui.settings.monitoring.monitoring.apiDocsFailedToLoad').replace('{status}', String(response.status));

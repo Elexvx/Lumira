@@ -127,7 +127,7 @@
 .competition-registration-member-manager__table-scroll {
   overflow-x: auto;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: calc(var(--saas-card-radius) - 4px);
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-bg-container);
 }
 
@@ -324,7 +324,7 @@
   align-items: flex-start;
   gap: 18px;
   padding: 24px;
-  border-radius: 12px;
+  border-radius: calc(var(--ant-border-radius) * 2);
   background: var(--ant-color-fill-quaternary);
 }
 
@@ -394,7 +394,7 @@
   padding: 16px;
   cursor: pointer;
   border: 1px solid var(--ant-color-border);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-bg-container);
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
@@ -429,7 +429,7 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
+  border-radius: var(--ant-border-radius-lg);
   background: #1677ff;
   color: #fff;
   font-size: 28px;
@@ -703,7 +703,7 @@
   align-items: stretch;
   overflow: hidden;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-bg-container);
 }
 
@@ -979,7 +979,7 @@
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-bg-container);
 }
 
@@ -992,7 +992,7 @@
   overflow: auto;
   padding: 12px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 6px;
+  border-radius: var(--ant-border-radius);
   background: var(--ant-color-bg-container);
 }
 
@@ -1092,7 +1092,7 @@
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 8px;
+  border-radius: var(--ant-border-radius-lg);
   background: var(--ant-color-bg-container);
 }
 

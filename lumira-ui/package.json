@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "node scripts/console-banner.mjs && node scripts/dev-server.mjs",
-    "dev:8899": "node scripts/console-banner.mjs && node scripts/dev-server.mjs --host 0.0.0.0 --port 8899",
-    "build": "max setup && max build && node scripts/adapt-cdn-assets.mjs",
+    "sync:swagger-ui": "node scripts/sync-swagger-ui-assets.mjs",
+    "dev": "node scripts/sync-swagger-ui-assets.mjs && node scripts/console-banner.mjs && node scripts/dev-server.mjs",
+    "dev:8899": "node scripts/sync-swagger-ui-assets.mjs && node scripts/console-banner.mjs && node scripts/dev-server.mjs --host 0.0.0.0 --port 8899",
+    "build": "node scripts/sync-swagger-ui-assets.mjs && max setup && max build && node scripts/adapt-cdn-assets.mjs",
     "start": "node scripts/console-banner.mjs && max preview",
     "lint": "max lint",
     "stylelint": "max lint --stylelint-only",
@@ -51,7 +52,8 @@
     "dompurify": "3.4.13",
     "rc-slider-captcha": "^1.9.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "swagger-ui-dist": "5.17.14"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

@@ -86,10 +86,10 @@ public class JobExecutorProperties {
         private long maxDelayMs = 30_000L;
         private long failureDelayMs = 10_000L;
         private boolean platformEnabled = true;
-        private boolean messageEnabled = true;
-        private boolean fileEnabled = true;
-        private boolean paymentEnabled = true;
-        private boolean pluginEnabled = true;
+        private boolean messageEnabled;
+        private boolean fileEnabled;
+        private boolean paymentEnabled;
+        private boolean pluginEnabled;
 
         public boolean isEnabled() {
             return enabled;

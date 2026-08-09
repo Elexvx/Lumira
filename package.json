@@ -7,6 +7,13 @@
     "doc": "doc"
   },
   "scripts": {
+    "start": "node bin/start-platform.mjs",
+    "start:local": "node bin/start-platform.mjs local",
+    "start:local:daemon": "node bin/start-local-daemon.mjs",
+    "start:local:full": "node bin/start-platform.mjs local --full",
+    "start:production": "node bin/start-platform.mjs production",
+    "stop:local": "node bin/stop-local.mjs",
+    "stop:production": "node bin/start-platform.mjs production --stop",
     "test": "node --test bin/*.test.mjs",
     "test:competition-load": "node bin/competition-workflow-load-smoke.mjs"
   },

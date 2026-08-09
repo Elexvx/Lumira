@@ -349,6 +349,57 @@ final result: passed
 
 passed
 
+---
+
+# Design QA — Maintenance brand and administrator entry (2026-08-08)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: Browser Comments 1 and 2 attached to this task, showing the public dark-theme maintenance page at a `1334 × 994` viewport. Comment 1 requests a larger website name; Comment 2 identifies the administrator-login control shape as incorrect.
+- Desktop implementation: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/design-qa/maintenance-admin-float-match-1334x994.jpg` (`1319 × 983` captured pixels from a `1334 × 994` CSS viewport, device scale factor `1`; the browser omits its scrollbar gutter and bottom edge from the bitmap).
+- Mobile implementation: `C:/Users/Administrator/Documents/GitHub/Lumira/artifacts/design-qa/maintenance-admin-float-match-390x844.jpg` (`390 × 843` captured pixels from a `390 × 844` CSS viewport, device scale factor `1`).
+- Reference implementation: the authenticated production `saas-global-float-actions` trigger was measured at the same desktop and mobile viewports before comparing the local maintenance entry.
+- State: unauthenticated public maintenance page, dark theme, configured website name/title/message, no countdown.
+
+The two supplied annotation images and the final desktop implementation were reviewed together at the same page state and CSS viewport. The mobile capture was used as supporting responsive evidence.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the two annotations.
+
+- Fonts and typography: the website name now has its own responsive title style and renders at `26.388px / 600` on the annotated desktop viewport, instead of inheriting the smaller Ant Design large-body size. It remains readable at `22px / 600` on mobile without competing with the maintenance title.
+- Spacing and layout rhythm: the centered, frameless composition and existing Result spacing are unchanged. The administrator entry now uses the same Ant Design `FloatButton` component and offsets as the global floating action: `32px / 40px` on desktop and `16px / 24px` on mobile.
+- Colors and visual tokens: the website name uses the active Ant Design primary text token. The administrator entry now inherits the same primary floating-button surface (`rgb(22, 104, 220)` in the verified dark theme), circular body, icon alignment, and hover behavior as the global action; only the intentional low-visibility `0.28` idle opacity differs.
+- Image quality and asset fidelity: no raster or logo asset was added or replaced; a configured website logo still follows the existing image path and sizing rules.
+- Copy and content: website name, maintenance title, maintenance message, countdown behavior, and accessible `管理员登录` label are unchanged.
+- Responsiveness: at `390 × 844`, document width and scroll width are both `390px`; the local entry and production floating trigger both resolve to the same accessible `44 × 44px`, `50%` radius, `16px` right offset, and `24px` bottom offset, with no horizontal or vertical overflow.
+
+## Focused comparison and interaction evidence
+
+- The desktop screenshot visibly shows the requested stronger website-name hierarchy while preserving the original centered layout.
+- Computed browser measurements confirm the local administrator entry and production floating trigger are both `40 × 40px` on desktop and `44 × 44px` on mobile, with a `50%` radius, identical primary background, and identical offsets.
+- Activating the administrator entry routes to `/user/login?redirect=%2Fsettings%2Fpersonalization%3Ftab%3Dmaintenance`, preserving the recovery flow.
+- No change-related browser error was introduced. The login-page interaction still emits two existing Ant Design Modal deprecation warnings, unrelated to this maintenance-page styling change.
+
+## Comparison history
+
+1. The supplied annotations identified two P2 presentation issues: undersized website identity and an unreliable administrator-button silhouette.
+2. Added a dedicated responsive website-name class without changing the logo path or maintenance content.
+3. The first pass constrained a regular Ant Design `Button`, but visual review showed that this still did not share the floating-window control's native silhouette.
+4. Replaced the recovery control with Ant Design `FloatButton`, matching the existing global floating action's primary type, circle shape, responsive offsets, touch target, and icon geometry while retaining reduced idle opacity.
+5. Post-fix desktop and mobile captures plus direct computed-style comparison confirmed exact geometry, preserved navigation, and zero responsive overflow.
+
+## Validation
+
+- Focused Vitest: `2` files / `8` tests passed.
+- Stylelint: passed.
+- TypeScript typecheck: passed.
+- Umi production build: passed (`123` assets).
+
+## Final result
+
+final result: passed
+
 # Maintenance settings annotation QA — 2026-08-08
 
 ## Visual truth and implementation evidence

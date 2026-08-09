@@ -208,10 +208,10 @@ public class FileManagementAppService {
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long safeOffset = (safePageNo - 1L) * safePageSize;
-        long totalLimit = calculateFileListTotalCountLimit(safePageSize, safeOffset);
+        long totalLimit = calculateFileListTotalCountLimit();
         Long total = fileObjectRepository.countCandidates(query, access, totalLimit);
-        long normalizedTotal = normalizeTotal(total, totalLimit);
-        boolean totalCapped = isTotalCapped(total, totalLimit);
+        long normalizedTotal = normalizeTotal(total, FILE_LIST_TOTAL_COUNT_CAP);
+        boolean totalCapped = isTotalCapped(total, FILE_LIST_TOTAL_COUNT_CAP);
         List<FileObjectDTO> records = fileObjectRepository.search(query, access, safeOffset, safePageSize)
                 .stream()
                 .map(this::mapFileObject)
@@ -511,10 +511,10 @@ public class FileManagementAppService {
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long safeOffset = (safePageNo - 1L) * safePageSize;
-        long totalLimit = calculateStorageSpaceListTotalCountLimit(safePageSize, safeOffset);
+        long totalLimit = calculateStorageSpaceListTotalCountLimit();
         Long total = storageSpaceRepository.countCandidates(totalLimit);
-        long normalizedTotal = normalizeTotal(total, totalLimit);
-        boolean totalCapped = isTotalCapped(total, totalLimit);
+        long normalizedTotal = normalizeTotal(total, STORAGE_SPACE_LIST_TOTAL_COUNT_CAP);
+        boolean totalCapped = isTotalCapped(total, STORAGE_SPACE_LIST_TOTAL_COUNT_CAP);
         List<StorageSpaceDTO> records = storageSpaceRepository
                 .listWithUsage(safePageSize, safeOffset)
                 .stream()
@@ -550,18 +550,12 @@ public class FileManagementAppService {
                 .toList();
     }
 
-    private long calculateFileListTotalCountLimit(long pageSize, long offset) {
-        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        long safeOffset = Math.max(0L, offset);
-        long dynamicLimit = safeOffset + safePageSize + 1L;
-        return Math.min(dynamicLimit, FILE_LIST_TOTAL_COUNT_CAP);
+    private long calculateFileListTotalCountLimit() {
+        return FILE_LIST_TOTAL_COUNT_CAP + 1L;
     }
 
-    private long calculateStorageSpaceListTotalCountLimit(long pageSize, long offset) {
-        long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        long safeOffset = Math.max(0L, offset);
-        long dynamicLimit = safeOffset + safePageSize + 1L;
-        return Math.min(dynamicLimit, STORAGE_SPACE_LIST_TOTAL_COUNT_CAP);
+    private long calculateStorageSpaceListTotalCountLimit() {
+        return STORAGE_SPACE_LIST_TOTAL_COUNT_CAP + 1L;
     }
 
     private long normalizeTotal(Long total, long limit) {
@@ -578,7 +572,7 @@ public class FileManagementAppService {
         if (limit <= 0L || total == null) {
             return false;
         }
-        return total >= limit;
+        return total > limit;
     }
 
     public StorageSpaceDTO getStorageSpace(CurrentUser currentUser, String storageKey) {

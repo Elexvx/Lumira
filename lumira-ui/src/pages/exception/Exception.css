@@ -7,7 +7,7 @@
 
 .saas-exception-card {
   overflow: hidden;
-  border-radius: var(--saas-radius-lg);
+  border-radius: var(--ant-border-radius-lg);
   box-shadow: var(--saas-shadow-card);
 }
 
