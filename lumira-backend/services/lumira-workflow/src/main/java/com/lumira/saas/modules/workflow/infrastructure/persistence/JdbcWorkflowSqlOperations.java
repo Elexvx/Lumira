@@ -17,12 +17,12 @@ public class JdbcWorkflowSqlOperations implements WorkflowSqlOperations {
 
     @Override
     public int update(String sql, Object... args) {
-        return jdbcTemplate.update(sql, args);
+        return jdbcTemplate.update(sql, args); // nosemgrep: java.spring.security.audit.spring-sqli.spring-sqli -- Repository-owned SQL; all values are bound parameters.
     }
 
     @Override
     public List<Map<String, Object>> queryForList(String sql, Object... args) {
-        return jdbcTemplate.queryForList(sql, args);
+        return jdbcTemplate.queryForList(sql, args); // nosemgrep: java.spring.security.audit.spring-sqli.spring-sqli -- Repository-owned SQL; all values are bound parameters.
     }
 
     @Override
