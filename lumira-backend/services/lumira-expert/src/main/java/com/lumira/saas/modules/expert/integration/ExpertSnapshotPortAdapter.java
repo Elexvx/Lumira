@@ -33,8 +33,8 @@ public class ExpertSnapshotPortAdapter implements ExpertSnapshotPort {
 
     private ExpertSnapshot toSnapshot(ExpertVO.Expert expert) {
         return new ExpertSnapshot(
-                expert.getId(), expert.getUserId(), expert.getUserUuid(), expert.getStatus(),
-                expert.getApprovalStatus(), expert.getAccountStatus()
+                expert.getId(), expert.getUserId(), expert.getUserUuid(), expert.getName(), expert.getEmail(),
+                expert.getStatus(), expert.getApprovalStatus(), expert.getAccountStatus()
         );
     }
 }

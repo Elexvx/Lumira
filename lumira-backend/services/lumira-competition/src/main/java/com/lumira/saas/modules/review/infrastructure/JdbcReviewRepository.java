@@ -383,41 +383,6 @@ public class JdbcReviewRepository implements ReviewRepository {
     }
 
     @Override
-    public List<ExpertRosterCandidate> listEligibleExperts(List<Long> expertIds) {
-        if (expertIds == null || expertIds.isEmpty()) {
-            return List.of();
-        }
-        String placeholders = String.join(",", java.util.Collections.nCopies(expertIds.size(), "?"));
-        return database.query(
-                """
-                        select id as expertId, user_id as userId, user_uuid as userUuid,
-                               name, email, status, approval_status as approvalStatus,
-                               account_status as accountStatus
-                          from aiadc_expert
-                         where id in (%s)
-                           and status = 'active'
-                           and approval_status = 'APPROVED'
-                           and account_status = 'ENABLED'
-                           and user_id is not null
-                           and user_uuid is not null
-                           and email is not null and trim(email) <> ''
-                           and deleted = 0
-                        """.formatted(placeholders),
-                (row, rowNum) -> new ExpertRosterCandidate(
-                        row.getLong("expertId"),
-                        row.getObject("userId", Long.class),
-                        row.getString("userUuid"),
-                        row.getString("name"),
-                        row.getString("email"),
-                        row.getString("status"),
-                        row.getString("approvalStatus"),
-                        row.getString("accountStatus")
-                ),
-                expertIds.toArray()
-        );
-    }
-
-    @Override
     public int replaceRoster(
             Long batchId,
             List<ExpertRosterCandidate> experts,
@@ -721,7 +686,7 @@ public class JdbcReviewRepository implements ReviewRepository {
                         select invitation.id as invitationId, invitation.batch_id as batchId,
                                batch.batch_name as batchName, invitation.roster_id as rosterId,
                                invitation.expert_id as expertId, invitation.expert_user_id as expertUserId,
-                               invitation.expert_user_uuid as expertUserUuid, expert.name as expertName,
+                               invitation.expert_user_uuid as expertUserUuid, roster.expert_name as expertName,
                                invitation.email, invitation.status as invitationStatus,
                                invitation.token_hash as tokenHash,
                                invitation.token_expires_at as tokenExpiresAt,
@@ -732,12 +697,12 @@ public class JdbcReviewRepository implements ReviewRepository {
                           from competition_review_invitation invitation
                           join competition_review_batch batch
                             on batch.id = invitation.batch_id and batch.deleted = 0
-                          join aiadc_expert expert
-                            on expert.id = invitation.expert_id
-                           and expert.deleted = 0
-                           and expert.status = 'active'
-                           and expert.approval_status = 'APPROVED'
-                           and expert.account_status = 'ENABLED'
+                          join competition_review_roster roster
+                            on roster.id = invitation.roster_id
+                           and roster.batch_id = invitation.batch_id
+                           and roster.expert_id = invitation.expert_id
+                           and roster.status = 'SELECTED'
+                           and roster.deleted = 0
                          where %s and invitation.deleted = 0
                          limit 1
                         """).formatted(predicate),

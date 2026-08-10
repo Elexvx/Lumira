@@ -76,8 +76,6 @@ public interface ReviewRepository {
 
     List<ReviewVO.AdminAssignment> listAssignments(Long batchId);
 
-    List<ExpertRosterCandidate> listEligibleExperts(List<Long> expertIds);
-
     int replaceRoster(
             Long batchId,
             List<ExpertRosterCandidate> experts,

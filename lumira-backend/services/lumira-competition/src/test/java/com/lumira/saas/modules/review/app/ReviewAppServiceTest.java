@@ -17,6 +17,8 @@ import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.event.PlatformEventPort;
+import com.lumira.api.expert.ExpertSnapshot;
+import com.lumira.api.expert.ExpertSnapshotPort;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.registration.api.RegistrationReviewInternalApi;
@@ -30,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 class ReviewAppServiceTest {
 
@@ -203,6 +206,34 @@ class ReviewAppServiceTest {
     }
 
     @Test
+    void savesReviewerRosterFromExpertOwnerSnapshots() {
+        ReviewVO.Batch ready = reviewBatch(60L, "READY", 1);
+        when(repository.findBatch(60L)).thenReturn(Optional.of(ready));
+        when(repository.listAssignments(60L)).thenReturn(List.of());
+        when(repository.replaceRoster(eq(60L), any(), eq(7L), eq("user-uuid"), any())).thenReturn(1);
+        when(repository.listRoster(60L)).thenReturn(List.of());
+        stubExpertSnapshot(new ExpertSnapshot(
+                80L, 18L, "expert-user-uuid", "评审专家", "expert@example.com",
+                "active", "APPROVED", "ENABLED"
+        ));
+        ReviewDTO.RosterSaveRequest request = new ReviewDTO.RosterSaveRequest();
+        request.setExpertIds(List.of(80L));
+
+        service.saveRoster(user(ReviewAppService.ROSTER_MANAGE), 60L, request);
+
+        verify(repository).replaceRoster(
+                eq(60L),
+                argThat(experts -> experts.size() == 1
+                        && experts.getFirst().expertId().equals(80L)
+                        && experts.getFirst().userUuid().equals("expert-user-uuid")
+                        && experts.getFirst().email().equals("expert@example.com")),
+                eq(7L),
+                eq("user-uuid"),
+                any()
+        );
+    }
+
+    @Test
     void opensInvitationWithQrButBlocksTasksUntilAdministratorCheckIn() {
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         ReviewRepository.InvitationContext context = new ReviewRepository.InvitationContext(
@@ -223,6 +254,10 @@ class ReviewAppServiceTest {
                 now,
                 null
         );
+        stubExpertSnapshot(new ExpertSnapshot(
+                80L, 7L, "user-uuid", "评审专家", "expert@example.com",
+                "active", "APPROVED", "ENABLED"
+        ));
         when(repository.findInvitationByTokenHash(anyString())).thenReturn(Optional.of(context));
         when(repository.issueInvitationQr(eq(900L), anyString(), any(), any())).thenReturn(1);
 
@@ -259,6 +294,10 @@ class ReviewAppServiceTest {
                 now,
                 null
         );
+        stubExpertSnapshot(new ExpertSnapshot(
+                81L, 7L, "user-uuid", "评审专家", "expert@example.com",
+                "active", "APPROVED", "ENABLED"
+        ));
         when(repository.findInvitationByQrTokenHash(anyString())).thenReturn(Optional.of(context));
         ReviewDTO.CheckInRequest request = new ReviewDTO.CheckInRequest();
         request.setQrToken("qr-token");
@@ -1242,5 +1281,14 @@ class ReviewAppServiceTest {
         user.setUsername("review-admin");
         user.setPermissions(Set.of(permission));
         return user;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void stubExpertSnapshot(ExpertSnapshot snapshot) {
+        ExpertSnapshotPort port = mock(ExpertSnapshotPort.class);
+        when(port.findExpertSnapshot(snapshot.expertId())).thenReturn(snapshot);
+        ObjectProvider<ExpertSnapshotPort> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(port);
+        service.setExpertSnapshotPortProvider(provider);
     }
 }

@@ -161,6 +161,21 @@ class JdbcReviewRepositoryTest {
                 .contains("limit 1");
     }
 
+    @Test
+    void invitationLookupUsesTheCompetitionOwnedRosterSnapshot() {
+        RecordingQueryOperations database = new RecordingQueryOperations();
+        JdbcReviewRepository repository = new JdbcReviewRepository(database);
+
+        repository.findInvitationByTokenHash("token-hash");
+
+        assertThat(database.sql)
+                .contains("join competition_review_roster roster")
+                .contains("roster.expert_name as expertName")
+                .contains("roster.status = 'SELECTED'")
+                .doesNotContain("aiadc_expert");
+        assertThat(database.args).containsExactly("token-hash");
+    }
+
     private static final class RecordingQueryOperations extends CompetitionSqlOperations {
         private String sql;
         private Object[] args = new Object[0];

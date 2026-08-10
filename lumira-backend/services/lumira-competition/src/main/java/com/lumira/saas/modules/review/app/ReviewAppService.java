@@ -430,7 +430,7 @@ public class ReviewAppService {
             throw biz(ErrorCode.BIZ_ERROR, "The reviewer roster can only be changed before review starts");
         }
         List<Long> expertIds = normalizeExpertIds(request == null ? null : request.getExpertIds());
-        List<ReviewRepository.ExpertRosterCandidate> experts = reviewRepository.listEligibleExperts(expertIds);
+        List<ReviewRepository.ExpertRosterCandidate> experts = listEligibleExperts(expertIds);
         if (experts.size() != expertIds.size()) {
             throw biz(
                     ErrorCode.BIZ_ERROR,
@@ -643,6 +643,13 @@ public class ReviewAppService {
             throw biz(ErrorCode.BIZ_ERROR, "The check-in QR token is invalid or has been replaced");
         }
         ReviewRepository.InvitationContext context = optional.get();
+        if (!invitationMatchesEligibleExpert(context)) {
+            reviewRepository.recordCheckinAttempt(
+                    batchId, null, null, qrTokenHash, "REJECTED", "二维码无效或已被替换",
+                    operator.userId(), operator.userUuid(), LocalDateTime.now()
+            );
+            throw biz(ErrorCode.BIZ_ERROR, "The check-in QR token is invalid or has been replaced");
+        }
         LocalDateTime now = LocalDateTime.now();
         if (!batchId.equals(context.batchId())) {
             recordRejectedCheckin(operator, batchId, context, qrTokenHash, "二维码不属于当前评审批次");
@@ -1086,8 +1093,7 @@ public class ReviewAppService {
         }
         List<ReviewRepository.ExpertWorkload> availableExperts;
         if (!rosterExpertIds.isEmpty()) {
-            List<ReviewRepository.ExpertRosterCandidate> rosterCandidates =
-                    reviewRepository.listEligibleExperts(rosterExpertIds);
+            List<ReviewRepository.ExpertRosterCandidate> rosterCandidates = listEligibleExperts(rosterExpertIds);
             if (rosterCandidates == null || rosterCandidates.size() != rosterExpertIds.size()) {
                 throw biz(ErrorCode.BIZ_ERROR, "Some roster experts are no longer approved or enabled");
             }
@@ -2226,6 +2232,9 @@ public class ReviewAppService {
         ReviewRepository.InvitationContext context = reviewRepository.findInvitationByTokenHash(
                 sha256Text(rawToken.trim())
         ).orElseThrow(() -> biz(ErrorCode.UNAUTHORIZED, "Review invitation is invalid or has been replaced"));
+        if (!invitationMatchesEligibleExpert(context)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Review invitation is invalid or has been replaced");
+        }
         LocalDateTime now = LocalDateTime.now();
         if (context.tokenExpiresAt() == null || !context.tokenExpiresAt().isAfter(now)) {
             throw biz(ErrorCode.UNAUTHORIZED, "Review invitation has expired");
@@ -2344,6 +2353,29 @@ public class ReviewAppService {
                 && !target.expertUserUuid().equals(target.candidateOwnerUserUuid());
     }
 
+    private List<ReviewRepository.ExpertRosterCandidate> listEligibleExperts(List<Long> expertIds) {
+        ExpertSnapshotPort expertSnapshotPort = expertSnapshotPortProvider == null
+                ? null : expertSnapshotPortProvider.getIfAvailable();
+        if (expertSnapshotPort == null) {
+            throw biz(ErrorCode.BIZ_ERROR, "Expert profile service is unavailable");
+        }
+        List<ReviewRepository.ExpertRosterCandidate> experts = new ArrayList<>();
+        for (Long expertId : expertIds == null ? List.<Long>of() : expertIds) {
+            ExpertSnapshot snapshot = expertSnapshotPort.findExpertSnapshot(expertId);
+            if (snapshot == null
+                    || !expertId.equals(snapshot.expertId())
+                    || !isApprovedEnabledExpert(snapshot)
+                    || !StringUtils.hasText(snapshot.email())) {
+                continue;
+            }
+            experts.add(new ReviewRepository.ExpertRosterCandidate(
+                    snapshot.expertId(), snapshot.userId(), snapshot.userUuid(), snapshot.name(), snapshot.email(),
+                    snapshot.status(), snapshot.approvalStatus(), snapshot.accountStatus()
+            ));
+        }
+        return List.copyOf(experts);
+    }
+
     private List<ReviewRepository.ExpertWorkload> availableExpertWorkloads() {
         ExpertSnapshotPort expertSnapshotPort = expertSnapshotPortProvider == null
                 ? null : expertSnapshotPortProvider.getIfAvailable();
@@ -2396,6 +2428,20 @@ public class ReviewAppService {
                 && snapshot.userId() != null
                 && snapshot.userId() > 0
                 && StringUtils.hasText(snapshot.userUuid());
+    }
+
+    private boolean invitationMatchesEligibleExpert(ReviewRepository.InvitationContext context) {
+        ExpertSnapshotPort expertSnapshotPort = expertSnapshotPortProvider == null
+                ? null : expertSnapshotPortProvider.getIfAvailable();
+        if (expertSnapshotPort == null || context == null || context.expertId() == null) {
+            return false;
+        }
+        ExpertSnapshot snapshot = expertSnapshotPort.findExpertSnapshot(context.expertId());
+        return snapshot != null
+                && context.expertId().equals(snapshot.expertId())
+                && java.util.Objects.equals(context.expertUserId(), snapshot.userId())
+                && java.util.Objects.equals(context.expertUserUuid(), snapshot.userUuid())
+                && isApprovedEnabledExpert(snapshot);
     }
 
     private boolean snapshotIdentityConflict(String snapshotJson, String userUuid) {
