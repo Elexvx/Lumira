@@ -8,11 +8,16 @@ const baseUrl =
   process.env.DEPLOY_CHECK_BASE_URL ||
   (process.env.API_DOMAIN ? `https://${process.env.API_DOMAIN}` : 'http://127.0.0.1:8000');
 const username = process.env.AUTH_LOAD_USERNAME || process.env.PLAYWRIGHT_ADMIN_USER || 'admin';
-const password = process.env.AUTH_LOAD_PASSWORD || process.env.PLAYWRIGHT_ADMIN_PASSWORD || '123456';
+const password = process.env.AUTH_LOAD_PASSWORD || process.env.PLAYWRIGHT_ADMIN_PASSWORD;
 const durationMs = Number(process.env.AUTH_LOAD_DURATION_MS || 30_000);
 const concurrency = Number(process.env.AUTH_LOAD_CONCURRENCY || 16);
 const targetRps = Number(process.env.AUTH_LOAD_RPS || Math.max(8, concurrency * 2));
 const timeoutMs = Number(process.env.AUTH_LOAD_TIMEOUT_MS || 5_000);
+
+if (!password) {
+  console.error('Set AUTH_LOAD_PASSWORD or PLAYWRIGHT_ADMIN_PASSWORD to a non-bootstrap test account password.');
+  process.exit(1);
+}
 
 const endpoints = (process.env.AUTH_LOAD_ENDPOINTS || [
   '/api/v1/plugins/current/bootstrap',

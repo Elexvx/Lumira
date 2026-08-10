@@ -31,8 +31,15 @@ public class JdbcReviewRepository implements ReviewRepository {
             select id, plan_id as planId, competition_id as competitionId, stage_id as stageId,
                    criteria_version_id as criteriaVersionId, batch_no as batchNo, batch_name as batchName,
                    batch_type as batchType, status, assignment_strategy as assignmentStrategy,
-                   minimum_reviewer_count as minimumReviewerCount, candidate_count as candidateCount,
-                   freeze_token as freezeToken, frozen_at as frozenAt, review_deadline as reviewDeadline,
+                   minimum_reviewer_count as minimumReviewerCount,
+                   reviewer_count_per_candidate as reviewerCountPerCandidate,
+                   expert_min_assignments as expertMinAssignments,
+                   expert_target_assignments as expertTargetAssignments,
+                   expert_max_assignments as expertMaxAssignments,
+                   candidate_count as candidateCount,
+                   freeze_token as freezeToken, frozen_at as frozenAt,
+                   assignment_confirmed_at as assignmentConfirmedAt,
+                   review_deadline as reviewDeadline,
                    finalized_at as finalizedAt, published_at as publishedAt, version,
                    created_at as createdAt, updated_at as updatedAt
               from competition_review_batch
@@ -360,13 +367,472 @@ public class JdbcReviewRepository implements ReviewRepository {
                                accepted_at as acceptedAt, declined_at as declinedAt,
                                decline_reason as declineReason, expired_at as expiredAt,
                                revoked_at as revokedAt, revoke_reason as revokeReason,
-                               submitted_at as submittedAt, version
-                          from competition_review_assignment
-                         where batch_id = ? and deleted = 0
-                         order by candidate_id asc, expert_id asc, id asc
+                               submitted_at as submittedAt, invitation.status as invitationStatus,
+                               invitation.checked_in_at as checkedInAt, version
+                          from competition_review_assignment assignment
+                          left join competition_review_invitation invitation
+                            on invitation.batch_id = assignment.batch_id
+                           and invitation.expert_id = assignment.expert_id
+                           and invitation.deleted = 0
+                         where assignment.batch_id = ? and assignment.deleted = 0
+                         order by assignment.candidate_id asc, assignment.expert_id asc, assignment.id asc
                         """,
                 new BeanPropertyRowMapper<>(ReviewVO.AdminAssignment.class),
                 batchId
+        );
+    }
+
+    @Override
+    public int replaceRoster(
+            Long batchId,
+            List<ExpertRosterCandidate> experts,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime updatedAt
+    ) {
+        int invalidatedInvitations = database.update(
+                """
+                        update competition_review_invitation
+                           set status = 'REPLACED', deleted = 1,
+                               updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                         where batch_id = ? and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                updatedAt,
+                batchId
+        );
+        int changed = database.update(
+                """
+                        update competition_review_roster
+                           set status = 'REMOVED', deleted = 1,
+                               removed_at = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                         where batch_id = ? and deleted = 0
+                        """,
+                updatedAt,
+                operatorId,
+                operatorUuid,
+                updatedAt,
+                batchId
+        );
+        database.update(
+                """
+                        update competition_review_batch
+                           set assignment_confirmed_at = null,
+                               updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                         where id = ? and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                updatedAt,
+                batchId
+        );
+        for (ExpertRosterCandidate expert : experts) {
+            database.update(
+                    """
+                            insert into competition_review_roster (
+                                batch_id, expert_id, expert_user_id, expert_user_uuid,
+                                expert_name, email, status, selected_at,
+                                created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                            ) values (?, ?, ?, ?, ?, ?, 'SELECTED', ?, ?, ?, ?, ?, 0)
+                            on duplicate key update
+                                expert_user_id = values(expert_user_id),
+                                expert_user_uuid = values(expert_user_uuid),
+                                expert_name = values(expert_name), email = values(email),
+                                status = 'SELECTED', selected_at = values(selected_at),
+                                removed_at = null, deleted = 0,
+                                updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid),
+                                updated_at = values(updated_at)
+                            """,
+                    batchId,
+                    expert.expertId(),
+                    expert.userId(),
+                    expert.userUuid(),
+                    expert.name(),
+                    expert.email(),
+                    updatedAt,
+                    operatorId,
+                    operatorUuid,
+                    operatorId,
+                    operatorUuid
+            );
+        }
+        return invalidatedInvitations + changed + experts.size();
+    }
+
+    @Override
+    public List<ReviewVO.RosterExpert> listRoster(Long batchId) {
+        return database.query(
+                """
+                        select roster.id, roster.batch_id as batchId, roster.expert_id as expertId,
+                               roster.expert_user_id as expertUserId, roster.expert_user_uuid as expertUserUuid,
+                               roster.expert_name as expertName, roster.email, roster.status,
+                               invitation.status as invitationStatus,
+                               invitation.send_attempts as invitationAttempts,
+                               invitation.failure_reason as invitationFailureReason,
+                               invitation.sent_at as invitationSentAt,
+                               invitation.checked_in_at as checkedInAt
+                          from competition_review_roster roster
+                          left join competition_review_invitation invitation
+                            on invitation.batch_id = roster.batch_id
+                           and invitation.expert_id = roster.expert_id
+                           and invitation.deleted = 0
+                         where roster.batch_id = ? and roster.deleted = 0
+                         order by roster.id asc
+                        """,
+                new BeanPropertyRowMapper<>(ReviewVO.RosterExpert.class),
+                batchId
+        );
+    }
+
+    @Override
+    public List<Long> listSelectedRosterExpertIds(Long batchId) {
+        return database.queryForList(
+                """
+                        select expert_id
+                          from competition_review_roster
+                         where batch_id = ? and status = 'SELECTED' and deleted = 0
+                         order by id asc
+                        """,
+                Long.class,
+                batchId
+        );
+    }
+
+    @Override
+    public Long upsertInvitation(
+            Long batchId,
+            Long rosterId,
+            ExpertRosterCandidate expert,
+            String tokenHash,
+            LocalDateTime tokenExpiresAt,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime updatedAt
+    ) {
+        int changed = database.update(
+                """
+                        insert into competition_review_invitation (
+                            batch_id, roster_id, expert_id, expert_user_id, expert_user_uuid,
+                            email, token_hash, token_expires_at, status, send_attempts,
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, ?, 0)
+                        on duplicate key update
+                            roster_id = values(roster_id), expert_user_id = values(expert_user_id),
+                            expert_user_uuid = values(expert_user_uuid), email = values(email),
+                            token_hash = values(token_hash), token_expires_at = values(token_expires_at),
+                            status = 'PENDING', sent_at = null, opened_at = null,
+                            qr_token_hash = null, qr_expires_at = null, qr_used_at = null,
+                            checked_in_at = null, checked_in_by = null, checked_in_by_uuid = null,
+                            send_attempts = 0, failure_reason = null,
+                            updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid),
+                            updated_at = values(updated_at), deleted = 0
+                        """,
+                batchId,
+                rosterId,
+                expert.expertId(),
+                expert.userId(),
+                expert.userUuid(),
+                expert.email(),
+                tokenHash,
+                tokenExpiresAt,
+                operatorId,
+                operatorUuid,
+                operatorId,
+                operatorUuid
+        );
+        return changed > 0 ? database.queryForObject(
+                """
+                        select id from competition_review_invitation
+                         where batch_id = ? and expert_id = ? and deleted = 0 limit 1
+                        """,
+                Long.class,
+                batchId,
+                expert.expertId()
+        ) : null;
+    }
+
+    @Override
+    public int markInvitationSent(Long invitationId, int attempts, LocalDateTime sentAt) {
+        return database.update(
+                """
+                        update competition_review_invitation
+                           set status = 'SENT', sent_at = ?, send_attempts = ?, failure_reason = null,
+                               updated_at = ?
+                         where id = ? and deleted = 0
+                        """,
+                sentAt,
+                attempts,
+                sentAt,
+                invitationId
+        );
+    }
+
+    @Override
+    public int markInvitationFailed(Long invitationId, int attempts, String reason, LocalDateTime failedAt) {
+        return database.update(
+                """
+                        update competition_review_invitation
+                           set status = 'FAILED', send_attempts = ?, failure_reason = ?, updated_at = ?
+                         where id = ? and deleted = 0
+                        """,
+                attempts,
+                reason,
+                failedAt,
+                invitationId
+        );
+    }
+
+    @Override
+    public Long enqueueInvitationNotification(
+            Long batchId,
+            Long invitationId,
+            String dedupeKey,
+            String recipientEmail,
+            String subject,
+            String content,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime createdAt
+    ) {
+        int changed = database.update(
+                """
+                        insert into competition_review_notification_outbox (
+                            batch_id, invitation_id, dedupe_key, recipient_email, subject, content,
+                            status, attempts, next_retry_at,
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
+                        on duplicate key update
+                            recipient_email = values(recipient_email), subject = values(subject),
+                            content = values(content),
+                            status = case when status = 'DELIVERED' then status else 'PENDING' end,
+                            next_retry_at = values(next_retry_at),
+                            updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid),
+                            updated_at = values(updated_at), deleted = 0
+                        """,
+                batchId,
+                invitationId,
+                dedupeKey,
+                recipientEmail,
+                subject,
+                content,
+                createdAt,
+                operatorId,
+                operatorUuid,
+                operatorId,
+                operatorUuid
+        );
+        return changed > 0 ? database.queryForObject(
+                """
+                        select id from competition_review_notification_outbox
+                         where dedupe_key = ? and deleted = 0 limit 1
+                        """,
+                Long.class,
+                dedupeKey
+        ) : null;
+    }
+
+    @Override
+    public int markInvitationNotificationSent(Long outboxId, int attempts, LocalDateTime sentAt) {
+        return database.update(
+                """
+                        update competition_review_notification_outbox
+                           set status = 'DELIVERED', sent_at = ?, attempts = ?, failure_reason = null,
+                               next_retry_at = null, updated_at = ?
+                         where id = ? and deleted = 0
+                        """,
+                sentAt,
+                attempts,
+                sentAt,
+                outboxId
+        );
+    }
+
+    @Override
+    public int markInvitationNotificationFailed(
+            Long outboxId,
+            int attempts,
+            String reason,
+            LocalDateTime failedAt
+    ) {
+        return database.update(
+                """
+                        update competition_review_notification_outbox
+                           set status = 'FAILED', attempts = ?, failure_reason = ?,
+                               next_retry_at = ?, updated_at = ?
+                         where id = ? and deleted = 0
+                        """,
+                attempts,
+                reason,
+                failedAt,
+                failedAt,
+                outboxId
+        );
+    }
+
+    @Override
+    public Optional<InvitationContext> findInvitationByTokenHash(String tokenHash) {
+        return findInvitation("invitation.token_hash = ?", tokenHash);
+    }
+
+    @Override
+    public Optional<InvitationContext> findInvitationByQrTokenHash(String qrTokenHash) {
+        return findInvitation("invitation.qr_token_hash = ?", qrTokenHash);
+    }
+
+    private Optional<InvitationContext> findInvitation(String predicate, String value) {
+        return database.query(
+                ("""
+                        select invitation.id as invitationId, invitation.batch_id as batchId,
+                               batch.batch_name as batchName, invitation.roster_id as rosterId,
+                               invitation.expert_id as expertId, invitation.expert_user_id as expertUserId,
+                               invitation.expert_user_uuid as expertUserUuid, roster.expert_name as expertName,
+                               invitation.email, invitation.status as invitationStatus,
+                               invitation.token_hash as tokenHash,
+                               invitation.token_expires_at as tokenExpiresAt,
+                               invitation.qr_expires_at as qrExpiresAt,
+                               invitation.checked_in_at as checkedInAt,
+                               invitation.sent_at as sentAt,
+                               invitation.failure_reason as failureReason
+                          from competition_review_invitation invitation
+                          join competition_review_batch batch
+                            on batch.id = invitation.batch_id and batch.deleted = 0
+                          join competition_review_roster roster
+                            on roster.id = invitation.roster_id
+                           and roster.batch_id = invitation.batch_id
+                           and roster.expert_id = invitation.expert_id
+                           and roster.status = 'SELECTED'
+                           and roster.deleted = 0
+                         where %s and invitation.deleted = 0
+                         limit 1
+                        """).formatted(predicate),
+                (row, rowNum) -> new InvitationContext(
+                        row.getLong("invitationId"),
+                        row.getLong("batchId"),
+                        row.getString("batchName"),
+                        row.getLong("rosterId"),
+                        row.getLong("expertId"),
+                        row.getObject("expertUserId", Long.class),
+                        row.getString("expertUserUuid"),
+                        row.getString("expertName"),
+                        row.getString("email"),
+                        row.getString("invitationStatus"),
+                        row.getString("tokenHash"),
+                        row.getObject("tokenExpiresAt", LocalDateTime.class),
+                        row.getObject("qrExpiresAt", LocalDateTime.class),
+                        row.getObject("checkedInAt", LocalDateTime.class),
+                        row.getObject("sentAt", LocalDateTime.class),
+                        row.getString("failureReason")
+                ),
+                value
+        ).stream().findFirst();
+    }
+
+    @Override
+    public int issueInvitationQr(
+            Long invitationId,
+            String qrTokenHash,
+            LocalDateTime qrExpiresAt,
+            LocalDateTime openedAt
+    ) {
+        return database.update(
+                """
+                        update competition_review_invitation
+                           set status = 'QR_ISSUED', opened_at = ?, qr_token_hash = ?,
+                               qr_expires_at = ?, updated_at = ?
+                         where id = ? and status in ('PENDING', 'SENT', 'OPENED', 'QR_ISSUED')
+                           and token_expires_at > ? and deleted = 0
+                        """,
+                openedAt,
+                qrTokenHash,
+                qrExpiresAt,
+                openedAt,
+                invitationId,
+                openedAt
+        );
+    }
+
+    @Override
+    public int markInvitationCheckedIn(
+            Long invitationId,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime checkedInAt
+    ) {
+        return database.update(
+                """
+                        update competition_review_invitation
+                           set status = 'CHECKED_IN', qr_used_at = ?, checked_in_at = ?,
+                               checked_in_by = ?, checked_in_by_uuid = ?, updated_at = ?
+                         where id = ? and status = 'QR_ISSUED' and qr_expires_at > ? and deleted = 0
+                        """,
+                checkedInAt,
+                checkedInAt,
+                operatorId,
+                operatorUuid,
+                checkedInAt,
+                invitationId,
+                checkedInAt
+        );
+    }
+
+    @Override
+    public int recordCheckinAttempt(
+            Long batchId,
+            Long invitationId,
+            Long expertId,
+            String qrTokenHash,
+            String status,
+            String reason,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime attemptedAt
+    ) {
+        return database.update(
+                """
+                        insert into competition_review_checkin_audit (
+                            batch_id, invitation_id, expert_id, qr_token_hash, status, reason,
+                            checked_in_by, checked_in_by_uuid, attempted_at,
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                batchId,
+                invitationId,
+                expertId,
+                qrTokenHash,
+                status,
+                reason,
+                operatorId,
+                operatorUuid,
+                attemptedAt,
+                operatorId,
+                operatorUuid,
+                operatorId,
+                operatorUuid
+        );
+    }
+
+    @Override
+    public int markBatchAssignmentsConfirmed(
+            Long batchId,
+            int expectedVersion,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime confirmedAt
+    ) {
+        return database.update(
+                """
+                        update competition_review_batch
+                           set assignment_confirmed_at = ?, version = version + 1,
+                               updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                         where id = ? and status = 'ASSIGNING' and version = ? and deleted = 0
+                        """,
+                confirmedAt,
+                operatorId,
+                operatorUuid,
+                confirmedAt,
+                batchId,
+                expectedVersion
         );
     }
 
@@ -402,9 +868,11 @@ public class JdbcReviewRepository implements ReviewRepository {
                         insert into competition_review_batch (
                             plan_id, competition_id, stage_id, criteria_version_id,
                             batch_no, batch_name, batch_type, status, assignment_strategy,
-                            minimum_reviewer_count, candidate_count, review_deadline, version,
+                            minimum_reviewer_count, reviewer_count_per_candidate,
+                            expert_min_assignments, expert_target_assignments, expert_max_assignments,
+                            candidate_count, review_deadline, version,
                             created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, 'STANDARD', 'DRAFT', ?, ?, 0, ?, 1, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, 'STANDARD', 'DRAFT', ?, ?, ?, ?, ?, ?, 0, ?, 1, ?, ?, ?, ?, 0)
                         """,
                 plan.getId(),
                 plan.getCompetitionId(),
@@ -414,6 +882,10 @@ public class JdbcReviewRepository implements ReviewRepository {
                 request.getBatchName().trim(),
                 assignmentStrategy,
                 plan.getRequiredReviewerCount(),
+                request.getReviewerCountPerCandidate() == null ? 3 : request.getReviewerCountPerCandidate(),
+                request.getExpertMinAssignments() == null ? 5 : request.getExpertMinAssignments(),
+                request.getExpertTargetAssignments() == null ? 6 : request.getExpertTargetAssignments(),
+                request.getExpertMaxAssignments() == null ? 6 : request.getExpertMaxAssignments(),
                 request.getReviewDeadline(),
                 operatorId,
                 operatorUuid,
@@ -763,7 +1235,7 @@ public class JdbcReviewRepository implements ReviewRepository {
                             on candidate.id = assignment.candidate_id
                            and candidate.batch_id = assignment.batch_id
                            and candidate.deleted = 0
-                          left join competition_review_sheet sheet
+                         left join competition_review_sheet sheet
                             on sheet.id = (
                                 select latest.id
                                   from competition_review_sheet latest
@@ -774,6 +1246,21 @@ public class JdbcReviewRepository implements ReviewRepository {
                             )
                          where assignment.expert_user_id = ?
                            and assignment.expert_user_uuid = ?
+                           and (
+                               not exists (
+                                   select 1 from competition_review_roster roster
+                                    where roster.batch_id = assignment.batch_id
+                                      and roster.status = 'SELECTED' and roster.deleted = 0
+                               )
+                               or exists (
+                                   select 1 from competition_review_invitation checked_invitation
+                                    where checked_invitation.batch_id = assignment.batch_id
+                                      and checked_invitation.expert_id = assignment.expert_id
+                                      and checked_invitation.status = 'CHECKED_IN'
+                                      and checked_invitation.checked_in_at is not null
+                                      and checked_invitation.deleted = 0
+                               )
+                           )
                            and assignment.deleted = 0
                          order by assignment.due_at is null, assignment.due_at asc, assignment.id desc
                         """,
@@ -820,6 +1307,21 @@ public class JdbcReviewRepository implements ReviewRepository {
                          where assignment.id = ?
                            and assignment.expert_user_id = ?
                            and assignment.expert_user_uuid = ?
+                           and (
+                               not exists (
+                                   select 1 from competition_review_roster roster
+                                    where roster.batch_id = assignment.batch_id
+                                      and roster.status = 'SELECTED' and roster.deleted = 0
+                               )
+                               or exists (
+                                   select 1 from competition_review_invitation checked_invitation
+                                    where checked_invitation.batch_id = assignment.batch_id
+                                      and checked_invitation.expert_id = assignment.expert_id
+                                      and checked_invitation.status = 'CHECKED_IN'
+                                      and checked_invitation.checked_in_at is not null
+                                      and checked_invitation.deleted = 0
+                               )
+                           )
                            and assignment.deleted = 0
                          limit 1
                         """,

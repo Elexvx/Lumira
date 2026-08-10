@@ -48,7 +48,7 @@ describe('SQL menu and frontend route catalog consistency', () => {
       '/certificates',
       '/competitions/expert-apply',
       '/workflows/tasks',
-      '/workflows/config',
+      '/settings/workflows',
     ]));
     expect(mismatches).toEqual([]);
   });

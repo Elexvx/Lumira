@@ -8,6 +8,7 @@ package com.lumira.review.api;
 public final class ReviewIntegrationEvents {
     public static final String RESULTS_PUBLISHED = "COMPETITION_REVIEW_RESULTS_PUBLISHED";
     public static final String RESULT_PUBLISHED = "COMPETITION_REVIEW_RESULT_PUBLISHED";
+    public static final String INVITATIONS_DISPATCHED = "COMPETITION_REVIEW_INVITATIONS_DISPATCHED";
     public static final String RESULT_STREAM = "saas:platform-events";
     public static final String RESULT_MESSAGE_CONSUMER_GROUP = "message-review-result-v1";
 

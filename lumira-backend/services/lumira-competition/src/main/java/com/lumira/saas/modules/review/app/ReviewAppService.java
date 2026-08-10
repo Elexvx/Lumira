@@ -12,6 +12,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.registration.api.RegistrationCandidateSnapshotDTO;
 import com.lumira.registration.api.RegistrationReviewInternalApi;
 import com.lumira.review.api.ReviewIntegrationEvents;
+import com.lumira.review.api.ReviewNotificationPort;
 import com.lumira.saas.modules.review.dto.ReviewDTO;
 import com.lumira.saas.modules.review.domain.ReviewBatchStatus;
 import com.lumira.saas.modules.review.repository.ReviewRepository;
@@ -35,6 +36,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -43,6 +45,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class ReviewAppService {
@@ -50,6 +53,9 @@ public class ReviewAppService {
     public static final String PLAN_MANAGE = "review:plan:manage";
     public static final String BATCH_CREATE = "review:batch:create";
     public static final String ASSIGNMENT_MANAGE = "review:assignment:manage";
+    public static final String ROSTER_MANAGE = "review:roster:manage";
+    public static final String NOTIFICATION_SEND = "review:notification:send";
+    public static final String CHECKIN_SCAN = "review:checkin:scan";
     public static final String TASK_VIEW = "review:task:view";
     public static final String SCORE_SUBMIT = "review:score:submit";
     public static final String RESULT_AGGREGATE = "review:result:aggregate";
@@ -105,6 +111,12 @@ public class ReviewAppService {
     );
     private static final Pattern BLIND_MOBILE_PATTERN = Pattern.compile("(?<!\\d)1[3-9]\\d{9}(?!\\d)");
     private static final DateTimeFormatter BATCH_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final int DEFAULT_REVIEWER_COUNT_PER_CANDIDATE = 3;
+    private static final int DEFAULT_EXPERT_MIN_ASSIGNMENTS = 5;
+    private static final int DEFAULT_EXPERT_TARGET_ASSIGNMENTS = 6;
+    private static final int DEFAULT_EXPERT_MAX_ASSIGNMENTS = 6;
+    private static final int INVITATION_TTL_HOURS = 24;
+    private static final int CHECKIN_QR_TTL_MINUTES = 5;
 
     private final ReviewRepository reviewRepository;
     private final ObjectMapper objectMapper;
@@ -112,6 +124,8 @@ public class ReviewAppService {
     private RegistrationReviewInternalApi registrationReviewInternalApi;
     private ObjectProvider<ExpertSnapshotPort> expertSnapshotPortProvider;
     private ObjectProvider<TeamInternalApi> teamInternalApiProvider;
+    private ObjectProvider<ReviewNotificationPort> reviewNotificationPortProvider;
+    private String reviewInvitationUrl = "http://localhost:8000/review/invitation";
     private Counter publicationCounter;
     private Counter publishedResultCounter;
     private Counter appealSubmittedCounter;
@@ -141,6 +155,20 @@ public class ReviewAppService {
     @Autowired
     public void setTeamInternalApiProvider(ObjectProvider<TeamInternalApi> teamInternalApiProvider) {
         this.teamInternalApiProvider = teamInternalApiProvider;
+    }
+
+    @Autowired
+    public void setReviewNotificationPortProvider(ObjectProvider<ReviewNotificationPort> reviewNotificationPortProvider) {
+        this.reviewNotificationPortProvider = reviewNotificationPortProvider;
+    }
+
+    @Autowired(required = false)
+    public void setReviewInvitationUrl(
+            @Value("${lumira.review.invitation-url:http://localhost:8000/review/invitation}") String reviewInvitationUrl
+    ) {
+        if (StringUtils.hasText(reviewInvitationUrl)) {
+            this.reviewInvitationUrl = reviewInvitationUrl.trim();
+        }
     }
 
     @Autowired
@@ -320,6 +348,31 @@ public class ReviewAppService {
                 ASSIGNMENT_STRATEGIES,
                 "Invalid assignment strategy"
         );
+        int reviewerCountPerCandidate = defaultInt(
+                request.getReviewerCountPerCandidate(),
+                DEFAULT_REVIEWER_COUNT_PER_CANDIDATE
+        );
+        int expertMinAssignments = defaultInt(request.getExpertMinAssignments(), DEFAULT_EXPERT_MIN_ASSIGNMENTS);
+        int expertTargetAssignments = defaultInt(
+                request.getExpertTargetAssignments(),
+                DEFAULT_EXPERT_TARGET_ASSIGNMENTS
+        );
+        int expertMaxAssignments = defaultInt(request.getExpertMaxAssignments(), DEFAULT_EXPERT_MAX_ASSIGNMENTS);
+        if (reviewerCountPerCandidate <= 0
+                || expertMinAssignments < 0
+                || expertTargetAssignments < 0
+                || expertMaxAssignments < 0
+                || expertMinAssignments > expertTargetAssignments
+                || expertTargetAssignments > expertMaxAssignments) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Expert workload must satisfy min <= target <= max");
+        }
+        if (expertMaxAssignments == 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Expert maximum workload must be positive");
+        }
+        request.setReviewerCountPerCandidate(reviewerCountPerCandidate);
+        request.setExpertMinAssignments(expertMinAssignments);
+        request.setExpertTargetAssignments(expertTargetAssignments);
+        request.setExpertMaxAssignments(expertMaxAssignments);
         String batchNo = "RB-" + LocalDateTime.now().format(BATCH_TIME) + "-"
                 + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
         Long batchId = reviewRepository.insertBatch(
@@ -357,6 +410,346 @@ public class ReviewAppService {
         requirePermission(currentUser, ASSIGNMENT_MANAGE);
         requireBatch(batchId);
         return reviewRepository.listAssignments(batchId);
+    }
+
+    public List<ReviewVO.RosterExpert> listRoster(CurrentUser currentUser, Long batchId) {
+        requirePermission(currentUser, ROSTER_MANAGE);
+        requireBatch(batchId);
+        return reviewRepository.listRoster(batchId);
+    }
+
+    @Transactional
+    public List<ReviewVO.RosterExpert> saveRoster(
+            CurrentUser currentUser,
+            Long batchId,
+            ReviewDTO.RosterSaveRequest request
+    ) {
+        Operator operator = requirePermission(currentUser, ROSTER_MANAGE);
+        ReviewVO.Batch batch = requireBatch(batchId);
+        if (!Set.of("READY", "ASSIGNING").contains(batch.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "The reviewer roster can only be changed before review starts");
+        }
+        List<Long> expertIds = normalizeExpertIds(request == null ? null : request.getExpertIds());
+        List<ReviewRepository.ExpertRosterCandidate> experts = listEligibleExperts(expertIds);
+        if (experts.size() != expertIds.size()) {
+            throw biz(
+                    ErrorCode.BIZ_ERROR,
+                    "Only approved, active experts with enabled accounts and email can be invited"
+            );
+        }
+        Set<Long> selectedExpertIds = new HashSet<>(expertIds);
+        List<ReviewVO.AdminAssignment> currentAssignments = reviewRepository.listAssignments(batchId);
+        for (ReviewVO.AdminAssignment assignment : currentAssignments == null ? List.<ReviewVO.AdminAssignment>of() : currentAssignments) {
+            if (!Set.of("DECLINED", "EXPIRED", "REVOKED").contains(assignment.getStatus())
+                    && !selectedExpertIds.contains(assignment.getExpertId())) {
+                throw biz(
+                        ErrorCode.BIZ_ERROR,
+                        "Assigned experts must be revoked with a reason before leaving the roster"
+                );
+            }
+        }
+        requireWrite(
+                reviewRepository.replaceRoster(
+                        batchId,
+                        experts,
+                        operator.userId(),
+                        operator.userUuid(),
+                        LocalDateTime.now()
+                ),
+                "Reviewer roster changed, please retry"
+        );
+        return reviewRepository.listRoster(batchId);
+    }
+
+    @Transactional
+    public ReviewVO.Batch confirmAssignments(CurrentUser currentUser, Long batchId) {
+        Operator operator = requirePermission(currentUser, ASSIGNMENT_MANAGE);
+        ReviewVO.Batch batch = requireBatch(batchId);
+        if (!"ASSIGNING".equals(batch.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "Only assigning review batches can confirm assignments");
+        }
+        validateAssignmentAllocation(batchId, batch);
+        requireWrite(
+                reviewRepository.markBatchAssignmentsConfirmed(
+                        batchId,
+                        batch.getVersion(),
+                        operator.userId(),
+                        operator.userUuid(),
+                        LocalDateTime.now()
+                ),
+                "Review assignment changed, please retry"
+        );
+        return requireBatch(batchId);
+    }
+
+    public List<ReviewVO.RosterExpert> listInvitations(CurrentUser currentUser, Long batchId) {
+        requirePermission(currentUser, NOTIFICATION_SEND);
+        requireBatch(batchId);
+        return reviewRepository.listRoster(batchId);
+    }
+
+    @Transactional
+    public List<ReviewVO.RosterExpert> sendInvitations(CurrentUser currentUser, Long batchId) {
+        Operator operator = requirePermission(currentUser, NOTIFICATION_SEND);
+        ReviewVO.Batch batch = requireBatch(batchId);
+        if (!Set.of("ASSIGNING", "IN_REVIEW").contains(batch.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "Invitations can only be sent after candidates and assignments are ready");
+        }
+        List<Long> rosterExpertIds = selectedRosterExpertIds(batchId);
+        if (rosterExpertIds.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "Select the complete reviewer roster before sending invitations");
+        }
+        if (batch.getAssignmentConfirmedAt() == null) {
+            throw biz(ErrorCode.BIZ_ERROR, "Confirm the project-to-expert allocation before sending invitations");
+        }
+        validateAssignmentAllocation(batchId, batch);
+        List<ReviewVO.RosterExpert> roster = reviewRepository.listRoster(batchId);
+        ReviewNotificationPort notificationPort = reviewNotificationPortProvider == null
+                ? null : reviewNotificationPortProvider.getIfAvailable();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plusHours(INVITATION_TTL_HOURS);
+        int sentCount = 0;
+        for (ReviewVO.RosterExpert reviewer : roster) {
+            ReviewRepository.ExpertRosterCandidate expert = new ReviewRepository.ExpertRosterCandidate(
+                    reviewer.getExpertId(),
+                    reviewer.getExpertUserId(),
+                    reviewer.getExpertUserUuid(),
+                    reviewer.getExpertName(),
+                    reviewer.getEmail(),
+                    "active",
+                    "APPROVED",
+                    "ENABLED"
+            );
+            String rawToken = randomToken();
+            Long invitationId = reviewRepository.upsertInvitation(
+                    batchId,
+                    reviewer.getId(),
+                    expert,
+                    sha256Text(rawToken),
+                    expiresAt,
+                    operator.userId(),
+                    operator.userUuid(),
+                    now
+            );
+            requireInserted(invitationId, "Review invitation changed, please retry");
+            int attempts = (reviewer.getInvitationAttempts() == null ? 0 : reviewer.getInvitationAttempts()) + 1;
+            String invitationUrl = reviewInvitationUrl + "?token=" + rawToken;
+            String subject = "评审邀请：" + batch.getBatchName();
+            String content = buildInvitationContent(batch, reviewer, invitationUrl, expiresAt);
+            Long outboxId = reviewRepository.enqueueInvitationNotification(
+                    batchId,
+                    invitationId,
+                    sha256Text(rawToken),
+                    reviewer.getEmail(),
+                    subject,
+                    content,
+                    operator.userId(),
+                    operator.userUuid(),
+                    now
+            );
+            requireInserted(outboxId, "Review invitation notification changed, please retry");
+            try {
+                if (notificationPort == null) {
+                    throw new IllegalStateException("Review invitation mail service is unavailable");
+                }
+                notificationPort.sendReviewInvitation(
+                        reviewer.getEmail(),
+                        subject,
+                        content
+                );
+                requireWrite(
+                        reviewRepository.markInvitationNotificationSent(outboxId, attempts, now),
+                        "Review invitation notification changed, please retry"
+                );
+                requireWrite(
+                        reviewRepository.markInvitationSent(invitationId, attempts, now),
+                        "Review invitation delivery state changed, please retry"
+                );
+                sentCount++;
+            } catch (RuntimeException exception) {
+                String reason = exception.getMessage();
+                reviewRepository.markInvitationFailed(
+                        invitationId,
+                        attempts,
+                        StringUtils.hasText(reason) ? reason.substring(0, Math.min(reason.length(), 1000)) : "Email delivery failed",
+                        now
+                );
+                reviewRepository.markInvitationNotificationFailed(
+                        outboxId,
+                        attempts,
+                        StringUtils.hasText(reason) ? reason.substring(0, Math.min(reason.length(), 1000)) : "Email delivery failed",
+                        now
+                );
+            }
+        }
+        recordInvitationDispatchEvent(operator, batch, sentCount, roster.size());
+        return reviewRepository.listRoster(batchId);
+    }
+
+    @Transactional
+    public ReviewVO.Invitation openInvitation(String rawToken) {
+        ReviewRepository.InvitationContext context = requireInvitationContext(rawToken, false);
+        if (context.checkedInAt() != null) {
+            return toInvitation(context, null);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        String qrValue = randomToken();
+        LocalDateTime qrExpiresAt = now.plusMinutes(CHECKIN_QR_TTL_MINUTES);
+        requireWrite(
+                reviewRepository.issueInvitationQr(
+                        context.invitationId(),
+                        sha256Text(qrValue),
+                        qrExpiresAt,
+                        now
+                ),
+                "The invitation has expired or is no longer valid"
+        );
+        return toInvitation(
+                new ReviewRepository.InvitationContext(
+                        context.invitationId(), context.batchId(), context.batchName(), context.rosterId(),
+                        context.expertId(), context.expertUserId(), context.expertUserUuid(), context.expertName(),
+                        context.email(), "QR_ISSUED", context.tokenHash(), context.tokenExpiresAt(),
+                        qrExpiresAt, context.checkedInAt(), context.sentAt(), context.failureReason()
+                ),
+                qrValue
+        );
+    }
+
+    public ReviewVO.Invitation invitationStatus(String rawToken) {
+        return toInvitation(requireInvitationContext(rawToken, false), null);
+    }
+
+    @Transactional
+    public ReviewVO.Invitation checkIn(
+            CurrentUser currentUser,
+            Long batchId,
+            ReviewDTO.CheckInRequest request
+    ) {
+        Operator operator = requirePermission(currentUser, CHECKIN_SCAN);
+        if (batchId == null || batchId <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Review batch id is required");
+        }
+        if (request == null || !StringUtils.hasText(request.getQrToken())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "The check-in QR token is required");
+        }
+        String qrTokenHash = sha256Text(request.getQrToken().trim());
+        Optional<ReviewRepository.InvitationContext> optional =
+                reviewRepository.findInvitationByQrTokenHash(qrTokenHash);
+        if (optional.isEmpty()) {
+            reviewRepository.recordCheckinAttempt(
+                    batchId, null, null, qrTokenHash, "REJECTED", "二维码无效或已被替换",
+                    operator.userId(), operator.userUuid(), LocalDateTime.now()
+            );
+            throw biz(ErrorCode.BIZ_ERROR, "The check-in QR token is invalid or has been replaced");
+        }
+        ReviewRepository.InvitationContext context = optional.get();
+        if (!invitationMatchesEligibleExpert(context)) {
+            reviewRepository.recordCheckinAttempt(
+                    batchId, null, null, qrTokenHash, "REJECTED", "二维码无效或已被替换",
+                    operator.userId(), operator.userUuid(), LocalDateTime.now()
+            );
+            throw biz(ErrorCode.BIZ_ERROR, "The check-in QR token is invalid or has been replaced");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!batchId.equals(context.batchId())) {
+            recordRejectedCheckin(operator, batchId, context, qrTokenHash, "二维码不属于当前评审批次");
+            throw biz(ErrorCode.BIZ_ERROR, "The QR token belongs to another review batch");
+        }
+        if (context.checkedInAt() != null || "CHECKED_IN".equals(context.invitationStatus())) {
+            recordRejectedCheckin(operator, batchId, context, qrTokenHash, "专家已签到，二维码不可重复使用");
+            throw biz(ErrorCode.BIZ_ERROR, "This expert has already checked in");
+        }
+        if (context.qrExpiresAt() == null || !context.qrExpiresAt().isAfter(now)) {
+            recordRejectedCheckin(operator, batchId, context, qrTokenHash, "签到二维码已过期");
+            throw biz(ErrorCode.BIZ_ERROR, "The check-in QR token has expired");
+        }
+        if (!"QR_ISSUED".equals(context.invitationStatus())) {
+            recordRejectedCheckin(operator, batchId, context, qrTokenHash, "二维码当前不可签到");
+            throw biz(ErrorCode.BIZ_ERROR, "The check-in QR token is not ready");
+        }
+        requireWrite(
+                reviewRepository.markInvitationCheckedIn(
+                        context.invitationId(), operator.userId(), operator.userUuid(), now
+                ),
+                "The check-in QR token was already used or expired"
+        );
+        reviewRepository.recordCheckinAttempt(
+                batchId, context.invitationId(), context.expertId(), qrTokenHash, "SUCCESS", null,
+                operator.userId(), operator.userUuid(), now
+        );
+        return toInvitation(
+                new ReviewRepository.InvitationContext(
+                        context.invitationId(), context.batchId(), context.batchName(), context.rosterId(),
+                        context.expertId(), context.expertUserId(), context.expertUserUuid(), context.expertName(),
+                        context.email(), "CHECKED_IN", context.tokenHash(), context.tokenExpiresAt(),
+                        context.qrExpiresAt(), now, context.sentAt(), context.failureReason()
+                ),
+                null
+        );
+    }
+
+    public List<ReviewVO.AssignmentTask> listInvitationAssignments(String rawToken) {
+        ReviewRepository.InvitationContext context = requireInvitationContext(rawToken, true);
+        return reviewRepository.listOwnedAssignments(context.expertUserId(), context.expertUserUuid()).stream()
+                .filter(task -> context.batchId().equals(task.getBatchId()))
+                .toList();
+    }
+
+    @Transactional
+    public ReviewVO.AssignmentTask acceptInvitationAssignment(String rawToken, Long assignmentId) {
+        ReviewRepository.InvitationContext context = requireInvitationContext(rawToken, true);
+        return acceptAssignmentAsOperator(
+                new Operator(context.expertUserId(), context.expertUserUuid()),
+                assignmentId,
+                context.batchId()
+        );
+    }
+
+    @Transactional
+    public ReviewVO.AssignmentTask declineInvitationAssignment(
+            String rawToken,
+            Long assignmentId,
+            ReviewDTO.AssignmentDeclineRequest request
+    ) {
+        ReviewRepository.InvitationContext context = requireInvitationContext(rawToken, true);
+        return declineAssignmentAsOperator(
+                new Operator(context.expertUserId(), context.expertUserUuid()),
+                assignmentId,
+                request,
+                context.batchId()
+        );
+    }
+
+    @Transactional
+    public ReviewVO.ReviewSheet saveInvitationDraft(
+            String rawToken,
+            Long assignmentId,
+            ReviewDTO.ReviewSheetRequest request
+    ) {
+        ReviewRepository.InvitationContext context = requireInvitationContext(rawToken, true);
+        return writeSheet(
+                new Operator(context.expertUserId(), context.expertUserUuid()),
+                assignmentId,
+                request,
+                false,
+                context.batchId()
+        );
+    }
+
+    @Transactional
+    public ReviewVO.ReviewSheet submitInvitationSheet(
+            String rawToken,
+            Long assignmentId,
+            ReviewDTO.ReviewSheetRequest request
+    ) {
+        ReviewRepository.InvitationContext context = requireInvitationContext(rawToken, true);
+        return writeSheet(
+                new Operator(context.expertUserId(), context.expertUserUuid()),
+                assignmentId,
+                request,
+                true,
+                context.batchId()
+        );
     }
 
     public List<ReviewVO.Aggregate> listAggregates(CurrentUser currentUser, Long batchId) {
@@ -598,6 +991,7 @@ public class ReviewAppService {
         }
 
         Set<String> uniquePairs = new HashSet<>();
+        Set<Long> rosterExpertSet = new HashSet<>(selectedRosterExpertIds(batchId));
         int createdCount = 0;
         for (ReviewDTO.AssignmentItemRequest item : request.getAssignments()) {
             if (item == null || item.getCandidateId() == null || item.getCandidateId() <= 0
@@ -615,6 +1009,9 @@ public class ReviewAppService {
             ).map(this::attachExpertSnapshot)
                     .orElseThrow(() -> biz(ErrorCode.NOT_FOUND, "Review candidate or expert not found"));
             requireEligibleAssignmentTarget(target);
+            if (!rosterExpertSet.isEmpty() && !rosterExpertSet.contains(target.expertId())) {
+                throw biz(ErrorCode.BIZ_ERROR, "The expert must be selected in this review batch's roster first");
+            }
             if (reviewRepository.assignmentExists(target.candidateId(), target.expertId())) {
                 throw biz(ErrorCode.BIZ_ERROR, "The expert is already assigned to this candidate");
             }
@@ -648,7 +1045,7 @@ public class ReviewAppService {
         }
         int belowMinimum = reviewRepository.countCandidatesBelowMinimumAssignments(
                 batchId,
-                batch.getMinimumReviewerCount()
+                reviewerCount(batch)
         );
         ReviewVO.AssignmentResult result = new ReviewVO.AssignmentResult();
         result.setBatchId(batchId);
@@ -681,10 +1078,42 @@ public class ReviewAppService {
                 }
             }
         }
-        List<ReviewRepository.ExpertWorkload> availableExperts =
-                availableExpertWorkloads().stream()
-                        .filter(item -> requestedExpertIds.isEmpty() || requestedExpertIds.contains(item.expertId()))
-                        .toList();
+        List<ReviewVO.Candidate> candidates = reviewRepository.listCandidates(batchId);
+        if (candidates.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "The review batch has no frozen candidates");
+        }
+        List<ReviewVO.AdminAssignment> existingAssignments = reviewRepository.listAssignments(batchId);
+        if (existingAssignments == null) {
+            existingAssignments = List.of();
+        }
+        List<Long> rosterExpertIds = selectedRosterExpertIds(batchId);
+        Set<Long> rosterSet = new HashSet<>(rosterExpertIds);
+        if (!rosterSet.isEmpty() && !rosterSet.containsAll(requestedExpertIds)) {
+            throw biz(ErrorCode.BIZ_ERROR, "Every automatically selected expert must be in the review roster");
+        }
+        List<ReviewRepository.ExpertWorkload> availableExperts;
+        if (!rosterExpertIds.isEmpty()) {
+            List<ReviewRepository.ExpertRosterCandidate> rosterCandidates = listEligibleExperts(rosterExpertIds);
+            if (rosterCandidates == null || rosterCandidates.size() != rosterExpertIds.size()) {
+                throw biz(ErrorCode.BIZ_ERROR, "Some roster experts are no longer approved or enabled");
+            }
+            Map<Long, Integer> currentBatchWorkloads = new HashMap<>();
+            for (ReviewVO.AdminAssignment assignment : existingAssignments) {
+                if (!Set.of("DECLINED", "EXPIRED", "REVOKED").contains(assignment.getStatus())) {
+                    currentBatchWorkloads.merge(assignment.getExpertId(), 1, Integer::sum);
+                }
+            }
+            availableExperts = rosterCandidates.stream()
+                    .filter(item -> requestedExpertIds.isEmpty() || requestedExpertIds.contains(item.expertId()))
+                    .map(item -> new ReviewRepository.ExpertWorkload(
+                            item.expertId(), currentBatchWorkloads.getOrDefault(item.expertId(), 0)
+                    ))
+                    .toList();
+        } else {
+            availableExperts = availableExpertWorkloads().stream()
+                    .filter(item -> requestedExpertIds.isEmpty() || requestedExpertIds.contains(item.expertId()))
+                    .toList();
+        }
         if (!requestedExpertIds.isEmpty() && availableExperts.size() != requestedExpertIds.size()) {
             throw biz(ErrorCode.BIZ_ERROR, "Some selected experts are unavailable or not approved");
         }
@@ -692,11 +1121,6 @@ public class ReviewAppService {
             throw biz(ErrorCode.BIZ_ERROR, "No approved experts are available for assignment");
         }
 
-        List<ReviewVO.Candidate> candidates = reviewRepository.listCandidates(batchId);
-        if (candidates.isEmpty()) {
-            throw biz(ErrorCode.BIZ_ERROR, "The review batch has no frozen candidates");
-        }
-        List<ReviewVO.AdminAssignment> existingAssignments = reviewRepository.listAssignments(batchId);
         Set<String> existingPairs = new HashSet<>();
         Map<Long, Integer> candidateCounts = new HashMap<>();
         for (ReviewVO.AdminAssignment assignment : existingAssignments) {
@@ -709,12 +1133,22 @@ public class ReviewAppService {
         for (ReviewRepository.ExpertWorkload expert : availableExperts) {
             workloads.put(expert.expertId(), expert.activeAssignmentCount());
         }
+        int maxAssignments = expertMaxAssignments(batch);
+        int targetAssignments = expertTargetAssignments(batch);
+        if (maxAssignments <= 0 || expertMinAssignments(batch) > targetAssignments || targetAssignments > maxAssignments) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Expert workload must satisfy min <= target <= max");
+        }
+        for (Map.Entry<Long, Integer> entry : workloads.entrySet()) {
+            if (entry.getValue() > maxAssignments) {
+                throw biz(ErrorCode.BIZ_ERROR, "An expert already exceeds this batch's maximum workload");
+            }
+        }
 
         List<ReviewDTO.AssignmentItemRequest> plannedAssignments = new ArrayList<>();
         for (ReviewVO.Candidate candidate : candidates) {
             int missing = Math.max(
                     0,
-                    batch.getMinimumReviewerCount() - candidateCounts.getOrDefault(candidate.getId(), 0)
+                    reviewerCount(batch) - candidateCounts.getOrDefault(candidate.getId(), 0)
             );
             for (int slot = 0; slot < missing; slot += 1) {
                 Long selectedExpertId = null;
@@ -722,12 +1156,16 @@ public class ReviewAppService {
                         .sorted(
                                 Comparator.comparingInt(
                                                 (ReviewRepository.ExpertWorkload item) ->
-                                                        workloads.getOrDefault(item.expertId(), 0)
+                                                        workloads.getOrDefault(item.expertId(), 0) < targetAssignments ? 0 : 1
                                         )
+                                        .thenComparingInt(item -> workloads.getOrDefault(item.expertId(), 0))
                                         .thenComparing(ReviewRepository.ExpertWorkload::expertId)
                         )
                         .toList();
                 for (ReviewRepository.ExpertWorkload expert : rankedExperts) {
+                    if (workloads.getOrDefault(expert.expertId(), 0) >= maxAssignments) {
+                        continue;
+                    }
                     String pairKey = candidate.getId() + ":" + expert.expertId();
                     if (existingPairs.contains(pairKey)) {
                         continue;
@@ -784,9 +1222,17 @@ public class ReviewAppService {
         if (!"ASSIGNING".equals(batch.getStatus())) {
             throw biz(ErrorCode.BIZ_ERROR, "Only assigning review batches can start review");
         }
+        List<Long> rosterExpertIds = selectedRosterExpertIds(batchId);
+        if (!rosterExpertIds.isEmpty()
+                && batch.getAssignmentConfirmedAt() == null) {
+            throw biz(ErrorCode.BIZ_ERROR, "Confirm the reviewer roster and workload allocation before starting review");
+        }
+        if (!rosterExpertIds.isEmpty()) {
+            validateAssignmentAllocation(batchId, batch);
+        }
         int belowMinimum = reviewRepository.countCandidatesBelowMinimumAssignments(
                 batchId,
-                batch.getMinimumReviewerCount()
+                reviewerCount(batch)
         );
         if (belowMinimum > 0) {
             throw biz(
@@ -816,7 +1262,15 @@ public class ReviewAppService {
     @Transactional
     public ReviewVO.AssignmentTask acceptAssignment(CurrentUser currentUser, Long assignmentId) {
         Operator operator = requirePermission(currentUser, TASK_VIEW);
-        ReviewRepository.AssignmentContext assignment = requireOwnedAssignment(assignmentId, operator);
+        return acceptAssignmentAsOperator(operator, assignmentId, null);
+    }
+
+    private ReviewVO.AssignmentTask acceptAssignmentAsOperator(
+            Operator operator,
+            Long assignmentId,
+            Long expectedBatchId
+    ) {
+        ReviewRepository.AssignmentContext assignment = requireOwnedAssignment(assignmentId, operator, expectedBatchId);
         if (!Set.of("ASSIGNING", "IN_REVIEW").contains(assignment.batchStatus())) {
             throw biz(ErrorCode.BIZ_ERROR, "The review batch is not accepting assignment responses");
         }
@@ -843,10 +1297,19 @@ public class ReviewAppService {
             ReviewDTO.AssignmentDeclineRequest request
     ) {
         Operator operator = requirePermission(currentUser, TASK_VIEW);
+        return declineAssignmentAsOperator(operator, assignmentId, request, null);
+    }
+
+    private ReviewVO.AssignmentTask declineAssignmentAsOperator(
+            Operator operator,
+            Long assignmentId,
+            ReviewDTO.AssignmentDeclineRequest request,
+            Long expectedBatchId
+    ) {
         if (request == null || !StringUtils.hasText(request.getReason())) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Decline reason is required");
         }
-        ReviewRepository.AssignmentContext assignment = requireOwnedAssignment(assignmentId, operator);
+        ReviewRepository.AssignmentContext assignment = requireOwnedAssignment(assignmentId, operator, expectedBatchId);
         if (!Set.of("ASSIGNING", "IN_REVIEW").contains(assignment.batchStatus())) {
             throw biz(ErrorCode.BIZ_ERROR, "The review batch is not accepting assignment responses");
         }
@@ -923,7 +1386,8 @@ public class ReviewAppService {
             Long assignmentId,
             ReviewDTO.ReviewSheetRequest request
     ) {
-        return writeSheet(currentUser, assignmentId, request, false);
+        Operator operator = requirePermission(currentUser, SCORE_SUBMIT);
+        return writeSheet(operator, assignmentId, request, false, null);
     }
 
     @Transactional
@@ -932,17 +1396,18 @@ public class ReviewAppService {
             Long assignmentId,
             ReviewDTO.ReviewSheetRequest request
     ) {
-        return writeSheet(currentUser, assignmentId, request, true);
+        Operator operator = requirePermission(currentUser, SCORE_SUBMIT);
+        return writeSheet(operator, assignmentId, request, true, null);
     }
 
     private ReviewVO.ReviewSheet writeSheet(
-            CurrentUser currentUser,
+            Operator operator,
             Long assignmentId,
             ReviewDTO.ReviewSheetRequest request,
-            boolean submit
+            boolean submit,
+            Long expectedBatchId
     ) {
-        Operator operator = requirePermission(currentUser, SCORE_SUBMIT);
-        ReviewRepository.AssignmentContext assignment = requireOwnedAssignment(assignmentId, operator);
+        ReviewRepository.AssignmentContext assignment = requireOwnedAssignment(assignmentId, operator, expectedBatchId);
         if (!"IN_REVIEW".equals(assignment.batchStatus())) {
             throw biz(ErrorCode.BIZ_ERROR, "Scores can only be recorded while the batch is in review");
         }
@@ -1635,6 +2100,246 @@ public class ReviewAppService {
         }
     }
 
+    private int reviewerCount(ReviewVO.Batch batch) {
+        if (batch == null) {
+            return DEFAULT_REVIEWER_COUNT_PER_CANDIDATE;
+        }
+        Integer configured = batch.getReviewerCountPerCandidate();
+        return configured == null || configured <= 0
+                ? defaultInt(batch.getMinimumReviewerCount(), DEFAULT_REVIEWER_COUNT_PER_CANDIDATE)
+                : configured;
+    }
+
+    private int expertMinAssignments(ReviewVO.Batch batch) {
+        return batch == null || batch.getExpertMinAssignments() == null
+                ? DEFAULT_EXPERT_MIN_ASSIGNMENTS : batch.getExpertMinAssignments();
+    }
+
+    private int expertTargetAssignments(ReviewVO.Batch batch) {
+        return batch == null || batch.getExpertTargetAssignments() == null
+                ? DEFAULT_EXPERT_TARGET_ASSIGNMENTS : batch.getExpertTargetAssignments();
+    }
+
+    private int expertMaxAssignments(ReviewVO.Batch batch) {
+        return batch == null || batch.getExpertMaxAssignments() == null
+                ? DEFAULT_EXPERT_MAX_ASSIGNMENTS : batch.getExpertMaxAssignments();
+    }
+
+    private void validateAssignmentAllocation(Long batchId, ReviewVO.Batch batch) {
+        List<Long> rosterIds = reviewRepository.listSelectedRosterExpertIds(batchId);
+        if (rosterIds == null || rosterIds.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "Select the complete reviewer roster before confirming assignments");
+        }
+        int min = expertMinAssignments(batch);
+        int max = expertMaxAssignments(batch);
+        int target = expertTargetAssignments(batch);
+        if (min > target || target > max || max <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Expert workload must satisfy min <= target <= max");
+        }
+        List<ReviewVO.Candidate> candidates = reviewRepository.listCandidates(batchId);
+        if (candidates == null || candidates.isEmpty()) {
+            throw biz(ErrorCode.BIZ_ERROR, "The review batch has no frozen candidates");
+        }
+        Set<Long> candidateIds = candidates.stream()
+                .map(ReviewVO.Candidate::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        int candidateCount = candidateIds.size();
+        int expectedTaskCount = candidateCount * reviewerCount(batch);
+        int minimumCapacity = rosterIds.size() * min;
+        int maximumCapacity = rosterIds.size() * max;
+        if (expectedTaskCount < minimumCapacity || expectedTaskCount > maximumCapacity) {
+            throw biz(
+                    ErrorCode.BIZ_ERROR,
+                    "Total review tasks " + expectedTaskCount
+                            + " cannot fit the selected experts' workload range "
+                            + minimumCapacity + "-" + maximumCapacity
+            );
+        }
+        Map<Long, Integer> counts = new HashMap<>();
+        Map<Long, Integer> candidateAssignmentCounts = new HashMap<>();
+        Set<Long> rosterSet = new HashSet<>(rosterIds);
+        int activeTaskCount = 0;
+        List<ReviewVO.AdminAssignment> assignments = reviewRepository.listAssignments(batchId);
+        for (ReviewVO.AdminAssignment assignment : assignments == null ? List.<ReviewVO.AdminAssignment>of() : assignments) {
+            if (Set.of("DECLINED", "EXPIRED", "REVOKED").contains(assignment.getStatus())) {
+                continue;
+            }
+            if (!candidateIds.contains(assignment.getCandidateId())) {
+                throw biz(ErrorCode.BIZ_ERROR, "Every assignment must belong to a frozen candidate in this batch");
+            }
+            if (!rosterSet.contains(assignment.getExpertId())) {
+                throw biz(ErrorCode.BIZ_ERROR, "Every assignment must belong to the selected reviewer roster");
+            }
+            counts.merge(assignment.getExpertId(), 1, Integer::sum);
+            candidateAssignmentCounts.merge(assignment.getCandidateId(), 1, Integer::sum);
+            activeTaskCount++;
+        }
+        if (activeTaskCount != expectedTaskCount) {
+            throw biz(
+                    ErrorCode.BIZ_ERROR,
+                    "Assignments are incomplete: expected " + expectedTaskCount + " tasks but found " + activeTaskCount
+            );
+        }
+        int requiredPerCandidate = reviewerCount(batch);
+        for (Long candidateId : candidateIds) {
+            int count = candidateAssignmentCounts.getOrDefault(candidateId, 0);
+            if (count != requiredPerCandidate) {
+                throw biz(
+                        ErrorCode.BIZ_ERROR,
+                        "Candidate " + candidateId + " has " + count
+                                + " projects assigned; exactly " + requiredPerCandidate + " reviewers are required"
+                );
+            }
+        }
+        for (Long expertId : rosterIds) {
+            int count = counts.getOrDefault(expertId, 0);
+            if (count < min || count > max) {
+                throw biz(
+                        ErrorCode.BIZ_ERROR,
+                        "Expert " + expertId + " has " + count + " projects; allowed range is " + min + "-" + max
+                );
+            }
+        }
+    }
+
+    private List<Long> normalizeExpertIds(List<Long> expertIds) {
+        if (expertIds == null || expertIds.isEmpty()) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "At least one reviewer must be selected");
+        }
+        Set<Long> normalized = new java.util.LinkedHashSet<>();
+        for (Long expertId : expertIds) {
+            if (expertId == null || expertId <= 0 || !normalized.add(expertId)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Expert ids must be positive and unique");
+            }
+        }
+        return List.copyOf(normalized);
+    }
+
+    private List<Long> selectedRosterExpertIds(Long batchId) {
+        List<Long> expertIds = reviewRepository.listSelectedRosterExpertIds(batchId);
+        return expertIds == null ? List.of() : expertIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(expertId -> expertId > 0)
+                .distinct()
+                .toList();
+    }
+
+    private ReviewRepository.InvitationContext requireInvitationContext(String rawToken, boolean requireCheckIn) {
+        if (!StringUtils.hasText(rawToken)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Review invitation token is required");
+        }
+        ReviewRepository.InvitationContext context = reviewRepository.findInvitationByTokenHash(
+                sha256Text(rawToken.trim())
+        ).orElseThrow(() -> biz(ErrorCode.UNAUTHORIZED, "Review invitation is invalid or has been replaced"));
+        if (!invitationMatchesEligibleExpert(context)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Review invitation is invalid or has been replaced");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (context.tokenExpiresAt() == null || !context.tokenExpiresAt().isAfter(now)) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Review invitation has expired");
+        }
+        if (!Set.of("SENT", "OPENED", "QR_ISSUED", "CHECKED_IN").contains(context.invitationStatus())) {
+            throw biz(ErrorCode.UNAUTHORIZED, "Review invitation is not available for use");
+        }
+        if (requireCheckIn && context.checkedInAt() == null) {
+            throw biz(ErrorCode.FORBIDDEN, "The expert must complete administrator check-in first");
+        }
+        if (context.expertUserId() == null || context.expertUserId() <= 0
+                || !StringUtils.hasText(context.expertUserUuid())) {
+            throw biz(ErrorCode.BIZ_ERROR, "The invitation is not linked to an enabled expert account");
+        }
+        return context;
+    }
+
+    private ReviewVO.Invitation toInvitation(
+            ReviewRepository.InvitationContext context,
+            String qrValue
+    ) {
+        ReviewVO.Invitation invitation = new ReviewVO.Invitation();
+        invitation.setInvitationId(context.invitationId());
+        invitation.setBatchId(context.batchId());
+        invitation.setBatchName(context.batchName());
+        invitation.setExpertId(context.expertId());
+        invitation.setExpertName(context.expertName());
+        invitation.setStatus(context.invitationStatus());
+        invitation.setDeliveryStatus(
+                Set.of("SENT", "OPENED", "QR_ISSUED", "CHECKED_IN").contains(context.invitationStatus())
+                        ? "SENT" : context.invitationStatus()
+        );
+        invitation.setCheckinStatus(context.checkedInAt() == null ? "WAITING" : "CHECKED_IN");
+        invitation.setQrValue(qrValue);
+        invitation.setQrExpiresAt(context.qrExpiresAt());
+        invitation.setTokenExpiresAt(context.tokenExpiresAt());
+        invitation.setCheckedInAt(context.checkedInAt());
+        invitation.setSentAt(context.sentAt());
+        invitation.setFailureReason(context.failureReason());
+        return invitation;
+    }
+
+    private void recordRejectedCheckin(
+            Operator operator,
+            Long batchId,
+            ReviewRepository.InvitationContext context,
+            String qrTokenHash,
+            String reason
+    ) {
+        reviewRepository.recordCheckinAttempt(
+                batchId,
+                context.invitationId(),
+                context.expertId(),
+                qrTokenHash,
+                "REJECTED",
+                reason,
+                operator.userId(),
+                operator.userUuid(),
+                LocalDateTime.now()
+        );
+    }
+
+    private String randomToken() {
+        return UUID.randomUUID().toString().replace("-", "")
+                + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String buildInvitationContent(
+            ReviewVO.Batch batch,
+            ReviewVO.RosterExpert reviewer,
+            String invitationUrl,
+            LocalDateTime expiresAt
+    ) {
+        return "您好，" + (reviewer.getExpertName() == null ? "专家" : reviewer.getExpertName()) + "：\n\n"
+                + "您已被邀请参加评审批次《" + batch.getBatchName() + "》。\n"
+                + "请在现场打开以下专属链接，展示签到二维码，由管理员扫码后开始评审：\n"
+                + invitationUrl + "\n\n"
+                + "链接有效期至：" + expiresAt + "。旧链接在重新发送邀请后立即失效。\n"
+                + "请勿将链接转发给其他人员。";
+    }
+
+    private void recordInvitationDispatchEvent(
+            Operator operator,
+            ReviewVO.Batch batch,
+            int sentCount,
+            int totalCount
+    ) {
+        if (platformEventPublisher == null) {
+            return;
+        }
+        Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("userUuid", operator.userUuid());
+        attributes.put("batchId", batch.getId());
+        attributes.put("sentCount", sentCount);
+        attributes.put("totalCount", totalCount);
+        platformEventPublisher.record(
+                "SYSTEM",
+                ReviewIntegrationEvents.INVITATIONS_DISPATCHED,
+                operator.userId(),
+                "competition.review-batch",
+                batch.getId(),
+                attributes
+        );
+    }
+
     private boolean isEligibleAssignmentTarget(ReviewRepository.AssignmentTarget target) {
         return "FROZEN".equals(target.candidateStatus())
                 && "active".equalsIgnoreCase(target.expertStatus())
@@ -1646,6 +2351,29 @@ public class ReviewAppService {
                 && !target.identityConflict()
                 && !target.expertUserId().equals(target.candidateOwnerUserId())
                 && !target.expertUserUuid().equals(target.candidateOwnerUserUuid());
+    }
+
+    private List<ReviewRepository.ExpertRosterCandidate> listEligibleExperts(List<Long> expertIds) {
+        ExpertSnapshotPort expertSnapshotPort = expertSnapshotPortProvider == null
+                ? null : expertSnapshotPortProvider.getIfAvailable();
+        if (expertSnapshotPort == null) {
+            throw biz(ErrorCode.BIZ_ERROR, "Expert profile service is unavailable");
+        }
+        List<ReviewRepository.ExpertRosterCandidate> experts = new ArrayList<>();
+        for (Long expertId : expertIds == null ? List.<Long>of() : expertIds) {
+            ExpertSnapshot snapshot = expertSnapshotPort.findExpertSnapshot(expertId);
+            if (snapshot == null
+                    || !expertId.equals(snapshot.expertId())
+                    || !isApprovedEnabledExpert(snapshot)
+                    || !StringUtils.hasText(snapshot.email())) {
+                continue;
+            }
+            experts.add(new ReviewRepository.ExpertRosterCandidate(
+                    snapshot.expertId(), snapshot.userId(), snapshot.userUuid(), snapshot.name(), snapshot.email(),
+                    snapshot.status(), snapshot.approvalStatus(), snapshot.accountStatus()
+            ));
+        }
+        return List.copyOf(experts);
     }
 
     private List<ReviewRepository.ExpertWorkload> availableExpertWorkloads() {
@@ -1700,6 +2428,20 @@ public class ReviewAppService {
                 && snapshot.userId() != null
                 && snapshot.userId() > 0
                 && StringUtils.hasText(snapshot.userUuid());
+    }
+
+    private boolean invitationMatchesEligibleExpert(ReviewRepository.InvitationContext context) {
+        ExpertSnapshotPort expertSnapshotPort = expertSnapshotPortProvider == null
+                ? null : expertSnapshotPortProvider.getIfAvailable();
+        if (expertSnapshotPort == null || context == null || context.expertId() == null) {
+            return false;
+        }
+        ExpertSnapshot snapshot = expertSnapshotPort.findExpertSnapshot(context.expertId());
+        return snapshot != null
+                && context.expertId().equals(snapshot.expertId())
+                && java.util.Objects.equals(context.expertUserId(), snapshot.userId())
+                && java.util.Objects.equals(context.expertUserUuid(), snapshot.userUuid())
+                && isApprovedEnabledExpert(snapshot);
     }
 
     private boolean snapshotIdentityConflict(String snapshotJson, String userUuid) {
@@ -1761,14 +2503,26 @@ public class ReviewAppService {
     }
 
     private ReviewRepository.AssignmentContext requireOwnedAssignment(Long assignmentId, Operator operator) {
+        return requireOwnedAssignment(assignmentId, operator, null);
+    }
+
+    private ReviewRepository.AssignmentContext requireOwnedAssignment(
+            Long assignmentId,
+            Operator operator,
+            Long expectedBatchId
+    ) {
         if (assignmentId == null || assignmentId <= 0) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Review assignment id is required");
         }
-        return reviewRepository.findOwnedAssignment(
+        ReviewRepository.AssignmentContext assignment = reviewRepository.findOwnedAssignment(
                 assignmentId,
                 operator.userId(),
                 operator.userUuid()
         ).orElseThrow(() -> biz(ErrorCode.NOT_FOUND, "Review assignment not found"));
+        if (expectedBatchId != null && !expectedBatchId.equals(assignment.batchId())) {
+            throw biz(ErrorCode.NOT_FOUND, "Review assignment is outside this invitation");
+        }
+        return assignment;
     }
 
     private ReviewVO.AssignmentTask requireOwnedTask(Long assignmentId, Operator operator) {

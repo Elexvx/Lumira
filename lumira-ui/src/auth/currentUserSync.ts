@@ -1,6 +1,7 @@
 import { request } from '@/services/common/request';
 import { tokenManager } from '@/auth/token';
 import type { CurrentUser, MenuNode, PluginAvailability } from '@/types/api';
+import { shouldFallbackToLegacyEndpoint } from '@/services/common/legacyEndpointFallback';
 
 export const CURRENT_USER_SYNC_EVENT = 'lumira:current-user-sync';
 export const CURRENT_USER_SYNC_INTERVAL_MS = 5_000;
@@ -23,7 +24,6 @@ export interface CurrentNavigationSnapshot {
 const currentNavigationRequestOptions = {
   method: 'GET',
   autoRedirectOnUnauthorized: false,
-  allowUnauthorizedWithoutRedirect: true,
   silent: true,
   timeoutMs: CURRENT_USER_SYNC_TIMEOUT_MS,
 } as const;
@@ -32,18 +32,19 @@ const requestCurrentUser = () =>
   request<CurrentUser>('/v2/auth/current-user', {
     method: 'GET',
     autoRedirectOnUnauthorized: false,
-    allowUnauthorizedWithoutRedirect: true,
     silent: true,
     timeoutMs: CURRENT_USER_SYNC_TIMEOUT_MS,
-  }).catch(() =>
-    request<CurrentUser>('/v1/auth/current-user', {
+  }).catch((error) => {
+    if (!shouldFallbackToLegacyEndpoint(error)) {
+      throw error;
+    }
+    return request<CurrentUser>('/v1/auth/current-user', {
       method: 'GET',
       autoRedirectOnUnauthorized: false,
-      allowUnauthorizedWithoutRedirect: true,
       silent: true,
       timeoutMs: CURRENT_USER_SYNC_TIMEOUT_MS,
-    }),
-  );
+    });
+  });
 
 export const loadCurrentUserSnapshot = (): Promise<CurrentUser> => {
   const tokenGeneration = tokenManager.getTokenGeneration();
@@ -64,7 +65,12 @@ export const loadCurrentUserSnapshot = (): Promise<CurrentUser> => {
 
 const requestCurrentNavigation = () =>
   request<CurrentNavigationSnapshot>('/v2/plugins/current/bootstrap', currentNavigationRequestOptions)
-    .catch(() => request<CurrentNavigationSnapshot>('/v1/plugins/current/bootstrap', currentNavigationRequestOptions));
+    .catch((error) => {
+      if (!shouldFallbackToLegacyEndpoint(error)) {
+        throw error;
+      }
+      return request<CurrentNavigationSnapshot>('/v1/plugins/current/bootstrap', currentNavigationRequestOptions);
+    });
 
 export const loadCurrentNavigationSnapshot = (): Promise<CurrentNavigationSnapshot> => {
   const tokenGeneration = tokenManager.getTokenGeneration();
@@ -98,6 +104,11 @@ export const hasCurrentUserNavigationChanged = (
   || JSON.stringify(previous?.availableRoles ?? []) !== JSON.stringify(next.availableRoles ?? []);
 
 export const notifyCurrentUserSync = () => {
+  // A role mutation may race with the regular polling request. Detach both
+  // in-flight snapshots so this explicit signal always starts a request under
+  // the latest token generation; the old promises remain safe to finish.
+  currentUserRequest = null;
+  currentNavigationRequest = null;
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(CURRENT_USER_SYNC_EVENT));
   }

@@ -74,7 +74,11 @@ export const mergeTrustedCurrentUser = (previous: CurrentUser | undefined, next:
   }
   const nextIsTrusted: boolean = isTrustedCurrentUser(next);
   if (nextIsTrusted) {
-    return assertTrustedCurrentUser(next);
+    const sameUser = previous.userId === next.userId && previous.username === next.username;
+    return assertTrustedCurrentUser({
+      ...next,
+      userUuid: next.userUuid?.trim() || (sameUser ? previous.userUuid : next.userUuid),
+    });
   }
   const candidate: CurrentUser = {
     ...previous,
@@ -89,6 +93,22 @@ export const mergeTrustedCurrentUser = (previous: CurrentUser | undefined, next:
     roleIds: next.roleIds ?? previous.roleIds,
   };
   return assertTrustedCurrentUser(candidate);
+};
+
+export const mergeSameSessionCurrentUser = (
+  current: CurrentUser | undefined,
+  candidate: CurrentUser | undefined,
+): CurrentUser | undefined => {
+  if (!candidate) {
+    return current;
+  }
+  if (!current) {
+    return candidate;
+  }
+  if (current.userId !== candidate.userId || current.sessionId !== candidate.sessionId) {
+    return current;
+  }
+  return mergeTrustedCurrentUser(current, candidate);
 };
 
 export const buildFallbackCurrentUser = (loginResponse: LoginResponse): CurrentUser => {

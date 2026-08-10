@@ -2,8 +2,8 @@ import type { Dayjs } from 'dayjs';
 import type { CompetitionLocale, CompetitionUpsertPayload } from '@/services/competition/types';
 import {
   isChronologicalTimeRange,
-  isScheduleAtOrAfterRegistrationEnd,
   isTimeRangeAtOrAfterPreviousEnd,
+  isTimeRangeWithinBounds,
 } from './utils/competitionTimeline';
 
 export type CompetitionSettingsOrganizerFormItem = {
@@ -177,11 +177,23 @@ export const getTimelineSettingsMissingFields = (
   ))) {
     appendMissingField(missingFields, '评审时间');
   }
-  if (confirmedSchedules.some((schedule) => (
-    hasCompleteTimeRange(schedule.timeRange)
-      && !isScheduleAtOrAfterRegistrationEnd(schedule.timeRange, values.registrationRange)
+  if (hasCompleteTimeRange(values.registrationRange) && confirmedSchedules.some((schedule) => (
+    hasCompleteTimeRange(schedule.materialRange)
+      && !isTimeRangeWithinBounds(schedule.materialRange, values.registrationRange)
   ))) {
-    appendMissingField(missingFields, '竞赛开始时间不得早于报名结束时间');
+    appendMissingField(missingFields, '提交材料时间必须在报名时间范围内');
+  }
+  if (hasCompleteTimeRange(values.registrationRange) && confirmedSchedules.some((schedule) => (
+    hasCompleteTimeRange(schedule.timeRange)
+      && !isTimeRangeWithinBounds(schedule.timeRange, values.registrationRange)
+  ))) {
+    appendMissingField(missingFields, '比赛时间必须在报名时间范围内');
+  }
+  if (hasCompleteTimeRange(values.registrationRange) && confirmedSchedules.some((schedule) => (
+    hasCompleteTimeRange(schedule.reviewRange)
+      && !isTimeRangeWithinBounds(schedule.reviewRange, values.registrationRange)
+  ))) {
+    appendMissingField(missingFields, '评审时间必须在报名时间范围内');
   }
   if (confirmedSchedules.some((schedule) => (
     hasCompleteTimeRange(schedule.materialRange)

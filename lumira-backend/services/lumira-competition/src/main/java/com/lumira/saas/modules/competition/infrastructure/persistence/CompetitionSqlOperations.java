@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.ResultSetMetaData;
+import java.util.LinkedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -80,6 +82,33 @@ public class CompetitionSqlOperations {
         private JdbcResultSetSqlRow(ResultSet resultSet) {
             super(Map.of());
             this.resultSet = resultSet;
+        }
+
+        /**
+         * BeanPropertyRowMapper consumes the row as a map.  The JDBC-backed
+         * row used to inherit the empty map from {@link SqlRow}, so every
+         * mapped competition was returned with null fields even though the
+         * query itself had a result.  Materialize the selected labels here,
+         * preserving aliases such as {@code competitionNo}.
+         */
+        @Override
+        public Map<String, Object> asMap() {
+            try {
+                ResultSetMetaData metadata = resultSet.getMetaData();
+                Map<String, Object> values = new LinkedHashMap<>();
+                for (int index = 1; index <= metadata.getColumnCount(); index++) {
+                    String label = metadata.getColumnLabel(index);
+                    if (label == null || label.isBlank()) {
+                        label = metadata.getColumnName(index);
+                    }
+                    if (label != null && !label.isBlank()) {
+                        values.put(label, resultSet.getObject(index));
+                    }
+                }
+                return values;
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Failed to read Competition SQL row metadata", exception);
+            }
         }
 
         @Override

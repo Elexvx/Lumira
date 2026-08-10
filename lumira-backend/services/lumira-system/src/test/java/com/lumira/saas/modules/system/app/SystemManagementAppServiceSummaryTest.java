@@ -65,6 +65,7 @@ class SystemManagementAppServiceSummaryTest {
         SystemVO.DashboardSummaryVO dashboard = env.service.dashboardSummary(currentUser);
 
         assertThat(dashboard.getCurrentUser().getUsername()).isEqualTo("jane");
+        assertThat(dashboard.getCurrentUser().getUserUuid()).isEqualTo("user-uuid-42");
         assertThat(dashboard.getMenuCount()).isEqualTo(12);
         assertThat(dashboard.getPermissionCount()).isEqualTo(2);
         assertThat(dashboard.getAvailablePlugins()).hasSize(1);
@@ -83,6 +84,7 @@ class SystemManagementAppServiceSummaryTest {
         SystemVO.ProfileSummaryVO profile = env.service.profileSummary(currentUser);
 
         assertThat(profile.getCurrentUser().getUsername()).isEqualTo("jane");
+        assertThat(profile.getCurrentUser().getUserUuid()).isEqualTo("user-uuid-42");
         assertThat(profile.getRoleNames()).containsExactly("管理员");
         assertThat(profile.getRecentLoginLogs()).hasSize(1);
         assertThat(profile.getProfileFieldSettings()).hasSize(1);

@@ -17,6 +17,8 @@ import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.event.PlatformEventPort;
+import com.lumira.api.expert.ExpertSnapshot;
+import com.lumira.api.expert.ExpertSnapshotPort;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.registration.api.RegistrationReviewInternalApi;
@@ -30,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 
 class ReviewAppServiceTest {
 
@@ -172,6 +175,144 @@ class ReviewAppServiceTest {
 
         assertThat(created.getId()).isEqualTo(60L);
         assertThat(created.getStatus()).isEqualTo("DRAFT");
+        assertThat(request.getReviewerCountPerCandidate()).isEqualTo(3);
+        assertThat(request.getExpertMinAssignments()).isEqualTo(5);
+        assertThat(request.getExpertTargetAssignments()).isEqualTo(6);
+        assertThat(request.getExpertMaxAssignments()).isEqualTo(6);
+    }
+
+    @Test
+    void refusesAssignmentConfirmationWhenWorkloadRangeCannotCoverAllTasks() {
+        ReviewVO.Batch assigning = reviewBatch(60L, "ASSIGNING", 2);
+        assigning.setReviewerCountPerCandidate(3);
+        assigning.setExpertMinAssignments(5);
+        assigning.setExpertTargetAssignments(6);
+        assigning.setExpertMaxAssignments(6);
+        when(repository.findBatch(60L)).thenReturn(Optional.of(assigning));
+        when(repository.listSelectedRosterExpertIds(60L)).thenReturn(List.of(80L));
+        ReviewVO.Candidate candidate = new ReviewVO.Candidate();
+        candidate.setId(70L);
+        when(repository.listCandidates(60L)).thenReturn(List.of(candidate));
+
+        assertThatThrownBy(() -> service.confirmAssignments(
+                user(ReviewAppService.ASSIGNMENT_MANAGE),
+                60L
+        )).isInstanceOf(BizException.class)
+                .hasMessageContaining("cannot fit");
+
+        verify(repository, never()).markBatchAssignmentsConfirmed(
+                anyLong(), anyInt(), anyLong(), anyString(), any()
+        );
+    }
+
+    @Test
+    void savesReviewerRosterFromExpertOwnerSnapshots() {
+        ReviewVO.Batch ready = reviewBatch(60L, "READY", 1);
+        when(repository.findBatch(60L)).thenReturn(Optional.of(ready));
+        when(repository.listAssignments(60L)).thenReturn(List.of());
+        when(repository.replaceRoster(eq(60L), any(), eq(7L), eq("user-uuid"), any())).thenReturn(1);
+        when(repository.listRoster(60L)).thenReturn(List.of());
+        stubExpertSnapshot(new ExpertSnapshot(
+                80L, 18L, "expert-user-uuid", "评审专家", "expert@example.com",
+                "active", "APPROVED", "ENABLED"
+        ));
+        ReviewDTO.RosterSaveRequest request = new ReviewDTO.RosterSaveRequest();
+        request.setExpertIds(List.of(80L));
+
+        service.saveRoster(user(ReviewAppService.ROSTER_MANAGE), 60L, request);
+
+        verify(repository).replaceRoster(
+                eq(60L),
+                argThat(experts -> experts.size() == 1
+                        && experts.getFirst().expertId().equals(80L)
+                        && experts.getFirst().userUuid().equals("expert-user-uuid")
+                        && experts.getFirst().email().equals("expert@example.com")),
+                eq(7L),
+                eq("user-uuid"),
+                any()
+        );
+    }
+
+    @Test
+    void opensInvitationWithQrButBlocksTasksUntilAdministratorCheckIn() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        ReviewRepository.InvitationContext context = new ReviewRepository.InvitationContext(
+                900L,
+                60L,
+                "第一批初评",
+                10L,
+                80L,
+                7L,
+                "user-uuid",
+                "评审专家",
+                "expert@example.com",
+                "SENT",
+                "token-hash",
+                now.plusHours(1),
+                null,
+                null,
+                now,
+                null
+        );
+        stubExpertSnapshot(new ExpertSnapshot(
+                80L, 7L, "user-uuid", "评审专家", "expert@example.com",
+                "active", "APPROVED", "ENABLED"
+        ));
+        when(repository.findInvitationByTokenHash(anyString())).thenReturn(Optional.of(context));
+        when(repository.issueInvitationQr(eq(900L), anyString(), any(), any())).thenReturn(1);
+
+        ReviewVO.Invitation opened = service.openInvitation("raw-token");
+
+        assertThat(opened.getStatus()).isEqualTo("QR_ISSUED");
+        assertThat(opened.getQrValue()).isNotBlank();
+        assertThat(opened.getQrExpiresAt()).isAfter(now);
+        verify(repository).issueInvitationQr(eq(900L), anyString(), any(), any());
+
+        assertThatThrownBy(() -> service.listInvitationAssignments("raw-token"))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("check-in");
+    }
+
+    @Test
+    void rejectsCheckInQrFromAnotherReviewBatchAndKeepsAnAuditTrail() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        ReviewRepository.InvitationContext context = new ReviewRepository.InvitationContext(
+                901L,
+                61L,
+                "第二批初评",
+                11L,
+                81L,
+                7L,
+                "user-uuid",
+                "评审专家",
+                "expert@example.com",
+                "QR_ISSUED",
+                "token-hash",
+                now.plusHours(1),
+                now.plusMinutes(4),
+                null,
+                now,
+                null
+        );
+        stubExpertSnapshot(new ExpertSnapshot(
+                81L, 7L, "user-uuid", "评审专家", "expert@example.com",
+                "active", "APPROVED", "ENABLED"
+        ));
+        when(repository.findInvitationByQrTokenHash(anyString())).thenReturn(Optional.of(context));
+        ReviewDTO.CheckInRequest request = new ReviewDTO.CheckInRequest();
+        request.setQrToken("qr-token");
+
+        assertThatThrownBy(() -> service.checkIn(
+                user(ReviewAppService.CHECKIN_SCAN),
+                60L,
+                request
+        )).isInstanceOf(BizException.class)
+                .hasMessageContaining("another review batch");
+
+        verify(repository).recordCheckinAttempt(
+                eq(60L), eq(901L), eq(81L), anyString(), eq("REJECTED"),
+                eq("二维码不属于当前评审批次"), eq(7L), eq("user-uuid"), any()
+        );
     }
 
     @Test
@@ -1140,5 +1281,14 @@ class ReviewAppServiceTest {
         user.setUsername("review-admin");
         user.setPermissions(Set.of(permission));
         return user;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void stubExpertSnapshot(ExpertSnapshot snapshot) {
+        ExpertSnapshotPort port = mock(ExpertSnapshotPort.class);
+        when(port.findExpertSnapshot(snapshot.expertId())).thenReturn(snapshot);
+        ObjectProvider<ExpertSnapshotPort> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(port);
+        service.setExpertSnapshotPortProvider(provider);
     }
 }

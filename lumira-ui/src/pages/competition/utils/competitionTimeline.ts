@@ -36,7 +36,14 @@ export const isTimeRangeAtOrAfterPreviousEnd = (
   return !bounds[0].isBefore(previousBounds[1]);
 };
 
-export const isScheduleAtOrAfterRegistrationEnd = (
-  scheduleRange?: CompetitionTimelineRange,
-  registrationRange?: CompetitionTimelineRange,
-) => isTimeRangeAtOrAfterPreviousEnd(scheduleRange, registrationRange);
+export const isTimeRangeWithinBounds = (
+  range?: CompetitionTimelineRange,
+  boundsRange?: CompetitionTimelineRange,
+) => {
+  const bounds = getCompleteRange(range);
+  const outerBounds = getCompleteRange(boundsRange);
+  if (!bounds || !outerBounds) {
+    return false;
+  }
+  return !bounds[0].isBefore(outerBounds[0]) && !bounds[1].isAfter(outerBounds[1]);
+};

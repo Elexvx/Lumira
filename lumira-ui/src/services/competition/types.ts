@@ -27,7 +27,6 @@ export interface CompetitionRecord {
   imageUrl?: string | null;
   contactName?: string | null;
   contactQrCodeUrl?: string | null;
-  homepageContent?: string | null;
   tags?: string | null;
   status: CompetitionStatus;
   feeMode?: CompetitionFeeMode | null;
@@ -111,7 +110,6 @@ export interface CompetitionUpsertPayload {
   imageUrl?: string;
   contactName?: string;
   contactQrCodeUrl?: string;
-  homepageContent?: string;
   tags?: string;
   status: CompetitionStatus;
   feeMode?: CompetitionFeeMode;

@@ -320,11 +320,20 @@ public class JdbcSystemUserManagementRepository implements SystemUserManagementR
         return count(
                 """
                         select count(1)
-                        from sys_role_permission rp
-                        join sys_permission p on p.id = rp.permission_id and p.deleted = 0
-                        where rp.deleted = 0
-                          and rp.role_id in (%s)
-                          and p.perm_code = '*'
+                        from sys_role r
+                        where r.deleted = 0
+                          and r.id in (%s)
+                          and (
+                              r.role_type in ('SYSTEM', 'ADMIN')
+                              or r.role_code = 'ADMIN'
+                              or exists (
+                                  select 1
+                                  from sys_role_permission rp
+                                  where rp.role_id = r.id
+                                    and rp.deleted = 0
+                                    and rp.permission_key = '*'
+                              )
+                          )
                         """.formatted(placeholders(roleIds.size())),
                 roleIds
         );

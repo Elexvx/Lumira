@@ -298,7 +298,7 @@ public class SystemRoleManagementAppService {
         replaceRoleDataScopes(roleId, null, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), true);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
-        return getRole(currentUser, roleId);
+        return queryRoleDetail(roleId);
     }
 
     @Transactional
@@ -313,7 +313,7 @@ public class SystemRoleManagementAppService {
         replaceRoleDataScopes(roleId, existingRole, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
-        return getRole(currentUser, roleId);
+        return queryRoleDetail(roleId);
     }
 
     @Transactional

@@ -5,6 +5,7 @@ import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
 
 export const ROLE_SWITCH_STORAGE_KEY = 'auth_role_switch_epoch';
 export const ROLE_SWITCH_BROADCAST_TYPE = 'role-switched';
+export const ROLE_SIMULATION_EXIT_KEY = 'role-simulation-exit';
 
 interface RoleSwitchSignal {
   type: typeof ROLE_SWITCH_BROADCAST_TYPE;
@@ -53,7 +54,8 @@ export interface RoleSwitchOption {
 export const canSwitchRole = (
   availableRoles: CurrentUserRoleOption[],
   requiresPasswordChange: boolean,
-) => !requiresPasswordChange && availableRoles.length > 0;
+  simulatedRoleId: number | null = null,
+) => !requiresPasswordChange && (availableRoles.length > 0 || simulatedRoleId != null);
 
 export const buildRoleSwitchOptions = (
   availableRoles: CurrentUserRoleOption[],
@@ -70,6 +72,13 @@ export const resolveRoleSwitchTarget = (
   value: string,
   options: RoleSwitchOption[],
 ): number | undefined => options.find((option) => option.key === value)?.roleId;
+
+export const resolveRoleSwitchRequestTarget = (
+  value: string,
+  options: RoleSwitchOption[],
+): number | null | undefined => value === ROLE_SIMULATION_EXIT_KEY
+  ? null
+  : resolveRoleSwitchTarget(value, options);
 
 export const buildSimulatedRoleSwitchRequestOptions = (
   roleId: number | null,

@@ -13,6 +13,8 @@ import type {
   ReviewPlanCreatePayload,
   ReviewPublication,
   ReviewPublishedResult,
+  ReviewInvitation,
+  ReviewRosterExpert,
   ReviewSheet,
   ReviewSheetPayload,
 } from './types';
@@ -51,6 +53,30 @@ export const listReviewCandidates = (batchId: number) =>
 
 export const listReviewAssignments = (batchId: number) =>
   request<ReviewAdminAssignment[]>(`${REVIEW_API}/batches/${batchId}/assignments`, { method: 'GET' });
+
+export const listReviewRoster = (batchId: number) =>
+  request<ReviewRosterExpert[]>(`${REVIEW_API}/batches/${batchId}/roster`, { method: 'GET' });
+
+export const saveReviewRoster = (batchId: number, expertIds: number[]) =>
+  request<ReviewRosterExpert[]>(`${REVIEW_API}/batches/${batchId}/roster`, {
+    method: 'PUT',
+    data: { expertIds },
+  });
+
+export const confirmReviewAssignments = (batchId: number) =>
+  request<ReviewBatch>(`${REVIEW_API}/batches/${batchId}/assignments/confirm`, { method: 'POST' });
+
+export const listReviewInvitations = (batchId: number) =>
+  request<ReviewRosterExpert[]>(`${REVIEW_API}/batches/${batchId}/invitations`, { method: 'GET' });
+
+export const sendReviewInvitations = (batchId: number) =>
+  request<ReviewRosterExpert[]>(`${REVIEW_API}/batches/${batchId}/invitations`, { method: 'POST' });
+
+export const scanReviewCheckIn = (batchId: number, qrToken: string) =>
+  request<ReviewInvitation>(`${REVIEW_API}/batches/${batchId}/check-ins`, {
+    method: 'POST',
+    data: { qrToken },
+  });
 
 export const assignReviewExperts = (
   batchId: number,
@@ -169,4 +195,56 @@ export const resolveReviewAppeal = (
   request<ReviewAppeal>(`${REVIEW_API}/appeals/${appealId}/resolution`, {
     method: 'PUT',
     data: { decision, resolution },
+  });
+
+export const openReviewInvitation = (token: string) =>
+  request<ReviewInvitation>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}`, {
+    method: 'GET',
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
+  });
+
+export const getReviewInvitationStatus = (token: string) =>
+  request<ReviewInvitation>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}/status`, {
+    method: 'GET',
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
+  });
+
+export const listReviewInvitationAssignments = (token: string) =>
+  request<ReviewAssignmentTask[]>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}/assignments`, {
+    method: 'GET',
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
+  });
+
+export const acceptReviewInvitationAssignment = (token: string, assignmentId: number) =>
+  request<ReviewAssignmentTask>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}/assignments/${assignmentId}/accept`, {
+    method: 'POST',
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
+  });
+
+export const declineReviewInvitationAssignment = (token: string, assignmentId: number, reason: string) =>
+  request<ReviewAssignmentTask>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}/assignments/${assignmentId}/decline`, {
+    method: 'POST',
+    data: { reason },
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
+  });
+
+export const saveReviewInvitationDraft = (token: string, assignmentId: number, data: ReviewSheetPayload) =>
+  request<ReviewSheet>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}/assignments/${assignmentId}/sheet`, {
+    method: 'PUT',
+    data,
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
+  });
+
+export const submitReviewInvitationSheet = (token: string, assignmentId: number, data: ReviewSheetPayload) =>
+  request<ReviewSheet>(`${REVIEW_API}/invitations/${encodeURIComponent(token)}/assignments/${assignmentId}/submit`, {
+    method: 'POST',
+    data,
+    skipAuth: true,
+    allowUnauthorizedWithoutRedirect: true,
   });

@@ -38,6 +38,7 @@ import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
+import com.lumira.file.upload.FileUploadDirectory;
 import com.lumira.file.upload.ImageUploadService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.slf4j.Logger;
@@ -307,6 +308,20 @@ public class FileManagementAppService {
             String bucket,
             String scope
     ) {
+        return uploadFile(currentUser, file, category, tags, remark, bucket, scope, null);
+    }
+
+    @Transactional
+    public FileObjectDTO uploadFile(
+            CurrentUser currentUser,
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket,
+            String scope,
+            String directory
+    ) {
         if (file == null || file.isEmpty()) {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "请先选择上传文件");
         }
@@ -316,10 +331,10 @@ public class FileManagementAppService {
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
         if (ImageUploadService.supports(originalFilename, contentType)) {
-            return uploadImage(currentUser, file, category, remark, uploadBucket, visibilityScope);
+            return uploadImage(currentUser, file, category, tags, remark, uploadBucket, visibilityScope, directory);
         }
         if (DocumentUploadService.supports(originalFilename, contentType)) {
-            return uploadDocument(currentUser, file, category, tags, remark, uploadBucket, visibilityScope);
+            return uploadDocument(currentUser, file, category, tags, remark, uploadBucket, visibilityScope, directory);
         }
         throw visibleBizException(ErrorCode.BAD_REQUEST, "仅允许上传图片、PDF、Word、Excel、PPT、Markdown、TXT 或压缩包文件");
     }
@@ -338,7 +353,7 @@ public class FileManagementAppService {
             String remark,
             String bucket
     ) {
-        return uploadDocument(currentUser, file, category, tags, remark, bucket, VISIBILITY_SCOPE_PERSONAL);
+        return uploadDocument(currentUser, file, category, tags, remark, bucket, VISIBILITY_SCOPE_PERSONAL, null);
     }
 
     private FileObjectDTO uploadDocument(
@@ -348,16 +363,22 @@ public class FileManagementAppService {
             String tags,
             String remark,
             String bucket,
-            String visibilityScope
+            String visibilityScope,
+            String directory
     ) {
         requireCurrentUser(currentUser);
         Long actorUserId = trustedUserId(currentUser);
         String actorUserUuid = trustedUserUuid(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(bucket);
-        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(
-                file,
+        FileUploadDirectory.Scope uploadDirectory = FileUploadDirectory.resolve(
                 storageContext.storageRoot(),
                 storageContext.publicPath(),
+                directory
+        );
+        DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(
+                file,
+                uploadDirectory.storageRoot(),
+                uploadDirectory.publicPath(),
                 storageContext.maxFileSizeBytes(),
                 storageContext.storageSpace().renameStrategy(),
                 storageContext.storageSpace().allowedMimeTypes()
@@ -366,7 +387,7 @@ public class FileManagementAppService {
                 currentUser,
                 storageContext.storageSpace().provider(),
                 storageContext.storageBucket(),
-                storedDocument.relativePath(),
+                FileUploadDirectory.qualifyObjectKey(uploadDirectory.directory(), storedDocument.relativePath()),
                 storedDocument.originalFileName(),
                 storedDocument.fileExtension(),
                 storedDocument.contentType(),
@@ -392,27 +413,41 @@ public class FileManagementAppService {
 
     @Transactional
     public FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
-        return uploadImage(currentUser, file, category, remark, bucket, VISIBILITY_SCOPE_PERSONAL);
+        return uploadImage(currentUser, file, category, null, remark, bucket, VISIBILITY_SCOPE_PERSONAL, null);
     }
 
     @Transactional
     public FileObjectDTO uploadPublicImage(CurrentUser currentUser, MultipartFile file, String category, String remark) {
-        return uploadImage(currentUser, file, category, remark, null, VISIBILITY_SCOPE_PUBLIC);
+        return uploadImage(currentUser, file, category, null, remark, null, VISIBILITY_SCOPE_PUBLIC, null);
     }
 
     @Transactional
     public FileObjectDTO uploadPublicImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
-        return uploadImage(currentUser, file, category, remark, bucket, VISIBILITY_SCOPE_PUBLIC);
+        return uploadImage(currentUser, file, category, null, remark, bucket, VISIBILITY_SCOPE_PUBLIC, null);
     }
 
-    private FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket, String visibilityScope) {
+    private FileObjectDTO uploadImage(
+            CurrentUser currentUser,
+            MultipartFile file,
+            String category,
+            String tags,
+            String remark,
+            String bucket,
+            String visibilityScope,
+            String directory
+    ) {
         requireCurrentUser(currentUser);
         Long actorUserId = trustedUserId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(bucket);
-        ImageUploadService.StoredImage storedImage = imageUploadService.upload(
-                file,
+        FileUploadDirectory.Scope uploadDirectory = FileUploadDirectory.resolve(
                 storageContext.storageRoot(),
                 storageContext.publicPath(),
+                directory
+        );
+        ImageUploadService.StoredImage storedImage = imageUploadService.upload(
+                file,
+                uploadDirectory.storageRoot(),
+                uploadDirectory.publicPath(),
                 storageContext.maxFileSizeBytes(),
                 storageContext.storageSpace().renameStrategy(),
                 storageContext.storageSpace().allowedMimeTypes()
@@ -421,7 +456,7 @@ public class FileManagementAppService {
                 currentUser,
                 storageContext.storageSpace().provider(),
                 storageContext.storageBucket(),
-                storedImage.relativePath(),
+                FileUploadDirectory.qualifyObjectKey(uploadDirectory.directory(), storedImage.relativePath()),
                 storedImage.originalFileName(),
                 normalizeText(storedImage.fileExtension().replaceFirst("^\\.", "")),
                 storedImage.contentType(),
@@ -431,7 +466,7 @@ public class FileManagementAppService {
                 true,
                 visibilityScope,
                 StringUtils.hasText(category) ? category : requiredPolicyLabel(DICT_RUNTIME_DEFAULT, "IMAGE_CATEGORY"),
-                null,
+                tags,
                 remark
         );
         FileObjectDTO uploaded = getInsertedFile(insertedId);

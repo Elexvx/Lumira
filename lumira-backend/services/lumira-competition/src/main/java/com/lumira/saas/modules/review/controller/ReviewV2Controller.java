@@ -145,6 +145,58 @@ public class ReviewV2Controller {
         );
     }
 
+    @GetMapping("/batches/{batchId}/roster")
+    public ApiResponse<java.util.List<ReviewVO.RosterExpert>> roster(@PathVariable("batchId") Long batchId) {
+        CurrentUser currentUser = require(ReviewAppService.ROSTER_MANAGE);
+        return ApiResponse.success(reviewAppService.listRoster(currentUser, batchId), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/batches/{batchId}/roster")
+    @RepeatSubmit
+    public ApiResponse<java.util.List<ReviewVO.RosterExpert>> saveRoster(
+            @PathVariable("batchId") Long batchId,
+            @Valid @RequestBody ReviewDTO.RosterSaveRequest request
+    ) {
+        CurrentUser currentUser = require(ReviewAppService.ROSTER_MANAGE);
+        return ApiResponse.success(
+                reviewAppService.saveRoster(currentUser, batchId, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/batches/{batchId}/assignments/confirm")
+    @RepeatSubmit
+    public ApiResponse<ReviewVO.Batch> confirmAssignments(@PathVariable("batchId") Long batchId) {
+        CurrentUser currentUser = require(ReviewAppService.ASSIGNMENT_MANAGE);
+        return ApiResponse.success(
+                reviewAppService.confirmAssignments(currentUser, batchId),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @GetMapping("/batches/{batchId}/invitations")
+    public ApiResponse<java.util.List<ReviewVO.RosterExpert>> invitations(@PathVariable("batchId") Long batchId) {
+        CurrentUser currentUser = require(ReviewAppService.NOTIFICATION_SEND);
+        return ApiResponse.success(reviewAppService.listInvitations(currentUser, batchId), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/batches/{batchId}/invitations")
+    @RepeatSubmit
+    public ApiResponse<java.util.List<ReviewVO.RosterExpert>> sendInvitations(@PathVariable("batchId") Long batchId) {
+        CurrentUser currentUser = require(ReviewAppService.NOTIFICATION_SEND);
+        return ApiResponse.success(reviewAppService.sendInvitations(currentUser, batchId), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/batches/{batchId}/check-ins")
+    @RepeatSubmit
+    public ApiResponse<ReviewVO.Invitation> checkIn(
+            @PathVariable("batchId") Long batchId,
+            @Valid @RequestBody ReviewDTO.CheckInRequest request
+    ) {
+        CurrentUser currentUser = require(ReviewAppService.CHECKIN_SCAN);
+        return ApiResponse.success(reviewAppService.checkIn(currentUser, batchId, request), TraceContext.getRequestId());
+    }
+
     @GetMapping("/batches/{batchId}/aggregates")
     public ApiResponse<java.util.List<ReviewVO.Aggregate>> aggregates(@PathVariable("batchId") Long batchId) {
         CurrentUser currentUser = require(ReviewAppService.RESULT_AGGREGATE);
@@ -213,6 +265,74 @@ public class ReviewV2Controller {
     public ApiResponse<java.util.List<ReviewVO.AssignmentTask>> myAssignments() {
         CurrentUser currentUser = require(ReviewAppService.TASK_VIEW);
         return ApiResponse.success(reviewAppService.listMyAssignments(currentUser), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/invitations/{token}")
+    public ApiResponse<ReviewVO.Invitation> openInvitation(@PathVariable("token") String token) {
+        return ApiResponse.success(reviewAppService.openInvitation(token), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/invitations/{token}/status")
+    public ApiResponse<ReviewVO.Invitation> invitationStatus(@PathVariable("token") String token) {
+        return ApiResponse.success(reviewAppService.invitationStatus(token), TraceContext.getRequestId());
+    }
+
+    @GetMapping("/invitations/{token}/assignments")
+    public ApiResponse<java.util.List<ReviewVO.AssignmentTask>> invitationAssignments(
+            @PathVariable("token") String token
+    ) {
+        return ApiResponse.success(reviewAppService.listInvitationAssignments(token), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/invitations/{token}/assignments/{assignmentId}/accept")
+    @RepeatSubmit
+    public ApiResponse<ReviewVO.AssignmentTask> acceptInvitationAssignment(
+            @PathVariable("token") String token,
+            @PathVariable("assignmentId") Long assignmentId
+    ) {
+        return ApiResponse.success(
+                reviewAppService.acceptInvitationAssignment(token, assignmentId),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/invitations/{token}/assignments/{assignmentId}/decline")
+    @RepeatSubmit
+    public ApiResponse<ReviewVO.AssignmentTask> declineInvitationAssignment(
+            @PathVariable("token") String token,
+            @PathVariable("assignmentId") Long assignmentId,
+            @Valid @RequestBody ReviewDTO.AssignmentDeclineRequest request
+    ) {
+        return ApiResponse.success(
+                reviewAppService.declineInvitationAssignment(token, assignmentId, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/invitations/{token}/assignments/{assignmentId}/sheet")
+    @RepeatSubmit
+    public ApiResponse<ReviewVO.ReviewSheet> saveInvitationDraft(
+            @PathVariable("token") String token,
+            @PathVariable("assignmentId") Long assignmentId,
+            @Valid @RequestBody ReviewDTO.ReviewSheetRequest request
+    ) {
+        return ApiResponse.success(
+                reviewAppService.saveInvitationDraft(token, assignmentId, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/invitations/{token}/assignments/{assignmentId}/submit")
+    @RepeatSubmit
+    public ApiResponse<ReviewVO.ReviewSheet> submitInvitationSheet(
+            @PathVariable("token") String token,
+            @PathVariable("assignmentId") Long assignmentId,
+            @Valid @RequestBody ReviewDTO.ReviewSheetRequest request
+    ) {
+        return ApiResponse.success(
+                reviewAppService.submitInvitationSheet(token, assignmentId, request),
+                TraceContext.getRequestId()
+        );
     }
 
     @PostMapping("/assignments/{assignmentId}/accept")

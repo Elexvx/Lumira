@@ -8,6 +8,7 @@ import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { UserAvatar } from '@/components/UserAvatar';
+import { mergeSameSessionCurrentUser } from '@/auth/sessionState';
 import { request } from '@/services/common/request';
 import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -173,7 +174,12 @@ const useDashboardHome = () => {
   const { initialState } = useInitialStateModel();
   const responsive = useResponsive();
   const dashboardQuery = useQuery({
-    queryKey: ['dashboard-summary', initialState?.menuVersion],
+    queryKey: [
+      'dashboard-summary',
+      initialState?.currentUser?.userId,
+      initialState?.currentUser?.sessionId,
+      initialState?.menuVersion,
+    ],
     enabled: Boolean(initialState?.currentUser),
     retry: false,
     // Dashboard summary is additive; the page already has safe local fallbacks.
@@ -185,7 +191,7 @@ const useDashboardHome = () => {
   });
 
   const summary = dashboardQuery.data as DashboardSummary | undefined;
-  const currentUser = summary?.currentUser || initialState?.currentUser;
+  const currentUser = mergeSameSessionCurrentUser(initialState?.currentUser, summary?.currentUser);
   const greeting = buildGreeting(dayjs().hour());
   const displayName = currentUser?.nickname || currentUser?.realName || currentUser?.username || t('ui.dashboard.home.currentUser');
   const recentLoginLogs = summary?.recentLoginLogs || [];

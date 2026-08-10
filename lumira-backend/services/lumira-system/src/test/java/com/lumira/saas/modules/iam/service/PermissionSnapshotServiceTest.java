@@ -119,6 +119,17 @@ class PermissionSnapshotServiceTest {
     }
 
     @Test
+    void loadGrantedRoleSnapshotShouldKeepProtectedAdminWildcardWhenSimulatingAdministrator() {
+        PermissionSnapshotService service = newService(List.of("system:user:update"));
+
+        PermissionSnapshotService.PermissionSnapshot snapshot =
+                service.loadGrantedRoleSnapshot(1001L, "uuid-1001", 1001L);
+
+        assertTrue(snapshot.getPermissions().contains("system:user:update"));
+        assertTrue(snapshot.getPermissions().contains("*"));
+    }
+
+    @Test
     void loadGrantedRoleSnapshotShouldReportPermissionSnapshotErrorWhenRoleGrantLookupFails() {
         RuntimeException lookupFailure = new IllegalStateException("role grant lookup failed");
         PermissionSnapshotService service = new PermissionSnapshotService(
@@ -575,4 +586,3 @@ class PermissionSnapshotServiceTest {
         return counter == null ? 0.0 : counter.count();
     }
 }
-

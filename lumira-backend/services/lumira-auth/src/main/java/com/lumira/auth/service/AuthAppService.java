@@ -609,8 +609,9 @@ public class AuthAppService {
         long start = System.nanoTime();
         try {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
-            AuthSession session = requireActiveSessionById(currentUser.getSessionId());
-            refreshSessionActivityIfNeeded(session);
+            AuthSession session = refreshSessionActivityIfNeeded(
+                    requireActiveSessionById(currentUser.getSessionId())
+            );
             CurrentUserDTO cached = getCachedCurrentUser(currentUser, session);
             if (cached != null) {
                 return cached;
@@ -715,8 +716,9 @@ public class AuthAppService {
         long start = System.nanoTime();
         try {
             CurrentUser currentUser = requireAuthenticatedCurrentUser();
-            AuthSession session = requireActiveSessionById(currentUser.getSessionId());
-            refreshSessionActivityIfNeeded(session);
+            AuthSession session = refreshSessionActivityIfNeeded(
+                    requireActiveSessionById(currentUser.getSessionId())
+            );
 
             reconcileInitialPasswordState(session);
             ResolvedAuthBootstrapCacheKey authBootstrapCacheKey = resolveAuthBootstrapCacheKey(session);
@@ -1286,16 +1288,32 @@ public class AuthAppService {
         throw new BizException(ErrorCode.SESSION_EXPIRED, "Session has expired");
     }
 
-    private void refreshSessionActivityIfNeeded(AuthSession session) {
+    private AuthSession refreshSessionActivityIfNeeded(AuthSession session) {
         if (session == null) {
-            return;
+            return null;
         }
         Instant now = Instant.now();
         if (!shouldRefreshSessionActivity(session, now)) {
-            return;
+            return session;
         }
+        SessionMutationFingerprint mutationBaseline = SessionMutationFingerprint.from(session);
         session.setLastActivityAt(now);
-        authSessionStore.save(session, false);
+        try {
+            authSessionStore.save(session, false);
+            return session;
+        } catch (BizException exception) {
+            if (exception.getErrorCode() != ErrorCode.SESSION_EXPIRED) {
+                throw exception;
+            }
+            AuthSession latestSession = requireActiveSessionById(session.getSessionId());
+            if (!mutationBaseline.equals(SessionMutationFingerprint.from(latestSession))) {
+                throw exception;
+            }
+            // Another request already persisted the same session's activity.
+            // Use that authoritative payload instead of treating a benign CAS
+            // loss as logout or rotating refresh credentials unnecessarily.
+            return latestSession;
+        }
     }
 
     private boolean shouldRefreshSessionActivity(AuthSession session, Instant now) {

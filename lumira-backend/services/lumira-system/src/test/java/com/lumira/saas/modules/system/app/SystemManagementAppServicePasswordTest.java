@@ -127,6 +127,46 @@ class SystemManagementAppServicePasswordTest {
     }
 
     @Test
+    void shouldRejectReusingCurrentPasswordWithoutResolvingForcedChange() {
+        SysUserEntity user = buildUser("OldPass1!");
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new StubUserDomainService(user),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                operationAuditService,
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+        ProfileDTO.PasswordUpdateRequest request = buildRequest("OldPass1!", "OldPass1!", "OldPass1!");
+
+        BizException exception = assertThrows(
+                BizException.class,
+                () -> service.updateCurrentUserPassword(buildCurrentUser(), request)
+        );
+
+        assertEquals(ErrorCode.PASSWORD_POLICY_VIOLATION, exception.getErrorCode());
+        assertEquals("新密码不能与当前密码相同", exception.getUserMessage());
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, jdbcTemplate.lastSql);
+        assertEquals(null, authSessionStore.resolvedPasswordChangeUserId);
+        assertEquals(null, authSessionStore.revokedUserId);
+        assertEquals(null, operationAuditService.lastMessage);
+    }
+
+    @Test
     void shouldRejectUnauthenticatedUserBeforeUserLookup() {
         SysUserEntity user = buildUser("OldPass1!");
         StubUserDomainService userDomainService = new StubUserDomainService(user);

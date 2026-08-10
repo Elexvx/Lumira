@@ -72,7 +72,8 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/workflows': '/workflows/tasks',
   '/workflows/': '/workflows/tasks',
   '/workflows/tasks/': '/workflows/tasks',
-  '/workflows/config/': '/workflows/config',
+  '/workflows/config': '/settings/workflows',
+  '/workflows/config/': '/settings/workflows',
   '/user-center/files': '/user-center/personal-center/files',
   '/user-center/files/': '/user-center/personal-center/files',
   '/user-center/personal-center/files/': '/user-center/personal-center/files',
@@ -99,6 +100,7 @@ export const systemRouteMeta: BackendRouteMeta[] = [
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
   { path: '/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
   { path: '/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
+  { path: '/settings/workflows', name: 'nav.settings.workflows', icon: 'BranchesOutlined', access: 'canVisitWorkflowConfig' },
   { path: '/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },
   { path: '/settings/personalization', name: 'nav.system.personalization', icon: 'SkinOutlined', access: 'canVisitSystemPersonalization' },
   { path: '/settings/sensitive-words', name: 'nav.plugins.sensitiveWords', icon: 'SafetyOutlined', access: 'canVisitSensitiveWordsPlugin' },
@@ -153,6 +155,7 @@ export const systemRoutes: BackendRouteRecord[] = [
       { path: '/settings/overview', redirect: '/settings' },
       { path: '/settings/menus', component: '@/pages/settings/menus', name: 'nav.system.menus', icon: 'AppstoreOutlined', access: 'canVisitSystemMenus' },
       { path: '/settings/dicts', component: '@/pages/settings/dicts', name: 'nav.system.dicts', icon: 'DatabaseOutlined', access: 'canVisitSystemDicts' },
+      { path: '/settings/workflows', component: '@/pages/workflow/WorkflowConfigPage', name: 'nav.settings.workflows', icon: 'BranchesOutlined', access: 'canVisitWorkflowConfig' },
       { path: '/settings/profile-fields', component: '@/pages/settings/profile-fields', name: 'nav.system.profileFields', icon: 'FormOutlined', access: 'canVisitSystemProfileFields' },
       { path: '/settings/personalization', component: '@/pages/settings/personalization', name: 'nav.system.personalization', icon: 'SkinOutlined', access: 'canVisitSystemPersonalization' },
       { path: '/settings/sensitive-words', component: '@/pages/plugins/SensitiveWordsPage', name: 'nav.plugins.sensitiveWords', icon: 'SafetyOutlined', access: 'canVisitSensitiveWordsPlugin' },
@@ -430,10 +433,10 @@ const expertRoutes: BackendRouteRecord[] = [
 const workflowRouteMeta: BackendRouteMeta[] = [
   { path: '/workflows', name: 'nav.workflow.root', icon: 'BranchesOutlined', access: 'canVisitWorkflow' },
   { path: '/workflows/tasks', name: 'nav.workflow.tasks', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
-  { path: '/workflows/config', name: 'nav.workflow.config', icon: 'BranchesOutlined', access: 'canVisitWorkflowConfig' },
 ];
 
 const workflowRoutes: BackendRouteRecord[] = [
+  { path: '/workflows/config', redirect: '/settings/workflows', hideInMenu: true },
   {
     path: '/workflows',
     component: '@/layouts/SettingsLayout/SettingsLayout',
@@ -443,7 +446,6 @@ const workflowRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/workflows', redirect: '/workflows/tasks', hideInMenu: true },
       { path: '/workflows/tasks', component: '@/pages/workflow/WorkflowTasksPage', name: 'nav.workflow.tasks', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
-      { path: '/workflows/config', component: '@/pages/workflow/WorkflowConfigPage', name: 'nav.workflow.config', icon: 'BranchesOutlined', access: 'canVisitWorkflowConfig' },
     ],
   },
 ];
@@ -484,6 +486,7 @@ const publicRouteMeta: BackendRouteMeta[] = [
   { path: '/public/certificate/verify', name: 'nav.certificates.verify', hideInMenu: true },
   { path: '/certificate/verify/:publicToken', name: 'nav.certificates.verify', hideInMenu: true },
   { path: '/account-activation', name: 'nav.account.activation', hideInMenu: true },
+  { path: '/review/invitation', name: 'nav.expertReview.invitation', hideInMenu: true },
   { path: '/user/login', name: 'page.login.title', hideInMenu: true },
   { path: '/403', name: 'common.failure', hideInMenu: true },
   { path: '/404', name: 'common.failure', hideInMenu: true },
@@ -499,6 +502,7 @@ const publicRoutes: BackendRouteRecord[] = [
   { path: '/public/certificate/verify', component: '@/pages/certificates/PublicVerifyPage', layout: false, name: 'nav.certificates.verify', hideInMenu: true },
   { path: '/certificate/verify/:publicToken', component: '@/pages/certificates/PublicVerifyPage', layout: false, name: 'nav.certificates.verify', hideInMenu: true },
   { path: '/account-activation', component: '@/pages/account/ActivationPage', layout: false, name: 'nav.account.activation', hideInMenu: true },
+  { path: '/review/invitation', component: '@/pages/competition/ReviewInvitationPage', layout: false, name: 'nav.expertReview.invitation', hideInMenu: true },
   { path: '/user/login', component: '@/pages/user/Login', layout: false, name: 'page.login.title', hideInMenu: true },
   { path: '/403', component: '@/pages/exception/NoPermission', name: 'common.failure', hideInMenu: true },
   { path: '/404', component: '@/pages/exception/NotFound', name: 'common.failure', hideInMenu: true },
@@ -528,7 +532,7 @@ export const backendRoutes: BackendRouteRecord[] = [
   ...publicRoutes,
 ];
 
-const NON_AUTHORIZED_ROUTE_PATHS = new Set(['/user/login', '/account-activation', '/403', '/404', '/500', '/blank/workflow']);
+const NON_AUTHORIZED_ROUTE_PATHS = new Set(['/user/login', '/account-activation', '/review/invitation', '/403', '/404', '/500', '/blank/workflow']);
 
 const collectRealPageRouteMeta = (routes: BackendRouteRecord[], result = new Map<string, BackendRouteMeta>()) => {
   routes.forEach((route) => {

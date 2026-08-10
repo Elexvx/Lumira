@@ -27,12 +27,16 @@ public final class BootstrapAdminCommand {
         String databaseUrl = require(environment, "DB_URL");
         String databaseUsername = require(environment, "DB_USERNAME");
         String databasePassword = requirePresent(environment, "DB_PASSWORD");
+        String initializationSource = environment.getOrDefault(
+                "LUMIRA_BOOTSTRAP_ADMIN_INITIALIZATION_SOURCE",
+                AdminCredentialBootstrap.DEFAULT_INITIALIZATION_SOURCE
+        );
         char[] bootstrapPassword = readSecret(environment.get("LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE"));
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             try (Connection connection = DriverManager.getConnection(databaseUrl, databaseUsername, databasePassword)) {
                 AdminCredentialBootstrap.Outcome outcome =
-                        new AdminCredentialBootstrap().execute(connection, bootstrapPassword);
+                        new AdminCredentialBootstrap().execute(connection, bootstrapPassword, initializationSource);
                 System.out.println("Administrator credential bootstrap outcome: " + outcome);
             }
         } finally {

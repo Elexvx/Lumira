@@ -72,6 +72,25 @@
   margin: 0 auto;
 }
 
+.competition-expert-application-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+.competition-expert-application-content > .ant-steps,
+.competition-expert-application-content > .ant-result {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.competition-expert-application-content > .ant-result {
+  max-width: 760px;
+}
+
 .competition-expert-application-card .expert-form-grid {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -79,6 +98,12 @@
 .competition-expert-application-card .competition-application-actions {
   max-width: 760px;
   margin-inline: auto;
+}
+
+@media (max-width: 767px) {
+  .competition-expert-application-content {
+    max-width: none;
+  }
 }
 
 .competition-registration-team-form {
@@ -587,30 +612,6 @@
 .competition-inline-fields .ant-input-number,
 .competition-inline-fields .ant-select {
   width: 100%;
-}
-
-.competition-homepage-step {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.competition-create-step > .competition-homepage-step {
-  max-width: 760px;
-}
-
-.competition-homepage-step .ant-form-item,
-.competition-homepage-step .ant-form-item-control,
-.competition-homepage-step .ant-form-item-control-input,
-.competition-homepage-step .ant-form-item-control-input-content,
-.competition-homepage-step .agreement-markdown-editor {
-  max-width: 100%;
-  width: 100%;
-}
-
-.saas-management-page .competition-homepage-step .ant-form-item-control {
-  flex: 1 1 100%;
-  max-width: 100%;
 }
 
 @media (max-width: 768px) {

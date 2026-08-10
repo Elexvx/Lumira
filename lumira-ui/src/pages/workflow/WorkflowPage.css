@@ -2,6 +2,19 @@
   min-height: calc(100vh - 160px);
 }
 
+.workflow-guidance {
+  margin-bottom: 16px;
+}
+
+.workflow-create-form,
+.workflow-create-form__control {
+  width: 100%;
+}
+
+.workflow-create-form__control {
+  margin-top: 8px;
+}
+
 .workflow-designer {
   display: grid;
   grid-template-columns: 180px minmax(520px, 1fr) 300px;

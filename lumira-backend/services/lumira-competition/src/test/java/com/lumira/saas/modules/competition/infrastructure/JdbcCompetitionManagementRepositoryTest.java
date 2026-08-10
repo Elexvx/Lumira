@@ -5,10 +5,15 @@ import com.lumira.saas.modules.competition.dto.CompetitionDTO;
 import com.lumira.saas.modules.competition.repository.CompetitionManagementRepository;
 import com.lumira.saas.modules.competition.repository.CompetitionSettingsRepository;
 import com.lumira.saas.modules.competition.repository.CompetitionStageRepository;
+import com.lumira.saas.modules.competition.vo.CompetitionVO;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -55,6 +60,43 @@ class JdbcCompetitionManagementRepositoryTest {
         assertThat(sql.getAllValues()).anySatisfy(statement -> assertThat(statement).contains(
                 "where id = ? and uuid = ? and competition_no = ? and status = ? and deleted = 0"
         ));
+    }
+
+    @Test
+    void jdbcResultSetRowsExposeSelectedColumnsToCompetitionMappers() throws Exception {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        ResultSetMetaData metadata = mock(ResultSetMetaData.class);
+        when(resultSet.getMetaData()).thenReturn(metadata);
+        when(metadata.getColumnCount()).thenReturn(4);
+        when(metadata.getColumnLabel(1)).thenReturn("id");
+        when(metadata.getColumnLabel(2)).thenReturn("uuid");
+        when(metadata.getColumnLabel(3)).thenReturn("title");
+        when(metadata.getColumnLabel(4)).thenReturn("status");
+        when(resultSet.getObject(1)).thenReturn(71L);
+        when(resultSet.getObject(2)).thenReturn("competition-uuid");
+        when(resultSet.getObject(3)).thenReturn("Innovation challenge");
+        when(resultSet.getObject(4)).thenReturn("draft");
+        when(jdbcTemplate.query(
+                anyString(),
+                org.mockito.ArgumentMatchers.<RowMapper<CompetitionVO.Competition>>any(),
+                org.mockito.ArgumentMatchers.any(Object[].class)
+        )).thenAnswer(invocation -> {
+            RowMapper<CompetitionVO.Competition> rowMapper = invocation.getArgument(1);
+            return List.of(rowMapper.mapRow(resultSet, 0));
+        });
+
+        JdbcCompetitionManagementRepository repository = new JdbcCompetitionManagementRepository(
+                new CompetitionSqlOperations(jdbcTemplate)
+        );
+
+        CompetitionVO.Competition competition = repository.findCompetition(71L);
+
+        assertThat(competition).isNotNull();
+        assertThat(competition.getId()).isEqualTo(71L);
+        assertThat(competition.getUuid()).isEqualTo("competition-uuid");
+        assertThat(competition.getTitle()).isEqualTo("Innovation challenge");
+        assertThat(competition.getStatus()).isEqualTo("draft");
     }
 
     @Test

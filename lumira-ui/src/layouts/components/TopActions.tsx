@@ -15,6 +15,8 @@ import {
   canSwitchRole,
   completeRoleSwitchClientTransition,
   createRoleSwitchRequestGuard,
+  ROLE_SIMULATION_EXIT_KEY,
+  resolveRoleSwitchRequestTarget,
   resolveRoleSwitchTarget,
 } from '@/auth/roleSwitch';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
@@ -49,6 +51,7 @@ import {
   MoonOutlined,
   ProfileOutlined,
   QuestionCircleOutlined,
+  RollbackOutlined,
   SkinOutlined,
   SettingOutlined,
   SunOutlined,
@@ -294,7 +297,7 @@ export const TopActions = () => {
       );
       return;
     }
-    const nextRoleId = resolveRoleSwitchTarget(nextRoleValue, roleSwitchOptions);
+    const nextRoleId = resolveRoleSwitchRequestTarget(nextRoleValue, roleSwitchOptions);
     if (nextRoleId === undefined || nextRoleId === simulatedRoleId) {
       return;
     }
@@ -328,14 +331,16 @@ export const TopActions = () => {
               DEFAULT_HOME_PATH,
             );
             message.success(
-              intl.formatMessage(
-                { id: 'nav.user.role.switchSuccessWithName', defaultMessage: 'Switched to {roleName}' },
-                {
-                  roleName:
-                    roleSwitchOptions.find((option) => option.roleId === nextRoleId)?.label ||
-                    intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
-                },
-              ),
+              nextRoleId == null
+                ? intl.formatMessage({ id: 'nav.user.role.exitSuccess', defaultMessage: 'Exited role simulation' })
+                : intl.formatMessage(
+                    { id: 'nav.user.role.switchSuccessWithName', defaultMessage: 'Switched to {roleName}' },
+                    {
+                      roleName:
+                        roleSwitchOptions.find((option) => option.roleId === nextRoleId)?.label ||
+                        intl.formatMessage({ id: 'nav.user.role.switchSuccess', defaultMessage: 'Role switched' }),
+                    },
+                  ),
             );
             return roleLandingPath;
           },
@@ -405,28 +410,41 @@ export const TopActions = () => {
     [currentLocale, intl],
   );
   const roleMenuItems = useMemo<NonNullable<MenuProps['items']>>(() => {
-    if (!canSwitchRole(availableRoles, Boolean(currentUser?.requiresPasswordChange))) {
+    if (!canSwitchRole(availableRoles, Boolean(currentUser?.requiresPasswordChange), simulatedRoleId)) {
       return [];
     }
 
-    return [
-      {
-          key: 'role-switch',
-          icon: <SwapOutlined />,
-          label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
-          children: roleSwitchOptions.map((option) => ({
-            key: option.key,
-            label: (
-              <div className="saas-role-menu__item">
-                <div className="saas-role-menu__item-title-row">
-                  <span className="saas-role-menu__item-title">{option.label}</span>
-                  {option.selected ? <Tag color="blue">{currentRoleTag}</Tag> : null}
-                </div>
+    const items: NonNullable<MenuProps['items']> = [];
+    if (simulatedRoleId != null) {
+      items.push({
+        key: ROLE_SIMULATION_EXIT_KEY,
+        danger: true,
+        icon: <RollbackOutlined />,
+        label: intl.formatMessage({ id: 'nav.user.role.exitSimulation', defaultMessage: 'Exit role simulation' }),
+      });
+      if (roleSwitchOptions.length > 0) {
+        items.push({ type: 'divider' });
+      }
+    }
+    if (roleSwitchOptions.length > 0) {
+      items.push({
+        key: 'role-switch',
+        icon: <SwapOutlined />,
+        label: intl.formatMessage({ id: 'nav.user.switchRole', defaultMessage: 'Switch role' }),
+        children: roleSwitchOptions.map((option) => ({
+          key: option.key,
+          label: (
+            <div className="saas-role-menu__item">
+              <div className="saas-role-menu__item-title-row">
+                <span className="saas-role-menu__item-title">{option.label}</span>
+                {option.selected ? <Tag color="blue">{currentRoleTag}</Tag> : null}
               </div>
-            ),
-          })),
-        },
-      ];
+            </div>
+          ),
+        })),
+      });
+    }
+    return items;
   }, [availableRoles, currentRoleTag, currentUser?.requiresPasswordChange, intl, roleSwitchOptions, simulatedRoleId]);
   const userMenuItems: MenuProps['items'] = useMemo(
     () => [
@@ -491,6 +509,11 @@ export const TopActions = () => {
 
     if (key === 'logout') {
       void handleLogout();
+      return;
+    }
+
+    if (key === ROLE_SIMULATION_EXIT_KEY) {
+      void handleSwitchRole(ROLE_SIMULATION_EXIT_KEY);
       return;
     }
 
@@ -577,11 +600,6 @@ export const TopActions = () => {
             )}
           />
         </Dropdown>
-        {model.roleSimulationHint ? (
-          <Tag color="orange" className="saas-role-simulation-tag" title={model.roleSimulationHint}>
-            {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: 'Role simulation' })}
-          </Tag>
-        ) : null}
         {model.helpLink && !model.isMobile ? (
           <Button
             type="text"
@@ -640,16 +658,23 @@ export const TopActions = () => {
             className="saas-user-menu-trigger"
             disabled={model.loggingOut || model.switchingRole}
             data-testid="top-user-menu-button"
-            icon={
-              <UserAvatar
-                size="small"
-                avatarUrl={model.userAvatarUrl}
-                userId={currentUser?.userId}
-                userUuid={currentUser?.userUuid}
-                username={currentUser?.username}
-              />
-            }
           >
+            {model.roleSimulationHint ? (
+              <Tag
+                color="orange"
+                className="saas-role-simulation-tag saas-user-menu-trigger__role"
+                title={model.roleSimulationHint}
+              >
+                {intl.formatMessage({ id: 'nav.user.role.simulation', defaultMessage: 'Role simulation' })}
+              </Tag>
+            ) : null}
+            <UserAvatar
+              size="small"
+              avatarUrl={model.userAvatarUrl}
+              userId={currentUser?.userId}
+              userUuid={currentUser?.userUuid}
+              username={currentUser?.username}
+            />
             {!model.isMobile ? <span className="saas-user-menu-trigger__name">{model.userName}</span> : null}
           </Button>
         </Dropdown>

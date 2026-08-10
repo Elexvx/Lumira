@@ -18,7 +18,7 @@ describe('route landing', () => {
   });
 
   it('does not send workflow config users to approval tasks', () => {
-    expect(resolveWorkflowLandingPath({ canVisitWorkflowConfig: true })).toBe('/workflows/config');
+    expect(resolveWorkflowLandingPath({ canVisitWorkflowConfig: true })).toBe('/settings/workflows');
   });
 
   it('supports department-only and file-only user-center roles', () => {

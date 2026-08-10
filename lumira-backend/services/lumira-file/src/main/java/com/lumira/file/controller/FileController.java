@@ -306,11 +306,12 @@ public class FileController {
             @RequestParam(name = "tags", required = false) String tags,
             @RequestParam(name = "remark", required = false) String remark,
             @RequestParam(name = "bucket", required = false) String bucket,
-            @RequestParam(name = "scope", required = false) String scope
+            @RequestParam(name = "scope", required = false) String scope,
+            @RequestParam(name = "directory", required = false) String directory
     ) {
         require(resolveUploadPermission(scope));
         return ApiResponse.success(
-                fileManagementAppService.uploadFile(currentUser(), file, category, tags, remark, bucket, scope),
+                fileManagementAppService.uploadFile(currentUser(), file, category, tags, remark, bucket, scope, directory),
                 TraceContext.getRequestId()
         );
     }

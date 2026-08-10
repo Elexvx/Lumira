@@ -14,6 +14,7 @@ import { isLoggedIn } from '@/auth/sessionLifecycle';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
 import { isTrustedCurrentUser, mergeTrustedCurrentUser } from '@/auth/sessionState';
 import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
+import { notifyCurrentUserSync } from '@/auth/currentUserSync';
 import { handleRoleSwitchBroadcastMessage, handleRoleSwitchStorageEvent } from '@/auth/roleSwitch';
 import { resolveTokenRefreshDelayMs } from '@/auth/sessionRefreshTiming';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
@@ -21,7 +22,7 @@ import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
 import { hasUsableTokenAfterRefresh, performLogout, tryRefreshTokenOutcome } from '@/auth/sessionLifecycle';
 import { request } from '@/services/common/request';
-import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
+import { resolveAuthorizedLoginRedirectTarget, resolvePermissionRecoveryTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
 import NoPermission from '@/pages/exception/NoPermission';
 import { applyBrandingRuntime, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
@@ -32,7 +33,11 @@ import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPat
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
 import { filterRetiredMainMenuNodes, isRetiredMainMenuPath } from '@/navigation/mainMenuFilter';
 import { dedupeRuntimeMenuItems } from '@/navigation/runtimeMenuDedupe';
-import { resolveRuntimeMenuIdentity, resolveRuntimeMenuPath } from '@/navigation/runtimeMenuIdentity';
+import {
+  resolveRuntimeMenuHideInMenu,
+  resolveRuntimeMenuIdentity,
+  resolveRuntimeMenuPath,
+} from '@/navigation/runtimeMenuIdentity';
 import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, isCanonicalRealPageRoutePath, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -461,6 +466,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
             controller.resetLogoutGuard();
             controller.scheduleTokenExpiration();
             controller.scheduleTimeout(controller.getLastActivityAt());
+            notifyCurrentUserSync();
           }
           return;
         }
@@ -952,6 +958,18 @@ const createLayoutOnPageChange = ({ initialState }: { initialState: AppInitialSt
   const isPublicRoute = isPublicPath(path);
   const requiresPasswordChange = Boolean(initialState?.currentUser?.requiresPasswordChange);
 
+  if (loggedIn && path === '/403' && initialState?.currentUser) {
+    const recoveryTarget = resolvePermissionRecoveryTarget(
+      initialState.currentUser,
+      initialState.menuTree,
+      DEFAULT_HOME_PATH,
+    );
+    if (recoveryTarget !== '/403' && recoveryTarget !== LOGIN_PATH) {
+      history.replace(recoveryTarget);
+    }
+    return;
+  }
+
   if (!loggedIn && !isPublicRoute) {
     const redirect = `${path}${location.search || ''}`;
     history.replace(`${LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`);
@@ -1339,7 +1357,13 @@ const composeMenuItemForLayout = (
     name: resolveNavigationMenuName(menuLabelId, mergedMeta?.name || backendNode.name),
     locale: false as const,
     icon,
-    hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
+    hideInMenu: resolveRuntimeMenuHideInMenu({
+      backendPath,
+      canonicalPath: normalizedPath,
+      localHideInMenu: localMeta?.hideInMenu,
+      routeHideInMenu: mergedMeta?.hideInMenu,
+      stableKeyByPath: MAIN_MENU_KEY_BY_PATH,
+    }),
     children: children.length ? children : undefined,
   };
 };
@@ -1623,4 +1647,3 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     onPageChange: createLayoutOnPageChange({ initialState }),
   };
 };
-

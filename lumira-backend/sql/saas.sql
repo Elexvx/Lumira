@@ -1812,7 +1812,6 @@ CREATE TABLE `aiadc_competition` (
   `image_url` varchar(512) DEFAULT NULL,
   `contact_name` varchar(128) DEFAULT NULL,
   `contact_qr_code_url` varchar(512) DEFAULT NULL,
-  `homepage_content` mediumtext,
   `tags` varchar(1000) DEFAULT NULL,
   `status` varchar(32) NOT NULL DEFAULT 'draft',
   `fee_mode` varchar(16) NOT NULL DEFAULT 'TEAM',
@@ -2432,9 +2431,14 @@ CREATE TABLE `competition_review_batch` (
   `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
   `assignment_strategy` varchar(32) NOT NULL DEFAULT 'MANUAL',
   `minimum_reviewer_count` int NOT NULL DEFAULT '1',
+  `reviewer_count_per_candidate` int NOT NULL DEFAULT '3',
+  `expert_min_assignments` int NOT NULL DEFAULT '5',
+  `expert_target_assignments` int NOT NULL DEFAULT '6',
+  `expert_max_assignments` int NOT NULL DEFAULT '6',
   `candidate_count` int NOT NULL DEFAULT '0',
   `freeze_token` char(36) DEFAULT NULL,
   `frozen_at` datetime DEFAULT NULL,
+  `assignment_confirmed_at` datetime DEFAULT NULL,
   `review_deadline` datetime DEFAULT NULL,
   `finalized_at` datetime DEFAULT NULL,
   `published_at` datetime DEFAULT NULL,
@@ -2627,6 +2631,114 @@ CREATE TABLE `competition_review_appeal` (
   KEY `idx_competition_review_appeal_registration` (`registration_id`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `competition_review_roster` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `expert_id` bigint NOT NULL,
+  `expert_user_id` bigint NOT NULL,
+  `expert_user_uuid` char(36) NOT NULL,
+  `expert_name` varchar(255) NOT NULL,
+  `email` varchar(320) NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'SELECTED',
+  `selected_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `removed_at` datetime DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_roster` (`batch_id`,`expert_id`,`deleted`),
+  KEY `idx_competition_review_roster_batch` (`batch_id`,`status`,`deleted`),
+  KEY `idx_competition_review_roster_expert` (`expert_id`,`expert_user_id`,`expert_user_uuid`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_invitation` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `roster_id` bigint NOT NULL,
+  `expert_id` bigint NOT NULL,
+  `expert_user_id` bigint NOT NULL,
+  `expert_user_uuid` char(36) NOT NULL,
+  `email` varchar(320) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `token_expires_at` datetime NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `sent_at` datetime DEFAULT NULL,
+  `opened_at` datetime DEFAULT NULL,
+  `qr_token_hash` char(64) DEFAULT NULL,
+  `qr_expires_at` datetime DEFAULT NULL,
+  `qr_used_at` datetime DEFAULT NULL,
+  `checked_in_at` datetime DEFAULT NULL,
+  `checked_in_by` bigint DEFAULT NULL,
+  `checked_in_by_uuid` char(36) DEFAULT NULL,
+  `send_attempts` int NOT NULL DEFAULT '0',
+  `failure_reason` varchar(1000) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_invitation` (`batch_id`,`expert_id`,`deleted`),
+  UNIQUE KEY `uk_competition_review_invitation_token` (`token_hash`),
+  KEY `idx_competition_review_invitation_qr` (`qr_token_hash`,`status`,`deleted`),
+  KEY `idx_competition_review_invitation_batch` (`batch_id`,`status`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_notification_outbox` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint NOT NULL,
+  `invitation_id` bigint NOT NULL,
+  `dedupe_key` varchar(128) NOT NULL,
+  `recipient_email` varchar(320) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `content` longtext NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `attempts` int NOT NULL DEFAULT '0',
+  `next_retry_at` datetime DEFAULT NULL,
+  `sent_at` datetime DEFAULT NULL,
+  `failure_reason` varchar(1000) DEFAULT NULL,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_review_notification_outbox_dedupe` (`dedupe_key`),
+  KEY `idx_competition_review_notification_outbox_queue` (`status`,`next_retry_at`,`created_at`,`id`),
+  KEY `idx_competition_review_notification_outbox_batch` (`batch_id`,`invitation_id`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_review_checkin_audit` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint DEFAULT NULL,
+  `invitation_id` bigint DEFAULT NULL,
+  `expert_id` bigint DEFAULT NULL,
+  `qr_token_hash` char(64) NOT NULL,
+  `status` varchar(32) NOT NULL,
+  `reason` varchar(1000) DEFAULT NULL,
+  `checked_in_by` bigint DEFAULT NULL,
+  `checked_in_by_uuid` char(36) DEFAULT NULL,
+  `attempted_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by` bigint NOT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_by_uuid` char(36) DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_competition_review_checkin_batch` (`batch_id`,`status`,`attempted_at`),
+  KEY `idx_competition_review_checkin_token` (`qr_token_hash`,`attempted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `competition_config_item_template` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `template_code` varchar(64) NOT NULL DEFAULT 'DEFAULT',
@@ -2705,13 +2817,13 @@ VALUES
 ('DEFAULT','PROJECT_FIELD','title','项目名称','{"fieldType":"TEXT","placeholder":"请输入项目名称","validationRule":"NONE","standardField":true}',NULL,210,1,1,0),
 ('DEFAULT','PROJECT_FIELD','imageUrl','项目头像','{"fieldType":"IMAGE","placeholder":"请上传项目头像","validationRule":"NONE","standardField":true}',NULL,220,0,1,0),
 ('DEFAULT','PROJECT_FIELD','description','项目简介','{"fieldType":"TEXTAREA","placeholder":"请输入项目简介","validationRule":"NONE","standardField":true}',NULL,230,0,1,0),
-('DEFAULT','PROJECT_FIELD','intellectualPropertyType','知识产权类型','{"fieldType":"SELECT","placeholder":"请选择知识产权类型","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"发明专利\\n实用新型专利\\n外观设计专利\\n软件著作权\\n作品著作权\\n商标\\n其他"}',NULL,310,1,0,0),
-('DEFAULT','PROJECT_FIELD','intellectualPropertyName','知识产权名称','{"fieldType":"TEXT","placeholder":"请输入知识产权名称","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,320,1,0,0),
-('DEFAULT','PROJECT_FIELD','registrationNumber','申请号/登记号','{"fieldType":"TEXT","placeholder":"请输入申请号或登记号","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,330,0,0,0),
-('DEFAULT','PROJECT_FIELD','rightsHolder','权利人','{"fieldType":"TEXT","placeholder":"请输入权利人","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,340,1,0,0),
-('DEFAULT','PROJECT_FIELD','legalStatus','法律状态','{"fieldType":"SELECT","placeholder":"请选择法律状态","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"申请中\\n已受理\\n已授权\\n已登记\\n已失效\\n其他"}',NULL,350,0,0,0),
-('DEFAULT','PROJECT_FIELD','grantDate','授权/登记日期','{"fieldType":"DATE","placeholder":"请选择授权或登记日期","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,360,0,0,0),
-('DEFAULT','PROJECT_FIELD','distributionRegions','知识产权分布区域','{"fieldType":"MULTI_SELECT","placeholder":"请选择知识产权分布区域","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"中国大陆\\n中国香港\\n中国澳门\\n中国台湾\\n海外"}',NULL,370,1,0,0);
+('DEFAULT','PROJECT_FIELD','intellectualPropertyType','知识产权类型','{"fieldType":"SELECT","placeholder":"请选择知识产权类型","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"发明专利\\n实用新型专利\\n外观设计专利\\n软件著作权\\n作品著作权\\n商标\\n其他"}',NULL,310,1,1,0),
+('DEFAULT','PROJECT_FIELD','intellectualPropertyName','知识产权名称','{"fieldType":"TEXT","placeholder":"请输入知识产权名称","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,320,1,1,0),
+('DEFAULT','PROJECT_FIELD','registrationNumber','申请号/登记号','{"fieldType":"TEXT","placeholder":"请输入申请号或登记号","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,330,0,1,0),
+('DEFAULT','PROJECT_FIELD','rightsHolder','权利人','{"fieldType":"TEXT","placeholder":"请输入权利人","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,340,1,1,0),
+('DEFAULT','PROJECT_FIELD','legalStatus','法律状态','{"fieldType":"SELECT","placeholder":"请选择法律状态","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"申请中\\n已受理\\n已授权\\n已登记\\n已失效\\n其他"}',NULL,350,0,1,0),
+('DEFAULT','PROJECT_FIELD','grantDate','授权/登记日期','{"fieldType":"DATE","placeholder":"请选择授权或登记日期","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true}',NULL,360,0,1,0),
+('DEFAULT','PROJECT_FIELD','distributionRegions','知识产权分布区域','{"fieldType":"MULTI_SELECT","placeholder":"请选择知识产权分布区域","validationRule":"NONE","groupLabel":"知识产权信息","standardField":true,"options":"中国大陆\\n中国香港\\n中国澳门\\n中国台湾\\n海外"}',NULL,370,1,1,0);
 
 CREATE TABLE `competition_config_audit` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -3557,6 +3669,9 @@ VALUES
     ('review:result:publish', '发布评审结果', 'review', 'CORE', NULL, 0, 0, 0),
     ('review:appeal:submit', '提交评审结果申诉', 'review', 'CORE', NULL, 0, 0, 0),
     ('review:appeal:manage', '处理评审结果申诉', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:roster:manage', '管理本批次评审专家名单', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:notification:send', '发送评审邀请通知', 'review', 'CORE', NULL, 0, 0, 0),
+    ('review:checkin:scan', '扫描评审签到二维码', 'review', 'CORE', NULL, 0, 0, 0),
     ('review:audit:view', '查看评审审计记录', 'review', 'CORE', NULL, 0, 0, 0),
     ('aiadc:certificate-template:view', '查看证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
     ('aiadc:certificate-template:create', '新建证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
@@ -3770,9 +3885,9 @@ VALUES
     (-1064, -1061, 'expert.management.delete', '删除专家', 'BUTTON', NULL, NULL, NULL, 3, 'expert:delete', 'ENABLED', 0, 0, 0),
     (-1068, 0, 'expert.review.root', '专家与评审', 'CATALOG', '/expert-review', 'redirect:/expert-review/reviews', 'SolutionOutlined', 8, NULL, 'ENABLED', 0, 0, 0),
     (-1078, -1068, 'expert.review.tasks', '评审工作台', 'MENU', '/expert-review/reviews', '@/pages/competition/CompetitionReviewPage', 'AuditOutlined', 1, 'review:workbench:view', 'ENABLED', 0, 0, 0),
-    (-1115, 0, 'workflow.root', '工作流', 'CATALOG', '/workflows', 'redirect:/workflows/tasks', 'BranchesOutlined', 9, NULL, 'ENABLED', 0, 0, 0),
+    (-1115, 0, 'workflow.root', '审批中心', 'CATALOG', '/workflows', 'redirect:/workflows/tasks', 'BranchesOutlined', 9, NULL, 'ENABLED', 0, 0, 0),
     (-1116, -1115, 'workflow.tasks', '我的审批', 'MENU', '/workflows/tasks', '@/pages/workflow/WorkflowTasksPage', 'AuditOutlined', 1, 'workflow:approve', 'ENABLED', 0, 0, 0),
-    (-1117, -1115, 'workflow.config', '工作流配置', 'MENU', '/workflows/config', '@/pages/workflow/WorkflowConfigPage', 'BranchesOutlined', 2, 'workflow:config', 'ENABLED', 0, 0, 0),
+    (-1117, -1000, 'workflow.config', '工作流配置', 'MENU', '/settings/workflows', '@/pages/workflow/WorkflowConfigPage', 'BranchesOutlined', 9, 'workflow:config', 'ENABLED', 0, 0, 0),
     (-957, 0, 'team.root', '团队', 'CATALOG', '/team', 'redirect:/dashboard/home', 'TeamOutlined', 93, 'team:view', 'DISABLED', 0, 0, 1),
     (-1040, -1100, 'team.management', '团队管理', 'MENU', '/team/management', 'redirect:/dashboard/home', 'TeamOutlined', 4, 'team:view', 'DISABLED', 0, 0, 1),
     (-1050, -1101, 'team.search', '团队查询', 'MENU', '/team/search', 'redirect:/dashboard/home', 'SearchOutlined', 1, 'team:view', 'DISABLED', 0, 0, 1),
@@ -5115,6 +5230,47 @@ JOIN (
   UNION ALL SELECT 'review-end', 'review', 'end'
 ) seed
 WHERE definition_record.`business_type` = 'EXPERT_APPLICATION' AND definition_record.`deleted` = 0
+ON DUPLICATE KEY UPDATE `updated_at` = `workflow_edge`.`updated_at`;
+
+INSERT INTO `workflow_definition` (
+  `business_type`, `name`, `status`, `version_no`, `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+SELECT 'COMPETITION_APPROVAL', '赛事审批流程', 'DRAFT', 1,
+       0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0
+WHERE NOT EXISTS (
+  SELECT 1 FROM `workflow_definition` WHERE `business_type` = 'COMPETITION_APPROVAL' AND `deleted` = 0
+);
+
+INSERT INTO `workflow_node` (
+  `definition_id`, `node_key`, `node_type`, `name`, `position_x`, `position_y`, `assignment_type`,
+  `approver_user_ids_json`, `approver_role_ids_json`, `approval_mode`, `config_json`,
+  `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+SELECT definition_record.`id`, seed.`node_key`, seed.`node_type`, seed.`name`, seed.`position_x`, seed.`position_y`, seed.`assignment_type`,
+       JSON_ARRAY(), CASE WHEN seed.`node_key` = 'review' THEN JSON_ARRAY(COALESCE(admin_role.`id`, 1001)) ELSE JSON_ARRAY() END,
+       'ALL', JSON_OBJECT(), 0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0
+FROM `workflow_definition` definition_record
+JOIN (
+  SELECT 'start' AS `node_key`, 'START' AS `node_type`, '开始' AS `name`, 80 AS `position_x`, 140 AS `position_y`, NULL AS `assignment_type`
+  UNION ALL SELECT 'review', 'APPROVAL', '管理员审批', 340, 140, 'ROLE'
+  UNION ALL SELECT 'end', 'END', '结束', 620, 140, NULL
+) seed
+LEFT JOIN `sys_role` admin_role ON admin_role.`role_code` = 'ADMIN' AND admin_role.`deleted` = 0
+WHERE definition_record.`business_type` = 'COMPETITION_APPROVAL' AND definition_record.`deleted` = 0
+ON DUPLICATE KEY UPDATE `updated_at` = `workflow_node`.`updated_at`;
+
+INSERT INTO `workflow_edge` (
+  `definition_id`, `edge_key`, `source_node_key`, `target_node_key`, `condition_expression`, `sort_order`, `config_json`,
+  `created_by`, `created_by_uuid`, `updated_by`, `updated_by_uuid`, `deleted`
+)
+SELECT definition_record.`id`, seed.`edge_key`, seed.`source_key`, seed.`target_key`, NULL, seed.`sort_order`, JSON_OBJECT(),
+       0, '00000000-0000-0000-0000-000000000000', 0, '00000000-0000-0000-0000-000000000000', 0
+FROM `workflow_definition` definition_record
+JOIN (
+  SELECT 'start-review' AS `edge_key`, 'start' AS `source_key`, 'review' AS `target_key`, 1 AS `sort_order`
+  UNION ALL SELECT 'review-end', 'review', 'end', 2
+) seed
+WHERE definition_record.`business_type` = 'COMPETITION_APPROVAL' AND definition_record.`deleted` = 0
 ON DUPLICATE KEY UPDATE `updated_at` = `workflow_edge`.`updated_at`;
 -- Sensitive-word behavior values are database-managed business configuration.
 INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)

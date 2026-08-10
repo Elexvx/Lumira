@@ -23,6 +23,36 @@ interface ResolveRuntimeMenuPathOptions {
   keepPathlessGroup?: boolean;
 }
 
+interface ResolveRuntimeMenuHideInMenuOptions {
+  backendPath: string;
+  canonicalPath: string;
+  localHideInMenu?: boolean;
+  routeHideInMenu?: boolean;
+  stableKeyByPath?: Record<string, string>;
+}
+
+/**
+ * Umi can propagate `hideInMenu` from a same-path redirect child to its parent
+ * catalog. Stable main-menu catalogs are explicitly visible navigation groups,
+ * so redirect metadata must not hide the group itself.
+ */
+export const resolveRuntimeMenuHideInMenu = ({
+  backendPath,
+  canonicalPath,
+  localHideInMenu,
+  routeHideInMenu,
+  stableKeyByPath = {},
+}: ResolveRuntimeMenuHideInMenuOptions) => {
+  const normalizedBackendPath = normalizeIdentityPath(backendPath);
+  const isStableCatalog = Boolean(
+    stableKeyByPath[backendPath]
+    || stableKeyByPath[normalizedBackendPath]
+    || stableKeyByPath[canonicalPath],
+  );
+
+  return isStableCatalog ? false : Boolean(localHideInMenu || routeHideInMenu);
+};
+
 /**
  * Redirect catalogs still need their own path when they are stable navigation
  * groups. Otherwise the parent becomes pathless and can disappear when a menu

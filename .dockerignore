@@ -13,6 +13,7 @@ doc
 proposal-render
 storage
 tmp
+runtime-secrets
 
 # Host-only deployment state and secrets must never enter an image context.
 deploy/.env

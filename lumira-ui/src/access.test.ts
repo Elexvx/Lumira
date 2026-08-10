@@ -166,7 +166,8 @@ describe('access', () => {
     expect(result.canVisitSystemUsers).toBe(true);
     expect(result.canVisitSystemRoles).toBe(true);
     expect(result.canVisitSystemOnlineUsers).toBe(true);
-    expect(result.canVisitWorkflow).toBe(true);
+    expect(result.canVisitWorkflow).toBe(false);
+    expect(result.canVisitWorkflowConfig).toBe(true);
     expect(result.canVisitSensitiveWordsPlugin).toBe(true);
     expect(result.canVisitCompetitionRegister).toBe(true);
     expect(result.canVisitActivityRegister).toBe(true);
@@ -356,6 +357,15 @@ describe('access', () => {
     expect(result.canVisitWorkflow).toBe(false);
     expect(result.canVisitWorkflowTasks).toBe(false);
     expect(result.canVisitWorkflowConfig).toBe(false);
+  });
+
+  it('places workflow configuration in settings without exposing approval tasks', () => {
+    const result = access({ currentUser: userWithPermissions(['workflow:config']) });
+
+    expect(result.canVisitSystemSettings).toBe(true);
+    expect(result.canVisitWorkflowConfig).toBe(true);
+    expect(result.canVisitWorkflow).toBe(false);
+    expect(result.canVisitWorkflowTasks).toBe(false);
   });
 
   it('does not trust token-only state without a complete current user tuple', async () => {

@@ -23,6 +23,7 @@ import com.lumira.message.service.MessageSessionHandshakeInterceptor;
 import com.lumira.message.service.MessageWebSocketHandler;
 import com.lumira.message.service.MessageWebSocketRegistry;
 import com.lumira.message.service.MessageWebSocketTicketService;
+import com.lumira.message.service.ReviewInvitationNotificationAdapter;
 import com.lumira.message.service.SmtpNotificationMailService;
 import com.lumira.message.service.WechatOfficialAccountNotificationService;
 import org.apache.ibatis.annotations.Mapper;
@@ -55,6 +56,7 @@ import org.springframework.context.annotation.Import;
         MessageSessionAuthenticationService.class,
         WechatOfficialAccountNotificationService.class,
         SmtpNotificationMailService.class,
+        ReviewInvitationNotificationAdapter.class,
         MessageWebSocketTicketService.class,
         MessageWebSocketRegistry.class,
         MessageWebSocketHandler.class,

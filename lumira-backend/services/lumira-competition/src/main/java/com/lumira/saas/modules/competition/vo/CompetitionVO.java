@@ -31,7 +31,6 @@ public final class CompetitionVO {
         private String imageUrl;
         private String contactName;
         private String contactQrCodeUrl;
-        private String homepageContent;
         private String tags;
         private String status;
         private String feeMode;
@@ -90,8 +89,6 @@ public final class CompetitionVO {
         public void setContactName(String contactName) { this.contactName = contactName; }
         public String getContactQrCodeUrl() { return contactQrCodeUrl; }
         public void setContactQrCodeUrl(String contactQrCodeUrl) { this.contactQrCodeUrl = contactQrCodeUrl; }
-        public String getHomepageContent() { return homepageContent; }
-        public void setHomepageContent(String homepageContent) { this.homepageContent = homepageContent; }
         public String getTags() { return tags; }
         public void setTags(String tags) { this.tags = tags; }
         public String getStatus() { return status; }

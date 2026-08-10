@@ -27,6 +27,10 @@ import type {
   CompetitionRegistrationRecord,
   CompetitionStageRecord,
 } from '@/services/competition/types';
+import {
+  getRegistrationStatusLabel,
+  registrationStatusValueEnum,
+} from '@/pages/competition/utils/registrationStatus';
 import { showErrorMessage } from '@/utils/errorMessage';
 import './CompetitionRegistrationDataPage.css';
 
@@ -38,13 +42,17 @@ type RegistrationQuery = {
 
 type JsonRecord = Record<string, unknown>;
 
-const statusConfig: Record<string, { color: string; text: string }> = {
-  DRAFT: { color: 'default', text: '草稿' },
-  PENDING_PAYMENT: { color: 'orange', text: '待支付' },
-  PAID: { color: 'blue', text: '已支付' },
-  CONFIRMED: { color: 'green', text: '已确认' },
-  CANCELLED: { color: 'red', text: '已取消' },
+const statusColor: Record<string, string> = {
+  DRAFT: 'default',
+  PENDING_PAYMENT: 'orange',
+  PAID: 'blue',
+  CONFIRMED: 'green',
+  CANCELLED: 'red',
 };
+
+const dataPageRegistrationStatusValueEnum = Object.fromEntries(
+  Object.keys(statusColor).map((status) => [status, registrationStatusValueEnum[status]]),
+);
 
 const parseJson = <T,>(value: string | null | undefined, fallback: T): T => {
   if (!value?.trim()) return fallback;
@@ -348,12 +356,11 @@ const CompetitionRegistrationDataPage = () => {
       title: '状态',
       dataIndex: 'status',
       valueType: 'select',
-      valueEnum: Object.fromEntries(Object.entries(statusConfig).map(([key, value]) => [key, { text: value.text }])),
+      valueEnum: dataPageRegistrationStatusValueEnum,
       width: 110,
-      render: (_, record) => {
-        const config = statusConfig[record.status] || { color: 'default', text: record.status };
-        return <Tag color={config.color}>{config.text}</Tag>;
-      },
+      render: (_, record) => (
+        <Tag color={statusColor[record.status] || 'default'}>{getRegistrationStatusLabel(record.status, 'DRAFT')}</Tag>
+      ),
     },
     {
       title: '参赛编号',
@@ -512,7 +519,7 @@ const CompetitionRegistrationDataPage = () => {
                     { key: 'team', label: '团队', children: detail.teamName || valueText(teamValues.teamName) },
                     { key: 'project', label: '项目', children: detail.projectTitle || valueText(projectValues.title) },
                     { key: 'members', label: '学生人数', children: detail.memberCount },
-                    { key: 'status', label: '状态', children: statusConfig[detail.status]?.text || detail.status },
+                    { key: 'status', label: '状态', children: getRegistrationStatusLabel(detail.status, 'DRAFT') },
                     { key: 'createdAt', label: '报名时间', children: detail.createdAt || '-' },
                     { key: 'updatedAt', label: '更新时间', children: detail.updatedAt || '-' },
                   ]}
