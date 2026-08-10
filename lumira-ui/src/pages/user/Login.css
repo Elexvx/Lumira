@@ -362,7 +362,9 @@
   height: 188px;
   flex: 0 0 auto;
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   border-radius: var(--ant-border-radius);
   background: #fff;
@@ -391,7 +393,9 @@
   width: 188px;
   height: 188px;
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .saas-login-page__qr-panel .saas-login-page__wechat-official iframe {

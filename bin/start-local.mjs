@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { existsSync, watch } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -8,11 +9,18 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { parseEnvFile } from './lib/env-utils.mjs';
+import {
+  ensureLocalAdminCredential,
+  formatLocalAdminNotice,
+  parseJdbcEndpoint,
+} from './lib/local-admin-bootstrap.mjs';
 import { createChangeBatcher } from './lib/native-backend-watch.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const backendRoot = path.join(repoRoot, 'lumira-backend');
 const frontendRoot = path.join(repoRoot, 'lumira-ui');
+const bootstrapAdminRoot = path.join(repoRoot, 'deploy', 'bootstrap-admin');
+const bootstrapAdminJar = path.join(bootstrapAdminRoot, 'target', 'lumira-bootstrap-admin.jar');
 const defaultEnvPath = path.join(backendRoot, '.env');
 const rawArgs = process.argv.slice(2);
 
@@ -59,15 +67,11 @@ function parsePort(value, fallback, label) {
   return port;
 }
 
-function parseJdbcEndpoint(url) {
-  const match = String(url ?? '').match(/^jdbc:mysql:\/\/(\[[^\]]+\]|[^:/?]+)(?::(\d+))?/i);
-  if (!match) {
-    throw new Error('DB_URL must be a jdbc:mysql:// URL.');
-  }
-  return {
-    host: match[1].replace(/^\[|\]$/g, ''),
-    port: Number(match[2] || 3306),
-  };
+function localRuntimeSecret(...configuredValues) {
+  const configured = configuredValues.find(
+    (value) => typeof value === 'string' && value.trim().length > 0,
+  );
+  return configured ?? randomBytes(32).toString('base64url');
 }
 
 function isLoopback(host) {
@@ -232,6 +236,13 @@ const localEnvPath = envPathValue
   ? path.resolve(repoRoot, envPathValue)
   : defaultEnvPath;
 const fileEnv = existsSync(localEnvPath) ? parseEnvFile(localEnvPath) : {};
+const configuredDbPassword = process.env.LUMIRA_LOCAL_DB_PASSWORD ?? fileEnv.DB_PASSWORD;
+const configuredBootstrapSecretValue =
+  process.env.LUMIRA_LOCAL_BOOTSTRAP_ADMIN_PASSWORD_FILE ||
+  fileEnv.LUMIRA_LOCAL_BOOTSTRAP_ADMIN_PASSWORD_FILE;
+const configuredBootstrapSecretPath = configuredBootstrapSecretValue
+  ? path.resolve(repoRoot, configuredBootstrapSecretValue)
+  : undefined;
 
 let backendPort;
 let frontendPort;
@@ -259,26 +270,28 @@ const localEnv = {
   ...process.env,
   ...fileEnv,
   SPRING_PROFILES_ACTIVE: localProfile,
+  SERVER_ADDRESS: '127.0.0.1',
   DB_URL: process.env.LUMIRA_LOCAL_DB_URL || fileEnv.DB_URL || 'jdbc:mysql://127.0.0.1:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai',
   DB_USERNAME: process.env.LUMIRA_LOCAL_DB_USERNAME || fileEnv.DB_USERNAME || 'root',
-  DB_PASSWORD: process.env.LUMIRA_LOCAL_DB_PASSWORD || fileEnv.DB_PASSWORD || 'root',
+  DB_PASSWORD: configuredDbPassword ?? '',
   REDIS_HOST: process.env.LUMIRA_LOCAL_REDIS_HOST || fileEnv.REDIS_HOST || '127.0.0.1',
   REDIS_PORT: process.env.LUMIRA_LOCAL_REDIS_PORT || fileEnv.REDIS_PORT || '6379',
-  REDIS_PASSWORD: process.env.LUMIRA_LOCAL_REDIS_PASSWORD || fileEnv.REDIS_PASSWORD || '',
-  JWT_SECRET: fileEnv.JWT_SECRET || 'lumira-local-jwt-secret-for-native-debugging-only-2026',
-  FIELD_SECRET: fileEnv.FIELD_SECRET || 'lumira-local-field-secret-for-native-debugging-only-2026',
-  PLUGIN_SIGNATURE_SECRET: fileEnv.PLUGIN_SIGNATURE_SECRET || 'lumira-local-plugin-signature-debug-secret-2026',
+  REDIS_PASSWORD: process.env.LUMIRA_LOCAL_REDIS_PASSWORD ?? fileEnv.REDIS_PASSWORD ?? '',
+  JWT_SECRET: localRuntimeSecret(process.env.JWT_SECRET, fileEnv.JWT_SECRET),
+  FIELD_SECRET: localRuntimeSecret(process.env.FIELD_SECRET, fileEnv.FIELD_SECRET),
+  PLUGIN_SIGNATURE_SECRET: localRuntimeSecret(process.env.PLUGIN_SIGNATURE_SECRET, fileEnv.PLUGIN_SIGNATURE_SECRET),
+  SPRING_SECURITY_USER_PASSWORD: localRuntimeSecret(process.env.SPRING_SECURITY_USER_PASSWORD, fileEnv.SPRING_SECURITY_USER_PASSWORD),
   PLATFORM_UPDATE_CHECK_INITIAL_DELAY_MS: fileEnv.PLATFORM_UPDATE_CHECK_INITIAL_DELAY_MS || '86400000',
   PLATFORM_UPDATE_TASK_RECONCILE_INITIAL_DELAY_MS: fileEnv.PLATFORM_UPDATE_TASK_RECONCILE_INITIAL_DELAY_MS || '86400000',
-  SAAS_INTERNAL_SYSTEM_TOKEN: fileEnv.SAAS_INTERNAL_SYSTEM_TOKEN || 'lumira-local-system-token-000001',
-  SAAS_INTERNAL_AUTH_TOKEN: fileEnv.SAAS_INTERNAL_AUTH_TOKEN || 'lumira-local-auth-token-000001',
-  SAAS_INTERNAL_AUTH_SYSTEM_TOKEN: fileEnv.SAAS_INTERNAL_AUTH_SYSTEM_TOKEN || 'lumira-local-auth-system-token-000001',
-  SAAS_INTERNAL_FILE_TOKEN: fileEnv.SAAS_INTERNAL_FILE_TOKEN || 'lumira-local-file-token-000001',
-  SAAS_INTERNAL_MESSAGE_TOKEN: fileEnv.SAAS_INTERNAL_MESSAGE_TOKEN || 'lumira-local-message-token-000001',
-  SAAS_INTERNAL_PAYMENT_TOKEN: fileEnv.SAAS_INTERNAL_PAYMENT_TOKEN || 'lumira-local-payment-token-000001',
-  SAAS_INTERNAL_PLUGIN_TOKEN: fileEnv.SAAS_INTERNAL_PLUGIN_TOKEN || 'lumira-local-plugin-token-000001',
-  SAAS_INTERNAL_TEAM_TOKEN: fileEnv.SAAS_INTERNAL_TEAM_TOKEN || 'lumira-local-team-token-000001',
-  SAAS_INTERNAL_JOB_TOKEN: fileEnv.SAAS_INTERNAL_JOB_TOKEN || 'lumira-local-job-token-000001',
+  SAAS_INTERNAL_SYSTEM_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_SYSTEM_TOKEN, fileEnv.SAAS_INTERNAL_SYSTEM_TOKEN),
+  SAAS_INTERNAL_AUTH_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_AUTH_TOKEN, fileEnv.SAAS_INTERNAL_AUTH_TOKEN),
+  SAAS_INTERNAL_AUTH_SYSTEM_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_AUTH_SYSTEM_TOKEN, fileEnv.SAAS_INTERNAL_AUTH_SYSTEM_TOKEN),
+  SAAS_INTERNAL_FILE_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_FILE_TOKEN, fileEnv.SAAS_INTERNAL_FILE_TOKEN),
+  SAAS_INTERNAL_MESSAGE_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_MESSAGE_TOKEN, fileEnv.SAAS_INTERNAL_MESSAGE_TOKEN),
+  SAAS_INTERNAL_PAYMENT_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_PAYMENT_TOKEN, fileEnv.SAAS_INTERNAL_PAYMENT_TOKEN),
+  SAAS_INTERNAL_PLUGIN_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_PLUGIN_TOKEN, fileEnv.SAAS_INTERNAL_PLUGIN_TOKEN),
+  SAAS_INTERNAL_TEAM_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_TEAM_TOKEN, fileEnv.SAAS_INTERNAL_TEAM_TOKEN),
+  SAAS_INTERNAL_JOB_TOKEN: localRuntimeSecret(process.env.SAAS_INTERNAL_JOB_TOKEN, fileEnv.SAAS_INTERNAL_JOB_TOKEN),
   UMI_APP_API_BASE_URL: '',
   UMI_APP_API_PREFIX: '/api',
   UMI_APP_LOCAL_NATIVE_MODE: 'true',
@@ -298,11 +311,17 @@ const localEnv = {
   SAAS_JOB_ADAPTIVE_RELAY_PAYMENT_ENABLED: 'false',
   SAAS_JOB_ADAPTIVE_RELAY_PLUGIN_ENABLED: 'false',
 };
+delete localEnv.LUMIRA_LOCAL_BOOTSTRAP_ADMIN_PASSWORD_FILE;
+delete localEnv.LUMIRA_BOOTSTRAP_ADMIN_PASSWORD_FILE;
+delete localEnv.LUMIRA_BOOTSTRAP_ADMIN_INITIALIZATION_SOURCE;
 
 try {
   assertToolchain({ startBackend, startFrontend });
 
   if (startBackend) {
+    if (configuredDbPassword === undefined) {
+      throw new Error('DB_PASSWORD must be explicitly configured in lumira-backend/.env (use DB_PASSWORD= only for passwordless local MySQL).');
+    }
     const db = parseJdbcEndpoint(localEnv.DB_URL);
     const redisPort = parsePort(localEnv.REDIS_PORT, 6379, 'Redis port');
     if (!allowRemoteServices && (!isLoopback(db.host) || !isLoopback(localEnv.REDIS_HOST))) {
@@ -359,6 +378,49 @@ if (startBackend && !skipBuild) {
   }
 }
 
+if (startBackend) {
+  const databaseEndpoint = parseJdbcEndpoint(localEnv.DB_URL);
+  const activeProfiles = localProfile.split(',').map((item) => item.trim().toLowerCase());
+  const automaticBootstrapAllowed = activeProfiles.includes('dev') && isLoopback(databaseEndpoint.host);
+  if (configuredBootstrapSecretPath && !automaticBootstrapAllowed) {
+    console.error('[local] LUMIRA_LOCAL_BOOTSTRAP_ADMIN_PASSWORD_FILE is only allowed with the dev profile and loopback MySQL.');
+    process.exit(1);
+  }
+  if (automaticBootstrapAllowed) {
+    console.log('[local] Building the local administrator credential bootstrap tool...');
+    const bootstrapBuild = runSync(
+      mavenCommand,
+      ['-f', path.join('..', 'deploy', 'bootstrap-admin', 'pom.xml'), '-Dmaven.test.skip=true', 'package'],
+      { cwd: backendRoot, env: localEnv },
+    );
+    if (bootstrapBuild.status !== 0 || !existsSync(bootstrapAdminJar)) {
+      console.error('[local] Administrator credential bootstrap tool could not be built.');
+      process.exit(bootstrapBuild.status && bootstrapBuild.status !== 0 ? bootstrapBuild.status : 1);
+    }
+
+    try {
+      const result = ensureLocalAdminCredential({
+        repoRoot,
+        jarPath: bootstrapAdminJar,
+        databaseEnv: {
+          DB_URL: localEnv.DB_URL,
+          DB_USERNAME: localEnv.DB_USERNAME,
+          DB_PASSWORD: localEnv.DB_PASSWORD,
+        },
+        configuredSecretPath: configuredBootstrapSecretPath,
+      });
+      for (const line of formatLocalAdminNotice(result, repoRoot)) {
+        console.log(line);
+      }
+    } catch (error) {
+      console.error(`[local] ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+  } else {
+    console.log('[local] Automatic administrator bootstrap skipped: it only runs with the dev profile and loopback MySQL.');
+  }
+}
+
 const backendSpecs = startBackend ? [
   {
     label: 'lumira-server',
@@ -367,7 +429,7 @@ const backendSpecs = startBackend ? [
       '-f', 'services/lumira-admin/pom.xml',
       'spring-boot:run',
       `-Dspring-boot.run.profiles=${localProfile}`,
-      `-Dspring-boot.run.arguments=--server.port=${backendPort}`,
+      `-Dspring-boot.run.arguments=--server.address=127.0.0.1 --server.port=${backendPort}`,
     ],
     options: { cwd: backendRoot, env: localEnv },
     port: backendPort,
@@ -380,7 +442,7 @@ const backendSpecs = startBackend ? [
         '-f', 'services/lumira-async/pom.xml',
         'spring-boot:run',
         `-Dspring-boot.run.profiles=${localProfile}`,
-        `-Dspring-boot.run.arguments=--server.port=${asyncPort}`,
+        `-Dspring-boot.run.arguments=--server.address=127.0.0.1 --server.port=${asyncPort}`,
       ],
       options: { cwd: backendRoot, env: localEnv },
       port: asyncPort,
@@ -392,7 +454,7 @@ const backendSpecs = startBackend ? [
         '-f', 'services/lumira-quartz/pom.xml',
         'spring-boot:run',
         `-Dspring-boot.run.profiles=${localProfile}`,
-        `-Dspring-boot.run.arguments=--server.port=${jobPort}`,
+        `-Dspring-boot.run.arguments=--server.address=127.0.0.1 --server.port=${jobPort}`,
       ],
       options: { cwd: backendRoot, env: { ...localEnv, SERVER_PORT: String(jobPort) } },
       port: jobPort,

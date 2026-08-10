@@ -185,7 +185,7 @@ describe('performLogout', () => {
     const { tryRefreshToken } = await import('@/auth/sessionLifecycle');
     mocks.request.mockImplementation((url: string) => {
       if (url === '/v2/auth/refresh-token') {
-        return Promise.reject(new Error('v2 unavailable'));
+        return Promise.reject(new ApiRequestError(ErrorCode.NOT_FOUND, 'v2 unavailable', { httpStatus: 404 }));
       }
       if (url === '/v1/auth/refresh-token') {
         return Promise.resolve({
@@ -209,6 +209,18 @@ describe('performLogout', () => {
     mocks.request.mockRejectedValue(new Error('network unavailable') as never);
 
     await expect(tryRefreshTokenOutcome()).resolves.toBe('temporarily_unavailable');
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry a duplicate v2 refresh through the legacy endpoint', async () => {
+    const { tryRefreshTokenOutcome } = await import('@/auth/sessionLifecycle');
+    mocks.request.mockRejectedValue(new ApiRequestError(ErrorCode.REPEAT_SUBMIT, 'duplicate refresh', {
+      httpStatus: 429,
+    }) as never);
+
+    await expect(tryRefreshTokenOutcome()).resolves.toBe('temporarily_unavailable');
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request).toHaveBeenCalledWith('/v2/auth/refresh-token', expect.any(Object));
   });
 
   it('reports session expiry only when an auth refresh endpoint confirms it', async () => {
@@ -219,5 +231,6 @@ describe('performLogout', () => {
     }) as never);
 
     await expect(tryRefreshTokenOutcome()).resolves.toBe('session_expired');
+    expect(mocks.request).toHaveBeenCalledTimes(1);
   });
 });

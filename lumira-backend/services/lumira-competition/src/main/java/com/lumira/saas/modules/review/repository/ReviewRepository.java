@@ -76,6 +76,94 @@ public interface ReviewRepository {
 
     List<ReviewVO.AdminAssignment> listAssignments(Long batchId);
 
+    List<ExpertRosterCandidate> listEligibleExperts(List<Long> expertIds);
+
+    int replaceRoster(
+            Long batchId,
+            List<ExpertRosterCandidate> experts,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime updatedAt
+    );
+
+    List<ReviewVO.RosterExpert> listRoster(Long batchId);
+
+    List<Long> listSelectedRosterExpertIds(Long batchId);
+
+    Long upsertInvitation(
+            Long batchId,
+            Long rosterId,
+            ExpertRosterCandidate expert,
+            String tokenHash,
+            LocalDateTime tokenExpiresAt,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime updatedAt
+    );
+
+    int markInvitationSent(Long invitationId, int attempts, LocalDateTime sentAt);
+
+    int markInvitationFailed(Long invitationId, int attempts, String reason, LocalDateTime failedAt);
+
+    Long enqueueInvitationNotification(
+            Long batchId,
+            Long invitationId,
+            String dedupeKey,
+            String recipientEmail,
+            String subject,
+            String content,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime createdAt
+    );
+
+    int markInvitationNotificationSent(Long outboxId, int attempts, LocalDateTime sentAt);
+
+    int markInvitationNotificationFailed(
+            Long outboxId,
+            int attempts,
+            String reason,
+            LocalDateTime failedAt
+    );
+
+    Optional<InvitationContext> findInvitationByTokenHash(String tokenHash);
+
+    Optional<InvitationContext> findInvitationByQrTokenHash(String qrTokenHash);
+
+    int issueInvitationQr(
+            Long invitationId,
+            String qrTokenHash,
+            LocalDateTime qrExpiresAt,
+            LocalDateTime openedAt
+    );
+
+    int markInvitationCheckedIn(
+            Long invitationId,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime checkedInAt
+    );
+
+    int recordCheckinAttempt(
+            Long batchId,
+            Long invitationId,
+            Long expertId,
+            String qrTokenHash,
+            String status,
+            String reason,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime attemptedAt
+    );
+
+    int markBatchAssignmentsConfirmed(
+            Long batchId,
+            int expectedVersion,
+            Long operatorId,
+            String operatorUuid,
+            LocalDateTime confirmedAt
+    );
+
     List<ExpertWorkload> listApprovedExpertWorkloads();
 
     Long insertBatch(
@@ -440,6 +528,38 @@ public interface ReviewRepository {
     }
 
     record ExpertWorkload(Long expertId, int activeAssignmentCount) {
+    }
+
+    record ExpertRosterCandidate(
+            Long expertId,
+            Long userId,
+            String userUuid,
+            String name,
+            String email,
+            String status,
+            String approvalStatus,
+            String accountStatus
+    ) {
+    }
+
+    record InvitationContext(
+            Long invitationId,
+            Long batchId,
+            String batchName,
+            Long rosterId,
+            Long expertId,
+            Long expertUserId,
+            String expertUserUuid,
+            String expertName,
+            String email,
+            String invitationStatus,
+            String tokenHash,
+            LocalDateTime tokenExpiresAt,
+            LocalDateTime qrExpiresAt,
+            LocalDateTime checkedInAt,
+            LocalDateTime sentAt,
+            String failureReason
+    ) {
     }
 
     record AssignmentContext(

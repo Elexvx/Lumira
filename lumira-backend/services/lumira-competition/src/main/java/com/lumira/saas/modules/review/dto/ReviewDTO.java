@@ -115,6 +115,18 @@ public final class ReviewDTO {
         private String batchName;
         @Size(max = 32)
         private String assignmentStrategy;
+        @Min(1)
+        @Max(20)
+        private Integer reviewerCountPerCandidate;
+        @Min(0)
+        @Max(1000)
+        private Integer expertMinAssignments;
+        @Min(0)
+        @Max(1000)
+        private Integer expertTargetAssignments;
+        @Min(0)
+        @Max(1000)
+        private Integer expertMaxAssignments;
         private LocalDateTime reviewDeadline;
 
         public Long getPlanId() { return planId; }
@@ -123,6 +135,14 @@ public final class ReviewDTO {
         public void setBatchName(String batchName) { this.batchName = batchName; }
         public String getAssignmentStrategy() { return assignmentStrategy; }
         public void setAssignmentStrategy(String assignmentStrategy) { this.assignmentStrategy = assignmentStrategy; }
+        public Integer getReviewerCountPerCandidate() { return reviewerCountPerCandidate; }
+        public void setReviewerCountPerCandidate(Integer reviewerCountPerCandidate) { this.reviewerCountPerCandidate = reviewerCountPerCandidate; }
+        public Integer getExpertMinAssignments() { return expertMinAssignments; }
+        public void setExpertMinAssignments(Integer expertMinAssignments) { this.expertMinAssignments = expertMinAssignments; }
+        public Integer getExpertTargetAssignments() { return expertTargetAssignments; }
+        public void setExpertTargetAssignments(Integer expertTargetAssignments) { this.expertTargetAssignments = expertTargetAssignments; }
+        public Integer getExpertMaxAssignments() { return expertMaxAssignments; }
+        public void setExpertMaxAssignments(Integer expertMaxAssignments) { this.expertMaxAssignments = expertMaxAssignments; }
         public LocalDateTime getReviewDeadline() { return reviewDeadline; }
         public void setReviewDeadline(LocalDateTime reviewDeadline) { this.reviewDeadline = reviewDeadline; }
     }
@@ -162,6 +182,24 @@ public final class ReviewDTO {
         public void setDueAt(LocalDateTime dueAt) { this.dueAt = dueAt; }
         public BigDecimal getReviewerWeight() { return reviewerWeight; }
         public void setReviewerWeight(BigDecimal reviewerWeight) { this.reviewerWeight = reviewerWeight; }
+    }
+
+    public static class RosterSaveRequest {
+        @NotEmpty
+        @Size(max = 500)
+        private List<@NotNull Long> expertIds;
+
+        public List<Long> getExpertIds() { return expertIds; }
+        public void setExpertIds(List<Long> expertIds) { this.expertIds = expertIds; }
+    }
+
+    public static class CheckInRequest {
+        @NotBlank
+        @Size(max = 512)
+        private String qrToken;
+
+        public String getQrToken() { return qrToken; }
+        public void setQrToken(String qrToken) { this.qrToken = qrToken; }
     }
 
     public static class AssignmentItemRequest {

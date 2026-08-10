@@ -927,6 +927,13 @@ public class SystemManagementAppService {
         if (!StringUtils.hasText(currentPasswordHash) || !passwordEncoder.matches(currentPassword, currentPasswordHash)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Current password is incorrect");
         }
+        if (passwordEncoder.matches(newPassword, currentPasswordHash)) {
+            throw new BizException(
+                    ErrorCode.PASSWORD_POLICY_VIOLATION,
+                    "New password must be different from current password",
+                    "新密码不能与当前密码相同"
+            );
+        }
         if (fallbackToSysUserPassword) {
             iamUserService.upsertPasswordCredential(user.getId(), trustedUserUuid, user.getPasswordHash());
         }
@@ -2269,6 +2276,7 @@ public class SystemManagementAppService {
         );
         CurrentUserVO response = new CurrentUserVO();
         response.setUserId(user.getId());
+        response.setUserUuid(user.getUuid());
         response.setUsername(user.getUsername());
         response.setNickname(user.getNickname());
         response.setRealName(user.getRealName());

@@ -9,7 +9,7 @@ import type { HTMLAttributes } from 'react';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
 import { createPasskeyCredential, isPasskeySupported, toPublicKeyCreationOptions, toRegistrationPayload } from '@/auth/passkey';
-import { mergeTrustedCurrentUser } from '@/auth/sessionState';
+import { mergeSameSessionCurrentUser, mergeTrustedCurrentUser } from '@/auth/sessionState';
 import type { AppInitialState } from '@/app';
 import { useStandardFormProps } from '@/features/form/config';
 import { API_OPTS } from '@/utils/errorMessage';
@@ -123,7 +123,11 @@ export const useProfileCenterPageAccess = () => {
   const { initialState, setInitialState } = useInitialStateModel();
   const responsive = useResponsive();
   const profileQuery = useQuery({
-    queryKey: ['profile-summary', initialState?.currentUser?.userId],
+    queryKey: [
+      'profile-summary',
+      initialState?.currentUser?.userId,
+      initialState?.currentUser?.sessionId,
+    ],
     queryFn: async () =>
       request<ProfileSummary>('/v1/profile/summary', {
         method: 'GET',
@@ -132,7 +136,9 @@ export const useProfileCenterPageAccess = () => {
   });
   const summary = profileQuery.data;
   const currentUser = useMemo(
-    () => normalizeCurrentUserText(summary?.currentUser || initialState?.currentUser),
+    () => normalizeCurrentUserText(
+      mergeSameSessionCurrentUser(initialState?.currentUser, summary?.currentUser),
+    ),
     [initialState?.currentUser, summary?.currentUser],
   );
   const recentLoginLogs = summary?.recentLoginLogs || [];

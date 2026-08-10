@@ -56,6 +56,7 @@ class SystemUserManagementAppServiceTest {
     void userManagementWritesShouldPersistOperatorUuidSeparatelyFromTargetUserUuid() throws Exception {
         String application = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/user/app/SystemUserManagementAppService.java"));
         String source = Files.readString(Path.of("src/main/java/com/lumira/saas/modules/system/user/infrastructure/JdbcSystemUserManagementRepository.java"));
+        String schema = Files.readString(Path.of("../../sql/saas.sql"));
 
         assertTrue(application.contains("SystemUserManagementRepository"));
         assertFalse(application.contains("MyBatisQueryOperations"));
@@ -72,6 +73,14 @@ class SystemUserManagementAppServiceTest {
         assertTrue(source.contains("from sys_role r"));
         assertTrue(source.contains("from sys_role where deleted = 0 and id in"));
         assertTrue(source.contains("where r.id = ? and r.deleted = 0"));
+        assertTrue(source.contains("r.role_type in ('SYSTEM', 'ADMIN')"));
+        assertTrue(source.contains("or r.role_code = 'ADMIN'"));
+        assertTrue(source.contains("or exists ("));
+        assertTrue(source.contains("rp.permission_key = '*'"));
+        assertTrue(schema.contains("VALUES (1001, 'ADMIN', 'Administrator', 'SYSTEM'"));
+        assertTrue(schema.contains("WHERE `role_id` = 1001 AND `permission_key` = '*';"));
+        assertFalse(source.contains("rp.permission_id"));
+        assertFalse(source.contains("p.perm_code"));
         assertFalse(source.contains("sys_role where deleted = 0 and status"));
         assertFalse(source.contains("r.status = 'ENABLED'"));
         assertTrue(source.contains("from sys_department d"));
@@ -99,7 +108,7 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
-    void getUserShouldReuseCurrentUserPermissionSnapshotWhenVersionPresent() {
+    void getUserShouldAuthenticateOnlyOnceWhenPermissionVersionPresent() {
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
@@ -109,7 +118,7 @@ class SystemUserManagementAppServiceTest {
 
         service.getUser(currentUserWithPermissionSnapshot(), 2001L);
 
-        verify(permissionSnapshotService, org.mockito.Mockito.times(2)).loadSnapshot(1001L, "user-uuid-1001");
+        verify(permissionSnapshotService).loadSnapshot(1001L, "user-uuid-1001");
     }
 
     @Test
@@ -389,6 +398,40 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
+    void updateUserShouldAuthenticateOnlyBeforeAdvancingPermissionSnapshot() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SessionAuthenticationService sessionAuthenticationService = mock(SessionAuthenticationService.class);
+        CurrentUser refreshedActor = currentUser();
+        when(sessionAuthenticationService.authenticateSessionTicket(
+                "session-1",
+                1001L,
+                "user-uuid-1001",
+                null,
+                1,
+                "permissions-1"
+        )).thenReturn(new SessionAuthenticationService.AuthenticatedAccess(refreshedActor, null, false));
+        SystemUserManagementAppService service = buildService(
+                jdbcTemplate,
+                permissionSnapshotService,
+                sessionAuthenticationService
+        );
+
+        SystemVO.UserDetailVO updated = service.updateUser(currentUser(), 2001L, userRequest(List.of()));
+
+        assertEquals(2001L, updated.getId());
+        verify(sessionAuthenticationService).authenticateSessionTicket(
+                "session-1",
+                1001L,
+                "user-uuid-1001",
+                null,
+                1,
+                "permissions-1"
+        );
+        verify(permissionSnapshotService).invalidatePermissions();
+    }
+
+    @Test
     void updateUserShouldRejectBlankUsernameBeforeDatabaseAccess() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemUserManagementAppService service = buildService(jdbcTemplate);
@@ -433,11 +476,11 @@ class SystemUserManagementAppServiceTest {
     }
 
     @Test
-    void updateUserShouldRejectPrivilegedRoleAssignmentByNonSuperUser() {
+    void updateUserShouldRejectSystemRoleAssignmentByNonSuperUserEvenWithoutWildcardPermission() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        jdbcTemplate.privilegedRolePermissionCount = 1L;
+        jdbcTemplate.privilegedRoleCount = 1L;
         SystemUserManagementAppService service = buildService(jdbcTemplate);
-        SystemDTO.UserUpsertRequest request = userRequest(List.of(3001L));
+        SystemDTO.UserUpsertRequest request = userRequest(List.of(1001L));
 
         BizException exception = assertThrows(BizException.class, () -> service.updateUser(limitedUser(), 2001L, request));
 
@@ -465,7 +508,7 @@ class SystemUserManagementAppServiceTest {
     @Test
     void updateUserShouldAllowPrivilegedRoleAssignmentBySuperUser() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        jdbcTemplate.privilegedRolePermissionCount = 1L;
+        jdbcTemplate.privilegedRoleCount = 1L;
         SystemUserManagementAppService service = buildService(jdbcTemplate);
         SystemDTO.UserUpsertRequest request = userRequest(List.of(3001L));
 
@@ -1171,7 +1214,7 @@ class SystemUserManagementAppServiceTest {
         private boolean seenTenantReference;
         private Long lastInsertedId = 2001L;
         private String lastInsertedUsername = "demo-user";
-        private long privilegedRolePermissionCount;
+        private long privilegedRoleCount;
         private final Queue<Integer> updateResults = new ArrayDeque<>();
 
         @Override
@@ -1234,9 +1277,9 @@ class SystemUserManagementAppServiceTest {
                     return requiredType.cast(userRecordAccessCount);
                 }
             }
-            if (sql.contains("from sys_role_permission")) {
+            if (sql.contains("from sys_role r") && sql.contains("r.role_type in ('SYSTEM', 'ADMIN')")) {
                 privilegedRoleChecks += 1;
-                return requiredType.cast(privilegedRolePermissionCount);
+                return requiredType.cast(privilegedRoleCount);
             }
             if (sql.contains("from sys_role")) {
                 roleExistenceChecks += 1;

@@ -317,15 +317,17 @@ public class SystemUserManagementAppService {
         assertAuthenticated(currentUser);
         requirePermission(currentUser, "system:user:view");
         requireAccessibleUserRecord(currentUser, userId);
-        return buildUserDetail(currentUser, userId, false);
+        return buildUserDetail(currentUser, userId);
     }
 
-    private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId, boolean bypassSessionAuthentication) {
-        if (bypassSessionAuthentication) {
-            assertAuthenticatedFromTrustedSnapshot(currentUser);
-        } else {
-            assertAuthenticated(currentUser);
-        }
+    /**
+     * Builds the response after the public entry point has already authenticated
+     * and authorized the actor. Permission mutations advance the global snapshot
+     * version, so authenticating again here would compare the request's old token
+     * version with the new snapshot and incorrectly turn a successful write into
+     * SESSION_EXPIRED.
+     */
+    private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId) {
         SystemVO.UserVO user = queryUser(userId);
         boolean canViewSensitive = canViewSensitiveUserInfo(currentUser);
         if (!canViewSensitive) {
@@ -378,7 +380,7 @@ public class SystemUserManagementAppService {
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), true);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
-        return buildUserDetail(currentUser, userId, bypassSessionAuthentication);
+        return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
@@ -394,7 +396,7 @@ public class SystemUserManagementAppService {
         replaceUserDepartments(userId, userUuid, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), currentUser.getUserUuid(), false);
         permissionSnapshotService.invalidatePermissions();
         operationAuditService.log(currentUser.getUserId(), currentUser.getUserUuid(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
-        return buildUserDetail(currentUser, userId, false);
+        return buildUserDetail(currentUser, userId);
     }
 
     @Transactional

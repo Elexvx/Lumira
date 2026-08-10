@@ -19,6 +19,7 @@ export const SETTING_ROUTE_ORDER_KEY = 'settings_route_order';
 export const DEFAULT_SETTING_ROUTE_ORDER = [
   '/settings/menus',
   '/settings/dicts',
+  '/settings/workflows',
   '/settings/profile-fields',
   '/settings/personalization',
   '/settings/security',
@@ -37,6 +38,7 @@ export const LEGACY_PATH_ALIASES: Record<string, string> = {
   '/settings/monitoring/api-docs': '/settings/api-docs',
   '/settings/monitoring/audit': '/settings/audit',
   '/system/payment': '/settings/payment',
+  '/workflows/config': '/settings/workflows',
 };
 
 export const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSourceItem>([
@@ -51,6 +53,12 @@ export const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSour
     name: 'nav.system.dicts',
     icon: 'DatabaseOutlined',
     access: 'canVisitSystemDicts',
+  },
+  {
+    path: '/settings/workflows',
+    name: 'nav.settings.workflows',
+    icon: 'BranchesOutlined',
+    access: 'canVisitWorkflowConfig',
   },
   {
     path: '/settings/profile-fields',
@@ -129,6 +137,7 @@ export const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSour
 export const SETTINGS_FALLBACK_PATH_SET = new Set([
   '/settings/menus',
   '/settings/dicts',
+  '/settings/workflows',
   '/settings/profile-fields',
   '/settings/personalization',
   '/settings/security',

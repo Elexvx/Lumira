@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { resolveRuntimeMenuIdentity, resolveRuntimeMenuPath } from './runtimeMenuIdentity';
+import {
+  resolveRuntimeMenuHideInMenu,
+  resolveRuntimeMenuIdentity,
+  resolveRuntimeMenuPath,
+} from './runtimeMenuIdentity';
 import { resolveCanonicalRoutePath } from '@/routes/meta';
 
 describe('resolveRuntimeMenuIdentity', () => {
@@ -84,5 +88,27 @@ describe('resolveRuntimeMenuIdentity', () => {
 
     expect(identity.localItem).toBe(catalog);
     expect(identity.key).toBe('main:certificates');
+  });
+
+  it.each([
+    '/certificates',
+    '/experts',
+    '/expert-review',
+    '/workflows',
+  ])('keeps stable catalog %s visible when a same-path redirect marks local metadata hidden', (catalogPath) => {
+    expect(resolveRuntimeMenuHideInMenu({
+      backendPath: catalogPath,
+      canonicalPath: resolveCanonicalRoutePath(catalogPath),
+      localHideInMenu: true,
+      stableKeyByPath: { [catalogPath]: `main:${catalogPath.slice(1)}` },
+    })).toBe(false);
+  });
+
+  it('preserves hidden metadata for a non-stable route', () => {
+    expect(resolveRuntimeMenuHideInMenu({
+      backendPath: '/settings',
+      canonicalPath: '/settings',
+      routeHideInMenu: true,
+    })).toBe(true);
   });
 });

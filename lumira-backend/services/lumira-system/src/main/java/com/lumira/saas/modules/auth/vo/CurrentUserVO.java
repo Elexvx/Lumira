@@ -6,6 +6,7 @@ import java.util.Map;
 public class CurrentUserVO {
 
     private Long userId;
+    private String userUuid;
     private String username;
     private String nickname;
     private String realName;
@@ -33,6 +34,14 @@ public class CurrentUserVO {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
     }
 
     public String getUsername() {

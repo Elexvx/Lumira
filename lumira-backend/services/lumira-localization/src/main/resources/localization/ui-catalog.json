@@ -2840,6 +2840,17 @@
       }
     },
     {
+      "messageKey": "nav.settings.workflows",
+      "namespaceCode": "nav",
+      "sourceLocale": "zh-CN",
+      "sourceType": "ROUTE",
+      "sourceRef": "src/locales/zh-CN/nav.ts",
+      "translations": {
+        "zh-CN": "工作流配置",
+        "en-US": "Workflow Configuration"
+      }
+    },
+    {
       "messageKey": "nav.workflow.config",
       "namespaceCode": "nav",
       "sourceLocale": "zh-CN",
@@ -2881,17 +2892,6 @@
       "translations": {
         "zh-CN": "基本信息",
         "en-US": "Basic information"
-      }
-    },
-    {
-      "messageKey": "page.competition.create.steps.homepage",
-      "namespaceCode": "page",
-      "sourceLocale": "zh-CN",
-      "sourceType": "UI",
-      "sourceRef": "src/locales/zh-CN/pageCompetition.ts",
-      "translations": {
-        "zh-CN": "赛事主页",
-        "en-US": "Competition homepage"
       }
     },
     {

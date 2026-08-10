@@ -89,7 +89,7 @@ public class CompetitionManagementAppService {
     private static final int MAX_SHORT_TEXT_LENGTH = 64;
     private static final int MAX_MID_TEXT_LENGTH = 255;
     private static final int MAX_LONG_TEXT_LENGTH = 1000;
-    private static final int MAX_HOMEPAGE_CONTENT_LENGTH = 20000;
+    private static final int MAX_CONFIG_CONTENT_LENGTH = 20000;
     private static final int MAX_JSON_LENGTH = 20000;
     private static final int MAX_URL_LENGTH = 512;
 
@@ -241,7 +241,11 @@ public class CompetitionManagementAppService {
         String uuid = UUID.randomUUID().toString();
         String competitionNo = generateCompetitionNo();
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, competitionNo);
-        parseStageScheduleWindows(normalized.getScheduleJson());
+        parseStageScheduleWindows(
+                normalized.getScheduleJson(),
+                normalized.getRegistrationStart(),
+                normalized.getRegistrationEnd()
+        );
         CompetitionManagementRepository.CompetitionCreateResult created = competitionManagementRepository.createCompetition(
                 new CompetitionManagementRepository.CompetitionCreate(
                         uuid,
@@ -255,7 +259,7 @@ public class CompetitionManagementAppService {
         requireCompetitionWrite(id == null ? 0 : 1, "Competition changed, please retry");
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         requireCompetitionWrite(
-                registrationDatasetRepository.createDataset(competition.getId(), competition.getTitle(), userId, userUuid),
+                registrationDatasetRepository.createDataset(id, normalized.getTitle(), userId, userUuid),
                 "Registration dataset could not be created"
         );
         CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, currentUser);
@@ -276,7 +280,11 @@ public class CompetitionManagementAppService {
         String uuid = UUID.randomUUID().toString();
         String competitionNo = generateCompetitionNo();
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, competitionNo);
-        parseStageScheduleWindows(normalized.getScheduleJson());
+        parseStageScheduleWindows(
+                normalized.getScheduleJson(),
+                normalized.getRegistrationStart(),
+                normalized.getRegistrationEnd()
+        );
         CompetitionManagementRepository.CompetitionCreateResult created = competitionManagementRepository.createCompetition(
                 new CompetitionManagementRepository.CompetitionCreate(
                         uuid,
@@ -290,7 +298,7 @@ public class CompetitionManagementAppService {
         requireCompetitionWrite(id == null ? 0 : 1, "Competition changed, please retry");
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         requireCompetitionWrite(
-                registrationDatasetRepository.createDataset(competition.getId(), competition.getTitle(), userId, userUuid),
+                registrationDatasetRepository.createDataset(id, normalized.getTitle(), userId, userUuid),
                 "Registration dataset could not be created"
         );
         ensureCurrentConfigSet(competition, currentUser);
@@ -309,7 +317,11 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, existing);
-        parseStageScheduleWindows(normalized.getScheduleJson());
+        parseStageScheduleWindows(
+                normalized.getScheduleJson(),
+                normalized.getRegistrationStart(),
+                normalized.getRegistrationEnd()
+        );
         int updated = competitionManagementRepository.updateCompetition(
                 new CompetitionManagementRepository.CompetitionUpdate(
                         id,
@@ -325,7 +337,12 @@ public class CompetitionManagementAppService {
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
-        synchronizeStageWindowsFromSchedule(id, normalized.getScheduleJson(), requireUserId(currentUser), requireUserUuid(currentUser));
+        synchronizeStageWindowsFromSchedule(
+                id,
+                normalized.getScheduleJson(),
+                requireUserId(currentUser),
+                requireUserUuid(currentUser)
+        );
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         if (shouldValidatePublishTransition(existing.getStatus(), competition.getStatus())) {
             validateCompetitionReadyForPublish(competition, ensureCurrentConfigSet(competition, currentUser));
@@ -355,7 +372,11 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, "Only draft competition can be updated as draft");
         }
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, existing.getCompetitionNo());
-        parseStageScheduleWindows(normalized.getScheduleJson());
+        parseStageScheduleWindows(
+                normalized.getScheduleJson(),
+                normalized.getRegistrationStart(),
+                normalized.getRegistrationEnd()
+        );
         int updated = competitionManagementRepository.updateCompetition(
                 new CompetitionManagementRepository.CompetitionUpdate(
                         id,
@@ -371,7 +392,12 @@ public class CompetitionManagementAppService {
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
-        synchronizeStageWindowsFromSchedule(id, normalized.getScheduleJson(), requireUserId(currentUser), requireUserUuid(currentUser));
+        synchronizeStageWindowsFromSchedule(
+                id,
+                normalized.getScheduleJson(),
+                requireUserId(currentUser),
+                requireUserUuid(currentUser)
+        );
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         recordConfigAudit(currentUser, competition.getUuid(), "UPDATE_DRAFT", "BASIC", "Updated competition draft");
         recordCatalogChange(
@@ -557,6 +583,9 @@ public class CompetitionManagementAppService {
     ) {
     }
 
+    private record TimelineRange(LocalDateTime start, LocalDateTime end) {
+    }
+
     private void synchronizeStageWindowsFromSchedule(
             Long competitionId,
             String scheduleJson,
@@ -580,6 +609,23 @@ public class CompetitionManagementAppService {
     }
 
     private Map<String, StageScheduleWindow> parseStageScheduleWindows(String scheduleJson) {
+        return parseStageScheduleWindows(scheduleJson, null, null, false);
+    }
+
+    private Map<String, StageScheduleWindow> parseStageScheduleWindows(
+            String scheduleJson,
+            String registrationStartValue,
+            String registrationEndValue
+    ) {
+        return parseStageScheduleWindows(scheduleJson, registrationStartValue, registrationEndValue, true);
+    }
+
+    private Map<String, StageScheduleWindow> parseStageScheduleWindows(
+            String scheduleJson,
+            String registrationStartValue,
+            String registrationEndValue,
+            boolean enforceRegistrationWindow
+    ) {
         if (!StringUtils.hasText(scheduleJson)) {
             return Map.of();
         }
@@ -589,6 +635,7 @@ public class CompetitionManagementAppService {
                 throw biz(ErrorCode.VALIDATION_ERROR, "Competition schedule JSON must be an array");
             }
             Map<String, StageScheduleWindow> windows = new LinkedHashMap<>();
+            TimelineRange registrationWindow = null;
             int confirmedIndex = 0;
             for (JsonNode schedule : schedules) {
                 if (!"CONFIRMED".equalsIgnoreCase(schedule.path("timeMode").asText())) {
@@ -613,9 +660,29 @@ public class CompetitionManagementAppService {
                 if (!hasExplicitMaterialWindow) {
                     continue;
                 }
+                if (enforceRegistrationWindow && registrationWindow == null) {
+                    registrationWindow = parseRegistrationWindow(registrationStartValue, registrationEndValue);
+                }
+                if (enforceRegistrationWindow && registrationWindow == null) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "请先设置完整的报名时间");
+                }
                 requireTimelineRange(materialStart, materialEnd, "Material submission end must be after its start");
                 requireTimelineRange(competitionStart, competitionEnd, "Competition end must be after its start");
                 requireTimelineRange(reviewStart, reviewEnd, "Review end must be after its start");
+                if (enforceRegistrationWindow) {
+                    if (materialStart.isBefore(registrationWindow.start())
+                            || materialEnd.isAfter(registrationWindow.end())) {
+                        throw biz(ErrorCode.VALIDATION_ERROR, "提交材料时间必须在报名时间范围内");
+                    }
+                    if (competitionStart.isBefore(registrationWindow.start())
+                            || competitionEnd.isAfter(registrationWindow.end())) {
+                        throw biz(ErrorCode.VALIDATION_ERROR, "比赛时间必须在报名时间范围内");
+                    }
+                    if (reviewStart.isBefore(registrationWindow.start())
+                            || reviewEnd.isAfter(registrationWindow.end())) {
+                        throw biz(ErrorCode.VALIDATION_ERROR, "评审时间必须在报名时间范围内");
+                    }
+                }
                 if (competitionStart.isBefore(materialEnd)) {
                     throw biz(ErrorCode.VALIDATION_ERROR, "Competition cannot start before material submission closes");
                 }
@@ -638,6 +705,18 @@ public class CompetitionManagementAppService {
         } catch (Exception exception) {
             throw biz(ErrorCode.VALIDATION_ERROR, "赛事时间格式无效");
         }
+    }
+
+    private TimelineRange parseRegistrationWindow(String startValue, String endValue) {
+        boolean hasStart = StringUtils.hasText(startValue);
+        boolean hasEnd = StringUtils.hasText(endValue);
+        if (!hasStart && !hasEnd) {
+            return null;
+        }
+        LocalDateTime start = parseTimelineTime(startValue);
+        LocalDateTime end = parseTimelineTime(endValue);
+        requireTimelineRange(start, end, "报名开始和结束时间不能为空");
+        return new TimelineRange(start, end);
     }
 
     private LocalDateTime parseTimelineTime(String value) {
@@ -1049,7 +1128,6 @@ public class CompetitionManagementAppService {
         normalized.setImageUrl(normalizeUrl(request.getImageUrl(), "Competition image URL"));
         normalized.setContactName(trimOptional(request.getContactName(), MAX_TITLE_LENGTH, "Competition contact name is too long"));
         normalized.setContactQrCodeUrl(normalizeUrl(request.getContactQrCodeUrl(), "Competition contact QR code URL"));
-        normalized.setHomepageContent(trimOptional(request.getHomepageContent(), MAX_HOMEPAGE_CONTENT_LENGTH, "Competition homepage content is too long"));
         normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Competition tags are too long"));
         normalized.setStatus(normalizeEnum(request.getStatus(), existing.getStatus(), STATUSES, "Invalid competition status"));
         normalized.setFeeMode(normalizeFeeMode(request.getFeeMode()));
@@ -1121,7 +1199,6 @@ public class CompetitionManagementAppService {
         normalized.setImageUrl(normalizeUrl(request.getImageUrl(), "Competition image URL"));
         normalized.setContactName(trimOptional(request.getContactName(), MAX_TITLE_LENGTH, "Competition contact name is too long"));
         normalized.setContactQrCodeUrl(normalizeUrl(request.getContactQrCodeUrl(), "Competition contact QR code URL"));
-        normalized.setHomepageContent(trimOptional(request.getHomepageContent(), MAX_HOMEPAGE_CONTENT_LENGTH, "Competition homepage content is too long"));
         normalized.setTags(trimOptional(request.getTags(), MAX_LONG_TEXT_LENGTH, "Competition tags are too long"));
         normalized.setStatus("draft");
         normalized.setFeeMode(normalizeFeeMode(request.getFeeMode()));
@@ -1228,7 +1305,7 @@ public class CompetitionManagementAppService {
         normalized.setItemKey(trimRequired(request.getItemKey(), "Config item key is required", MAX_TITLE_LENGTH, "Config item key is too long"));
         normalized.setTitle(trimRequired(request.getTitle(), "Config item title is required", MAX_MID_TEXT_LENGTH, "Config item title is too long"));
         normalized.setContentJson(normalizeJson(request.getContentJson(), "Config item JSON"));
-        normalized.setContentText(trimOptional(request.getContentText(), MAX_HOMEPAGE_CONTENT_LENGTH, "Config item text is too long"));
+        normalized.setContentText(trimOptional(request.getContentText(), MAX_CONFIG_CONTENT_LENGTH, "Config item text is too long"));
         normalized.setSortOrder(request.getSortOrder());
         normalized.setRequiredFlag(Boolean.TRUE.equals(request.getRequiredFlag()));
         normalized.setEnabled(request.getEnabled() == null || Boolean.TRUE.equals(request.getEnabled()));

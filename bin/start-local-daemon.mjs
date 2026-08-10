@@ -56,7 +56,7 @@ const child = spawn(process.execPath, [
   ...rawArgs,
 ], {
   cwd: repoRoot,
-  env: process.env,
+  env: { ...process.env, LUMIRA_LOCAL_DAEMON: '1' },
   detached: true,
   windowsHide: true,
   stdio: ['ignore', logFd, logFd],

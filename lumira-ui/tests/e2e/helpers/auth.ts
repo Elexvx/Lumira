@@ -5,7 +5,7 @@ import path from 'node:path';
 export const authFile = path.join(process.cwd(), 'test-results', '.auth', 'admin.json');
 
 const adminUser = process.env.PLAYWRIGHT_ADMIN_USER || 'admin';
-const initialAdminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || '123456';
+const initialAdminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || '';
 const changedAdminPassword = process.env.PLAYWRIGHT_NEW_PASSWORD || 'E2eAdmin123!';
 const captchaCode = process.env.PLAYWRIGHT_CAPTCHA_CODE || '';
 
@@ -61,35 +61,39 @@ const submitPasswordLogin = async (page: Page, password: string): Promise<LoginO
   return waitForLoginOutcome(page);
 };
 
-const completeForcedPasswordChange = async (page: Page) => {
+const completeForcedPasswordChange = async (page: Page, currentPassword: string) => {
+  await page.getByTestId('forced-password-current-input').fill(currentPassword);
   await page.getByTestId('forced-password-new-input').fill(changedAdminPassword);
   await page.getByTestId('forced-password-confirm-input').fill(changedAdminPassword);
   await page.getByTestId('forced-password-submit').click();
   await page.waitForURL((url) => !url.pathname.startsWith('/user/login'), { timeout: 20_000 });
 };
 
-const completeForcedPasswordChangeIfPresent = async (page: Page) => {
+const completeForcedPasswordChangeIfPresent = async (page: Page, currentPassword: string) => {
   const forcedPasswordInput = page.getByTestId('forced-password-new-input');
   if (await forcedPasswordInput.isVisible().catch(() => false)) {
-    await completeForcedPasswordChange(page);
+    await completeForcedPasswordChange(page, currentPassword);
   }
 };
 
 export const authenticateAdmin = async (page: Page) => {
-  let outcome = await submitPasswordLogin(page, initialAdminPassword);
+  let passwordUsed = initialAdminPassword || changedAdminPassword;
+  let outcome = await submitPasswordLogin(page, passwordUsed);
 
-  if (outcome === 'stayed-on-login' && initialAdminPassword === '123456') {
+  if (outcome === 'stayed-on-login' && passwordUsed !== changedAdminPassword) {
+    passwordUsed = changedAdminPassword;
     outcome = await submitPasswordLogin(page, changedAdminPassword);
   }
 
   if (outcome === 'forced-change') {
-    await completeForcedPasswordChange(page);
+    await completeForcedPasswordChange(page, passwordUsed);
+    passwordUsed = changedAdminPassword;
   } else if (outcome !== 'logged-in') {
     throw new Error('Unable to authenticate the Playwright admin user.');
   }
 
   await page.goto('/dashboard/home');
-  await completeForcedPasswordChangeIfPresent(page);
+  await completeForcedPasswordChangeIfPresent(page, passwordUsed);
   await expect(page).toHaveURL(/\/dashboard\/home/);
   await expect(page.getByTestId('top-user-menu-button')).toBeVisible();
   mkdirSync(path.dirname(authFile), { recursive: true });

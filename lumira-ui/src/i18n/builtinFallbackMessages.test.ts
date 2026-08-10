@@ -15,6 +15,11 @@ describe('resolveBuiltinFallbackMessage', () => {
     expect(resolveBuiltinFallbackMessage('page.login.agreement.userPlain', 'en-US')).toBe('User Agreement');
   });
 
+  it('provides localized copy for exiting role simulation when runtime messages are unavailable', () => {
+    expect(resolveBuiltinFallbackMessage('nav.user.role.exitSimulation', 'zh-CN')).toBe('退出角色模拟');
+    expect(resolveBuiltinFallbackMessage('nav.user.role.exitSuccess', 'en-US')).toBe('Exited role simulation');
+  });
+
   it('does not override unrelated message ids', () => {
     expect(resolveBuiltinFallbackMessage('common.confirm', 'zh-CN')).toBeUndefined();
   });

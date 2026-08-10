@@ -16,6 +16,7 @@ const STABLE_ACCESSIBLE_FALLBACK_PATHS = [
   '/certificates/records',
   '/experts/management',
   '/workflows/tasks',
+  '/settings/workflows',
   '/user-center/personal-center/profile',
   '/user-center/personal-center/files',
 ] as const;

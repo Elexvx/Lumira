@@ -115,6 +115,17 @@ const LOGIN_FALLBACK_MESSAGES = {
   },
 } as const;
 
+const ROLE_SIMULATION_FALLBACK_MESSAGES = {
+  'zh-CN': {
+    'nav.user.role.exitSimulation': '退出角色模拟',
+    'nav.user.role.exitSuccess': '已退出角色模拟',
+  },
+  'en-US': {
+    'nav.user.role.exitSimulation': 'Exit role simulation',
+    'nav.user.role.exitSuccess': 'Exited role simulation',
+  },
+} as const;
+
 type LoginFallbackLocale = keyof typeof LOGIN_FALLBACK_MESSAGES;
 
 const currentLocale = () => {
@@ -129,7 +140,8 @@ export const resolveBuiltinFallbackMessage = (id?: string | null, localeCode = c
     return undefined;
   }
   const locale: LoginFallbackLocale = normalizeLocale(localeCode).startsWith('zh') ? 'zh-CN' : 'en-US';
-  return LOGIN_FALLBACK_MESSAGES[locale][id as keyof (typeof LOGIN_FALLBACK_MESSAGES)[typeof locale]];
+  return LOGIN_FALLBACK_MESSAGES[locale][id as keyof (typeof LOGIN_FALLBACK_MESSAGES)[typeof locale]]
+    || ROLE_SIMULATION_FALLBACK_MESSAGES[locale][id as keyof (typeof ROLE_SIMULATION_FALLBACK_MESSAGES)[typeof locale]];
 };
 
 const containsCjk = (value: string) => /[\u3400-\u9fff]/.test(value);

@@ -3,18 +3,51 @@ package com.lumira.deploy.bootstrap;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
+import java.util.Set;
 
 final class AdminCredentialBootstrap {
 
     static final long ADMIN_USER_ID = 1001L;
     static final String PRINCIPAL_KEY = "BUILTIN_ADMIN";
-    static final String LEGACY_FIXED_HASH =
-            "$2a$" + "10$" + "VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te";
+    private static final byte[] LEGACY_FIXED_HASH_DIGEST =
+            HexFormat.of().parseHex("f146e8b052477d6f9be84b4a7f72053c05a592a65b3442759d95acd1f0ecb7ce");
+    static final String DEFAULT_INITIALIZATION_SOURCE = "DOCKER_SECRET";
+    private static final Set<String> ALLOWED_INITIALIZATION_SOURCES = Set.of(
+            DEFAULT_INITIALIZATION_SOURCE,
+            "LOCAL_RANDOM",
+            "LOCAL_SECRET_FILE"
+    );
+
+    private final byte[] legacyFixedHashDigest;
+
+    AdminCredentialBootstrap() {
+        this(LEGACY_FIXED_HASH_DIGEST);
+    }
+
+    AdminCredentialBootstrap(byte[] legacyFixedHashDigest) {
+        if (legacyFixedHashDigest == null || legacyFixedHashDigest.length != 32) {
+            throw new IllegalArgumentException("Legacy credential digest must be a SHA-256 value");
+        }
+        this.legacyFixedHashDigest = legacyFixedHashDigest.clone();
+    }
+
+    static byte[] sha256Digest(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
 
     enum Outcome {
         INITIALIZED,
@@ -23,6 +56,13 @@ final class AdminCredentialBootstrap {
     }
 
     Outcome execute(Connection connection, char[] bootstrapPassword) throws SQLException {
+        return execute(connection, bootstrapPassword, DEFAULT_INITIALIZATION_SOURCE);
+    }
+
+    Outcome execute(Connection connection, char[] bootstrapPassword, String initializationSource) throws SQLException {
+        if (!ALLOWED_INITIALIZATION_SOURCES.contains(initializationSource)) {
+            throw new IllegalArgumentException("Unsupported administrator credential initialization source");
+        }
         boolean previousAutoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try {
@@ -49,7 +89,7 @@ final class AdminCredentialBootstrap {
                 PasswordRules.validate(trustedPassword);
                 String passwordHash = new BCryptPasswordEncoder(12).encode(CharBuffer.wrap(trustedPassword));
                 initializeCredential(connection, admin.userUuid(), passwordHash);
-                insertMarker(connection, admin.userUuid(), "DOCKER_SECRET", true);
+                insertMarker(connection, admin.userUuid(), initializationSource, true);
                 insertAudit(connection, admin.userUuid(), "Initialized built-in administrator credential");
                 connection.commit();
                 return Outcome.INITIALIZED;
@@ -96,7 +136,7 @@ final class AdminCredentialBootstrap {
         if (admin.deleted() != 0
                 || admin.passwordHash() == null
                 || admin.passwordHash().isBlank()
-                || LEGACY_FIXED_HASH.equals(admin.passwordHash())) {
+                || MessageDigest.isEqual(legacyFixedHashDigest, sha256Digest(admin.passwordHash()))) {
             return false;
         }
         return true;

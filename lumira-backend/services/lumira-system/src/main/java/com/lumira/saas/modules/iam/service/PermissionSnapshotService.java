@@ -40,6 +40,7 @@ public class PermissionSnapshotService {
     private static final Logger log = LoggerFactory.getLogger(PermissionSnapshotService.class);
 
     private static final Long PROTECTED_ADMIN_ID = 1001L;
+    private static final Long PROTECTED_ADMIN_ROLE_ID = 1001L;
     private static final String SNAPSHOT_SCHEMA_VERSION = "data-scope-cache-v4";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(30);
@@ -275,7 +276,15 @@ public class PermissionSnapshotService {
         if (!isRoleGrantedToUser(userId, normalizedUserUuid, roleId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "Trusted simulated role is no longer granted");
         }
-        return loadRoleSnapshot(roleId);
+        PermissionSnapshot snapshot = loadRoleSnapshot(roleId);
+        if (PROTECTED_ADMIN_ID.equals(userId)
+                && PROTECTED_ADMIN_ROLE_ID.equals(roleId)
+                && isProtectedAdminAccount(userId, normalizedUserUuid)) {
+            LinkedHashSet<String> permissions = new LinkedHashSet<>(snapshot.getPermissions());
+            permissions.add("*");
+            snapshot.setPermissions(permissions);
+        }
+        return snapshot;
     }
 
     private String permissionSnapshotCacheKey(Long userId, String userUuid, String version) {

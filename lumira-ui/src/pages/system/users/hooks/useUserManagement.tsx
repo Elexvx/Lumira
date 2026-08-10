@@ -21,6 +21,7 @@ import type { DepartmentRecord, PagedResult, RoleRecord, UserDetail, UserRecord 
 import { maskEmail, maskMobile } from '@/utils/sensitive';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { UserAvatar } from '@/components/UserAvatar';
+import { buildUserEditorPayload } from '@/pages/system/users/userEditorPayload';
 
 import { databaseMessage } from '@/i18n/databaseMessage';
 
@@ -475,6 +476,7 @@ export const useUserManagement = () => {
 
   const openEdit = useCallback(
     async (record: UserRecord) => {
+      editorForm.resetFields();
       drawer.openEdit(record, record.id);
       try {
         const [detailResult] = await Promise.all([
@@ -487,6 +489,8 @@ export const useUserManagement = () => {
         ]);
         editorForm.setFieldsValue({
           ...detailResult,
+          password: undefined,
+          resetPassword: false,
           birthMonth: detailResult.birthMonth ? dayjs(detailResult.birthMonth, 'YYYY-MM') : null,
           roleIds: detailResult.roleIds || [],
           deptIds: detailResult.deptIds || [],
@@ -524,13 +528,9 @@ export const useUserManagement = () => {
     try {
       const values = await editorForm.validateFields();
       const isCreating = !drawer.editingId;
-      const payload = {
-        ...values,
-        birthMonth: values.birthMonth ? dayjs(values.birthMonth).format('YYYY-MM') : '',
-        roleIds: values.roleIds || [],
-        deptIds: values.deptIds || [],
-        primaryDeptId: values.primaryDeptId || values.deptIds?.[0] || null,
-      };
+      const payload = buildUserEditorPayload(values, {
+        editing: !isCreating,
+      });
 
       if (drawer.editingId) {
         await request<UserDetail>(`/v1/system/users/${drawer.editingId}`, {
@@ -538,9 +538,6 @@ export const useUserManagement = () => {
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
-        if (drawer.editingId === initialState?.currentUser?.userId) {
-          notifyCurrentUserSync();
-        }
         message.success(t('ui.system.users.useuser.userUpdated'));
       } else {
         await request<UserDetail>('/v1/system/users', {
@@ -551,6 +548,7 @@ export const useUserManagement = () => {
         message.success(t('ui.system.users.useuser.userCreated'));
       }
 
+      notifyCurrentUserSync();
       drawer.close();
       if (isCreating && selectedDepartmentId !== null) {
         setSelectedDepartmentId(null);
@@ -561,7 +559,7 @@ export const useUserManagement = () => {
     } finally {
       setSaving(false);
     }
-  }, [drawer, editorForm, initialState?.currentUser?.userId, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
+  }, [drawer, editorForm, loadDepartments, reloadTable, selectedDepartmentId, setSelectedDepartmentId]);
 
   const handleStatusToggle = useCallback(
     async (record: UserRecord) => {

@@ -49,6 +49,11 @@ describe('route meta', () => {
       .toBe('canVisitReviewWorkbench');
   });
 
+  it('keeps workflow configuration in system settings with a legacy redirect', () => {
+    expect(resolveCanonicalRoutePath('/workflows/config')).toBe('/settings/workflows');
+    expect(realPageRouteMetaMap.get('/settings/workflows')?.access).toBe('canVisitWorkflowConfig');
+  });
+
   it.each([
     ['/localization', '/settings/localization'],
     ['/settings/monitoring/api-docs', '/settings/api-docs'],

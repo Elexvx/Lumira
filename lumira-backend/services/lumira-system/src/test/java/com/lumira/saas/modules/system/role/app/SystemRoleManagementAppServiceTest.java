@@ -69,6 +69,8 @@ class SystemRoleManagementAppServiceTest {
         assertTrue(source.contains("and deleted = 0"));
         assertFalse(source.contains("updated_at = ?, deleted = 0"));
         assertTrue(application.contains("Role config changed, please retry"));
+        assertTrue(application.contains("return queryRoleDetail(roleId);"));
+        assertFalse(application.contains("return getRole(currentUser, roleId);"));
         assertTrue(source.contains("join sys_user u"));
         assertTrue(source.contains("u.uuid = ur.user_uuid"));
     }

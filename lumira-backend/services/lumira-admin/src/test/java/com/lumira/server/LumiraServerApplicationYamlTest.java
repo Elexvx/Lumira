@@ -52,6 +52,19 @@ class LumiraServerApplicationYamlTest {
                 .isEqualTo("${SPRINGDOC_SWAGGER_UI_ENABLED:false}");
     }
 
+    @Test
+    void reviewInvitationLinksArePublicWhileTheReviewWorkbenchRemainsProtected() {
+        Properties properties = loadApplicationProperties();
+
+        assertThat(properties.getProperty("lumira.review.invitation-url"))
+                .isEqualTo("${LUMIRA_REVIEW_INVITATION_URL:http://localhost:8000/review/invitation}");
+        assertThat(properties.stringPropertyNames().stream()
+                .filter(key -> key.startsWith("saas.security.permit-paths"))
+                .map(properties::getProperty)
+                .toList())
+                .contains("/api/v2/reviews/invitations/**");
+    }
+
     private Properties loadApplicationProperties() {
         YamlPropertiesFactoryBean factory = new YamlPropertiesFactoryBean();
         factory.setResources(new ClassPathResource("application.yml"));

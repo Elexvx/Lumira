@@ -946,6 +946,36 @@ class AuthAppServiceTest {
     }
 
     @Test
+    void currentUserUsesTheWinningConcurrentActivityRefresh() {
+        AuthSession baselineSession = cachedSession();
+        baselineSession.setMutationRevision(4L);
+        baselineSession.setLastActivityAt(Instant.now().minusSeconds(31));
+        AuthSession activityUpdatedSession = cachedSession();
+        activityUpdatedSession.setMutationRevision(5L);
+        activityUpdatedSession.setLoginTime(baselineSession.getLoginTime());
+        activityUpdatedSession.setExpireTime(baselineSession.getExpireTime());
+        when(authSessionStore.findBySessionId("session-1"))
+                .thenReturn(Optional.of(baselineSession), Optional.of(activityUpdatedSession));
+        when(securityContextFacade.getCurrentUser()).thenReturn(trustedJaneCurrentUser(
+                Set.of("dashboard:view"),
+                Set.of(7L),
+                9L,
+                Set.of(9L),
+                Set.of(10L)
+        ));
+        doThrow(new BizException(ErrorCode.SESSION_EXPIRED, "Session changed concurrently"))
+                .when(authSessionStore).save(baselineSession, false);
+        seedPermissionVersionCache(42L, "v1");
+
+        CurrentUserDTO currentUser = authAppService.currentUser();
+
+        assertEquals(42L, currentUser.userId());
+        verify(authSessionStore, times(2)).findBySessionId("session-1");
+        verify(authSessionStore).save(baselineSession, false);
+        verify(authSessionStore, never()).save(activityUpdatedSession, false);
+    }
+
+    @Test
     void currentUserRejectsDisabledUserBeforeServingCachedCurrentUserSnapshot() {
         AuthSession session = cachedSession();
         CurrentUser currentUser = new CurrentUser(

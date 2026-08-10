@@ -143,6 +143,36 @@ describe('sessionState', () => {
     });
   });
 
+  it('keeps the stable UUID when a trusted same-user summary omits it', async () => {
+    const { mergeTrustedCurrentUser } = await import('@/auth/sessionState');
+
+    const merged = mergeTrustedCurrentUser(trustedUser(), {
+      ...trustedUser(),
+      userUuid: undefined,
+      nickname: 'Summary name',
+    });
+
+    expect(merged.userUuid).toBe('user-uuid-1001');
+    expect(merged.nickname).toBe('Summary name');
+  });
+
+  it('rejects cached summaries from a different user or session', async () => {
+    const { mergeSameSessionCurrentUser } = await import('@/auth/sessionState');
+    const current = trustedUser();
+
+    expect(mergeSameSessionCurrentUser(current, {
+      ...trustedUser(),
+      userId: 2002,
+      userUuid: 'user-uuid-2002',
+      username: 'other',
+      sessionId: 'session-2002',
+    })).toBe(current);
+    expect(mergeSameSessionCurrentUser(current, {
+      ...trustedUser(),
+      sessionId: 'new-session-1001',
+    })).toBe(current);
+  });
+
   it('rejects untrusted profile updates when there is no trusted previous user', async () => {
     const { mergeTrustedCurrentUser } = await import('@/auth/sessionState');
 

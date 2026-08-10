@@ -106,9 +106,14 @@ public final class ReviewVO {
         private String status;
         private String assignmentStrategy;
         private Integer minimumReviewerCount;
+        private Integer reviewerCountPerCandidate;
+        private Integer expertMinAssignments;
+        private Integer expertTargetAssignments;
+        private Integer expertMaxAssignments;
         private Integer candidateCount;
         private String freezeToken;
         private LocalDateTime frozenAt;
+        private LocalDateTime assignmentConfirmedAt;
         private LocalDateTime reviewDeadline;
         private LocalDateTime finalizedAt;
         private LocalDateTime publishedAt;
@@ -138,12 +143,22 @@ public final class ReviewVO {
         public void setAssignmentStrategy(String assignmentStrategy) { this.assignmentStrategy = assignmentStrategy; }
         public Integer getMinimumReviewerCount() { return minimumReviewerCount; }
         public void setMinimumReviewerCount(Integer minimumReviewerCount) { this.minimumReviewerCount = minimumReviewerCount; }
+        public Integer getReviewerCountPerCandidate() { return reviewerCountPerCandidate; }
+        public void setReviewerCountPerCandidate(Integer reviewerCountPerCandidate) { this.reviewerCountPerCandidate = reviewerCountPerCandidate; }
+        public Integer getExpertMinAssignments() { return expertMinAssignments; }
+        public void setExpertMinAssignments(Integer expertMinAssignments) { this.expertMinAssignments = expertMinAssignments; }
+        public Integer getExpertTargetAssignments() { return expertTargetAssignments; }
+        public void setExpertTargetAssignments(Integer expertTargetAssignments) { this.expertTargetAssignments = expertTargetAssignments; }
+        public Integer getExpertMaxAssignments() { return expertMaxAssignments; }
+        public void setExpertMaxAssignments(Integer expertMaxAssignments) { this.expertMaxAssignments = expertMaxAssignments; }
         public Integer getCandidateCount() { return candidateCount; }
         public void setCandidateCount(Integer candidateCount) { this.candidateCount = candidateCount; }
         public String getFreezeToken() { return freezeToken; }
         public void setFreezeToken(String freezeToken) { this.freezeToken = freezeToken; }
         public LocalDateTime getFrozenAt() { return frozenAt; }
         public void setFrozenAt(LocalDateTime frozenAt) { this.frozenAt = frozenAt; }
+        public LocalDateTime getAssignmentConfirmedAt() { return assignmentConfirmedAt; }
+        public void setAssignmentConfirmedAt(LocalDateTime assignmentConfirmedAt) { this.assignmentConfirmedAt = assignmentConfirmedAt; }
         public LocalDateTime getReviewDeadline() { return reviewDeadline; }
         public void setReviewDeadline(LocalDateTime reviewDeadline) { this.reviewDeadline = reviewDeadline; }
         public LocalDateTime getFinalizedAt() { return finalizedAt; }
@@ -225,6 +240,8 @@ public final class ReviewVO {
         private LocalDateTime revokedAt;
         private String revokeReason;
         private LocalDateTime submittedAt;
+        private String invitationStatus;
+        private LocalDateTime checkedInAt;
         private Integer version;
 
         public Long getId() { return id; }
@@ -259,8 +276,101 @@ public final class ReviewVO {
         public void setRevokeReason(String revokeReason) { this.revokeReason = revokeReason; }
         public LocalDateTime getSubmittedAt() { return submittedAt; }
         public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
+        public String getInvitationStatus() { return invitationStatus; }
+        public void setInvitationStatus(String invitationStatus) { this.invitationStatus = invitationStatus; }
+        public LocalDateTime getCheckedInAt() { return checkedInAt; }
+        public void setCheckedInAt(LocalDateTime checkedInAt) { this.checkedInAt = checkedInAt; }
         public Integer getVersion() { return version; }
         public void setVersion(Integer version) { this.version = version; }
+    }
+
+    public static class RosterExpert {
+        private Long id;
+        private Long batchId;
+        private Long expertId;
+        private Long expertUserId;
+        private String expertUserUuid;
+        private String expertName;
+        private String email;
+        private String status;
+        private String invitationStatus;
+        private Integer invitationAttempts;
+        private String invitationFailureReason;
+        private LocalDateTime invitationSentAt;
+        private LocalDateTime checkedInAt;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public Long getBatchId() { return batchId; }
+        public void setBatchId(Long batchId) { this.batchId = batchId; }
+        public Long getExpertId() { return expertId; }
+        public void setExpertId(Long expertId) { this.expertId = expertId; }
+        public Long getExpertUserId() { return expertUserId; }
+        public void setExpertUserId(Long expertUserId) { this.expertUserId = expertUserId; }
+        public String getExpertUserUuid() { return expertUserUuid; }
+        public void setExpertUserUuid(String expertUserUuid) { this.expertUserUuid = expertUserUuid; }
+        public String getExpertName() { return expertName; }
+        public void setExpertName(String expertName) { this.expertName = expertName; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getInvitationStatus() { return invitationStatus; }
+        public void setInvitationStatus(String invitationStatus) { this.invitationStatus = invitationStatus; }
+        public Integer getInvitationAttempts() { return invitationAttempts; }
+        public void setInvitationAttempts(Integer invitationAttempts) { this.invitationAttempts = invitationAttempts; }
+        public String getInvitationFailureReason() { return invitationFailureReason; }
+        public void setInvitationFailureReason(String invitationFailureReason) { this.invitationFailureReason = invitationFailureReason; }
+        public LocalDateTime getInvitationSentAt() { return invitationSentAt; }
+        public void setInvitationSentAt(LocalDateTime invitationSentAt) { this.invitationSentAt = invitationSentAt; }
+        public LocalDateTime getCheckedInAt() { return checkedInAt; }
+        public void setCheckedInAt(LocalDateTime checkedInAt) { this.checkedInAt = checkedInAt; }
+    }
+
+    public static class Invitation {
+        private Long invitationId;
+        private Long batchId;
+        private String batchName;
+        private Long expertId;
+        private String expertName;
+        private String status;
+        private String deliveryStatus;
+        private String checkinStatus;
+        private String qrValue;
+        private LocalDateTime qrExpiresAt;
+        private LocalDateTime tokenExpiresAt;
+        private LocalDateTime checkedInAt;
+        private LocalDateTime sentAt;
+        private String failureReason;
+
+        public Long getInvitationId() { return invitationId; }
+        public void setInvitationId(Long invitationId) { this.invitationId = invitationId; }
+        public Long getBatchId() { return batchId; }
+        public void setBatchId(Long batchId) { this.batchId = batchId; }
+        public String getBatchName() { return batchName; }
+        public void setBatchName(String batchName) { this.batchName = batchName; }
+        public Long getExpertId() { return expertId; }
+        public void setExpertId(Long expertId) { this.expertId = expertId; }
+        public String getExpertName() { return expertName; }
+        public void setExpertName(String expertName) { this.expertName = expertName; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getDeliveryStatus() { return deliveryStatus; }
+        public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
+        public String getCheckinStatus() { return checkinStatus; }
+        public void setCheckinStatus(String checkinStatus) { this.checkinStatus = checkinStatus; }
+        public String getQrValue() { return qrValue; }
+        public void setQrValue(String qrValue) { this.qrValue = qrValue; }
+        public LocalDateTime getQrExpiresAt() { return qrExpiresAt; }
+        public void setQrExpiresAt(LocalDateTime qrExpiresAt) { this.qrExpiresAt = qrExpiresAt; }
+        public LocalDateTime getTokenExpiresAt() { return tokenExpiresAt; }
+        public void setTokenExpiresAt(LocalDateTime tokenExpiresAt) { this.tokenExpiresAt = tokenExpiresAt; }
+        public LocalDateTime getCheckedInAt() { return checkedInAt; }
+        public void setCheckedInAt(LocalDateTime checkedInAt) { this.checkedInAt = checkedInAt; }
+        public LocalDateTime getSentAt() { return sentAt; }
+        public void setSentAt(LocalDateTime sentAt) { this.sentAt = sentAt; }
+        public String getFailureReason() { return failureReason; }
+        public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
     }
 
     public static class AssignmentTask {

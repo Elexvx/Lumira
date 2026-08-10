@@ -19,8 +19,8 @@ import policeBeianIcon from '@/assets/police-beian.png';
 import { isPoliceBeianText, resolvePoliceBeianQueryUrl } from '@/branding/beian';
 import './Login.css';
 
-const INITIAL_PASSWORD = '123456';
 type ForcedPasswordChangeFormValues = {
+  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 };
@@ -571,16 +571,26 @@ const Login = () => {
           onFinish={loginFlow.dialogState.handleForcedPasswordChange}
         >
           <Form.Item
+            name="currentPassword"
+            label={formatMessage({ id: 'page.login.initialPasswordChange.currentPassword', defaultMessage: '当前密码' })}
+            rules={[
+              { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.currentPasswordRequired', defaultMessage: '请输入当前密码' }) },
+            ]}
+          >
+            <Input.Password autoComplete="current-password" data-testid="forced-password-current-input" />
+          </Form.Item>
+          <Form.Item
             name="newPassword"
             label={formatMessage({ id: 'page.login.initialPasswordChange.newPassword', defaultMessage: '新密码' })}
+            dependencies={['currentPassword']}
             rules={[
               { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.newPasswordRequired', defaultMessage: '请输入新密码' }) },
-              {
+              ({ getFieldValue }) => ({
                 validator: (_, value) =>
-                  value === INITIAL_PASSWORD
-                    ? Promise.reject(new Error(formatMessage({ id: 'page.login.initialPasswordChange.notInitial', defaultMessage: '新密码不能继续使用初始密码' })))
+                  value && value === getFieldValue('currentPassword')
+                    ? Promise.reject(new Error(formatMessage({ id: 'page.login.initialPasswordChange.notInitial', defaultMessage: '新密码不能与当前密码相同' })))
                     : Promise.resolve(),
-              },
+              }),
             ]}
           >
             <Input.Password autoComplete="new-password" data-testid="forced-password-new-input" />

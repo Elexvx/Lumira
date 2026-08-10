@@ -53,12 +53,14 @@ export const useCurrentUserRealtimeSync = ({
   setInitialState,
 }: CurrentUserRealtimeSyncOptions) => {
   const currentUserRef = useRef(currentUser);
+  const refreshAttemptRef = useRef(0);
 
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
   const refreshCurrentUser = useCallback(async () => {
+    const attemptId = ++refreshAttemptRef.current;
     const expectedUser = currentUserRef.current;
     if (!expectedUser || !tokenManager.hasToken()) {
       return;
@@ -67,6 +69,7 @@ export const useCurrentUserRealtimeSync = ({
     try {
       const refreshedUser = await loadCurrentUserSnapshot();
       if (
+        attemptId !== refreshAttemptRef.current ||
         refreshedUser.userId !== expectedUser.userId ||
         refreshedUser.sessionId !== expectedUser.sessionId
       ) {
@@ -77,11 +80,14 @@ export const useCurrentUserRealtimeSync = ({
       const refreshedNavigation = navigationChanged
         ? await loadCurrentNavigationSnapshot()
         : undefined;
+      if (attemptId !== refreshAttemptRef.current) {
+        return;
+      }
 
-      setInitialState((previousState) => mergeCurrentUserRuntimeState(
-        previousState,
-        refreshedUser,
-        refreshedNavigation,
+      setInitialState((previousState) => (
+        attemptId === refreshAttemptRef.current
+          ? mergeCurrentUserRuntimeState(previousState, refreshedUser, refreshedNavigation)
+          : previousState
       ));
     } catch {
       // Background synchronization is best effort. Normal requests retain the

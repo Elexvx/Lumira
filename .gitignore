@@ -33,6 +33,7 @@ deploy/secrets/*
 !deploy/secrets/README.md
 runtime-logs/
 runtime-logs/*.sql
+runtime-secrets/
 artifacts/db-backups/
 artifacts/db-backups/*.sql
 tmp/db-backups/

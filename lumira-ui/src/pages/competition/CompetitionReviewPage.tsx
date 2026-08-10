@@ -2,6 +2,7 @@ import {
   CheckCircleOutlined,
   EyeOutlined,
   PlayCircleOutlined,
+  QrcodeOutlined,
   ReloadOutlined,
   SendOutlined,
   SettingOutlined,
@@ -30,7 +31,7 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import {
@@ -62,12 +63,17 @@ import {
   listReviewBatches,
   listReviewCandidates,
   listReviewPlans,
+  listReviewRoster,
   publishReviewBatch,
   reopenReviewBatchForCorrection,
   revokeReviewAssignment,
   resolveReviewAppeal,
   saveReviewSheetDraft,
+  saveReviewRoster,
+  sendReviewInvitations,
+  scanReviewCheckIn,
   startReviewBatch,
+  confirmReviewAssignments,
   submitReviewSheet,
 } from '@/services/review/api';
 import type {
@@ -81,13 +87,20 @@ import type {
   ReviewDecision,
   ReviewPlan,
   ReviewPlanCreatePayload,
+  ReviewRosterExpert,
   ReviewSheetPayload,
 } from '@/services/review/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 
 type PlanFormValues = Omit<ReviewPlanCreatePayload, 'competitionId' | 'stageId'>;
-type BatchFormValues = { batchName: string };
+type BatchFormValues = {
+  batchName: string;
+  reviewerCountPerCandidate: number;
+  expertMinAssignments: number;
+  expertTargetAssignments: number;
+  expertMaxAssignments: number;
+};
 type AssignmentFormValues = { candidateIds: number[]; expertIds: number[] };
 type ScoreFormValues = {
   scores: Record<string, number>;
@@ -95,10 +108,19 @@ type ScoreFormValues = {
   reviewComment?: string;
 };
 
+type BarcodeDetectorLike = {
+  detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>>;
+};
+
+type BarcodeDetectorConstructorLike = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
+
 const REVIEW_ADMIN_PERMISSIONS = [
   'review:plan:manage',
   'review:batch:create',
   'review:assignment:manage',
+  'review:roster:manage',
+  'review:notification:send',
+  'review:checkin:scan',
   'review:result:aggregate',
   'review:result:finalize',
   'review:result:publish',
@@ -226,6 +248,7 @@ const ReviewAdminWorkbench = () => {
   const [batchId, setBatchId] = useState<number>();
   const [candidates, setCandidates] = useState<ReviewCandidate[]>([]);
   const [assignments, setAssignments] = useState<ReviewAdminAssignment[]>([]);
+  const [roster, setRoster] = useState<ReviewRosterExpert[]>([]);
   const [aggregates, setAggregates] = useState<ReviewAggregate[]>([]);
   const [appeals, setAppeals] = useState<ReviewAppeal[]>([]);
   const [experts, setExperts] = useState<ExpertRecord[]>([]);
@@ -246,16 +269,33 @@ const ReviewAdminWorkbench = () => {
   const [assignmentRevokeReason, setAssignmentRevokeReason] = useState('');
   const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
   const [correctionReason, setCorrectionReason] = useState('');
+  const [rosterModalOpen, setRosterModalOpen] = useState(false);
+  const [selectedRosterExpertIds, setSelectedRosterExpertIds] = useState<number[]>([]);
+  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
+  const [checkinToken, setCheckinToken] = useState('');
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scannerError, setScannerError] = useState('');
+  const scannerVideoRef = useRef<HTMLVideoElement>(null);
 
   const canManagePlans = access.hasPermission('review:plan:manage');
   const canManageBatches = access.hasPermission('review:batch:create');
   const canManageAssignments = access.hasPermission('review:assignment:manage');
+  const canManageRoster = access.hasPermission('review:roster:manage');
+  const canSendNotifications = access.hasPermission('review:notification:send');
+  const canScanCheckin = access.hasPermission('review:checkin:scan');
   const canAggregate = access.hasPermission('review:result:aggregate');
   const canFinalize = access.hasPermission('review:result:finalize');
   const canPublish = access.hasPermission('review:result:publish');
   const canManageAppeals = access.hasPermission('review:appeal:manage');
   const selectedPlan = plans.find((item) => item.id === planId);
   const selectedBatch = batches.find((item) => item.id === batchId);
+  const eligibleExperts = experts.filter((item) =>
+    item.status === 'active'
+    && item.approvalStatus === 'APPROVED'
+    && item.accountStatus === 'ENABLED'
+    && Boolean(item.userId)
+    && Boolean(item.email?.trim())
+  );
 
   const loadPlans = useCallback(async (nextCompetitionId?: number, nextStageId?: number) => {
     if (!canManagePlans || !nextCompetitionId || !nextStageId) {
@@ -283,21 +323,25 @@ const ReviewAdminWorkbench = () => {
     if (!nextBatchId) {
       setCandidates([]);
       setAssignments([]);
+      setRoster([]);
       setAggregates([]);
       setAppeals([]);
       return;
     }
-    const [nextCandidates, nextAssignments, nextAggregates, nextAppeals] = await Promise.all([
+    const [nextCandidates, nextAssignments, nextRoster, nextAggregates, nextAppeals] = await Promise.all([
       canManageAssignments ? listReviewCandidates(nextBatchId) : Promise.resolve([]),
       canManageAssignments ? listReviewAssignments(nextBatchId) : Promise.resolve([]),
+      canManageRoster ? listReviewRoster(nextBatchId) : Promise.resolve([]),
       canAggregate ? listReviewAggregates(nextBatchId) : Promise.resolve([]),
       canManageAppeals ? listReviewAppeals({ batchId: nextBatchId }) : Promise.resolve([]),
     ]);
     setCandidates(nextCandidates || []);
     setAssignments(nextAssignments || []);
+    setRoster(nextRoster || []);
+    setSelectedRosterExpertIds((nextRoster || []).map((item) => item.expertId));
     setAggregates(nextAggregates || []);
     setAppeals(nextAppeals || []);
-  }, [canAggregate, canManageAppeals, canManageAssignments]);
+  }, [canAggregate, canManageAppeals, canManageAssignments, canManageRoster]);
 
   const refreshWorkbench = useCallback(async () => {
     setLoading(true);
@@ -322,13 +366,13 @@ const ReviewAdminWorkbench = () => {
         setCompetitionId(records[0]?.id);
       })
       .catch((error) => showErrorMessage(error, '赛事列表加载失败'));
-    if (canManageAssignments) {
+    if (canManageAssignments || canManageRoster) {
       void listExperts({ pageNo: 1, pageSize: 200, status: 'active', approvalStatus: 'APPROVED' })
         .then((result) => { if (active) setExperts(result.records || []); })
         .catch((error) => showErrorMessage(error, '专家列表加载失败'));
     }
     return () => { active = false; };
-  }, [canManageAssignments]);
+  }, [canManageAssignments, canManageRoster]);
 
   useEffect(() => {
     if (!competitionId) {
@@ -361,6 +405,76 @@ const ReviewAdminWorkbench = () => {
     void loadBatchDetails(batchId)
       .catch((error) => showErrorMessage(error, '评审批次详情加载失败'));
   }, [batchId, loadBatchDetails]);
+
+  useEffect(() => {
+    if (!checkinModalOpen || !scannerActive) return undefined;
+    let disposed = false;
+    let timer: number | undefined;
+    let stream: MediaStream | undefined;
+    const video = scannerVideoRef.current;
+    const detectorConstructor = (window as Window & {
+      BarcodeDetector?: BarcodeDetectorConstructorLike;
+    }).BarcodeDetector;
+
+    const stop = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      stream?.getTracks().forEach((track) => track.stop());
+      if (video) video.srcObject = null;
+    };
+
+    if (!detectorConstructor) {
+      setScannerError('当前浏览器不支持摄像头二维码识别，请使用扫码枪或粘贴二维码内容。');
+      setScannerActive(false);
+      return stop;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || !video) {
+      setScannerError('无法访问摄像头，请检查浏览器权限；也可以使用下方输入框。');
+      setScannerActive(false);
+      return stop;
+    }
+
+    const scan = async (detector: BarcodeDetectorLike) => {
+      if (disposed || !video) return;
+      try {
+        const results = await detector.detect(video);
+        const value = results.find((item) => item.rawValue?.trim())?.rawValue?.trim();
+        if (value) {
+          setCheckinToken(value);
+          setScannerError('');
+          setScannerActive(false);
+          message.success('已读取二维码，请确认签到');
+          return;
+        }
+      } catch {
+        if (!disposed) setScannerError('二维码识别失败，请调整摄像头距离或改用输入框。');
+      }
+      if (!disposed) timer = window.setTimeout(() => void scan(detector), 350);
+    };
+
+    const start = async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        if (disposed || !video) {
+          stream?.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        video.srcObject = stream;
+        await video.play();
+        const detector = new detectorConstructor({ formats: ['qr_code'] });
+        void scan(detector);
+      } catch {
+        if (!disposed) {
+          setScannerError('摄像头启动失败，请允许浏览器访问摄像头，或改用输入框。');
+          setScannerActive(false);
+        }
+      }
+    };
+    void start();
+    return () => {
+      disposed = true;
+      stop();
+    };
+  }, [checkinModalOpen, scannerActive]);
 
   const runAction = async (key: string, action: () => Promise<unknown>, success: string) => {
     setActionLoading(key);
@@ -413,6 +527,10 @@ const ReviewAdminWorkbench = () => {
         planId,
         batchName: values.batchName,
         assignmentStrategy: 'MANUAL',
+        reviewerCountPerCandidate: values.reviewerCountPerCandidate,
+        expertMinAssignments: values.expertMinAssignments,
+        expertTargetAssignments: values.expertTargetAssignments,
+        expertMaxAssignments: values.expertMaxAssignments,
       }),
       '评审批次创建成功',
     );
@@ -436,6 +554,51 @@ const ReviewAdminWorkbench = () => {
       '专家任务分配成功',
     );
     setAssignmentModalOpen(false);
+  };
+
+  const submitRoster = async () => {
+    if (!batchId || !selectedRosterExpertIds.length) {
+      message.error('请勾选本次评审的全部专家');
+      return;
+    }
+    await runAction(
+      'save-roster',
+      () => saveReviewRoster(batchId, selectedRosterExpertIds),
+      '评审专家名单保存成功',
+    );
+    setRosterModalOpen(false);
+  };
+
+  const sendInvitationsAction = async () => {
+    if (!batchId) return;
+    await runAction(
+      'send-invitations',
+      () => sendReviewInvitations(batchId),
+      '评审邀请发送完成，请查看投递状态',
+    );
+  };
+
+  const confirmAssignmentsAction = async () => {
+    if (!batchId) return;
+    await runAction(
+      'confirm-assignments',
+      () => confirmReviewAssignments(batchId),
+      '项目与专家分配已确认并锁定快照',
+    );
+  };
+
+  const submitCheckin = async () => {
+    if (!batchId || !checkinToken.trim()) {
+      message.error('请录入或扫描签到二维码内容');
+      return;
+    }
+    await runAction(
+      'check-in',
+      () => scanReviewCheckIn(batchId, checkinToken.trim()),
+      '专家签到成功',
+    );
+    setCheckinToken('');
+    setCheckinModalOpen(false);
   };
 
   const submitDecision = async () => {
@@ -545,7 +708,10 @@ const ReviewAdminWorkbench = () => {
       width: 140,
       render: (_, record) => {
         const count = assignmentCountByCandidate.get(record.id) || 0;
-        const required = selectedPlan?.requiredReviewerCount || selectedBatch?.minimumReviewerCount || 1;
+        const required = selectedBatch?.reviewerCountPerCandidate
+          || selectedPlan?.requiredReviewerCount
+          || selectedBatch?.minimumReviewerCount
+          || 1;
         return <Tag color={count >= required ? 'success' : 'warning'}>{count} / {required}</Tag>;
       },
     },
@@ -621,12 +787,6 @@ const ReviewAdminWorkbench = () => {
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Alert
-        showIcon
-        type="info"
-        message="评审数据与报名业务解耦"
-        description="候选团队在冻结时生成不可变快照；专家仅访问自己的盲审任务。汇总、终审和发布分别授权并保留版本记录。"
-      />
       <Card>
         <Space wrap>
           <Typography.Text>赛事</Typography.Text>
@@ -727,7 +887,13 @@ const ReviewAdminWorkbench = () => {
                 type="primary"
                 disabled={selectedPlan?.status !== 'READY'}
                 onClick={() => {
-                  batchForm.setFieldsValue({ batchName: `${selectedPlan?.planName || '评审'}批次` });
+                  batchForm.setFieldsValue({
+                    batchName: `${selectedPlan?.planName || '评审'}批次`,
+                    reviewerCountPerCandidate: 3,
+                    expertMinAssignments: 5,
+                    expertTargetAssignments: 6,
+                    expertMaxAssignments: 6,
+                  });
                   setBatchModalOpen(true);
                 }}
               >
@@ -780,6 +946,19 @@ const ReviewAdminWorkbench = () => {
           title="3. 候选与专家分配"
           extra={(
             <Space>
+              {canManageRoster && ['READY', 'ASSIGNING'].includes(selectedBatch.status) && (
+                <Button
+                  icon={<TeamOutlined />}
+                  onClick={() => {
+                    setSelectedRosterExpertIds(
+                      roster.length ? roster.map((item) => item.expertId) : eligibleExperts.map((item) => item.id),
+                    );
+                    setRosterModalOpen(true);
+                  }}
+                >
+                  评审人员名单
+                </Button>
+              )}
               {canManageAssignments && ['READY', 'ASSIGNING', 'IN_REVIEW'].includes(selectedBatch.status) && (
                 <>
                   <Popconfirm
@@ -824,6 +1003,29 @@ const ReviewAdminWorkbench = () => {
                   </Button>
                 </Popconfirm>
               )}
+              {canManageAssignments && selectedBatch.status === 'ASSIGNING' && !selectedBatch.assignmentConfirmedAt && (
+                <Popconfirm
+                  title="确认当前项目×专家分配及工作量范围？"
+                  onConfirm={() => void confirmAssignmentsAction()}
+                >
+                  <Button loading={actionLoading === 'confirm-assignments'}>确认分配</Button>
+                </Popconfirm>
+              )}
+              {canSendNotifications && ['ASSIGNING', 'IN_REVIEW'].includes(selectedBatch.status) && (
+                <Popconfirm
+                  title="重发邀请会让旧链接立即失效，确认发送？"
+                  onConfirm={() => void sendInvitationsAction()}
+                >
+                  <Button icon={<SendOutlined />} loading={actionLoading === 'send-invitations'}>
+                    发送评审通知
+                  </Button>
+                </Popconfirm>
+              )}
+              {canScanCheckin && ['ASSIGNING', 'IN_REVIEW'].includes(selectedBatch.status) && (
+                <Button icon={<QrcodeOutlined />} onClick={() => setCheckinModalOpen(true)}>
+                  扫码签到
+                </Button>
+              )}
             </Space>
           )}
         >
@@ -833,6 +1035,31 @@ const ReviewAdminWorkbench = () => {
             <Col xs={12} md={6}><Statistic title="已提交评分" value={submittedCount} /></Col>
             <Col xs={12} md={6}><Statistic title="汇总结果" value={aggregates.length} /></Col>
           </Row>
+          <Card size="small" title="本批次评审人员、通知与签到" style={{ marginBottom: 16 }}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Space wrap>
+                <Typography.Text>已选专家：{roster.length}</Typography.Text>
+                <Typography.Text>已签到：{roster.filter((item) => item.checkedInAt).length}</Typography.Text>
+                <Typography.Text>已发送：{roster.filter((item) => item.invitationStatus === 'SENT').length}</Typography.Text>
+                <Typography.Text>
+                  配置：每项目 {selectedBatch.reviewerCountPerCandidate || selectedBatch.minimumReviewerCount || 1} 名，专家项目数 {selectedBatch.expertMinAssignments ?? 5}-{selectedBatch.expertMaxAssignments ?? 6}（目标 {selectedBatch.expertTargetAssignments ?? 6}）
+                </Typography.Text>
+              </Space>
+              <Table<ReviewRosterExpert>
+                rowKey="id"
+                size="small"
+                pagination={{ pageSize: 5 }}
+                dataSource={roster}
+                columns={[
+                  { title: '专家', dataIndex: 'expertName', width: 140 },
+                  { title: '邮箱', dataIndex: 'email', width: 220 },
+                  { title: '邀请', dataIndex: 'invitationStatus', width: 110, render: (value) => value || '未发送' },
+                  { title: '签到', width: 110, render: (_, record) => record.checkedInAt ? <Tag color="success">已签到</Tag> : <Tag>待签到</Tag> },
+                  { title: '失败原因', dataIndex: 'invitationFailureReason', ellipsis: true, render: (value) => value || '-' },
+                ]}
+              />
+            </Space>
+          </Card>
           <Table
             rowKey="id"
             size="small"
@@ -854,6 +1081,11 @@ const ReviewAdminWorkbench = () => {
                 dataIndex: 'status',
                 width: 110,
                 render: (value: string) => statusTag(value, assignmentStatusLabels),
+              },
+              {
+                title: '签到',
+                width: 90,
+                render: (_, record) => record.checkedInAt ? <Tag color="success">已签到</Tag> : <Tag>待签到</Tag>,
               },
               { title: '截止时间', dataIndex: 'dueAt', render: (value) => value || '-' },
               {
@@ -1116,7 +1348,29 @@ const ReviewAdminWorkbench = () => {
           <Form.Item name="batchName" label="批次名称" rules={[{ required: true }]}>
             <Input maxLength={255} />
           </Form.Item>
-          <Alert type="info" showIcon message="批次创建后，先冻结候选团队快照，再分配专家。" />
+          <Row gutter={12}>
+            <Col span={6}>
+              <Form.Item name="reviewerCountPerCandidate" label="每项目专家数" rules={[{ required: true }]}>
+                <InputNumber min={1} max={20} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="expertMinAssignments" label="专家最少项目数" rules={[{ required: true }]}>
+                <InputNumber min={0} max={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="expertTargetAssignments" label="专家目标项目数" rules={[{ required: true }]}>
+                <InputNumber min={0} max={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item name="expertMaxAssignments" label="专家最多项目数" rules={[{ required: true }]}>
+                <InputNumber min={1} max={1000} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Alert type="info" showIcon message="默认每个项目 3 名专家，每位专家最少 5 个、目标 6 个、最多 6 个项目，可按本批次调整。" />
         </Form>
       </Modal>
 
@@ -1142,7 +1396,7 @@ const ReviewAdminWorkbench = () => {
               showSearch
               optionFilterProp="label"
               maxTagCount="responsive"
-              options={experts.map((item) => ({
+              options={eligibleExperts.map((item) => ({
                 value: item.id,
                 label: `${item.name} · ${item.organization || item.expertise}`,
               }))}
@@ -1154,6 +1408,82 @@ const ReviewAdminWorkbench = () => {
             message="系统会为每个所选候选团队分配全部所选专家，并自动跳过已存在的组合。"
           />
         </Form>
+      </Modal>
+
+      <Modal
+        title="勾选本次评审专家"
+        width={720}
+        open={rosterModalOpen}
+        confirmLoading={actionLoading === 'save-roster'}
+        onCancel={() => setRosterModalOpen(false)}
+        onOk={() => void submitRoster()}
+        destroyOnHidden
+      >
+        <Alert
+          type="info"
+          showIcon
+          message="只有已审批、启用且已绑定账号和邮箱的专家可以被保存到名单。"
+          description="名单保存后，自动分配默认只使用这些专家；若要替换已分配专家，请先以原因撤回原任务。"
+          style={{ marginBottom: 16 }}
+        />
+        <Select
+          mode="multiple"
+          showSearch
+          optionFilterProp="label"
+          value={selectedRosterExpertIds}
+          onChange={setSelectedRosterExpertIds}
+          options={eligibleExperts.map((item) => ({
+            value: item.id,
+            label: `${item.name} · ${item.email || '未配置邮箱'}`,
+          }))}
+          placeholder="请选择本次评审的全部专家"
+          style={{ width: '100%' }}
+        />
+      </Modal>
+
+      <Modal
+        title="管理员扫码签到"
+        open={checkinModalOpen}
+        confirmLoading={actionLoading === 'check-in'}
+        onCancel={() => setCheckinModalOpen(false)}
+        onOk={() => void submitCheckin()}
+        okText="确认签到"
+      >
+        <Alert
+          type="warning"
+          showIcon
+          message="请使用摄像头或扫码枪扫描专家签到二维码"
+          description="服务端会校验评审批次、有效期和一次性使用状态；摄像头不可用时可直接粘贴扫码结果。"
+          style={{ marginBottom: 16 }}
+        />
+        <Space direction="vertical" style={{ width: '100%', marginBottom: 12 }}>
+          <Button
+            icon={<QrcodeOutlined />}
+            onClick={() => {
+              setScannerError('');
+              setScannerActive(true);
+            }}
+            disabled={scannerActive}
+          >
+            {scannerActive ? '正在识别二维码…' : '开启摄像头扫描'}
+          </Button>
+          {scannerActive && (
+            <video
+              ref={scannerVideoRef}
+              muted
+              playsInline
+              style={{ width: '100%', maxHeight: 320, borderRadius: 8, background: '#111' }}
+            />
+          )}
+          {scannerError ? <Alert type="error" showIcon message={scannerError} /> : null}
+        </Space>
+        <Input.TextArea
+          rows={4}
+          value={checkinToken}
+          onChange={(event) => setCheckinToken(event.target.value)}
+          placeholder="扫描二维码后粘贴 token"
+          autoFocus
+        />
       </Modal>
 
       <Modal
@@ -1461,12 +1791,6 @@ const ExpertTaskWorkbench = () => {
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Alert
-        showIcon
-        type="info"
-        message="只展示分配给当前专家的评审任务"
-        description="匿名评审场景不会返回团队、负责人和成员身份字段；提交评分后将锁定，草稿可在截止时间前继续修改。"
-      />
       <Card
         title="我的评审任务"
         extra={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadTasks()}>刷新</Button>}

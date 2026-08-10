@@ -3,6 +3,34 @@ import type { MenuNode } from '@/types/api';
 import { buildSettingsSourceItems } from './settingsNavigationTree';
 
 describe('settings navigation tree', () => {
+  it('places workflow configuration under system settings', () => {
+    const menuTree = [
+      {
+        menuCode: 'settings.root',
+        name: '系统设置',
+        path: '/settings',
+        children: [
+          {
+            menuCode: 'workflow.config',
+            name: '工作流配置',
+            path: '/settings/workflows',
+            icon: 'BranchesOutlined',
+            permissionKey: 'workflow:config',
+            sortNo: 9,
+          },
+        ],
+      },
+    ] as MenuNode[];
+
+    const items = buildSettingsSourceItems(menuTree);
+
+    expect(items).toContainEqual(expect.objectContaining({
+      path: '/settings/workflows',
+      name: 'nav.settings.workflows',
+      access: 'canVisitWorkflowConfig',
+    }));
+  });
+
   it('injects enabled plugin settings pages into the settings sidebar', () => {
     const menuTree = [
       {

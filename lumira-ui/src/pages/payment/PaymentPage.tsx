@@ -7,12 +7,16 @@ import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useResponsive } from '@/hooks/useResponsive';
+import {
+  getRegistrationStatusLabel,
+  registrationStatusValueEnum,
+} from '@/pages/competition/utils/registrationStatus';
 import { listRegistrationPayments } from '@/services/payment/api';
 import type { RegistrationPaymentRecord } from '@/services/payment/types';
 import './PaymentPage.css';
 
 const paymentStatusValueEnum = {
-  PENDING: { text: '待支付' },
+  PENDING: { text: '待付款' },
   PAID: { text: '已支付' },
   SUCCESS: { text: '支付成功' },
   SETTLED: { text: '已结算' },
@@ -22,14 +26,6 @@ const paymentStatusValueEnum = {
   FAILED: { text: '支付失败' },
   CANCELLED: { text: '已取消' },
   PENDING_PAYMENT: { text: '待生成订单' },
-};
-
-const registrationStatusValueEnum = {
-  DRAFT: { text: '草稿' },
-  PENDING_PAYMENT: { text: '待支付' },
-  PAID: { text: '已支付' },
-  CONFIRMED: { text: '已确认' },
-  CANCELLED: { text: '已取消' },
 };
 
 const providerValueEnum = {
@@ -61,6 +57,10 @@ const registrationStatusColor: Record<string, string> = {
   CANCELLED: 'default',
 };
 
+const paymentPageRegistrationStatusValueEnum = Object.fromEntries(
+  Object.keys(registrationStatusColor).map((status) => [status, registrationStatusValueEnum[status]]),
+);
+
 const statusText = (value?: string | null, valueEnum?: Record<string, { text: string }>) => (value ? valueEnum?.[value]?.text || value : '-');
 
 const formatAmount = (amountMinor?: number | null, currency?: string | null) => {
@@ -77,7 +77,7 @@ const renderPaymentStatus = (status?: string | null) => {
 
 const renderRegistrationStatus = (status?: string | null) => {
   const normalized = status || 'DRAFT';
-  return <Tag color={registrationStatusColor[normalized] || 'default'}>{statusText(normalized, registrationStatusValueEnum)}</Tag>;
+  return <Tag color={registrationStatusColor[normalized] || 'default'}>{getRegistrationStatusLabel(normalized, 'DRAFT')}</Tag>;
 };
 
 const PaymentDetailModal = ({
@@ -154,7 +154,7 @@ const PaymentPage = () => {
         title: '报名状态',
         dataIndex: 'registrationStatus',
         valueType: 'select',
-        valueEnum: registrationStatusValueEnum,
+        valueEnum: paymentPageRegistrationStatusValueEnum,
         width: 96,
         render: (_, record) => renderRegistrationStatus(record.registrationStatus),
       },

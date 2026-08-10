@@ -23,7 +23,7 @@ export const resolveExpertReviewLandingPath = (access: unknown) => resolveFirstA
 
 export const resolveWorkflowLandingPath = (access: unknown) => resolveFirstAccessiblePath(access, [
   ['canVisitWorkflowTasks', '/workflows/tasks'],
-  ['canVisitWorkflowConfig', '/workflows/config'],
+  ['canVisitWorkflowConfig', '/settings/workflows'],
 ]);
 
 export const resolveUserCenterLandingPath = (access: unknown) => resolveFirstAccessiblePath(access, [

@@ -5,7 +5,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import type { ProDescriptionsItemProps } from '@ant-design/pro-components';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { ApartmentOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, DatePicker, Empty, Form, Input, Modal, Select, Space, Spin, Transfer, Tree, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, DatePicker, Empty, Form, Input, Modal, Select, Space, Spin, Transfer, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserManagement } from './users/hooks/useUserManagement';
@@ -235,8 +235,8 @@ const isDigit = (charCode: number) => charCode >= 48 && charCode <= 57;
 
 const isLetter = (charCode: number) => charCode >= 97 && charCode <= 122;
 
-const buildPasswordPolicyRules = (editingId: number | null, securitySettings: SecuritySettings, containsConsecutiveCharacters: (value: string) => boolean): Rule[] => [
-  ...(!editingId ? [{ required: true, message: t('ui.system.users.pleaseEnterThePassword') }] : []),
+const buildPasswordPolicyRules = (required: boolean, securitySettings: SecuritySettings, containsConsecutiveCharacters: (value: string) => boolean): Rule[] => [
+  ...(required ? [{ required: true, message: t('ui.system.users.pleaseEnterThePassword') }] : []),
   {
     validator: async (_: unknown, value?: string) => {
       if (!value) {
@@ -314,14 +314,38 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
     <Form.Item name="primaryDeptId" label={t('ui.system.users.primaryDepartment')}>
       <Select allowClear options={departmentOptions} placeholder={t('ui.system.users.selectAPrimaryDepartment')} />
     </Form.Item>
-    <Form.Item
-      name="password"
-      label={editingId ? t('ui.system.users.resetPasswordOptional') : t('ui.system.users.initialPassword')}
-      extra={buildPasswordPolicyHint(securitySettings)}
-      rules={buildPasswordPolicyRules(editingId, securitySettings, containsConsecutiveCharacters)}
-    >
-      <Input.Password placeholder={t('ui.system.users.enterPassword')} />
-    </Form.Item>
+    {editingId ? (
+      <>
+        <Form.Item name="resetPassword" valuePropName="checked">
+          <Checkbox>{t('ui.system.users.resetPasswordOptional')}</Checkbox>
+        </Form.Item>
+        <Form.Item noStyle shouldUpdate={(previous, next) => previous.resetPassword !== next.resetPassword}>
+          {({ getFieldValue }) => getFieldValue('resetPassword') ? (
+            <Form.Item
+              name="password"
+              preserve={false}
+              extra={buildPasswordPolicyHint(securitySettings)}
+              rules={buildPasswordPolicyRules(true, securitySettings, containsConsecutiveCharacters)}
+            >
+              <Input.Password
+                aria-label={t('ui.system.users.resetPasswordOptional')}
+                autoComplete="new-password"
+                placeholder={t('ui.system.users.enterPassword')}
+              />
+            </Form.Item>
+          ) : null}
+        </Form.Item>
+      </>
+    ) : (
+      <Form.Item
+        name="password"
+        label={t('ui.system.users.initialPassword')}
+        extra={buildPasswordPolicyHint(securitySettings)}
+        rules={buildPasswordPolicyRules(true, securitySettings, containsConsecutiveCharacters)}
+      >
+        <Input.Password autoComplete="new-password" placeholder={t('ui.system.users.enterPassword')} />
+      </Form.Item>
+    )}
     <Form.Item name="status" label={t('ui.system.users.status')} rules={[{ required: true, message: t('ui.system.users.pleaseSelectAStatus') }]}>
       <Select disabled={protectedAdminSelected} options={protectedUserStatusOptions(userStatusOptions, protectedAdminSelected)} />
     </Form.Item>

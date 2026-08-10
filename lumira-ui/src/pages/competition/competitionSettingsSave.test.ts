@@ -127,28 +127,48 @@ describe('competition settings page-level save guards', () => {
     })).toBe(false);
   });
 
-  it('allows a competition to start exactly when registration closes', () => {
+  it('allows a competition timeline to stay within the registration window', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
       schedules: [{
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
-        materialRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
-        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
-        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
+        materialRange: ['2026-07-01 00:00', '2026-07-10 00:00'],
+        timeRange: ['2026-07-10 00:00', '2026-07-18 00:00'],
+        reviewRange: ['2026-07-18 00:00', '2026-07-20 00:00'],
       }],
     })).toBe(true);
   });
 
-  it('rejects a competition that starts before registration closes', () => {
+  it('rejects every schedule range that exceeds the registration window', () => {
+    const values = {
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'] as [string, string],
+      schedules: [{
+        timeMode: 'CONFIRMED' as const,
+        title: 'Preliminary',
+        materialRange: ['2026-07-01 00:00', '2026-10-01 00:00'] as [string, string],
+        timeRange: ['2026-10-01 00:00', '2026-10-02 00:00'] as [string, string],
+        reviewRange: ['2026-10-02 00:00', '2026-10-03 00:00'] as [string, string],
+      }],
+    };
+
+    expect(isTimelineSettingsPageReadyToSave(values)).toBe(false);
+    expect(getCompetitionCreateMissingFields(values)).toEqual(expect.arrayContaining([
+      '提交材料时间必须在报名时间范围内',
+      '比赛时间必须在报名时间范围内',
+      '评审时间必须在报名时间范围内',
+    ]));
+  });
+
+  it('still rejects overlapping material and competition windows', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
       schedules: [{
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
-        materialRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
-        timeRange: ['2026-09-29 23:59', '2026-10-18 00:00'],
-        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'],
+        materialRange: ['2026-07-01 00:00', '2026-07-10 00:00'],
+        timeRange: ['2026-07-09 23:59', '2026-07-18 00:00'],
+        reviewRange: ['2026-07-18 00:00', '2026-07-20 00:00'],
       }],
     })).toBe(false);
   });
@@ -176,7 +196,7 @@ describe('competition settings page-level save guards', () => {
       feeMode: 'TEAM' as const,
       entryFeeMinor: 0,
       currency: 'CNY',
-      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'] as [string, string],
+      registrationRange: ['2026-07-01 00:00', '2026-10-20 00:00'] as [string, string],
       schedules: [{
         timeMode: 'CONFIRMED' as const,
         title: 'Preliminary',

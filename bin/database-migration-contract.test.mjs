@@ -26,6 +26,15 @@ test('fresh bootstrap and online migration both contain activity persistence', (
   }
 });
 
+test('competition homepage is absent from the fresh schema and has an explicit legacy cleanup', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const cleanup = read('lumira-backend/sql/upgrade-competition-remove-homepage-content-v1.sql');
+
+  assert.doesNotMatch(baseline, /`homepage_content`/);
+  assert.match(cleanup, /information_schema\.columns/);
+  assert.match(cleanup, /DROP COLUMN `homepage_content`/);
+});
+
 test('member grade year migration creates separate enrollment dates without touching registration snapshots', () => {
   const migration = read('deploy/migrations/V202607190002__replace_member_grade_year_with_enrollment_dates.sql');
   assert.match(migration, /'enrollmentDate', '入学时间'/);
@@ -182,6 +191,34 @@ test('intellectual-property opt-in migration bootstraps missing configuration te
     assert.match(baseline, new RegExp(marker));
   }
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+});
+
+test('intellectual-property fields are enabled by default without overriding existing competition choices', () => {
+  const migration = read('deploy/migrations/V202608110001__enable_intellectual_property_fields_by_default.sql');
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const upgrade = read('lumira-backend/sql/upgrade-competition-config-item-templates-v1.sql');
+  const fieldKeys = [
+    'intellectualPropertyType',
+    'intellectualPropertyName',
+    'registrationNumber',
+    'rightsHolder',
+    'legalStatus',
+    'grantDate',
+    'distributionRegions',
+  ];
+
+  assert.match(migration, /UPDATE `competition_config_item_template`/);
+  assert.match(migration, /SET `enabled` = 1/);
+  assert.doesNotMatch(migration, /UPDATE `competition_config_item`(?:\s|`)/);
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+
+  for (const source of [baseline, upgrade]) {
+    for (const fieldKey of fieldKeys) {
+      const row = source.split('\n').find((line) => line.includes(`'${fieldKey}'`));
+      assert.ok(row, `missing default template row for ${fieldKey}`);
+      assert.match(row, /,\d+,[01],1,0\)[,;]?$/, `${fieldKey} must default to enabled`);
+    }
+  }
 });
 
 test('certificate template migration preserves runtime canvas placeholders', () => {
@@ -377,12 +414,12 @@ test('built-in administrator bootstrap is secret-driven and migration-backed', (
   const baseline = read('lumira-backend/sql/saas.sql');
   const migration = read('deploy/migrations/V202607300001__secure_builtin_admin_bootstrap.sql');
   const entrypoint = read('deploy/docker/migrator-entrypoint.sh');
-  // This revoked public fixture is asserted absent from both production SQL paths.
-  const legacyFixedHash = '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te'; // nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash
+  // Reject any complete bcrypt hash literal so tests cannot preserve a reusable credential artifact.
+  const bcryptHashPattern = /\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}/;
 
   assert.match(baseline, /`password_change_required` tinyint NOT NULL DEFAULT '0'/);
   assert.match(baseline, /CREATE TABLE `platform_bootstrap_credential`/);
-  assert.doesNotMatch(baseline, new RegExp(legacyFixedHash.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(baseline, bcryptHashPattern);
   assert.match(
     baseline,
     /'admin', 'Administrator', 'Administrator', '', 'DISABLED'/,
@@ -398,7 +435,7 @@ test('built-in administrator bootstrap is secret-driven and migration-backed', (
   assert.match(migration, /'EXISTING_CREDENTIAL'/);
   assert.match(migration, /WHERE `user_id` = 1002[\s\S]*?`status` = 'DISABLED'/);
   assert.match(migration, /CONCAT\(\s*'\$2a\$',\s*'10\$',\s*'VBwFJkc\./);
-  assert.doesNotMatch(migration, new RegExp(legacyFixedHash.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(migration, bcryptHashPattern);
   assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
 
   const flywayCall = entrypoint.indexOf('flyway');

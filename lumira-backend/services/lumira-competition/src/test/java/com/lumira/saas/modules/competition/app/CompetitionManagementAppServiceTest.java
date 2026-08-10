@@ -216,7 +216,11 @@ class CompetitionManagementAppServiceTest {
                 .thenReturn(new CompetitionPermissionSnapshotFixture.PermissionSnapshot("permissions-1", Set.of("*", "aiadc:competition:create", "aiadc:competition:view")));
         CompetitionManagementAppService service =
                 strictService(jdbcTemplate, permissionSnapshotService, systemInternalApi, null);
-        jdbcTemplate.enqueue(List.of(competition("draft")), List.of(configSet()));
+        CompetitionVO.Competition reloadedCompetition = competition("draft");
+        // The generated key is authoritative for the same transaction.  The
+        // dataset write must not regress to a nullable reloaded projection.
+        reloadedCompetition.setId(null);
+        jdbcTemplate.enqueue(List.of(reloadedCompetition), List.of(configSet()));
         jdbcTemplate.updateCount = 1;
         CompetitionDTO.CompetitionUpsertRequest request = new CompetitionDTO.CompetitionUpsertRequest();
         request.setCompetitionStart("TBD");
@@ -536,8 +540,6 @@ class CompetitionManagementAppServiceTest {
         unsafeImage.setImageUrl("javascript:alert(1)");
         CompetitionDTO.CompetitionUpsertRequest invalidJson = publishRequest();
         invalidJson.setScheduleJson("{bad");
-        CompetitionDTO.CompetitionUpsertRequest oversizedContent = publishRequest();
-        oversizedContent.setHomepageContent("x".repeat(20001));
 
         assertThatThrownBy(() -> service.createCompetition(admin(), unsafeImage))
                 .isInstanceOfSatisfying(BizException.class, exception ->
@@ -545,10 +547,6 @@ class CompetitionManagementAppServiceTest {
         assertThatThrownBy(() -> service.createCompetition(admin(), invalidJson))
                 .isInstanceOfSatisfying(BizException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
-        assertThatThrownBy(() -> service.createCompetition(admin(), oversizedContent))
-                .isInstanceOfSatisfying(BizException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
-
         verifyNoInteractions(jdbcTemplate);
     }
 
@@ -829,6 +827,7 @@ class CompetitionManagementAppServiceTest {
         jdbcTemplate.updateCount = 1;
         CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
         request.setStatus("draft");
+        request.setRegistrationEnd("2026-07-15 18:00");
         request.setScheduleJson("""
                 [{
                   "timeMode":"CONFIRMED",
@@ -857,6 +856,33 @@ class CompetitionManagementAppServiceTest {
                         LocalDateTime.of(2026, 7, 15, 18, 0),
                         "PRELIMINARY"
                 ));
+    }
+
+    @Test
+    void updateCompetitionRejectsTimelineOutsideRegistrationWindowBeforeWriting() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("draft")));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setScheduleJson("""
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"初赛",
+                  "materialStart":"2026-07-01 09:00",
+                  "materialEnd":"2026-07-05 18:00",
+                  "start":"2026-07-06 09:00",
+                  "end":"2026-07-09 18:00",
+                  "reviewStart":"2026-07-10 09:00",
+                  "reviewEnd":"2026-07-11 18:00"
+                }]
+                """);
+
+        assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getUserMessage()).contains("评审时间必须在报名时间范围内"));
+        assertThat(jdbcTemplate.updates).isEmpty();
     }
 
     @Test

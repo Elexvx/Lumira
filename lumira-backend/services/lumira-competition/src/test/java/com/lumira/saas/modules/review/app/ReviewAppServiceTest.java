@@ -172,6 +172,108 @@ class ReviewAppServiceTest {
 
         assertThat(created.getId()).isEqualTo(60L);
         assertThat(created.getStatus()).isEqualTo("DRAFT");
+        assertThat(request.getReviewerCountPerCandidate()).isEqualTo(3);
+        assertThat(request.getExpertMinAssignments()).isEqualTo(5);
+        assertThat(request.getExpertTargetAssignments()).isEqualTo(6);
+        assertThat(request.getExpertMaxAssignments()).isEqualTo(6);
+    }
+
+    @Test
+    void refusesAssignmentConfirmationWhenWorkloadRangeCannotCoverAllTasks() {
+        ReviewVO.Batch assigning = reviewBatch(60L, "ASSIGNING", 2);
+        assigning.setReviewerCountPerCandidate(3);
+        assigning.setExpertMinAssignments(5);
+        assigning.setExpertTargetAssignments(6);
+        assigning.setExpertMaxAssignments(6);
+        when(repository.findBatch(60L)).thenReturn(Optional.of(assigning));
+        when(repository.listSelectedRosterExpertIds(60L)).thenReturn(List.of(80L));
+        ReviewVO.Candidate candidate = new ReviewVO.Candidate();
+        candidate.setId(70L);
+        when(repository.listCandidates(60L)).thenReturn(List.of(candidate));
+
+        assertThatThrownBy(() -> service.confirmAssignments(
+                user(ReviewAppService.ASSIGNMENT_MANAGE),
+                60L
+        )).isInstanceOf(BizException.class)
+                .hasMessageContaining("cannot fit");
+
+        verify(repository, never()).markBatchAssignmentsConfirmed(
+                anyLong(), anyInt(), anyLong(), anyString(), any()
+        );
+    }
+
+    @Test
+    void opensInvitationWithQrButBlocksTasksUntilAdministratorCheckIn() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        ReviewRepository.InvitationContext context = new ReviewRepository.InvitationContext(
+                900L,
+                60L,
+                "第一批初评",
+                10L,
+                80L,
+                7L,
+                "user-uuid",
+                "评审专家",
+                "expert@example.com",
+                "SENT",
+                "token-hash",
+                now.plusHours(1),
+                null,
+                null,
+                now,
+                null
+        );
+        when(repository.findInvitationByTokenHash(anyString())).thenReturn(Optional.of(context));
+        when(repository.issueInvitationQr(eq(900L), anyString(), any(), any())).thenReturn(1);
+
+        ReviewVO.Invitation opened = service.openInvitation("raw-token");
+
+        assertThat(opened.getStatus()).isEqualTo("QR_ISSUED");
+        assertThat(opened.getQrValue()).isNotBlank();
+        assertThat(opened.getQrExpiresAt()).isAfter(now);
+        verify(repository).issueInvitationQr(eq(900L), anyString(), any(), any());
+
+        assertThatThrownBy(() -> service.listInvitationAssignments("raw-token"))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("check-in");
+    }
+
+    @Test
+    void rejectsCheckInQrFromAnotherReviewBatchAndKeepsAnAuditTrail() {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        ReviewRepository.InvitationContext context = new ReviewRepository.InvitationContext(
+                901L,
+                61L,
+                "第二批初评",
+                11L,
+                81L,
+                7L,
+                "user-uuid",
+                "评审专家",
+                "expert@example.com",
+                "QR_ISSUED",
+                "token-hash",
+                now.plusHours(1),
+                now.plusMinutes(4),
+                null,
+                now,
+                null
+        );
+        when(repository.findInvitationByQrTokenHash(anyString())).thenReturn(Optional.of(context));
+        ReviewDTO.CheckInRequest request = new ReviewDTO.CheckInRequest();
+        request.setQrToken("qr-token");
+
+        assertThatThrownBy(() -> service.checkIn(
+                user(ReviewAppService.CHECKIN_SCAN),
+                60L,
+                request
+        )).isInstanceOf(BizException.class)
+                .hasMessageContaining("another review batch");
+
+        verify(repository).recordCheckinAttempt(
+                eq(60L), eq(901L), eq(81L), anyString(), eq("REJECTED"),
+                eq("二维码不属于当前评审批次"), eq(7L), eq("user-uuid"), any()
+        );
     }
 
     @Test

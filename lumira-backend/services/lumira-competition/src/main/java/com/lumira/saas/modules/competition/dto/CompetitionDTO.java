@@ -76,7 +76,6 @@ public final class CompetitionDTO {
         private String contactName;
         @Size(max = 512)
         private String contactQrCodeUrl;
-        private String homepageContent;
         @Size(max = 1000)
         private String tags;
         @Size(max = 32)
@@ -131,8 +130,6 @@ public final class CompetitionDTO {
         public void setContactName(String contactName) { this.contactName = contactName; }
         public String getContactQrCodeUrl() { return contactQrCodeUrl; }
         public void setContactQrCodeUrl(String contactQrCodeUrl) { this.contactQrCodeUrl = contactQrCodeUrl; }
-        public String getHomepageContent() { return homepageContent; }
-        public void setHomepageContent(String homepageContent) { this.homepageContent = homepageContent; }
         public String getTags() { return tags; }
         public void setTags(String tags) { this.tags = tags; }
         public String getStatus() { return status; }

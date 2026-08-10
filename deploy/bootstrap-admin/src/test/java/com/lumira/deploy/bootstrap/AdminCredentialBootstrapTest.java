@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.nio.CharBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -25,11 +26,12 @@ class AdminCredentialBootstrapTest {
     @Test
     void readsUtf8SecretFileAndRemovesOnlyOneTrailingLineEnding() throws Exception {
         Path secretFile = tempDirectory.resolve("admin-password");
-        Files.write(secretFile, "SafeBootstrap#2026\r\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        char[] generatedPassword = generatedStrongPassword();
+        Files.write(secretFile, (String.valueOf(generatedPassword) + "\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
         char[] secret = BootstrapAdminCommand.readSecret(secretFile.toString());
 
-        assertArrayEquals("SafeBootstrap#2026".toCharArray(), secret);
+        assertArrayEquals(generatedPassword, secret);
         java.util.Arrays.fill(secret, '\0');
     }
 
@@ -37,14 +39,15 @@ class AdminCredentialBootstrapTest {
     void initializesPendingAdminAndRequiresFirstPasswordChange() throws Exception {
         try (Connection connection = database()) {
             AdminCredentialBootstrap bootstrap = new AdminCredentialBootstrap();
+            char[] generatedPassword = generatedStrongPassword();
 
             AdminCredentialBootstrap.Outcome outcome =
-                    bootstrap.execute(connection, "SafeBootstrap#2026".toCharArray());
+                    bootstrap.execute(connection, generatedPassword);
 
             assertEquals(AdminCredentialBootstrap.Outcome.INITIALIZED, outcome);
             assertEquals("ENABLED", value(connection, "select status from sys_user where id = 1001"));
             assertTrue(new BCryptPasswordEncoder().matches(
-                    "SafeBootstrap#2026",
+                    CharBuffer.wrap(generatedPassword),
                     value(connection, "select password_hash from sys_user where id = 1001")
             ));
             assertEquals("1", value(connection,
@@ -56,14 +59,50 @@ class AdminCredentialBootstrapTest {
     }
 
     @Test
+    void recordsLocalRandomInitializationSource() throws Exception {
+        try (Connection connection = database()) {
+            char[] generatedPassword = generatedStrongPassword();
+            AdminCredentialBootstrap.Outcome outcome = new AdminCredentialBootstrap().execute(
+                    connection,
+                    generatedPassword,
+                    "LOCAL_RANDOM"
+            );
+
+            assertEquals(AdminCredentialBootstrap.Outcome.INITIALIZED, outcome);
+            assertEquals("LOCAL_RANDOM", value(connection,
+                    "select initialization_source from platform_bootstrap_credential where principal_key = 'BUILTIN_ADMIN'"));
+        }
+    }
+
+    @Test
+    void rejectsUnknownInitializationSourceBeforeWriting() throws Exception {
+        try (Connection connection = database()) {
+            char[] generatedPassword = generatedStrongPassword();
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> new AdminCredentialBootstrap().execute(
+                            connection,
+                            generatedPassword,
+                            "UNTRUSTED_SOURCE"
+                    )
+            );
+
+            assertEquals("DISABLED", value(connection, "select status from sys_user where id = 1001"));
+            assertEquals("0", value(connection, "select count(*) from platform_bootstrap_credential"));
+        }
+    }
+
+    @Test
     void isIdempotentAndNeverOverwritesInitializedCredential() throws Exception {
         try (Connection connection = database()) {
             AdminCredentialBootstrap bootstrap = new AdminCredentialBootstrap();
-            bootstrap.execute(connection, "SafeBootstrap#2026".toCharArray());
+            char[] firstPassword = generatedStrongPassword();
+            char[] secondPassword = generatedStrongPassword();
+            bootstrap.execute(connection, firstPassword);
             String originalHash = value(connection, "select password_hash from sys_user where id = 1001");
 
             AdminCredentialBootstrap.Outcome outcome =
-                    bootstrap.execute(connection, "DifferentSafe#2027".toCharArray());
+                    bootstrap.execute(connection, secondPassword);
 
             assertEquals(AdminCredentialBootstrap.Outcome.ALREADY_INITIALIZED, outcome);
             assertEquals(originalHash, value(connection, "select password_hash from sys_user where id = 1001"));
@@ -74,7 +113,11 @@ class AdminCredentialBootstrapTest {
     @Test
     void failsClosedWhenPendingAdminHasNoMountedSecret() throws Exception {
         try (Connection connection = database()) {
-            AdminCredentialBootstrap bootstrap = new AdminCredentialBootstrap();
+            String legacyFixture = new BCryptPasswordEncoder().encode(CharBuffer.wrap(generatedStrongPassword()));
+            execute(connection, "update sys_user set password_hash = '" + legacyFixture + "' where id = 1001");
+            AdminCredentialBootstrap bootstrap = new AdminCredentialBootstrap(
+                    AdminCredentialBootstrap.sha256Digest(legacyFixture)
+            );
 
             assertThrows(
                     AdminCredentialBootstrap.BootstrapRequiredException.class,
@@ -89,7 +132,7 @@ class AdminCredentialBootstrapTest {
     @Test
     void adoptsAnExistingRotatedCredentialWithoutReplacingIt() throws Exception {
         try (Connection connection = database()) {
-            String rotatedHash = new BCryptPasswordEncoder().encode("AlreadyRotated#2026");
+            String rotatedHash = new BCryptPasswordEncoder().encode(CharBuffer.wrap(generatedStrongPassword()));
             execute(connection, "update sys_user set password_hash = '" + rotatedHash + "', status = 'ENABLED' where id = 1001");
             execute(connection,
                     "insert into iam_user_credential " +
@@ -97,7 +140,7 @@ class AdminCredentialBootstrapTest {
                             "values (1001,'admin-user-1001','PASSWORD','" + rotatedHash + "','BCRYPT',1,0,'ENABLED',0)");
 
             AdminCredentialBootstrap.Outcome outcome =
-                    new AdminCredentialBootstrap().execute(connection, "UnusedSecret#2026".toCharArray());
+                    new AdminCredentialBootstrap().execute(connection, generatedStrongPassword());
 
             assertEquals(AdminCredentialBootstrap.Outcome.ADOPTED_EXISTING_CREDENTIAL, outcome);
             assertEquals(rotatedHash, value(connection, "select password_hash from sys_user where id = 1001"));
@@ -109,13 +152,14 @@ class AdminCredentialBootstrapTest {
     @Test
     void repairsIamCredentialFromAnExistingRotatedSystemCredential() throws Exception {
         try (Connection connection = database()) {
-            String rotatedHash = new BCryptPasswordEncoder().encode("AlreadyRotated#2026");
+            String rotatedHash = new BCryptPasswordEncoder().encode(CharBuffer.wrap(generatedStrongPassword()));
+            String staleIamHash = new BCryptPasswordEncoder().encode(CharBuffer.wrap(generatedStrongPassword()));
             execute(connection, "update sys_user set password_hash = '" + rotatedHash + "', status = 'ENABLED' where id = 1001");
             execute(connection,
                     "insert into iam_user_credential " +
                             "(user_id,user_uuid,credential_type,credential_secret,algorithm,version,password_change_required,status,deleted) " +
                             "values (1001,'admin-user-1001','PASSWORD','" +
-                            AdminCredentialBootstrap.LEGACY_FIXED_HASH +
+                            staleIamHash +
                             "','BCRYPT',1,0,'DISABLED',0)");
 
             AdminCredentialBootstrap.Outcome outcome =
@@ -136,12 +180,20 @@ class AdminCredentialBootstrapTest {
         try (Connection connection = database()) {
             assertThrows(
                     IllegalArgumentException.class,
-                    () -> new AdminCredentialBootstrap().execute(connection, "weak-password".toCharArray())
+                    () -> new AdminCredentialBootstrap().execute(connection, generatedWeakPassword())
             );
 
             assertEquals("", value(connection, "select password_hash from sys_user where id = 1001"));
             assertEquals("0", value(connection, "select count(*) from iam_user_credential"));
         }
+    }
+
+    private static char[] generatedStrongPassword() {
+        return ("A" + UUID.randomUUID().toString().replace("-", "") + "a1!").toCharArray();
+    }
+
+    private static char[] generatedWeakPassword() {
+        return UUID.randomUUID().toString().substring(0, 8).toCharArray();
     }
 
     private Connection database() throws Exception {

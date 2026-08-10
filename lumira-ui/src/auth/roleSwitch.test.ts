@@ -4,6 +4,7 @@ import { TOKEN_STORAGE_KEY } from '@/auth/token';
 import {
   ROLE_SWITCH_BROADCAST_TYPE,
   ROLE_SWITCH_STORAGE_KEY,
+  ROLE_SIMULATION_EXIT_KEY,
   buildRoleSwitchOptions,
   buildSimulatedRoleSwitchRequestOptions,
   canSwitchRole,
@@ -12,6 +13,7 @@ import {
   handleRoleSwitchBroadcastMessage,
   handleRoleSwitchStorageEvent,
   notifyOtherTabsOfRoleSwitch,
+  resolveRoleSwitchRequestTarget,
   resolveRoleSwitchTarget,
   transitionRoleScopedClientState,
 } from './roleSwitch';
@@ -46,6 +48,11 @@ describe('role switch options', () => {
     expect(canSwitchRole([], false)).toBe(false);
   });
 
+  it('keeps the exit action available when the active simulation has no role options', () => {
+    expect(canSwitchRole([], false, 9)).toBe(true);
+    expect(canSwitchRole([], true, 9)).toBe(false);
+  });
+
   it('only exposes selectable roles and marks the simulated role as selected', () => {
     const options = buildRoleSwitchOptions(roles, 9);
 
@@ -59,6 +66,14 @@ describe('role switch options', () => {
     const options = buildRoleSwitchOptions(roles, null);
 
     expect(options.every((option) => !option.selected)).toBe(true);
+  });
+
+  it('resolves the explicit exit action to the null simulation target', () => {
+    const options = buildRoleSwitchOptions(roles, 9);
+
+    expect(resolveRoleSwitchRequestTarget(ROLE_SIMULATION_EXIT_KEY, options)).toBeNull();
+    expect(resolveRoleSwitchRequestTarget('missing-role', options)).toBeUndefined();
+    expect(resolveRoleSwitchRequestTarget('9', options)).toBe(9);
   });
 
   it('sends the reset target and rotated refresh cookie through the role switch request', () => {

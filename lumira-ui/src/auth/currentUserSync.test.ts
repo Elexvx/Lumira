@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CurrentUser } from '@/types/api';
 import { request } from '@/services/common/request';
+import { ApiRequestError } from '@/services/common/requestInternalsTypes';
+import { ErrorCode } from '@/enums/errorCode';
 
 const mocks = vi.hoisted(() => ({
   tokenGeneration: { value: 1 },
@@ -82,6 +84,30 @@ describe('currentUserSync', () => {
       method: 'GET',
       silent: true,
     }));
+    expect(vi.mocked(request).mock.calls[0]?.[1]).not.toHaveProperty('allowUnauthorizedWithoutRedirect');
+  });
+
+  it('starts a fresh current-user request when an explicit role mutation sync races with polling', async () => {
+    const pollingRequest = Promise.withResolvers<CurrentUser>();
+    const mutationRequest = Promise.withResolvers<CurrentUser>();
+    vi.mocked(request)
+      .mockReturnValueOnce(pollingRequest.promise)
+      .mockReturnValueOnce(mutationRequest.promise);
+    const { loadCurrentUserSnapshot, notifyCurrentUserSync } = await import('@/auth/currentUserSync');
+
+    const beforeMutation = loadCurrentUserSnapshot();
+    notifyCurrentUserSync();
+    const afterMutation = loadCurrentUserSnapshot();
+
+    expect(afterMutation).not.toBe(beforeMutation);
+    expect(request).toHaveBeenCalledTimes(2);
+    pollingRequest.resolve(currentUser());
+    mutationRequest.resolve(currentUser({
+      permissionsVersion: 'permissions-2',
+      roleIds: [1, 2],
+    }));
+    await expect(beforeMutation).resolves.toMatchObject({ permissionsVersion: 'permissions-1' });
+    await expect(afterMutation).resolves.toMatchObject({ permissionsVersion: 'permissions-2' });
   });
 
   it('never reuses an in-flight current-user request after the auth generation changes', async () => {
@@ -110,13 +136,25 @@ describe('currentUserSync', () => {
 
   it('falls back to the legacy current-user endpoint', async () => {
     vi.mocked(request)
-      .mockRejectedValueOnce(new Error('v2 unavailable'))
+      .mockRejectedValueOnce(new ApiRequestError(ErrorCode.NOT_FOUND, 'v2 unavailable', { httpStatus: 404 }))
       .mockResolvedValueOnce(currentUser());
     const { loadCurrentUserSnapshot } = await import('@/auth/currentUserSync');
 
     await expect(loadCurrentUserSnapshot()).resolves.toMatchObject({ username: 'admin' });
     expect(request).toHaveBeenNthCalledWith(1, '/v2/auth/current-user', expect.any(Object));
     expect(request).toHaveBeenNthCalledWith(2, '/v1/auth/current-user', expect.any(Object));
+  });
+
+  it('does not turn a v2 auth or concurrency failure into a legacy retry', async () => {
+    const sessionChanged = new ApiRequestError(ErrorCode.SESSION_EXPIRED, 'Session changed concurrently', {
+      httpStatus: 401,
+    });
+    vi.mocked(request).mockRejectedValueOnce(sessionChanged);
+    const { loadCurrentUserSnapshot } = await import('@/auth/currentUserSync');
+
+    await expect(loadCurrentUserSnapshot()).rejects.toBe(sessionChanged);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith('/v2/auth/current-user', expect.any(Object));
   });
 
   it('reloads and deduplicates the authoritative menu tree after permission changes', async () => {
@@ -141,11 +179,12 @@ describe('currentUserSync', () => {
       method: 'GET',
       silent: true,
     }));
+    expect(vi.mocked(request).mock.calls[0]?.[1]).not.toHaveProperty('allowUnauthorizedWithoutRedirect');
   });
 
   it('falls back to the legacy navigation bootstrap endpoint', async () => {
     vi.mocked(request)
-      .mockRejectedValueOnce(new Error('v2 unavailable'))
+      .mockRejectedValueOnce(new ApiRequestError(ErrorCode.NOT_FOUND, 'v2 unavailable', { httpStatus: 404 }))
       .mockResolvedValueOnce({ menuTree: [], availablePlugins: [] });
     const { loadCurrentNavigationSnapshot } = await import('@/auth/currentUserSync');
 

@@ -297,14 +297,15 @@ public class FileV2Controller {
             @RequestParam(name = "tags", required = false) String tags,
             @RequestParam(name = "remark", required = false) String remark,
             @RequestParam(name = "bucket", required = false) String bucket,
-            @RequestParam(name = "scope", required = false) String scope
+            @RequestParam(name = "scope", required = false) String scope,
+            @RequestParam(name = "directory", required = false) String directory
     ) {
         CurrentUser currentUser = currentUser();
         Instant startedAt = Instant.now();
         try {
             require(resolveUploadPermission(scope));
             ApiResponse<FileObjectDTO> response = ApiResponse.success(
-                    fileManagementAppService.uploadFile(currentUser, file, category, tags, remark, bucket, scope),
+                    fileManagementAppService.uploadFile(currentUser, file, category, tags, remark, bucket, scope, directory),
                     TraceContext.getRequestId()
             );
             fileUploadMetrics.recordSucceeded(scope, Duration.between(startedAt, Instant.now()));

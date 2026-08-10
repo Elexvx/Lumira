@@ -11,6 +11,7 @@ import { ErrorCode } from '@/enums/errorCode';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { withAuthSessionMutationLock } from '@/auth/authSessionMutationLock';
 import { beginRoleSwitchFlow } from '@/auth/roleSwitchFlowState';
+import { shouldFallbackToLegacyEndpoint } from '@/services/common/legacyEndpointFallback';
 
 export type LogoutReason = 'user_initiated' | 'forced_expired';
 export type TokenRefreshOutcome = 'refreshed' | 'superseded' | 'session_expired' | 'temporarily_unavailable';
@@ -123,6 +124,7 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
       credentials: 'include',
+      silent: true,
     });
     if (wasSuperseded()) {
       return 'superseded';
@@ -142,6 +144,11 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
     if (wasSuperseded()) {
       return 'superseded';
     }
+    if (!shouldFallbackToLegacyEndpoint(error)) {
+      return isConfirmedRefreshSessionExpiry(error)
+        ? 'session_expired'
+        : 'temporarily_unavailable';
+    }
     try {
       const response = await request<RefreshTokenResponse>(AUTH_REFRESH_TOKEN_PATH, {
         method: 'POST',
@@ -149,6 +156,7 @@ const refreshTokenRequest = async (): Promise<TokenRefreshOutcome> => {
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         credentials: 'include',
+        silent: true,
       });
       if (wasSuperseded()) {
         return 'superseded';

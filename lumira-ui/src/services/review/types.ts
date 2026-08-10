@@ -93,9 +93,14 @@ export interface ReviewBatch {
   status: ReviewBatchStatus;
   assignmentStrategy: 'MANUAL' | 'ROUND_ROBIN' | 'BALANCED' | 'TAG_MATCH';
   minimumReviewerCount: number;
+  reviewerCountPerCandidate: number;
+  expertMinAssignments: number;
+  expertTargetAssignments: number;
+  expertMaxAssignments: number;
   candidateCount: number;
   freezeToken?: string | null;
   frozenAt?: string | null;
+  assignmentConfirmedAt?: string | null;
   reviewDeadline?: string | null;
   finalizedAt?: string | null;
   publishedAt?: string | null;
@@ -108,7 +113,44 @@ export interface ReviewBatchCreatePayload {
   planId: number;
   batchName: string;
   assignmentStrategy: ReviewBatch['assignmentStrategy'];
+  reviewerCountPerCandidate?: number;
+  expertMinAssignments?: number;
+  expertTargetAssignments?: number;
+  expertMaxAssignments?: number;
   reviewDeadline?: string;
+}
+
+export interface ReviewRosterExpert {
+  id: number;
+  batchId: number;
+  expertId: number;
+  expertUserId?: number | null;
+  expertUserUuid?: string | null;
+  expertName: string;
+  email: string;
+  status: string;
+  invitationStatus?: string | null;
+  invitationAttempts?: number | null;
+  invitationFailureReason?: string | null;
+  invitationSentAt?: string | null;
+  checkedInAt?: string | null;
+}
+
+export interface ReviewInvitation {
+  invitationId: number;
+  batchId: number;
+  batchName: string;
+  expertId: number;
+  expertName: string;
+  status: string;
+  deliveryStatus?: string | null;
+  checkinStatus: 'WAITING' | 'CHECKED_IN';
+  qrValue?: string | null;
+  qrExpiresAt?: string | null;
+  tokenExpiresAt?: string | null;
+  checkedInAt?: string | null;
+  sentAt?: string | null;
+  failureReason?: string | null;
 }
 
 export interface ReviewCandidate {
@@ -140,6 +182,8 @@ export interface ReviewAdminAssignment {
   revokedAt?: string | null;
   revokeReason?: string | null;
   submittedAt?: string | null;
+  invitationStatus?: string | null;
+  checkedInAt?: string | null;
   version: number;
 }
 

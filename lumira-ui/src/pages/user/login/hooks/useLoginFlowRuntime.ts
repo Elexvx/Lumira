@@ -110,11 +110,11 @@ export const rejectUnsafeLoginInput = async (_: unknown, value: unknown, kind: L
 };
 
 type ForcedPasswordChangeFormValues = {
+  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 };
 
-const INITIAL_PASSWORD = '123456';
 type CodeLoginMode = 'sms' | 'email';
 
 const POST_LOGIN_MENU_TIMEOUT_MS = 2500;
@@ -287,8 +287,6 @@ export type LoginFlowState = {
   setPendingPasswordChangeLogin: Dispatch<SetStateAction<import('@/types/api').LoginResponse | null>>;
   restoredPasswordChangeRequired: boolean;
   setRestoredPasswordChangeRequired: Dispatch<SetStateAction<boolean>>;
-  pendingPasswordChangeCurrentPassword: string;
-  setPendingPasswordChangeCurrentPassword: Dispatch<SetStateAction<string>>;
   passwordChangeSubmitting: boolean;
   setPasswordChangeSubmitting: Dispatch<SetStateAction<boolean>>;
   loginForm: FormInstance<import('@/pages/user/login/components/LoginFormFields').LoginFormValues>;
@@ -495,10 +493,9 @@ const useLoginFlowInteractions = ({
     ],
   );
   const startForcedPasswordChange = useCallback(
-    async (loginResponse: LoginResponse, currentPassword: string) => {
+    async (loginResponse: LoginResponse) => {
       suppressLoginBroadcastRedirectRef.current = true;
       flowState.setPendingPasswordChangeLogin(loginResponse);
-      flowState.setPendingPasswordChangeCurrentPassword(currentPassword || '');
       flowState.forcedPasswordChangeForm.resetFields();
       await initializeAfterLogin(loginResponse, { remember: Boolean(flowState.loginForm.getFieldValue('remember')) });
       message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
@@ -563,7 +560,7 @@ const useLoginFlowInteractions = ({
         await request<boolean>('/v1/profile/password', {
           method: 'PUT',
           data: {
-            currentPassword: flowState.pendingPasswordChangeCurrentPassword,
+            currentPassword: values.currentPassword,
             newPassword: values.newPassword,
             confirmPassword: values.confirmPassword,
           },
@@ -580,7 +577,6 @@ const useLoginFlowInteractions = ({
           if (reloginResponse?.accessToken) {
             flowState.setPendingPasswordChangeLogin(null);
             flowState.setRestoredPasswordChangeRequired(false);
-            flowState.setPendingPasswordChangeCurrentPassword('');
             flowState.forcedPasswordChangeForm.resetFields();
             suppressLoginBroadcastRedirectRef.current = false;
             await completeSuccessfulLogin(
@@ -597,7 +593,6 @@ const useLoginFlowInteractions = ({
         clearAuthSession();
         flowState.setPendingPasswordChangeLogin(null);
         flowState.setRestoredPasswordChangeRequired(false);
-        flowState.setPendingPasswordChangeCurrentPassword('');
         flowState.forcedPasswordChangeForm.resetFields();
         suppressLoginBroadcastRedirectRef.current = false;
         message.info(formatMessage({ id: 'page.login.initialPasswordChange.success', defaultMessage: '密码已修改，请使用新密码登录' }));
@@ -815,7 +810,7 @@ type UseLoginFlowAuthInteractionsParams = {
     factorName?: string;
   } | null;
   completeSuccessfulLogin: (loginResponse: LoginResponse, remember?: boolean) => Promise<void>;
-  startForcedPasswordChange: (loginResponse: LoginResponse, currentPassword: string) => Promise<void>;
+  startForcedPasswordChange: (loginResponse: LoginResponse) => Promise<void>;
 };
 
 export const useLoginFlowAuthInteractions = ({
@@ -1172,7 +1167,7 @@ export const useLoginFlowAuthInteractions = ({
       }
 
       if (loginResponse.requiresPasswordChange) {
-        await startForcedPasswordChange(loginResponse, values.passwordPassword || INITIAL_PASSWORD);
+        await startForcedPasswordChange(loginResponse);
         return false;
       }
 
@@ -1434,7 +1429,6 @@ export const useLoginFlowRuntime = ({
         clearAuthSession();
         flowState.setRestoredPasswordChangeRequired(false);
         flowState.setPendingPasswordChangeLogin(null);
-        flowState.setPendingPasswordChangeCurrentPassword('');
         flowState.forcedPasswordChangeForm.resetFields();
         setInitialState((prev: AppInitialState | undefined) =>
           prev
@@ -1470,14 +1464,12 @@ export const useLoginFlowRuntime = ({
       if (!restoredSession.currentUser.requiresPasswordChange) {
         flowState.setRestoredPasswordChangeRequired(false);
         flowState.setPendingPasswordChangeLogin(null);
-        flowState.setPendingPasswordChangeCurrentPassword('');
         flowState.forcedPasswordChangeForm.resetFields();
         history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, restoredMenuTree));
         return;
       }
 
       flowState.setRestoredPasswordChangeRequired(true);
-      flowState.setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
       flowState.forcedPasswordChangeForm.resetFields();
     })();
     return () => {
@@ -1533,7 +1525,6 @@ export const useLoginFlowRuntime = ({
         clearAuthSession();
         flowState.setRestoredPasswordChangeRequired(false);
         flowState.setPendingPasswordChangeLogin(null);
-        flowState.setPendingPasswordChangeCurrentPassword('');
         flowState.forcedPasswordChangeForm.resetFields();
         setInitialState((prev: AppInitialState | undefined) =>
           prev
@@ -1546,7 +1537,6 @@ export const useLoginFlowRuntime = ({
         return;
       }
       flowState.setRestoredPasswordChangeRequired(true);
-      flowState.setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
       flowState.forcedPasswordChangeForm.resetFields();
       message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
     })();
@@ -1555,7 +1545,6 @@ export const useLoginFlowRuntime = ({
     };
   }, [
     flowState.forcedPasswordChangeForm,
-    flowState.setPendingPasswordChangeCurrentPassword,
     flowState.setRestoredPasswordChangeRequired,
     flowState,
     initialState?.menuTree,

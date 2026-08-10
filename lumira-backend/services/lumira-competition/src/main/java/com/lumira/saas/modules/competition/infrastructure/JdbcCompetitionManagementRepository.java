@@ -96,9 +96,9 @@ public class JdbcCompetitionManagementRepository implements CompetitionManagemen
                             uuid, competition_no, code, locale, title, short_name, category, level, competition_level, organizer, organizers_json,
                             registration_start, registration_end, competition_start, competition_end,
                             location, participation_scope, participation_requirement, schedule_json, description, image_url,
-                            contact_name, contact_qr_code_url, homepage_content, tags, status, fee_mode, entry_fee_minor, currency, featured, sort,
+                            contact_name, contact_qr_code_url, tags, status, fee_mode, entry_fee_minor, currency, featured, sort,
                             created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
                 command.uuid(),
                 command.competitionNo(),
@@ -123,7 +123,6 @@ public class JdbcCompetitionManagementRepository implements CompetitionManagemen
                 competition.getImageUrl(),
                 competition.getContactName(),
                 competition.getContactQrCodeUrl(),
-                competition.getHomepageContent(),
                 competition.getTags(),
                 competition.getStatus(),
                 competition.getFeeMode(),
@@ -150,7 +149,7 @@ public class JdbcCompetitionManagementRepository implements CompetitionManagemen
                         set locale = ?, title = ?, short_name = ?, category = ?, level = ?, competition_level = ?, organizer = ?, organizers_json = ?,
                             registration_start = ?, registration_end = ?, competition_start = ?, competition_end = ?,
                             location = ?, participation_scope = ?, participation_requirement = ?, schedule_json = ?,
-                            description = ?, image_url = ?, contact_name = ?, contact_qr_code_url = ?, homepage_content = ?, tags = ?, status = ?,
+                            description = ?, image_url = ?, contact_name = ?, contact_qr_code_url = ?, tags = ?, status = ?,
                             fee_mode = ?, entry_fee_minor = ?, currency = ?,
                             featured = ?, sort = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
                         where id = ? and uuid = ? and competition_no = ? and status = ? and deleted = 0
@@ -175,7 +174,6 @@ public class JdbcCompetitionManagementRepository implements CompetitionManagemen
                 competition.getImageUrl(),
                 competition.getContactName(),
                 competition.getContactQrCodeUrl(),
-                competition.getHomepageContent(),
                 competition.getTags(),
                 command.persistedStatus(),
                 competition.getFeeMode(),
@@ -244,7 +242,7 @@ public class JdbcCompetitionManagementRepository implements CompetitionManagemen
                        competition_start as competitionStart, competition_end as competitionEnd,
                        location, participation_scope as participationScope, participation_requirement as participationRequirement,
                        schedule_json as scheduleJson, description, image_url as imageUrl,
-                       contact_name as contactName, contact_qr_code_url as contactQrCodeUrl, homepage_content as homepageContent,
+                       contact_name as contactName, contact_qr_code_url as contactQrCodeUrl,
                        tags, status, fee_mode as feeMode, entry_fee_minor as entryFeeMinor, currency, featured, sort,
                        created_at as createdAt, updated_at as updatedAt
                 """;

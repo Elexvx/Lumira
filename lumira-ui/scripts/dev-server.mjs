@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const maxBin = require.resolve('@umijs/max/bin/max.js');
+const forceLoopbackListen = require.resolve('./force-loopback-listen.cjs');
 const rawArgs = process.argv.slice(2);
 const forwardedArgs = rawArgs[0] === '--' ? rawArgs.slice(1) : rawArgs;
 const childEnv = { ...process.env };
@@ -23,7 +24,14 @@ for (let index = 0; index < forwardedArgs.length; index += 1) {
   }
 }
 
-const child = spawn(process.execPath, [maxBin, 'dev', ...forwardedArgs], {
+const requestedHost = String(childEnv.UMI_DEV_HOST || childEnv.HOST || '').toLowerCase();
+const forceLoopback = ['localhost', '127.0.0.1', '::1', '0:0:0:0:0:0:0:1'].includes(requestedHost);
+const child = spawn(process.execPath, [
+  ...(forceLoopback ? ['--require', forceLoopbackListen] : []),
+  maxBin,
+  'dev',
+  ...forwardedArgs,
+], {
   stdio: 'inherit',
   env: childEnv,
 });

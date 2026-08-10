@@ -26,6 +26,8 @@ spring:
 # Monolith mode flag - disables sub-module security configs that would conflict.
 lumira:
   monolith: ${LUMIRA_MONOLITH:${LEGENDARY_MONOLITH:true}}
+  review:
+    invitation-url: ${LUMIRA_REVIEW_INVITATION_URL:http://localhost:8000/review/invitation}
   runtime:
     control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:true}
     async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:false}
@@ -50,7 +52,7 @@ spring.cloud.sentinel.enabled: false
 # Fallback basic DB config (will be overridden by env vars or system-service config)
 spring.datasource.url: ${DB_URL:jdbc:mysql://localhost:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
 spring.datasource.username: ${DB_USERNAME:root}
-spring.datasource.password: ${DB_PASSWORD:root}
+spring.datasource.password: ${DB_PASSWORD:}
 spring.datasource.driver-class-name: com.mysql.cj.jdbc.Driver
 
 spring.data.redis.host: ${REDIS_HOST:localhost}
@@ -91,8 +93,8 @@ management:
 # Security settings - forward environment variables to saas.security config
 saas:
   security:
-    jwt-secret: ${JWT_SECRET:saas_foundation_jwt_secret_for_dev_env_please_change_me_2026}
-    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
+    jwt-secret: ${JWT_SECRET:}
+    field-secret: ${FIELD_SECRET:}
     issuer: saas-foundation
     idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
     access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
@@ -116,6 +118,7 @@ saas:
       - /api/v2/auth/login/code/complete
       - /api/v2/auth/login-encryption-key
       - /api/v2/account-activation/**
+      - /api/v2/reviews/invitations/**
       - /api/v1/auth/wechat/authorize-url
       - /api/v1/auth/wechat/callback
       - /api/v1/auth/wechat/login
@@ -224,7 +227,7 @@ spring:
   security:
     user:
       name: ${SPRING_SECURITY_USER_NAME:dev-only}
-      password: ${SPRING_SECURITY_USER_PASSWORD:dev-only-password}
+      password: ${SPRING_SECURITY_USER_PASSWORD:}
 saas:
   web:
     cors-allowed-origin-patterns:
@@ -273,7 +276,7 @@ saas:
       - 127.0.0.1/32
       - ::1/128
   security:
-    field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
+    field-secret: ${FIELD_SECRET:}
 ---
 spring:
   config:

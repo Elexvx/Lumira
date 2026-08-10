@@ -41,6 +41,9 @@ const REVIEW_WORKBENCH_PERMISSIONS = [
   'review:plan:manage',
   'review:batch:create',
   'review:assignment:manage',
+  'review:roster:manage',
+  'review:notification:send',
+  'review:checkin:scan',
   'review:task:view',
   'review:score:submit',
   'review:result:aggregate',
@@ -105,6 +108,8 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     isLogin && hasPermission(permissions, 'review:appeal:submit');
   const canManageReviewAppeals =
     isLogin && hasPermission(permissions, 'review:appeal:manage');
+  const canVisitWorkflowConfig = isLogin && hasPermission(permissions, 'workflow:config');
+  const canVisitWorkflowTasks = isLogin && hasPermission(permissions, 'workflow:approve');
   const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
   const canVisitSensitiveWordsPlugin =
@@ -138,6 +143,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
         canVisitAudit,
         canVisitLocalization,
         canVisitSensitiveWordsPlugin,
+        canVisitWorkflowConfig,
       ].some(Boolean));
   const canVisitAnyUserCenter =
     isLogin &&
@@ -201,9 +207,9 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitReviewWorkbench,
     canVisitCompetitionReviewResults,
     canManageReviewAppeals,
-    canVisitWorkflow: isLogin && hasAnyPermission(permissions, ['workflow:config', 'workflow:approve']),
-    canVisitWorkflowConfig: isLogin && hasPermission(permissions, 'workflow:config'),
-    canVisitWorkflowTasks: isLogin && hasPermission(permissions, 'workflow:approve'),
+    canVisitWorkflow: canVisitWorkflowTasks,
+    canVisitWorkflowConfig,
+    canVisitWorkflowTasks,
     canVisitSystemAllFiles,
     canVisitLocalization,
     canVisitAudit,
