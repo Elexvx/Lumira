@@ -35,6 +35,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -280,7 +281,7 @@ public class CompetitionManagementAppService {
         String uuid = UUID.randomUUID().toString();
         String competitionNo = generateCompetitionNo();
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, competitionNo);
-        parseStageScheduleWindows(
+        parseDraftStageScheduleWindows(
                 normalized.getScheduleJson(),
                 normalized.getRegistrationStart(),
                 normalized.getRegistrationEnd()
@@ -317,11 +318,20 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, existing);
-        parseStageScheduleWindows(
-                normalized.getScheduleJson(),
-                normalized.getRegistrationStart(),
-                normalized.getRegistrationEnd()
-        );
+        if (Objects.equals(request.getScheduleJson(), existing.getScheduleJson())) {
+            normalized.setScheduleJson(existing.getScheduleJson());
+        }
+        boolean scheduleChanged = !Objects.equals(existing.getScheduleJson(), normalized.getScheduleJson());
+        boolean registrationWindowChanged = !Objects.equals(existing.getRegistrationStart(), normalized.getRegistrationStart())
+                || !Objects.equals(existing.getRegistrationEnd(), normalized.getRegistrationEnd());
+        boolean publishing = shouldValidatePublishTransition(existing.getStatus(), normalized.getStatus());
+        if (scheduleChanged || registrationWindowChanged || publishing) {
+            parseStageScheduleWindows(
+                    normalized.getScheduleJson(),
+                    normalized.getRegistrationStart(),
+                    normalized.getRegistrationEnd()
+            );
+        }
         int updated = competitionManagementRepository.updateCompetition(
                 new CompetitionManagementRepository.CompetitionUpdate(
                         id,
@@ -337,12 +347,14 @@ public class CompetitionManagementAppService {
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
-        synchronizeStageWindowsFromSchedule(
-                id,
-                normalized.getScheduleJson(),
-                requireUserId(currentUser),
-                requireUserUuid(currentUser)
-        );
+        if (scheduleChanged) {
+            synchronizeStageWindowsFromSchedule(
+                    id,
+                    normalized.getScheduleJson(),
+                    requireUserId(currentUser),
+                    requireUserUuid(currentUser)
+            );
+        }
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
         if (shouldValidatePublishTransition(existing.getStatus(), competition.getStatus())) {
             validateCompetitionReadyForPublish(competition, ensureCurrentConfigSet(competition, currentUser));
@@ -372,7 +384,7 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, "Only draft competition can be updated as draft");
         }
         CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, existing.getCompetitionNo());
-        parseStageScheduleWindows(
+        parseDraftStageScheduleWindows(
                 normalized.getScheduleJson(),
                 normalized.getRegistrationStart(),
                 normalized.getRegistrationEnd()
@@ -576,14 +588,17 @@ public class CompetitionManagementAppService {
             String stageName,
             LocalDateTime materialStart,
             LocalDateTime materialEnd,
-            LocalDateTime competitionStart,
-            LocalDateTime competitionEnd,
             LocalDateTime reviewStart,
             LocalDateTime reviewEnd
     ) {
     }
 
     private record TimelineRange(LocalDateTime start, LocalDateTime end) {
+    }
+
+    private enum StageScheduleValidationMode {
+        STRICT,
+        DRAFT
     }
 
     private void synchronizeStageWindowsFromSchedule(
@@ -609,7 +624,7 @@ public class CompetitionManagementAppService {
     }
 
     private Map<String, StageScheduleWindow> parseStageScheduleWindows(String scheduleJson) {
-        return parseStageScheduleWindows(scheduleJson, null, null, false);
+        return parseStageScheduleWindows(scheduleJson, null, null, StageScheduleValidationMode.DRAFT);
     }
 
     private Map<String, StageScheduleWindow> parseStageScheduleWindows(
@@ -617,14 +632,32 @@ public class CompetitionManagementAppService {
             String registrationStartValue,
             String registrationEndValue
     ) {
-        return parseStageScheduleWindows(scheduleJson, registrationStartValue, registrationEndValue, true);
+        return parseStageScheduleWindows(
+                scheduleJson,
+                registrationStartValue,
+                registrationEndValue,
+                StageScheduleValidationMode.STRICT
+        );
+    }
+
+    private Map<String, StageScheduleWindow> parseDraftStageScheduleWindows(
+            String scheduleJson,
+            String registrationStartValue,
+            String registrationEndValue
+    ) {
+        return parseStageScheduleWindows(
+                scheduleJson,
+                registrationStartValue,
+                registrationEndValue,
+                StageScheduleValidationMode.DRAFT
+        );
     }
 
     private Map<String, StageScheduleWindow> parseStageScheduleWindows(
             String scheduleJson,
             String registrationStartValue,
             String registrationEndValue,
-            boolean enforceRegistrationWindow
+            StageScheduleValidationMode validationMode
     ) {
         if (!StringUtils.hasText(scheduleJson)) {
             return Map.of();
@@ -649,52 +682,53 @@ public class CompetitionManagementAppService {
                 }
                 confirmedIndex += 1;
 
-                LocalDateTime materialStart = parseTimelineTime(schedule.path("materialStart").asText(null));
-                LocalDateTime materialEnd = parseTimelineTime(schedule.path("materialEnd").asText(null));
-                LocalDateTime competitionStart = parseTimelineTime(schedule.path("start").asText(null));
-                LocalDateTime competitionEnd = parseTimelineTime(schedule.path("end").asText(null));
-                LocalDateTime reviewStart = parseTimelineTime(schedule.path("reviewStart").asText(null));
-                LocalDateTime reviewEnd = parseTimelineTime(schedule.path("reviewEnd").asText(null));
-
-                boolean hasExplicitMaterialWindow = materialStart != null || materialEnd != null;
-                if (!hasExplicitMaterialWindow) {
-                    continue;
+                String materialStartValue = schedule.path("materialStart").asText(null);
+                String materialEndValue = schedule.path("materialEnd").asText(null);
+                String reviewStartValue = schedule.path("reviewStart").asText(null);
+                String reviewEndValue = schedule.path("reviewEnd").asText(null);
+                boolean hasCompleteMaterialWindow = StringUtils.hasText(materialStartValue)
+                        && StringUtils.hasText(materialEndValue);
+                boolean hasCompleteReviewWindow = StringUtils.hasText(reviewStartValue)
+                        && StringUtils.hasText(reviewEndValue);
+                if (!hasCompleteMaterialWindow || !hasCompleteReviewWindow) {
+                    if (validationMode == StageScheduleValidationMode.DRAFT) {
+                        continue;
+                    }
+                    if (!hasCompleteMaterialWindow) {
+                        throw biz(ErrorCode.VALIDATION_ERROR, "提交材料开始和结束时间不能为空");
+                    }
+                    throw biz(ErrorCode.VALIDATION_ERROR, "评审开始和结束时间不能为空");
                 }
-                if (enforceRegistrationWindow && registrationWindow == null) {
+
+                LocalDateTime materialStart = parseTimelineTime(materialStartValue);
+                LocalDateTime materialEnd = parseTimelineTime(materialEndValue);
+                LocalDateTime reviewStart = parseTimelineTime(reviewStartValue);
+                LocalDateTime reviewEnd = parseTimelineTime(reviewEndValue);
+                if (validationMode == StageScheduleValidationMode.STRICT && registrationWindow == null) {
                     registrationWindow = parseRegistrationWindow(registrationStartValue, registrationEndValue);
                 }
-                if (enforceRegistrationWindow && registrationWindow == null) {
+                if (validationMode == StageScheduleValidationMode.STRICT && registrationWindow == null) {
                     throw biz(ErrorCode.VALIDATION_ERROR, "请先设置完整的报名时间");
                 }
                 requireTimelineRange(materialStart, materialEnd, "Material submission end must be after its start");
-                requireTimelineRange(competitionStart, competitionEnd, "Competition end must be after its start");
                 requireTimelineRange(reviewStart, reviewEnd, "Review end must be after its start");
-                if (enforceRegistrationWindow) {
+                if (validationMode == StageScheduleValidationMode.STRICT) {
                     if (materialStart.isBefore(registrationWindow.start())
                             || materialEnd.isAfter(registrationWindow.end())) {
                         throw biz(ErrorCode.VALIDATION_ERROR, "提交材料时间必须在报名时间范围内");
-                    }
-                    if (competitionStart.isBefore(registrationWindow.start())
-                            || competitionEnd.isAfter(registrationWindow.end())) {
-                        throw biz(ErrorCode.VALIDATION_ERROR, "比赛时间必须在报名时间范围内");
                     }
                     if (reviewStart.isBefore(registrationWindow.start())
                             || reviewEnd.isAfter(registrationWindow.end())) {
                         throw biz(ErrorCode.VALIDATION_ERROR, "评审时间必须在报名时间范围内");
                     }
                 }
-                if (competitionStart.isBefore(materialEnd)) {
-                    throw biz(ErrorCode.VALIDATION_ERROR, "Competition cannot start before material submission closes");
-                }
-                if (reviewStart.isBefore(competitionEnd)) {
-                    throw biz(ErrorCode.VALIDATION_ERROR, "Review cannot start before competition ends");
+                if (reviewStart.isBefore(materialEnd)) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "Review cannot start before material submission closes");
                 }
                 windows.put(stageCode, new StageScheduleWindow(
                         trimToNull(schedule.path("title").asText(null)),
                         materialStart,
                         materialEnd,
-                        competitionStart,
-                        competitionEnd,
                         reviewStart,
                         reviewEnd
                 ));

@@ -122,7 +122,6 @@ describe('competition settings page-level save guards', () => {
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
         materialRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
-        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
       }],
     })).toBe(false);
   });
@@ -134,8 +133,7 @@ describe('competition settings page-level save guards', () => {
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
         materialRange: ['2026-07-01 00:00', '2026-07-10 00:00'],
-        timeRange: ['2026-07-10 00:00', '2026-07-18 00:00'],
-        reviewRange: ['2026-07-18 00:00', '2026-07-20 00:00'],
+        reviewRange: ['2026-07-10 00:00', '2026-07-20 00:00'],
       }],
     })).toBe(true);
   });
@@ -147,7 +145,6 @@ describe('competition settings page-level save guards', () => {
         timeMode: 'CONFIRMED' as const,
         title: 'Preliminary',
         materialRange: ['2026-07-01 00:00', '2026-10-01 00:00'] as [string, string],
-        timeRange: ['2026-10-01 00:00', '2026-10-02 00:00'] as [string, string],
         reviewRange: ['2026-10-02 00:00', '2026-10-03 00:00'] as [string, string],
       }],
     };
@@ -155,35 +152,46 @@ describe('competition settings page-level save guards', () => {
     expect(isTimelineSettingsPageReadyToSave(values)).toBe(false);
     expect(getCompetitionCreateMissingFields(values)).toEqual(expect.arrayContaining([
       '提交材料时间必须在报名时间范围内',
-      '比赛时间必须在报名时间范围内',
       '评审时间必须在报名时间范围内',
     ]));
   });
 
-  it('still rejects overlapping material and competition windows', () => {
+  it('rejects a review window that starts before material submission closes', () => {
     expect(isTimelineSettingsPageReadyToSave({
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
       schedules: [{
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
         materialRange: ['2026-07-01 00:00', '2026-07-10 00:00'],
-        timeRange: ['2026-07-09 23:59', '2026-07-18 00:00'],
-        reviewRange: ['2026-07-18 00:00', '2026-07-20 00:00'],
+        reviewRange: ['2026-07-09 23:59', '2026-07-20 00:00'],
       }],
     })).toBe(false);
   });
 
-  it('rejects overlapping material, competition, and review windows', () => {
+  it('reports the direct material-to-review ordering error', () => {
+    const values = {
+      registrationRange: ['2026-07-01 00:00', '2026-10-20 00:00'] as [string, string],
+      schedules: [{
+        timeMode: 'CONFIRMED' as const,
+        title: 'Preliminary',
+        materialRange: ['2026-07-01 00:00', '2026-10-01 00:00'] as [string, string],
+        reviewRange: ['2026-09-30 00:00', '2026-10-20 00:00'] as [string, string],
+      }],
+    };
+
+    expect(getCompetitionCreateMissingFields(values)).toContain('评审开始时间不得早于材料提交截止时间');
+  });
+
+  it('allows review to start exactly when material submission closes', () => {
     expect(isTimelineSettingsPageReadyToSave({
-      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
+      registrationRange: ['2026-07-01 00:00', '2026-10-20 00:00'],
       schedules: [{
         timeMode: 'CONFIRMED',
         title: 'Preliminary',
-        materialRange: ['2026-07-01 00:00', '2026-10-01 00:00'],
-        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'],
-        reviewRange: ['2026-10-17 00:00', '2026-10-20 00:00'],
+        materialRange: ['2026-07-01 00:00', '2026-09-30 00:00'],
+        reviewRange: ['2026-09-30 00:00', '2026-10-20 00:00'],
       }],
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('uses the same basic, payment, and timeline validation for competition creation', () => {
@@ -201,8 +209,7 @@ describe('competition settings page-level save guards', () => {
         timeMode: 'CONFIRMED' as const,
         title: 'Preliminary',
         materialRange: ['2026-07-01 00:00', '2026-09-30 00:00'] as [string, string],
-        timeRange: ['2026-09-30 00:00', '2026-10-18 00:00'] as [string, string],
-        reviewRange: ['2026-10-18 00:00', '2026-10-20 00:00'] as [string, string],
+        reviewRange: ['2026-09-30 00:00', '2026-10-20 00:00'] as [string, string],
       }],
     };
 

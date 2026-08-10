@@ -17,7 +17,6 @@ export type CompetitionSettingsScheduleFormItem = {
   timeMode?: CompetitionSettingsTimeMode;
   title?: string;
   materialRange?: [Dayjs, Dayjs] | [string, string];
-  timeRange?: [Dayjs, Dayjs] | [string, string];
   reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
 
@@ -86,7 +85,7 @@ const normalizeOptionValue = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const hasCompleteTimeRange = (range?: CompetitionSettingsFormValues['registrationRange'] | CompetitionSettingsScheduleFormItem['timeRange']) =>
+const hasCompleteTimeRange = (range?: CompetitionSettingsFormValues['registrationRange'] | CompetitionSettingsScheduleFormItem['materialRange']) =>
   Array.isArray(range) && range.length === 2 && Boolean(range[0]) && Boolean(range[1]);
 
 const hasCompleteOrganizer = (organizers?: CompetitionSettingsOrganizerFormItem[]) =>
@@ -155,7 +154,7 @@ export const getTimelineSettingsMissingFields = (
 
   const confirmedSchedules = schedules.filter((schedule) => schedule.timeMode === 'CONFIRMED');
   if (!confirmedSchedules.length || confirmedSchedules.some((schedule) => (
-    !trimOptional(schedule.title) || !hasCompleteTimeRange(schedule.timeRange)
+    !trimOptional(schedule.title)
   ))) {
     appendMissingField(missingFields, '竞赛安排');
   }
@@ -163,11 +162,6 @@ export const getTimelineSettingsMissingFields = (
     !hasCompleteTimeRange(schedule.materialRange) || !isChronologicalTimeRange(schedule.materialRange)
   ))) {
     appendMissingField(missingFields, '提交材料时间');
-  }
-  if (confirmedSchedules.some((schedule) => (
-    hasCompleteTimeRange(schedule.timeRange) && !isChronologicalTimeRange(schedule.timeRange)
-  ))) {
-    appendMissingField(missingFields, '比赛时间');
   }
   if (confirmedSchedules.some((schedule) => !hasCompleteTimeRange(schedule.reviewRange))) {
     appendMissingField(missingFields, '评审时间');
@@ -184,12 +178,6 @@ export const getTimelineSettingsMissingFields = (
     appendMissingField(missingFields, '提交材料时间必须在报名时间范围内');
   }
   if (hasCompleteTimeRange(values.registrationRange) && confirmedSchedules.some((schedule) => (
-    hasCompleteTimeRange(schedule.timeRange)
-      && !isTimeRangeWithinBounds(schedule.timeRange, values.registrationRange)
-  ))) {
-    appendMissingField(missingFields, '比赛时间必须在报名时间范围内');
-  }
-  if (hasCompleteTimeRange(values.registrationRange) && confirmedSchedules.some((schedule) => (
     hasCompleteTimeRange(schedule.reviewRange)
       && !isTimeRangeWithinBounds(schedule.reviewRange, values.registrationRange)
   ))) {
@@ -197,17 +185,10 @@ export const getTimelineSettingsMissingFields = (
   }
   if (confirmedSchedules.some((schedule) => (
     hasCompleteTimeRange(schedule.materialRange)
-      && hasCompleteTimeRange(schedule.timeRange)
-      && !isTimeRangeAtOrAfterPreviousEnd(schedule.timeRange, schedule.materialRange)
-  ))) {
-    appendMissingField(missingFields, '比赛开始时间不得早于材料提交截止时间');
-  }
-  if (confirmedSchedules.some((schedule) => (
-    hasCompleteTimeRange(schedule.timeRange)
       && hasCompleteTimeRange(schedule.reviewRange)
-      && !isTimeRangeAtOrAfterPreviousEnd(schedule.reviewRange, schedule.timeRange)
+      && !isTimeRangeAtOrAfterPreviousEnd(schedule.reviewRange, schedule.materialRange)
   ))) {
-    appendMissingField(missingFields, '评审开始时间不得早于比赛结束时间');
+    appendMissingField(missingFields, '评审开始时间不得早于材料提交截止时间');
   }
   return missingFields;
 };

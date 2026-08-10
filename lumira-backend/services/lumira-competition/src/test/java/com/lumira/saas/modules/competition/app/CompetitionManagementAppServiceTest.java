@@ -496,6 +496,32 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void updateCompetitionDraftAllowsIncompleteConfirmedScheduleWithoutStageSync() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        CompetitionVO.Competition updated = competition("draft");
+        jdbcTemplate.enqueue(List.of(existing), List.of(updated));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setScheduleJson("""
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"初赛",
+                  "materialStart":"2026-07-01 09:00",
+                  "materialEnd":"2026-07-10 18:00"
+                }]
+                """);
+
+        CompetitionVO.Competition saved = service.updateCompetitionDraft(admin(), 11L, request);
+
+        assertThat(saved).isSameAs(updated);
+        assertThat(jdbcTemplate.updates)
+                .noneMatch(sql -> sql.contains("update competition_stage"));
+    }
+
+    @Test
     void updateCompetitionShouldRequireUpdatePermissionAtServiceLayer() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionManagementAppService service = service(jdbcTemplate);
@@ -834,8 +860,6 @@ class CompetitionManagementAppServiceTest {
                   "title":"初赛",
                   "materialStart":"2026-07-01 09:00",
                   "materialEnd":"2026-07-10 18:00",
-                  "start":"2026-07-11 09:00",
-                  "end":"2026-07-12 18:00",
                   "reviewStart":"2026-07-13 09:00",
                   "reviewEnd":"2026-07-15 18:00"
                 }]
@@ -859,6 +883,156 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void updateCompetitionRejectsConfirmedScheduleMissingMaterialWindow() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("draft")));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setRegistrationEnd("2026-07-15 18:00");
+        request.setScheduleJson("""
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"初赛",
+                  "reviewStart":"2026-07-10 18:00",
+                  "reviewEnd":"2026-07-15 18:00"
+                }]
+                """);
+
+        assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getUserMessage()).contains("提交材料开始和结束时间不能为空"));
+        assertThat(jdbcTemplate.updates).isEmpty();
+    }
+
+    @Test
+    void updateCompetitionRejectsConfirmedScheduleMissingReviewWindow() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        jdbcTemplate.enqueue(List.of(competition("draft")));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setRegistrationEnd("2026-07-15 18:00");
+        request.setScheduleJson("""
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"初赛",
+                  "materialStart":"2026-07-01 09:00",
+                  "materialEnd":"2026-07-10 18:00"
+                }]
+                """);
+
+        assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getUserMessage()).contains("评审开始和结束时间不能为空"));
+        assertThat(jdbcTemplate.updates).isEmpty();
+    }
+
+    @Test
+    void updateCompetitionRevalidatesUnchangedScheduleWhenRegistrationWindowChanges() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        String storedSchedule = """
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"初赛",
+                  "materialStart":"2026-06-29 09:00",
+                  "materialEnd":"2026-07-05 18:00",
+                  "reviewStart":"2026-07-06 09:00",
+                  "reviewEnd":"2026-07-10 18:00"
+                }]
+                """.trim();
+        existing.setScheduleJson(storedSchedule);
+        jdbcTemplate.enqueue(List.of(existing));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setRegistrationEnd("2026-07-09 18:00");
+        request.setScheduleJson(storedSchedule);
+
+        assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getUserMessage()).contains("评审时间必须在报名时间范围内"));
+        assertThat(jdbcTemplate.updates).isEmpty();
+    }
+
+    @Test
+    void updateCompetitionPreservesAnUnchangedStoredScheduleWithoutReparsingIt() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        CompetitionVO.Competition updated = competition("draft");
+        String storedSchedule = """
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"已存储赛程"
+                }]
+                """.trim();
+        existing.setScheduleJson(storedSchedule);
+        updated.setScheduleJson(storedSchedule);
+        jdbcTemplate.enqueue(List.of(existing), List.of(updated));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setScheduleJson(storedSchedule);
+
+        CompetitionVO.Competition saved = service.updateCompetition(admin(), 11L, request);
+
+        assertThat(saved).isSameAs(updated);
+        assertThat(jdbcTemplate.updates)
+                .noneMatch(sql -> sql.contains("update competition_stage"));
+    }
+
+    @Test
+    void updateCompetitionPreservesWhitespaceInAnUnchangedOpaqueStoredSchedule() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        CompetitionVO.Competition updated = competition("draft");
+        String storedSchedule = "  \n[{\"timeMode\":\"CONFIRMED\",\"title\":\"旧版赛程\"}]\n  ";
+        existing.setScheduleJson(storedSchedule);
+        updated.setScheduleJson(storedSchedule);
+        jdbcTemplate.enqueue(List.of(existing), List.of(updated));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+        request.setScheduleJson(storedSchedule);
+
+        CompetitionVO.Competition saved = service.updateCompetition(admin(), 11L, request);
+
+        assertThat(saved).isSameAs(updated);
+        assertThat(jdbcTemplate.updates)
+                .noneMatch(sql -> sql.contains("update competition_stage"));
+        assertThat(jdbcTemplate.updateArguments)
+                .anySatisfy(arguments -> assertThat(arguments).contains(storedSchedule));
+    }
+
+    @Test
+    void updateCompetitionRequiresTheCurrentScheduleShapeBeforePublishing() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        String storedSchedule = """
+                [{
+                  "timeMode":"CONFIRMED",
+                  "title":"已存储赛程"
+                }]
+                """.trim();
+        existing.setScheduleJson(storedSchedule);
+        jdbcTemplate.enqueue(List.of(existing));
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setScheduleJson(storedSchedule);
+
+        assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
+                .isInstanceOfSatisfying(BizException.class, exception ->
+                        assertThat(exception.getUserMessage()).contains("提交材料开始和结束时间不能为空"));
+        assertThat(jdbcTemplate.updates).isEmpty();
+    }
+
+    @Test
     void updateCompetitionRejectsTimelineOutsideRegistrationWindowBeforeWriting() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionManagementAppService service = service(jdbcTemplate);
@@ -872,8 +1046,6 @@ class CompetitionManagementAppServiceTest {
                   "title":"初赛",
                   "materialStart":"2026-07-01 09:00",
                   "materialEnd":"2026-07-05 18:00",
-                  "start":"2026-07-06 09:00",
-                  "end":"2026-07-09 18:00",
                   "reviewStart":"2026-07-10 09:00",
                   "reviewEnd":"2026-07-11 18:00"
                 }]
@@ -886,28 +1058,27 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
-    void updateCompetitionRejectsOverlappingTimelineWindowsBeforeWriting() {
+    void updateCompetitionRejectsReviewStartingBeforeMaterialSubmissionCloses() {
         StubOperations jdbcTemplate = new StubOperations();
         CompetitionManagementAppService service = service(jdbcTemplate);
         jdbcTemplate.enqueue(List.of(competition("draft")));
         jdbcTemplate.updateCount = 1;
         CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
         request.setStatus("draft");
+        request.setRegistrationEnd("2026-07-15 18:00");
         request.setScheduleJson("""
                 [{
                   "timeMode":"CONFIRMED",
                   "materialStart":"2026-07-01 09:00",
                   "materialEnd":"2026-07-12 18:00",
-                  "start":"2026-07-11 09:00",
-                  "end":"2026-07-13 18:00",
-                  "reviewStart":"2026-07-13 09:00",
+                  "reviewStart":"2026-07-11 09:00",
                   "reviewEnd":"2026-07-15 18:00"
                 }]
                 """);
 
         assertThatThrownBy(() -> service.updateCompetition(admin(), 11L, request))
                 .isInstanceOfSatisfying(BizException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
+                        assertThat(exception.getUserMessage()).contains("Review cannot start before material submission closes"));
         assertThat(jdbcTemplate.updates).isEmpty();
     }
 

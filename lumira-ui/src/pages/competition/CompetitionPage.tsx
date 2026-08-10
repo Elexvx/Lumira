@@ -178,9 +178,16 @@ import {
   prioritizeRequiredMemberNameField,
   reorderScopedConfigItems,
 } from './utils/competitionFieldConfig';
+import {
+  deriveCompetitionOverallWindow,
+  preserveCompetitionTimelineSnapshot,
+  sanitizeCompetitionSchedules,
+  type CompetitionJsonSchedule,
+  type CompetitionScheduleFormItem,
+  type CompetitionTimeMode,
+} from './competitionSchedulePayload';
+import { transitionAfterCompetitionSettingsSave } from './competitionSettingsPanelTransition';
 import './CompetitionPage.css';
-
-type CompetitionTimeMode = 'CONFIRMED' | 'TBD';
 
 const detectPaymentClientType = (): 'DESKTOP' | 'MOBILE' | 'WECHAT' => {
   if (typeof navigator === 'undefined') {
@@ -196,14 +203,6 @@ const detectPaymentClientType = (): 'DESKTOP' | 'MOBILE' | 'WECHAT' => {
 type CompetitionOrganizerFormItem = {
   role?: string;
   name?: string;
-};
-
-type CompetitionScheduleFormItem = {
-  timeMode?: CompetitionTimeMode;
-  title?: string;
-  materialRange?: [Dayjs, Dayjs] | [string, string];
-  timeRange?: [Dayjs, Dayjs] | [string, string];
-  reviewRange?: [Dayjs, Dayjs] | [string, string];
 };
 
 type CompetitionFormValues = Omit<Partial<CompetitionUpsertPayload>, 'locale'> & {
@@ -262,17 +261,6 @@ const emptyRegistrationTeamMember = (): RegistrationTeamMemberDraft => ({
   remark: '',
   extraValues: {},
 });
-
-type CompetitionJsonSchedule = {
-  timeMode?: CompetitionTimeMode;
-  title?: string;
-  materialStart?: string;
-  materialEnd?: string;
-  start?: string;
-  end?: string;
-  reviewStart?: string;
-  reviewEnd?: string;
-};
 
 type CompetitionMaterialStageTab = {
   key: string;
@@ -563,32 +551,6 @@ const sanitizeOrganizers = (organizers?: CompetitionOrganizerFormItem[]) =>
     }))
     .filter((item) => item.role || item.name);
 
-const sanitizeSchedules = (schedules?: CompetitionScheduleFormItem[]): CompetitionJsonSchedule[] => {
-  const normalized = (schedules || [])
-    .map((item) => {
-      const timeMode = normalizeTimeMode(item.timeMode);
-      if (timeMode !== 'CONFIRMED') {
-        return { timeMode: 'TBD' as const };
-      }
-      const [materialStart, materialEnd] = item.materialRange || [];
-      const [start, end] = item.timeRange || [];
-      const [reviewStart, reviewEnd] = item.reviewRange || [];
-      return {
-        timeMode,
-        title: trimOptional(item.title),
-        materialStart: formatRangeValue(materialStart),
-        materialEnd: formatRangeValue(materialEnd),
-        start: formatRangeValue(start),
-        end: formatRangeValue(end),
-        reviewStart: formatRangeValue(reviewStart),
-        reviewEnd: formatRangeValue(reviewEnd),
-      };
-    })
-    .filter((item) => item.timeMode === 'TBD' || item.title || item.start || item.end);
-  const confirmedSchedules = normalized.filter((item) => item.timeMode === 'CONFIRMED');
-  return confirmedSchedules.length ? confirmedSchedules : [{ timeMode: 'TBD' }];
-};
-
 const organizerLabel = (organizer: CompetitionOrganizerFormItem) =>
   [organizer.role, organizer.name].map(trimOptional).filter(Boolean).join('：');
 
@@ -597,11 +559,26 @@ const mojibakeReplacementPattern = new RegExp(`${String.fromCharCode(0xfffd)}\\?
 const normalizeMojibakeText = (value?: string | null) =>
   trimOptional(value)?.replace(mojibakeReplacementPattern, '');
 
-const normalizePayload = (values: CompetitionFormValues): CompetitionUpsertPayload => {
+const normalizePayload = (
+  values: CompetitionFormValues,
+  options?: { preserveTimelineFrom?: CompetitionRecord },
+): CompetitionUpsertPayload => {
   const [registrationStart, registrationEnd] = values.registrationRange || [];
   const organizers = sanitizeOrganizers(values.organizers);
-  const schedules = sanitizeSchedules(values.schedules);
-  const firstConfirmedSchedule = schedules.find((item) => item.timeMode === 'CONFIRMED' && item.start);
+  const schedules = sanitizeCompetitionSchedules(values.schedules);
+  const overallWindow = deriveCompetitionOverallWindow(
+    schedules,
+    values.competitionStart,
+    values.competitionEnd,
+  );
+  const timelineSnapshot = options?.preserveTimelineFrom
+    ? preserveCompetitionTimelineSnapshot(options.preserveTimelineFrom)
+    : {
+        registrationStart: formatRangeValue(registrationStart),
+        registrationEnd: formatRangeValue(registrationEnd),
+        scheduleJson: schedules.length ? JSON.stringify(schedules) : undefined,
+        ...overallWindow,
+      };
   const participationScope = trimOptional(values.participationScope);
   const category = normalizeOptionValue(values.category);
   const competitionLevel = normalizeOptionValue(values.competitionLevel || values.level);
@@ -616,14 +593,14 @@ const normalizePayload = (values: CompetitionFormValues): CompetitionUpsertPaylo
     competitionLevel,
     organizer: organizers.length ? organizerLabel(organizers[0]) : undefined,
     organizersJson: organizers.length ? JSON.stringify(organizers) : undefined,
-    registrationStart: formatRangeValue(registrationStart),
-    registrationEnd: formatRangeValue(registrationEnd),
-    competitionStart: firstConfirmedSchedule?.start || 'TBD',
-    competitionEnd: firstConfirmedSchedule?.end,
+    registrationStart: timelineSnapshot.registrationStart,
+    registrationEnd: timelineSnapshot.registrationEnd,
+    competitionStart: timelineSnapshot.competitionStart,
+    competitionEnd: timelineSnapshot.competitionEnd,
     location: participationScope || 'TBD',
     participationScope,
     participationRequirement: trimOptional(values.participationRequirement),
-    scheduleJson: schedules.length ? JSON.stringify(schedules) : undefined,
+    scheduleJson: timelineSnapshot.scheduleJson,
     description: trimOptional(values.description),
     imageUrl: trimOptional(values.imageUrl),
     contactName: trimOptional(values.contactName),
@@ -645,7 +622,6 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
     timeMode: normalizeTimeMode(item.timeMode),
     title: item.title,
     materialRange: item.timeMode === 'CONFIRMED' ? parseRange(item.materialStart, item.materialEnd) : undefined,
-    timeRange: item.timeMode === 'CONFIRMED' ? parseRange(item.start, item.end) : undefined,
     reviewRange: item.timeMode === 'CONFIRMED' ? parseRange(item.reviewStart, item.reviewEnd) : undefined,
   }));
 
@@ -660,7 +636,9 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
     organizer: normalizeMojibakeText(draftBasicDefaults.organizer),
     organizers: draftBasicDefaults.organizers,
     registrationRange: parseRange(record.registrationStart, record.registrationEnd),
-    schedules: schedules.length ? schedules : [{ timeMode: 'CONFIRMED', title: '竞赛时间', timeRange: parseRange(record.competitionStart, record.competitionEnd) }],
+    schedules: schedules.length ? schedules : [{ timeMode: 'TBD' }],
+    competitionStart: record.competitionStart,
+    competitionEnd: record.competitionEnd || undefined,
     participationScope: draftBasicDefaults.participationScope,
     participationRequirement: record.participationRequirement || undefined,
     description: record.description || undefined,
@@ -689,7 +667,7 @@ const defaultCompetitionFormValues: Partial<CompetitionFormValues> = {
 };
 
 const serializeDraftRangeValue = (
-  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['timeRange'],
+  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['materialRange'],
 ): [string, string] | undefined => {
   if (!Array.isArray(range) || range.length !== 2) {
     return undefined;
@@ -707,14 +685,13 @@ const serializeCompetitionCreateDraftValues = (values: Partial<CompetitionFormVa
     schedules: values.schedules?.map((schedule) => ({
       ...schedule,
       materialRange: serializeDraftRangeValue(schedule.materialRange),
-      timeRange: serializeDraftRangeValue(schedule.timeRange),
       reviewRange: serializeDraftRangeValue(schedule.reviewRange),
     })),
   };
 };
 
 const restoreDraftRangeValue = (
-  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['timeRange'],
+  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['materialRange'],
 ): [Dayjs, Dayjs] | undefined => {
   if (!Array.isArray(range) || range.length !== 2) {
     return undefined;
@@ -734,7 +711,7 @@ const toValidDayjs = (value?: Dayjs | string) => {
   return parsed.isValid() ? parsed : undefined;
 };
 
-type CompetitionDateTimeRange = CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['timeRange'];
+type CompetitionDateTimeRange = CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['materialRange'];
 
 type CompetitionDateTimeDisabledTime = (
   date: Dayjs,
@@ -864,7 +841,7 @@ const toPositiveId = (value: unknown) => {
 };
 
 const getCompleteTimeRange = (
-  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['timeRange'],
+  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['materialRange'],
 ): [Dayjs, Dayjs] | undefined => {
   if (!Array.isArray(range) || range.length !== 2) {
     return undefined;
@@ -912,7 +889,6 @@ const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormVal
       ...schedule,
       timeMode: normalizeTimeMode(schedule.timeMode),
       materialRange: restoreDraftRangeValue(schedule.materialRange),
-      timeRange: restoreDraftRangeValue(schedule.timeRange),
       reviewRange: restoreDraftRangeValue(schedule.reviewRange),
     })),
   };
@@ -1011,7 +987,6 @@ const hasCompetitionCreateDraftContent = (values: Partial<CompetitionFormValues>
         normalizeTimeMode(schedule.timeMode) === 'CONFIRMED'
         || trimOptional(schedule.title)
         || getCompleteTimeRange(schedule.materialRange)
-        || getCompleteTimeRange(schedule.timeRange)
         || getCompleteTimeRange(schedule.reviewRange)
       ))
   );
@@ -1275,18 +1250,18 @@ const CompetitionBasicFields = ({
                           />
                         </Form.Item>
                         <Form.Item
-                          name={[field.name, 'timeRange']}
-                          label="比赛时间"
+                          name={[field.name, 'reviewRange']}
+                          label="评审时间"
                           dependencies={[['registrationRange'], ['schedules', field.name, 'materialRange']]}
                           rules={[
-                            { required: true, message: '请选择比赛时间' },
+                            { required: true, message: '请选择评审时间' },
                             {
-                              validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
+                              validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => {
                                 if (!isChronologicalTimeRange(value)) {
-                                  return Promise.reject(new Error('比赛结束时间必须晚于开始时间'));
+                                  return Promise.reject(new Error('评审结束时间必须晚于开始时间'));
                                 }
                                 if (!isTimeRangeWithinBounds(value, registrationRange)) {
-                                  return Promise.reject(new Error('比赛时间必须在报名时间范围内'));
+                                  return Promise.reject(new Error('评审时间必须在报名时间范围内'));
                                 }
                                 const materialRange = form.getFieldValue(['schedules', field.name, 'materialRange']);
                                 if (!getCompleteTimeRange(materialRange)) {
@@ -1294,11 +1269,11 @@ const CompetitionBasicFields = ({
                                 }
                                 return isTimeRangeAtOrAfterPreviousEnd(value, materialRange)
                                   ? Promise.resolve()
-                                  : Promise.reject(new Error('比赛开始时间不得早于材料提交截止时间'));
+                                  : Promise.reject(new Error('评审开始时间不得早于材料提交截止时间'));
                               },
                             },
                           ]}
-                          className="competition-schedule-row__time"
+                          className="competition-schedule-row__review-time"
                         >
                           <CompetitionDateTimeRangePicker
                             minDate={getScheduleRangePickerBounds(
@@ -1311,47 +1286,6 @@ const CompetitionBasicFields = ({
                               getScheduleRangePickerBounds(
                                 registrationRange,
                                 form.getFieldValue(['schedules', field.name, 'materialRange']),
-                              ),
-                            )}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          name={[field.name, 'reviewRange']}
-                          label="评审时间"
-                          dependencies={[['registrationRange'], ['schedules', field.name, 'timeRange']]}
-                          rules={[
-                            { required: true, message: '请选择评审时间' },
-                            {
-                              validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => {
-                                if (!isChronologicalTimeRange(value)) {
-                                  return Promise.reject(new Error('评审结束时间必须晚于开始时间'));
-                                }
-                                if (!isTimeRangeWithinBounds(value, registrationRange)) {
-                                  return Promise.reject(new Error('评审时间必须在报名时间范围内'));
-                                }
-                                const competitionRange = form.getFieldValue(['schedules', field.name, 'timeRange']);
-                                if (!getCompleteTimeRange(competitionRange)) {
-                                  return Promise.reject(new Error('请先选择比赛时间'));
-                                }
-                                return isTimeRangeAtOrAfterPreviousEnd(value, competitionRange)
-                                  ? Promise.resolve()
-                                  : Promise.reject(new Error('评审开始时间不得早于比赛结束时间'));
-                              },
-                            },
-                          ]}
-                          className="competition-schedule-row__review-time"
-                        >
-                          <CompetitionDateTimeRangePicker
-                            minDate={getScheduleRangePickerBounds(
-                              registrationRange,
-                              form.getFieldValue(['schedules', field.name, 'timeRange']),
-                            ).minDate}
-                            maxDate={getScheduleRangePickerBounds(registrationRange).maxDate}
-                            disabledDate={(current) => isOutsideScheduleRangePickerBounds(
-                              current,
-                              getScheduleRangePickerBounds(
-                                registrationRange,
-                                form.getFieldValue(['schedules', field.name, 'timeRange']),
                               ),
                             )}
                           />
@@ -5080,7 +5014,7 @@ const CompetitionRegistrationPage = () => {
   );
 };
 
-type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files' | 'timeline';
+type CompetitionSettingsConfigModuleKey = 'documents' | 'fields' | 'payments' | 'files';
 type CompetitionSettingsModuleKey = CompetitionSettingsSectionKey;
 
 type CompetitionSettingsModuleConfig = {
@@ -5111,9 +5045,6 @@ type ConfigItemMetadata = {
   stageCode?: string;
   stageName?: string;
   materialType?: string;
-  timelineKind?: string;
-  startAt?: string;
-  endAt?: string;
   teamMinMembers?: number;
   teamMaxMembers?: number;
 };
@@ -5201,14 +5132,6 @@ const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
     descriptionId: 'page.competition.settings.module.files.description',
     defaultDescription: 'Files participants must upload, including works, proof and authorization files.',
     itemTypes: ['REQUIRED_FILE', 'STAGE_MATERIAL'],
-  },
-  {
-    key: 'timeline',
-    labelId: 'page.competition.settings.module.timeline',
-    defaultLabel: 'Timeline',
-    descriptionId: 'page.competition.settings.module.timeline.description',
-    defaultDescription: 'Registration, competition, material submission and review windows.',
-    itemTypes: ['TIMELINE'],
   },
 ];
 
@@ -5475,14 +5398,6 @@ const loadConfiguredPaymentProviderOptions = async (): Promise<PaymentProviderOp
     }));
 };
 
-const timelineKindOptions = [
-  { label: '报名时间', value: 'REGISTRATION' },
-  { label: '比赛时间', value: 'COMPETITION' },
-  { label: '材料提交时间', value: 'MATERIAL_SUBMISSION' },
-  { label: '评审时间', value: 'REVIEW' },
-  { label: '公示时间', value: 'PUBLICITY' },
-];
-
 const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number): CompetitionConfigItem => ({
   itemType,
   itemKey: `${itemType.toLowerCase()}-${Date.now()}`,
@@ -5494,11 +5409,9 @@ const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number)
         ? { fileFormat: 'ANY', maxSizeMb: 20, stageCode: 'GENERAL', stageName: '通用' }
         : itemType === 'STAGE_MATERIAL'
           ? { materialType: 'FILE', stageCode: 'PRELIMINARY', stageName: '初赛', fileFormat: 'ANY', maxSizeMb: 20 }
-          : itemType === 'TIMELINE'
-            ? { timelineKind: 'REGISTRATION' }
-            : itemType === 'AGREEMENT' || itemType === 'CONSENT'
-              ? { documentKind: itemType, readingSeconds: 0 }
-              : {},
+          : itemType === 'AGREEMENT' || itemType === 'CONSENT'
+            ? { documentKind: itemType, readingSeconds: 0 }
+            : {},
   ),
   contentText: '',
   sortOrder,
@@ -5522,7 +5435,7 @@ const getModuleItems = (settings: CompetitionSettingsRecord | undefined, key: Co
   if (key === 'payments') {
     return settings.payments || [];
   }
-  return settings.timeline;
+  return [];
 };
 
 const splitFileConfigItemsByModule = (items: CompetitionConfigItem[]) => ({
@@ -5571,7 +5484,10 @@ const useDebouncedAutoSave = (save: () => Promise<boolean>) => {
         savingRef.current = false;
       }
       if (pendingRef.current) {
-        saved = (await runSave()) && saved;
+        saved = await runSave();
+      }
+      if (!saved) {
+        pendingRef.current = true;
       }
       return saved;
     })();
@@ -5770,31 +5686,7 @@ const renderConfigItemFields = (
     );
   }
 
-  return (
-    <div className="competition-config-grid">
-      <Form.Item name={[fieldName, 'metadata', 'timelineKind']} label="时间类型" rules={[{ required: true, message: '请选择时间类型' }]}>
-        <Select options={timelineKindOptions} />
-      </Form.Item>
-      <Form.Item name={[fieldName, 'title']} label="时间名称" rules={[{ required: true, message: '请输入时间名称' }]}>
-        <Input placeholder="例如 报名时间、初赛评审" maxLength={64} />
-      </Form.Item>
-      <Form.Item name={[fieldName, 'itemKey']} label="时间标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入时间标识' }]}>
-        <Input placeholder="例如 registration、review_preliminary" maxLength={64} />
-      </Form.Item>
-      <Form.Item name={[fieldName, 'metadata', 'startAt']} label="开始时间">
-        <Input placeholder="例如 2026-07-01 09:00" maxLength={32} />
-      </Form.Item>
-      <Form.Item name={[fieldName, 'metadata', 'endAt']} label="结束时间">
-        <Input placeholder="例如 2026-07-31 18:00" maxLength={32} />
-      </Form.Item>
-      <Form.Item name={[fieldName, 'sortOrder']} label="排序">
-        <InputNumber min={0} style={{ width: '100%' }} />
-      </Form.Item>
-      <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="时间说明">
-        <Input.TextArea rows={2} placeholder="补充说明该时间窗口覆盖的事项" maxLength={200} />
-      </Form.Item>
-    </div>
-  );
+  return null;
 };
 
 const renderFieldSettingsTable = (
@@ -6454,7 +6346,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                       <Form.Item name={[field.name, 'enabled']} label={module.key === 'documents' ? '报名前展示' : formatMessage({ id: 'page.competition.settings.item.enabled', defaultMessage: 'Enabled' })} valuePropName="checked">
                         <Switch checkedChildren="启用" unCheckedChildren="停用" />
                       </Form.Item>
-                      {module.key !== 'fields' && module.key !== 'timeline' && module.key !== 'files' ? (
+                      {module.key !== 'fields' && module.key !== 'files' ? (
                         <Form.Item name={[field.name, 'sortOrder']} label={formatMessage({ id: 'page.competition.settings.item.sort', defaultMessage: 'Sort' })}>
                           <InputNumber min={0} style={{ width: 120 }} />
                         </Form.Item>
@@ -6548,7 +6440,7 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
         ...defaultCompetitionFormValues,
         ...recordToFormValues(competition),
         ...values,
-      } as CompetitionFormValues), API_OPTS.SILENT);
+      } as CompetitionFormValues, { preserveTimelineFrom: competition }), API_OPTS.SILENT);
       onSaved(saved);
       return true;
     } catch (error) {
@@ -6699,7 +6591,7 @@ const CompetitionPaymentSettingsPanel = forwardRef<CompetitionSettingsPanelHandl
         ...defaultCompetitionFormValues,
         ...recordToFormValues(competition),
         ...values,
-      } as CompetitionFormValues), API_OPTS.SILENT);
+      } as CompetitionFormValues, { preserveTimelineFrom: competition }), API_OPTS.SILENT);
       onCompetitionSaved(saved);
       return true;
     } catch (error) {
@@ -6838,7 +6730,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
         </Typography.Title>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        统一管理报名时间，以及各阶段的材料提交、比赛和评审安排。
+        统一管理报名时间，以及各阶段的材料提交和评审安排。
       </Typography.Paragraph>
       <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
         <section className="competition-basic-section">
@@ -6846,7 +6738,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
             报名时间
           </Typography.Title>
           <Typography.Paragraph type="secondary">
-            提交材料、比赛和评审时间均需在报名时间范围内，系统会同步限制可选择的日期和时间。
+            提交材料和评审时间均需在报名时间范围内，系统会同步限制可选择的日期和时间。
           </Typography.Paragraph>
           <Form.Item
             name="registrationRange"
@@ -6900,7 +6792,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                       <div className="competition-schedule-table__head">
                         <span>阶段名称</span>
                         <span>提交材料时间</span>
-                        <span>比赛时间</span>
                         <span>评审时间</span>
                         <span>操作</span>
                       </div>
@@ -6939,17 +6830,17 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                             />
                           </Form.Item>
                           <Form.Item
-                            name={[field.name, 'timeRange']}
+                            name={[field.name, 'reviewRange']}
                             dependencies={[['registrationRange'], ['schedules', field.name, 'materialRange']]}
                             rules={[
-                              { required: true, message: '请选择比赛时间' },
+                              { required: true, message: '请选择评审时间' },
                               {
-                                validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
+                                validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => {
                                   if (!isChronologicalTimeRange(value)) {
-                                    return Promise.reject(new Error('比赛结束时间必须晚于开始时间'));
+                                    return Promise.reject(new Error('评审结束时间必须晚于开始时间'));
                                   }
                                   if (!isTimeRangeWithinBounds(value, registrationRange)) {
-                                    return Promise.reject(new Error('比赛时间必须在报名时间范围内'));
+                                    return Promise.reject(new Error('评审时间必须在报名时间范围内'));
                                   }
                                   const materialRange = form.getFieldValue(['schedules', field.name, 'materialRange']);
                                   if (!getCompleteTimeRange(materialRange)) {
@@ -6957,7 +6848,7 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                                   }
                                   return isTimeRangeAtOrAfterPreviousEnd(value, materialRange)
                                     ? Promise.resolve()
-                                    : Promise.reject(new Error('比赛开始时间不得早于材料提交截止时间'));
+                                    : Promise.reject(new Error('评审开始时间不得早于材料提交截止时间'));
                                 },
                               },
                             ]}
@@ -6973,45 +6864,6 @@ const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHand
                                 getScheduleRangePickerBounds(
                                   registrationRange,
                                   form.getFieldValue(['schedules', field.name, 'materialRange']),
-                                ),
-                              )}
-                            />
-                          </Form.Item>
-                          <Form.Item
-                            name={[field.name, 'reviewRange']}
-                            dependencies={[['registrationRange'], ['schedules', field.name, 'timeRange']]}
-                            rules={[
-                              { required: true, message: '请选择评审时间' },
-                              {
-                                validator: (_, value: CompetitionScheduleFormItem['reviewRange']) => {
-                                  if (!isChronologicalTimeRange(value)) {
-                                    return Promise.reject(new Error('评审结束时间必须晚于开始时间'));
-                                  }
-                                  if (!isTimeRangeWithinBounds(value, registrationRange)) {
-                                    return Promise.reject(new Error('评审时间必须在报名时间范围内'));
-                                  }
-                                  const competitionRange = form.getFieldValue(['schedules', field.name, 'timeRange']);
-                                  if (!getCompleteTimeRange(competitionRange)) {
-                                    return Promise.reject(new Error('请先选择比赛时间'));
-                                  }
-                                  return isTimeRangeAtOrAfterPreviousEnd(value, competitionRange)
-                                    ? Promise.resolve()
-                                    : Promise.reject(new Error('评审开始时间不得早于比赛结束时间'));
-                                },
-                              },
-                            ]}
-                          >
-                            <CompetitionDateTimeRangePicker
-                              minDate={getScheduleRangePickerBounds(
-                                registrationRange,
-                                form.getFieldValue(['schedules', field.name, 'timeRange']),
-                              ).minDate}
-                              maxDate={getScheduleRangePickerBounds(registrationRange).maxDate}
-                              disabledDate={(current) => isOutsideScheduleRangePickerBounds(
-                                current,
-                                getScheduleRangePickerBounds(
-                                  registrationRange,
-                                  form.getFieldValue(['schedules', field.name, 'timeRange']),
                                 ),
                               )}
                             />
@@ -7133,9 +6985,11 @@ const CompetitionSettingsPage = () => {
   const [stageDetail, setStageDetail] = useState<CompetitionSettingsStageTab>(initialNavigation.stageTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
   const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
   const [paymentProviderOptions, setPaymentProviderOptions] = useState<PaymentProviderOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
+  const transitioningRef = useRef(false);
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
   const { options: levelOptions } = useDictOptions(COMPETITION_LEVEL_DICT, fallbackDictOptions.levelOptions);
@@ -7162,6 +7016,32 @@ const CompetitionSettingsPage = () => {
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, [location.pathname, location.search]);
 
+  const transitionFromPanel = useCallback(async (
+    panel: CompetitionSettingsPanelHandle | null,
+    transition: () => void,
+  ): Promise<boolean | undefined> => {
+    if (transitioningRef.current) {
+      return undefined;
+    }
+    transitioningRef.current = true;
+    setTransitioning(true);
+    setSaving(true);
+    try {
+      const transitioned = await transitionAfterCompetitionSettingsSave(panel, transition);
+      if (!transitioned) {
+        message.warning('当前设置未保存，请检查必填项或错误提示');
+      }
+      return transitioned;
+    } catch (error) {
+      showErrorMessage(error, '当前设置保存失败');
+      return false;
+    } finally {
+      transitioningRef.current = false;
+      setTransitioning(false);
+      setSaving(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!settings) {
       return;
@@ -7174,23 +7054,39 @@ const CompetitionSettingsPage = () => {
     if (!fallbackStageTab) {
       return;
     }
-    setStageDetail(fallbackStageTab);
-    updateNavigationUrl('stages', fallbackStageTab, true);
-  }, [activeKey, materialStageTabs, settings, stageDetail, updateNavigationUrl]);
+    const previousPanel = activePanelRef.current;
+    void transitionFromPanel(previousPanel, () => {
+      setStageDetail(fallbackStageTab);
+      updateNavigationUrl('stages', fallbackStageTab, true);
+    });
+  }, [activeKey, materialStageTabs, settings, stageDetail, transitionFromPanel, updateNavigationUrl]);
 
   useEffect(() => {
     const navigation = parseCompetitionSettingsNavigation(location.search);
-    setActiveKey(navigation.section);
-    setRegistrationDetail(navigation.registrationTab);
-    setStageDetail(navigation.stageTab);
+    const navigationMatchesCurrentPanel = navigation.section === activeKey
+      && (navigation.section !== 'registration' || navigation.registrationTab === registrationDetail)
+      && (navigation.section !== 'stages' || navigation.stageTab === stageDetail);
+    if (navigationMatchesCurrentPanel) {
+      return;
+    }
 
-    const detail = navigation.section === 'registration'
-      ? navigation.registrationTab
-      : navigation.section === 'stages'
-        ? navigation.stageTab
-        : undefined;
-    updateNavigationUrl(navigation.section, detail, true);
-  }, [location.search, updateNavigationUrl]);
+    const previousPanel = activePanelRef.current;
+    void (async () => {
+      const transitioned = await transitionFromPanel(previousPanel, () => {
+        setActiveKey(navigation.section);
+        setRegistrationDetail(navigation.registrationTab);
+        setStageDetail(navigation.stageTab);
+      });
+      if (transitioned === false) {
+        const currentDetail = activeKey === 'registration'
+          ? registrationDetail
+          : activeKey === 'stages'
+            ? stageDetail
+            : undefined;
+        updateNavigationUrl(activeKey, currentDetail, true);
+      }
+    })();
+  }, [activeKey, location.search, registrationDetail, stageDetail, transitioning, transitionFromPanel, updateNavigationUrl]);
 
   useEffect(() => {
     let mounted = true;
@@ -7232,23 +7128,10 @@ const CompetitionSettingsPage = () => {
     ? competitionSettingsModules.find((item) => item.key === activeConfigModuleKey)
     : undefined;
 
-  const flushActivePanel = useCallback(async () => {
-    await activePanelRef.current?.flushPendingSave();
-  }, []);
-
-  const flushPanelInBackground = useCallback((panel: CompetitionSettingsPanelHandle | null) => {
-    if (!panel) {
-      return;
-    }
-    window.setTimeout(() => {
-      void panel.flushPendingSave().catch(() => undefined);
-    }, 0);
-  }, []);
-
   const handleBack = useCallback(async () => {
-    await flushActivePanel();
-    history.push('/competitions/management');
-  }, [flushActivePanel]);
+    const previousPanel = activePanelRef.current;
+    await transitionFromPanel(previousPanel, () => history.push('/competitions/management'));
+  }, [transitionFromPanel]);
 
   const handleSave = useCallback(async () => {
     if (!activePanelRef.current) {
@@ -7272,45 +7155,55 @@ const CompetitionSettingsPage = () => {
       return;
     }
     const previousPanel = activePanelRef.current;
-    setActiveKey(nextKey);
-    if (nextKey === 'registration') {
-      setRegistrationDetail('MEMBER_FIELD');
-      updateNavigationUrl(nextKey, 'MEMBER_FIELD');
-      return;
-    }
-    if (nextKey === 'stages') {
-      setStageDetail('timeline');
-      updateNavigationUrl(nextKey, 'timeline');
-      return;
-    }
-    updateNavigationUrl(nextKey);
-  }, [activeKey, flushActivePanel, updateNavigationUrl]);
+    await transitionFromPanel(previousPanel, () => {
+      setActiveKey(nextKey);
+      if (nextKey === 'registration') {
+        setRegistrationDetail('MEMBER_FIELD');
+        updateNavigationUrl(nextKey, 'MEMBER_FIELD');
+        return;
+      }
+      if (nextKey === 'stages') {
+        setStageDetail('timeline');
+        updateNavigationUrl(nextKey, 'timeline');
+        return;
+      }
+      updateNavigationUrl(nextKey);
+    });
+  }, [activeKey, transitionFromPanel, updateNavigationUrl]);
 
-  const handleRegistrationDetailChange = useCallback((nextKey: string) => {
+  const handleRegistrationDetailChange = useCallback(async (nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsRegistrationTab;
+    if (nextDetail === registrationDetail) {
+      return;
+    }
     const previousPanel = activePanelRef.current;
-    setRegistrationDetail(nextDetail);
-    updateNavigationUrl('registration', nextDetail);
-    flushPanelInBackground(previousPanel);
-  }, [flushPanelInBackground, updateNavigationUrl]);
+    await transitionFromPanel(previousPanel, () => {
+      setRegistrationDetail(nextDetail);
+      updateNavigationUrl('registration', nextDetail);
+    });
+  }, [registrationDetail, transitionFromPanel, updateNavigationUrl]);
 
-  const handleStageDetailChange = useCallback((nextKey: string) => {
+  const handleStageDetailChange = useCallback(async (nextKey: string) => {
     const nextDetail = nextKey as CompetitionSettingsStageTab;
+    if (nextDetail === stageDetail) {
+      return;
+    }
     const previousPanel = activePanelRef.current;
-    setStageDetail(nextDetail);
-    updateNavigationUrl('stages', nextDetail);
-    flushPanelInBackground(previousPanel);
-  }, [flushPanelInBackground, updateNavigationUrl]);
+    await transitionFromPanel(previousPanel, () => {
+      setStageDetail(nextDetail);
+      updateNavigationUrl('stages', nextDetail);
+    });
+  }, [stageDetail, transitionFromPanel, updateNavigationUrl]);
 
   return (
     <ManagementPage
       title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: '赛事配置' })}
       extra={
         <Space>
-          <Button onClick={() => void handleBack()}>
+          <Button disabled={transitioning} onClick={() => void handleBack()}>
             {formatMessage({ id: 'page.competition.settings.back', defaultMessage: '返回' })}
           </Button>
-          <Button type="primary" loading={saving} disabled={loading || !settings} onClick={() => void handleSave()}>
+          <Button type="primary" loading={saving} disabled={loading || transitioning || !settings} onClick={() => void handleSave()}>
             保存
           </Button>
         </Space>
@@ -7466,7 +7359,13 @@ const CompetitionPage = () => {
     }
     const nextStatus: CompetitionStatus = record.status === 'published' ? 'draft' : 'published';
     try {
-      await updateCompetition(record.id, normalizePayload({ ...recordToFormValues(record), status: nextStatus }));
+      await updateCompetition(
+        record.id,
+        normalizePayload(
+          { ...recordToFormValues(record), status: nextStatus } as CompetitionFormValues,
+          { preserveTimelineFrom: record },
+        ),
+      );
       message.success(nextStatus === 'published' ? '赛事已发布' : '赛事已切换为草稿');
       actionRef.current?.reload();
     } catch (error) {

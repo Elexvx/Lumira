@@ -571,7 +571,6 @@
 }
 
 .competition-schedule-row__material-time,
-.competition-schedule-row__time,
 .competition-schedule-row__review-time {
   min-width: 0;
   margin-bottom: 0;
@@ -584,7 +583,7 @@
 
 .competition-schedule-row > .competition-schedule-row__actions {
   grid-column: 2;
-  grid-row: 2 / span 3;
+  grid-row: 2 / span 2;
   margin-top: 34px;
 }
 
@@ -680,7 +679,6 @@
   .competition-schedule-row__mode,
   .competition-schedule-row__title,
   .competition-schedule-row__material-time,
-  .competition-schedule-row__time,
   .competition-schedule-row__review-time,
   .competition-inline-fields__item {
     width: 100%;
@@ -1104,13 +1102,12 @@
     minmax(180px, 0.8fr)
     minmax(300px, 1.3fr)
     minmax(300px, 1.3fr)
-    minmax(300px, 1.3fr)
     72px;
   gap: 16px;
   align-items: center;
   box-sizing: border-box;
   width: 100%;
-  min-width: 1320px;
+  min-width: 1000px;
   padding: 16px;
 }
 
