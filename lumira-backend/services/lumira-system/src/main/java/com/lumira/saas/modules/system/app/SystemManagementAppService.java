@@ -909,8 +909,11 @@ public class SystemManagementAppService {
         String currentPassword = normalizeNullableText(request.getCurrentPassword());
         String newPassword = normalizeNullableText(request.getNewPassword());
         String confirmPassword = normalizeNullableText(request.getConfirmPassword());
+        boolean initialPasswordChange = Boolean.TRUE.equals(currentUser.getRequiresPasswordChange());
 
-        if (!StringUtils.hasText(currentPassword) || !StringUtils.hasText(newPassword) || !StringUtils.hasText(confirmPassword)) {
+        if ((!initialPasswordChange && !StringUtils.hasText(currentPassword))
+                || !StringUtils.hasText(newPassword)
+                || !StringUtils.hasText(confirmPassword)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Please enter complete password information");
         }
         if (!newPassword.equals(confirmPassword)) {
@@ -924,7 +927,8 @@ public class SystemManagementAppService {
         if (fallbackToSysUserPassword) {
             currentPasswordHash = user.getPasswordHash();
         }
-        if (!StringUtils.hasText(currentPasswordHash) || !passwordEncoder.matches(currentPassword, currentPasswordHash)) {
+        if (!StringUtils.hasText(currentPasswordHash)
+                || (!initialPasswordChange && !passwordEncoder.matches(currentPassword, currentPasswordHash))) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "Current password is incorrect");
         }
         if (passwordEncoder.matches(newPassword, currentPasswordHash)) {

@@ -24,7 +24,6 @@ const LOGIN_PAGE_PUBLIC_REFRESH_TIMEOUT_MS = 1500;
 const LOGIN_ENCRYPTION_KEY_TIMEOUT_MS = 2500;
 const LOGIN_PAGE_PUBLIC_BOOTSTRAP_TTL_MS = 30_000;
 type ForcedPasswordChangeFormValues = {
-  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 };

@@ -261,7 +261,6 @@ public final class ProfileDTO {
     }
 
     public static class PasswordUpdateRequest {
-        @NotBlank(message = "请输入当前密码")
         private String currentPassword;
         @NotBlank(message = "请输入新密码")
         private String newPassword;

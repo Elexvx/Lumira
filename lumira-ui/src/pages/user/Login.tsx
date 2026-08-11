@@ -1,12 +1,12 @@
 import { getLocale, setLocale, useLocation } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
-import { Alert, App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
-import { GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
+import { App, Button, Form, Input, Modal, Popover, Select, Steps, message } from 'antd';
+import { ExclamationCircleFilled, GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
-import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
+import { resolveResponsiveValue } from '@/theme/spacing';
 import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { resolvePresentedLoginMode, resolvePresentedLoginModes } from '@/pages/user/login/utils/loginModePresentation';
@@ -20,7 +20,6 @@ import { isPoliceBeianText, resolvePoliceBeianQueryUrl } from '@/branding/beian'
 import './Login.css';
 
 type ForcedPasswordChangeFormValues = {
-  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 };
@@ -459,9 +458,12 @@ const Login = () => {
   const responsive = useResponsive();
   const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const sessionExpired = isSessionExpiredLoginSearch(location.search);
-  const alertBottomGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
   const presentedLoginModes = resolvePresentedLoginModes(responsive.isMobile, loginFlow.availableLoginModes);
   const presentedLoginMode = resolvePresentedLoginMode(responsive.isMobile, loginFlow.activeLoginMode, loginFlow.availableLoginModes);
+  const initialPasswordChangeNotice = formatMessage({
+    id: 'page.login.initialPasswordChange.notice',
+    defaultMessage: '当前账号仍在使用初始密码，必须修改后才能进入系统。',
+  });
   const submitButtonText = loginFlow.viewState.pendingSecondFactorLogin
     ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
     : presentedLoginMode === 'passkey'
@@ -552,45 +554,40 @@ const Login = () => {
       </Modal>
       <Modal
         open={loginFlow.viewState.forcedPasswordChangeOpen}
-        title={formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}
+        title={(
+          <span className="saas-login-page__initial-password-title">
+            <span>{formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}</span>
+            <Popover
+              content={initialPasswordChangeNotice}
+              trigger={['click', 'focus', 'hover']}
+              placement="bottomLeft"
+            >
+              <button
+                type="button"
+                className="saas-login-page__initial-password-hint-trigger"
+                aria-label={initialPasswordChangeNotice}
+              >
+                <ExclamationCircleFilled aria-hidden="true" />
+              </button>
+            </Popover>
+          </span>
+        )}
         closable={false}
         maskClosable={false}
         keyboard={false}
         footer={null}
         destroyOnClose
       >
-        <Alert
-          type="warning"
-          showIcon
-          message={formatMessage({ id: 'page.login.initialPasswordChange.notice', defaultMessage: '当前账号仍在使用初始密码，必须修改后才能进入系统。' })}
-          style={{ marginBottom: alertBottomGap }}
-        />
         <Form<ForcedPasswordChangeFormValues>
           form={loginFlow.forcedPasswordChangeForm}
           layout="vertical"
           onFinish={loginFlow.dialogState.handleForcedPasswordChange}
         >
           <Form.Item
-            name="currentPassword"
-            label={formatMessage({ id: 'page.login.initialPasswordChange.currentPassword', defaultMessage: '当前密码' })}
-            rules={[
-              { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.currentPasswordRequired', defaultMessage: '请输入当前密码' }) },
-            ]}
-          >
-            <Input.Password autoComplete="current-password" data-testid="forced-password-current-input" />
-          </Form.Item>
-          <Form.Item
             name="newPassword"
             label={formatMessage({ id: 'page.login.initialPasswordChange.newPassword', defaultMessage: '新密码' })}
-            dependencies={['currentPassword']}
             rules={[
               { required: true, message: formatMessage({ id: 'page.login.initialPasswordChange.newPasswordRequired', defaultMessage: '请输入新密码' }) },
-              ({ getFieldValue }) => ({
-                validator: (_, value) =>
-                  value && value === getFieldValue('currentPassword')
-                    ? Promise.reject(new Error(formatMessage({ id: 'page.login.initialPasswordChange.notInitial', defaultMessage: '新密码不能与当前密码相同' })))
-                    : Promise.resolve(),
-              }),
             ]}
           >
             <Input.Password autoComplete="new-password" data-testid="forced-password-new-input" />

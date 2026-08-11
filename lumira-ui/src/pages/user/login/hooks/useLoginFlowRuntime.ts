@@ -110,7 +110,6 @@ export const rejectUnsafeLoginInput = async (_: unknown, value: unknown, kind: L
 };
 
 type ForcedPasswordChangeFormValues = {
-  currentPassword: string;
   newPassword: string;
   confirmPassword: string;
 };
@@ -560,7 +559,6 @@ const useLoginFlowInteractions = ({
         await request<boolean>('/v1/profile/password', {
           method: 'PUT',
           data: {
-            currentPassword: values.currentPassword,
             newPassword: values.newPassword,
             confirmPassword: values.confirmPassword,
           },

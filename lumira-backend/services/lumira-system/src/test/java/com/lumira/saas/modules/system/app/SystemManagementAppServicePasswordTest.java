@@ -127,6 +127,72 @@ class SystemManagementAppServicePasswordTest {
     }
 
     @Test
+    void shouldAllowInitialPasswordChangeWithoutRepeatingCurrentPassword() {
+        SysUserEntity user = buildUser("OldPass1!");
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        RecordingOperationAuditService operationAuditService = new RecordingOperationAuditService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new StubUserDomainService(user),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                operationAuditService,
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+
+        CurrentUser currentUser = buildCurrentUser();
+        currentUser.setRequiresPasswordChange(true);
+        ProfileDTO.PasswordUpdateRequest request = buildRequest(null, "NewPass1!", "NewPass1!");
+
+        assertTrue(service.updateCurrentUserPassword(currentUser, request));
+        assertEquals("NewPass1!", passwordPolicyService.validatedPassword);
+        assertEquals(2001L, authSessionStore.resolvedPasswordChangeUserId);
+        assertEquals(2001L, authSessionStore.revokedUserId);
+    }
+
+    @Test
+    void shouldStillRequireCurrentPasswordForRegularPasswordChange() {
+        SysUserEntity user = buildUser("OldPass1!");
+        RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        RecordingPasswordPolicyService passwordPolicyService = new RecordingPasswordPolicyService();
+        SystemManagementAppService service = new SystemManagementAppService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new StubUserDomainService(user),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new PlainPasswordEncoder(),
+                authSessionStore,
+                null,
+                new RecordingOperationAuditService(),
+                null,
+                passwordPolicyService,
+                new StubIamUserService(jdbcTemplate)
+        );
+
+        ProfileDTO.PasswordUpdateRequest request = buildRequest(null, "NewPass1!", "NewPass1!");
+
+        assertThrows(BizException.class, () -> service.updateCurrentUserPassword(buildCurrentUser(), request));
+        assertEquals(null, passwordPolicyService.validatedPassword);
+        assertEquals(null, authSessionStore.revokedUserId);
+    }
+
+    @Test
     void shouldRejectReusingCurrentPasswordWithoutResolvingForcedChange() {
         SysUserEntity user = buildUser("OldPass1!");
         RecordingAuthSessionStore authSessionStore = new RecordingAuthSessionStore();
