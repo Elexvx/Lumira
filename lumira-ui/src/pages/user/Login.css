@@ -173,6 +173,32 @@
   margin-bottom: 0;
 }
 
+.saas-login-page__initial-password-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saas-login-page__initial-password-hint-trigger {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--ant-color-warning);
+  background: transparent;
+  cursor: help;
+}
+
+.saas-login-page__initial-password-hint-trigger:focus-visible {
+  outline: 2px solid var(--ant-color-warning);
+  outline-offset: 2px;
+}
+
 .saas-login-page__field-icon {
   display: inline-flex;
   align-items: center;
