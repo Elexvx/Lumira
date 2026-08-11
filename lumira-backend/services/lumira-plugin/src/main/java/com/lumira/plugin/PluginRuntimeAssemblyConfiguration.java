@@ -12,6 +12,7 @@ import com.lumira.saas.modules.plugin.runtime.PluginProperties;
 import com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
 import com.lumira.saas.modules.plugin.runtime.PluginSecurityPropertiesValidator;
 import com.lumira.saas.modules.plugin.service.PluginMigrationService;
+import com.lumira.saas.modules.plugin.service.PluginFeatureStateService;
 import com.lumira.saas.modules.plugin.service.PluginPersistenceService;
 import com.lumira.saas.modules.plugin.service.PluginSemver;
 import org.apache.ibatis.annotations.Mapper;
@@ -27,6 +28,7 @@ import org.springframework.context.annotation.Import;
 @Import({
         PluginArtifactLoader.class,
         PluginManagementAppService.class,
+        PluginFeatureStateService.class,
         PluginMigrationService.class,
         PluginOutboxService.class,
         PluginPersistenceService.class,

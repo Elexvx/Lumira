@@ -72,7 +72,13 @@ public class JdbcCompetitionSettingsRepository implements CompetitionSettingsRep
                             competition_uuid, config_set_id, item_type, item_key, title, content_json, content_text,
                             sort_order, required_flag, enabled, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
                         )
-                        select ?, ?, item_type, item_key, title, content_json, content_text,
+                        select ?, ?, item_type, item_key, title,
+                               case
+                                   when item_type in ('REQUIRED_FILE', 'STAGE_MATERIAL')
+                                       then json_set(coalesce(nullif(content_json, ''), '{}'), '$.storageKey', ?)
+                                   else content_json
+                               end,
+                               content_text,
                                sort_order, required_flag, enabled, ?, ?, ?, ?, 0
                         from competition_config_item_template
                         where template_code = 'DEFAULT' and deleted = 0
@@ -80,6 +86,7 @@ public class JdbcCompetitionSettingsRepository implements CompetitionSettingsRep
                         """,
                 command.competitionUuid(),
                 command.configSetId(),
+                command.storageKey(),
                 actor.userId(),
                 actor.userUuid(),
                 actor.userId(),

@@ -6,6 +6,7 @@ export interface CompetitionRecord {
   id: number;
   uuid?: string;
   competitionNo?: string;
+  storageKey?: string;
   code: string;
   locale: string;
   title: string;

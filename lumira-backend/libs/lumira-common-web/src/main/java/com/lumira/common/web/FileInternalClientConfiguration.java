@@ -1,6 +1,7 @@
 package com.lumira.common.web;
 
 import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
@@ -55,6 +56,16 @@ public class FileInternalClientConfiguration {
 
         private RemoteFileInternalApi(RestClient restClient) {
             this.restClient = restClient;
+        }
+
+        @Override
+        public void ensureCompetitionStorageSpace(CompetitionStorageSpaceRequest request) {
+            restClient.post()
+                    .uri("/internal/files/competition-storage-spaces")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .toBodilessEntity();
         }
 
         @Override

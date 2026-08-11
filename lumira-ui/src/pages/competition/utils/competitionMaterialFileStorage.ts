@@ -11,14 +11,23 @@ const normalizeStorageTagSegment = (value: string | undefined, fallback: string)
 };
 
 export type CompetitionMaterialFileStorageContext = {
-  directory: string;
+  directory?: string;
   tags: string;
+};
+
+export const buildCompetitionStorageKey = (competitionUuid: string | undefined): string | undefined => {
+  const normalizedCompetitionUuid = (competitionUuid || '').trim().toLowerCase();
+  if (!COMPETITION_UUID_PATTERN.test(normalizedCompetitionUuid)) {
+    return undefined;
+  }
+  return `competition_${normalizedCompetitionUuid.replace(/-/g, '')}`;
 };
 
 export const buildCompetitionMaterialFileStorageContext = (
   competitionUuid: string | undefined,
   stageCode: string | undefined,
   fieldKey: string,
+  storageKey?: string,
 ): CompetitionMaterialFileStorageContext | undefined => {
   const normalizedCompetitionUuid = (competitionUuid || '').trim().toLowerCase();
   if (!COMPETITION_UUID_PATTERN.test(normalizedCompetitionUuid)) {
@@ -27,8 +36,9 @@ export const buildCompetitionMaterialFileStorageContext = (
   const compactCompetitionUuid = normalizedCompetitionUuid.replace(/-/g, '');
   const normalizedStageCode = normalizeStorageTagSegment(stageCode, 'general');
   const normalizedFieldKey = normalizeStorageTagSegment(fieldKey, 'material');
+  const dedicatedStorageKey = buildCompetitionStorageKey(normalizedCompetitionUuid);
   return {
-    directory: `competitions/${compactCompetitionUuid}`,
+    directory: storageKey === dedicatedStorageKey ? undefined : `competitions/${compactCompetitionUuid}`,
     tags: [
       'competition-material',
       `competition:${normalizedCompetitionUuid}`,

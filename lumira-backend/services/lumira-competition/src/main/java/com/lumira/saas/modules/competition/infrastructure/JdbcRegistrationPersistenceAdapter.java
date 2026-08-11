@@ -822,8 +822,8 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
                 """
                         insert into competition_payment_order_task (
                             registration_id, provider_code, client_ip, notify_url, return_url, owner_user_uuid, simulated_role_id,
-                            status, retry_count, next_retry_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
+                            attempt_no, status, retry_count, next_retry_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, 1, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             provider_code = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then values(provider_code) else provider_code end,
                             client_ip = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then coalesce(values(client_ip), client_ip) else client_ip end,
@@ -835,6 +835,46 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
                             updated_by = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then values(updated_by) else updated_by end,
                             updated_by_uuid = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then values(updated_by_uuid) else updated_by_uuid end,
                             updated_at = case when registration_id = values(registration_id) and owner_user_uuid = values(owner_user_uuid) then current_timestamp else updated_at end
+                        """,
+                command.registrationId(), command.providerCode(), command.clientIp(), command.notifyUrl(), command.returnUrl(),
+                command.ownerUserUuid(), command.simulatedRoleId(), command.nextRetryAt(), command.operatorUserId(),
+                command.operatorUserUuid(), command.operatorUserId(), command.operatorUserUuid()
+        );
+    }
+
+    @Override
+    public int detachPaymentOrderForRetry(DetachPaymentOrderForRetryCommand command) {
+        return database.update(
+                """
+                        update competition_registration
+                        set payment_order_no = null, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and registration_no = ? and owner_user_id = ? and owner_user_uuid = ?
+                          and payment_order_no = ? and status = 'PENDING_PAYMENT' and deleted = 0
+                        """,
+                command.operatorUserId(), command.operatorUserUuid(), command.updatedAt(),
+                command.registrationId(), command.registrationNo(), command.ownerUserId(), command.ownerUserUuid(),
+                command.expectedPaymentOrderNo()
+        );
+    }
+
+    @Override
+    public int enqueuePaymentOrderRetryTask(EnqueuePaymentOrderTaskCommand command) {
+        return database.update(
+                """
+                        insert into competition_payment_order_task (
+                            registration_id, provider_code, client_ip, notify_url, return_url, owner_user_uuid, simulated_role_id,
+                            attempt_no, status, retry_count, next_retry_at, created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, 2, 'PENDING', 0, ?, ?, ?, ?, ?, 0)
+                        on duplicate key update
+                            provider_code = values(provider_code),
+                            client_ip = coalesce(values(client_ip), client_ip),
+                            notify_url = coalesce(values(notify_url), notify_url),
+                            return_url = coalesce(values(return_url), return_url),
+                            simulated_role_id = values(simulated_role_id),
+                            attempt_no = greatest(2, attempt_no + 1),
+                            status = 'PENDING', retry_count = 0, next_retry_at = values(next_retry_at),
+                            claim_token = null, claim_expires_at = null, process_message = null,
+                            updated_by = values(updated_by), updated_by_uuid = values(updated_by_uuid), updated_at = current_timestamp
                         """,
                 command.registrationId(), command.providerCode(), command.clientIp(), command.notifyUrl(), command.returnUrl(),
                 command.ownerUserUuid(), command.simulatedRoleId(), command.nextRetryAt(), command.operatorUserId(),
@@ -872,7 +912,8 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
                 """
                         select id, registration_id as registrationId, provider_code as providerCode,
                                client_ip as clientIp, notify_url as notifyUrl, return_url as returnUrl,
-                               owner_user_uuid as ownerUserUuid, simulated_role_id as simulatedRoleId, claim_token as claimToken
+                               owner_user_uuid as ownerUserUuid, simulated_role_id as simulatedRoleId,
+                               attempt_no as attemptNo, claim_token as claimToken
                         from competition_payment_order_task
                         where deleted = 0
                           and status = 'RUNNING'
@@ -885,7 +926,8 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
         ).stream().map(row -> new PaymentOrderTask(
                 toLong(row.get("id")), toLong(row.get("registrationId")), toText(row.get("providerCode")),
                 toText(row.get("clientIp")), toText(row.get("notifyUrl")), toText(row.get("returnUrl")),
-                toText(row.get("ownerUserUuid")), toLong(row.get("simulatedRoleId")), toText(row.get("claimToken"))
+                toText(row.get("ownerUserUuid")), toLong(row.get("simulatedRoleId")), toInteger(row.get("attemptNo")),
+                toText(row.get("claimToken"))
         )).toList();
     }
 
@@ -1001,6 +1043,13 @@ public class JdbcRegistrationPersistenceAdapter implements RegistrationQueryRepo
             return number.longValue();
         }
         return value == null || !StringUtils.hasText(String.valueOf(value)) ? null : Long.valueOf(String.valueOf(value));
+    }
+
+    private static Integer toInteger(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return value == null || !StringUtils.hasText(String.valueOf(value)) ? null : Integer.valueOf(String.valueOf(value));
     }
 
     private static String registrationSelect() {

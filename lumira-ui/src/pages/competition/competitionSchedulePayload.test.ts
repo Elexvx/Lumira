@@ -25,6 +25,26 @@ describe('competition schedule payload', () => {
     }]);
   });
 
+  it('keeps every schedule row in order when saving the full timeline', () => {
+    const schedules = sanitizeCompetitionSchedules([
+      {
+        timeMode: 'CONFIRMED',
+        title: '初赛',
+        materialRange: ['2026-08-01 09:00', '2026-08-02 09:00'],
+        reviewRange: ['2026-08-03 09:00', '2026-08-04 09:00'],
+      },
+      {
+        timeMode: 'CONFIRMED',
+        title: '决赛',
+        materialRange: ['2026-09-01 09:00', '2026-09-02 09:00'],
+        reviewRange: ['2026-09-03 09:00', '2026-09-04 09:00'],
+      },
+    ]);
+
+    expect(schedules.map((schedule) => schedule.title)).toEqual(['初赛', '决赛']);
+    expect(schedules).toHaveLength(2);
+  });
+
   it('derives the overall window from the earliest material start and latest review end', () => {
     const result = deriveCompetitionOverallWindow([
       {

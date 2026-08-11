@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildCompetitionMaterialFileStorageContext,
+  buildCompetitionStorageKey,
   shouldResetCompetitionMaterialValues,
 } from './competitionMaterialFileStorage';
 
@@ -22,6 +23,19 @@ describe('competition material file storage', () => {
     expect(first?.tags).toContain('competition:ca5e4e82-5be1-4d06-8aba-3c9cb45acad1');
     expect(first?.tags).toContain('stage:preliminary');
     expect(first?.tags).toContain('field:work-file');
+  });
+
+  it('uses the competition bucket directly without duplicating its physical directory', () => {
+    const competitionUuid = 'ca5e4e82-5be1-4d06-8aba-3c9cb45acad1';
+    const storageKey = buildCompetitionStorageKey(competitionUuid);
+
+    expect(storageKey).toBe('competition_ca5e4e825be14d068aba3c9cb45acad1');
+    expect(buildCompetitionMaterialFileStorageContext(
+      competitionUuid,
+      'PRELIMINARY',
+      'work-file',
+      storageKey,
+    )?.directory).toBeUndefined();
   });
 
   it('requires a valid competition UUID before allowing scoped upload metadata', () => {

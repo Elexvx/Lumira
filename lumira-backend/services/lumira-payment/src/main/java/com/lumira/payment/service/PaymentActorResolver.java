@@ -22,6 +22,15 @@ public class PaymentActorResolver {
     }
 
     public Actor require(CurrentUser currentUser, String requiredPermission) {
+        Actor actor = requireAuthenticated(currentUser);
+        Set<String> permissions = currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
+        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
+        }
+        return actor;
+    }
+
+    public Actor requireAuthenticated(CurrentUser currentUser) {
         if (!AuthenticationTrustSupport.isTrustedCurrentUser(currentUser)) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Valid user is required");
         }
@@ -33,10 +42,6 @@ public class PaymentActorResolver {
 
         if (!StringUtils.hasText(currentUser.getPermissionsVersion())) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Trusted permission snapshot is required");
-        }
-        Set<String> permissions = currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions();
-        if (!permissions.contains("*") && !permissions.contains(requiredPermission)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "Missing permission: " + requiredPermission);
         }
         return new Actor(userId, userUuid);
     }

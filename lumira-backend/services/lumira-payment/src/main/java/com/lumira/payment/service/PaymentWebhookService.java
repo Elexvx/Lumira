@@ -135,7 +135,7 @@ public class PaymentWebhookService {
         String signature = resolveSignature(headers, normalizedPayload);
         String timestamp = resolveHeader(headers, "timestamp", "X-Timestamp", "Wechatpay-Timestamp");
         String nonce = resolveHeader(headers, "nonce", "X-Nonce", "Wechatpay-Nonce");
-        if ("alipay".equals(normalizedProvider)) {
+        if (isAlipayStyleProvider(normalizedProvider)) {
             eventId = firstText(payloadFields, "notify_id", "trade_no", "out_trade_no");
             eventType = firstText(payloadFields, "notify_type", "trade_status");
             signature = firstText(payloadFields, "sign");
@@ -355,8 +355,12 @@ public class PaymentWebhookService {
             return "Refund webhook processed";
         }
 
-        if ("alipay".equals(normalizedProvider)) {
+        if (isAlipayStyleProvider(normalizedProvider)) {
             String tradeStatus = firstText(payloadFields, "trade_status");
+            if (BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(normalizedProvider)
+                    && "TRADE_CLOSED".equals(tradeStatus)) {
+                return applyBuiltinMockClosed(payload, payloadFields);
+            }
             if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
                 return "Alipay trade status ignored: " + normalizeText(tradeStatus);
             }
@@ -426,6 +430,58 @@ public class PaymentWebhookService {
             }
         }
         return "Payment webhook processed";
+    }
+
+    private String applyBuiltinMockClosed(String payload, Map<String, String> payloadFields) {
+        String orderNo = extractField(payload, "out_trade_no", "orderNo", "order_no");
+        if (!StringUtils.hasText(orderNo)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Mock payment order number is missing", "Webhook request is invalid");
+        }
+        PaymentOrderRow order = findOrderForWebhook(BuiltinMockPaymentAvailability.PROVIDER_CODE, orderNo.trim());
+        assertWebhookAmountMatchesOrder(BuiltinMockPaymentAvailability.PROVIDER_CODE, payloadFields, order);
+        String outcome = firstText(payloadFields, "mock_outcome").toUpperCase(Locale.ROOT);
+        String status = switch (outcome) {
+            case "FAILURE" -> "FAILED";
+            case "TIMEOUT" -> "EXPIRED";
+            case "CANCEL" -> "CANCELLED";
+            default -> throw new BizException(ErrorCode.BAD_REQUEST, "Mock payment outcome is invalid", "Webhook request is invalid");
+        };
+        String failureCode = switch (outcome) {
+            case "FAILURE" -> firstText(payloadFields, "sub_code", "error_code");
+            case "TIMEOUT" -> "ORDER_TIMEOUT";
+            default -> "BUYER_CANCELLED";
+        };
+        String failureMessage = switch (outcome) {
+            case "FAILURE" -> firstText(payloadFields, "sub_msg", "error_message");
+            case "TIMEOUT" -> "Mock payment order timed out";
+            default -> "Mock payment was cancelled by the payer";
+        };
+        int updated = jdbcTemplate.update(
+                """
+                        update payment_order
+                        set status = ?, payment_url = null, failure_code = ?, failure_message = ?,
+                            updated_at = ?, updated_by = ?, updated_by_uuid = ?
+                        where id = ? and order_no = ? and provider_code = ?
+                          and amount_minor = ? and created_by = ? and created_by_uuid = ?
+                          and status in ('CREATED', 'PENDING') and deleted = 0
+                        """,
+                status,
+                StringUtils.hasText(failureCode) ? failureCode : "ACQ.SYSTEM_ERROR",
+                StringUtils.hasText(failureMessage) ? failureMessage : "Mock payment failed",
+                LocalDateTime.now(),
+                order.getCreatedBy(),
+                order.getCreatedByUuid(),
+                order.getId(),
+                order.getOrderNo(),
+                BuiltinMockPaymentAvailability.PROVIDER_CODE,
+                order.getAmountMinor(),
+                order.getCreatedBy(),
+                order.getCreatedByUuid()
+        );
+        if (updated != 1 && !status.equals(order.getStatus())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Mock payment order state changed during webhook processing");
+        }
+        return "Built-in mock payment closed: " + outcome;
     }
 
     private Long extractRegistrationId(String requestJson) {
@@ -535,7 +591,7 @@ public class PaymentWebhookService {
         }
         String normalized = providerCatalog.normalize(definition.providerCode());
         return switch (normalized) {
-            case "alipay" -> verifyRsaSignature(settings.getPublicKey(), buildAlipaySignContent(payloadFields), signature);
+            case "alipay", "builtin_mock" -> verifyRsaSignature(settings.getPublicKey(), buildAlipaySignContent(payloadFields), signature);
             case "wechat_pay" -> wechatPayV3Service.verifyNotificationSignature(
                     settings,
                     timestamp,
@@ -568,7 +624,7 @@ public class PaymentWebhookService {
             }
             return;
         }
-        if (!"alipay".equals(normalizedProvider)) {
+        if (!isAlipayStyleProvider(normalizedProvider)) {
             return;
         }
         String callbackAppId = firstText(payloadFields, "app_id");
@@ -579,7 +635,7 @@ public class PaymentWebhookService {
                 settings.getAppId().trim().getBytes(StandardCharsets.UTF_8)
         )) {
             recordRejectedWebhook(providerCode, "PROVIDER_IDENTITY_MISMATCH", payload, headers);
-            throw new BizException(ErrorCode.BAD_REQUEST, "Alipay application identity mismatch", "Webhook request is invalid");
+            throw new BizException(ErrorCode.BAD_REQUEST, "Alipay-style application identity mismatch", "Webhook request is invalid");
         }
     }
 
@@ -686,7 +742,7 @@ public class PaymentWebhookService {
             }
             return;
         }
-        if (!"alipay".equals(providerCode)) {
+        if (!isAlipayStyleProvider(providerCode)) {
             return;
         }
         String totalAmount = firstText(fields, "total_amount", "receipt_amount", "buyer_pay_amount");
@@ -702,6 +758,11 @@ public class PaymentWebhookService {
         if (order.getAmountMinor() == null || order.getAmountMinor() != amountMinor) {
             throw new BizException(ErrorCode.BAD_REQUEST, "Alipay amount does not match local order", "Webhook request is invalid");
         }
+    }
+
+    private boolean isAlipayStyleProvider(String providerCode) {
+        String normalized = providerCatalog.normalize(providerCode);
+        return "alipay".equals(normalized) || BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(normalized);
     }
 
     private Map<String, String> parsePayloadFields(String payload) {

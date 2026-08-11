@@ -37,6 +37,10 @@ public interface RegistrationWriteRepository extends RegistrationPersistencePort
 
     int enqueuePaymentOrderTask(EnqueuePaymentOrderTaskCommand command);
 
+    int detachPaymentOrderForRetry(DetachPaymentOrderForRetryCommand command);
+
+    int enqueuePaymentOrderRetryTask(EnqueuePaymentOrderTaskCommand command);
+
     List<PaymentOrderTask> claimPaymentOrderTasks(int limit, String claimToken, LocalDateTime now, LocalDateTime claimExpiresAt);
 
     int attachPaymentOrder(AttachPaymentOrderCommand command);
@@ -226,7 +230,20 @@ public interface RegistrationWriteRepository extends RegistrationPersistencePort
             String returnUrl,
             String ownerUserUuid,
             Long simulatedRoleId,
+            Integer attemptNo,
             String claimToken
+    ) {
+    }
+
+    record DetachPaymentOrderForRetryCommand(
+            Long registrationId,
+            String registrationNo,
+            Long ownerUserId,
+            String ownerUserUuid,
+            String expectedPaymentOrderNo,
+            Long operatorUserId,
+            String operatorUserUuid,
+            LocalDateTime updatedAt
     ) {
     }
 

@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.competition.vo;
 
+import com.lumira.api.file.CompetitionStorageSpace;
 import java.time.LocalDateTime;
 
 public final class CompetitionVO {
@@ -10,6 +11,7 @@ public final class CompetitionVO {
         private Long id;
         private String uuid;
         private String competitionNo;
+        private String storageKey;
         private String code;
         private String locale;
         private String title;
@@ -47,6 +49,17 @@ public final class CompetitionVO {
         public void setUuid(String uuid) { this.uuid = uuid; }
         public String getCompetitionNo() { return competitionNo; }
         public void setCompetitionNo(String competitionNo) { this.competitionNo = competitionNo; }
+        public String getStorageKey() {
+            if (storageKey != null && !storageKey.isBlank()) {
+                return storageKey;
+            }
+            try {
+                return CompetitionStorageSpace.storageKey(uuid);
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        public void setStorageKey(String storageKey) { this.storageKey = storageKey; }
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
         public String getLocale() { return locale; }

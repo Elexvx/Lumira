@@ -12,7 +12,7 @@ import { databaseMessage } from '@/i18n/databaseMessage';
 
 const t = databaseMessage;
 
-export type PaymentProviderCode = 'alipay' | 'wechat_pay' | 'stripe' | 'paypal';
+export type PaymentProviderCode = 'alipay' | 'wechat_pay' | 'stripe' | 'paypal' | 'builtin_mock';
 
 type PaymentFieldName = keyof PaymentProviderSettings;
 
@@ -34,6 +34,7 @@ const paymentEnvironmentOptions = () => ['SANDBOX', 'PRODUCTION'].map((value) =>
 }));
 
 const PAYMENT_PROVIDER_FIELD_SCHEMAS: Record<PaymentProviderCode, PaymentFieldConfig[]> = {
+  builtin_mock: [],
   alipay: [
     { name: 'appId', label: t('ui.settings.payment.usepaymentconfig.appId'), required: true, placeholder: t('ui.settings.payment.usepaymentconfig.alipayAppId') },
     { name: 'publicKey', label: t('ui.settings.payment.usepaymentconfig.alipayPublicKey'), required: true, placeholder: t('ui.settings.payment.usepaymentconfig.alipayPublicKey') },
@@ -88,6 +89,7 @@ const PAYMENT_SCENE_LABELS: Record<string, string> = {
 };
 
 const PAYMENT_PROVIDER_SCENES: Record<PaymentProviderCode, string[]> = {
+  builtin_mock: ['PC_WEB', 'WAP', 'QR_CODE'],
   alipay: ['PC_WEB', 'WAP', 'QR_CODE'],
   wechat_pay: ['NATIVE', 'H5', 'JSAPI'],
   stripe: ['CHECKOUT'],
@@ -286,6 +288,7 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
     const providerFields = PAYMENT_PROVIDER_FIELD_SCHEMAS[editingProviderCode];
     const configuredFields = new Set(currentProviderSettings?.configuredFields || []);
     const supportedScenes = resolveSupportedScenes(editingProviderCode, currentProviderSettings);
+    const isBuiltinMock = editingProviderCode === 'builtin_mock';
 
     return (
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
@@ -296,14 +299,20 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
           <Form.Item name="providerName" hidden>
             <Input />
           </Form.Item>
-          <Form.Item
-            name="environment"
-            label={t('ui.settings.payment.usepaymentconfig.environment')}
-            rules={[{ required: true, message: t('ui.settings.payment.usepaymentconfig.pleaseSelectAnEnvironment') }]}
-            extra={t('ui.settings.payment.usepaymentconfig.testEnvironmentUsesTestConfigurationAndDoesNot')}
-          >
-            <Select options={paymentEnvironmentOptions()} disabled={!canUpdateSettings} />
-          </Form.Item>
+          {isBuiltinMock ? (
+            <Typography.Paragraph type="secondary">
+              系统已托管模拟应用与 RSA2 密钥。此处仅可修改收银台显示名、排序和启用场景。
+            </Typography.Paragraph>
+          ) : (
+            <Form.Item
+              name="environment"
+              label={t('ui.settings.payment.usepaymentconfig.environment')}
+              rules={[{ required: true, message: t('ui.settings.payment.usepaymentconfig.pleaseSelectAnEnvironment') }]}
+              extra={t('ui.settings.payment.usepaymentconfig.testEnvironmentUsesTestConfigurationAndDoesNot')}
+            >
+              <Select options={paymentEnvironmentOptions()} disabled={!canUpdateSettings} />
+            </Form.Item>
+          )}
           <Form.Item name="displayName" label={t('ui.settings.payment.usepaymentconfig.checkoutDisplayName')} rules={[{ required: true, message: t('ui.settings.payment.usepaymentconfig.pleaseEnterTheCheckoutDisplayName') }]}>
             <Input disabled={!canUpdateSettings} maxLength={64} />
           </Form.Item>
@@ -316,9 +325,11 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
               options={supportedScenes.map((scene) => ({ label: PAYMENT_SCENE_LABELS[scene] || scene, value: scene }))}
             />
           </Form.Item>
-          <Form.Item name="currency" label={t('ui.settings.payment.usepaymentconfig.currency')} extra={t('ui.settings.payment.usepaymentconfig.leaveBlankToUseThePlatformDefaultCurrency')}>
-            <Input disabled={!canUpdateSettings} maxLength={16} placeholder={t('ui.settings.payment.usepaymentconfig.eGCny')} />
-          </Form.Item>
+          {!isBuiltinMock ? (
+            <Form.Item name="currency" label={t('ui.settings.payment.usepaymentconfig.currency')} extra={t('ui.settings.payment.usepaymentconfig.leaveBlankToUseThePlatformDefaultCurrency')}>
+              <Input disabled={!canUpdateSettings} maxLength={16} placeholder={t('ui.settings.payment.usepaymentconfig.eGCny')} />
+            </Form.Item>
+          ) : null}
           {providerFields.map((field) => {
             const extraMessage =
               field.systemManaged
@@ -341,9 +352,11 @@ export const usePaymentConfigDrawer = ({ canUpdateSettings, canTestSettings, pay
               </Form.Item>
             );
           })}
-          <Form.Item name="extraConfig" label={t('ui.settings.payment.usepaymentconfig.extraConfig')} extra={t('ui.settings.payment.usepaymentconfig.youCanEnterAJsonStringOrPlatform')}>
-            <Input.TextArea disabled={!canUpdateSettings} autoSize={{ minRows: 4, maxRows: 10 }} placeholder={t('ui.settings.payment.usepaymentconfig.eG')} />
-          </Form.Item>
+          {!isBuiltinMock ? (
+            <Form.Item name="extraConfig" label={t('ui.settings.payment.usepaymentconfig.extraConfig')} extra={t('ui.settings.payment.usepaymentconfig.youCanEnterAJsonStringOrPlatform')}>
+              <Input.TextArea disabled={!canUpdateSettings} autoSize={{ minRows: 4, maxRows: 10 }} placeholder={t('ui.settings.payment.usepaymentconfig.eG')} />
+            </Form.Item>
+          ) : null}
         </Form>
       </Space>
     );

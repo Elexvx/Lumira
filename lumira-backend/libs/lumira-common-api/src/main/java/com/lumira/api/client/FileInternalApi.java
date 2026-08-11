@@ -3,11 +3,16 @@ package com.lumira.api.client;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface FileInternalApi {
+
+    default void ensureCompetitionStorageSpace(CompetitionStorageSpaceRequest request) {
+        throw new UnsupportedOperationException("ensureCompetitionStorageSpace is not implemented");
+    }
 
     
     default FileObjectDTO uploadImage(

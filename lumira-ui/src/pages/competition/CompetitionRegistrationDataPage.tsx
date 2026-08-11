@@ -1,8 +1,8 @@
-import { DownloadOutlined, EyeOutlined, FileZipOutlined, TeamOutlined } from '@ant-design/icons';
+import { DownloadOutlined, EyeOutlined, FileExcelOutlined, FileZipOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { useAccess } from '@umijs/max';
-import { Alert, Button, Card, Descriptions, Empty, Space, Spin, Table, Tag, Typography } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Card, Descriptions, Empty, Space, Spin, Table, Tag, Typography } from 'antd';
+import { type Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
@@ -31,14 +31,15 @@ import {
   getRegistrationStatusLabel,
   registrationStatusValueEnum,
 } from '@/pages/competition/utils/registrationStatus';
+import {
+  buildCompetitionRegistrationExportRequest,
+  buildRegistrationQuerySignature,
+  MAX_SELECTED_REGISTRATION_COUNT,
+  resolveRegistrationExportScope,
+  type RegistrationExportQuery,
+} from '@/pages/competition/registrationExportScope';
 import { showErrorMessage } from '@/utils/errorMessage';
 import './CompetitionRegistrationDataPage.css';
-
-type RegistrationQuery = {
-  competitionId?: number;
-  status?: string;
-  keyword?: string;
-};
 
 type JsonRecord = Record<string, unknown>;
 
@@ -82,7 +83,7 @@ const SnapshotCard = ({ title, values }: { title: string; values: JsonRecord }) 
         <Descriptions
           bordered
           size="small"
-          column={{ xs: 1, sm: 2, md: 2 }}
+          column={1}
           items={items.map(([key, value]) => ({
             key,
             label: key,
@@ -107,11 +108,13 @@ const downloadBlob = (blob: Blob, filename: string) => {
 
 const CompetitionRegistrationDataPage = () => {
   const actionRef = useRef<ActionType>(undefined);
+  const lastQuerySignatureRef = useRef<string | undefined>(undefined);
   const access = useAccess();
   const responsive = useResponsive();
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
-  const [lastQuery, setLastQuery] = useState<RegistrationQuery>({});
-  const [selectedRows, setSelectedRows] = useState<CompetitionRegistrationRecord[]>([]);
+  const [lastQuery, setLastQuery] = useState<RegistrationExportQuery>({});
+  const [resultTotal, setResultTotal] = useState(0);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [exporting, setExporting] = useState(false);
   const [packaging, setPackaging] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -120,6 +123,11 @@ const CompetitionRegistrationDataPage = () => {
   const [materials, setMaterials] = useState<CompetitionMaterialSubmissionRecord[]>([]);
   const [stages, setStages] = useState<CompetitionStageRecord[]>([]);
   const [downloadingFileId, setDownloadingFileId] = useState<number>();
+
+  const clearSelection = useCallback(() => setSelectedRowKeys([]), []);
+  const selectedRegistrationIds = useMemo(() => selectedRowKeys
+    .map((key) => typeof key === 'number' ? key : Number(key))
+    .filter((key) => Number.isInteger(key) && key > 0), [selectedRowKeys]);
 
   useEffect(() => {
     let active = true;
@@ -165,27 +173,21 @@ const CompetitionRegistrationDataPage = () => {
     }
   };
 
-  const exportRows = async (records?: CompetitionRegistrationRecord[]) => {
+  const exportRows = async (
+    registrationIds: number[] = [],
+    competitionId = lastQuery.competitionId,
+  ) => {
     setExporting(true);
     try {
-      const selectedCompetitionIds = Array.from(
-        new Set((records || []).map((record) => record.competitionId)),
+      const exportRequest = buildCompetitionRegistrationExportRequest(
+        { ...lastQuery, competitionId },
+        registrationIds,
       );
-      const competitionId = selectedCompetitionIds[0] || lastQuery.competitionId;
-      if (!competitionId) {
+      if (!exportRequest) {
         message.warning('请先选择比赛数据表');
         return;
       }
-      if (selectedCompetitionIds.length > 1) {
-        message.warning('一次只能导出同一场比赛的数据');
-        return;
-      }
-      const started = await startCompetitionRegistrationExport({
-        competitionId,
-        status: records?.length ? undefined : lastQuery.status,
-        keyword: records?.length ? undefined : lastQuery.keyword,
-        registrationIds: records?.length ? records.map((record) => record.id) : undefined,
-      });
+      const started = await startCompetitionRegistrationExport(exportRequest);
       message.success(`已创建导出任务，共 ${started.totalCount} 个团队`);
 
       let finished = false;
@@ -199,7 +201,7 @@ const CompetitionRegistrationDataPage = () => {
           const downloadPath = task.downloadUrl.replace(/^\/api(?=\/)/, '');
           const blob = await requestFile(downloadPath, { method: 'GET', silent: true });
           downloadBlob(blob, task.fileName || started.fileName);
-          message.success('报名团队资料已生成并开始下载');
+          message.success('报名记录 Excel 已生成并开始下载');
           finished = true;
           break;
         }
@@ -215,28 +217,22 @@ const CompetitionRegistrationDataPage = () => {
     }
   };
 
-  const packageMaterials = async (records?: CompetitionRegistrationRecord[]) => {
+  const packageMaterials = async (
+    registrationIds: number[] = [],
+    competitionId = lastQuery.competitionId,
+  ) => {
     setPackaging(true);
     try {
-      const selectedCompetitionIds = Array.from(
-        new Set((records || []).map((record) => record.competitionId)),
+      const exportRequest = buildCompetitionRegistrationExportRequest(
+        { ...lastQuery, competitionId },
+        registrationIds,
       );
-      const competitionId = selectedCompetitionIds[0] || lastQuery.competitionId;
-      if (!competitionId) {
+      if (!exportRequest) {
         message.warning('请先选择比赛数据集');
         return;
       }
-      if (selectedCompetitionIds.length > 1) {
-        message.warning('一次只能打包同一场比赛的材料');
-        return;
-      }
-      const started = await startCompetitionRegistrationMaterialPackage({
-        competitionId,
-        status: records?.length ? undefined : lastQuery.status,
-        keyword: records?.length ? undefined : lastQuery.keyword,
-        registrationIds: records?.length ? records.map((record) => record.id) : undefined,
-      });
-      message.success(`已创建材料打包任务，共 ${started.totalCount} 个团队`);
+      const started = await startCompetitionRegistrationMaterialPackage(exportRequest);
+      message.success(`已创建完整材料导出任务，共 ${started.totalCount} 个团队`);
 
       let finished = false;
       for (let attempt = 0; attempt < 120; attempt += 1) {
@@ -249,7 +245,7 @@ const CompetitionRegistrationDataPage = () => {
           const downloadPath = task.downloadUrl.replace(/^\/api(?=\/)/, '');
           const blob = await requestFile(downloadPath, { method: 'GET', silent: true });
           downloadBlob(blob, task.fileName || started.fileName);
-          message.success('报名材料包已生成并开始下载');
+          message.success('完整材料包（含报名记录 Excel）已生成并开始下载');
           finished = true;
           break;
         }
@@ -295,6 +291,7 @@ const CompetitionRegistrationDataPage = () => {
       title: '赛事',
       dataIndex: 'competitionId',
       valueType: 'select',
+      hideInTable: true,
       fieldProps: {
         showSearch: true,
         optionFilterProp: 'label',
@@ -307,18 +304,28 @@ const CompetitionRegistrationDataPage = () => {
       formItemProps: {
         rules: [{ required: true, message: '请选择比赛数据表' }],
       },
+    },
+    {
+      key: 'competitionTitle',
+      title: '赛事',
+      search: false,
       minWidth: 220,
+      responsive: ['xxl'],
       render: (_, record) => competitionTitleById.get(record.competitionId) || `赛事 ${record.competitionId}`,
     },
     {
       title: '报名团队',
       dataIndex: 'teamName',
       search: false,
-      minWidth: 190,
+      minWidth: 210,
       render: (_, record) => (
-        <Space direction="vertical" size={0}>
-          <Typography.Text strong>{record.teamName || `团队 ${record.teamId || '-'}`}</Typography.Text>
-          <Typography.Text type="secondary">{record.registrationNo}</Typography.Text>
+        <Space className="competition-registration-data-page__team-cell" direction="vertical" size={0}>
+          <Typography.Text strong ellipsis={{ tooltip: record.teamName || undefined }}>
+            {record.teamName || `团队 ${record.teamId || '-'}`}
+          </Typography.Text>
+          <Typography.Text type="secondary" ellipsis={{ tooltip: record.registrationNo }}>
+            {record.registrationNo}
+          </Typography.Text>
         </Space>
       ),
     },
@@ -328,21 +335,24 @@ const CompetitionRegistrationDataPage = () => {
       search: false,
       minWidth: 180,
       ellipsis: true,
+      responsive: ['sm', 'md', 'lg', 'xl', 'xxl'],
     },
     {
       title: '学生人数',
       dataIndex: 'memberCount',
       search: false,
-      width: 100,
+      width: 88,
       align: 'center',
+      responsive: ['md', 'lg', 'xl', 'xxl'],
     },
     {
       title: '材料',
       dataIndex: 'materialFileCount',
       search: false,
-      width: 130,
+      width: 170,
+      responsive: ['lg', 'xl', 'xxl'],
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={[4, 4]} wrap>
           <Tag color={record.materialSubmissionCount ? 'blue' : 'default'}>
             {record.materialSubmissionCount || 0} 次提交
           </Tag>
@@ -357,7 +367,7 @@ const CompetitionRegistrationDataPage = () => {
       dataIndex: 'status',
       valueType: 'select',
       valueEnum: dataPageRegistrationStatusValueEnum,
-      width: 110,
+      width: 96,
       render: (_, record) => (
         <Tag color={statusColor[record.status] || 'default'}>{getRegistrationStatusLabel(record.status, 'DRAFT')}</Tag>
       ),
@@ -367,6 +377,8 @@ const CompetitionRegistrationDataPage = () => {
       dataIndex: 'participantNo',
       search: false,
       width: 150,
+      responsive: ['xl', 'xxl'],
+      ellipsis: true,
       render: (_, record) => record.participantNo || '-',
     },
     {
@@ -375,61 +387,53 @@ const CompetitionRegistrationDataPage = () => {
       search: false,
       width: 180,
       valueType: 'dateTime',
+      responsive: ['xxl'],
     },
     {
       title: '操作',
       valueType: 'option',
-      fixed: 'right',
-      width: 120,
+      fixed: responsive.isDesktop ? 'right' : undefined,
+      width: 104,
       render: (_, record) => (
         <Button type="link" icon={<EyeOutlined />} onClick={() => void openDetail(record)}>
           查看资料
         </Button>
       ),
     },
-  ], [competitionTitleById, competitions]);
+  ], [competitionTitleById, competitions, responsive.isDesktop]);
 
   const registrationValues = parseJson<JsonRecord>(detail?.registrationSnapshotJson, {});
   const teamValues = parseJson<JsonRecord>(detail?.teamSnapshotJson, {});
   const projectValues = parseJson<JsonRecord>(detail?.projectSnapshotJson, {});
   const memberValues = parseJson<JsonRecord[]>(detail?.memberSnapshotJson, []);
+  const exportScope = resolveRegistrationExportScope({
+    hasCompetition: Boolean(lastQuery.competitionId),
+    filteredCount: resultTotal,
+    selectedCount: selectedRegistrationIds.length,
+  });
+  const scopedRegistrationIds = exportScope.mode === 'selected' ? selectedRegistrationIds : [];
   const tableToolbarActions = access.canExportCompetitionRegistrations ? [
     <Button
-      key="export-selected"
-      icon={<TeamOutlined />}
-      disabled={!selectedRows.length}
-      loading={exporting}
-      onClick={() => void exportRows(selectedRows)}
-    >
-      导出所选团队
-    </Button>,
-    <Button
-      key="export-filtered"
+      key="export-registrations"
       type="primary"
-      icon={<FileZipOutlined />}
+      icon={<FileExcelOutlined aria-hidden />}
+      disabled={exportScope.disabled || packaging}
       loading={exporting}
-      onClick={() => void exportRows()}
+      title="仅下载报名记录 Excel，不包含资料文件"
+      onClick={() => void exportRows(scopedRegistrationIds)}
     >
-      导出筛选结果
+      {exportScope.exportLabel}
     </Button>,
     ...(access.canDownloadRegistrationMaterials ? [
       <Button
-        key="download-selected-materials"
-        icon={<FileZipOutlined />}
-        disabled={!selectedRows.length}
+        key="download-materials"
+        icon={<FileZipOutlined aria-hidden />}
+        disabled={exportScope.disabled || exporting}
         loading={packaging}
-        onClick={() => void packageMaterials(selectedRows)}
+        title="下载 ZIP：包含报名记录 Excel 和按编号分组的资料文件夹"
+        onClick={() => void packageMaterials(scopedRegistrationIds)}
       >
-        下载所选材料包
-      </Button>,
-      <Button
-        key="download-filtered-materials"
-        type="primary"
-        icon={<FileZipOutlined />}
-        loading={packaging}
-        onClick={() => void packageMaterials()}
-      >
-        下载筛选材料包
+        {exportScope.materialPackageLabel}
       </Button>,
     ] : []),
   ] : [];
@@ -445,48 +449,64 @@ const CompetitionRegistrationDataPage = () => {
       }}
     >
       <ManagementPageBody>
-        <Alert
-          className="competition-registration-data-page__notice"
-          type={access.canViewSensitiveCompetitionRegistrations ? 'info' : 'warning'}
-          showIcon
-          message={access.canViewSensitiveCompetitionRegistrations
-            ? '每场比赛使用独立的逻辑报名数据集。服务端 XLSX 会按每位学生一行展开。'
-            : '每场比赛使用独立的逻辑报名数据集；当前角色只能查看脱敏资料。'}
-          description={access.canExportCompetitionRegistrations && !access.canExportSensitiveCompetitionRegistrations
-            ? '导出的姓名、学号/工号会脱敏，完整快照与材料元数据不会写入文件。'
-            : undefined}
-        />
         <ManagementTable<CompetitionRegistrationRecord>
           actionRef={actionRef}
           rowKey="id"
           columns={columns}
+          autoContentWidth
+          containerResponsive
           isMobile={responsive.isMobile}
-          scroll={{ x: 1420 }}
+          scroll={{ x: 'max-content' }}
+          tableLayout="fixed"
           toolBarRender={() => tableToolbarActions}
           request={async (params) => {
-            const query: RegistrationQuery = {
+            const query: RegistrationExportQuery = {
               competitionId: typeof params.competitionId === 'number'
                 ? params.competitionId
                 : Number(params.competitionId) || undefined,
               status: typeof params.status === 'string' ? params.status : undefined,
               keyword: typeof params.keyword === 'string' ? params.keyword.trim() || undefined : undefined,
             };
+            const querySignature = buildRegistrationQuerySignature(query);
+            if (lastQuerySignatureRef.current !== querySignature) {
+              lastQuerySignatureRef.current = querySignature;
+              clearSelection();
+              setResultTotal(0);
+            }
             setLastQuery(query);
             if (!query.competitionId) {
+              setResultTotal(0);
               return { data: [], total: 0, success: true };
             }
+            setResultTotal(0);
             const response = await listRegistrations({
               ...query,
               pageNo: params.current,
               pageSize: params.pageSize,
             });
+            setResultTotal(response.total || 0);
             return { data: response.records, total: response.total, success: true };
           }}
           pagination={{ pageSize: 20, showSizeChanger: true }}
           rowSelection={{
+            selectedRowKeys,
             preserveSelectedRowKeys: true,
-            onChange: (_, rows) => setSelectedRows(rows),
+            onChange: (nextSelectedRowKeys) => {
+              if (nextSelectedRowKeys.length > MAX_SELECTED_REGISTRATION_COUNT) {
+                message.warning(`一次最多选择 ${MAX_SELECTED_REGISTRATION_COUNT} 个团队`);
+                return;
+              }
+              setSelectedRowKeys(nextSelectedRowKeys);
+            },
           }}
+          tableAlertRender={({ selectedRowKeys: tableSelectedRowKeys }) => (
+            <Typography.Text role="status" aria-live="polite">
+              已选择 {tableSelectedRowKeys.length} 个团队；报名记录导出为 Excel，完整材料导出为 Excel 加编号资料文件夹。
+            </Typography.Text>
+          )}
+          tableAlertOptionRender={() => (
+            <Button type="link" onClick={clearSelection}>取消选择</Button>
+          )}
         />
       </ManagementPageBody>
 
@@ -496,12 +516,29 @@ const CompetitionRegistrationDataPage = () => {
         destroyOnHidden
         onClose={() => setDetailOpen(false)}
         extra={detail && access.canExportCompetitionRegistrations ? (
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={() => void exportRows([detail])}
-          >
-            导出该团队
-          </Button>
+          <Space wrap>
+            <Button
+              icon={<FileExcelOutlined />}
+              disabled={packaging}
+              loading={exporting}
+              title="仅下载该条报名记录 Excel，不包含资料文件"
+              onClick={() => void exportRows([detail.id], detail.competitionId)}
+            >
+              仅导出报名记录
+            </Button>
+            {access.canDownloadRegistrationMaterials ? (
+              <Button
+                type="primary"
+                icon={<FileZipOutlined />}
+                disabled={exporting}
+                loading={packaging}
+                title="下载 ZIP：包含该条报名记录 Excel 和报名资料"
+                onClick={() => void packageMaterials([detail.id], detail.competitionId)}
+              >
+                导出完整材料
+              </Button>
+            ) : null}
+          </Space>
         ) : null}
       >
         <Spin spinning={detailLoading}>
@@ -511,7 +548,7 @@ const CompetitionRegistrationDataPage = () => {
                 <Descriptions
                   bordered
                   size="small"
-                  column={{ xs: 1, sm: 2, md: 3 }}
+                  column={1}
                   items={[
                     { key: 'competition', label: '赛事', children: competitionTitleById.get(detail.competitionId) || `赛事 ${detail.competitionId}` },
                     { key: 'registrationNo', label: '报名编号', children: detail.registrationNo },

@@ -53,6 +53,7 @@ public class PaymentTransactionService {
     private final PaymentActorResolver actorResolver;
     private final AlipayPagePayService alipayPagePayService;
     private final WechatPayV3Service wechatPayV3Service;
+    private BuiltinMockPaymentAvailability builtinMockPaymentAvailability;
 
     @Autowired
     public PaymentTransactionService(
@@ -96,6 +97,11 @@ public class PaymentTransactionService {
                 systemInternalApiProvider,
                 new WechatPayV3Service(objectMapper)
         );
+    }
+
+    @Autowired(required = false)
+    void setBuiltinMockPaymentAvailability(BuiltinMockPaymentAvailability availability) {
+        this.builtinMockPaymentAvailability = availability;
     }
 
     @Transactional
@@ -309,6 +315,12 @@ public class PaymentTransactionService {
 
     private PaymentProviderSettingsDTO resolveProviderSettings(PaymentCreateOrderRequestDTO request, boolean sandboxOnly) {
         requireOrderRequest(request);
+        if (BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(providerCatalog.normalize(request.providerCode()))) {
+            if (builtinMockPaymentAvailability == null) {
+                throw new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "内置模拟支付插件未启用");
+            }
+            builtinMockPaymentAvailability.requireEnabledForWrite();
+        }
         PaymentProviderSettingsDTO settings = paymentManagementAppService.getRequiredProviderSettings(request.providerCode());
         if (sandboxOnly) {
             requireSandboxEnvironment(settings);
@@ -424,7 +436,12 @@ public class PaymentTransactionService {
         Long actorUserId = actor.userId();
         requireRefundRequest(request);
         String normalizedOrderNo = normalizeIdentifier(orderNo);
-        PaymentOrderRow order = findOrderByOrderNoAndCreatedBy(normalizedOrderNo, actor);
+        PaymentOrderRow providerOrder = findOrderByOrderNoAndCreatedBy(normalizedOrderNo, actor);
+        if (providerOrder != null
+                && BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(providerCatalog.normalize(providerOrder.getProviderCode()))) {
+            return createBuiltinMockRefund(actor, normalizedOrderNo, request);
+        }
+        PaymentOrderRow order = providerOrder;
         if (order == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
         }
@@ -528,6 +545,128 @@ public class PaymentTransactionService {
                 actorPayload(actor, Map.of("refundNo", row.getRefundNo(), "orderNo", row.getOrderNo(), "amountMinor", row.getAmountMinor()))
         );
         return toRefundDto(findRefundByRefundNo(row.getRefundNo()));
+    }
+
+    private PaymentRefundDTO createBuiltinMockRefund(
+            Actor actor,
+            String orderNo,
+            PaymentCreateRefundRequestDTO request
+    ) {
+        PaymentOrderRow order = findOrderByOrderNoAndCreatedByForUpdate(orderNo, actor);
+        if (order == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
+        }
+        PaymentRefundRow existing = findRefundByIdempotencyKeyAndCreatedBy(request.idempotencyKey(), actor);
+        if (existing != null) {
+            return toRefundDto(existing);
+        }
+        PaymentRefundRow byRefundNo = findRefundByRefundNoAndCreatedBy(request.refundNo(), actor);
+        if (byRefundNo != null) {
+            return toRefundDto(byRefundNo);
+        }
+        if (findRefundByRefundNo(request.refundNo()) != null) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Payment refund already exists");
+        }
+        if (!List.of("PAID", "SUCCESS", "SETTLED").contains(order.getStatus())) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Current order status does not allow refund");
+        }
+        validateRefundCurrency(order, request.currency());
+        Long refundedAmount = jdbcTemplate.queryForObject(
+                """
+                        select coalesce(sum(amount_minor), 0)
+                        from payment_refund
+                        where order_no = ? and provider_code = ? and status = 'REFUNDED'
+                          and created_by = ? and created_by_uuid = ? and deleted = 0
+                        """,
+                Long.class,
+                order.getOrderNo(),
+                BuiltinMockPaymentAvailability.PROVIDER_CODE,
+                actor.userId(),
+                actor.userUuid()
+        );
+        long alreadyRefunded = refundedAmount == null ? 0L : refundedAmount;
+        long requestedAmount = request.amountMinor();
+        long orderAmount = order.getAmountMinor() == null ? 0L : order.getAmountMinor();
+        if (requestedAmount > orderAmount - alreadyRefunded) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Cumulative refund amount cannot exceed paid amount");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        String refundNo = normalizeIdentifier(request.refundNo());
+        String providerRefundNo = buildProviderRefundNo(order.getProviderCode(), refundNo);
+        String requestJson = serialize(Map.of(
+                "refundNo", refundNo,
+                "orderNo", order.getOrderNo(),
+                "amountMinor", requestedAmount,
+                "currency", normalizeText(request.currency()).toUpperCase(Locale.ROOT),
+                "reason", normalizeText(request.reason()),
+                "metadata", request.metadata() == null ? Map.of() : request.metadata()
+        ));
+        String responseJson = serialize(Map.of(
+                "providerRefundNo", providerRefundNo,
+                "mock", true,
+                "refundedAmountMinor", requestedAmount
+        ));
+        int inserted = jdbcTemplate.update(
+                """
+                        insert into payment_refund (
+                            refund_no, order_no, provider_code, provider_refund_no, amount_minor, currency,
+                            status, reason, request_json, response_json, idempotency_key, refunded_at,
+                            created_by, created_by_uuid, updated_by, updated_by_uuid, deleted
+                        ) values (?, ?, ?, ?, ?, ?, 'REFUNDED', ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                refundNo,
+                order.getOrderNo(),
+                BuiltinMockPaymentAvailability.PROVIDER_CODE,
+                providerRefundNo,
+                requestedAmount,
+                normalizeText(request.currency()).toUpperCase(Locale.ROOT),
+                normalizeText(request.reason()),
+                requestJson,
+                responseJson,
+                resolveIdempotencyKey(request.idempotencyKey(), refundNo),
+                now,
+                actor.userId(),
+                actor.userUuid(),
+                actor.userId(),
+                actor.userUuid()
+        );
+        requireSinglePaymentUpdate(inserted, "Payment refund changed, please retry");
+        long cumulativeRefunded = alreadyRefunded + requestedAmount;
+        String nextOrderStatus = cumulativeRefunded == orderAmount ? "REFUNDED" : "PAID";
+        int updated = jdbcTemplate.update(
+                """
+                        update payment_order
+                        set status = ?, updated_at = ?, updated_by = ?, updated_by_uuid = ?
+                        where id = ? and order_no = ? and provider_code = ? and amount_minor = ?
+                          and created_by = ? and created_by_uuid = ? and status = ? and deleted = 0
+                        """,
+                nextOrderStatus,
+                now,
+                actor.userId(),
+                actor.userUuid(),
+                order.getId(),
+                order.getOrderNo(),
+                BuiltinMockPaymentAvailability.PROVIDER_CODE,
+                order.getAmountMinor(),
+                actor.userId(),
+                actor.userUuid(),
+                order.getStatus()
+        );
+        requireSinglePaymentUpdate(updated, "Payment order state changed, please retry");
+        outboxService.record(
+                outboxUserId(actor),
+                "payment",
+                "payment.refund.completed",
+                refundNo,
+                actorPayload(actor, Map.of(
+                        "refundNo", refundNo,
+                        "orderNo", order.getOrderNo(),
+                        "amountMinor", requestedAmount,
+                        "cumulativeAmountMinor", cumulativeRefunded,
+                        "fullRefund", cumulativeRefunded == orderAmount
+                ))
+        );
+        return toRefundDto(findRefundByRefundNo(refundNo));
     }
 
     private Actor trustedActor(CurrentUser currentUser, String requiredPermission) {
@@ -708,6 +847,39 @@ public class PaymentTransactionService {
                             where order_no = ? and created_by = ? and created_by_uuid = ? and deleted = 0
                             order by id desc
                             limit 1
+                            """,
+                    new BeanPropertyRowMapper<>(PaymentOrderRow.class),
+                    normalizeIdentifier(orderNo),
+                    actor.userId(),
+                    actor.userUuid()
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return null;
+        }
+    }
+
+    private PaymentOrderRow findOrderByOrderNoAndCreatedByForUpdate(String orderNo, Actor actor) {
+        if (actor == null || actor.userId() == null || actor.userId() <= 0 || !StringUtils.hasText(actor.userUuid())) {
+            return null;
+        }
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select id, order_no as orderNo, provider_code as providerCode,
+                                   provider_order_no as providerOrderNo, subject, amount_minor as amountMinor,
+                                   currency, status, payment_url as paymentUrl, client_ip as clientIp,
+                                   notify_url as notifyUrl, return_url as returnUrl, request_json as requestJson,
+                                   response_json as responseJson, idempotency_key as idempotencyKey,
+                                   failure_code as failureCode, failure_message as failureMessage,
+                                   expires_at as expiresAt, paid_at as paidAt, created_by as createdBy,
+                                   created_by_uuid as createdByUuid,
+                                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt,
+                                   deleted
+                            from payment_order
+                            where order_no = ? and created_by = ? and created_by_uuid = ? and deleted = 0
+                            order by id desc
+                            limit 1
+                            for update
                             """,
                     new BeanPropertyRowMapper<>(PaymentOrderRow.class),
                     normalizeIdentifier(orderNo),
@@ -945,6 +1117,10 @@ public class PaymentTransactionService {
                     order.getClientIp(),
                     metadata == null ? Map.of() : metadata
             ).paymentUrl();
+        }
+        if (BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(order.getProviderCode())) {
+            return "/mock-payment/checkout?orderNo="
+                    + java.net.URLEncoder.encode(order.getOrderNo(), java.nio.charset.StandardCharsets.UTF_8);
         }
         if (StringUtils.hasText(settings.getApiBaseUrl())) {
             return resolveText(settings.getApiBaseUrl(), "") + "/checkout/" + order.getOrderNo();

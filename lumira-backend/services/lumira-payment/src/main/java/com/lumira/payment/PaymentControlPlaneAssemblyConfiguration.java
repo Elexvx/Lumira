@@ -3,6 +3,7 @@ package com.lumira.payment;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.payment.config.PaymentSecurityConfig;
 import com.lumira.payment.controller.InternalPaymentController;
+import com.lumira.payment.controller.BuiltinMockPaymentController;
 import com.lumira.payment.controller.PaymentController;
 import com.lumira.payment.controller.PaymentReadinessV2Controller;
 import com.lumira.payment.controller.PaymentV2Controller;
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Import;
 @EnableConfigurationProperties(SecurityProperties.class)
 @Import({
         PaymentRuntimeAssemblyConfiguration.class,
+        BuiltinMockPaymentController.class,
         InternalPaymentController.class,
         JwtTokenService.class,
         PaymentController.class,

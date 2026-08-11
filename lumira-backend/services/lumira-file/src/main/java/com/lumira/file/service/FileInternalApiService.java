@@ -2,6 +2,7 @@ package com.lumira.file.service;
 
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
@@ -44,6 +45,11 @@ public class FileInternalApiService implements FileInternalApi {
         this.fileManagementAppService = fileManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.systemInternalApi = systemInternalApi;
+    }
+
+    @Override
+    public void ensureCompetitionStorageSpace(CompetitionStorageSpaceRequest request) {
+        fileManagementAppService.ensureCompetitionStorageSpace(request);
     }
 
     @Override

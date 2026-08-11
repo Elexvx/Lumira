@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.PaymentInternalApi;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentCheckoutOptionDTO;
 import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.project.ProjectSnapshot;
 import com.lumira.api.project.ProjectSnapshotPort;
@@ -1381,6 +1382,89 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void terminalBuiltinMockAttemptCanRetryWithAnotherProviderAndAnIndependentIdempotencyKey() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", "REG-1", 8_800L);
+        sql.seedPaymentOrderTask(1L, "user-uuid-1001");
+        sql.paymentOrderTask.put("status", "SUCCEEDED");
+        sql.preliminaryStageId = 71L;
+        sql.submittedMaterialCount = 1L;
+        List<PaymentCreateOrderRequestDTO> createdRequests = new ArrayList<>();
+        PaymentInternalApi paymentInternalApi = new PaymentInternalApi() {
+            @Override
+            public PaymentOrderDTO createOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, PaymentCreateOrderRequestDTO request) {
+                createdRequests.add(request);
+                return new PaymentOrderDTO(
+                        request.orderNo(), request.providerCode(), "provider-" + request.orderNo(), request.subject(),
+                        request.amountMinor(), request.currency(), "PENDING", "/checkout/" + request.orderNo(),
+                        null, null, request.returnUrl(), request.metadata(), null, null, null, null, null
+                );
+            }
+
+            @Override
+            public PaymentOrderDTO getOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+                if ("REG-1".equals(orderNo)) {
+                    return new PaymentOrderDTO(
+                            orderNo, "builtin_mock", "mock-old", "Competition registration", 8_800L, "CNY",
+                            "CANCELLED", null, null, null, null, Map.of(), "PLUGIN_DISABLED", "Plugin disabled",
+                            null, null, null
+                    );
+                }
+                return new PaymentOrderDTO(
+                        orderNo, "alipay", "provider-" + orderNo, "Competition registration", 8_800L, "CNY",
+                        "PENDING", "/checkout/" + orderNo, null, null, null, Map.of(), null, null,
+                        null, null, null
+                );
+            }
+
+            @Override
+            public PaymentOrderDTO cancelOrder(Long operatorId, String operatorUuid, Long simulatedRoleId, String orderNo) {
+                return getOrder(operatorId, operatorUuid, simulatedRoleId, orderNo);
+            }
+        };
+        CompetitionRegistrationDTO.PaymentOrderRequest request = new CompetitionRegistrationDTO.PaymentOrderRequest();
+        request.setProviderCode("alipay");
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
+
+        CompetitionRegistrationVO.PaymentOrder retried = service.createPaymentOrder(student(), 1L, request);
+
+        assertThat(retried.getOrderNo()).isEqualTo("REG-1-A2");
+        assertThat(createdRequests).singleElement().satisfies(created -> {
+            assertThat(created.providerCode()).isEqualTo("alipay");
+            assertThat(created.orderNo()).isEqualTo("REG-1-A2");
+            assertThat(created.idempotencyKey()).isEqualTo("competition-registration-1-attempt-2");
+        });
+        assertThat(sql.registration.get("paymentOrderNo")).isEqualTo("REG-1-A2");
+        assertThat(sql.paymentOrderTask.get("attemptNo")).isEqualTo(2);
+        assertThat(sql.lastPaymentOrderDetachSql)
+                .contains("payment_order_no = null")
+                .contains("payment_order_no = ?");
+        assertThat(sql.lastPaymentTaskInsertSql)
+                .contains("attempt_no")
+                .contains("greatest(2, attempt_no + 1)");
+    }
+
+    @Test
+    void builtinMockPaymentOptionUsesAlipayDesktopAndMobileScenes() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        when(paymentInternalApi.listCheckoutOptions(1001L, "user-uuid-1001", null)).thenReturn(List.of(
+                new PaymentCheckoutOptionDTO(
+                        "builtin_mock", "内置模拟支付", 900, "CNY", List.of("PC_WEB", "WAP", "QR_CODE")
+                )
+        ));
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1), paymentInternalApi);
+
+        assertThat(service.listPaymentOptions(student(), 1L, "DESKTOP"))
+                .singleElement()
+                .satisfies(option -> assertThat(option.getPaymentScene()).isEqualTo("PC_WEB"));
+        assertThat(service.listPaymentOptions(student(), 1L, "MOBILE"))
+                .singleElement()
+                .satisfies(option -> assertThat(option.getPaymentScene()).isEqualTo("WAP"));
+    }
+
+    @Test
     void paymentOrderCreationShouldIgnoreDisabledPreliminaryStage() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
@@ -1593,6 +1677,51 @@ class CompetitionRegistrationAppServiceTest {
         assertThat(sql.lastPaymentRecordQuerySql)
                 .contains("team_snapshot_json", "project_snapshot_json")
                 .doesNotContain("join payment_order", "from payment_order");
+    }
+
+    @Test
+    void listPaymentRecordsKeepsRegistrationFallbackWhenReferencedOrderIsMissing() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "PENDING_PAYMENT", "REG-1-ORPHAN", 8_800L);
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("registrationId", 1L);
+        row.put("registrationNo", "REG-TEST");
+        row.put("competitionId", 11L);
+        row.put("teamId", 21L);
+        row.put("projectId", 31L);
+        row.put("ownerUserId", 1001L);
+        row.put("registrationStatus", "PENDING_PAYMENT");
+        row.put("payableAmountMinor", 8_800L);
+        row.put("orderNo", "REG-1-ORPHAN");
+        row.put("amountMinor", 8_800L);
+        row.put("currency", "CNY");
+        row.put("paymentStatus", "PENDING_PAYMENT");
+        sql.paymentRecordRows = List.of(row);
+        PaymentInternalApi paymentInternalApi = mock(PaymentInternalApi.class);
+        when(paymentInternalApi.getOrder(1001L, "user-uuid-1001", "REG-1-ORPHAN"))
+                .thenThrow(new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist"));
+        CompetitionRegistrationAppService service = service(
+                sql,
+                teamApiWithMembers(1001L, 1),
+                paymentInternalApi
+        );
+
+        PageResponse<CompetitionRegistrationVO.PaymentRecord> page = service.listPaymentRecords(
+                paymentAdmin(),
+                1,
+                10,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).hasSize(1);
+        CompetitionRegistrationVO.PaymentRecord record = page.getRecords().get(0);
+        assertThat(record.getOrderNo()).isEqualTo("REG-1-ORPHAN");
+        assertThat(record.getPaymentStatus()).isEqualTo("PENDING_PAYMENT");
+        assertThat(record.getAmountMinor()).isEqualTo(8_800L);
     }
 
     @Test
@@ -2024,6 +2153,8 @@ class CompetitionRegistrationAppServiceTest {
         private List<Object> lastPaymentTaskInsertArgs = List.of();
         private String lastPaymentOrderAttachSql;
         private List<Object> lastPaymentOrderAttachArgs = List.of();
+        private String lastPaymentOrderDetachSql;
+        private List<Object> lastPaymentOrderDetachArgs = List.of();
         private String lastPaymentRecordCountSql;
         private String lastPaymentRecordQuerySql;
         private List<Map<String, Object>> materialSubmissions = List.of();
@@ -2063,6 +2194,7 @@ class CompetitionRegistrationAppServiceTest {
             paymentOrderTask.put("returnUrl", null);
             paymentOrderTask.put("ownerUserUuid", ownerUserUuid);
             paymentOrderTask.put("simulatedRoleId", simulatedRoleId);
+            paymentOrderTask.put("attemptNo", 1);
             paymentOrderTask.put("status", "PENDING");
             paymentOrderTask.put("retryCount", 0);
         }
@@ -2162,6 +2294,10 @@ class CompetitionRegistrationAppServiceTest {
                 return 1;
             }
             if (normalized.contains("insert into competition_payment_order_task")) {
+                int previousAttempt = paymentOrderTask != null && paymentOrderTask.get("attemptNo") instanceof Number number
+                        ? number.intValue()
+                        : 0;
+                boolean retryAttempt = normalized.contains("greatest(2, attempt_no + 1)");
                 lastPaymentTaskInsertSql = sql;
                 lastPaymentTaskInsertArgs = Arrays.asList(args);
                 paymentOrderTask = new LinkedHashMap<>();
@@ -2173,6 +2309,7 @@ class CompetitionRegistrationAppServiceTest {
                 paymentOrderTask.put("returnUrl", args[4]);
                 paymentOrderTask.put("ownerUserUuid", args[5]);
                 paymentOrderTask.put("simulatedRoleId", args[6]);
+                paymentOrderTask.put("attemptNo", retryAttempt ? Math.max(2, previousAttempt + 1) : 1);
                 paymentOrderTask.put("status", "PENDING");
                 paymentOrderTask.put("retryCount", 0);
                 return updateResults.isEmpty() ? 1 : updateResults.remove();
@@ -2212,6 +2349,21 @@ class CompetitionRegistrationAppServiceTest {
                     return 1;
                 }
                 return 0;
+            }
+            if (normalized.contains("update competition_registration")
+                    && normalized.contains("set payment_order_no = null")) {
+                lastPaymentOrderDetachSql = sql;
+                lastPaymentOrderDetachArgs = Arrays.asList(args);
+                if (!Objects.equals(registration.get("id"), args[3])
+                        || !Objects.equals(registration.get("registrationNo"), args[4])
+                        || !Objects.equals(registration.get("ownerUserId"), args[5])
+                        || !Objects.equals(registration.get("ownerUserUuid"), args[6])
+                        || !Objects.equals(registration.get("paymentOrderNo"), args[7])) {
+                    return 0;
+                }
+                registration.put("paymentOrderNo", null);
+                paymentOrderNo = null;
+                return 1;
             }
             if (normalized.contains("update competition_registration")
                     && normalized.contains("set payment_order_no")) {

@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.plugin.BuiltinPluginLifecycleHook;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -28,11 +29,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.SimpleTransactionStatus;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,6 +50,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,7 +58,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -165,6 +171,28 @@ class PluginManagementAppServiceTest {
         verify(pluginPersistenceService).registerPluginPermissions("sms", "1.0.0");
         verify(pluginPersistenceService).bumpBootstrapVersion("plugin.enabled");
         verify(pluginMigrationService).executeUpMigrations("sms", "1.0.0", null, 100L, "user-uuid-100");
+    }
+
+    @Test
+    void builtinMockEnableShouldProvisionThroughItsLifecycleHookInsideTheEnableTransaction() {
+        BuiltinPluginLifecycleHook hook = mock(BuiltinPluginLifecycleHook.class);
+        when(hook.pluginCode()).thenReturn("builtin-mock-payment");
+        ObjectProvider<BuiltinPluginLifecycleHook> hookProvider = mock(ObjectProvider.class);
+        when(hookProvider.orderedStream()).thenReturn(Stream.of(hook));
+        pluginManagementAppService.setBuiltinPluginLifecycleHooks(hookProvider);
+        when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenReturn(new SimpleTransactionStatus());
+
+        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
+        request.setPluginCode("builtin-mock-payment");
+        request.setVersion("1.0.0");
+
+        pluginManagementAppService.enable(request, currentUser());
+
+        InOrder ordered = inOrder(pluginPersistenceService, hook);
+        ordered.verify(pluginPersistenceService).enablePlugin(
+                "builtin-mock-payment", "1.0.0", null, 100L, "user-uuid-100"
+        );
+        ordered.verify(hook).onEnable(any(BuiltinPluginLifecycleHook.PluginLifecycleContext.class));
     }
 
     @Test
@@ -302,6 +330,36 @@ class PluginManagementAppServiceTest {
         verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L, "user-uuid-100");
         verify(systemInternalApi).invalidatePermissionSnapshot();
         verify(domainEventPublisher).publishAll(any());
+    }
+
+    @Test
+    void builtinMockDisableShouldBlockPluginStateBeforeCancellingPendingPayments() {
+        BuiltinPluginLifecycleHook hook = mock(BuiltinPluginLifecycleHook.class);
+        when(hook.pluginCode()).thenReturn("builtin-mock-payment");
+        ObjectProvider<BuiltinPluginLifecycleHook> hookProvider = mock(ObjectProvider.class);
+        when(hookProvider.orderedStream()).thenReturn(Stream.of(hook));
+        pluginManagementAppService.setBuiltinPluginLifecycleHooks(hookProvider);
+        PluginVersionEntity enabledVersion = new PluginVersionEntity();
+        enabledVersion.setPluginCode("builtin-mock-payment");
+        enabledVersion.setVersion("1.0.0");
+        PluginVO.PluginStatusVO pluginStatus = new PluginVO.PluginStatusVO();
+        pluginStatus.setSupportsDataPurge(false);
+        when(pluginPersistenceService.findEnabledVersion("builtin-mock-payment"))
+                .thenReturn(Optional.of(enabledVersion));
+        when(pluginPersistenceService.pluginStatus("builtin-mock-payment"))
+                .thenReturn(Optional.of(pluginStatus));
+
+        PluginDTO.DisableRequest request = new PluginDTO.DisableRequest();
+        request.setPluginCode("builtin-mock-payment");
+        request.setPurgeData(false);
+
+        pluginManagementAppService.disable(request, currentUser());
+
+        InOrder ordered = inOrder(pluginPersistenceService, hook);
+        ordered.verify(pluginPersistenceService).disablePlugin(
+                "builtin-mock-payment", 100L, "user-uuid-100"
+        );
+        ordered.verify(hook).onDisable(any(BuiltinPluginLifecycleHook.PluginLifecycleContext.class));
     }
 
     @Test

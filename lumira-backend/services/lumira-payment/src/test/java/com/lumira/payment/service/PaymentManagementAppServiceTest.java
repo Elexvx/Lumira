@@ -373,6 +373,104 @@ class PaymentManagementAppServiceTest {
     }
 
     @Test
+    void builtinMockProvisioningShouldGenerateManagedRsa2Configuration() {
+        InsertSuccessJdbcTemplate jdbcTemplate = new InsertSuccessJdbcTemplate();
+        PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
+        doReturn("encrypted").when(cryptoService).encryptJson(any());
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                cryptoService,
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi())
+        );
+
+        service.provisionBuiltinMockProvider(1001L, "user-uuid-1001");
+
+        ArgumentCaptor<PaymentProviderSettingsDTO> storedPayload = ArgumentCaptor.forClass(PaymentProviderSettingsDTO.class);
+        verify(cryptoService).encryptJson(storedPayload.capture());
+        PaymentProviderSettingsDTO stored = storedPayload.getValue();
+        assertThat(stored.getProviderCode()).isEqualTo("builtin_mock");
+        assertThat(stored.getDisplayName()).isEqualTo("内置模拟支付");
+        assertThat(stored.getSortOrder()).isEqualTo(900);
+        assertThat(stored.getEnvironment()).isEqualTo("SANDBOX");
+        assertThat(stored.getCurrency()).isEqualTo("CNY");
+        assertThat(stored.getEnabledScenes()).containsExactly("PC_WEB", "WAP", "QR_CODE");
+        assertThat(stored.getAppId()).startsWith("lumira-builtin-mock-");
+        assertThat(stored.getPrivateKey()).isNotBlank();
+        assertThat(stored.getPublicKey()).isNotBlank();
+        assertThat(stored.isConfigured()).isTrue();
+        assertThat(stored.isEnabled()).isTrue();
+    }
+
+    @Test
+    void builtinMockUpdateShouldOnlyPersistPresentationFields() {
+        PaymentProviderConfigRow row = new PaymentProviderConfigRow();
+        row.setId(61L);
+        row.setProviderCode("builtin_mock");
+        row.setProviderName("内置模拟支付");
+        row.setEnabled(1);
+        row.setConfigured(1);
+        row.setEnvironment("SANDBOX");
+        row.setEncryptedConfigJson("encrypted-mock");
+        PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
+        PaymentProviderSettingsDTO current = new PaymentProviderSettingsDTO();
+        current.setProviderCode("builtin_mock");
+        current.setDisplayName("内置模拟支付");
+        current.setSortOrder(900);
+        current.setEnabledScenes(List.of("PC_WEB", "WAP", "QR_CODE"));
+        current.setEnvironment("SANDBOX");
+        current.setCurrency("CNY");
+        current.setAppId("managed-app");
+        current.setPrivateKey("managed-private-key");
+        current.setPublicKey("managed-public-key");
+        current.setWebhookSecret("managed-webhook-secret");
+        current.setEnabled(true);
+        current.setConfigured(true);
+        doReturn(current).when(cryptoService).decryptJson("encrypted-mock", PaymentProviderSettingsDTO.class);
+        doReturn("encrypted-updated").when(cryptoService).encryptJson(any());
+        PaymentManagementAppService service = new PaymentManagementAppService(
+                new ExistingSuccessJdbcTemplate(row),
+                new ObjectMapper(),
+                cryptoService,
+                new PaymentProviderCatalog(),
+                mock(PaymentOutboxService.class),
+                provider(enabledSystemInternalApi())
+        );
+        BuiltinMockPaymentAvailability availability = mock(BuiltinMockPaymentAvailability.class);
+        service.setBuiltinMockPaymentAvailability(availability);
+        PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();
+        request.setDisplayName("赛事联调支付");
+        request.setSortOrder(321);
+        request.setEnabledScenes(List.of("QR_CODE"));
+        request.setEnvironment("PRODUCTION");
+        request.setCurrency("USD");
+        request.setAppId("attacker-app");
+        request.setPrivateKey("attacker-private-key");
+        request.setPublicKey("attacker-public-key");
+        request.setWebhookSecret("attacker-webhook-secret");
+
+        service.updatePaymentProviderSettings(currentUser(), "builtin_mock", request);
+
+        ArgumentCaptor<PaymentProviderSettingsDTO> storedPayload = ArgumentCaptor.forClass(PaymentProviderSettingsDTO.class);
+        verify(cryptoService).encryptJson(storedPayload.capture());
+        PaymentProviderSettingsDTO stored = storedPayload.getValue();
+        assertThat(stored.getDisplayName()).isEqualTo("赛事联调支付");
+        assertThat(stored.getSortOrder()).isEqualTo(321);
+        assertThat(stored.getEnabledScenes()).containsExactly("QR_CODE");
+        assertThat(stored.getEnvironment()).isEqualTo("SANDBOX");
+        assertThat(stored.getCurrency()).isEqualTo("CNY");
+        assertThat(stored.getAppId()).isEqualTo("managed-app");
+        assertThat(stored.getPrivateKey()).isEqualTo("managed-private-key");
+        assertThat(stored.getPublicKey()).isEqualTo("managed-public-key");
+        assertThat(stored.getWebhookSecret()).isEqualTo("managed-webhook-secret");
+        assertThat(stored.isConfigured()).isTrue();
+        assertThat(stored.isEnabled()).isTrue();
+        verify(availability).requireEnabledForWrite();
+    }
+
+    @Test
     void testProviderShouldValidateWithDecryptedSecrets() {
         PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
         PaymentProviderConfigRow row = providerRow();

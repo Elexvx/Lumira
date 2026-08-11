@@ -1,6 +1,7 @@
 package com.lumira.file.controller;
 
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.file.service.FileInternalApiService;
 import org.junit.jupiter.api.AfterEach;
@@ -67,6 +68,23 @@ class InternalFileControllerTest {
 
         assertThat(actual).isSameAs(result);
         verify(fileInternalApiService).uploadImageForUser(file, "avatar", "remark", null, 42L, "user-uuid-42", "alice", null);
+    }
+
+    @Test
+    void competitionStorageProvisioningRequiresAndUsesInternalServicePrincipal() {
+        FileInternalApiService fileInternalApiService = mock(FileInternalApiService.class);
+        InternalFileController controller = new InternalFileController(fileInternalApiService);
+        CompetitionStorageSpaceRequest request = new CompetitionStorageSpaceRequest(
+                88L,
+                "ca5e4e82-5be1-4d06-8aba-3c9cb45acad1",
+                "比赛",
+                42L,
+                "user-uuid-42"
+        );
+
+        controller.ensureCompetitionStorageSpace(request);
+
+        verify(fileInternalApiService).ensureCompetitionStorageSpace(request);
     }
 
     @Test

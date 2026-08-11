@@ -49,7 +49,7 @@ public interface CompetitionSettingsRepository {
     record ConfigSetCreateResult(Long configSetId, int writeCount) {
     }
 
-    record ConfigTemplateSeed(String competitionUuid, Long configSetId, Actor actor) {
+    record ConfigTemplateSeed(String competitionUuid, Long configSetId, String storageKey, Actor actor) {
     }
 
     record ConfigItemInsert(

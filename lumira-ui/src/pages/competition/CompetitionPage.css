@@ -1102,7 +1102,7 @@
     minmax(180px, 0.8fr)
     minmax(300px, 1.3fr)
     minmax(300px, 1.3fr)
-    72px;
+    120px;
   gap: 16px;
   align-items: center;
   box-sizing: border-box;
@@ -1134,16 +1134,18 @@
 }
 
 .competition-schedule-table__head > span:last-child,
-.competition-schedule-table__row > .ant-btn:last-child {
+.competition-schedule-table__actions {
   justify-self: center;
+  white-space: nowrap;
 }
 
 .competition-schedule-table .ant-form-item {
   margin-bottom: 0;
 }
 
-.competition-schedule-table__row > .ant-btn {
+.competition-schedule-table__actions .ant-btn {
   margin-top: 1px;
+  padding-inline: 6px;
 }
 
 .competition-material-preview {

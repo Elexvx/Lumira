@@ -1,9 +1,16 @@
-.competition-registration-data-page__notice {
-  margin-bottom: 16px;
-}
-
 .competition-registration-data-page__detail {
   width: 100%;
+}
+
+.competition-registration-data-page__team-cell {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.competition-registration-data-page__team-cell > .ant-space-item {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .competition-registration-data-page__submission + .competition-registration-data-page__submission {

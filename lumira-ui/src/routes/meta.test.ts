@@ -44,6 +44,13 @@ describe('route meta', () => {
       .toBe('canVisitCompetitionReviewResults');
   });
 
+  it('registers the built-in mock checkout as a hidden guarded page', () => {
+    expect(realPageRouteMetaMap.get('/mock-payment/checkout')).toMatchObject({
+      access: 'canUseBuiltinMockPayment',
+      hideInMenu: true,
+    });
+  });
+
   it('registers the review workbench independently from workflow approvals', () => {
     expect(realPageRouteMetaMap.get('/expert-review/reviews')?.access)
       .toBe('canVisitReviewWorkbench');

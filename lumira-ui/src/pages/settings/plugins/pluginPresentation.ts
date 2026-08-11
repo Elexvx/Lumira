@@ -29,6 +29,10 @@ const PLUGIN_VALUE_MESSAGES: Record<string, string> = {
 };
 
 const BUILTIN_PLUGIN_MESSAGES: Record<string, { name: string; description: string }> = {
+  'builtin-mock-payment': {
+    name: 'page.plugins.builtin.builtinMockPayment.name',
+    description: 'page.plugins.builtin.builtinMockPayment.description',
+  },
   'sensitive-words': {
     name: 'page.plugins.builtin.sensitiveWords.name',
     description: 'page.plugins.builtin.sensitiveWords.description',

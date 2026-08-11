@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -114,6 +115,7 @@ class CompetitionRegistrationExportAppServiceTest {
         ExportTaskPort exportTaskPort = mock(ExportTaskPort.class);
         TrustedUserSnapshotResolver userSnapshotResolver = mock(TrustedUserSnapshotResolver.class);
         FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        CompetitionExcelExportService excelExportService = new CompetitionExcelExportService();
         CompetitionRegistrationVO.Registration registration = new CompetitionRegistrationVO.Registration();
         registration.setId(101L);
         registration.setCompetitionId(88L);
@@ -146,7 +148,7 @@ class CompetitionRegistrationExportAppServiceTest {
         CompetitionRegistrationExportAppService service = new CompetitionRegistrationExportAppService(
                 registrationAppService,
                 datasetRepository,
-                mock(CompetitionExcelExportService.class),
+                excelExportService,
                 exportTaskPort,
                 userSnapshotResolver,
                 fileInternalApi,
@@ -160,13 +162,74 @@ class CompetitionRegistrationExportAppServiceTest {
 
         byte[] archive = service.exportMaterialPackageFromTrustedSnapshot(user, request, 9001L);
 
-        LinkedHashMap<String, String> entries = zipEntries(archive);
-        assertThat(entries.keySet()).contains("manifest.json");
-        assertThat(entries.keySet()).anyMatch(path -> path.contains("REG_001-__Alpha/stage-7/project_file-501-__proposal.pdf"));
-        assertThat(entries.get("manifest.json")).contains("\"fileId\" : 501");
+        LinkedHashMap<String, byte[]> entries = zipEntries(archive);
+        assertThat(entries.keySet()).contains("报名记录.xlsx", "manifest.json", "001-REG_001-__Alpha/");
+        assertThat(entries.keySet()).anyMatch(path -> path.contains("001-REG_001-__Alpha/stage-7/project_file-501-__proposal.pdf"));
+        String manifest = new String(entries.get("manifest.json"), StandardCharsets.UTF_8);
+        assertThat(manifest).contains("\"fileId\" : 501");
+        assertThat(manifest).contains("\"registrationFolder\" : \"001-REG_001-__Alpha\"");
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(entries.get("报名记录.xlsx")))) {
+            assertThat(workbook.getSheet("报名记录").getPhysicalNumberOfRows()).isEqualTo(2);
+        }
         verify(fileInternalApi).readFileContentForAuthorizedBusinessReference(
                 501L, 1001L, "user-uuid-1001", "operator", "competition.registration.material", 101L, null
         );
+    }
+
+    @Test
+    void materialPackageSeparatesSelectedRegistrationsIntoNumberedFolders() throws Exception {
+        CompetitionRegistrationAppService registrationAppService = mock(CompetitionRegistrationAppService.class);
+        RegistrationDatasetRepository datasetRepository = mock(RegistrationDatasetRepository.class);
+        TrustedUserSnapshotResolver userSnapshotResolver = mock(TrustedUserSnapshotResolver.class);
+        CompetitionExcelExportService excelExportService = new CompetitionExcelExportService();
+        CompetitionRegistrationVO.Registration first = new CompetitionRegistrationVO.Registration();
+        first.setId(101L);
+        first.setCompetitionId(88L);
+        first.setRegistrationNo("REG-001");
+        first.setTeamName("Alpha");
+        CompetitionRegistrationVO.Registration second = new CompetitionRegistrationVO.Registration();
+        second.setId(102L);
+        second.setCompetitionId(88L);
+        second.setRegistrationNo("REG-002");
+        second.setTeamName("Beta");
+        when(registrationAppService.getRegistration(any(), eq(101L))).thenReturn(first);
+        when(registrationAppService.getRegistration(any(), eq(102L))).thenReturn(second);
+        when(datasetRepository.isLinked(88L, 101L)).thenReturn(true);
+        when(datasetRepository.isLinked(88L, 102L)).thenReturn(true);
+        when(registrationAppService.listMaterials(any(), anyLong())).thenReturn(List.of());
+        CurrentUser user = trustedUser();
+        user.setPermissions(Set.of(
+                CompetitionRegistrationExportAppService.EXPORT_PERMISSION,
+                CompetitionRegistrationExportAppService.MATERIAL_DOWNLOAD_PERMISSION
+        ));
+        when(userSnapshotResolver.resolve(any(), any(), any(), any(), any())).thenReturn(user);
+        CompetitionRegistrationExportAppService service = new CompetitionRegistrationExportAppService(
+                registrationAppService,
+                datasetRepository,
+                excelExportService,
+                mock(ExportTaskPort.class),
+                userSnapshotResolver,
+                mock(FileInternalApi.class),
+                new ObjectMapper(),
+                provider(null),
+                provider(mock(ExecutorService.class))
+        );
+        CompetitionRegistrationDTO.RegistrationExportRequest request = new CompetitionRegistrationDTO.RegistrationExportRequest();
+        request.setCompetitionId(88L);
+        request.setRegistrationIds(List.of(101L, 102L));
+
+        byte[] archive = service.exportMaterialPackageFromTrustedSnapshot(user, request, 9001L);
+
+        LinkedHashMap<String, byte[]> entries = zipEntries(archive);
+        assertThat(entries.keySet()).contains(
+                "报名记录.xlsx",
+                "001-REG-001-Alpha/",
+                "002-REG-002-Beta/",
+                "manifest.json"
+        );
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(entries.get("报名记录.xlsx")))) {
+            assertThat(workbook.getSheet("报名记录").getPhysicalNumberOfRows()).isEqualTo(3);
+        }
     }
 
     private CompetitionRegistrationExportAppService service(
@@ -224,12 +287,12 @@ class CompetitionRegistrationExportAppServiceTest {
         };
     }
 
-    private LinkedHashMap<String, String> zipEntries(byte[] archive) throws Exception {
-        LinkedHashMap<String, String> entries = new LinkedHashMap<>();
+    private LinkedHashMap<String, byte[]> zipEntries(byte[] archive) throws Exception {
+        LinkedHashMap<String, byte[]> entries = new LinkedHashMap<>();
         try (ZipInputStream input = new ZipInputStream(new ByteArrayInputStream(archive))) {
             ZipEntry entry;
             while ((entry = input.getNextEntry()) != null) {
-                entries.put(entry.getName(), new String(input.readAllBytes(), StandardCharsets.UTF_8));
+                entries.put(entry.getName(), input.readAllBytes());
             }
         }
         return entries;

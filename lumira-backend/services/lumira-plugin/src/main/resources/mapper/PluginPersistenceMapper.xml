@@ -378,6 +378,23 @@
         limit 1
     </select>
 
+    <select id="isPluginEnabled" resultType="java.lang.Integer">
+        select case when d.status = 'ENABLED' then 1 else 0 end
+        from sys_plugin_definition d
+        where d.plugin_code = #{pluginCode}
+          and d.deleted = 0
+        limit 1
+    </select>
+
+    <select id="isPluginEnabledForWrite" resultType="java.lang.Integer">
+        select case when d.status = 'ENABLED' then 1 else 0 end
+        from sys_plugin_definition d
+        where d.plugin_code = #{pluginCode}
+          and d.deleted = 0
+        limit 1
+        for share
+    </select>
+
     <select id="listAvailablePlugins" resultType="com.lumira.saas.modules.plugin.vo.PluginVO$PluginAvailabilityVO">
         select d.plugin_code,
                d.plugin_name,

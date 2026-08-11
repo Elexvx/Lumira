@@ -20,6 +20,7 @@ describe('payment display localization', () => {
 
   it('keeps unknown provider fallbacks readable', () => {
     expect(paymentProviderDisplayName('custom', 'Custom Pay')).toBe('Custom Pay');
+    expect(paymentProviderDisplayName('builtin_mock', undefined)).toBe('内置模拟支付');
   });
 
   it('normalizes the legacy test environment to the single test value', () => {
