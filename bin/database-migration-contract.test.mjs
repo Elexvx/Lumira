@@ -231,6 +231,37 @@ test('built-in mock payment migration guards attempt columns with MySQL-compatib
   assert.match(migration, /EXECUTE builtin_mock_attempt_no_statement/i);
 });
 
+test('sensitive-word policy dictionaries stay aligned across every database lifecycle', () => {
+  const baseline = read('lumira-backend/sql/saas.sql');
+  const manualUpgrade = read('lumira-backend/sql/upgrade-sensitive-word-policy-dictionary-v1.sql');
+  const migration = read('deploy/migrations/V202608110003__seed_sensitive_word_policy_dictionary.sql');
+  const dictionaryCodes = [
+    'sys_sensitive_word_action',
+    'sys_sensitive_word_blocking_action',
+    'sys_sensitive_word_default_category',
+    'sys_sensitive_word_import_category',
+    'sys_sensitive_word_default_severity',
+    'sys_sensitive_word_severity',
+  ];
+
+  for (const source of [baseline, manualUpgrade, migration]) {
+    for (const dictionaryCode of dictionaryCodes) {
+      assert.match(source, new RegExp(`'${dictionaryCode}'`));
+    }
+    assert.match(
+      source,
+      /'BLOCK',\s*'阻断',[\s\S]*?dict_code`='sys_sensitive_word_blocking_action'/,
+    );
+    assert.ok(
+      (source.match(/ON DUPLICATE KEY UPDATE/g) || []).length >= 2,
+      'dictionary type and item seeds must both be idempotent',
+    );
+  }
+
+  assert.doesNotMatch(migration, /\bDELETE\s+FROM\b/i);
+  assert.doesNotMatch(migration, /\bDROP\s+(?:TABLE|COLUMN|INDEX)\b/i);
+});
+
 test('certificate template migration preserves runtime canvas placeholders', () => {
   const migration = read('deploy/migrations/V202607300003__harden_certificate_generation_and_template_defaults.sql');
   const migrationConfig = read('deploy/migrations/V202607300003__harden_certificate_generation_and_template_defaults.sql.conf');
