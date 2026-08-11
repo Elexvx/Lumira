@@ -26,7 +26,6 @@ import { useCurrentUserRealtimeSync } from '@/hooks/useCurrentUserRealtimeSync';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { request } from '@/services/common/request';
-import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import {
   buildSettingsDropdownItems,
   isSettingsShellPath,
@@ -202,7 +201,7 @@ export const TopActions = () => {
   const githubLink = brandingSettings.githubLinkEnabled ? resolveExternalLink(brandingSettings.githubLinkUrl) : '';
   const helpLink = brandingSettings.helpLinkEnabled ? resolveExternalLink(brandingSettings.helpLinkUrl) : '';
   const userName = currentUser?.nickname || currentUser?.realName || currentUser?.username || intl.formatMessage({ id: 'nav.user.menu', defaultMessage: 'User menu' });
-  const userAvatarUrl = normalizeUploadUrl(currentUser?.avatarUrl || '');
+  const userAvatarUrl = currentUser?.avatarUrl || '';
   const currentLocale = normalizeLocale(currentUser?.locale || getLocale());
   const availableRoles = useMemo(() => currentUser?.availableRoles || [], [currentUser?.availableRoles]);
   const simulatedRoleId = currentUser?.simulatedRoleId ?? null;

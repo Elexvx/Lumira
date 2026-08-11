@@ -23,6 +23,7 @@ import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.user.infrastructure.SystemUserManagementPersistenceAdapters;
 import com.lumira.saas.modules.system.user.repository.SystemUserManagementRepository;
 import com.lumira.saas.modules.system.user.support.UserUidGenerator;
+import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
@@ -1121,6 +1122,10 @@ public class SystemUserManagementAppService {
             String operatorUuid,
             LocalDateTime updatedAt
     ) {
+        String avatarUrl = normalizeNullableText(request.getAvatarUrl());
+        if (avatarUrl == null) {
+            avatarUrl = UserAvatarDefaults.generatedAvatarUrl(userUuid != null ? userUuid : generatedUuid);
+        }
         return new SystemUserManagementRepository.UserSave(
                 userId,
                 userUuid,
@@ -1130,7 +1135,7 @@ public class SystemUserManagementAppService {
                 normalizeNullableText(request.getMobile()),
                 normalizeNullableText(request.getNickname()),
                 normalizeNullableText(request.getRealName()),
-                normalizeNullableText(request.getAvatarUrl()),
+                avatarUrl,
                 normalizeNullableText(request.getEmail()),
                 normalizeNullableText(request.getBirthMonth()),
                 normalizeNullableText(request.getGender()),

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { UserAvatar, resolveUserAvatarSeed } from './UserAvatar';
+import { UserAvatar, isGeneratedUserAvatarUrl, resolveUserAvatarSeed } from './UserAvatar';
 
 vi.mock('@outpacelabs/avatars', () => ({
   GradientAvatar: ({ seed }: { seed: string | number }) => (
@@ -42,5 +42,26 @@ describe('UserAvatar', () => {
 
     expect(markup).toContain('data-testid="generated-avatar"');
     expect(markup).toContain('data-seed="lumira-user:user-uuid-42"');
+  });
+
+  it('renders a persisted generated avatar marker with its stored identity', () => {
+    const marker = '/api/v1/profile/avatar/generated/persisted-user-42';
+    const markup = renderToStaticMarkup(
+      <UserAvatar avatarUrl={marker} userUuid="different-runtime-identity" username="alice" />,
+    );
+
+    expect(isGeneratedUserAvatarUrl(marker)).toBe(true);
+    expect(markup).toContain('data-testid="generated-avatar"');
+    expect(markup).toContain('data-seed="lumira-user:persisted-user-42"');
+    expect(markup).not.toContain('/api/uploads/');
+  });
+
+  it('keeps uploaded avatars preferred over the generated marker format', () => {
+    const markup = renderToStaticMarkup(
+      <UserAvatar avatarUrl="/api/uploads/avatar/custom.png" userUuid="user-uuid-42" />,
+    );
+
+    expect(markup).toContain('/api/uploads/avatar/custom.png');
+    expect(markup).not.toContain('data-testid="generated-avatar"');
   });
 });

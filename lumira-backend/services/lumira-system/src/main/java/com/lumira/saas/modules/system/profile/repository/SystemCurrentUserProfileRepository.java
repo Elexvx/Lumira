@@ -10,6 +10,9 @@ public interface SystemCurrentUserProfileRepository {
 
     int updateAvatar(Long userId, String userUuid, String avatarUrl, Actor actor, LocalDateTime updatedAt);
 
+    /** Initializes the generated default only while the user has no avatar. */
+    int initializeAvatarIfAbsent(Long userId, String userUuid, String avatarUrl, Actor actor, LocalDateTime updatedAt);
+
     boolean hasActiveWechatBinding(Long userId, String userUuid);
 
     int updateContact(Long userId, String userUuid, String contactType, String value, Actor actor, LocalDateTime updatedAt);

@@ -5705,3 +5705,13 @@ ON DUPLICATE KEY UPDATE
     `owner_code`=VALUES(`owner_code`),
     `updated_by`=VALUES(`updated_by`),
     `deleted`=0;
+
+-- Persist the deterministic default avatar for every seeded user. Existing
+-- uploaded/custom avatars are deliberately preserved, so this is idempotent
+-- and remains the single baseline-data source instead of another migration.
+UPDATE `sys_user`
+SET `avatar_url` = CONCAT('/api/v1/profile/avatar/generated/', `uuid`)
+WHERE `deleted` = 0
+  AND `uuid` IS NOT NULL
+  AND TRIM(`uuid`) <> ''
+  AND (`avatar_url` IS NULL OR TRIM(`avatar_url`) = '');
