@@ -1,0 +1,227 @@
+.builtin-mock-checkout {
+  min-height: 100vh;
+  color: #182230;
+  background:
+    radial-gradient(circle at 8% 0%, rgb(22 119 255 / 12%), transparent 30rem),
+    linear-gradient(180deg, #f7faff 0%, #f3f5f9 100%);
+}
+
+.builtin-mock-checkout--centered {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.builtin-mock-checkout__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  padding: 0 max(24px, calc((100vw - 1180px) / 2));
+  border-bottom: 1px solid rgb(15 23 42 / 8%);
+  background: rgb(255 255 255 / 86%);
+  backdrop-filter: blur(18px);
+}
+
+.builtin-mock-checkout__brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.builtin-mock-checkout__brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1677ff, #6f4cff);
+  place-items: center;
+}
+
+.builtin-mock-checkout__content {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 36px 0 64px;
+}
+
+.builtin-mock-checkout__notice {
+  margin-bottom: 20px;
+  border-radius: 14px;
+}
+
+.builtin-mock-checkout__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 286px;
+  gap: 20px;
+  align-items: start;
+}
+
+.builtin-mock-checkout__card,
+.builtin-mock-checkout__qr {
+  border: 1px solid rgb(15 23 42 / 8%);
+  border-radius: 20px;
+  box-shadow: 0 18px 50px rgb(15 23 42 / 7%);
+}
+
+.builtin-mock-checkout__card .ant-card-body {
+  padding: 32px;
+}
+
+.builtin-mock-checkout__title-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.builtin-mock-checkout__title-row .ant-typography {
+  margin-top: 0;
+}
+
+.builtin-mock-checkout__summary {
+  padding: 22px;
+  margin: 24px 0;
+  border-radius: 14px;
+  background: #f7f9fc;
+}
+
+.builtin-mock-checkout__amount {
+  color: #1677ff;
+  font-size: 24px;
+}
+
+.builtin-mock-checkout__feedback {
+  margin: 18px 0;
+  border-radius: 12px;
+}
+
+.builtin-mock-checkout__form {
+  padding-top: 4px;
+}
+
+.builtin-mock-checkout__outcomes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.builtin-mock-checkout__outcomes .ant-radio-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  min-height: 76px;
+  padding: 12px 16px;
+  line-height: 1.4;
+  white-space: normal;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+}
+
+.builtin-mock-checkout__outcomes .ant-radio-button-wrapper::before {
+  display: none;
+}
+
+.builtin-mock-checkout__outcomes .ant-radio-button-wrapper-checked {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgb(22 119 255 / 10%);
+}
+
+.builtin-mock-checkout__outcomes small {
+  color: #667085;
+}
+
+.builtin-mock-checkout__delay {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0 22px;
+}
+
+.builtin-mock-checkout__delay .ant-typography {
+  margin-bottom: 0;
+}
+
+.builtin-mock-checkout__delay .ant-select {
+  width: 170px;
+}
+
+.builtin-mock-checkout__result {
+  padding: 20px 0 4px;
+}
+
+.builtin-mock-checkout__qr {
+  position: sticky;
+  top: 24px;
+  padding: 28px;
+  text-align: center;
+  background: #fff;
+}
+
+.builtin-mock-checkout__qr .ant-typography {
+  margin-top: 0;
+}
+
+.builtin-mock-checkout__security-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  margin-top: 18px;
+  text-align: left;
+  border-radius: 12px;
+  background: #f5f8fd;
+}
+
+@media (max-width: 760px) {
+  .builtin-mock-checkout__header {
+    height: 64px;
+    padding: 0 18px;
+  }
+
+  .builtin-mock-checkout__content {
+    width: min(100% - 24px, 640px);
+    padding: 18px 0 36px;
+  }
+
+  .builtin-mock-checkout__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .builtin-mock-checkout__card .ant-card-body {
+    padding: 22px 18px;
+  }
+
+  .builtin-mock-checkout__title-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .builtin-mock-checkout__summary {
+    padding: 16px;
+  }
+
+  .builtin-mock-checkout__outcomes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .builtin-mock-checkout__delay {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .builtin-mock-checkout__delay .ant-select {
+    width: 100%;
+  }
+
+  .builtin-mock-checkout__qr {
+    display: none;
+  }
+}

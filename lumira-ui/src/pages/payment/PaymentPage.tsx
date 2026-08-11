@@ -25,6 +25,8 @@ const paymentStatusValueEnum = {
   REFUNDED: { text: '已退款' },
   FAILED: { text: '支付失败' },
   CANCELLED: { text: '已取消' },
+  EXPIRED: { text: '已超时' },
+  CLOSED: { text: '已关闭' },
   PENDING_PAYMENT: { text: '待生成订单' },
 };
 
@@ -34,6 +36,7 @@ const providerValueEnum = {
   wechat_pay: { text: '微信支付' },
   stripe: { text: 'Stripe' },
   paypal: { text: 'PayPal' },
+  builtin_mock: { text: '内置模拟支付' },
 };
 
 const paymentStatusColor: Record<string, string> = {
@@ -47,6 +50,8 @@ const paymentStatusColor: Record<string, string> = {
   REFUNDED: 'blue',
   FAILED: 'error',
   CANCELLED: 'default',
+  EXPIRED: 'default',
+  CLOSED: 'default',
 };
 
 const registrationStatusColor: Record<string, string> = {

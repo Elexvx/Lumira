@@ -30,6 +30,7 @@ public class PaymentReadinessV2Controller {
                 "contract-and-observability",
                 List.of(
                         "payment_provider_config",
+                        "payment_builtin_mock_callback",
                         "payment_order",
                         "payment_refund",
                         "payment_webhook_event",

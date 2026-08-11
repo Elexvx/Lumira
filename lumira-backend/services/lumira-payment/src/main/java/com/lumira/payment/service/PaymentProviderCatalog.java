@@ -49,6 +49,15 @@ public final class PaymentProviderCatalog {
                     List.of("clientId", "clientSecret", "webhookId", "webhookSecret"),
                     Set.of("clientSecret", "webhookId", "webhookSecret"),
                     "PAYPAL-SIG"
+            ),
+            "builtin_mock", new PaymentProviderDefinition(
+                    "builtin_mock",
+                    "内置模拟支付",
+                    "SANDBOX",
+                    "CNY",
+                    List.of("appId", "privateKey", "publicKey"),
+                    Set.of("privateKey", "publicKey"),
+                    "RSA2"
             )
     );
 
@@ -72,7 +81,7 @@ public final class PaymentProviderCatalog {
         dto.setProviderCode(definition.providerCode());
         dto.setProviderName(definition.providerName());
         dto.setDisplayName(definition.providerName());
-        dto.setSortOrder(100);
+        dto.setSortOrder("builtin_mock".equals(definition.providerCode()) ? 900 : 100);
         dto.setSupportedScenes(supportedScenes(providerCode));
         dto.setEnabledScenes(supportedScenes(providerCode));
         dto.setEnabled(false);
@@ -112,7 +121,7 @@ public final class PaymentProviderCatalog {
     public List<String> supportedScenes(String providerCode) {
         return switch (normalize(providerCode)) {
             case "wechat_pay" -> List.of("NATIVE", "H5", "JSAPI");
-            case "alipay" -> List.of("PC_WEB", "WAP", "QR_CODE");
+            case "alipay", "builtin_mock" -> List.of("PC_WEB", "WAP", "QR_CODE");
             case "stripe", "paypal" -> List.of("CHECKOUT");
             default -> List.of();
         };

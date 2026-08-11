@@ -3,6 +3,9 @@ package com.lumira.payment;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.payment.event.domain.PaymentDomainEventPublisher;
 import com.lumira.payment.service.PaymentConfigCryptoService;
+import com.lumira.payment.service.BuiltinMockPaymentAvailability;
+import com.lumira.payment.service.BuiltinMockPaymentLifecycleHook;
+import com.lumira.payment.service.BuiltinMockPaymentService;
 import com.lumira.payment.service.PaymentManagementAppService;
 import com.lumira.payment.service.PaymentOutboxService;
 import com.lumira.payment.service.PaymentProviderCatalog;
@@ -16,6 +19,9 @@ import org.springframework.context.annotation.Import;
 @Configuration(proxyBeanMethods = false)
 @Import({
         PaymentConfigCryptoService.class,
+        BuiltinMockPaymentAvailability.class,
+        BuiltinMockPaymentService.class,
+        BuiltinMockPaymentLifecycleHook.class,
         PaymentManagementAppService.class,
         PaymentOutboxService.class,
         PaymentProviderCatalog.class,

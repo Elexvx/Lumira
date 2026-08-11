@@ -24,6 +24,9 @@ export const paymentProviderDisplayName = (
   fallbackName: string | null | undefined,
 ) => {
   const normalized = providerCode?.trim().toLowerCase() || '';
+  if (normalized === 'builtin_mock') {
+    return fallbackName || '内置模拟支付';
+  }
   const messageKey = PROVIDER_MESSAGE_KEYS[normalized];
   return messageKey ? databaseMessage(messageKey) : (fallbackName || providerCode || '-');
 };

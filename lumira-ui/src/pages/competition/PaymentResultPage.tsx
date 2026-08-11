@@ -92,7 +92,6 @@ const PaymentResultPage = () => {
           subTitle={subTitle}
           extra={
             <Space wrap>
-              {successful ? <Button type="primary" onClick={() => history.push('/')}>{t('ui.competition.paymentresult.backToHome')}</Button> : null}
               {!successful ? <Button type="primary" loading={loading} onClick={() => void refresh(true)}>{t('ui.competition.paymentresult.refreshResult')}</Button> : null}
               <Button onClick={() => history.push('/competitions/register')}>{t('ui.competition.paymentresult.backToRegistrations')}</Button>
             </Space>

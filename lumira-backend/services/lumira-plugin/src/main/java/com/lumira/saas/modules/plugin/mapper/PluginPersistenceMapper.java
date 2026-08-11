@@ -121,6 +121,10 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     PluginVersionEntity findEnabledVersion(@Param("pluginCode") String pluginCode);
 
+    Integer isPluginEnabled(@Param("pluginCode") String pluginCode);
+
+    Integer isPluginEnabledForWrite(@Param("pluginCode") String pluginCode);
+
     List<PluginVO.PluginAvailabilityVO> listAvailablePlugins();
 
     List<PluginVersionEntity> listInstalledVersions(@Param("pluginCode") String pluginCode);

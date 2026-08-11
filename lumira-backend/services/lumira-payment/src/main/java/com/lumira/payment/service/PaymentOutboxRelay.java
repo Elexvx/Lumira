@@ -15,6 +15,7 @@ public class PaymentOutboxRelay {
     private final int batchSize;
     private final int maxDrainRounds;
     private final int maxBurstRounds;
+    private BuiltinMockPaymentService builtinMockPaymentService;
 
     @Autowired
     public PaymentOutboxRelay(
@@ -43,9 +44,17 @@ public class PaymentOutboxRelay {
         this(paymentOutboxService, paymentOutboxDispatcher, relayEnabled, batchSize, maxDrainRounds, maxDrainRounds);
     }
 
+    @Autowired(required = false)
+    void setBuiltinMockPaymentService(BuiltinMockPaymentService builtinMockPaymentService) {
+        this.builtinMockPaymentService = builtinMockPaymentService;
+    }
+
     public int dispatchPendingEvents() {
+        int mockCallbacksDelivered = builtinMockPaymentService == null
+                ? 0
+                : builtinMockPaymentService.dispatchDueCallbacks(Math.max(1, Math.min(batchSize, 100)));
         if (!relayEnabled) {
-            return 0;
+            return mockCallbacksDelivered;
         }
         validateBatchSize();
         int normalizedBatchSize = batchSize;
@@ -57,7 +66,7 @@ public class PaymentOutboxRelay {
                 normalizedMaxBurstRounds,
                 paymentOutboxService.dispatchableBacklog()
         );
-        int totalDelivered = 0;
+        int totalDelivered = mockCallbacksDelivered;
         for (int round = 0; round < effectiveMaxRounds; round++) {
             int delivered = paymentOutboxService.dispatchPending(paymentOutboxDispatcher, normalizedBatchSize);
             totalDelivered += delivered;

@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.competition.app;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.event.EventCatalogEventTypes;
 import com.lumira.api.event.TransactionalEventOutboxPort;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -240,6 +242,35 @@ class CompetitionManagementAppServiceTest {
     }
 
     @Test
+    void createCompetitionDraftShouldProvisionDedicatedStorageSpaceAfterCompetitionSetup() {
+        StubOperations jdbcTemplate = new StubOperations();
+        FileInternalApi fileInternalApi = mock(FileInternalApi.class);
+        CompetitionManagementAppService service = service(
+                jdbcTemplate,
+                new JdbcCompetitionManagementRepository(jdbcTemplate),
+                null,
+                fileInternalApi
+        );
+        jdbcTemplate.enqueue(List.of(competition("draft")), List.of(configSet()));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = publishRequest();
+        request.setStatus("draft");
+
+        service.createCompetitionDraft(admin(), request);
+
+        org.mockito.ArgumentCaptor<CompetitionStorageSpaceRequest> requestCaptor =
+                org.mockito.ArgumentCaptor.forClass(CompetitionStorageSpaceRequest.class);
+        verify(fileInternalApi).ensureCompetitionStorageSpace(requestCaptor.capture());
+        CompetitionStorageSpaceRequest storageRequest = requestCaptor.getValue();
+        assertThat(storageRequest.competitionId()).isEqualTo(11L);
+        assertThat(storageRequest.competitionUuid())
+                .matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+        assertThat(storageRequest.competitionTitle()).isEqualTo(request.getTitle());
+        assertThat(storageRequest.operatorUserId()).isEqualTo(1001L);
+        assertThat(storageRequest.operatorUserUuid()).isEqualTo("user-uuid-1001");
+    }
+
+    @Test
     void createCompetitionShouldRejectRevokedSessionTicketBeforeDatabaseAccess() {
         CompetitionSqlOperations jdbcTemplate = mock(CompetitionSqlOperations.class);
         CompetitionSessionAuthenticationFixture sessionAuthenticationService = mock(CompetitionSessionAuthenticationFixture.class);
@@ -397,6 +428,7 @@ class CompetitionManagementAppServiceTest {
                 new CompetitionSettingsRepository.ConfigTemplateSeed(
                         "competition-uuid",
                         22L,
+                        "competition_dedicated",
                         new CompetitionSettingsRepository.Actor(1001L, "user-uuid-1001")
                 )
         );
@@ -405,8 +437,11 @@ class CompetitionManagementAppServiceTest {
         assertThat(jdbcTemplate.updates.get(0))
                 .contains("from competition_config_item_template")
                 .contains("template_code = 'DEFAULT'")
+                .contains("json_set")
+                .contains("'$.storageKey'")
                 .doesNotContain("enabled = 1")
                 .doesNotContain("团队名称", "项目名称", "知识产权");
+        assertThat(jdbcTemplate.updateArguments.get(0)).contains("competition_dedicated");
     }
 
     @Test
@@ -1334,6 +1369,15 @@ class CompetitionManagementAppServiceTest {
             CompetitionManagementRepository competitionManagementRepository,
             TransactionalEventOutboxPort transactionalEventOutboxPort
     ) {
+        return service(jdbcTemplate, competitionManagementRepository, transactionalEventOutboxPort, mock(FileInternalApi.class));
+    }
+
+    private CompetitionManagementAppService service(
+            CompetitionSqlOperations jdbcTemplate,
+            CompetitionManagementRepository competitionManagementRepository,
+            TransactionalEventOutboxPort transactionalEventOutboxPort,
+            FileInternalApi fileInternalApi
+    ) {
         return new CompetitionManagementAppService(
                 mock(DictionaryValueNormalizer.class),
                 null,
@@ -1342,7 +1386,8 @@ class CompetitionManagementAppServiceTest {
                 new JdbcCompetitionSettingsRepository(jdbcTemplate),
                 new JdbcCompetitionStageRepository(jdbcTemplate),
                 false,
-                transactionalEventOutboxPort
+                transactionalEventOutboxPort,
+                fileInternalApi
         );
     }
 
@@ -1363,7 +1408,8 @@ class CompetitionManagementAppServiceTest {
                 new JdbcCompetitionManagementRepository(jdbcTemplate),
                 new JdbcCompetitionSettingsRepository(jdbcTemplate),
                 new JdbcCompetitionStageRepository(jdbcTemplate),
-                true
+                true,
+                mock(FileInternalApi.class)
         );
     }
 

@@ -1,6 +1,8 @@
 package com.lumira.file.app;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.CompetitionStorageSpace;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
@@ -78,6 +80,7 @@ public class FileManagementAppService {
     private static final long FILE_LIST_TOTAL_COUNT_CAP = 1000L;
     private static final long STORAGE_SPACE_LIST_TOTAL_COUNT_CAP = 1000L;
     private static final long MAX_IN_MEMORY_FILE_CONTENT_BYTES = 10L * 1024L * 1024L;
+    private static final int COMPETITION_STORAGE_MAX_FILE_SIZE_MB = 1024;
     private static final String RESOURCE_FILE_OBJECT = "file:object";
     public static final String SCOPE_MINE = "mine";
     public static final String SCOPE_SHARED = "shared";
@@ -576,6 +579,7 @@ public class FileManagementAppService {
                 .listWithUsage(MAX_PAGE_SIZE, 0L)
                 .stream()
                 .filter(item -> "ENABLED".equalsIgnoreCase(item.getStatus()))
+                .filter(item -> !CompetitionStorageSpace.isCompetitionStorageKey(item.getStorageKey()))
                 .map(this::mapStorageSpace)
                 .map(item -> new StorageSpaceOptionDTO(
                         item.title(),
@@ -583,6 +587,94 @@ public class FileManagementAppService {
                         item.defaultStorage()
                 ))
                 .toList();
+    }
+
+    /**
+     * Creates the system-managed local storage space owned by one competition.
+     * The deterministic key makes retries and concurrent provisioning idempotent.
+     */
+    @Transactional
+    public void ensureCompetitionStorageSpace(CompetitionStorageSpaceRequest request) {
+        if (request == null) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Competition storage request is required");
+        }
+        if (request.competitionId() == null || request.competitionId() <= 0L) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Competition id is required");
+        }
+        if (request.operatorUserId() == null || request.operatorUserId() <= 0L
+                || !StringUtils.hasText(request.operatorUserUuid())
+                || request.operatorUserUuid().trim().length() > 36) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Competition storage operator is invalid");
+        }
+
+        String storageKey;
+        String rootPath;
+        try {
+            storageKey = CompetitionStorageSpace.storageKey(request.competitionUuid());
+            rootPath = CompetitionStorageSpace.rootPath(request.competitionUuid());
+        } catch (IllegalArgumentException exception) {
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Competition uuid is invalid");
+        }
+
+        FileStorageSpaceEntity existing = storageSpaceRepository.findByStorageKey(storageKey);
+        if (existing != null) {
+            requireMatchingCompetitionStorage(existing, rootPath);
+            createCompetitionStorageDirectory(existing);
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        FileStorageSpaceEntity entity = new FileStorageSpaceEntity();
+        entity.setTitle(CompetitionStorageSpace.title(request.competitionId(), request.competitionTitle()));
+        entity.setStorageKey(storageKey);
+        entity.setProvider("LOCAL");
+        entity.setRootPath(rootPath);
+        entity.setBucketName(storageKey);
+        entity.setEndpoint("");
+        entity.setRegion("");
+        entity.setAccessKeyId("");
+        entity.setAccessKeySecret(null);
+        entity.setRenameStrategy("APPEND_RANDOM_ID");
+        entity.setMaxFileSizeMb(COMPETITION_STORAGE_MAX_FILE_SIZE_MB);
+        entity.setAllowedMimeTypes("*");
+        entity.setDefaultFlag(0);
+        entity.setRetainFileOnRecordDelete(0);
+        entity.setAnonymousAccessAllowed(0);
+        entity.setStatus("ENABLED");
+        entity.setCreatedBy(request.operatorUserId());
+        entity.setCreatedByUuid(request.operatorUserUuid().trim());
+        entity.setCreatedAt(now);
+        entity.setUpdatedBy(request.operatorUserId());
+        entity.setUpdatedByUuid(request.operatorUserUuid().trim());
+        entity.setUpdatedAt(now);
+        entity.setDeleted(0);
+        try {
+            storageSpaceRepository.insert(entity);
+        } catch (DuplicateKeyException exception) {
+            FileStorageSpaceEntity concurrent = storageSpaceRepository.findByStorageKey(storageKey);
+            if (concurrent == null) {
+                throw new BizException(ErrorCode.SYSTEM_ERROR, "Competition storage space could not be created");
+            }
+            requireMatchingCompetitionStorage(concurrent, rootPath);
+            createCompetitionStorageDirectory(concurrent);
+            return;
+        }
+        createCompetitionStorageDirectory(entity);
+    }
+
+    private void requireMatchingCompetitionStorage(FileStorageSpaceEntity storageSpace, String expectedRootPath) {
+        if (!"LOCAL".equalsIgnoreCase(storageSpace.getProvider())
+                || !resolveStorageRoot(storageSpace).equals(resolveStorageRoot(expectedRootPath))) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Competition storage space conflicts with existing configuration");
+        }
+    }
+
+    private void createCompetitionStorageDirectory(FileStorageSpaceEntity storageSpace) {
+        try {
+            Files.createDirectories(resolveStorageRoot(storageSpace));
+        } catch (IOException exception) {
+            throw new BizException(ErrorCode.SYSTEM_ERROR, "Competition storage directory could not be created");
+        }
     }
 
     private long calculateFileListTotalCountLimit() {
@@ -658,6 +750,7 @@ public class FileManagementAppService {
         String actorUserUuid = actor.userUuid();
         String provider = normalizeProvider(request.getProvider());
         String storageKey = normalizeStorageKey(StringUtils.hasText(request.getStorageKey()) ? request.getStorageKey() : provider.toLowerCase(Locale.ROOT) + "_" + shortId());
+        requireUserManagedStorageKey(storageKey);
         StoragePayload payload = normalizeStoragePayload(request, provider, storageKey, null);
         if (payload.defaultStorage()) {
             clearDefaultStorage();
@@ -677,6 +770,7 @@ public class FileManagementAppService {
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
         StorageSpaceDTO existing = queryStorageSpaceById(id);
+        requireUserManagedStorageKey(existing.storageKey());
         StoragePayload payload = normalizeStoragePayload(request, existing.provider(), existing.storageKey(), existing);
         if (payload.defaultStorage()) {
             clearDefaultStorage();
@@ -692,6 +786,7 @@ public class FileManagementAppService {
         Long actorUserId = actor.userId();
         String actorUserUuid = actor.userUuid();
         StorageSpaceDTO existing = queryStorageSpaceById(id);
+        requireUserManagedStorageKey(existing.storageKey());
         if (hasFileRecordsInBucket(existing.storageKey())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间下仍有文件，不能删除");
         }
@@ -706,6 +801,12 @@ public class FileManagementAppService {
             return false;
         }
         return fileObjectRepository.existsInBucket(storageKey);
+    }
+
+    private void requireUserManagedStorageKey(String storageKey) {
+        if (CompetitionStorageSpace.isCompetitionStorageKey(storageKey)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "比赛专属存储由系统自动管理");
+        }
     }
 
     public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean sharedScope) {
@@ -1240,6 +1341,9 @@ public class FileManagementAppService {
         FileStorageSpaceEntity entity = storageSpaceRepository.findByStorageKey(storageKey);
         if (entity != null) {
             return mapStorageSpace(entity);
+        }
+        if (CompetitionStorageSpace.isCompetitionStorageKey(storageKey)) {
+            throw visibleBizException(ErrorCode.NOT_FOUND, "Competition storage space does not exist");
         }
         log.warn("Upload storage space '{}' is missing, falling back to default storage space", storageKey);
         return getDefaultStorageSpace();

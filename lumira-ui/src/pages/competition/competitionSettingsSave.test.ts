@@ -138,6 +138,36 @@ describe('competition settings page-level save guards', () => {
     })).toBe(true);
   });
 
+  it('requires every row before saving a multi-stage timeline', () => {
+    const completeSchedule = {
+      timeMode: 'CONFIRMED' as const,
+      title: 'Preliminary',
+      materialRange: ['2026-07-01 00:00', '2026-07-10 00:00'] as [string, string],
+      reviewRange: ['2026-07-10 00:00', '2026-07-20 00:00'] as [string, string],
+    };
+    const values = {
+      registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'] as [string, string],
+      schedules: [
+        completeSchedule,
+        { ...completeSchedule, title: 'Final', reviewRange: undefined },
+      ],
+    };
+
+    expect(isTimelineSettingsPageReadyToSave(values)).toBe(false);
+    expect(isTimelineSettingsPageReadyToSave({
+      ...values,
+      schedules: [
+        completeSchedule,
+        {
+          ...completeSchedule,
+          title: 'Final',
+          materialRange: ['2026-08-01 00:00', '2026-08-10 00:00'],
+          reviewRange: ['2026-08-10 00:00', '2026-08-20 00:00'],
+        },
+      ],
+    })).toBe(true);
+  });
+
   it('rejects every schedule range that exceeds the registration window', () => {
     const values = {
       registrationRange: ['2026-07-01 00:00', '2026-09-30 00:00'] as [string, string],

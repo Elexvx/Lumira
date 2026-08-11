@@ -2,9 +2,13 @@ package com.lumira.saas.modules.competition.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.dictionary.DictionaryValueNormalizer;
 import com.lumira.api.event.EventCatalogEventTypes;
 import com.lumira.api.event.TransactionalEventOutboxPort;
+import com.lumira.api.file.CompetitionStorageSpace;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
@@ -101,6 +105,7 @@ public class CompetitionManagementAppService {
     private final CompetitionSettingsRepository competitionSettingsRepository;
     private final CompetitionStageRepository competitionStageRepository;
     private final TransactionalEventOutboxPort transactionalEventOutboxPort;
+    private final FileInternalApi fileInternalApi;
     private final boolean enforceTrustedUserResolution;
 
     @Autowired
@@ -111,7 +116,8 @@ public class CompetitionManagementAppService {
             CompetitionManagementRepository competitionManagementRepository,
             CompetitionSettingsRepository competitionSettingsRepository,
             CompetitionStageRepository competitionStageRepository,
-            TransactionalEventOutboxPort transactionalEventOutboxPort
+            TransactionalEventOutboxPort transactionalEventOutboxPort,
+            FileInternalApi fileInternalApi
     ) {
         this(
                 dictionaryValueNormalizer,
@@ -121,28 +127,8 @@ public class CompetitionManagementAppService {
                 competitionSettingsRepository,
                 competitionStageRepository,
                 true,
-                transactionalEventOutboxPort
-        );
-    }
-
-    CompetitionManagementAppService(
-            DictionaryValueNormalizer dictionaryValueNormalizer,
-            TrustedCurrentUserResolver trustedCurrentUserResolver,
-            RegistrationDatasetRepository registrationDatasetRepository,
-            CompetitionManagementRepository competitionManagementRepository,
-            CompetitionSettingsRepository competitionSettingsRepository,
-            CompetitionStageRepository competitionStageRepository,
-            boolean enforceTrustedUserResolution
-    ) {
-        this(
-                dictionaryValueNormalizer,
-                trustedCurrentUserResolver,
-                registrationDatasetRepository,
-                competitionManagementRepository,
-                competitionSettingsRepository,
-                competitionStageRepository,
-                enforceTrustedUserResolution,
-                null
+                transactionalEventOutboxPort,
+                fileInternalApi
         );
     }
 
@@ -154,7 +140,31 @@ public class CompetitionManagementAppService {
             CompetitionSettingsRepository competitionSettingsRepository,
             CompetitionStageRepository competitionStageRepository,
             boolean enforceTrustedUserResolution,
-            TransactionalEventOutboxPort transactionalEventOutboxPort
+            FileInternalApi fileInternalApi
+    ) {
+        this(
+                dictionaryValueNormalizer,
+                trustedCurrentUserResolver,
+                registrationDatasetRepository,
+                competitionManagementRepository,
+                competitionSettingsRepository,
+                competitionStageRepository,
+                enforceTrustedUserResolution,
+                null,
+                fileInternalApi
+        );
+    }
+
+    CompetitionManagementAppService(
+            DictionaryValueNormalizer dictionaryValueNormalizer,
+            TrustedCurrentUserResolver trustedCurrentUserResolver,
+            RegistrationDatasetRepository registrationDatasetRepository,
+            CompetitionManagementRepository competitionManagementRepository,
+            CompetitionSettingsRepository competitionSettingsRepository,
+            CompetitionStageRepository competitionStageRepository,
+            boolean enforceTrustedUserResolution,
+            TransactionalEventOutboxPort transactionalEventOutboxPort,
+            FileInternalApi fileInternalApi
     ) {
         this.dictionaryValueNormalizer = dictionaryValueNormalizer;
         this.trustedCurrentUserResolver = trustedCurrentUserResolver;
@@ -164,6 +174,7 @@ public class CompetitionManagementAppService {
         this.competitionStageRepository = competitionStageRepository;
         this.enforceTrustedUserResolution = enforceTrustedUserResolution;
         this.transactionalEventOutboxPort = transactionalEventOutboxPort;
+        this.fileInternalApi = Objects.requireNonNull(fileInternalApi, "fileInternalApi");
     }
 
     public PageResponse<CompetitionVO.Competition> listCompetitions(
@@ -220,6 +231,13 @@ public class CompetitionManagementAppService {
 
     public CompetitionVO.Settings getCompetitionSettings(CurrentUser currentUser, String competitionUuid) {
         CompetitionVO.Competition competition = requireCompetitionSettingsAccess(currentUser, competitionUuid);
+        ensureCompetitionStorageSpace(
+                competition.getId(),
+                competition.getUuid(),
+                competition.getTitle(),
+                requireUserId(currentUser),
+                requireUserUuid(currentUser)
+        );
         CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, currentUser);
         CompetitionVO.Settings settings = new CompetitionVO.Settings();
         settings.setCompetition(competition);
@@ -269,6 +287,7 @@ public class CompetitionManagementAppService {
         }
         recordConfigAudit(currentUser, competition.getUuid(), "CREATE_COMPETITION", "BASIC", "Created competition " + competition.getCompetitionNo());
         recordCatalogChange(competition, null, userId, userUuid, competition.getUpdatedAt(), false);
+        ensureCompetitionStorageSpace(id, uuid, normalized.getTitle(), userId, userUuid);
         return competition;
     }
 
@@ -305,6 +324,7 @@ public class CompetitionManagementAppService {
         ensureCurrentConfigSet(competition, currentUser);
         recordConfigAudit(currentUser, competition.getUuid(), "CREATE_DRAFT", "BASIC", "Created competition draft " + competition.getCompetitionNo());
         recordCatalogChange(competition, null, userId, userUuid, competition.getUpdatedAt(), false);
+        ensureCompetitionStorageSpace(id, uuid, normalized.getTitle(), userId, userUuid);
         return competition;
     }
 
@@ -446,6 +466,7 @@ public class CompetitionManagementAppService {
             }
         }
         CompetitionVO.Competition competition = requireCompetitionByUuid(competitionUuid);
+        enforceCompetitionStorageKey(normalizedItems, competition.getStorageKey());
         CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, currentUser);
         Map<String, CompetitionVO.ConfigItem> existingByKey = listConfigItems(competition.getUuid(), configSet.getId(), allowedTypes)
                 .stream()
@@ -1281,8 +1302,55 @@ public class CompetitionManagementAppService {
             return;
         }
         competitionSettingsRepository.seedDefaultConfigItems(
-                new CompetitionSettingsRepository.ConfigTemplateSeed(competitionUuid, configSetId, actor)
+                new CompetitionSettingsRepository.ConfigTemplateSeed(
+                        competitionUuid,
+                        configSetId,
+                        CompetitionStorageSpace.storageKey(competitionUuid),
+                        actor
+                )
         );
+    }
+
+    private void ensureCompetitionStorageSpace(
+            Long competitionId,
+            String competitionUuid,
+            String competitionTitle,
+            Long userId,
+            String userUuid
+    ) {
+        fileInternalApi.ensureCompetitionStorageSpace(new CompetitionStorageSpaceRequest(
+                competitionId,
+                competitionUuid,
+                competitionTitle,
+                userId,
+                userUuid
+        ));
+    }
+
+    private void enforceCompetitionStorageKey(
+            List<CompetitionDTO.ConfigItemRequest> items,
+            String storageKey
+    ) {
+        if (!StringUtils.hasText(storageKey)) {
+            return;
+        }
+        for (CompetitionDTO.ConfigItemRequest item : items) {
+            if (!"REQUIRED_FILE".equals(item.getItemType()) && !"STAGE_MATERIAL".equals(item.getItemType())) {
+                continue;
+            }
+            try {
+                JsonNode parsed = OBJECT_MAPPER.readTree(item.getContentJson());
+                if (!(parsed instanceof ObjectNode metadata)) {
+                    throw biz(ErrorCode.VALIDATION_ERROR, "材料配置格式不正确");
+                }
+                metadata.put("storageKey", storageKey);
+                item.setContentJson(OBJECT_MAPPER.writeValueAsString(metadata));
+            } catch (BizException exception) {
+                throw exception;
+            } catch (Exception exception) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "材料配置格式不正确");
+            }
+        }
     }
 
     private void insertConfigItem(

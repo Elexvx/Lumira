@@ -72,7 +72,7 @@ class JdbcRegistrationPersistenceAdapterTest {
                 .contains("r.owner_user_uuid = t.owner_user_uuid")
                 .doesNotContain("sys_user", "u.uuid = r.owner_user_uuid");
         assertThat(tasks).containsExactly(new RegistrationWriteRepository.PaymentOrderTask(
-                301L, 41L, "alipay", null, null, null, "user-uuid-1001", null, "claim-1"
+                301L, 41L, "alipay", null, null, null, "user-uuid-1001", null, null, "claim-1"
         ));
     }
 

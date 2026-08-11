@@ -900,16 +900,30 @@ public class CompetitionRegistrationAppService {
         // same-purpose synchronous registration return page.
         String notifyUrl = null;
         String returnUrl = normalizeRegistrationReturnUrl(request == null ? null : request.getReturnUrl(), registrationId);
-        enqueuePaymentOrderIfReady(
+        String operatorUuid = requireUserUuid(currentUser);
+        Long simulatedRoleId = normalizeSimulatedRoleId(currentUser.getSimulatedRoleId());
+        boolean retryQueued = preparePaymentRetryIfTerminal(
                 registration,
                 userId,
-                requireUserUuid(currentUser),
-                normalizeSimulatedRoleId(currentUser.getSimulatedRoleId()),
+                operatorUuid,
+                simulatedRoleId,
                 providerCode,
                 clientIp,
                 notifyUrl,
                 returnUrl
         );
+        if (!retryQueued) {
+            enqueuePaymentOrderIfReady(
+                    registration,
+                    userId,
+                    operatorUuid,
+                    simulatedRoleId,
+                    providerCode,
+                    clientIp,
+                    notifyUrl,
+                    returnUrl
+            );
+        }
         drainPaymentOrderQueue(5);
         CompetitionRegistrationVO.Registration refreshed = getRegistration(currentUser, registrationId);
         if (StringUtils.hasText(refreshed.getPaymentOrderNo())) {
@@ -926,6 +940,68 @@ public class CompetitionRegistrationAppService {
         queuedOrder.setCurrency(refreshed.getCurrency());
         queuedOrder.setStatus("QUEUED");
         return queuedOrder;
+    }
+
+    private boolean preparePaymentRetryIfTerminal(
+            CompetitionRegistrationVO.Registration registration,
+            Long operatorId,
+            String operatorUuid,
+            Long simulatedRoleId,
+            String providerCode,
+            String clientIp,
+            String notifyUrl,
+            String returnUrl
+    ) {
+        if (registration == null || !StringUtils.hasText(registration.getPaymentOrderNo())) {
+            return false;
+        }
+        CompetitionRegistrationVO.PaymentOrder existingOrder = null;
+        try {
+            existingOrder = findPaymentOrder(registration, simulatedRoleId);
+        } catch (BizException exception) {
+            if (exception.getErrorCode() != ErrorCode.NOT_FOUND) {
+                throw exception;
+            }
+        }
+        if (existingOrder != null && !isRetryablePaymentStatus(existingOrder.getStatus())) {
+            return false;
+        }
+        String previousOrderNo = registration.getPaymentOrderNo().trim();
+        int detached = registrationWriteRepository.detachPaymentOrderForRetry(
+                new RegistrationWriteRepository.DetachPaymentOrderForRetryCommand(
+                        registration.getId(),
+                        registration.getRegistrationNo(),
+                        registration.getOwnerUserId(),
+                        requireRegistrationOwnerUserUuid(registration),
+                        previousOrderNo,
+                        operatorId,
+                        operatorUuid,
+                        LocalDateTime.now()
+                )
+        );
+        requireRegistrationWrite(detached, "Registration payment attempt changed, please retry");
+        int requeued = registrationWriteRepository.enqueuePaymentOrderRetryTask(
+                paymentOrderTaskCommand(
+                        registration,
+                        operatorId,
+                        operatorUuid,
+                        simulatedRoleId,
+                        providerCode,
+                        clientIp,
+                        notifyUrl,
+                        returnUrl
+                )
+        );
+        requireRegistrationWrite(requeued, "Payment order retry task changed, please retry");
+        registration.setPaymentOrderNo(null);
+        return true;
+    }
+
+    private boolean isRetryablePaymentStatus(String status) {
+        if (!StringUtils.hasText(status)) {
+            return false;
+        }
+        return Set.of("FAILED", "CANCELLED", "EXPIRED", "CLOSED").contains(status.trim().toUpperCase(Locale.ROOT));
     }
 
     public List<CompetitionRegistrationVO.PaymentOption> listPaymentOptions(CurrentUser currentUser, Long registrationId, String clientType) {
@@ -986,10 +1062,14 @@ public class CompetitionRegistrationAppService {
         String provider = providerCode == null ? "" : providerCode.trim().toLowerCase(Locale.ROOT);
         List<String> preferred = switch (clientType) {
             case "WECHAT" -> "wechat_pay".equals(provider) ? List.of("JSAPI") : List.of();
-            case "MOBILE" -> "wechat_pay".equals(provider) ? List.of("H5") : "alipay".equals(provider) ? List.of("WAP") : List.of("CHECKOUT");
-            default -> "wechat_pay".equals(provider) ? List.of("NATIVE") : "alipay".equals(provider) ? List.of("PC_WEB", "QR_CODE") : List.of("CHECKOUT");
+            case "MOBILE" -> "wechat_pay".equals(provider) ? List.of("H5") : isAlipayStyleProvider(provider) ? List.of("WAP") : List.of("CHECKOUT");
+            default -> "wechat_pay".equals(provider) ? List.of("NATIVE") : isAlipayStyleProvider(provider) ? List.of("PC_WEB", "QR_CODE") : List.of("CHECKOUT");
         };
         return preferred.stream().filter(scenes::contains).findFirst().orElse(null);
+    }
+
+    private boolean isAlipayStyleProvider(String providerCode) {
+        return "alipay".equals(providerCode) || "builtin_mock".equals(providerCode);
     }
 
     public CompetitionRegistrationVO.PaymentOrder getPaymentStatus(CurrentUser currentUser, Long registrationId) {
@@ -1059,13 +1139,17 @@ public class CompetitionRegistrationAppService {
                     continue;
                 }
                 String ownerUserUuid = resolvePaymentOwnerUserUuid(registration.getOwnerUserId(), registration.getOwnerUserUuid());
+                int attemptNo = task.attemptNo() == null ? 1 : Math.max(1, task.attemptNo());
+                String attemptOrderNo = attemptNo == 1
+                        ? "REG-" + registration.getId()
+                        : "REG-" + registration.getId() + "-A" + attemptNo;
                 PaymentOrderDTO order = paymentInternalApi.createOrder(
                         registration.getOwnerUserId(),
                         ownerUserUuid,
                         taskSimulatedRoleId,
                         new PaymentCreateOrderRequestDTO(
                                 trimTaskText(task.providerCode(), "alipay"),
-                                "REG-" + registration.getId(),
+                                attemptOrderNo,
                                 "Competition registration " + registration.getRegistrationNo(),
                                 registration.getPayableAmountMinor(),
                                 registration.getCurrency(),
@@ -1079,7 +1163,7 @@ public class CompetitionRegistrationAppService {
                                         "teamId", registration.getTeamId(),
                                         "projectId", registration.getProjectId()
                                 ),
-                                "competition-registration-" + registration.getId()
+                                "competition-registration-" + registration.getId() + "-attempt-" + attemptNo
                         )
                 );
                 assertOrderMatchesRegistration(order, registration);
@@ -1180,20 +1264,36 @@ public class CompetitionRegistrationAppService {
             return;
         }
         int inserted = registrationWriteRepository.enqueuePaymentOrderTask(
-                new RegistrationWriteRepository.EnqueuePaymentOrderTaskCommand(
-                        registration.getId(),
-                        StringUtils.hasText(providerCode) ? providerCode.trim() : "alipay",
-                        trimToNull(clientIp),
-                        trimToNull(notifyUrl),
-                        trimToNull(returnUrl),
-                        requireRegistrationOwnerUserUuid(registration),
-                        normalizeSimulatedRoleId(simulatedRoleId),
-                        LocalDateTime.now(),
-                        operatorId,
-                        operatorUuid
+                paymentOrderTaskCommand(
+                        registration, operatorId, operatorUuid, simulatedRoleId,
+                        providerCode, clientIp, notifyUrl, returnUrl
                 )
         );
         requireRegistrationWrite(inserted, "Payment order task changed, please retry");
+    }
+
+    private RegistrationWriteRepository.EnqueuePaymentOrderTaskCommand paymentOrderTaskCommand(
+            CompetitionRegistrationVO.Registration registration,
+            Long operatorId,
+            String operatorUuid,
+            Long simulatedRoleId,
+            String providerCode,
+            String clientIp,
+            String notifyUrl,
+            String returnUrl
+    ) {
+        return new RegistrationWriteRepository.EnqueuePaymentOrderTaskCommand(
+                registration.getId(),
+                StringUtils.hasText(providerCode) ? providerCode.trim() : "alipay",
+                trimToNull(clientIp),
+                trimToNull(notifyUrl),
+                trimToNull(returnUrl),
+                requireRegistrationOwnerUserUuid(registration),
+                normalizeSimulatedRoleId(simulatedRoleId),
+                LocalDateTime.now(),
+                operatorId,
+                operatorUuid
+        );
     }
 
     private List<RegistrationWriteRepository.PaymentOrderTask> claimPaymentOrderTasks(int limit) {
@@ -1951,7 +2051,11 @@ public class CompetitionRegistrationAppService {
                 record.setUpdatedAt(order.updatedAt());
             }
         } catch (BizException exception) {
-            throw exception;
+            if (exception.getErrorCode() != ErrorCode.NOT_FOUND) {
+                throw exception;
+            }
+            // A registration can outlive a removed payment order. Keep the
+            // registration-side fallback data instead of failing the whole page.
         } catch (Exception ignored) {
             // A transient payment read must not reveal another owner's order or fail the whole list.
         }

@@ -22,6 +22,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.net.InetAddress;
 import java.net.URI;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.util.Base64;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,6 +50,7 @@ public class PaymentManagementAppService {
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
     private final PaymentActorResolver actorResolver;
+    private BuiltinMockPaymentAvailability builtinMockPaymentAvailability;
     private volatile CachedProviderList providerListCache;
 
     @Autowired
@@ -76,6 +80,11 @@ public class PaymentManagementAppService {
         this.actorResolver = new PaymentActorResolver();
     }
 
+    @Autowired(required = false)
+    void setBuiltinMockPaymentAvailability(BuiltinMockPaymentAvailability availability) {
+        this.builtinMockPaymentAvailability = availability;
+    }
+
     public List<PaymentProviderSettingsDTO> listProviderSettings(CurrentUser currentUser) {
         trustedActor(currentUser, PERMISSION_PAYMENT_CONFIG_VIEW);
         return listProviderSettingsInternal();
@@ -92,6 +101,9 @@ public class PaymentManagementAppService {
         }
         List<PaymentProviderSettingsDTO> settings = new ArrayList<>();
         for (PaymentProviderCatalog.PaymentProviderDefinition definition : providerCatalog.definitions()) {
+            if (isBuiltinMock(definition.providerCode()) && !isBuiltinMockEnabled()) {
+                continue;
+            }
             settings.add(loadProviderSettings(definition.providerCode()));
         }
         settings.sort(java.util.Comparator
@@ -104,6 +116,7 @@ public class PaymentManagementAppService {
 
     public PaymentProviderSettingsDTO paymentProviderSettings(CurrentUser currentUser, String providerCode) {
         trustedActor(currentUser, PERMISSION_PAYMENT_CONFIG_VIEW);
+        requireBuiltinMockEnabled(providerCode, false);
         return loadProviderSettings(providerCode);
     }
 
@@ -114,10 +127,14 @@ public class PaymentManagementAppService {
 
     private PaymentProviderSettingsDTO updatePaymentProviderSettings(Actor actor, String providerCode, PaymentProviderSettingsDTO request) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
+        requireBuiltinMockEnabled(definition.providerCode(), true);
         // Updates must merge against the decrypted configuration. The public view masks
         // secrets, which would otherwise make an unchanged masked value erase the key.
         PaymentProviderSettingsDTO current = loadProviderSettings(providerCode, false);
         PaymentProviderSettingsDTO merged = mergeSettings(definition, current, request);
+        if (isBuiltinMock(definition.providerCode())) {
+            preserveBuiltinMockManagedSettings(merged, current);
+        }
         merged.setProviderCode(definition.providerCode());
         merged.setProviderName(definition.providerName());
         merged.setEnvironment(resolveText(merged.getEnvironment(), definition.defaultEnvironment()));
@@ -154,6 +171,7 @@ public class PaymentManagementAppService {
 
     private PaymentProviderTestResultDTO testPaymentProvider(Actor actor, String providerCode) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
+        requireBuiltinMockEnabled(definition.providerCode(), false);
         // Connectivity validation needs the decrypted secrets. The public settings view
         // deliberately masks them and would make a valid provider look incomplete.
         PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode, false);
@@ -213,6 +231,11 @@ public class PaymentManagementAppService {
     }
 
     public PaymentProviderSettingsDTO getRequiredProviderSettings(String providerCode) {
+        // Provider settings are consumed by state-changing payment operations.
+        // For the built-in mock provider, keep a shared plugin-definition lock
+        // until the surrounding transaction commits so disable cannot pass an
+        // in-flight order or callback.
+        requireBuiltinMockEnabled(providerCode, true);
         PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode, false);
         if (!settings.isConfigured()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Payment provider is not configured");
@@ -248,7 +271,59 @@ public class PaymentManagementAppService {
         response.setLastTestSuccess(row.getLastTestSuccess() != null ? row.getLastTestSuccess() == 1 : null);
         response.setLastTestMessage(row.getLastTestMessage());
         copyProviderValues(response, stored, maskSecrets);
+        if (maskSecrets && isBuiltinMock(definition.providerCode())) {
+            response.setAppId(null);
+            response.setPrivateKey(null);
+            response.setPublicKey(null);
+        }
         return response;
+    }
+
+    @Transactional
+    public void provisionBuiltinMockProvider(Long operatorId, String operatorUuid) {
+        PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(BuiltinMockPaymentAvailability.PROVIDER_CODE);
+        PaymentProviderSettingsDTO current = loadProviderSettings(definition.providerCode(), false);
+        PaymentProviderSettingsDTO managed = current.isPersisted()
+                ? mergeSettings(definition, current, null)
+                : providerCatalog.createBlankSettings(definition.providerCode());
+        managed.setProviderCode(definition.providerCode());
+        managed.setProviderName(definition.providerName());
+        managed.setDisplayName(resolveText(managed.getDisplayName(), definition.providerName()));
+        managed.setSortOrder(managed.getSortOrder() == null ? 900 : managed.getSortOrder());
+        managed.setSupportedScenes(providerCatalog.supportedScenes(definition.providerCode()));
+        managed.setEnabledScenes(normalizeEnabledScenes(definition.providerCode(), managed.getEnabledScenes()));
+        managed.setEnvironment("SANDBOX");
+        managed.setCurrency("CNY");
+        managed.setSandboxEnabled(true);
+        if (!StringUtils.hasText(managed.getAppId())
+                || !StringUtils.hasText(managed.getPrivateKey())
+                || !StringUtils.hasText(managed.getPublicKey())) {
+            ManagedRsaKeyPair keyPair = generateManagedRsaKeyPair();
+            managed.setAppId("lumira-builtin-mock-" + UUID.randomUUID().toString().replace("-", ""));
+            managed.setPrivateKey(keyPair.privateKey());
+            managed.setPublicKey(keyPair.publicKey());
+        }
+        managed.setConfigured(true);
+        managed.setEnabled(true);
+        managed.setConfiguredFields(resolveConfiguredFields(definition, managed));
+        upsertProviderConfig(new Actor(operatorId, operatorUuid), definition, managed, current);
+        providerListCache = null;
+    }
+
+    @Transactional
+    public void disableBuiltinMockProvider(Long operatorId, String operatorUuid) {
+        jdbcTemplate.update(
+                """
+                        update payment_provider_config
+                        set enabled = 0, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where provider_code = ? and deleted = 0
+                        """,
+                operatorId,
+                operatorUuid,
+                LocalDateTime.now(),
+                BuiltinMockPaymentAvailability.PROVIDER_CODE
+        );
+        providerListCache = null;
     }
 
     private void upsertProviderConfig(
@@ -372,6 +447,32 @@ public class PaymentManagementAppService {
         return merged;
     }
 
+    private void preserveBuiltinMockManagedSettings(PaymentProviderSettingsDTO merged, PaymentProviderSettingsDTO current) {
+        merged.setAppId(current.getAppId());
+        merged.setMerchantId(current.getMerchantId());
+        merged.setMerchantSerialNo(current.getMerchantSerialNo());
+        merged.setPlatformCertSerialNo(current.getPlatformCertSerialNo());
+        merged.setApiV3Key(current.getApiV3Key());
+        merged.setClientId(current.getClientId());
+        merged.setClientSecret(current.getClientSecret());
+        merged.setPublishableKey(current.getPublishableKey());
+        merged.setSecretKey(current.getSecretKey());
+        merged.setPrivateKey(current.getPrivateKey());
+        merged.setPublicKey(current.getPublicKey());
+        merged.setEnvironment("SANDBOX");
+        merged.setCurrency("CNY");
+        merged.setSandboxEnabled(true);
+        merged.setApiBaseUrl(current.getApiBaseUrl());
+        merged.setNotifyUrl(current.getNotifyUrl());
+        merged.setReturnUrl(current.getReturnUrl());
+        merged.setRefundNotifyUrl(current.getRefundNotifyUrl());
+        merged.setSuccessUrl(current.getSuccessUrl());
+        merged.setCancelUrl(current.getCancelUrl());
+        merged.setWebhookSecret(current.getWebhookSecret());
+        merged.setWebhookId(current.getWebhookId());
+        merged.setExtraConfig(current.getExtraConfig());
+    }
+
     private PaymentProviderSettingsDTO buildStoredPayload(PaymentProviderSettingsDTO merged) {
         PaymentProviderSettingsDTO stored = new PaymentProviderSettingsDTO();
         stored.setProviderCode(merged.getProviderCode());
@@ -467,6 +568,42 @@ public class PaymentManagementAppService {
                         List.copyOf(item.getEnabledScenes())
                 ))
                 .toList();
+    }
+
+    private boolean isBuiltinMock(String providerCode) {
+        return BuiltinMockPaymentAvailability.PROVIDER_CODE.equals(providerCatalog.normalize(providerCode));
+    }
+
+    private boolean isBuiltinMockEnabled() {
+        return builtinMockPaymentAvailability != null && builtinMockPaymentAvailability.isEnabled();
+    }
+
+    private void requireBuiltinMockEnabled(String providerCode, boolean write) {
+        if (!isBuiltinMock(providerCode)) {
+            return;
+        }
+        if (builtinMockPaymentAvailability == null) {
+            throw new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "内置模拟支付插件未启用");
+        }
+        if (write) {
+            builtinMockPaymentAvailability.requireEnabledForWrite();
+        } else {
+            builtinMockPaymentAvailability.requireEnabled();
+        }
+    }
+
+    private ManagedRsaKeyPair generateManagedRsaKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            KeyPair pair = generator.generateKeyPair();
+            return new ManagedRsaKeyPair(
+                    Base64.getEncoder().encodeToString(pair.getPrivate().getEncoded()),
+                    Base64.getEncoder().encodeToString(pair.getPublic().getEncoded())
+            );
+        } catch (Exception exception) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Unable to initialize built-in mock payment signing keys");
+        }
     }
 
     private List<String> normalizeEnabledScenes(String providerCode, List<String> requestedScenes) {
@@ -790,5 +927,8 @@ public class PaymentManagementAppService {
     }
 
     private record CachedProviderList(List<PaymentProviderSettingsDTO> settings, Instant expireAt) {
+    }
+
+    private record ManagedRsaKeyPair(String privateKey, String publicKey) {
     }
 }

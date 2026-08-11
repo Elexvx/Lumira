@@ -478,6 +478,7 @@ const dataManagementRoutes: BackendRouteRecord[] = [
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [
+  { path: '/mock-payment/checkout', name: '内置模拟支付', access: 'canUseBuiltinMockPayment', hideInMenu: true },
   { path: '/plugins/sensitive-words', name: 'nav.plugins.sensitiveWords', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
   { path: '/plugins/work-order-feedback', name: 'nav.plugins.workOrderFeedback', access: 'canVisitWorkOrderFeedbackPlugin', hideInMenu: true },
   { path: '/work-order-feedback', name: 'nav.plugins.workOrderFeedback', icon: 'CustomerServiceOutlined', access: 'canVisitWorkOrderFeedbackPlugin' },
@@ -494,6 +495,7 @@ const publicRouteMeta: BackendRouteMeta[] = [
 ];
 
 const publicRoutes: BackendRouteRecord[] = [
+  { path: '/mock-payment/checkout', component: '@/pages/payment/mock/BuiltinMockPaymentCheckoutPage', layout: false, name: '内置模拟支付', access: 'canUseBuiltinMockPayment', hideInMenu: true },
   { path: '/plugins/sensitive-words', redirect: '/settings/sensitive-words', name: 'nav.plugins.sensitiveWords', access: 'canVisitSensitiveWordsPlugin', hideInMenu: true },
   { path: '/plugins/work-order-feedback', redirect: '/work-order-feedback', name: 'nav.plugins.workOrderFeedback', access: 'canVisitWorkOrderFeedbackPlugin', hideInMenu: true },
   { path: '/work-order-feedback', component: '@/pages/plugins/WorkOrderFeedbackPage', name: 'nav.plugins.workOrderFeedback', icon: 'CustomerServiceOutlined', access: 'canVisitWorkOrderFeedbackPlugin' },

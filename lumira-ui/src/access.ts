@@ -111,6 +111,9 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
   const canVisitWorkflowConfig = isLogin && hasPermission(permissions, 'workflow:config');
   const canVisitWorkflowTasks = isLogin && hasPermission(permissions, 'workflow:approve');
   const canVisitCompetitionRegister = isLogin && hasAnyPermission(permissions, COMPETITION_REGISTER_PERMISSIONS);
+  const canUseBuiltinMockPayment = isLogin
+    && hasPermission(permissions, 'aiadc:registration:pay')
+    && availablePlugins.some((plugin) => plugin.pluginCode === 'builtin-mock-payment');
   const canVisitActivityRegister = isLogin && hasAnyPermission(permissions, ACTIVITY_REGISTER_PERMISSIONS);
   const canVisitSensitiveWordsPlugin =
     isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view'));
@@ -191,6 +194,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canExportSensitiveCompetitionRegistrations,
     canDownloadRegistrationMaterials,
     canVisitCompetitionRegister,
+    canUseBuiltinMockPayment,
     canVisitActivityRegister,
     canVisitPaymentOrders,
     canVisitCertificates: isLogin,

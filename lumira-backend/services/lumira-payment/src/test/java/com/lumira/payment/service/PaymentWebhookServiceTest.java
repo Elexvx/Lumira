@@ -24,9 +24,16 @@ import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.net.URLEncoder;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.Signature;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
@@ -36,6 +43,124 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class PaymentWebhookServiceTest {
+
+    @Test
+    void builtinMockSignedSuccessShouldPayOnlyThroughTheWebhookPipeline() {
+        JdbcTemplate jdbcTemplate = mockJdbcTemplateWithProcessMark();
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        RsaMaterial rsa = rsaMaterial();
+        when(managementAppService.getRequiredProviderSettings("builtin_mock"))
+                .thenReturn(builtinMockSettings(rsa));
+        stubMissingWebhookEvent(jdbcTemplate);
+        PaymentOrderRow order = builtinMockOrder();
+        doReturn(order).when(jdbcTemplate).queryForObject(
+                contains("from payment_order"),
+                any(BeanPropertyRowMapper.class),
+                eq("builtin_mock"),
+                eq(order.getOrderNo())
+        );
+        PaymentWebhookService service = new PaymentWebhookService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                managementAppService,
+                new PaymentProviderCatalog(),
+                outboxService,
+                domainEventPublisher
+        );
+        String payload = builtinMockPayload(rsa, order, "SUCCESS", "TRADE_SUCCESS", "mock-notify-success");
+
+        PaymentWebhookEventDTO result = service.handleWebhook("builtin_mock", payload, Map.of());
+
+        assertThat(result.processed()).isTrue();
+        verify(jdbcTemplate).update(
+                contains("set status = 'PAID'"),
+                any(Object[].class)
+        );
+        verify(domainEventPublisher).publishAll(any());
+        verify(outboxService).record(
+                isNull(),
+                eq("payment"),
+                eq("payment.webhook.received"),
+                eq("builtin_mock:mock-notify-success"),
+                any()
+        );
+    }
+
+    @Test
+    void builtinMockSignedFailureShouldCloseTheOrderWithAProviderStyleError() {
+        JdbcTemplate jdbcTemplate = mockJdbcTemplateWithProcessMark();
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        RsaMaterial rsa = rsaMaterial();
+        when(managementAppService.getRequiredProviderSettings("builtin_mock"))
+                .thenReturn(builtinMockSettings(rsa));
+        stubMissingWebhookEvent(jdbcTemplate);
+        PaymentOrderRow order = builtinMockOrder();
+        doReturn(order).when(jdbcTemplate).queryForObject(
+                contains("from payment_order"),
+                any(BeanPropertyRowMapper.class),
+                eq("builtin_mock"),
+                eq(order.getOrderNo())
+        );
+        PaymentWebhookService service = new PaymentWebhookService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                managementAppService,
+                new PaymentProviderCatalog(),
+                outboxService,
+                domainEventPublisher
+        );
+        String payload = builtinMockPayload(rsa, order, "FAILURE", "TRADE_CLOSED", "mock-notify-failure");
+
+        PaymentWebhookEventDTO result = service.handleWebhook("builtin_mock", payload, Map.of());
+
+        assertThat(result.processed()).isTrue();
+        ArgumentCaptor<Object[]> orderUpdateArgs = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate).update(contains("set status = ?"), orderUpdateArgs.capture());
+        assertThat(orderUpdateArgs.getValue()[0]).isEqualTo("FAILED");
+        assertThat(orderUpdateArgs.getValue()[1]).isEqualTo("ACQ.SYSTEM_ERROR");
+        verifyNoInteractions(domainEventPublisher);
+    }
+
+    @Test
+    void builtinMockSignedCallbackShouldRejectAnAmountMismatch() {
+        JdbcTemplate jdbcTemplate = mockJdbcTemplateWithProcessMark();
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        RsaMaterial rsa = rsaMaterial();
+        when(managementAppService.getRequiredProviderSettings("builtin_mock"))
+                .thenReturn(builtinMockSettings(rsa));
+        stubMissingWebhookEvent(jdbcTemplate);
+        PaymentOrderRow order = builtinMockOrder();
+        doReturn(order).when(jdbcTemplate).queryForObject(
+                contains("from payment_order"),
+                any(BeanPropertyRowMapper.class),
+                eq("builtin_mock"),
+                eq(order.getOrderNo())
+        );
+        PaymentWebhookService service = new PaymentWebhookService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                managementAppService,
+                new PaymentProviderCatalog(),
+                outboxService,
+                domainEventPublisher
+        );
+        order.setAmountMinor(9800L);
+        String payload = builtinMockPayload(rsa, order, "SUCCESS", "TRADE_SUCCESS", "mock-notify-amount");
+        order.setAmountMinor(9900L);
+
+        assertThatThrownBy(() -> service.handleWebhook("builtin_mock", payload, Map.of()))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("amount does not match local order");
+
+        verify(jdbcTemplate, never()).update(contains("update payment_order"), any(Object[].class));
+        verifyNoInteractions(outboxService, domainEventPublisher);
+    }
 
     @Test
     void paidCompetitionRegistrationWebhookPublishesOwnedEventWithoutWritingCompetitionTables() {
@@ -900,6 +1025,15 @@ class PaymentWebhookServiceTest {
         doReturn(1).when(jdbcTemplate).update(contains("update payment_webhook_event"), any(Object[].class));
     }
 
+    private void stubMissingWebhookEvent(JdbcTemplate jdbcTemplate) {
+        doThrow(new EmptyResultDataAccessException(1)).when(jdbcTemplate).queryForObject(
+                contains("from payment_webhook_event"),
+                any(BeanPropertyRowMapper.class),
+                eq("builtin_mock"),
+                anyString()
+        );
+    }
+
     private void stubWebhookEventCanBeInserted(JdbcTemplate jdbcTemplate) {
         doReturn(1).when(jdbcTemplate).update(contains("insert into payment_webhook_event"), any(Object[].class));
     }
@@ -935,6 +1069,99 @@ class PaymentWebhookServiceTest {
             throw new IllegalStateException(exception);
         }
     }
+
+    private PaymentProviderSettingsDTO builtinMockSettings(RsaMaterial rsa) {
+        PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
+        settings.setProviderCode("builtin_mock");
+        settings.setEnabled(true);
+        settings.setConfigured(true);
+        settings.setAppId("lumira-builtin-mock-test");
+        settings.setPublicKey(rsa.publicKey());
+        return settings;
+    }
+
+    private PaymentOrderRow builtinMockOrder() {
+        PaymentOrderRow order = new PaymentOrderRow();
+        order.setId(801L);
+        order.setOrderNo("REG-MOCK-801");
+        order.setProviderCode("builtin_mock");
+        order.setProviderOrderNo("mock-pending-801");
+        order.setSubject("Competition registration");
+        order.setAmountMinor(8800L);
+        order.setCurrency("CNY");
+        order.setStatus("PENDING");
+        order.setCreatedBy(1001L);
+        order.setCreatedByUuid("user-uuid-1001");
+        order.setRequestJson("{}");
+        return order;
+    }
+
+    private String builtinMockPayload(
+            RsaMaterial rsa,
+            PaymentOrderRow order,
+            String outcome,
+            String tradeStatus,
+            String notifyId
+    ) {
+        Map<String, String> fields = new TreeMap<>();
+        fields.put("app_id", "lumira-builtin-mock-test");
+        fields.put("charset", "utf-8");
+        fields.put("mock_outcome", outcome);
+        fields.put("notify_id", notifyId);
+        fields.put("notify_time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        fields.put("notify_type", "trade_status_sync");
+        fields.put("out_trade_no", order.getOrderNo());
+        fields.put("subject", order.getSubject());
+        fields.put("total_amount", java.math.BigDecimal.valueOf(order.getAmountMinor(), 2).toPlainString());
+        fields.put("trade_no", "mock-trade-" + notifyId);
+        fields.put("trade_status", tradeStatus);
+        fields.put("version", "1.0");
+        if ("FAILURE".equals(outcome)) {
+            fields.put("sub_code", "ACQ.SYSTEM_ERROR");
+            fields.put("sub_msg", "Built-in mock payment failure");
+        }
+        String signContent = fields.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .reduce((left, right) -> left + "&" + right)
+                .orElse("");
+        fields.put("sign_type", "RSA2");
+        fields.put("sign", rsaSign(rsa.privateKey(), signContent));
+        Map<String, String> encoded = new LinkedHashMap<>();
+        fields.forEach((key, value) -> encoded.put(
+                URLEncoder.encode(key, StandardCharsets.UTF_8),
+                URLEncoder.encode(value, StandardCharsets.UTF_8)
+        ));
+        return encoded.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .reduce((left, right) -> left + "&" + right)
+                .orElse("");
+    }
+
+    private RsaMaterial rsaMaterial() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            var pair = generator.generateKeyPair();
+            return new RsaMaterial(
+                    pair.getPrivate(),
+                    Base64.getEncoder().encodeToString(pair.getPublic().getEncoded())
+            );
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private String rsaSign(PrivateKey privateKey, String content) {
+        try {
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(privateKey);
+            signature.update(content.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(signature.sign());
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private record RsaMaterial(PrivateKey privateKey, String publicKey) {
+    }
 }
-
-

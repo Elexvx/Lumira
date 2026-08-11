@@ -3,6 +3,7 @@ package com.lumira.saas.modules.plugin.app;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.plugin.BuiltinPluginLifecycleHook;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class PluginManagementAppService {
     };
     private static final String BUILTIN_SENSITIVE_WORDS_PLUGIN = "sensitive-words";
     private static final String BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN = "work-order-feedback";
+    private static final String BUILTIN_MOCK_PAYMENT_PLUGIN = "builtin-mock-payment";
     private static final Set<String> AUTHENTICATED_PERMISSIONLESS_MENU_CODES = Set.of(
             "certificate.mine",
             "expert.application"
@@ -74,6 +77,11 @@ public class PluginManagementAppService {
             new BuiltinPluginRuntime(
                     List.of("/work-order-feedback"),
                     List.of("routes", "menus", "permissions", "rich-text-upload")
+            ),
+            BUILTIN_MOCK_PAYMENT_PLUGIN,
+            new BuiltinPluginRuntime(
+                    List.of("/mock-payment/checkout"),
+                    List.of("payment-provider", "checkout-route", "callbacks", "refunds")
             )
     );
 
@@ -88,6 +96,7 @@ public class PluginManagementAppService {
     private final ObjectMapper objectMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final ReadModelVersionCache readModelVersionCache;
+    private List<BuiltinPluginLifecycleHook> builtinPluginLifecycleHooks = List.of();
     private static final long READ_MODEL_VERSION_CACHE_TTL_MILLIS = Duration.ofSeconds(2).toMillis();
     private static final String GLOBAL_PLUGIN_SCOPE_KEY = "global";
     private static final String READ_MODEL_CACHE_KEY_PLUGIN_BOOTSTRAP = "plugin:bootstrap";
@@ -165,6 +174,13 @@ public class PluginManagementAppService {
         this.objectMapper = objectMapper;
         this.domainEventPublisher = domainEventPublisher;
         this.readModelVersionCache = readModelVersionCache;
+    }
+
+    @Autowired
+    void setBuiltinPluginLifecycleHooks(ObjectProvider<BuiltinPluginLifecycleHook> lifecycleHooksProvider) {
+        this.builtinPluginLifecycleHooks = lifecycleHooksProvider == null
+                ? List.of()
+                : lifecycleHooksProvider.orderedStream().toList();
     }
 
     @Transactional
@@ -301,6 +317,7 @@ public class PluginManagementAppService {
                         operator.userId(),
                         operator.userUuid()
                 );
+                invokeBuiltinEnableHook(request.getPluginCode(), operator);
                 pluginPersistenceService.registerPluginPermissions(request.getPluginCode(), version);
                 pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY", operator.userId(), operator.userUuid());
                 pluginPersistenceService.bumpBootstrapVersion("plugin.enabled");
@@ -328,6 +345,7 @@ public class PluginManagementAppService {
         PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), true);
         pluginActivation.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable", operator.userId(), operator.userUuid());
         pluginPersistenceService.disablePlugin(request.getPluginCode(), operator.userId(), operator.userUuid());
+        invokeBuiltinDisableHook(request.getPluginCode(), operator);
         pluginPersistenceService.bumpBootstrapVersion("plugin.disabled");
         invalidatePluginBootstrapCaches();
         boolean purgeData = Boolean.TRUE.equals(request.getPurgeData());
@@ -1068,6 +1086,31 @@ public class PluginManagementAppService {
 
     private boolean isBuiltinCorePlugin(String pluginCode) {
         return builtinPluginRuntime(pluginCode) != null;
+    }
+
+    private void invokeBuiltinEnableHook(String pluginCode, TrustedOperator operator) {
+        BuiltinPluginLifecycleHook hook = findBuiltinLifecycleHook(pluginCode);
+        if (hook != null) {
+            hook.onEnable(new BuiltinPluginLifecycleHook.PluginLifecycleContext(operator.userId(), operator.userUuid()));
+        }
+    }
+
+    private void invokeBuiltinDisableHook(String pluginCode, TrustedOperator operator) {
+        BuiltinPluginLifecycleHook hook = findBuiltinLifecycleHook(pluginCode);
+        if (hook != null) {
+            hook.onDisable(new BuiltinPluginLifecycleHook.PluginLifecycleContext(operator.userId(), operator.userUuid()));
+        }
+    }
+
+    private BuiltinPluginLifecycleHook findBuiltinLifecycleHook(String pluginCode) {
+        BuiltinPluginLifecycleHook hook = builtinPluginLifecycleHooks.stream()
+                .filter(candidate -> candidate != null && pluginCode.equals(candidate.pluginCode()))
+                .findFirst()
+                .orElse(null);
+        if (BUILTIN_MOCK_PAYMENT_PLUGIN.equals(pluginCode) && hook == null) {
+            throw new BizException(ErrorCode.DEPENDENCY_UNAVAILABLE, "Built-in mock payment lifecycle is unavailable");
+        }
+        return hook;
     }
 
     private BuiltinPluginRuntime builtinPluginRuntime(String pluginCode) {

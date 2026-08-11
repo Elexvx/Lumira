@@ -637,3 +637,140 @@ No actionable P0, P1, or P2 differences remain in the requested regions.
 ## Final result
 
 passed
+
+---
+
+# Design QA — Payment result home action removal (2026-08-11)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/competitions/register/payment-result?registrationId=3`, selecting the `返回首页` action for removal.
+- Saved before state: `artifacts/payment-result-home-removal/before-1117x751.png` (`1117 × 751` pixels from a matching `1117 × 751` CSS viewport; output and CSS dimensions are normalized 1:1).
+- Intended implementation state: authenticated dark-theme payment-success result for registration `3` at the same viewport.
+- Browser-rendered implementation screenshot: unavailable because the local authenticated session expired after the source capture and redirected the page to `/user/login`; Chrome was not available as an alternate authenticated browser surface.
+
+## Findings
+
+- The requested `返回首页` action was removed from the success-state action group.
+- The existing `返回报名记录` action remains unchanged, and pending/error states retain their `刷新结果` action.
+- Fonts and typography, spacing and layout rhythm, colors and visual tokens, image/icon quality, and all payment-result copy are otherwise unchanged by the one-line component edit.
+- A same-state full-view and focused-region post-change comparison could not be completed without an authenticated payment-result render.
+
+## Comparison history
+
+1. The authenticated before-state capture confirmed the selected blue `返回首页` action beside `返回报名记录`.
+2. Removed only the success-state home action from `PaymentResultPage`; payment status handling, refresh behavior, and registration navigation were preserved.
+3. TypeScript typecheck, project lint, `git diff --check`, and the focused registration-checkout test suite passed. Project lint reported two pre-existing warnings outside `PaymentResultPage` and no errors.
+4. Post-change browser capture was blocked by session expiry before an authenticated implementation screenshot could be produced.
+
+## Final result
+
+final result: blocked
+
+---
+
+# Design QA — Registration table container responsiveness (2026-08-11)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/competitions/registrations`, captured at a `1117 × 751` viewport with the registration table clipped behind the fixed operation column.
+- Final implementation at the matching viewport: `artifacts/registration-table-responsive/after-1117x751.png` (`1117 × 751` CSS pixels and output pixels).
+- Additional breakpoint evidence: `artifacts/registration-table-responsive/after-768x800.png`, `after-1366x768.png`, and `after-1920x900.png`.
+- State: authenticated Administrator session, Chinese locale, dark theme, competition `全国大学生智能应用开发大赛`, and nine populated registration rows.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain in the requested table behavior.
+
+- The table now responds to its own container width instead of keeping a fixed `1420px` content canvas. At `1117px`, the required team, project, student-count, status, and action columns fill the available `803px` table container with equal client and scroll widths.
+- Lower-priority columns are progressively introduced as space becomes available: material at `1366px`; competition, participant number, and registration time at `1920px`.
+- The selected competition remains available in the search form, so repeating the same event name on every narrow-screen row is intentionally deferred until the `xxl` table-container tier.
+- Team names and registration numbers use bounded ellipsis and tooltips. The operation column is fixed only on desktop-sized layouts, preventing its sticky layer from obscuring narrow-table content.
+- The document and table reported no horizontal overflow at `768`, `1117`, `1366`, or `1920` pixels.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing Ant Design font family, weights, sizes, status labels, and registration-number hierarchy are unchanged.
+- Spacing and layout rhythm: existing search card, toolbar, row heights, selection spacing, and pagination rhythm are preserved; only column allocation changes by container tier.
+- Colors and visual tokens: dark-theme surfaces, borders, primary blue actions, status colors, and secondary text continue to use the existing application tokens.
+- Image quality and asset fidelity: no image asset was introduced or replaced; existing Ant Design export, material, view, density, and settings icons remain unchanged.
+- Copy and content: column labels, filter copy, row values, export labels, and detail-drawer content are preserved.
+
+## Interaction and runtime checks
+
+- Selecting one row immediately changed the primary actions to `导出所选（1）` and `下载所选材料包（1）`; cancelling selection restored both filtered-result labels with a count of nine.
+- `查看资料` opened the populated team detail drawer and its close action returned to the table.
+- The registration query returned nine rows from the active `lumira_dev` local database after restoring the previously created demo dataset to the active development runtime.
+- Visible table headers matched the intended tiers: `报名团队 / 项目 / 状态 / 操作` at `768px`; student count added at `1117px`; material added at `1366px`; and the full column set at `1920px`.
+
+## Validation
+
+- TypeScript typecheck: passed.
+- ESLint: passed with two pre-existing unused-import warnings outside this change.
+- Stylelint: passed.
+- Focused Vitest: `2` files / `13` tests passed.
+- `git diff --check`: passed for the edited page files.
+
+## Comparison history
+
+1. The source showed a fixed-width table whose right operation column covered intermediate columns in the `1117 × 751` layout.
+2. Replaced the page-level fixed scroll width with container-responsive column tiers, flexible content widths, and bounded team cells.
+3. Matching-viewport comparison confirmed the table fits the card without document or table overflow while retaining the useful status column.
+4. Additional narrow, medium, and wide viewport checks confirmed progressive disclosure without clipped headers, toolbar actions, or row controls.
+
+## Final result
+
+final result: passed
+
+---
+
+# Design QA — Registration detail single-row fields (2026-08-11)
+
+## Visual truth and implementation evidence
+
+- Source visual truth: Browser Comment 1 on `/competitions/registrations`, requesting one field per row in the registration-detail drawer.
+- Browser-captured source state: `artifacts/registration-detail-single-row/before-877x751.png`.
+- Browser-rendered implementation: `artifacts/registration-detail-single-row/after-877x751.png`.
+- Combined comparison input: `artifacts/registration-detail-single-row/comparison-before-after-877x751.png`.
+- Viewport and pixels: both source and implementation are `877 × 751` CSS pixels and output pixels at 1:1 density.
+- State: authenticated Administrator session, Chinese locale, dark theme, `智能守护队` registration detail drawer open at its top.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain for the requested layout.
+
+- The source grouped three overview fields or two snapshot fields on one row. The implementation gives every overview, registration, team, and project field its own bordered row.
+- Browser structure confirms four description tables with `9 / 3 / 3 / 3` rows respectively, and every row contains exactly one label cell plus one value cell.
+- The document remains `877px` wide with equal client and scroll widths, so the denser vertical layout does not introduce horizontal overflow.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing typeface, weights, sizes, line heights, label treatment, copy icons, and hierarchy remain unchanged.
+- Spacing and layout rhythm: card padding, borders, radii, section gaps, drawer header, and row heights are preserved; only the number of fields per row changes.
+- Colors and visual tokens: dark surfaces, borders, foreground hierarchy, and blue copy/export icons continue to use the existing theme tokens.
+- Image quality and asset fidelity: no image or icon asset changed; existing Ant Design icons remain intact.
+- Copy and content: all labels, registration values, team/project snapshots, and action copy are unchanged.
+
+## Interaction and runtime checks
+
+- Closing and reopening the `智能守护队` detail drawer returned to the top with the single-row layout intact.
+- Existing copy controls remained visible beside string values.
+- The student-member and stage-material tables intentionally keep their row-based tabular structure.
+- No change-related error or overflow state appeared during the browser regression.
+
+## Validation
+
+- TypeScript typecheck: passed.
+- ESLint: passed with two pre-existing unused-import warnings outside this change.
+- Stylelint: passed.
+- `git diff --check`: passed for the edited page.
+
+## Comparison history
+
+1. The captured source showed three-column overview rows and two-column snapshot rows, creating the layout called out by the annotation.
+2. Changed both description configurations to one column without altering data, cards, tables, icons, or drawer behavior.
+3. The same-state combined comparison confirmed one label/value pair per row across all targeted sections with no P0/P1/P2 visual regression.
+
+## Final result
+
+final result: passed

@@ -3,6 +3,7 @@ package com.lumira.file;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.StorageSpaceOptionDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
@@ -48,9 +49,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -578,7 +581,7 @@ class FileManagementAppServiceTest {
     }
 
     @Test
-    void listStorageSpaceOptions_shouldAllowCompetitionEditorsWithoutFileManagementPermission() {
+    void listStorageSpaceOptions_shouldAllowCompetitionEditorsAndHideSystemManagedCompetitionBuckets() {
         CurrentUser currentUser = currentUser("aiadc:competition:update");
         when(systemInternalApi.permissionSnapshot(11L, "user-uuid-11")).thenReturn(permissionSnapshot(
                 List.of("aiadc:competition:update"),
@@ -586,7 +589,11 @@ class FileManagementAppServiceTest {
                 List.of(),
                 List.of()
         ));
-        when(fileStorageSpaceMapper.listWithUsage(100L, 0L)).thenReturn(storageSpaceEntities(2));
+        List<FileStorageSpaceEntity> storageSpaces = new ArrayList<>(storageSpaceEntities(2));
+        FileStorageSpaceEntity competitionStorage = storageSpaceEntities(1).getFirst();
+        competitionStorage.setStorageKey("competition_ca5e4e825be14d068aba3c9cb45acad1");
+        storageSpaces.add(competitionStorage);
+        when(fileStorageSpaceMapper.listWithUsage(100L, 0L)).thenReturn(storageSpaces);
 
         List<StorageSpaceOptionDTO> options = service.listStorageSpaceOptions(currentUser);
 
@@ -609,6 +616,44 @@ class FileManagementAppServiceTest {
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
         verifyNoInteractions(fileStorageSpaceMapper);
+    }
+
+    @Test
+    void ensureCompetitionStorageSpaceCreatesOnePrivateLocalBucketIdempotently() {
+        String competitionUuid = "ca5e4e82-5be1-4d06-8aba-3c9cb45acad1";
+        String storageKey = "competition_ca5e4e825be14d068aba3c9cb45acad1";
+        Path uploadRoot = tempDir.resolve("uploads");
+        when(uploadProperties.getStorageRoot()).thenReturn(uploadRoot.toString());
+        AtomicReference<FileStorageSpaceEntity> stored = new AtomicReference<>();
+        when(fileStorageSpaceMapper.findByStorageKey(storageKey)).thenAnswer(invocation -> stored.get());
+        when(fileStorageSpaceMapper.insert(any(FileStorageSpaceEntity.class))).thenAnswer(invocation -> {
+            stored.set(invocation.getArgument(0));
+            return 1;
+        });
+        CompetitionStorageSpaceRequest request = new CompetitionStorageSpaceRequest(
+                88L,
+                competitionUuid,
+                "全国大学生智能应用开发大赛",
+                11L,
+                "user-uuid-11"
+        );
+
+        service.ensureCompetitionStorageSpace(request);
+        service.ensureCompetitionStorageSpace(request);
+
+        FileStorageSpaceEntity entity = stored.get();
+        assertThat(entity).isNotNull();
+        assertThat(entity.getStorageKey()).isEqualTo(storageKey);
+        assertThat(entity.getRootPath()).isEqualTo(
+                "storage/uploads/competitions/ca5e4e825be14d068aba3c9cb45acad1/"
+        );
+        assertThat(entity.getProvider()).isEqualTo("LOCAL");
+        assertThat(entity.getDefaultFlag()).isZero();
+        assertThat(entity.getAnonymousAccessAllowed()).isZero();
+        assertThat(entity.getMaxFileSizeMb()).isEqualTo(1024);
+        assertThat(entity.getCreatedBy()).isEqualTo(11L);
+        assertThat(Files.isDirectory(uploadRoot.resolve("competitions/ca5e4e825be14d068aba3c9cb45acad1"))).isTrue();
+        verify(fileStorageSpaceMapper, times(1)).insert(any(FileStorageSpaceEntity.class));
     }
 
     @Test

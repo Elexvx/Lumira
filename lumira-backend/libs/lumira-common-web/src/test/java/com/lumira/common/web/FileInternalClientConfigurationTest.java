@@ -1,6 +1,7 @@
 package com.lumira.common.web;
 
 import com.lumira.api.client.FileInternalApi;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import java.util.Iterator;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,35 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class FileInternalClientConfigurationTest {
+
+    @Test
+    void fileInternalApiProvisionsCompetitionStorageWithScopedFileToken() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        FileInternalApi api = fileInternalApi(builder, "file-token-2026");
+        CompetitionStorageSpaceRequest request = new CompetitionStorageSpaceRequest(
+                88L,
+                "ca5e4e82-5be1-4d06-8aba-3c9cb45acad1",
+                "全国大学生智能应用开发大赛",
+                1001L,
+                "user-uuid-1001"
+        );
+        server.expect(requestTo("http://file-service:8084/internal/files/competition-storage-spaces"))
+                .andExpect(header("X-Job-Token", "file-token-2026"))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(clientRequest -> {
+                    String body = ((MockClientHttpRequest) clientRequest).getBodyAsString();
+                    assertThat(body).contains("\"competitionId\":88");
+                    assertThat(body).contains("\"competitionUuid\":\"ca5e4e82-5be1-4d06-8aba-3c9cb45acad1\"");
+                    assertThat(body).contains("\"operatorUserId\":1001");
+                    assertThat(body).contains("\"operatorUserUuid\":\"user-uuid-1001\"");
+                })
+                .andRespond(withSuccess());
+
+        api.ensureCompetitionStorageSpace(request);
+
+        server.verify();
+    }
 
     @Test
     void fileInternalApiUploadsDocumentForUserWithScopedFileToken() {

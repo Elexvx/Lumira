@@ -1,6 +1,12 @@
 import { request } from '@/services/common/request';
 import type { PageResponse, RegistrationPaymentQueryParams, RegistrationPaymentRecord } from './types';
-import type { PaymentCreateOrderRequest, PaymentOrderRecord } from '@/types/api';
+import type {
+  BuiltinMockPaymentCheckout,
+  BuiltinMockPaymentSimulationRequest,
+  BuiltinMockPaymentSimulationResult,
+  PaymentCreateOrderRequest,
+  PaymentOrderRecord,
+} from '@/types/api';
 
 export const listRegistrationPayments = (params: RegistrationPaymentQueryParams) =>
   request<PageResponse<RegistrationPaymentRecord>>('/v2/aiadc/payments', {
@@ -37,6 +43,27 @@ export const cancelPaymentOrder = (orderNo: string) =>
   request<PaymentOrderRecord>(`/v1/payment/orders/${encodeURIComponent(orderNo)}/cancel`, {
     method: 'POST',
   });
+
+export const getBuiltinMockPaymentCheckout = (orderNo: string) =>
+  request<BuiltinMockPaymentCheckout>(
+    `/v2/payment/builtin-mock/orders/${encodeURIComponent(orderNo)}/checkout`,
+    {
+      method: 'GET',
+      params: { _t: Date.now() },
+    },
+  );
+
+export const simulateBuiltinMockPayment = (
+  orderNo: string,
+  data: BuiltinMockPaymentSimulationRequest,
+) =>
+  request<BuiltinMockPaymentSimulationResult>(
+    `/v2/payment/builtin-mock/orders/${encodeURIComponent(orderNo)}/simulate`,
+    {
+      method: 'POST',
+      data,
+    },
+  );
 
 export const listSandboxPaymentOrders = (params: { pageNo: number; pageSize: number }) =>
   request<PageResponse<PaymentOrderRecord>>('/v1/payment/sandbox/orders', {

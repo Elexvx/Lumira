@@ -34,6 +34,19 @@ const formatter = (messages: Record<string, string>) => (id: string, fallback: s
   messages[id] || fallback;
 
 describe('localizeBuiltinPluginDefinition', () => {
+  it('recognizes the built-in mock payment plugin and keeps its fixed manifest name as fallback', () => {
+    const plugin = {
+      ...definition('builtin-mock-payment'),
+      pluginName: '内置模拟支付',
+      description: '系统专属模拟支付环境',
+    };
+
+    expect(localizeBuiltinPluginDefinition(plugin, formatter({}))).toMatchObject({
+      pluginName: '内置模拟支付',
+      description: '系统专属模拟支付环境',
+    });
+  });
+
   it('localizes built-in plugin metadata into Chinese', () => {
     expect(localizeBuiltinPluginDefinition(
       definition('sensitive-words'),

@@ -3,6 +3,7 @@ package com.lumira.file.controller;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.file.FileContentDTO;
 import com.lumira.api.file.FileProcessingArtifactDTO;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.AuthenticationTrustSupport;
@@ -14,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +30,12 @@ public class InternalFileController {
 
     public InternalFileController(FileInternalApiService fileInternalApiService) {
         this.fileInternalApiService = fileInternalApiService;
+    }
+
+    @PostMapping("/competition-storage-spaces")
+    public void ensureCompetitionStorageSpace(@RequestBody CompetitionStorageSpaceRequest request) {
+        requireInternalServicePrincipal();
+        fileInternalApiService.ensureCompetitionStorageSpace(request);
     }
 
     @PostMapping(value = "/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -1,6 +1,7 @@
 package com.lumira.file.service;
 
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.api.file.CompetitionStorageSpaceRequest;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
@@ -22,6 +23,23 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class FileInternalApiServiceTest {
+
+    @Test
+    void competitionStorageProvisioningDelegatesWithoutUsingAnEndUserSession() {
+        FileManagementAppService appService = mock(FileManagementAppService.class);
+        FileInternalApiService service = service(appService, userSnapshot(42L, "alice", "ENABLED"));
+        CompetitionStorageSpaceRequest request = new CompetitionStorageSpaceRequest(
+                88L,
+                "ca5e4e82-5be1-4d06-8aba-3c9cb45acad1",
+                "比赛",
+                42L,
+                "user-uuid-42"
+        );
+
+        service.ensureCompetitionStorageSpace(request);
+
+        verify(appService).ensureCompetitionStorageSpace(request);
+    }
 
     @Test
     void internalUserFileOperationsUseTrustedPermissionSnapshot() {

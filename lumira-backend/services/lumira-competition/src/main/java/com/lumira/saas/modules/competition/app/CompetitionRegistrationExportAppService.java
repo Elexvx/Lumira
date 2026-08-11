@@ -58,6 +58,7 @@ public class CompetitionRegistrationExportAppService {
     private static final long MAX_MATERIAL_FILE_BYTES = 100L * 1024L * 1024L;
     private static final long MAX_MATERIAL_PACKAGE_BYTES = 512L * 1024L * 1024L;
     private static final String MATERIAL_REFERENCE_TYPE = "competition.registration.material";
+    private static final String MATERIAL_PACKAGE_WORKBOOK_NAME = "报名记录.xlsx";
     private static final DateTimeFormatter FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final CompetitionRegistrationAppService registrationAppService;
@@ -192,11 +193,13 @@ public class CompetitionRegistrationExportAppService {
         List<CompetitionRegistrationVO.Registration> registrations =
                 loadRegistrations(currentUser, normalizedRequest, taskId);
         List<Map<String, Object>> manifest = new ArrayList<>();
+        List<RegistrationExportRow> rows = new ArrayList<>();
         long totalBytes = 0L;
         try (ByteArrayOutputStream output = new ByteArrayOutputStream();
              ZipOutputStream zip = new ZipOutputStream(output, StandardCharsets.UTF_8)) {
             Set<String> usedPaths = new LinkedHashSet<>();
-            for (CompetitionRegistrationVO.Registration registration : registrations) {
+            for (int registrationIndex = 0; registrationIndex < registrations.size(); registrationIndex += 1) {
+                CompetitionRegistrationVO.Registration registration = registrations.get(registrationIndex);
                 CurrentUser refreshedUser = buildQueuedAsyncUser(
                         currentUser.getUserId(),
                         currentUser.getUserUuid(),
@@ -206,6 +209,16 @@ public class CompetitionRegistrationExportAppService {
                 requireMaterialDownloadPermission(refreshedUser);
                 List<CompetitionRegistrationVO.MaterialSubmission> submissions =
                         registrationAppService.listMaterials(refreshedUser, registration.getId());
+                rows.addAll(toRows(
+                        registration,
+                        submissions,
+                        hasPermission(refreshedUser, SENSITIVE_EXPORT_PERMISSION)
+                ));
+                String registrationFolder = registrationFolder(registration, registrationIndex + 1);
+                String directoryPath = registrationFolder + "/";
+                usedPaths.add(directoryPath);
+                zip.putNextEntry(new ZipEntry(directoryPath));
+                zip.closeEntry();
                 for (CompetitionRegistrationVO.MaterialSubmission submission : safeList(submissions)) {
                     for (CompetitionRegistrationVO.MaterialValue value : safeList(submission.getValues())) {
                         if (value.getFileId() == null || value.getFileId() <= 0) {
@@ -236,7 +249,7 @@ public class CompetitionRegistrationExportAppService {
                         }
                         String path = uniqueZipPath(
                                 usedPaths,
-                                materialPath(registration, submission, value, file)
+                                materialPath(registrationFolder, submission, value, file)
                         );
                         zip.putNextEntry(new ZipEntry(path));
                         zip.write(content);
@@ -247,6 +260,7 @@ public class CompetitionRegistrationExportAppService {
                         item.put("registrationId", registration.getId());
                         item.put("registrationNo", registration.getRegistrationNo());
                         item.put("teamName", registration.getTeamName());
+                        item.put("registrationFolder", registrationFolder);
                         item.put("stageId", submission.getStageId());
                         item.put("submissionId", submission.getId());
                         item.put("fieldKey", value.getFieldKey());
@@ -258,6 +272,15 @@ public class CompetitionRegistrationExportAppService {
                     }
                 }
             }
+            byte[] workbook = excelExportService.export("报名记录", columns(), rows);
+            totalBytes += workbook.length;
+            if (totalBytes > MAX_MATERIAL_PACKAGE_BYTES) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "Material package exceeds the 512 MB limit");
+            }
+            zip.putNextEntry(new ZipEntry(MATERIAL_PACKAGE_WORKBOOK_NAME));
+            zip.write(workbook);
+            zip.closeEntry();
+
             zip.putNextEntry(new ZipEntry("manifest.json"));
             zip.write(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(manifest));
             zip.closeEntry();
@@ -575,12 +598,11 @@ public class CompetitionRegistrationExportAppService {
         return file.content();
     }
 
-    private String materialPath(
+    private String registrationFolder(
             CompetitionRegistrationVO.Registration registration,
-            CompetitionRegistrationVO.MaterialSubmission submission,
-            CompetitionRegistrationVO.MaterialValue value,
-            FileContentDTO file
+            int registrationIndex
     ) {
+        String indexSegment = String.format(Locale.ROOT, "%03d", registrationIndex);
         String registrationSegment = sanitizeSegment(
                 StringUtils.hasText(registration.getRegistrationNo())
                         ? registration.getRegistrationNo()
@@ -591,6 +613,15 @@ public class CompetitionRegistrationExportAppService {
                         ? registration.getTeamName()
                         : "team"
         );
+        return indexSegment + "-" + registrationSegment + "-" + teamSegment;
+    }
+
+    private String materialPath(
+            String registrationFolder,
+            CompetitionRegistrationVO.MaterialSubmission submission,
+            CompetitionRegistrationVO.MaterialValue value,
+            FileContentDTO file
+    ) {
         String stageSegment = "stage-" + submission.getStageId();
         String fieldSegment = sanitizeSegment(
                 StringUtils.hasText(value.getFieldKey()) ? value.getFieldKey() : "material"
@@ -600,7 +631,7 @@ public class CompetitionRegistrationExportAppService {
                         ? file.originalFileName()
                         : "file-" + value.getFileId() + extension(file.fileExtension())
         );
-        return registrationSegment + "-" + teamSegment + "/" + stageSegment + "/"
+        return registrationFolder + "/" + stageSegment + "/"
                 + fieldSegment + "-" + value.getFileId() + "-" + originalName;
     }
 

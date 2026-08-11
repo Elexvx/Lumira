@@ -138,7 +138,7 @@ export interface SecuritySettings {
   passwordAllowConsecutiveCharacters: boolean;
 }
 
-export type PaymentProviderCode = 'alipay' | 'wechat_pay' | 'stripe' | 'paypal';
+export type PaymentProviderCode = 'alipay' | 'wechat_pay' | 'stripe' | 'paypal' | 'builtin_mock';
 
 export interface PaymentProviderSettings {
   providerCode: PaymentProviderCode | string;
@@ -218,6 +218,41 @@ export interface PaymentOrderRecord {
   createdAt?: string | null;
   updatedAt?: string | null;
   paidAt?: string | null;
+}
+
+export type BuiltinMockPaymentOutcome = 'SUCCESS' | 'FAILURE' | 'CANCEL' | 'TIMEOUT';
+
+export interface BuiltinMockPaymentCheckout {
+  orderNo: string;
+  providerOrderNo: string;
+  subject: string;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  tradeStatus: string;
+  expiresAt?: string | null;
+  returnUrl?: string | null;
+  callbackStatus?: string | null;
+  scheduledOutcome?: BuiltinMockPaymentOutcome | null;
+  callbackScheduledAt?: string | null;
+  allowedOutcomes: BuiltinMockPaymentOutcome[];
+  delayOptions: number[];
+  maxDelaySeconds: number;
+  environmentNotice: string;
+}
+
+export interface BuiltinMockPaymentSimulationRequest {
+  outcome: BuiltinMockPaymentOutcome;
+  callbackDelaySeconds: number;
+}
+
+export interface BuiltinMockPaymentSimulationResult {
+  order: PaymentOrderRecord;
+  outcome: BuiltinMockPaymentOutcome;
+  callbackStatus: string;
+  notifyId: string;
+  scheduledAt: string;
+  redirectUrl?: string | null;
 }
 
 export interface PaymentCreateRefundRequest {

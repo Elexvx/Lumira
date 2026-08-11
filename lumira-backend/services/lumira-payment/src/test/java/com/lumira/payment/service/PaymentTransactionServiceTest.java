@@ -31,6 +31,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -543,6 +544,112 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
+    void builtinMockPartialRefundShouldRemainPaidAndCompleteSynchronously() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        PaymentOrderRow order = builtinMockPaidOrder();
+        PaymentRefundRow completed = builtinMockRefund("REF-MOCK-1", 40L);
+        stubBuiltinMockRefundPersistence(jdbcTemplate, order, completed, 0L);
+        PaymentTransactionService service = service(
+                jdbcTemplate,
+                mock(PaymentManagementAppService.class),
+                outboxService
+        );
+
+        PaymentRefundDTO result = service.createRefund(
+                currentUser(),
+                order.getOrderNo(),
+                new PaymentCreateRefundRequestDTO("REF-MOCK-1", 40L, "CNY", "partial", Map.of(), null)
+        );
+
+        assertThat(result.status()).isEqualTo("REFUNDED");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate, times(2)).update(sqlCaptor.capture(), argsCaptor.capture());
+        int orderUpdateIndex = sqlCaptor.getAllValues().get(0).contains("update payment_order") ? 0 : 1;
+        assertThat(argsCaptor.getAllValues().get(orderUpdateIndex)[0]).isEqualTo("PAID");
+        verify(outboxService).record(
+                eq(1001L),
+                eq("payment"),
+                eq("payment.refund.completed"),
+                eq("REF-MOCK-1"),
+                any()
+        );
+    }
+
+    @Test
+    void builtinMockCumulativeFullRefundShouldCloseOrderAsRefunded() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = builtinMockPaidOrder();
+        PaymentRefundRow completed = builtinMockRefund("REF-MOCK-2", 60L);
+        stubBuiltinMockRefundPersistence(jdbcTemplate, order, completed, 40L);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentRefundDTO result = service.createRefund(
+                currentUser(),
+                order.getOrderNo(),
+                new PaymentCreateRefundRequestDTO("REF-MOCK-2", 60L, "CNY", "remaining", Map.of(), null)
+        );
+
+        assertThat(result.status()).isEqualTo("REFUNDED");
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate, times(2)).update(sqlCaptor.capture(), argsCaptor.capture());
+        int orderUpdateIndex = sqlCaptor.getAllValues().get(0).contains("update payment_order") ? 0 : 1;
+        assertThat(argsCaptor.getAllValues().get(orderUpdateIndex)[0]).isEqualTo("REFUNDED");
+    }
+
+    @Test
+    void builtinMockRefundShouldRejectCumulativeAmountAbovePaidAmount() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = builtinMockPaidOrder();
+        stubBuiltinMockRefundPersistence(jdbcTemplate, order, null, 70L);
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        assertThatThrownBy(() -> service.createRefund(
+                currentUser(),
+                order.getOrderNo(),
+                new PaymentCreateRefundRequestDTO("REF-MOCK-3", 40L, "CNY", "too much", Map.of(), null)
+        ))
+                .isInstanceOf(BizException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
+    void builtinMockRefundShouldReturnExistingRefundNumberIdempotently() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentOrderRow order = builtinMockPaidOrder();
+        PaymentRefundRow completed = builtinMockRefund("REF-MOCK-4", 40L);
+        doReturn(order).when(jdbcTemplate).queryForObject(
+                any(String.class),
+                anyOrderRowMapper(),
+                eq(order.getOrderNo()),
+                eq(1001L),
+                eq("user-uuid-1001")
+        );
+        doReturn(completed).when(jdbcTemplate).queryForObject(
+                any(String.class),
+                anyRefundRowMapper(),
+                eq("REF-MOCK-4"),
+                eq(1001L),
+                eq("user-uuid-1001")
+        );
+        PaymentTransactionService service = service(jdbcTemplate);
+
+        PaymentRefundDTO result = service.createRefund(
+                currentUser(),
+                order.getOrderNo(),
+                new PaymentCreateRefundRequestDTO("REF-MOCK-4", 40L, "CNY", "retry", Map.of(), null)
+        );
+
+        assertThat(result.refundNo()).isEqualTo("REF-MOCK-4");
+        verify(jdbcTemplate, never()).update(any(String.class), any(Object[].class));
+    }
+
+    @Test
     void createRefundShouldRejectUntrustedUserBeforeOrderLookup() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentTransactionService service = service(jdbcTemplate);
@@ -917,6 +1024,76 @@ class PaymentTransactionServiceTest {
         row.setUpdatedAt(LocalDateTime.now());
         row.setDeleted(0);
         return row;
+    }
+
+    private PaymentOrderRow builtinMockPaidOrder() {
+        PaymentOrderRow row = orderRow(1001L);
+        row.setId(77L);
+        row.setOrderNo("REG-1001");
+        row.setProviderCode(BuiltinMockPaymentAvailability.PROVIDER_CODE);
+        row.setAmountMinor(100L);
+        row.setStatus("PAID");
+        row.setCreatedByUuid("user-uuid-1001");
+        return row;
+    }
+
+    private PaymentRefundRow builtinMockRefund(String refundNo, long amountMinor) {
+        PaymentRefundRow row = refundRow(1001L);
+        row.setRefundNo(refundNo);
+        row.setOrderNo("REG-1001");
+        row.setProviderCode(BuiltinMockPaymentAvailability.PROVIDER_CODE);
+        row.setProviderRefundNo("builtin_mock-refund-" + refundNo);
+        row.setAmountMinor(amountMinor);
+        row.setStatus("REFUNDED");
+        row.setCreatedByUuid("user-uuid-1001");
+        row.setRefundedAt(LocalDateTime.now());
+        return row;
+    }
+
+    private void stubBuiltinMockRefundPersistence(
+            JdbcTemplate jdbcTemplate,
+            PaymentOrderRow order,
+            PaymentRefundRow completed,
+            long alreadyRefunded
+    ) {
+        doReturn(order).when(jdbcTemplate).queryForObject(
+                any(String.class),
+                anyOrderRowMapper(),
+                eq(order.getOrderNo()),
+                eq(1001L),
+                eq("user-uuid-1001")
+        );
+        doThrow(new EmptyResultDataAccessException(1)).when(jdbcTemplate).queryForObject(
+                any(String.class),
+                anyRefundRowMapper(),
+                ArgumentMatchers.startsWith("REF-MOCK-"),
+                eq(1001L),
+                eq("user-uuid-1001")
+        );
+        if (completed == null) {
+            doThrow(new EmptyResultDataAccessException(1)).when(jdbcTemplate).queryForObject(
+                    any(String.class),
+                    anyRefundRowMapper(),
+                    ArgumentMatchers.startsWith("REF-MOCK-")
+            );
+        } else {
+            doThrow(new EmptyResultDataAccessException(1))
+                    .doReturn(completed)
+                    .when(jdbcTemplate).queryForObject(
+                            any(String.class),
+                            anyRefundRowMapper(),
+                            eq(completed.getRefundNo())
+                    );
+        }
+        doReturn(alreadyRefunded).when(jdbcTemplate).queryForObject(
+                contains("coalesce(sum(amount_minor), 0)"),
+                eq(Long.class),
+                eq(order.getOrderNo()),
+                eq(BuiltinMockPaymentAvailability.PROVIDER_CODE),
+                eq(1001L),
+                eq("user-uuid-1001")
+        );
+        doReturn(1).when(jdbcTemplate).update(any(String.class), any(Object[].class));
     }
 
     private BeanPropertyRowMapper<PaymentOrderRow> anyOrderRowMapper() {
