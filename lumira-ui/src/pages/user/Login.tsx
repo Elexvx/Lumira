@@ -1,7 +1,7 @@
 import { getLocale, setLocale, useLocation } from '@umijs/max';
 import { formatMessage } from '@/i18n/formatMessage';
-import { App, Button, Form, Input, Modal, Popover, Select, Steps, message } from 'antd';
-import { ExclamationCircleFilled, GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
+import { App, Button, Form, Input, Modal, Select, Steps, message } from 'antd';
+import { GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
@@ -456,6 +456,7 @@ const Login = () => {
   const loginFlow = useLoginFlow();
   const location = useLocation();
   const responsive = useResponsive();
+  const { message: messageApi } = App.useApp();
   const [passwordResetOpen, setPasswordResetOpen] = useState(false);
   const sessionExpired = isSessionExpiredLoginSearch(location.search);
   const presentedLoginModes = resolvePresentedLoginModes(responsive.isMobile, loginFlow.availableLoginModes);
@@ -482,6 +483,17 @@ const Login = () => {
       document.body.classList.remove(viewportClassName);
     };
   }, []);
+
+  useEffect(() => {
+    if (!loginFlow.viewState.forcedPasswordChangeOpen) {
+      return;
+    }
+    messageApi.warning({
+      key: 'initial-password-change-notice',
+      content: initialPasswordChangeNotice,
+      duration: 4,
+    });
+  }, [initialPasswordChangeNotice, loginFlow.viewState.forcedPasswordChangeOpen, messageApi]);
 
   useEffect(() => {
     if (!sessionExpired) {
@@ -554,24 +566,7 @@ const Login = () => {
       </Modal>
       <Modal
         open={loginFlow.viewState.forcedPasswordChangeOpen}
-        title={(
-          <span className="saas-login-page__initial-password-title">
-            <span>{formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}</span>
-            <Popover
-              content={initialPasswordChangeNotice}
-              trigger={['click', 'focus', 'hover']}
-              placement="bottomLeft"
-            >
-              <button
-                type="button"
-                className="saas-login-page__initial-password-hint-trigger"
-                aria-label={initialPasswordChangeNotice}
-              >
-                <ExclamationCircleFilled aria-hidden="true" />
-              </button>
-            </Popover>
-          </span>
-        )}
+        title={formatMessage({ id: 'page.login.initialPasswordChange.title', defaultMessage: '修改初始密码' })}
         closable={false}
         maskClosable={false}
         keyboard={false}
