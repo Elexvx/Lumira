@@ -22,4 +22,3 @@ class PaymentProviderCatalogBuiltinMockTest {
         assertThat(blank.getSupportedScenes()).containsExactly("PC_WEB", "WAP", "QR_CODE");
     }
 }
-

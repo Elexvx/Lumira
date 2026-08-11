@@ -27,4 +27,3 @@ describe('built-in mock checkout helpers', () => {
       .toBe('/competitions/register');
   });
 });
-

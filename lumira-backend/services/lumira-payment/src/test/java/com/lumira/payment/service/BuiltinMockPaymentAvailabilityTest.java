@@ -39,4 +39,3 @@ class BuiltinMockPaymentAvailabilityTest {
         verify(stateApi).isPluginEnabledForWrite(BuiltinMockPaymentAvailability.PLUGIN_CODE);
     }
 }
-

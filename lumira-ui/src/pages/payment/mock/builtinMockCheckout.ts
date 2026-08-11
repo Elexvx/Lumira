@@ -35,4 +35,3 @@ export const resolveBuiltinMockReturnUrl = (value?: string | null) => {
     return '/competitions/register';
   }
 };
-

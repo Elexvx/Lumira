@@ -216,9 +216,19 @@ test('intellectual-property fields are enabled by default without overriding exi
     for (const fieldKey of fieldKeys) {
       const row = source.split('\n').find((line) => line.includes(`'${fieldKey}'`));
       assert.ok(row, `missing default template row for ${fieldKey}`);
-      assert.match(row, /,\d+,[01],1,0\)[,;]?$/, `${fieldKey} must default to enabled`);
+      assert.match(row.trimEnd(), /,\d+,[01],1,0\)[,;]?$/, `${fieldKey} must default to enabled`);
     }
   }
+});
+
+test('built-in mock payment migration guards attempt columns with MySQL-compatible DDL', () => {
+  const migration = read('deploy/migrations/V202608110002__add_builtin_mock_payment_plugin.sql');
+
+  assert.doesNotMatch(migration, /ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS/i);
+  assert.match(migration, /information_schema\.columns/i);
+  assert.match(migration, /column_name\s*=\s*'attempt_no'/i);
+  assert.match(migration, /PREPARE builtin_mock_attempt_no_statement/i);
+  assert.match(migration, /EXECUTE builtin_mock_attempt_no_statement/i);
 });
 
 test('certificate template migration preserves runtime canvas placeholders', () => {

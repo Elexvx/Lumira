@@ -30,8 +30,20 @@ CREATE TABLE IF NOT EXISTS `payment_builtin_mock_callback` (
   KEY `idx_payment_builtin_mock_trade` (`provider_trade_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-ALTER TABLE `competition_payment_order_task`
-  ADD COLUMN IF NOT EXISTS `attempt_no` int NOT NULL DEFAULT '1' AFTER `simulated_role_id`;
+SET @builtin_mock_attempt_no_sql = (
+  SELECT IF(
+    COUNT(*) = 0,
+    'ALTER TABLE `competition_payment_order_task` ADD COLUMN `attempt_no` int NOT NULL DEFAULT ''1'' AFTER `simulated_role_id`',
+    'SELECT 1'
+  )
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'competition_payment_order_task'
+    AND column_name = 'attempt_no'
+);
+PREPARE builtin_mock_attempt_no_statement FROM @builtin_mock_attempt_no_sql;
+EXECUTE builtin_mock_attempt_no_statement;
+DEALLOCATE PREPARE builtin_mock_attempt_no_statement;
 
 INSERT INTO `sys_plugin_definition` (
     `plugin_code`, `plugin_name`, `plugin_type`, `description`, `author`, `plugin_api_version`,
