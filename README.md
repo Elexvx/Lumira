@@ -29,6 +29,8 @@ corepack pnpm --dir lumira-ui install
 
 按本机实际凭据修改 `lumira-backend/.env`，在 MySQL 中创建 `lumira` 数据库，并导入 `lumira-backend/sql/saas.sql`。随后先运行只读预检，再启动：
 
+`saas.sql` 是新数据库的完整当前快照，版本记录在 `lumira-backend/sql/saas-baseline-version.txt`。容器首次初始化会直接以该版本建立 Flyway 基线，不会重新执行历史迁移；已有数据库仍按自身迁移历史增量升级。新增迁移时必须先把同等结构和内置数据同步到 `saas.sql`，再推进基线版本。
+
 ```powershell
 npm run start:local -- --check
 npm run start:local

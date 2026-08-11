@@ -24,6 +24,19 @@ if (new Set(versions).size !== versions.length) throw new Error('Duplicate datab
 
 const latest = migrations.at(-1);
 const bootstrapSql = readFileSync(path.join(repoRoot, 'lumira-backend', 'sql', 'saas.sql'), 'utf8');
+const bootstrapVersion = readFileSync(
+  path.join(repoRoot, 'lumira-backend', 'sql', 'saas-baseline-version.txt'),
+  'utf8',
+).trim();
+if (!/^\d+$/u.test(bootstrapVersion)) {
+  throw new Error(`Invalid fresh database baseline version: ${bootstrapVersion || '<empty>'}`);
+}
+if (bootstrapVersion !== latest.version) {
+  throw new Error(
+    `Fresh database baseline version ${bootstrapVersion} does not match latest migration ${latest.version}. `
+    + 'Update saas.sql completely before advancing the baseline marker.',
+  );
+}
 const migrationChain = migrations.map((migration) => migration.source).join('\n');
 const requiredDatabaseContracts = [
   'CREATE TABLE `aiadc_activity_registration`',
@@ -52,5 +65,5 @@ for (const contract of requiredDatabaseContracts) {
 if (process.argv.includes('--print-version')) {
   process.stdout.write(latest.version);
 } else {
-  console.log(`Database migration contract passed. Latest version: ${latest.version}`);
+  console.log(`Database migration contract passed. Fresh baseline and latest migration: ${latest.version}`);
 }

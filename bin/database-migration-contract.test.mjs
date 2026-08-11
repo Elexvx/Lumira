@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { crc32 } from 'node:zlib';
@@ -323,6 +323,28 @@ test('migrator honors the release target version', () => {
   const entrypoint = read('deploy/docker/migrator-entrypoint.sh');
   assert.match(entrypoint, /DATABASE_TARGET_VERSION/);
   assert.match(entrypoint, /-target="\$DATABASE_TARGET_VERSION"/);
+});
+
+test('fresh databases baseline at the complete saas snapshot version', () => {
+  const entrypoint = read('deploy/docker/migrator-entrypoint.sh');
+  const dockerfile = read('deploy/docker/migrator.Dockerfile');
+  const baselineVersion = read('lumira-backend/sql/saas-baseline-version.txt').trim();
+  const latestMigrationVersion = readdirSync(path.join(repoRoot, 'deploy', 'migrations'))
+    .map((name) => /^V(\d+)__.+\.sql$/u.exec(name)?.[1])
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+
+  assert.match(baselineVersion, /^\d+$/u);
+  assert.equal(baselineVersion, latestMigrationVersion);
+  assert.match(
+    dockerfile,
+    /COPY lumira-backend\/sql\/saas-baseline-version\.txt \/opt\/lumira\/saas-baseline-version\.txt/,
+  );
+  assert.match(entrypoint, /baseline_version_file=\/opt\/lumira\/saas-baseline-version\.txt/);
+  assert.match(entrypoint, /database_baseline_version=\$\(tr -d .* < "\$baseline_version_file"\)/);
+  assert.match(entrypoint, /-baselineVersion="\$database_baseline_version"/);
+  assert.doesNotMatch(entrypoint, /-baselineVersion=202607140000/);
 });
 
 test('regular deployments run migrations before application containers', () => {
