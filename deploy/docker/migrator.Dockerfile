@@ -11,6 +11,7 @@ FROM redgate/flyway:12.5.0
 
 USER root
 COPY deploy/migrations /flyway/sql
+COPY lumira-backend/sql/saas-baseline-version.txt /opt/lumira/saas-baseline-version.txt
 COPY --from=bootstrap-builder /workspace/target/lumira-bootstrap-admin.jar /opt/lumira/lumira-bootstrap-admin.jar
 COPY deploy/docker/migrator-entrypoint.sh /usr/local/bin/lumira-migrate
 RUN chmod 0755 /usr/local/bin/lumira-migrate
