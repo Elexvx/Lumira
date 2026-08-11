@@ -4,6 +4,8 @@ import { Avatar } from 'antd';
 import type { AvatarProps } from 'antd';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 
+export const GENERATED_USER_AVATAR_PREFIX = '/api/v1/profile/avatar/generated/';
+
 export type UserAvatarIdentity = {
   userId?: number | string | null;
   userUuid?: string | null;
@@ -31,6 +33,25 @@ export const resolveUserAvatarSeed = ({ userId, userUuid, username }: UserAvatar
   return `lumira-user:${stableIdentity}`;
 };
 
+export const isGeneratedUserAvatarUrl = (value?: string | null) =>
+  Boolean(value?.trim().startsWith(GENERATED_USER_AVATAR_PREFIX));
+
+const resolvePersistedGeneratedAvatarSeed = (value: string | null | undefined, fallbackSeed: string) => {
+  const trimmed = value?.trim() || '';
+  if (!isGeneratedUserAvatarUrl(trimmed)) {
+    return fallbackSeed;
+  }
+  const persistedIdentity = trimmed.slice(GENERATED_USER_AVATAR_PREFIX.length);
+  if (!persistedIdentity) {
+    return fallbackSeed;
+  }
+  try {
+    return `lumira-user:${decodeURIComponent(persistedIdentity)}`;
+  } catch {
+    return `lumira-user:${persistedIdentity}`;
+  }
+};
+
 const resolveGeneratedAvatarSize = (size: AvatarProps['size']) => {
   if (typeof size === 'number') {
     return size;
@@ -54,10 +75,11 @@ export const UserAvatar = ({
   alt,
   ...avatarProps
 }: UserAvatarProps) => {
-  const normalizedAvatarUrl = normalizeUploadUrl(avatarUrl);
+  const fallbackSeed = resolveUserAvatarSeed({ userId, userUuid, username });
+  const normalizedAvatarUrl = isGeneratedUserAvatarUrl(avatarUrl) ? '' : normalizeUploadUrl(avatarUrl);
   const generatedAvatar = (
     <GradientAvatar
-      seed={resolveUserAvatarSeed({ userId, userUuid, username })}
+      seed={resolvePersistedGeneratedAvatarSeed(avatarUrl, fallbackSeed)}
       size={resolveGeneratedAvatarSize(size)}
     />
   );

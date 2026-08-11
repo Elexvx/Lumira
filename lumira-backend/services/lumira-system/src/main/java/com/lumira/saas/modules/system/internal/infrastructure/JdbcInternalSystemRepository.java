@@ -9,6 +9,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.modules.system.internal.repository.InternalSystemRepository;
+import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import org.springframework.stereotype.Repository;
 
@@ -490,7 +491,7 @@ public class JdbcInternalSystemRepository implements InternalSystemRepository {
                 null,
                 "微信用户",
                 null,
-                null,
+                UserAvatarDefaults.generatedAvatarUrl(userUuid),
                 null,
                 null,
                 null,
@@ -530,7 +531,7 @@ public class JdbcInternalSystemRepository implements InternalSystemRepository {
                 mobile,
                 nickname,
                 null,
-                null,
+                UserAvatarDefaults.generatedAvatarUrl(userUuid),
                 email,
                 null,
                 null,

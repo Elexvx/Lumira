@@ -44,6 +44,7 @@ import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
+import com.lumira.saas.modules.system.user.support.UserAvatarDefaults;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
@@ -2278,13 +2279,36 @@ public class SystemManagementAppService {
                 () -> listAvailableRoles(currentUser.getUserId(), userUuid),
                 BLOCKING_IO_EXECUTOR
         );
+        String avatarUrl = user.getAvatarUrl();
+        if (!StringUtils.hasText(avatarUrl)) {
+            String generatedAvatarUrl = UserAvatarDefaults.generatedAvatarUrl(user.getUuid());
+            if (generatedAvatarUrl != null) {
+                int initialized = currentUserProfileRepository.initializeAvatarIfAbsent(
+                        user.getId(),
+                        user.getUuid(),
+                        generatedAvatarUrl,
+                        currentUserProfileActor(currentUser),
+                        LocalDateTime.now()
+                );
+                if (initialized > 0) {
+                    avatarUrl = generatedAvatarUrl;
+                    user.setAvatarUrl(avatarUrl);
+                } else {
+                    // A concurrent upload may have won the conditional update.
+                    avatarUrl = userDomainService.findById(user.getId())
+                            .map(SysUserEntity::getAvatarUrl)
+                            .orElse(generatedAvatarUrl);
+                    user.setAvatarUrl(avatarUrl);
+                }
+            }
+        }
         CurrentUserVO response = new CurrentUserVO();
         response.setUserId(user.getId());
         response.setUserUuid(user.getUuid());
         response.setUsername(user.getUsername());
         response.setNickname(user.getNickname());
         response.setRealName(user.getRealName());
-        response.setAvatarUrl(user.getAvatarUrl());
+        response.setAvatarUrl(avatarUrl);
         response.setMobile(user.getMobile());
         response.setEmail(user.getEmail());
         response.setBirthMonth(user.getBirthMonth());

@@ -45,6 +45,19 @@ public class JdbcSystemCurrentUserProfileRepository implements SystemCurrentUser
     }
 
     @Override
+    public int initializeAvatarIfAbsent(Long userId, String userUuid, String avatarUrl, Actor actor, LocalDateTime updatedAt) {
+        return database.update(
+                """
+                        update sys_user
+                        set avatar_url = ?, updated_by = ?, updated_by_uuid = ?, updated_at = ?
+                        where id = ? and uuid = ? and deleted = 0
+                          and (avatar_url is null or trim(avatar_url) = '')
+                        """,
+                avatarUrl, actor.userId(), actor.userUuid(), updatedAt, userId, userUuid
+        );
+    }
+
+    @Override
     public boolean hasActiveWechatBinding(Long userId, String userUuid) {
         try {
             return database.queryForObject(
